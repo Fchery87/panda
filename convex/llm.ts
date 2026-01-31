@@ -1,15 +1,13 @@
 /**
  * Convex LLM HTTP Action
  * 
- * HTTP action for streaming chat completions using Vercel AI SDK.
- * Supports streaming responses and tool calls.
+ * HTTP action for streaming chat completions.
+ * Streams responses from OpenAI-compatible APIs.
  * 
  * @file convex/llm.ts
  */
 
 import { httpAction } from "./_generated/server";
-import { streamText, type CoreMessage } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
 
 /**
  * Message type for chat requests
@@ -30,328 +28,238 @@ interface ChatMessage {
 }
 
 /**
- * Tool definition for function calling
- */
-interface ToolDefinition {
-  name: string;
-  description: string;
-  parameters: {
-    type: "object";
-    properties: Record<string, unknown>;
-    required?: string[];
-  };
-}
-
-/**
  * Chat request body
  */
 interface ChatRequest {
   messages: ChatMessage[];
   model?: string;
-  provider?: "openai" | "openrouter" | "together";
+  mode?: "discuss" | "build";
   temperature?: number;
   maxTokens?: number;
-  tools?: ToolDefinition[];
-  mode?: "discuss" | "build";
-  chatId?: string;
-  projectId?: string;
+  provider?: "openai" | "openrouter" | "together";
+  apiKey?: string;
 }
 
 /**
- * Get API configuration based on provider
+ * Get system prompt based on mode
  */
-function getProviderConfig(provider: string) {
-  switch (provider) {
-    case "openrouter":
-      return {
-        apiKey: process.env.OPENROUTER_API_KEY,
-        baseUrl: "https://openrouter.ai/api/v1",
-        defaultModel: "anthropic/claude-3.5-sonnet",
-      };
-    case "together":
-      return {
-        apiKey: process.env.TOGETHER_API_KEY,
-        baseUrl: "https://api.together.xyz/v1",
-        defaultModel: "togethercomputer/llama-3.1-70b",
-      };
-    case "openai":
-    default:
-      return {
-        apiKey: process.env.OPENAI_API_KEY,
-        baseUrl: process.env.OPENAI_BASE_URL,
-        defaultModel: "gpt-4o",
-      };
+function getSystemPrompt(mode: "discuss" | "build" = "build"): string {
+  if (mode === "discuss") {
+    return `You are an expert software architect and planning assistant. 
+Help users think through their approach, suggest best practices, and break down complex tasks.
+Be thoughtful and thorough. Don't write code unless specifically asked.`;
   }
+  
+  return `You are an expert software engineer. Write complete, working code.
+Follow existing code style and patterns. Add comments for complex logic.
+When modifying files, provide the complete new content.`;
 }
 
 /**
- * Stream chat HTTP action
- * 
- * POST /api/chat
- * 
- * Request body:
- * {
- *   messages: Array<{ role, content, ... }>,
- *   model?: string,
- *   provider?: 'openai' | 'openrouter' | 'together',
- *   temperature?: number,
- *   maxTokens?: number,
- *   tools?: Array<ToolDefinition>,
- *   mode?: 'discuss' | 'build'
- * }
- * 
- * Response: text/event-stream
+ * Get provider configuration
  */
-export const streamChat = httpAction(async (ctx, req): Promise<Response> => {
-  // Handle CORS preflight
-  if (req.method === "OPTIONS") {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      },
-    });
-  }
+function getProviderConfig(provider: string, apiKey?: string) {
+  const configs: Record<string, { baseURL: string; defaultModel: string }> = {
+    openai: {
+      baseURL: "https://api.openai.com/v1",
+      defaultModel: "gpt-4o-mini",
+    },
+    openrouter: {
+      baseURL: "https://openrouter.ai/api/v1",
+      defaultModel: "openai/gpt-4o-mini",
+    },
+    together: {
+      baseURL: "https://api.together.xyz/v1",
+      defaultModel: "meta-llama/Llama-3.1-8B-Instruct-Turbo",
+    },
+  };
 
-  // Only allow POST
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-      },
-    });
-  }
+  return {
+    ...configs[provider] || configs.openai,
+    apiKey: apiKey || process.env.OPENAI_API_KEY || "",
+  };
+}
 
+/**
+ * Stream chat completion
+ * 
+ * HTTP Action that streams LLM responses using Server-Sent Events (SSE).
+ */
+export const streamChat = httpAction(async (ctx, request): Promise<Response> => {
   try {
     // Parse request body
-    const body: ChatRequest = await req.json();
-    const {
-      messages,
-      model,
-      provider = "openai",
-      temperature = 0.7,
+    const body = await request.json() as ChatRequest;
+    const { 
+      messages, 
+      model, 
+      mode = "build", 
+      temperature = 0.7, 
       maxTokens = 4096,
-      tools,
-      mode = "discuss",
+      provider = "openai",
+      apiKey,
     } = body;
 
-    // Validate messages
-    if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "Messages array is required" }),
-        {
-          status: 400,
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-          },
-        }
-      );
-    }
-
     // Get provider configuration
-    const config = getProviderConfig(provider);
-
-    if (!config.apiKey) {
-      return new Response(
-        JSON.stringify({
-          error: `API key not configured for provider: ${provider}`,
-        }),
-        {
-          status: 500,
-          headers: {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-          },
-        }
-      );
-    }
-
-    // Create OpenAI client with custom configuration
-    const openai = createOpenAI({
-      apiKey: config.apiKey,
-      baseURL: config.baseUrl,
-      headers:
-        provider === "openrouter"
-          ? {
-              "HTTP-Referer": req.headers.get("origin") || "https://panda.ai",
-              "X-Title": "Panda.ai",
-            }
-          : undefined,
-    });
-
-    // Select model
+    const config = getProviderConfig(provider, apiKey);
     const selectedModel = model || config.defaultModel;
 
-    // Convert messages to AI SDK format
-    const coreMessages: CoreMessage[] = messages.map((msg) => ({
-      role: msg.role,
-      content: msg.content,
-      ...(msg.name && { name: msg.name }),
-      ...(msg.tool_call_id && { tool_call_id: msg.tool_call_id }),
-      ...(msg.tool_calls && { tool_calls: msg.tool_calls }),
-    }));
+    // Add system message
+    const systemMessage: ChatMessage = {
+      role: "system",
+      content: getSystemPrompt(mode),
+    };
 
-    // Convert tools to AI SDK format if provided
-    const sdkTools = tools?.map((tool) => ({
-      name: tool.name,
-      description: tool.description,
-      parameters: tool.parameters,
-    }));
+    const fullMessages = [systemMessage, ...messages];
 
-    // Add mode-specific system message if not present
-    const hasSystemMessage = coreMessages.some((m) => m.role === "system");
-    if (!hasSystemMessage) {
-      const systemPrompt =
-        mode === "build"
-          ? `You are Panda.ai, an AI software engineer. You help users write, modify, and improve code.
-
-You have access to tools:
-- read_files: Read file contents to understand the codebase
-- write_files: Write or modify files (provide complete content)
-- run_command: Run CLI commands to verify changes
-
-When making changes:
-1. Read relevant files first to understand context
-2. Explain your approach
-3. Write complete file content (not diffs)
-4. Run commands to verify
-
-Follow existing code patterns and conventions.`
-          : `You are Panda.ai, an AI software architect. You help users plan, design, and architect software projects.
-
-You excel at:
-- Breaking down requirements
-- Designing system architecture
-- Creating implementation plans
-- Discussing trade-offs
-- Answering technical questions
-
-Be concise but thorough. Focus on actionable insights.`;
-
-      coreMessages.unshift({
-        role: "system",
-        content: systemPrompt,
-      });
-    }
-
-    // Start streaming
-    const result = streamText({
-      model: openai(selectedModel),
-      messages: coreMessages,
-      temperature,
-      maxTokens,
-      tools: sdkTools,
+    // Make request to LLM API
+    const response = await fetch(`${config.baseURL}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${config.apiKey}`,
+        ...(provider === "openrouter" ? {
+          "HTTP-Referer": "https://panda.ai",
+          "X-Title": "Panda.ai",
+        } : {}),
+      },
+      body: JSON.stringify({
+        model: selectedModel,
+        messages: fullMessages,
+        temperature,
+        max_tokens: maxTokens,
+        stream: true,
+      }),
     });
 
-    // Create streaming response
+    if (!response.ok) {
+      const error = await response.text();
+      return new Response(
+        JSON.stringify({ error: `LLM API error: ${error}` }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // Create SSE response
     const stream = new ReadableStream({
       async start(controller) {
+        const reader = response.body?.getReader();
+        if (!reader) {
+          controller.close();
+          return;
+        }
+
+        const encoder = new TextEncoder();
+
         try {
-          // Stream text chunks
-          for await (const chunk of result.textStream) {
-            const data = JSON.stringify({
-              type: "text",
-              content: chunk,
-            });
-            controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
-          }
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-          // Get final result for tool calls and usage
-          const finalResult = await result;
+            // Parse SSE chunks and forward
+            const chunk = new TextDecoder().decode(value);
+            const lines = chunk.split("\n");
 
-          // Send tool calls if any
-          if (finalResult.toolCalls && finalResult.toolCalls.length > 0) {
-            for (const toolCall of finalResult.toolCalls) {
-              const data = JSON.stringify({
-                type: "tool_call",
-                toolCall: {
-                  id: toolCall.toolCallId,
-                  type: "function",
-                  function: {
-                    name: toolCall.toolName,
-                    arguments: JSON.stringify(toolCall.args),
-                  },
-                },
-              });
-              controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
+            for (const line of lines) {
+              if (line.startsWith("data: ")) {
+                const data = line.slice(6);
+                if (data === "[DONE]") {
+                  controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+                  continue;
+                }
+
+                try {
+                  const parsed = JSON.parse(data);
+                  const content = parsed.choices?.[0]?.delta?.content;
+                  if (content) {
+                    controller.enqueue(
+                      encoder.encode(`data: ${JSON.stringify({ content })}\n\n`)
+                    );
+                  }
+                } catch {
+                  // Skip malformed JSON
+                }
+              }
             }
           }
-
-          // Send finish event with usage
-          const finishData = JSON.stringify({
-            type: "finish",
-            finishReason: finalResult.finishReason,
-            usage: {
-              promptTokens: finalResult.usage.promptTokens,
-              completionTokens: finalResult.usage.completionTokens,
-              totalTokens: finalResult.usage.totalTokens,
-            },
-          });
-          controller.enqueue(
-            new TextEncoder().encode(`data: ${finishData}\n\n`)
-          );
-
-          controller.close();
-        } catch (error) {
-          const errorData = JSON.stringify({
-            type: "error",
-            error: error instanceof Error ? error.message : String(error),
-          });
-          controller.enqueue(new TextEncoder().encode(`data: ${errorData}\n\n`));
+        } finally {
+          reader.releaseLock();
           controller.close();
         }
       },
     });
 
-    // Return streaming response
     return new Response(stream, {
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-        "Access-Control-Allow-Origin": "*",
+        "Connection": "keep-alive",
       },
     });
+
   } catch (error) {
-    console.error("Error in streamChat:", error);
+    console.error("Stream chat error:", error);
     return new Response(
-      JSON.stringify({
-        error: error instanceof Error ? error.message : "Internal server error",
+      JSON.stringify({ 
+        error: error instanceof Error ? error.message : "Unknown error" 
       }),
-      {
-        status: 500,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-        },
-      }
+      { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
 });
 
 /**
- * Health check endpoint for LLM service
+ * Health check endpoint
  */
-export const health = httpAction(async (ctx, req): Promise<Response> => {
+export const health = httpAction(async (_ctx, _request): Promise<Response> => {
   return new Response(
-    JSON.stringify({
-      status: "ok",
-      providers: {
-        openai: !!process.env.OPENAI_API_KEY,
-        openrouter: !!process.env.OPENROUTER_API_KEY,
-        together: !!process.env.TOGETHER_API_KEY,
-      },
-    }),
-    {
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-      },
-    }
+    JSON.stringify({ status: "ok", timestamp: Date.now() }),
+    { headers: { "Content-Type": "application/json" } }
   );
+});
+
+/**
+ * List available models
+ */
+export const listModels = httpAction(async (ctx, request): Promise<Response> => {
+  try {
+    const url = new URL(request.url);
+    const provider = url.searchParams.get("provider") || "openai";
+    const apiKey = url.searchParams.get("apiKey") || process.env.OPENAI_API_KEY;
+    
+    const config = getProviderConfig(provider, apiKey || undefined);
+
+    const response = await fetch(`${config.baseURL}/models`, {
+      headers: {
+        "Authorization": `Bearer ${config.apiKey}`,
+      },
+    });
+
+    if (!response.ok) {
+      // Return default models if API doesn't support listing
+      const defaultModels = [
+        { id: "gpt-4o", name: "GPT-4o" },
+        { id: "gpt-4o-mini", name: "GPT-4o Mini" },
+        { id: "gpt-4-turbo", name: "GPT-4 Turbo" },
+      ];
+      
+      return new Response(
+        JSON.stringify({ models: defaultModels }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    const data = await response.json();
+    return new Response(
+      JSON.stringify(data),
+      { headers: { "Content-Type": "application/json" } }
+    );
+
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  }
 });

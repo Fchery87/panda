@@ -1,24 +1,34 @@
 /**
  * useStreamingChat Hook
  * 
- * Custom React hook for streaming chat using @ai-sdk/react's useChat
- * Connects to Convex HTTP action and persists messages to Convex.
+ * Custom React hook for streaming chat using Convex HTTP actions.
+ * Streams responses from the LLM and persists messages to Convex.
  * 
  * @file apps/web/hooks/useStreamingChat.ts
  */
 
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
-import { useChat, type Message } from '@ai-sdk/react';
-import { useMutation } from 'convex/react';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
+import { toast } from 'sonner';
 
 /**
  * Chat mode type
  */
 type ChatMode = 'discuss' | 'build';
+
+/**
+ * Message type
+ */
+interface ChatMessage {
+  _id?: string;
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  content: string;
+  createdAt?: number;
+}
 
 /**
  * Options for useStreamingChat
@@ -27,7 +37,6 @@ interface UseStreamingChatOptions {
   chatId: Id<'chats'>;
   projectId: Id<'projects'>;
   mode: ChatMode;
-  initialMessages?: Message[];
   onError?: (error: Error) => void;
   onFinish?: () => void;
 }
@@ -36,16 +45,14 @@ interface UseStreamingChatOptions {
  * Return type for useStreamingChat
  */
 interface UseStreamingChatReturn {
-  messages: Message[];
+  messages: ChatMessage[];
   input: string;
   setInput: (input: string) => void;
   isLoading: boolean;
-  error: Error | undefined;
+  error: Error | null;
   handleSubmit: (e?: React.FormEvent) => void;
   handleInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
-  reload: () => void;
   stop: () => void;
-  append: (message: Message) => void;
 }
 
 /**
@@ -55,215 +62,325 @@ interface UseStreamingChatReturn {
  * - Streams responses from Convex HTTP action
  * - Persists messages to Convex after streaming completes
  * - Supports both 'discuss' and 'build' modes
- * - Integrates with existing messages.ts mutations
+ * - Real-time message updates via Convex subscriptions
  */
 export function useStreamingChat(options: UseStreamingChatOptions): UseStreamingChatReturn {
-  const { chatId, projectId, mode, initialMessages = [], onError, onFinish } = options;
+  const { chatId, projectId, mode, onError, onFinish } = options;
+  
+  // Fetch existing messages from Convex
+  const existingMessages = useQuery(api.messages.list, { chatId });
   
   // Convex mutations for persisting messages
   const addMessage = useMutation(api.messages.add);
   
-  // Track pending message persistence
-  const pendingMessageRef = useRef<{ role: 'user' | 'assistant'; content: string } | null>(null);
+  // Local state for streaming
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [streamingContent, setStreamingContent] = useState('');
   
-  // Use Vercel AI SDK's useChat hook
-  const {
-    messages,
-    input,
-    setInput,
-    handleInputChange,
-    handleSubmit: aiHandleSubmit,
-    isLoading,
-    error,
-    reload,
-    stop,
-    append,
-  } = useChat({
-    api: `${process.env.NEXT_PUBLIC_CONVEX_URL?.replace('.cloud', '.site')}/llm/streamChat`,
-    initialMessages,
-    body: {
-      mode,
-      chatId,
-      projectId,
-    },
-    onError: (err) => {
-      console.error('Streaming error:', err);
-      onError?.(err);
-    },
-    onFinish: async (message) => {
-      // Persist the assistant's message to Convex
-      try {
-        if (message.content) {
-          await addMessage({
-            chatId,
-            role: 'assistant',
-            content: message.content,
-          });
-        }
-      } catch (err) {
-        console.error('Failed to persist assistant message:', err);
+  // Abort controller for stopping stream
+  const abortControllerRef = useRef<AbortController | null>(null);
+  
+  // Combine existing messages with streaming message
+  const messages: ChatMessage[] = [
+    ...(existingMessages || []),
+    ...(streamingContent ? [{ 
+      _id: 'streaming', 
+      role: 'assistant' as const, 
+      content: streamingContent,
+      createdAt: Date.now(),
+    }] : []),
+  ];
+
+  /**
+   * Handle input change
+   */
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+  }, []);
+
+  /**
+   * Stop streaming
+   */
+  const stop = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsLoading(false);
+  }, []);
+
+  /**
+   * Handle form submission
+   */
+  const handleSubmit = useCallback(async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    
+    if (!input.trim() || isLoading) return;
+    
+    const userMessage = input.trim();
+    setInput('');
+    setError(null);
+    setIsLoading(true);
+    setStreamingContent('');
+    
+    try {
+      // Save user message to Convex
+      await addMessage({
+        chatId,
+        role: 'user',
+        content: userMessage,
+      });
+      
+      // Get API key from environment or settings
+      const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY || '';
+      const provider = process.env.NEXT_PUBLIC_LLM_PROVIDER || 'openai';
+      
+      // Create abort controller for this request
+      abortControllerRef.current = new AbortController();
+      
+      // Call Convex HTTP action
+      const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL || '';
+      const response = await fetch(`${convexUrl}/api/llm/streamChat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [...(existingMessages || []), { role: 'user', content: userMessage }],
+          mode,
+          provider,
+          apiKey,
+        }),
+        signal: abortControllerRef.current.signal,
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-      onFinish?.();
-    },
-  });
-
-  // Enhanced submit handler that persists user message first
-  const handleSubmit = useCallback(
-    async (e?: React.FormEvent) => {
-      e?.preventDefault();
-
-      if (!input.trim()) return;
-
-      const userContent = input.trim();
-
-      // Clear input immediately for better UX
-      setInput('');
-
-      // Persist user message to Convex first
+      
+      if (!response.body) {
+        throw new Error('No response body');
+      }
+      
+      // Read streaming response
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullContent = '';
+      
       try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') continue;
+              
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.content) {
+                  fullContent += parsed.content;
+                  setStreamingContent(fullContent);
+                }
+              } catch {
+                // Skip malformed JSON
+              }
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
+      
+      // Save assistant message to Convex
+      if (fullContent) {
         await addMessage({
           chatId,
-          role: 'user',
-          content: userContent,
+          role: 'assistant',
+          content: fullContent,
+          annotations: { model: 'gpt-4o-mini', provider },
         });
-      } catch (err) {
-        console.error('Failed to persist user message:', err);
-        // Continue with streaming even if persistence fails
       }
+      
+      setStreamingContent('');
+      onFinish?.();
+      
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Unknown error');
+      setError(error);
+      onError?.(error);
+      toast.error(error.message);
+    } finally {
+      setIsLoading(false);
+      abortControllerRef.current = null;
+    }
+  }, [input, isLoading, chatId, existingMessages, mode, addMessage, onFinish, onError]);
 
-      // Submit to AI for streaming
-      aiHandleSubmit(e);
-    },
-    [input, chatId, addMessage, aiHandleSubmit, setInput]
-  );
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   return {
     messages,
     input,
     setInput,
     isLoading,
-    error: error ?? undefined,
+    error,
     handleSubmit,
     handleInputChange,
-    reload,
     stop,
-    append,
   };
 }
 
 /**
- * Hook for streaming chat with manual message management
- * Alternative to useStreamingChat with more control over message persistence
+ * Alternative hook using manual fetch (without Convex real-time)
+ * Use this if you need more control over the streaming process
  */
-export function useStreamingChatManual(options: UseStreamingChatOptions): UseStreamingChatReturn & {
-  persistMessage: (role: 'user' | 'assistant', content: string) => Promise<void>;
-} {
-  const { chatId, mode, initialMessages = [], onError, onFinish } = options;
+export function useStreamingChatManual(options: UseStreamingChatOptions): UseStreamingChatReturn {
+  const { chatId, mode, onError, onFinish } = options;
   
-  // Convex mutations
   const addMessage = useMutation(api.messages.add);
-  const [isPersisting, setIsPersisting] = useState(false);
   
-  // Build the HTTP action URL
-  const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
-  const apiUrl = convexUrl 
-    ? `${convexUrl.replace('.cloud', '.site')}/llm/streamChat`
-    : '/api/chat'; // Fallback to Next.js API route
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
   
-  // Use Vercel AI SDK's useChat hook
-  const {
-    messages,
-    input,
-    setInput,
-    handleInputChange,
-    handleSubmit: aiHandleSubmit,
-    isLoading,
-    error,
-    reload,
-    stop,
-    append: aiAppend,
-  } = useChat({
-    api: apiUrl,
-    initialMessages,
-    body: {
-      mode,
-      chatId,
-    },
-    onError: (err) => {
-      console.error('Streaming error:', err);
-      onError?.(err);
-    },
-    onFinish: () => {
-      onFinish?.();
-    },
-  });
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Persist a message to Convex
-  const persistMessage = useCallback(
-    async (role: 'user' | 'assistant', content: string) => {
-      setIsPersisting(true);
-      try {
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+  }, []);
+
+  const stop = useCallback(() => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    setIsLoading(false);
+  }, []);
+
+  const handleSubmit = useCallback(async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    
+    if (!input.trim() || isLoading) return;
+    
+    const userMessage = input.trim();
+    setInput('');
+    setError(null);
+    setIsLoading(true);
+    
+    // Add user message to local state
+    const newMessages: ChatMessage[] = [
+      ...messages,
+      { role: 'user', content: userMessage },
+    ];
+    setMessages(newMessages);
+    
+    // Save to Convex
+    await addMessage({
+      chatId,
+      role: 'user',
+      content: userMessage,
+    });
+    
+    try {
+      const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY || '';
+      const provider = process.env.NEXT_PUBLIC_LLM_PROVIDER || 'openai';
+      const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL || '';
+      
+      abortControllerRef.current = new AbortController();
+      
+      const response = await fetch(`${convexUrl}/api/llm/streamChat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: newMessages,
+          mode,
+          provider,
+          apiKey,
+        }),
+        signal: abortControllerRef.current.signal,
+      });
+      
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.body) throw new Error('No response body');
+      
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullContent = '';
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') continue;
+            
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.content) {
+                fullContent += parsed.content;
+                // Update messages with streaming content
+                setMessages([
+                  ...newMessages,
+                  { role: 'assistant', content: fullContent },
+                ]);
+              }
+            } catch {}
+          }
+        }
+      }
+      
+      // Save final message to Convex
+      if (fullContent) {
         await addMessage({
           chatId,
-          role,
-          content,
+          role: 'assistant',
+          content: fullContent,
+          annotations: { model: 'gpt-4o-mini', provider },
         });
-      } finally {
-        setIsPersisting(false);
       }
-    },
-    [chatId, addMessage]
-  );
+      
+      onFinish?.();
+      
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Unknown error');
+      setError(error);
+      onError?.(error);
+      toast.error(error.message);
+    } finally {
+      setIsLoading(false);
+      abortControllerRef.current = null;
+    }
+  }, [input, isLoading, messages, chatId, mode, addMessage, onFinish, onError]);
 
-  // Enhanced submit handler
-  const handleSubmit = useCallback(
-    async (e?: React.FormEvent) => {
-      e?.preventDefault();
-
-      if (!input.trim()) return;
-
-      const userContent = input.trim();
-
-      // Clear input immediately
-      setInput('');
-
-      // Persist user message
-      await persistMessage('user', userContent);
-
-      // Submit to AI
-      aiHandleSubmit(e);
-
-      // Note: Assistant message persistence would need to be handled
-      // by listening to the stream completion, which is tricky with
-      // the current useChat API. Consider using useStreamingChat instead.
-    },
-    [input, setInput, persistMessage, aiHandleSubmit]
-  );
-
-  // Enhanced append that persists user messages
-  const append = useCallback(
-    async (message: Message) => {
-      if (message.role === 'user') {
-        await persistMessage('user', message.content);
-      }
-      aiAppend(message);
-    },
-    [aiAppend, persistMessage]
-  );
+  useEffect(() => {
+    return () => abortControllerRef.current?.abort();
+  }, []);
 
   return {
     messages,
     input,
     setInput,
-    isLoading: isLoading || isPersisting,
-    error: error ?? undefined,
+    isLoading,
+    error,
     handleSubmit,
     handleInputChange,
-    reload,
     stop,
-    append,
-    persistMessage,
   };
 }
-
-export default useStreamingChat;
