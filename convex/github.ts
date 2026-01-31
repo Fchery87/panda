@@ -1,4 +1,5 @@
 import { action, mutation, query } from './_generated/server';
+import { api } from './_generated/api';
 import { v } from 'convex/values';
 
 // Maximum file size in bytes (1MB)
@@ -271,7 +272,13 @@ export const importRepo = action({
           let content: string;
           if (file.content) {
             // Content is base64 encoded in the API response
-            content = Buffer.from(file.content, 'base64').toString('utf-8');
+            // Use atob() instead of Buffer (not available in Convex V8 isolate)
+            const binary = atob(file.content);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+              bytes[i] = binary.charCodeAt(i);
+            }
+            content = new TextDecoder().decode(bytes);
           } else {
             // Fetch raw content
             content = await fetchFileContent(owner, repo, file.path, targetBranch);

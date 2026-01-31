@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Package, Check, X, Trash2, Layers } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -17,27 +17,39 @@ interface ArtifactPanelProps {
   position?: "right" | "floating"
 }
 
+// Memoized selectors to prevent infinite loop warnings
+const selectArtifacts = (state: { artifacts: any[] }) => state.artifacts
+const selectApplyArtifact = (state: { applyArtifact: any }) => state.applyArtifact
+const selectRejectArtifact = (state: { rejectArtifact: any }) => state.rejectArtifact
+const selectApplyAll = (state: { applyAll: any }) => state.applyAll
+const selectRejectAll = (state: { rejectAll: any }) => state.rejectAll
+const selectClearQueue = (state: { clearQueue: any }) => state.clearQueue
+
 export function ArtifactPanel({
   isOpen = true,
   onClose,
   position = "right",
 }: ArtifactPanelProps) {
-  const artifacts = useArtifactStore((state) => state.artifacts)
-  const pendingArtifacts = useArtifactStore((state) =>
-    state.artifacts.filter((a) => a.status === "pending")
-  )
-  const appliedArtifacts = useArtifactStore((state) =>
-    state.artifacts.filter((a) => a.status === "applied")
-  )
-  const rejectedArtifacts = useArtifactStore((state) =>
-    state.artifacts.filter((a) => a.status === "rejected")
-  )
+  const artifacts = useArtifactStore(selectArtifacts)
+  const applyArtifact = useArtifactStore(selectApplyArtifact)
+  const rejectArtifact = useArtifactStore(selectRejectArtifact)
+  const applyAll = useArtifactStore(selectApplyAll)
+  const rejectAll = useArtifactStore(selectRejectAll)
+  const clearQueue = useArtifactStore(selectClearQueue)
 
-  const applyArtifact = useArtifactStore((state) => state.applyArtifact)
-  const rejectArtifact = useArtifactStore((state) => state.rejectArtifact)
-  const applyAll = useArtifactStore((state) => state.applyAll)
-  const rejectAll = useArtifactStore((state) => state.rejectAll)
-  const clearQueue = useArtifactStore((state) => state.clearQueue)
+  // Memoize filtered artifacts to prevent recalculation on every render
+  const pendingArtifacts = useMemo(() =>
+    artifacts.filter((a) => a.status === "pending"),
+    [artifacts]
+  )
+  const appliedArtifacts = useMemo(() =>
+    artifacts.filter((a) => a.status === "applied"),
+    [artifacts]
+  )
+  const rejectedArtifacts = useMemo(() =>
+    artifacts.filter((a) => a.status === "rejected"),
+    [artifacts]
+  )
 
   const pendingCount = pendingArtifacts.length
   const totalCount = artifacts.length

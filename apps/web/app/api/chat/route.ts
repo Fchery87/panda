@@ -7,7 +7,7 @@
  * @file apps/web/app/api/chat/route.ts
  */
 
-import { streamText, type CoreMessage } from "ai";
+import { streamText, type CoreMessage, type ToolSet } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { NextRequest } from "next/server";
 
@@ -144,20 +144,39 @@ export async function POST(req: NextRequest) {
     const selectedModel = model || config.defaultModel;
 
     // Convert messages to AI SDK format
-    const coreMessages: CoreMessage[] = messages.map((msg) => ({
-      role: msg.role,
-      content: msg.content,
-      ...(msg.name && { name: msg.name }),
-      ...(msg.tool_call_id && { tool_call_id: msg.tool_call_id }),
-      ...(msg.tool_calls && { tool_calls: msg.tool_calls }),
-    }));
+    const coreMessages: CoreMessage[] = messages.map((msg): CoreMessage => {
+      // Build message based on role
+      if (msg.role === "tool") {
+        return {
+          role: "tool",
+          content: [{ type: 'text', text: msg.content }],
+          tool_call_id: msg.tool_call_id || "",
+        } as unknown as CoreMessage;
+      }
+      
+      const baseMsg = {
+        role: msg.role,
+        content: msg.content,
+      } as CoreMessage;
+      
+      if (msg.name) {
+        (baseMsg as any).name = msg.name;
+      }
+      if (msg.tool_calls) {
+        (baseMsg as any).tool_calls = msg.tool_calls;
+      }
+      
+      return baseMsg;
+    });
 
     // Convert tools to AI SDK format if provided
-    const sdkTools = tools?.map((tool) => ({
-      name: tool.name,
-      description: tool.description,
-      parameters: tool.parameters,
-    }));
+    const sdkTools: ToolSet | undefined = tools?.reduce((acc, tool) => {
+      acc[tool.name] = {
+        description: tool.description,
+        parameters: tool.parameters as any,
+      };
+      return acc;
+    }, {} as ToolSet);
 
     // Add mode-specific system message if not present
     const hasSystemMessage = coreMessages.some((m) => m.role === "system");

@@ -11,7 +11,18 @@ export const list = query({
   args: {},
   handler: async (ctx) => {
     const userId = getCurrentUserId();
-    const userIdAsId = ctx.db.normalizeId('users', userId);
+    let userIdAsId = ctx.db.normalizeId('users', userId);
+    
+    // If normalizeId fails, try to find by mock email
+    if (!userIdAsId) {
+      const mockUser = await ctx.db
+        .query('users')
+        .withIndex('by_email', (q) => q.eq('email', 'mock@example.com'))
+        .first();
+      if (mockUser) {
+        userIdAsId = mockUser._id;
+      }
+    }
     
     if (!userIdAsId) {
       return [];
@@ -29,7 +40,18 @@ export const get = query({
   args: { id: v.id('projects') },
   handler: async (ctx, args) => {
     const userId = getCurrentUserId();
-    const userIdAsId = ctx.db.normalizeId('users', userId);
+    let userIdAsId = ctx.db.normalizeId('users', userId);
+    
+    // If normalizeId fails, try to find by mock email
+    if (!userIdAsId) {
+      const mockUser = await ctx.db
+        .query('users')
+        .withIndex('by_email', (q) => q.eq('email', 'mock@example.com'))
+        .first();
+      if (mockUser) {
+        userIdAsId = mockUser._id;
+      }
+    }
     
     const project = await ctx.db.get(args.id);
     
@@ -50,10 +72,24 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const userId = getCurrentUserId();
-    const userIdAsId = ctx.db.normalizeId('users', userId);
+    let userIdAsId = ctx.db.normalizeId('users', userId);
     
+    // If user doesn't exist, create a mock user
     if (!userIdAsId) {
-      throw new Error('User not found');
+      const existingUser = await ctx.db
+        .query('users')
+        .withIndex('by_email', (q) => q.eq('email', 'mock@example.com'))
+        .first();
+      
+      if (existingUser) {
+        userIdAsId = existingUser._id;
+      } else {
+        userIdAsId = await ctx.db.insert('users', {
+          email: 'mock@example.com',
+          name: 'Mock User',
+          createdAt: Date.now(),
+        });
+      }
     }
     
     const now = Date.now();
@@ -82,7 +118,18 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const userId = getCurrentUserId();
-    const userIdAsId = ctx.db.normalizeId('users', userId);
+    let userIdAsId = ctx.db.normalizeId('users', userId);
+    
+    // If normalizeId fails, try to find by mock email
+    if (!userIdAsId) {
+      const mockUser = await ctx.db
+        .query('users')
+        .withIndex('by_email', (q) => q.eq('email', 'mock@example.com'))
+        .first();
+      if (mockUser) {
+        userIdAsId = mockUser._id;
+      }
+    }
     
     const project = await ctx.db.get(args.id);
     
@@ -108,7 +155,18 @@ export const remove = mutation({
   args: { id: v.id('projects') },
   handler: async (ctx, args) => {
     const userId = getCurrentUserId();
-    const userIdAsId = ctx.db.normalizeId('users', userId);
+    let userIdAsId = ctx.db.normalizeId('users', userId);
+    
+    // If normalizeId fails, try to find by mock email
+    if (!userIdAsId) {
+      const mockUser = await ctx.db
+        .query('users')
+        .withIndex('by_email', (q) => q.eq('email', 'mock@example.com'))
+        .first();
+      if (mockUser) {
+        userIdAsId = mockUser._id;
+      }
+    }
     
     const project = await ctx.db.get(args.id);
     

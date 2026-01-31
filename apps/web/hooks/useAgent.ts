@@ -376,7 +376,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           }
 
           switch (event.type) {
-            case 'thinking':
+            case 'thinking': {
               setStatus('thinking');
               // Extract iteration number from content
               const iterationMatch = event.content?.match(/Iteration (\d+)/);
@@ -384,6 +384,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                 setCurrentIteration(parseInt(iterationMatch[1], 10));
               }
               break;
+            }
 
             case 'text':
               setStatus('streaming');

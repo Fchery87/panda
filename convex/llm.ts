@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 /**
  * Convex LLM HTTP Action
  * 

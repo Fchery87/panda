@@ -277,7 +277,7 @@ export async function executeTool(
   context: ToolContext
 ): Promise<ToolExecutionResult> {
   const startTime = Date.now();
-  let retryCount = 0;
+  const retryCount = 0;
 
   try {
     const args = JSON.parse(toolCall.function.arguments);

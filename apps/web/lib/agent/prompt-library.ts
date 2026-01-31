@@ -12,7 +12,10 @@ import type { CompletionMessage } from '../llm/types';
  * Context for prompt generation
  */
 export interface PromptContext {
-  projectName: string;
+  projectId: string;
+  chatId: string;
+  userId: string;
+  projectName?: string;
   projectDescription?: string;
   files?: Array<{
     path: string;
@@ -20,7 +23,8 @@ export interface PromptContext {
   }>;
   chatMode: 'discuss' | 'build';
   previousMessages?: CompletionMessage[];
-  userMessage: string;
+  userMessage?: string;
+  customInstructions?: string;
 }
 
 /**
@@ -129,10 +133,12 @@ export function getDiscussPrompt(context: PromptContext): CompletionMessage[] {
   }
 
   // Add user message
-  messages.push({
-    role: 'user',
-    content: context.userMessage,
-  });
+  if (context.userMessage) {
+    messages.push({
+      role: 'user',
+      content: context.userMessage,
+    });
+  }
 
   return messages;
 }
@@ -178,10 +184,12 @@ export function getBuildPrompt(context: PromptContext): CompletionMessage[] {
   }
 
   // Add user message
-  messages.push({
-    role: 'user',
-    content: context.userMessage,
-  });
+  if (context.userMessage) {
+    messages.push({
+      role: 'user',
+      content: context.userMessage,
+    });
+  }
 
   return messages;
 }

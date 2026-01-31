@@ -5,7 +5,7 @@
  * Uses the Vercel AI SDK for streaming completions.
  */
 
-import { streamText, generateText } from 'ai';
+import { streamText, generateText, type CoreMessage, type ToolSet } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import type {
   LLMProvider,
@@ -15,7 +15,9 @@ import type {
   StreamChunk,
   ToolCall,
   ProviderConfig,
-} from './types';
+  CompletionMessage,
+  ToolDefinition,
+} from '../types';
 
 /**
  * OpenAI Compatible Provider implementation
@@ -103,7 +105,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
       tools: this.convertTools(options.tools),
     });
 
-    let toolCalls: ToolCall[] = [];
+    const toolCalls: ToolCall[] = [];
     
     // Stream text deltas
     for await (const delta of result.textStream) {
@@ -116,9 +118,10 @@ export class OpenAICompatibleProvider implements LLMProvider {
     // Get the final result for tool calls and usage
     const finalResult = await result;
 
-    // Handle tool calls
-    if (finalResult.toolCalls && finalResult.toolCalls.length > 0) {
-      for (const toolCall of finalResult.toolCalls) {
+    // Handle tool calls - toolCalls is a Promise, need to await it
+    const toolCallsResult = await finalResult.toolCalls;
+    if (toolCallsResult && toolCallsResult.length > 0) {
+      for (const toolCall of toolCallsResult) {
         const tc: ToolCall = {
           id: toolCall.toolCallId,
           type: 'function',
@@ -136,14 +139,15 @@ export class OpenAICompatibleProvider implements LLMProvider {
       }
     }
 
-    // Yield finish event with usage
+    // Yield finish event with usage - usage is a Promise, need to await it
+    const usageResult = await finalResult.usage;
     yield {
       type: 'finish',
       finishReason: finalResult.finishReason as any,
       usage: {
-        promptTokens: finalResult.usage.promptTokens,
-        completionTokens: finalResult.usage.completionTokens,
-        totalTokens: finalResult.usage.totalTokens,
+        promptTokens: usageResult.promptTokens,
+        completionTokens: usageResult.completionTokens,
+        totalTokens: usageResult.totalTokens,
       },
     };
   }
@@ -151,27 +155,41 @@ export class OpenAICompatibleProvider implements LLMProvider {
   /**
    * Convert our message format to AI SDK format
    */
-  private convertMessages(messages: CompletionOptions['messages']) {
-    return messages.map((msg) => ({
-      role: msg.role,
-      content: msg.content,
-      ...(msg.name && { name: msg.name }),
-      ...(msg.tool_calls && { tool_calls: msg.tool_calls }),
-      ...(msg.tool_call_id && { tool_call_id: msg.tool_call_id }),
-    }));
+  private convertMessages(messages: CompletionOptions['messages']): CoreMessage[] {
+    return messages.map((msg: CompletionMessage) => {
+      const baseMessage = {
+        role: msg.role,
+        content: msg.content,
+      } as CoreMessage;
+      
+      if (msg.name) {
+        (baseMessage as any).name = msg.name;
+      }
+      if (msg.tool_calls) {
+        (baseMessage as any).tool_calls = msg.tool_calls;
+      }
+      if (msg.tool_call_id) {
+        (baseMessage as any).tool_call_id = msg.tool_call_id;
+      }
+      
+      return baseMessage;
+    });
   }
 
   /**
    * Convert our tool format to AI SDK format
    */
-  private convertTools(tools?: CompletionOptions['tools']) {
+  private convertTools(tools?: CompletionOptions['tools']): ToolSet | undefined {
     if (!tools || tools.length === 0) return undefined;
 
-    return tools.map((tool) => ({
-      name: tool.function.name,
-      description: tool.function.description,
-      parameters: tool.function.parameters,
-    }));
+    const toolSet: ToolSet = {};
+    tools.forEach((tool: ToolDefinition) => {
+      toolSet[tool.function.name] = {
+        description: tool.function.description,
+        parameters: tool.function.parameters as any,
+      };
+    });
+    return toolSet;
   }
 
   /**

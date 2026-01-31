@@ -1,8 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { useMutation } from "convex/react"
+import { useAction } from "convex/react"
 import { api } from "@convex/_generated/api"
+import type { Id } from "@convex/_generated/dataModel"
 import { toast } from "sonner"
 
 import {
@@ -30,7 +31,7 @@ import { Github, Loader2, CheckCircle2, AlertCircle, GitBranch } from "lucide-re
 import { cn } from "@/lib/utils"
 
 interface GitHubImportDialogProps {
-  projectId: string
+  projectId: Id<"projects">
   children: React.ReactNode
   onImportComplete?: () => void
 }
@@ -59,14 +60,14 @@ export function GitHubImportDialog({
   const [progress, setProgress] = React.useState<ImportProgress | null>(null)
   const [error, setError] = React.useState<string | null>(null)
 
-  const getBranches = useMutation(api.github.getBranches)
-  const importRepo = useMutation(api.github.importRepo)
+  const getBranches = useAction(api.github.getBranches)
+  const importRepo = useAction(api.github.importRepo)
 
   // Validate GitHub URL format
   const isValidUrl = (url: string): boolean => {
     const patterns = [
-      /github\.com\/[^\/]+\/[^\/]+/,
-      /https:\/\/github\.com\/[^\/]+\/[^\/]+/,
+      /github\.com\/[^/]+\/[^/]+/,
+      /https:\/\/github\.com\/[^/]+\/[^/]+/,
     ]
     return patterns.some((pattern) => pattern.test(url))
   }
@@ -84,8 +85,8 @@ export function GitHubImportDialog({
         const availableBranches = await getBranches({ repoUrl: url })
         setBranches(availableBranches)
         // Default to main or master if available
-        const defaultBranch = availableBranches.find((b) => b === "main") ||
-                             availableBranches.find((b) => b === "master") ||
+        const defaultBranch = availableBranches.find((b: string) => b === "main") ||
+                             availableBranches.find((b: string) => b === "master") ||
                              availableBranches[0]
         if (defaultBranch) {
           setBranch(defaultBranch)

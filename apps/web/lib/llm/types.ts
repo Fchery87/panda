@@ -86,8 +86,11 @@ export interface ToolResult {
  */
 export interface ToolParameter {
   type: string;
-  description: string;
+  description?: string;
   enum?: string[];
+  items?: ToolParameter;
+  properties?: Record<string, ToolParameter>;
+  required?: string[];
 }
 
 /**

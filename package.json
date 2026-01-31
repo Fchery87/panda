@@ -16,6 +16,7 @@
     "convex:deploy": "bunx convex deploy"
   },
   "devDependencies": {
+    "@types/node": "^25.1.0",
     "concurrently": "^9.2.1",
     "convex": "^1.19.0",
     "turbo": "^2.4.0",

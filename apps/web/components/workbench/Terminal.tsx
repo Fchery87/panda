@@ -94,9 +94,9 @@ const LogEntry: React.FC<{
   const isWarning = log.includes("⚠") || log.includes("warning") || log.includes("Warning");
 
   // Extract timestamp if present
-  const timestampMatch = log.match(/^\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[\d\.]*)\]/);
+  const timestampMatch = log.match(/^\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[\d.]*)\]/);
   const timestamp = timestampMatch ? timestampMatch[1] : null;
-  const content = timestamp ? log.replace(/^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[\d\.]*\]\s*/, "") : log;
+  const content = timestamp ? log.replace(/^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[\d.]*\]\s*/, "") : log;
 
   return (
     <motion.div

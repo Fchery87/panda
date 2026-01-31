@@ -204,7 +204,7 @@ export function useStreamingChat(options: UseStreamingChatOptions): UseStreaming
           chatId,
           role: 'assistant',
           content: fullContent,
-          annotations: { model: 'gpt-4o-mini', provider },
+          annotations: [{ model: 'gpt-4o-mini', provider }],
         });
       }
       
@@ -341,7 +341,9 @@ export function useStreamingChatManual(options: UseStreamingChatOptions): UseStr
                   { role: 'assistant', content: fullContent },
                 ]);
               }
-            } catch {}
+            } catch {
+              // Skip malformed JSON
+            }
           }
         }
       }
@@ -352,7 +354,7 @@ export function useStreamingChatManual(options: UseStreamingChatOptions): UseStr
           chatId,
           role: 'assistant',
           content: fullContent,
-          annotations: { model: 'gpt-4o-mini', provider },
+          annotations: [{ model: 'gpt-4o-mini', provider }],
         });
       }
       
