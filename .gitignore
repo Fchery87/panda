@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+*.lock
+
+# Build outputs
+.next/
+dist/
+build/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Convex
+.convex/
+
+# Bun
+bun.lockb
+
+# Logs
+*.log
+npm-debug.log*
