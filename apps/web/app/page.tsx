@@ -280,7 +280,7 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <PandaLogo size="sm" variant="full" />
             <p className="text-sm text-muted-foreground font-mono">
-              Built with Next.js, Convex, shadcn/ui
+              Built by Studio Eighty7
             </p>
           </div>
         </div>
