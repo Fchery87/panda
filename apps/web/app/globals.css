@@ -1,51 +1,91 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * SWISS-INDUSTRIAL DESIGN SYSTEM
+ * Precision through restraint. One accent. Sharp edges. No gradients.
+ */
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 142 76% 36%;
-    --primary-foreground: 355 100% 100%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 142 76% 36%;
-    --radius: 0.5rem;
+    /* ═══════════════════════════════════════════════════════════
+       LIGHT THEME - Warm, minimal
+       ═══════════════════════════════════════════════════════════ */
+    --background: 30 6% 97%; /* Warm off-white */
+    --foreground: 20 14% 4%; /* Rich black */
+
+    --card: 30 6% 98%;
+    --card-foreground: 20 14% 4%;
+
+    --popover: 30 6% 98%;
+    --popover-foreground: 20 14% 4%;
+
+    --primary: 43 100% 50%; /* Amber/Gold #FFB800 */
+    --primary-foreground: 20 14% 4%;
+
+    --secondary: 30 6% 94%;
+    --secondary-foreground: 20 14% 20%;
+
+    --muted: 30 6% 92%;
+    --muted-foreground: 20 6% 45%;
+
+    --accent: 43 100% 50%; /* Same as primary - ONE color */
+    --accent-foreground: 20 14% 4%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 20 6% 85%;
+    --input: 20 6% 85%;
+    --ring: 43 100% 50%;
+
+    --radius: 0.25rem; /* Sharp, minimal radius */
+
+    /* Surface elevation */
+    --surface-0: 30 6% 97%;
+    --surface-1: 30 6% 95%;
+    --surface-2: 30 6% 92%;
   }
 
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 142 76% 36%;
-    --primary-foreground: 355 100% 100%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 142 76% 36%;
+    /* ═══════════════════════════════════════════════════════════
+       DARK THEME - True black, precision, amber accent
+       ═══════════════════════════════════════════════════════════ */
+    --background: 20 14% 4%; /* True black #0A0A0A */
+    --foreground: 30 6% 97%; /* Warm off-white */
+
+    --card: 20 10% 6%;
+    --card-foreground: 30 6% 97%;
+
+    --popover: 20 10% 6%;
+    --popover-foreground: 30 6% 97%;
+
+    --primary: 43 100% 50%; /* Amber/Gold */
+    --primary-foreground: 20 14% 4%;
+
+    --secondary: 20 10% 10%;
+    --secondary-foreground: 30 6% 90%;
+
+    --muted: 20 10% 15%;
+    --muted-foreground: 30 4% 55%;
+
+    --accent: 43 100% 50%;
+    --accent-foreground: 20 14% 4%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 20 6% 15%;
+    --input: 20 6% 15%;
+    --ring: 43 100% 50%;
+
+    /* Surface elevation - layered darks */
+    --surface-0: 20 14% 4%; /* Deepest */
+    --surface-1: 20 10% 7%; /* Raised */
+    --surface-2: 20 10% 10%; /* Highest */
   }
 }
 
@@ -53,7 +93,193 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
+    font-family: 'Geist', system-ui, sans-serif;
+    font-feature-settings:
+      'ss01' 1,
+      'ss02' 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  code,
+  pre,
+  .font-mono {
+    font-family: 'Geist Mono', 'SF Mono', 'Consolas', monospace;
+  }
+
+  /* Sharp focus states - no blur, solid outline */
+  :focus-visible {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 2px;
+  }
+
+  /* Selection - amber highlight */
+  ::selection {
+    background: hsl(var(--primary) / 0.3);
+    color: inherit;
+  }
+}
+
+@layer components {
+  /* ═══════════════════════════════════════════════════════════
+     SURFACE ELEVATION SYSTEM
+     ═══════════════════════════════════════════════════════════ */
+  .surface-0 {
+    background-color: hsl(var(--surface-0));
+  }
+  .surface-1 {
+    background-color: hsl(var(--surface-1));
+  }
+  .surface-2 {
+    background-color: hsl(var(--surface-2));
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     SHARP SHADOWS - No blur, offset only
+     ═══════════════════════════════════════════════════════════ */
+  .shadow-sharp-sm {
+    box-shadow: 2px 2px 0 hsl(var(--foreground) / 0.1);
+  }
+  .shadow-sharp-md {
+    box-shadow: 4px 4px 0 hsl(var(--foreground) / 0.1);
+  }
+  .shadow-sharp-lg {
+    box-shadow: 8px 8px 0 hsl(var(--foreground) / 0.1);
+  }
+
+  /* Dark mode sharp shadows */
+  .dark .shadow-sharp-sm {
+    box-shadow: 2px 2px 0 hsl(0 0% 0% / 0.5);
+  }
+  .dark .shadow-sharp-md {
+    box-shadow: 4px 4px 0 hsl(0 0% 0% / 0.5);
+  }
+  .dark .shadow-sharp-lg {
+    box-shadow: 8px 8px 0 hsl(0 0% 0% / 0.5);
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     DOT GRID PATTERN - Subtle texture
+     ═══════════════════════════════════════════════════════════ */
+  .dot-grid {
+    background-image: radial-gradient(
+      circle,
+      hsl(var(--foreground) / 0.08) 1px,
+      transparent 1px
+    );
+    background-size: 24px 24px;
+  }
+
+  .dark .dot-grid {
+    background-image: radial-gradient(
+      circle,
+      hsl(var(--foreground) / 0.04) 1px,
+      transparent 1px
+    );
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     ACCENT UTILITIES
+     ═══════════════════════════════════════════════════════════ */
+  .accent-glow {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.2);
+  }
+
+  .accent-border {
+    border-color: hsl(var(--primary));
+  }
+
+  .accent-underline {
+    text-decoration: underline;
+    text-decoration-color: hsl(var(--primary));
+    text-underline-offset: 4px;
+    text-decoration-thickness: 2px;
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     PANEL HEADER STYLE
+     ═══════════════════════════════════════════════════════════ */
+  .panel-header {
+    @apply px-3 py-2 border-b border-border font-mono text-xs uppercase tracking-widest text-muted-foreground;
+    letter-spacing: 0.1em;
+  }
+
+  .panel-header-numbered::before {
+    content: attr(data-number);
+    @apply text-primary mr-2 font-semibold;
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     BUTTON OVERRIDES - Sharp, no rounded corners
+     ═══════════════════════════════════════════════════════════ */
+  .btn-sharp {
+    @apply rounded-none font-medium tracking-wide;
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     SCROLLBAR - Minimal, thin
+     ═══════════════════════════════════════════════════════════ */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted-foreground) / 0.3);
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground) / 0.5);
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer utilities {
+  /* Typography utilities */
+  .text-display {
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+
+  .text-label {
+    font-family: 'Geist Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* Transition utility - quick, sharp */
+  .transition-sharp {
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Border accent on hover */
+  .hover-accent-border {
+    @apply transition-sharp;
+  }
+  .hover-accent-border:hover {
+    border-color: hsl(var(--primary));
   }
 }

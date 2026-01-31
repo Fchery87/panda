@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import type { Id } from '../../../../convex/_generated/dataModel';
 import {
   Terminal as TerminalIcon,
+  TerminalSquare,
   Loader2,
   CheckCircle2,
   XCircle,
@@ -34,27 +35,27 @@ const StatusBadge: React.FC<{ status: JobStatus }> = ({ status }) => {
     queued: {
       icon: Clock,
       label: "Queued",
-      className: "bg-zinc-700 text-zinc-300 border-zinc-600",
+      className: "bg-secondary text-muted-foreground border-border",
     },
     running: {
       icon: Loader2,
       label: "Running",
-      className: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+      className: "bg-primary/20 text-primary border-primary/30",
     },
     completed: {
       icon: CheckCircle2,
       label: "Complete",
-      className: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+      className: "bg-secondary text-foreground border-border",
     },
     failed: {
       icon: XCircle,
       label: "Failed",
-      className: "bg-rose-500/20 text-rose-400 border-rose-500/30",
+      className: "bg-destructive/20 text-destructive border-destructive/30",
     },
     cancelled: {
       icon: Square,
       label: "Cancelled",
-      className: "bg-slate-500/20 text-slate-400 border-slate-500/30",
+      className: "bg-muted text-muted-foreground border-border",
     },
   };
 
@@ -139,15 +140,15 @@ const JobCard: React.FC<{
       layout
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="border border-zinc-800 rounded-lg overflow-hidden bg-zinc-900/50"
+      className="border border-border/50 rounded-lg overflow-hidden surface-2"
     >
       {/* Job Header */}
       <div
-        className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-white/5 transition-colors"
+        className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-primary/5 transition-colors"
         onClick={onToggle}
       >
         <div className="flex items-center gap-3">
-          <button className="text-zinc-500 hover:text-zinc-300">
+          <button className="text-muted-foreground hover:text-foreground">
             {isExpanded ? (
               <ChevronDown className="w-4 h-4" />
             ) : (
@@ -155,10 +156,10 @@ const JobCard: React.FC<{
             )}
           </button>
           <div className="flex flex-col gap-0.5">
-            <span className="text-sm font-medium text-zinc-200 font-mono">
+            <span className="text-sm font-medium text-foreground font-mono">
               {job.command}
             </span>
-            <span className="text-xs text-zinc-500">
+            <span className="text-xs text-muted-foreground">
               {new Date(job.createdAt).toLocaleString()}
             </span>
           </div>
@@ -170,7 +171,7 @@ const JobCard: React.FC<{
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-zinc-400 hover:text-amber-400 hover:bg-amber-500/10"
+              className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
               onClick={(e) => {
                 e.stopPropagation();
                 onCancel();
@@ -183,7 +184,7 @@ const JobCard: React.FC<{
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10"
+              className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete();
@@ -358,20 +359,20 @@ export function Terminal({ projectId }: TerminalProps) {
   }, []);
 
   return (
-    <div className="flex flex-col h-full bg-zinc-950 border-t border-zinc-800">
+    <div className="flex flex-col h-full surface-0">
       {/* Terminal Header */}
-      <div className="flex items-center justify-between px-4 py-2 bg-zinc-900 border-b border-zinc-800">
+      <div className="flex items-center justify-between px-3 py-2.5 surface-2 border-b border-border/50">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <TerminalIcon className="w-4 h-4 text-emerald-400" />
-            <span className="text-sm font-semibold text-zinc-300 font-mono">
+            <TerminalSquare className="w-3.5 h-3.5 text-primary" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Terminal
             </span>
           </div>
           {isAnyJobRunning && (
             <Badge
               variant="outline"
-              className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs"
+              className="bg-primary/20 text-primary border-primary/30 text-xs"
             >
               <Loader2 className="w-3 h-3 mr-1 animate-spin" />
               {runningJobs.length} running
@@ -381,7 +382,7 @@ export function Terminal({ projectId }: TerminalProps) {
 
         <div className="flex items-center gap-2">
           {jobs.length > 0 && (
-            <span className="text-xs text-zinc-500">
+            <span className="text-xs text-muted-foreground">
               {jobs.length} job{jobs.length !== 1 ? "s" : ""}
             </span>
           )}
@@ -392,13 +393,13 @@ export function Terminal({ projectId }: TerminalProps) {
       <ScrollArea className="flex-1" ref={scrollAreaRef}>
         <div className="p-4 space-y-2">
           {isLoading ? (
-            <div className="flex items-center justify-center h-32 text-zinc-500">
+            <div className="flex items-center justify-center h-32 text-muted-foreground">
               <Loader2 className="w-5 h-5 animate-spin mr-2" />
               Loading jobs...
             </div>
           ) : jobs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-32 text-zinc-600">
-              <TerminalIcon className="w-8 h-8 mb-2 opacity-50" />
+            <div className="flex flex-col items-center justify-center h-32 text-muted-foreground/60">
+              <TerminalSquare className="w-8 h-8 mb-2 opacity-50" />
               <span className="text-sm">No jobs yet</span>
               <span className="text-xs mt-1">Type a command below to get started</span>
             </div>
@@ -430,11 +431,11 @@ export function Terminal({ projectId }: TerminalProps) {
       {/* Command Input */}
       <form
         onSubmit={handleSubmit}
-        className="flex items-center gap-3 px-4 py-3 bg-zinc-900 border-t border-zinc-800"
+        className="flex items-center gap-3 px-4 py-3 surface-2 border-t border-border/50"
       >
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-emerald-400 font-mono text-sm">➜</span>
-          <span className="text-blue-400 font-mono text-sm">~</span>
+          <span className="text-primary font-mono text-sm">➜</span>
+          <span className="text-accent font-mono text-sm">~</span>
         </div>
 
         <input
@@ -444,20 +445,20 @@ export function Terminal({ projectId }: TerminalProps) {
           onChange={(e) => setCommand(e.target.value)}
           placeholder="Type a command (e.g., npm install, git status)..."
           disabled={isExecuting}
-          className="flex-1 bg-transparent border-none outline-none text-zinc-100 font-mono text-sm placeholder:text-zinc-600 disabled:opacity-50"
+          className="flex-1 bg-transparent border-none outline-none text-foreground font-mono text-sm placeholder:text-muted-foreground/50 disabled:opacity-50"
         />
 
         <Button
           type="submit"
           disabled={!command.trim() || isExecuting}
           size="sm"
-          className="shrink-0 bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50"
+          className="shrink-0 gap-1.5"
         >
           {isExecuting ? (
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
             <>
-              <Play className="w-4 h-4 mr-1" />
+              <Play className="w-3.5 h-3.5" />
               Run
             </>
           )}

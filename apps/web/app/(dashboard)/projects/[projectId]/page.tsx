@@ -8,19 +8,19 @@ import type { Id } from "@convex/_generated/dataModel"
 import { motion } from "framer-motion"
 import { toast } from "sonner"
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels"
-import { useMediaQuery } from "@/hooks/useMediaQuery"
 
 // Components
 import { Workbench } from "@/components/workbench/Workbench"
-import { ChatContainer } from "@/components/chat/ChatContainer"
+import { ChatInput } from "@/components/chat/ChatInput"
+import { MessageList } from "@/components/chat/MessageList"
 import { ArtifactPanel } from "@/components/artifacts/ArtifactPanel"
 import { Button } from "@/components/ui/button"
-import { MessageSquare, PanelLeft, PanelRight, X, ChevronLeft } from "lucide-react"
+import { PandaLogo } from "@/components/ui/panda-logo"
+import { PanelRight, ChevronLeft, Bot } from "lucide-react"
 import Link from "next/link"
 
 // Hooks
 import { useJobs } from "@/hooks/useJobs"
-import { useStreamingChat } from "@/hooks/useStreamingChat"
 import type { Message } from "@/components/chat/types"
 
 interface File {
@@ -57,10 +57,8 @@ export default function ProjectPage() {
   const projectId = params.projectId as Id<"projects">
 
   // UI State
-  const [isChatOpen, setIsChatOpen] = useState(false)
   const [isArtifactPanelOpen, setIsArtifactPanelOpen] = useState(false)
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
-  const isMobile = useMediaQuery("(max-width: 768px)")
 
   // Fetch project data
   const project = useQuery(api.projects.get, { id: projectId })
@@ -95,13 +93,7 @@ export default function ProjectPage() {
   })) || []
 
   // Jobs (Terminal)
-  const {
-    jobs,
-    latestRunningJob,
-    streamingLogs,
-    createAndExecute,
-    isAnyJobRunning,
-  } = useJobs(projectId)
+  const { isAnyJobRunning } = useJobs(projectId)
 
   // File mutations
   const upsertFileMutation = useMutation(api.files.upsert)
@@ -203,7 +195,7 @@ export default function ProjectPage() {
         })
       }
     },
-    [files, projectId, deleteFileMutation, selectedFilePath]
+    [files, deleteFileMutation, selectedFilePath]
   )
 
   const handleEditorSave = useCallback(
@@ -272,50 +264,43 @@ export default function ProjectPage() {
           animate={{ opacity: 1, scale: 1 }}
           className="text-center space-y-4"
         >
-          <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto" />
-          <p className="text-muted-foreground">Loading project...</p>
+          <div className="w-12 h-12 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto" />
+          <p className="text-muted-foreground font-mono text-sm">Loading project...</p>
         </motion.div>
       </div>
     )
   }
 
   return (
-    <div className="h-screen w-full bg-background overflow-hidden flex flex-col">
+    <div className="fixed inset-0 top-14 bg-background overflow-hidden flex flex-col z-10">
       {/* Top Bar */}
       <motion.div
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="h-12 border-b bg-card flex items-center px-4 justify-between shrink-0"
+        className="h-12 border-b border-border surface-1 flex items-center px-4 justify-between shrink-0"
       >
         <div className="flex items-center gap-4">
           <Link href="/projects">
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none">
               <ChevronLeft className="h-4 w-4" />
             </Button>
           </Link>
+          
+          <PandaLogo size="sm" variant="icon" />
+          
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-sm">{project.name}</span>
+            <span className="font-mono font-semibold text-sm">{project.name}</span>
             {isAnyJobRunning && (
-              <span className="flex h-2 w-2 rounded-full bg-yellow-500 animate-pulse" />
+              <span className="flex h-2 w-2 bg-primary animate-pulse" />
             )}
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           <Button
-            variant={isChatOpen ? "secondary" : "ghost"}
-            size="sm"
-            className="gap-2"
-            onClick={() => setIsChatOpen(!isChatOpen)}
-          >
-            <MessageSquare className="h-4 w-4" />
-            <span className="hidden sm:inline">Chat</span>
-          </Button>
-
-          <Button
             variant={isArtifactPanelOpen ? "secondary" : "ghost"}
             size="sm"
-            className="gap-2"
+            className="gap-2 rounded-none font-mono text-xs"
             onClick={() => setIsArtifactPanelOpen(!isArtifactPanelOpen)}
           >
             <PanelRight className="h-4 w-4" />
@@ -328,81 +313,35 @@ export default function ProjectPage() {
       <div className="flex-1 overflow-hidden relative">
         <PanelGroup direction="horizontal" className="h-full">
           {/* Workbench Panel */}
-          <Panel
-            defaultSize={isChatOpen ? 70 : 100}
-            minSize={40}
-            className="flex flex-col"
-          >
-            <Workbench
-              files={files || []}
-              selectedPath={selectedFilePath}
-              onFileSelect={handleFileSelect}
-              onFileCreate={handleFileCreate}
-              onFileRename={handleFileRename}
-              onFileDelete={handleFileDelete}
-              editorFilePath={selectedFilePath}
-              editorContent={selectedFile?.content || ""}
-              onEditorSave={handleEditorSave}
-              projectId={projectId}
-            />
+          <Panel defaultSize={70} minSize={40} className="flex flex-col">
+            <Workbench projectId={projectId} />
           </Panel>
 
           {/* Resize Handle */}
-          {isChatOpen && (
-            <PanelResizeHandle className="w-1 bg-border hover:bg-primary/20 transition-colors" />
-          )}
+          <PanelResizeHandle className="w-px bg-border hover:bg-primary transition-colors" />
 
-          {/* Chat Panel */}
-          {isChatOpen && (
-            <Panel defaultSize={30} minSize={25} maxSize={50} className="flex flex-col">
-              <div className="h-full flex flex-col border-l bg-background">
-                {/* Chat Header */}
-                <div className="h-12 border-b flex items-center justify-between px-4">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4 text-primary" />
-                    <span className="font-medium text-sm">AI Assistant</span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => setIsChatOpen(false)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                {/* Chat Content */}
-                <div className="flex-1 overflow-hidden">
-                  <ChatContainer
-                    projectId={projectId}
-                    isOpen={true}
-                    messages={chatMessages}
-                    isStreaming={false}
-                    onSendMessage={handleSendMessage}
-                  />
-                </div>
+          {/* Chat Panel - Always Visible */}
+          <Panel defaultSize={30} minSize={25} maxSize={50} className="flex flex-col">
+            <div className="h-full flex flex-col border-l border-border surface-1">
+              {/* Chat Header */}
+              <div className="panel-header flex items-center gap-2" data-number="04">
+                <Bot className="h-3.5 w-3.5 text-primary" />
+                <span>Chat</span>
               </div>
-            </Panel>
-          )}
-        </PanelGroup>
 
-        {/* Floating Chat Toggle (when closed) */}
-        {!isChatOpen && (
-          <motion.div
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="absolute bottom-4 right-4 z-50"
-          >
-            <Button
-              onClick={() => setIsChatOpen(true)}
-              size="icon"
-              className="h-12 w-12 rounded-full shadow-lg"
-            >
-              <MessageSquare className="h-5 w-5" />
-            </Button>
-          </motion.div>
-        )}
+              {/* Messages */}
+              <div className="flex-1 overflow-hidden">
+                <MessageList messages={chatMessages} isStreaming={false} />
+              </div>
+
+              {/* Input */}
+              <ChatInput 
+                onSendMessage={handleSendMessage}
+                isStreaming={false}
+              />
+            </div>
+          </Panel>
+        </PanelGroup>
 
         {/* Floating Artifact Panel */}
         {isArtifactPanelOpen && (
@@ -417,25 +356,6 @@ export default function ProjectPage() {
               onClose={() => setIsArtifactPanelOpen(false)}
               position="floating"
             />
-          </motion.div>
-        )}
-
-        {/* Artifact Toggle (when floating panel is closed) */}
-        {!isArtifactPanelOpen && (
-          <motion.div
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="absolute top-4 right-4 z-30"
-          >
-            <Button
-              onClick={() => setIsArtifactPanelOpen(true)}
-              variant="outline"
-              size="sm"
-              className="gap-2 shadow-sm"
-            >
-              <PanelRight className="h-4 w-4" />
-              Artifacts
-            </Button>
           </motion.div>
         )}
       </div>

@@ -2,7 +2,20 @@
 
 import React, { useState, useCallback, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Folder, FolderOpen, File, ChevronRight, ChevronDown, Plus, Trash2, Edit2 } from "lucide-react"
+import { 
+  Folder, 
+  FolderOpen, 
+  FileText, 
+  FileCode, 
+  FileJson, 
+  FileImage,
+  ChevronRight, 
+  ChevronDown, 
+  Plus, 
+  Trash2, 
+  Edit2,
+  File as FileIcon
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,6 +26,34 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu"
+
+// Get appropriate icon for file type
+function getFileIcon(filename: string) {
+  const ext = filename.split('.').pop()?.toLowerCase()
+  switch (ext) {
+    case 'ts':
+    case 'tsx':
+    case 'js':
+    case 'jsx':
+      return <FileCode className="w-4 h-4 text-primary" />
+    case 'json':
+      return <FileJson className="w-4 h-4 text-primary/70" />
+    case 'md':
+    case 'txt':
+      return <FileText className="w-4 h-4 text-muted-foreground" />
+    case 'png':
+    case 'jpg':
+    case 'jpeg':
+    case 'gif':
+    case 'svg':
+      return <FileImage className="w-4 h-4 text-muted-foreground" />
+    case 'css':
+    case 'scss':
+      return <FileCode className="w-4 h-4 text-muted-foreground" />
+    default:
+      return <FileIcon className="w-4 h-4 text-muted-foreground" />
+  }
+}
 
 interface FileTreeNode {
   name: string
@@ -40,6 +81,11 @@ interface FileTreeProps {
 
 // Build tree structure from flat file list
 function buildTree(files: FileTreeProps["files"]): FileTreeNode[] {
+  // Guard against undefined/null files
+  if (!files || !Array.isArray(files) || files.length === 0) {
+    return []
+  }
+  
   const root: FileTreeNode[] = []
   const nodeMap = new Map<string, FileTreeNode>()
 
@@ -171,28 +217,39 @@ function TreeItem({
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <motion.div
-            initial={{ opacity: 0, x: -10 }}
+            initial={{ opacity: 0, x: -8 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.2, delay: depth * 0.05 }}
+            transition={{ duration: 0.15, delay: depth * 0.02 }}
             className={cn(
-              "group flex items-center gap-1 px-2 py-1.5 cursor-pointer select-none rounded-md transition-colors",
+              "group relative flex items-center gap-1.5 px-2 py-1.5 cursor-pointer select-none",
+              "transition-all duration-150 mx-1 rounded-md",
               isSelected
-                ? "bg-primary/10 text-primary"
-                : "hover:bg-accent hover:text-accent-foreground"
+                ? "bg-primary/10 text-foreground"
+                : "hover:bg-secondary/60 text-muted-foreground hover:text-foreground"
             )}
-            style={{ paddingLeft: `${depth * 12 + 8}px` }}
+            style={{ paddingLeft: `${depth * 14 + 6}px` }}
             onClick={handleSelect}
           >
+            {/* Left accent border for selected item */}
+            {isSelected && (
+              <motion.div
+                layoutId="file-tree-selection"
+                className="absolute left-0 top-1 bottom-1 w-0.5 bg-primary rounded-full"
+                transition={{ duration: 0.15 }}
+              />
+            )}
+
             {isDirectory && (
               <button
                 onClick={handleToggle}
-                className="flex items-center justify-center w-4 h-4 rounded hover:bg-accent/50 transition-colors"
+                className="flex items-center justify-center w-4 h-4 rounded hover:bg-primary/10 transition-colors"
               >
-                {isExpanded ? (
-                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-                ) : (
-                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-                )}
+                <motion.div
+                  animate={{ rotate: isExpanded ? 90 : 0 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </motion.div>
               </button>
             )}
 
@@ -200,12 +257,12 @@ function TreeItem({
 
             {isDirectory ? (
               isExpanded ? (
-                <FolderOpen className="w-4 h-4 text-primary/80" />
+                <FolderOpen className="w-4 h-4 text-primary" />
               ) : (
-                <Folder className="w-4 h-4 text-primary/80" />
+                <Folder className="w-4 h-4 text-primary/70" />
               )
             ) : (
-              <File className="w-4 h-4 text-muted-foreground" />
+              getFileIcon(node.name)
             )}
 
             {isRenaming ? (
@@ -228,8 +285,8 @@ function TreeItem({
             ) : (
               <span
                 className={cn(
-                  "flex-1 text-sm truncate",
-                  isSelected && "font-medium"
+                  "flex-1 text-[13px] truncate font-mono",
+                  isSelected && "font-medium text-foreground"
                 )}
               >
                 {node.name}
@@ -399,8 +456,14 @@ export function FileTree({
 
   if (tree.length === 0) {
     return (
-      <div className="p-4 text-sm text-muted-foreground text-center">
-        No files yet. Right-click to create one.
+      <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+        <Folder className="w-10 h-10 text-muted-foreground/30 mb-3" />
+        <p className="text-sm text-muted-foreground">
+          No files yet
+        </p>
+        <p className="text-xs text-muted-foreground/60 mt-1">
+          Right-click to create one
+        </p>
       </div>
     )
   }

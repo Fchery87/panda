@@ -4,7 +4,6 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { cn } from '@/lib/utils'
 import { Send, Square, MessageCircle, Hammer } from 'lucide-react'
 
@@ -68,47 +67,40 @@ export function ChatInput({
     : 'Tell me what to build or modify...'
 
   return (
-    <div className="border-t border-border bg-background p-4">
+    <div className="border-t border-border surface-2 p-3">
       {/* Mode Toggle */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between mb-3"
-      >
-        <ToggleGroup
-          type="single"
-          value={mode}
-          onValueChange={(value) => value && setMode(value as ChatMode)}
-          className="bg-muted rounded-lg p-1"
-        >
-          <ToggleGroupItem 
-            value="discuss" 
-            aria-label="Discuss mode"
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex font-mono text-xs">
+          <button
+            onClick={() => setMode('discuss')}
             className={cn(
-              'text-xs px-3 py-1.5 rounded-md transition-all duration-200',
-              mode === 'discuss' && 'bg-background shadow-sm'
+              "px-3 py-1.5 border border-r-0 transition-sharp",
+              mode === 'discuss'
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-transparent text-muted-foreground border-border hover:text-foreground"
             )}
           >
-            <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
+            <MessageCircle className="h-3 w-3 inline-block mr-1.5" />
             Discuss
-          </ToggleGroupItem>
-          <ToggleGroupItem 
-            value="build" 
-            aria-label="Build mode"
+          </button>
+          <button
+            onClick={() => setMode('build')}
             className={cn(
-              'text-xs px-3 py-1.5 rounded-md transition-all duration-200',
-              mode === 'build' && 'bg-background shadow-sm'
+              "px-3 py-1.5 border transition-sharp",
+              mode === 'build'
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-transparent text-muted-foreground border-border hover:text-foreground"
             )}
           >
-            <Hammer className="h-3.5 w-3.5 mr-1.5" />
+            <Hammer className="h-3 w-3 inline-block mr-1.5" />
             Build
-          </ToggleGroupItem>
-        </ToggleGroup>
+          </button>
+        </div>
 
-        <span className="text-[10px] text-muted-foreground">
-          Enter to send • Shift+Enter for new line
+        <span className="text-[10px] text-muted-foreground font-mono">
+          Enter to send
         </span>
-      </motion.div>
+      </div>
 
       {/* Input Area */}
       <div className="relative">
@@ -121,8 +113,9 @@ export function ChatInput({
           disabled={isStreaming}
           className={cn(
             'min-h-[80px] max-h-[200px] pr-12 resize-none',
-            'bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-ring',
-            'text-sm placeholder:text-muted-foreground/60'
+            'bg-background border border-border rounded-none',
+            'focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary',
+            'text-sm font-mono placeholder:text-muted-foreground/50'
           )}
           rows={1}
         />
@@ -135,16 +128,16 @@ export function ChatInput({
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
-              transition={{ duration: 0.15 }}
+              transition={{ duration: 0.1 }}
               className="absolute bottom-3 right-3"
             >
               <Button
                 size="icon"
-                variant="destructive"
+                variant="outline"
                 onClick={handleStop}
-                className="h-8 w-8 rounded-full"
+                className="h-7 w-7 rounded-none border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
               >
-                <Square className="h-3.5 w-3.5 fill-current" />
+                <Square className="h-3 w-3 fill-current" />
               </Button>
             </motion.div>
           ) : (
@@ -153,7 +146,7 @@ export function ChatInput({
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
-              transition={{ duration: 0.15 }}
+              transition={{ duration: 0.1 }}
               className="absolute bottom-3 right-3"
             >
               <Button
@@ -161,13 +154,13 @@ export function ChatInput({
                 onClick={handleSend}
                 disabled={!input.trim()}
                 className={cn(
-                  'h-8 w-8 rounded-full transition-all duration-200',
+                  'h-7 w-7 rounded-none transition-sharp',
                   input.trim() 
                     ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
-                    : 'bg-muted text-muted-foreground'
+                    : 'bg-secondary text-muted-foreground'
                 )}
               >
-                <Send className="h-3.5 w-3.5" />
+                <Send className="h-3 w-3" />
               </Button>
             </motion.div>
           )}

@@ -1,222 +1,151 @@
-"use client";
+"use client"
 
-import React from "react";
-import { motion } from "framer-motion";
+import { useState } from "react"
 import {
   Panel,
   PanelGroup,
   PanelResizeHandle,
-  ImperativePanelHandle,
-} from "react-resizable-panels";
-import { FileTree } from "./FileTree";
-import { Terminal } from "./Terminal";
-import { Preview } from "./Preview";
-import { EditorContainer } from "@/components/editor/EditorContainer";
-import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
-import { GripVertical } from "lucide-react";
+} from "react-resizable-panels"
+import { FileTree } from "./FileTree"
+import { Terminal } from "./Terminal"
+import { EditorContainer } from "../editor/EditorContainer"
+import { Preview } from "./Preview"
+import { cn } from "@/lib/utils"
+import { Code2, Eye } from "lucide-react"
+import type { Id } from "@convex/_generated/dataModel"
 
 interface WorkbenchProps {
-  // File tree props
-  files: Array<{
-    _id: string;
-    path: string;
-    content: string;
-    isBinary: boolean;
-    updatedAt: number;
-  }>;
-  selectedPath: string | null;
-  onFileSelect: (path: string) => void;
-  onFileCreate: (path: string) => void;
-  onFileRename: (oldPath: string, newPath: string) => void;
-  onFileDelete: (path: string) => void;
-
-  // Editor props
-  editorFilePath: string | null;
-  editorContent: string;
-  onEditorSave?: (content: string) => void;
-
-  // Terminal props
-  projectId: string;
-
-  // Preview props
-  previewUrl?: string;
+  projectId: Id<"projects">
 }
 
-// Animated panel wrapper
-const AnimatedPanel: React.FC<{
-  children: React.ReactNode;
-  direction?: "left" | "right" | "bottom";
-  className?: string;
-}> = ({ children, direction = "left", className }) => {
-  const variants = {
-    left: { initial: { opacity: 0, x: -30 }, animate: { opacity: 1, x: 0 } },
-    right: { initial: { opacity: 0, x: 30 }, animate: { opacity: 1, x: 0 } },
-    bottom: { initial: { opacity: 0, y: 30 }, animate: { opacity: 1, y: 0 } },
-  };
+function VerticalResizeHandle({ className }: { className?: string }) {
+  return (
+    <PanelResizeHandle className={cn("group relative", className)}>
+      <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border group-hover:bg-primary group-data-[resize-handle-state=drag]:bg-primary transition-colors" />
+    </PanelResizeHandle>
+  )
+}
+
+function HorizontalResizeHandle({ className }: { className?: string }) {
+  return (
+    <PanelResizeHandle className={cn("group relative h-px", className)}>
+      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-px bg-border group-hover:bg-primary group-data-[resize-handle-state=drag]:bg-primary transition-colors" />
+    </PanelResizeHandle>
+  )
+}
+
+type EditorTab = "code" | "preview"
+
+export function Workbench({ projectId }: WorkbenchProps) {
+  const [selectedFileId, setSelectedFileId] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<EditorTab>("code")
 
   return (
-    <motion.div
-      initial={variants[direction].initial}
-      animate={variants[direction].animate}
-      transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-      className={cn("h-full w-full", className)}
-    >
-      {children}
-    </motion.div>
-  );
-};
-
-// Resize handle component with visual feedback
-const ResizeHandle: React.FC<{ className?: string }> = ({ className }) => (
-  <PanelResizeHandle
-    className={cn(
-      "relative flex items-center justify-center transition-colors",
-      "data-[resize-handle-state=idle]:bg-transparent",
-      "data-[resize-handle-state=hover]:bg-primary/10",
-      "data-[resize-handle-state=drag]:bg-primary/20",
-      className
-    )}
-  >
-    <div className="flex items-center justify-center">
-      <GripVertical className="w-4 h-4 text-muted-foreground/50 transition-colors group-data-[resize-handle-state=hover]:text-muted-foreground" />
-    </div>
-  </PanelResizeHandle>
-);
-
-export function Workbench({
-  files,
-  selectedPath,
-  onFileSelect,
-  onFileCreate,
-  onFileRename,
-  onFileDelete,
-  editorFilePath,
-  editorContent,
-  onEditorSave,
-  projectId,
-  previewUrl,
-}: WorkbenchProps) {
-  const fileTreeRef = React.useRef<ImperativePanelHandle>(null);
-  const middlePanelRef = React.useRef<ImperativePanelHandle>(null);
-  const previewPanelRef = React.useRef<ImperativePanelHandle>(null);
-  const editorRef = React.useRef<ImperativePanelHandle>(null);
-  const terminalRef = React.useRef<ImperativePanelHandle>(null);
-
-  return (
-    <div className="h-screen w-full bg-background overflow-hidden">
-      <PanelGroup direction="horizontal" className="h-full w-full">
-        {/* Left Panel: File Tree */}
-        <Panel
-          ref={fileTreeRef}
-          defaultSize={20}
-          minSize={15}
+    <div className="h-full w-full surface-0">
+      <PanelGroup direction="horizontal" className="h-full">
+        {/* Left sidebar - File Explorer */}
+        <Panel 
+          defaultSize={18} 
+          minSize={15} 
           maxSize={30}
-          className="flex flex-col"
-          id="file-tree"
+          className="surface-1 border-r border-border"
         >
-          <AnimatedPanel direction="left" className="flex flex-col h-full">
-            <div className="flex flex-col h-full bg-card/50 border-r border-border">
-              {/* File Tree Header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
-                <span className="text-sm font-semibold text-foreground">
-                  Explorer
-                </span>
-              </div>
-              {/* File Tree Content */}
-              <div className="flex-1 overflow-auto">
-                <FileTree
-                  files={files}
-                  selectedPath={selectedPath}
-                  onSelect={onFileSelect}
-                  onCreate={onFileCreate}
-                  onRename={onFileRename}
-                  onDelete={onFileDelete}
-                />
-              </div>
+          <div className="h-full flex flex-col">
+            {/* Header */}
+            <div className="panel-header flex items-center justify-between" data-number="01">
+              <span>Explorer</span>
             </div>
-          </AnimatedPanel>
+            
+            {/* Content */}
+            <div className="flex-1 overflow-auto scrollbar-thin">
+              <FileTree 
+                projectId={projectId}
+                selectedFileId={selectedFileId}
+                onSelectFile={setSelectedFileId}
+              />
+            </div>
+          </div>
         </Panel>
 
-        {/* Horizontal Resize Handle 1 */}
-        <ResizeHandle className="w-2 -ml-1 z-10 hover:cursor-col-resize" />
+        <VerticalResizeHandle />
 
-        {/* Middle Panel: Editor + Terminal (Vertical split) */}
-        <Panel
-          ref={middlePanelRef}
-          className="flex flex-col"
-          id="editor-terminal"
-        >
-          <AnimatedPanel direction="bottom" className="flex flex-col h-full">
-            <PanelGroup direction="vertical" className="h-full w-full">
-              {/* Editor Panel (Top) */}
-              <Panel
-                ref={editorRef}
-                defaultSize={70}
-                minSize={30}
-                className="flex flex-col"
-                id="editor"
-              >
-                {editorFilePath ? (
-                  <EditorContainer
-                    filePath={editorFilePath}
-                    content={editorContent}
-                    onSave={onEditorSave}
-                  />
-                ) : (
-                  <div className="flex-1 flex items-center justify-center bg-zinc-900">
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.3 }}
-                      className="text-center space-y-4"
-                    >
-                      <div className="text-6xl font-bold text-zinc-800">
-                        Panda.ai
+        {/* Main content area - Editor with tabs */}
+        <Panel defaultSize={82}>
+          <PanelGroup direction="vertical" className="h-full">
+            {/* Editor + Preview (tabbed) */}
+            <Panel defaultSize={70}>
+              <div className="h-full flex flex-col surface-0">
+                {/* Tab Header */}
+                <div className="panel-header flex items-center gap-0 p-0" data-number="02">
+                  <button
+                    onClick={() => setActiveTab("code")}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-widest transition-sharp",
+                      activeTab === "code"
+                        ? "text-primary border-b-2 border-primary bg-background"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Code2 className="h-3.5 w-3.5" />
+                    Code
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("preview")}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-widest transition-sharp",
+                      activeTab === "preview"
+                        ? "text-primary border-b-2 border-primary bg-background"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                    Preview
+                  </button>
+                </div>
+                
+                {/* Tab Content */}
+                <div className="flex-1 overflow-hidden">
+                  {activeTab === "code" ? (
+                    selectedFileId ? (
+                      <EditorContainer fileId={selectedFileId as Id<"files">} />
+                    ) : (
+                      <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-4">
+                        <div className="font-mono text-sm">
+                          <span className="text-primary">{"{"}</span>
+                          <span className="mx-2">No file selected</span>
+                          <span className="text-primary">{"}"}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground/60">
+                          Select a file from the explorer
+                        </p>
                       </div>
-                      <p className="text-zinc-500 text-sm">
-                        Select a file from the explorer to start editing
-                      </p>
-                    </motion.div>
-                  </div>
-                )}
-              </Panel>
+                    )
+                  ) : (
+                    <Preview />
+                  )}
+                </div>
+              </div>
+            </Panel>
 
-              {/* Vertical Resize Handle */}
-              <PanelResizeHandle className="h-1 relative flex items-center justify-center bg-border hover:bg-primary/20 transition-colors cursor-row-resize">
-                <Separator className="w-full" />
-              </PanelResizeHandle>
+            <HorizontalResizeHandle />
 
-              {/* Terminal Panel (Bottom) */}
-              <Panel
-                ref={terminalRef}
-                defaultSize={30}
-                minSize={20}
-                className="flex flex-col"
-                id="terminal"
-              >
-                <Terminal projectId={projectId} />
-              </Panel>
-            </PanelGroup>
-          </AnimatedPanel>
-        </Panel>
-
-        {/* Horizontal Resize Handle 2 */}
-        <ResizeHandle className="w-2 -mr-1 z-10 hover:cursor-col-resize" />
-
-        {/* Right Panel: Preview */}
-        <Panel
-          ref={previewPanelRef}
-          defaultSize={30}
-          minSize={20}
-          className="flex flex-col"
-          id="preview"
-        >
-          <AnimatedPanel direction="right" className="flex flex-col h-full">
-            <Preview url={previewUrl} />
-          </AnimatedPanel>
+            {/* Terminal */}
+            <Panel defaultSize={30} minSize={15}>
+              <div className="h-full flex flex-col surface-1 border-t border-border">
+                {/* Header */}
+                <div className="panel-header flex items-center justify-between" data-number="03">
+                  <span>Terminal</span>
+                </div>
+                
+                {/* Content */}
+                <div className="flex-1 overflow-hidden">
+                  <Terminal projectId={projectId} />
+                </div>
+              </div>
+            </Panel>
+          </PanelGroup>
         </Panel>
       </PanelGroup>
     </div>
-  );
+  )
 }

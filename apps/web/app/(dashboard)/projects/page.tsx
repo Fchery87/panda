@@ -13,11 +13,9 @@ import {
   Clock,
   Search,
   ArrowRight,
-  Sparkles
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -69,14 +67,14 @@ function CreateProjectDialog({ onCreate }: { onCreate: (name: string, descriptio
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="gap-2">
+        <Button className="gap-2 rounded-none font-mono">
           <Plus className="h-4 w-4" />
           New Project
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] rounded-none">
         <DialogHeader>
-          <DialogTitle>Create New Project</DialogTitle>
+          <DialogTitle className="font-mono">Create New Project</DialogTitle>
           <DialogDescription>
             Start a new coding project with AI assistance.
           </DialogDescription>
@@ -84,19 +82,20 @@ function CreateProjectDialog({ onCreate }: { onCreate: (name: string, descriptio
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <label htmlFor="name" className="text-sm font-medium">
+              <label htmlFor="name" className="text-sm font-mono text-muted-foreground">
                 Project Name
               </label>
               <Input
                 id="name"
-                placeholder="My Awesome Project"
+                placeholder="my-awesome-project"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 autoFocus
+                className="rounded-none font-mono"
               />
             </div>
             <div className="grid gap-2">
-              <label htmlFor="description" className="text-sm font-medium">
+              <label htmlFor="description" className="text-sm font-mono text-muted-foreground">
                 Description (optional)
               </label>
               <Input
@@ -104,15 +103,16 @@ function CreateProjectDialog({ onCreate }: { onCreate: (name: string, descriptio
                 placeholder="A brief description of your project"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                className="rounded-none"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} className="rounded-none">
               Cancel
             </Button>
-            <Button type="submit" disabled={!name.trim() || isCreating}>
-              {isCreating ? "Creating..." : "Create Project"}
+            <Button type="submit" disabled={!name.trim() || isCreating} className="rounded-none">
+              {isCreating ? "Creating..." : "Create"}
             </Button>
           </DialogFooter>
         </form>
@@ -121,11 +121,13 @@ function CreateProjectDialog({ onCreate }: { onCreate: (name: string, descriptio
   )
 }
 
-function ProjectCard({ 
+function ProjectRow({ 
   project, 
+  index,
   onDelete 
 }: { 
   project: Project
+  index: number
   onDelete: (id: Id<"projects">) => Promise<void>
 }) {
   const [isDeleting, setIsDeleting] = useState(false)
@@ -159,16 +161,13 @@ function ProjectCard({
       const hours = Math.floor(diff / (1000 * 60 * 60))
       if (hours === 0) {
         const minutes = Math.floor(diff / (1000 * 60))
-        return minutes <= 1 ? "Just now" : `${minutes} minutes ago`
+        return minutes <= 1 ? "Just now" : `${minutes}m ago`
       }
-      return hours === 1 ? "1 hour ago" : `${hours} hours ago`
+      return `${hours}h ago`
     } else if (days === 1) {
       return "Yesterday"
     } else if (days < 7) {
-      return `${days} days ago`
-    } else if (days < 30) {
-      const weeks = Math.floor(days / 7)
-      return weeks === 1 ? "1 week ago" : `${weeks} weeks ago`
+      return `${days}d ago`
     } else {
       return formatDate(timestamp)
     }
@@ -177,72 +176,67 @@ function ProjectCard({
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.2 }}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{ duration: 0.2, delay: index * 0.05 }}
     >
-      <Card className="group relative overflow-hidden hover:shadow-lg transition-all duration-300 hover:border-primary/50">
-        <Link href={`/projects/${project._id}`} className="absolute inset-0" />
+      <Link 
+        href={`/projects/${project._id}`}
+        className={cn(
+          "group flex items-center justify-between py-4 px-4 -mx-4",
+          "border-b border-border",
+          "transition-sharp hover:bg-secondary/50"
+        )}
+      >
+        <div className="flex items-center gap-4 flex-1 min-w-0">
+          {/* Number */}
+          <span className="text-label text-primary w-8 shrink-0">
+            {String(index + 1).padStart(2, '0')}
+          </span>
+
+          {/* Icon */}
+          <div className="flex h-8 w-8 items-center justify-center border border-border shrink-0">
+            <FolderGit2 className="h-4 w-4 text-primary" />
+          </div>
+
+          {/* Name & Description */}
+          <div className="min-w-0 flex-1">
+            <h3 className="font-mono font-medium text-foreground truncate">
+              {project.name}
+            </h3>
+            {project.description && (
+              <p className="text-sm text-muted-foreground truncate">
+                {project.description}
+              </p>
+            )}
+          </div>
+        </div>
         
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500/20 to-teal-600/20 border border-emerald-500/30 shrink-0">
-                <FolderGit2 className="h-5 w-5 text-emerald-600" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <CardTitle className="text-lg font-semibold truncate">
-                  {project.name}
-                </CardTitle>
-                <CardDescription className="truncate">
-                  {project.description || "No description"}
-                </CardDescription>
-              </div>
-            </div>
-            
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative z-10 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                handleDelete()
-              }}
-              disabled={isDeleting}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+        {/* Meta */}
+        <div className="flex items-center gap-6 shrink-0">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
+            <Clock className="h-3 w-3" />
+            <span>{formatRelativeTime(project.lastOpenedAt)}</span>
           </div>
-        </CardHeader>
-        
-        <CardContent>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <Clock className="h-3.5 w-3.5" />
-              <span>Last opened {formatRelativeTime(project.lastOpenedAt)}</span>
-            </div>
-          </div>
-          
-          <div className="mt-4 flex items-center justify-between">
-            <div className="text-xs text-muted-foreground">
-              Created {formatDate(project.createdAt)}
-            </div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="gap-1 text-primary relative z-10"
-              asChild
-            >
-              <Link href={`/projects/${project._id}`}>
-                Open
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-none"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              handleDelete()
+            }}
+            disabled={isDeleting}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+
+          <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+        </div>
+      </Link>
     </motion.div>
   )
 }
@@ -288,70 +282,68 @@ export default function ProjectsPage() {
   const isLoading = projects === undefined
 
   return (
-    <div className="space-y-8">
+    <div className="max-w-4xl mx-auto py-12 px-4">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
-          <p className="text-muted-foreground">
-            Manage your coding projects and collaborate with AI
-          </p>
+      <div className="flex flex-col gap-6 mb-12">
+        <div className="flex items-center gap-3">
+          <span className="h-px w-8 bg-primary" />
+          <span className="text-label text-muted-foreground">Projects</span>
         </div>
-        <CreateProjectDialog onCreate={handleCreateProject} />
+        
+        <div className="flex items-center justify-between">
+          <h1 className="text-display text-4xl">Your Work</h1>
+          <CreateProjectDialog onCreate={handleCreateProject} />
+        </div>
       </div>
 
       {/* Search */}
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search projects..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
+      <div className="relative mb-8">
+        <Search className="absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Search projects..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-7 border-0 border-b border-border rounded-none bg-transparent font-mono focus-visible:ring-0 focus-visible:border-primary"
+        />
       </div>
 
-      {/* Projects Grid */}
+      {/* Projects List */}
       {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <Card key={i} className="h-[200px] animate-pulse bg-muted" />
+            <div key={i} className="h-16 animate-pulse bg-muted" />
           ))}
         </div>
       ) : sortedProjects && sortedProjects.length > 0 ? (
-        <motion.div 
-          layout
-          className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
-        >
+        <div>
           <AnimatePresence mode="popLayout">
-            {sortedProjects.map((project) => (
+            {sortedProjects.map((project, index) => (
               <div key={project._id} onClick={() => handleOpenProject(project._id)}>
-                <ProjectCard 
+                <ProjectRow 
                   project={project} 
+                  index={index}
                   onDelete={handleDeleteProject}
                 />
               </div>
             ))}
           </AnimatePresence>
-        </motion.div>
+        </div>
       ) : (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex flex-col items-center justify-center py-16 text-center"
         >
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500/10 to-teal-600/10 mb-6">
-            <Sparkles className="h-10 w-10 text-emerald-600/60" />
+          <div className="flex h-16 w-16 items-center justify-center border border-border mb-6">
+            <FolderGit2 className="h-8 w-8 text-muted-foreground" />
           </div>
-          <h3 className="text-xl font-semibold mb-2">
+          <h3 className="text-xl font-mono font-medium mb-2">
             {searchQuery ? "No projects found" : "No projects yet"}
           </h3>
-          <p className="text-muted-foreground max-w-md mb-6">
+          <p className="text-muted-foreground max-w-sm mb-8">
             {searchQuery
-              ? `No projects matching "${searchQuery}". Try a different search term.`
-              : "Create your first project to start coding with AI assistance."}
+              ? `No projects matching "${searchQuery}".`
+              : "Create your first project to start coding with AI."}
           </p>
           {!searchQuery && (
             <CreateProjectDialog onCreate={handleCreateProject} />

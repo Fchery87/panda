@@ -2,177 +2,238 @@
 
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { 
-  Sparkles, 
-  Code2, 
-  MessageSquare, 
-  Terminal, 
-  Zap, 
-  Github,
-  ArrowRight,
-  Bot,
-  FileCode,
-  Play
-} from "lucide-react"
+import { ArrowRight, Terminal, FileCode, Bot, Zap, GitBranch, Layers } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/settings/ThemeToggle"
+import { PandaLogo } from "@/components/ui/panda-logo"
+import { cn } from "@/lib/utils"
 
 const features = [
   {
-    icon: Bot,
+    number: "01",
     title: "AI-Powered Coding",
-    description: "Chat with an AI assistant that understands your codebase and helps you write, refactor, and debug code."
+    description: "Stream conversations with AI that understands context. Discuss, refactor, debug.",
+    icon: Bot,
+    size: "small"
   },
   {
-    icon: FileCode,
+    number: "02",
     title: "Smart File Management",
-    description: "Organize your files with an intuitive tree view. Create, edit, and manage your project files seamlessly."
+    description: "Navigate and organize with an intuitive tree. Create, edit, rename with seamless context menus.",
+    icon: FileCode,
+    size: "large"
   },
   {
-    icon: Terminal,
+    number: "03",
     title: "Integrated Terminal",
-    description: "Run commands, build projects, and execute scripts directly within the workbench with real-time output."
+    description: "Execute commands with real-time output. Track jobs, cancel tasks, view history.",
+    icon: Terminal,
+    size: "large"
   },
   {
+    number: "04",
+    title: "Real-time Sync",
+    description: "Powered by Convex. Everything syncs live.",
     icon: Zap,
-    title: "Real-time Collaboration",
-    description: "See changes instantly with Convex's real-time sync. Your code, chats, and jobs update live."
+    size: "small"
   },
-  {
-    icon: MessageSquare,
-    title: "Context-Aware Chat",
-    description: "Discuss code changes, ask questions, and get AI suggestions that understand your project context."
-  },
-  {
-    icon: Github,
-    title: "GitHub Integration",
-    description: "Import repositories and manage your code with built-in version control features."
-  }
 ]
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-background">
-      {/* Navigation */}
-      <motion.nav
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="fixed top-0 left-0 right-0 z-50 border-b bg-background/80 backdrop-blur-lg"
-      >
-        <div className="container flex h-16 items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600">
-              <Sparkles className="h-4 w-4 text-white" />
-            </div>
-            <span className="text-xl font-bold">Panda.ai</span>
+    <div className="min-h-screen bg-background dot-grid">
+      {/* Navigation - Minimal, sharp */}
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border surface-1">
+        <div className="container flex h-14 items-center justify-between">
+          <Link href="/" className="transition-sharp hover:opacity-70">
+            <PandaLogo size="md" variant="full" />
           </Link>
           
           <div className="flex items-center gap-4">
             <ThemeToggle />
             <Link href="/projects">
-              <Button>Get Started</Button>
+              <Button className="font-mono text-sm tracking-wide rounded-none">
+                Launch App
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
             </Link>
           </div>
         </div>
-      </motion.nav>
+      </nav>
 
-      {/* Hero Section */}
-      <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
-        <div className="absolute inset-0 -z-10">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-teal-600/5" />
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-r from-emerald-500/10 to-teal-600/10 blur-3xl rounded-full opacity-50" />
-        </div>
-
+      {/* Hero - Asymmetric split */}
+      <section className="pt-32 pb-24 lg:pt-40 lg:pb-32">
         <div className="container">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="mx-auto max-w-4xl text-center"
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.1 }}
-              className="inline-flex items-center gap-2 rounded-full border bg-card px-4 py-1.5 mb-8"
+          <div className="grid lg:grid-cols-12 gap-12 lg:gap-8 items-center">
+            {/* Left: Typography */}
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
+              className="lg:col-span-5"
             >
-              <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
-              <span className="text-sm font-medium">Now with Next.js 16 & shadcn/ui</span>
+              <div className="space-y-8">
+                {/* Label */}
+                <div className="inline-flex items-center gap-3">
+                  <span className="h-px w-8 bg-primary" />
+                  <span className="text-label text-muted-foreground">
+                    AI Workbench
+                  </span>
+                </div>
+
+                {/* Headline */}
+                <h1 className="text-display text-5xl sm:text-6xl lg:text-7xl">
+                  <span className="block">Code</span>
+                  <span className="block">with</span>
+                  <span className="block text-primary">precision.</span>
+                </h1>
+
+                {/* Body */}
+                <p className="text-lg text-muted-foreground max-w-md leading-relaxed">
+                  A browser-based workspace for developers. 
+                  Stream AI conversations, manage files, run commands—unified.
+                </p>
+
+                {/* CTA */}
+                <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                  <Link href="/projects">
+                    <Button 
+                      size="lg" 
+                      className="rounded-none font-mono tracking-wide shadow-sharp-md hover:shadow-sharp-lg transition-sharp"
+                    >
+                      Start Building
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </Link>
+                  <a href="https://github.com" target="_blank" rel="noopener noreferrer">
+                    <Button 
+                      size="lg" 
+                      variant="outline" 
+                      className="rounded-none font-mono tracking-wide"
+                    >
+                      View Source
+                    </Button>
+                  </a>
+                </div>
+              </div>
             </motion.div>
 
-            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl mb-6">
-              Build Software with{" "}
-              <span className="bg-gradient-to-r from-emerald-500 to-teal-600 bg-clip-text text-transparent">
-                AI Assistance
-              </span>
-            </h1>
-
-            <p className="mx-auto max-w-2xl text-lg text-muted-foreground mb-8">
-              Panda.ai is your intelligent coding workbench. Chat with AI, manage files, 
-              run commands, and build projects—all in one seamless interface.
-            </p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-4"
+            {/* Right: Terminal mockup */}
+            <motion.div 
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, delay: 0.2, ease: [0.4, 0, 0.2, 1] }}
+              className="lg:col-span-7"
             >
-              <Link href="/projects">
-                <Button size="lg" className="gap-2 text-lg px-8">
-                  <Play className="h-5 w-5" />
-                  Start Building
-                </Button>
-              </Link>
-              <a href="https://github.com" target="_blank" rel="noopener noreferrer">
-                <Button size="lg" variant="outline" className="gap-2 text-lg px-8">
-                  <Github className="h-5 w-5" />
-                  View on GitHub
-                </Button>
-              </a>
+              <div className="relative">
+                {/* Terminal window */}
+                <div className="border border-border bg-background shadow-sharp-lg">
+                  {/* Terminal header */}
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-border surface-2">
+                    <div className="flex items-center gap-3">
+                      <div className="flex gap-2">
+                        <div className="w-3 h-3 rounded-full bg-muted-foreground/30" />
+                        <div className="w-3 h-3 rounded-full bg-muted-foreground/30" />
+                        <div className="w-3 h-3 rounded-full bg-muted-foreground/30" />
+                      </div>
+                      <span className="font-mono text-xs text-muted-foreground">
+                        panda.ai — terminal
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Terminal content */}
+                  <div className="p-6 font-mono text-sm space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-primary">➜</span>
+                      <span className="text-muted-foreground">~</span>
+                      <span className="text-foreground">npm create panda-project</span>
+                    </div>
+                    <div className="text-muted-foreground pl-6 space-y-1">
+                      <div>Creating project structure...</div>
+                      <div>Installing dependencies...</div>
+                      <div className="text-primary">✓ Project ready</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-primary">➜</span>
+                      <span className="text-muted-foreground">~/my-project</span>
+                      <span className="text-foreground">panda dev</span>
+                    </div>
+                    <div className="text-muted-foreground pl-6 space-y-1">
+                      <div>Starting dev server on port 3000...</div>
+                      <div className="text-primary">✓ Ready at http://localhost:3000</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-primary">➜</span>
+                      <span className="text-muted-foreground">~/my-project</span>
+                      <motion.span 
+                        className="inline-block w-2 h-4 bg-primary"
+                        animate={{ opacity: [1, 0, 1] }}
+                        transition={{ duration: 1, repeat: Infinity }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Decorative offset box */}
+                <div className="absolute -bottom-4 -right-4 -z-10 w-full h-full border border-primary/20" />
+              </div>
             </motion.div>
-          </motion.div>
+          </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-20 lg:py-32 border-t">
+      {/* Features - Offset grid */}
+      <section className="py-24 lg:py-32 border-t border-border">
         <div className="container">
+          {/* Section header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-16"
+            className="mb-16"
           >
-            <h2 className="text-3xl font-bold mb-4">Everything You Need</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              A complete development environment powered by modern technologies 
-              and artificial intelligence.
-            </p>
+            <div className="flex items-center gap-3 mb-6">
+              <span className="h-px w-8 bg-primary" />
+              <span className="text-label text-muted-foreground">Features</span>
+            </div>
+            <h2 className="text-display text-4xl sm:text-5xl max-w-2xl">
+              Everything you need. <span className="text-muted-foreground">Nothing you don't.</span>
+            </h2>
           </motion.div>
 
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Feature grid - offset layout */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-px bg-border">
             {features.map((feature, index) => {
               const Icon = feature.icon
+              const isLarge = feature.size === "large"
+              
               return (
                 <motion.div
-                  key={feature.title}
+                  key={feature.number}
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.1 }}
+                  className={cn(
+                    "bg-background p-8 transition-sharp hover-accent-border border border-transparent",
+                    isLarge && "lg:col-span-2"
+                  )}
                 >
-                  <div className="group relative overflow-hidden rounded-2xl border bg-card p-6 hover:shadow-lg transition-all duration-300">
-                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-teal-600/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    
-                    <div className="relative">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-600/20 mb-4">
-                        <Icon className="h-6 w-6 text-emerald-600" />
-                      </div>
-                      
-                      <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
-                      <p className="text-muted-foreground text-sm">{feature.description}</p>
+                  <div className="space-y-4">
+                    {/* Number + Icon */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-label text-primary">{feature.number}</span>
+                      <Icon className="h-5 w-5 text-muted-foreground" />
                     </div>
+                    
+                    {/* Title */}
+                    <h3 className="text-xl font-semibold">{feature.title}</h3>
+                    
+                    {/* Description */}
+                    <p className="text-muted-foreground leading-relaxed">
+                      {feature.description}
+                    </p>
                   </div>
                 </motion.div>
               )
@@ -182,42 +243,44 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 lg:py-32 border-t">
+      <section className="py-24 lg:py-32 border-t border-border surface-1">
         <div className="container">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="mx-auto max-w-3xl text-center"
+            className="max-w-2xl mx-auto text-center"
           >
-            <h2 className="text-3xl font-bold mb-4">
-              Ready to Start Building?
+            <PandaLogo size="xl" variant="icon" className="mx-auto mb-8" />
+            
+            <h2 className="text-display text-4xl sm:text-5xl mb-6">
+              Ready to start?
             </h2>
-            <p className="text-muted-foreground mb-8">
-              Create your first project and experience the future of AI-assisted development.
+            
+            <p className="text-lg text-muted-foreground mb-10">
+              Create your first project and experience AI-assisted development.
             </p>
+            
             <Link href="/projects">
-              <Button size="lg" className="gap-2">
-                Create Your First Project
-                <ArrowRight className="h-4 w-4" />
+              <Button 
+                size="lg" 
+                className="rounded-none font-mono tracking-wide shadow-sharp-md"
+              >
+                Create Project
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
           </motion.div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t py-8">
+      {/* Footer - Minimal */}
+      <footer className="py-8 border-t border-border">
         <div className="container">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <div className="flex h-6 w-6 items-center justify-center rounded bg-gradient-to-br from-emerald-500 to-teal-600">
-                <Sparkles className="h-3 w-3 text-white" />
-              </div>
-              <span className="font-semibold">Panda.ai</span>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Built with Next.js 16, Convex, shadcn/ui, and Framer Motion
+            <PandaLogo size="sm" variant="full" />
+            <p className="text-sm text-muted-foreground font-mono">
+              Built with Next.js, Convex, shadcn/ui
             </p>
           </div>
         </div>
