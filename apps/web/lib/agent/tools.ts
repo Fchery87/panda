@@ -133,6 +133,143 @@ export interface ToolContext {
 }
 
 /**
+ * Convex client tool context factory
+ * Creates a ToolContext that uses Convex client for actual operations
+ */
+export interface ConvexClient {
+  query: (query: any, args: any) => Promise<any>;
+  mutation: (mutation: any, args: any) => Promise<any>;
+}
+
+/**
+ * Creates a tool context that queues artifacts for user review
+ * and creates jobs for command execution
+ */
+export function createToolContext(
+  projectId: string,
+  chatId: string,
+  userId: string,
+  convexClient: ConvexClient,
+  artifactQueue: {
+    addFileArtifact: (path: string, content: string) => void;
+    addCommandArtifact: (command: string, cwd?: string) => void;
+  },
+  api: {
+    files: {
+      batchGet: any;
+    };
+    jobs: {
+      create: any;
+    };
+  }
+): ToolContext {
+  return {
+    projectId,
+    chatId,
+    userId,
+    
+    // Read files using Convex batchGet query
+    readFiles: async (paths: string[]) => {
+      try {
+        const results = await convexClient.query(api.files.batchGet, {
+          projectId,
+          paths,
+        });
+        
+        return results.map((result: { path: string; content: string | null; exists: boolean }) => ({
+          path: result.path,
+          content: result.content,
+        }));
+      } catch (error) {
+        console.error('Failed to read files:', error);
+        return paths.map((path) => ({
+          path,
+          content: null,
+        }));
+      }
+    },
+    
+    // Write files by queueing artifacts (don't write immediately)
+    writeFiles: async (files: Array<{ path: string; content: string }>) => {
+      try {
+        const results: Array<{ path: string; success: boolean; error?: string }> = [];
+        
+        for (const file of files) {
+          try {
+            // Queue artifact for user review
+            artifactQueue.addFileArtifact(file.path, file.content);
+            results.push({ path: file.path, success: true });
+          } catch (error) {
+            results.push({
+              path: file.path,
+              success: false,
+              error: error instanceof Error ? error.message : 'Failed to queue artifact',
+            });
+          }
+        }
+        
+        return results;
+      } catch (error) {
+        console.error('Failed to queue file artifacts:', error);
+        return files.map((file) => ({
+          path: file.path,
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to queue artifacts',
+        }));
+      }
+    },
+    
+    // Run command by creating a job in Convex
+    runCommand: async (command: string, timeout?: number, cwd?: string) => {
+      const startTime = Date.now();
+      
+      try {
+        // Queue command artifact for visibility
+        artifactQueue.addCommandArtifact(command, cwd);
+        
+        // Determine job type from command
+        let jobType: 'cli' | 'build' | 'test' | 'deploy' | 'lint' | 'format' = 'cli';
+        const cmdLower = command.toLowerCase();
+        if (cmdLower.includes('build') || cmdLower.includes('compile')) {
+          jobType = 'build';
+        } else if (cmdLower.includes('test')) {
+          jobType = 'test';
+        } else if (cmdLower.includes('deploy')) {
+          jobType = 'deploy';
+        } else if (cmdLower.includes('lint')) {
+          jobType = 'lint';
+        } else if (cmdLower.includes('format')) {
+          jobType = 'format';
+        }
+        
+        // Create job in Convex
+        const jobId = await convexClient.mutation(api.jobs.create, {
+          projectId,
+          type: jobType,
+          command,
+        });
+        
+        // Return immediate response (job is async)
+        return {
+          stdout: `Job created with ID: ${jobId}. Command will execute asynchronously.`,
+          stderr: '',
+          exitCode: 0,
+          durationMs: Date.now() - startTime,
+        };
+      } catch (error) {
+        console.error('Failed to create job:', error);
+        return {
+          stdout: '',
+          stderr: error instanceof Error ? error.message : 'Failed to create job',
+          exitCode: 1,
+          durationMs: Date.now() - startTime,
+        };
+      }
+    },
+  };
+}
+
+/**
  * Execute a tool call with the given context
  */
 export async function executeTool(

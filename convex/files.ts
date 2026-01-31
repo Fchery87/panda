@@ -39,6 +39,32 @@ export const getByPath = query({
   },
 });
 
+// batchGet (query) - get multiple files by projectId + paths
+export const batchGet = query({
+  args: {
+    projectId: v.id('projects'),
+    paths: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const results: Array<{ path: string; content: string | null; exists: boolean }> = [];
+    
+    for (const path of args.paths) {
+      const file = await ctx.db
+        .query('files')
+        .withIndex('by_path', (q) => q.eq('projectId', args.projectId).eq('path', path))
+        .unique();
+      
+      results.push({
+        path,
+        content: file?.content ?? null,
+        exists: file !== null,
+      });
+    }
+    
+    return results;
+  },
+});
+
 // upsert (mutation) - create or update file
 export const upsert = mutation({
   args: {

@@ -63,6 +63,27 @@ interface RuntimeState {
   iteration: number;
   toolResults: ToolExecutionResult[];
   isComplete: boolean;
+  // Track executed tool calls for deduplication
+  executedToolCalls: Set<string>;
+  // Track tool call patterns to prevent loops
+  toolCallHistory: string[];
+}
+
+/**
+ * Runtime configuration options
+ */
+export interface RuntimeConfig {
+  maxIterations?: number;
+  maxToolCallsPerIteration?: number;
+  enableToolDeduplication?: boolean;
+  toolLoopThreshold?: number;
+}
+
+/**
+ * Generate a hash for a tool call to detect duplicates
+ */
+function hashToolCall(toolCall: ToolCall): string {
+  return `${toolCall.function.name}:${toolCall.function.arguments}`;
 }
 
 /**
@@ -81,16 +102,21 @@ export class AgentRuntime {
    * Run the agent with streaming output
    * This is a generator that yields events as they occur
    */
-  async *run(promptContext: PromptContext): AsyncGenerator<AgentEvent> {
+  async *run(promptContext: PromptContext, config?: RuntimeConfig): AsyncGenerator<AgentEvent> {
     // Initialize state
     const state: RuntimeState = {
       messages: getPromptForMode(promptContext),
       iteration: 0,
       toolResults: [],
       isComplete: false,
+      executedToolCalls: new Set(),
+      toolCallHistory: [],
     };
 
-    const maxIterations = this.options.maxIterations ?? 10;
+    const maxIterations = this.options.maxIterations ?? config?.maxIterations ?? 10;
+    const maxToolCallsPerIteration = config?.maxToolCallsPerIteration ?? 5;
+    const enableDeduplication = config?.enableToolDeduplication ?? true;
+    const toolLoopThreshold = config?.toolLoopThreshold ?? 3;
     const model = this.options.model ?? 'gpt-4o';
 
     try {
@@ -169,6 +195,52 @@ export class AgentRuntime {
 
         // Handle tool calls if any
         if (pendingToolCalls.length > 0) {
+          // Limit tool calls per iteration to prevent abuse
+          if (pendingToolCalls.length > maxToolCallsPerIteration) {
+            yield {
+              type: 'thinking',
+              content: `Limiting to ${maxToolCallsPerIteration} tool calls out of ${pendingToolCalls.length} requested...`,
+            };
+            pendingToolCalls = pendingToolCalls.slice(0, maxToolCallsPerIteration);
+          }
+
+          // Deduplicate tool calls
+          if (enableDeduplication) {
+            const uniqueToolCalls: ToolCall[] = [];
+            for (const toolCall of pendingToolCalls) {
+              const toolHash = hashToolCall(toolCall);
+              
+              if (state.executedToolCalls.has(toolHash)) {
+                yield {
+                  type: 'thinking',
+                  content: `Skipping duplicate tool call: ${toolCall.function.name}`,
+                };
+                continue;
+              }
+              
+              uniqueToolCalls.push(toolCall);
+              state.executedToolCalls.add(toolHash);
+            }
+            pendingToolCalls = uniqueToolCalls;
+          }
+
+          // Track tool call patterns for loop detection
+          const currentToolPattern = pendingToolCalls.map(tc => tc.function.name).join(',');
+          state.toolCallHistory.push(currentToolPattern);
+          
+          // Detect tool call loops (same pattern repeated)
+          if (state.toolCallHistory.length >= toolLoopThreshold) {
+            const recentPatterns = state.toolCallHistory.slice(-toolLoopThreshold);
+            if (recentPatterns.every(p => p === recentPatterns[0]) && recentPatterns[0] !== '') {
+              yield {
+                type: 'error',
+                error: `Detected tool call loop: ${recentPatterns[0]}. Stopping to prevent infinite iteration.`,
+              };
+              state.isComplete = true;
+              break;
+            }
+          }
+
           // Execute each tool call
           for (const toolCall of pendingToolCalls) {
             yield {
@@ -292,11 +364,12 @@ export async function* streamAgent(
   provider: LLMProvider,
   promptContext: PromptContext,
   toolContext: ToolContext,
-  options: Omit<RuntimeOptions, 'provider'> = {}
+  options: Omit<RuntimeOptions, 'provider'> = {},
+  config?: RuntimeConfig
 ): AsyncGenerator<AgentEvent> {
   const runtime = createAgentRuntime(
     { provider, ...options },
     toolContext
   );
-  yield* runtime.run(promptContext);
+  yield* runtime.run(promptContext, config);
 }
