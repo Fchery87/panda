@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useQuery, useMutation } from "convex/react"
-import { api } from "@/convex/_generated/api"
+import { api } from "@convex/_generated/api"
 import { toast } from "sonner"
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -13,8 +13,8 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { ProviderCard } from "@/components/settings/ProviderCard"
-import { ThemeToggle } from "@/components/settings/ThemeToggle"
-import { User, Palette, Bot, Save } from "lucide-react"
+import { ThemeToggleFull } from "@/components/settings/ThemeToggle"
+import { User, Palette, Bot, Save, Loader2 } from "lucide-react"
 
 interface ProviderConfig {
   name: string
@@ -344,7 +344,7 @@ export default function SettingsPage() {
             <CardContent className="space-y-6">
               <div className="space-y-3">
                 <Label>Theme</Label>
-                <ThemeToggle
+                <ThemeToggleFull
                   value={formState.theme}
                   onChange={(theme) =>
                     setFormState((prev) => ({ ...prev, theme }))

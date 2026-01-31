@@ -12,8 +12,8 @@
 import { useState, useCallback, useRef } from 'react';
 import { useChat, type Message } from '@ai-sdk/react';
 import { useMutation } from 'convex/react';
-import { api } from '../../convex/_generated/api';
-import type { Id } from '../../convex/_generated/dataModel';
+import { api } from "@convex/_generated/api";
+import type { Id } from "@convex/_generated/dataModel";
 
 /**
  * Chat mode type

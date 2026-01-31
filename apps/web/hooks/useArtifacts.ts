@@ -11,7 +11,7 @@ import {
   selectPendingArtifacts,
   selectArtifactCount,
 } from "@/stores/artifactStore"
-import type { Id } from "../../convex/_generated/dataModel"
+import type { Id } from "@convex/_generated/dataModel"
 
 /**
  * Hook that combines artifact store with Convex mutations
