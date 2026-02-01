@@ -11,6 +11,7 @@
 
 import { httpRouter } from 'convex/server'
 import { httpAction } from './_generated/server'
+import { auth } from './auth'
 
 /**
  * CORS headers for cross-origin requests
@@ -390,6 +391,9 @@ http.route({
     }
   }),
 })
+
+// Register auth routes
+auth.addHttpRoutes(http)
 
 // Export the HTTP router as default
 export default http
