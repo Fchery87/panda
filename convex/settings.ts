@@ -11,9 +11,23 @@ export const get = query({
   args: {},
   handler: async (ctx) => {
     const userId = getCurrentUserId();
-    const userIdAsId = ctx.db.normalizeId('users', userId);
+    let userIdAsId = ctx.db.normalizeId('users', userId);
+    
+    // If normalizeId fails, try to find by dev email
+    if (!userIdAsId) {
+      const devUser = await ctx.db
+        .query('users')
+        .withIndex('by_email', (q) => q.eq('email', 'dev@example.com'))
+        .first();
+      if (devUser) {
+        userIdAsId = devUser._id;
+      }
+    }
+    
+    console.log("[settings/get] Fetching settings for user:", userId, "userIdAsId:", userIdAsId);
     
     if (!userIdAsId) {
+      console.log("[settings/get] No user found");
       return null;
     }
     
@@ -21,6 +35,11 @@ export const get = query({
       .query('settings')
       .withIndex('by_user', (q) => q.eq('userId', userIdAsId))
       .unique();
+    
+    console.log("[settings/get] Found settings:", settings ? "yes" : "no", {
+      defaultProvider: settings?.defaultProvider,
+      hasProviderConfigs: !!settings?.providerConfigs,
+    });
     
     return settings;
   },
@@ -34,13 +53,45 @@ export const update = mutation({
     language: v.optional(v.string()),
     defaultProvider: v.optional(v.string()),
     defaultModel: v.optional(v.string()),
+    agentDefaults: v.optional(
+      v.union(
+        v.null(),
+        v.object({
+          autoApplyFiles: v.boolean(),
+          autoRunCommands: v.boolean(),
+          allowedCommandPrefixes: v.array(v.string()),
+        })
+      )
+    ),
   },
   handler: async (ctx, args) => {
     const userId = getCurrentUserId();
-    const userIdAsId = ctx.db.normalizeId('users', userId);
+    let userIdAsId = ctx.db.normalizeId('users', userId);
     
+    // If normalizeId fails, try to find by dev email
     if (!userIdAsId) {
-      throw new Error('User not found');
+      const devUser = await ctx.db
+        .query('users')
+        .withIndex('by_email', (q) => q.eq('email', 'dev@example.com'))
+        .first();
+      if (devUser) {
+        userIdAsId = devUser._id;
+      }
+    }
+    
+    console.log("[settings/update] Saving settings for user:", userId, "userIdAsId:", userIdAsId, {
+      defaultProvider: args.defaultProvider,
+      providerConfigsKeys: args.providerConfigs ? Object.keys(args.providerConfigs) : null,
+    });
+    
+    // Create user if they don't exist (for development)
+    if (!userIdAsId) {
+      userIdAsId = await ctx.db.insert('users', {
+        email: 'dev@example.com',
+        name: 'Developer',
+        createdAt: Date.now(),
+      });
+      console.log("[settings/update] Created new user with ID:", userIdAsId);
     }
     
     const now = Date.now();
@@ -62,6 +113,7 @@ export const update = mutation({
       if (args.language !== undefined) updates.language = args.language;
       if (args.defaultProvider !== undefined) updates.defaultProvider = args.defaultProvider;
       if (args.defaultModel !== undefined) updates.defaultModel = args.defaultModel;
+      if (args.agentDefaults !== undefined) updates.agentDefaults = args.agentDefaults;
       
       await ctx.db.patch(existing._id, updates);
       return existing._id;
@@ -74,6 +126,7 @@ export const update = mutation({
         language: args.language,
         defaultProvider: args.defaultProvider,
         defaultModel: args.defaultModel,
+        agentDefaults: args.agentDefaults ?? null,
         updatedAt: now,
       });
       

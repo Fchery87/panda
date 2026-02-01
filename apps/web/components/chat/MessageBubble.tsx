@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { User, Bot } from 'lucide-react'
 import type { Message } from './types'
@@ -10,6 +11,9 @@ import type { Message } from './types'
 interface MessageBubbleProps {
   message: Message
   isStreaming?: boolean
+  resendInBuildContent?: string
+  onResendInBuild?: (content: string) => void
+  disableActions?: boolean
 }
 
 function formatTimestamp(timestamp: number): string {
@@ -17,9 +21,27 @@ function formatTimestamp(timestamp: number): string {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-export function MessageBubble({ message, isStreaming = false }: MessageBubbleProps) {
+function redactFencedCodeBlocks(content: string): string {
+  if (!content.includes('```')) return content
+  return content.replace(/```[\s\S]*?```/g, '[code omitted in Build mode — see artifacts]')
+}
+
+export function MessageBubble({
+  message,
+  isStreaming = false,
+  resendInBuildContent,
+  onResendInBuild,
+  disableActions = false,
+}: MessageBubbleProps) {
   const isUser = message.role === 'user'
   const isAssistant = message.role === 'assistant'
+  const isDiscuss = message.annotations?.mode === 'discuss'
+  const isBuild = message.annotations?.mode === 'build'
+  const hasFencedCode = isAssistant && isDiscuss && message.content.includes('```')
+  const shouldRedactBuildCode = isAssistant && isBuild && message.content.includes('```')
+  const displayContent = shouldRedactBuildCode
+    ? redactFencedCodeBlocks(message.content)
+    : message.content
 
   return (
     <div
@@ -80,7 +102,7 @@ export function MessageBubble({ message, isStreaming = false }: MessageBubblePro
           )}
         >
           <div className="whitespace-pre-wrap break-words">
-            {message.content}
+            {displayContent}
             {isStreaming && (
               <motion.span
                 className={cn(
@@ -93,6 +115,41 @@ export function MessageBubble({ message, isStreaming = false }: MessageBubblePro
             )}
           </div>
         </motion.div>
+
+        {isAssistant && isBuild && shouldRedactBuildCode && (
+          <div className="flex items-center gap-2 px-1">
+            <span className="text-[10px] text-muted-foreground/70 font-mono">
+              Build mode
+            </span>
+            <span className="text-[10px] text-amber-500/90 font-mono">
+              (code hidden; use artifacts/editor)
+            </span>
+          </div>
+        )}
+
+        {isAssistant && isDiscuss && (
+          <div className="flex items-center gap-2 px-1">
+            <span className="text-[10px] text-muted-foreground/70 font-mono">
+              Plan mode
+            </span>
+            {hasFencedCode && (
+              <span className="text-[10px] text-amber-500/90 font-mono">
+                (response includes code; expected a plan)
+              </span>
+            )}
+            {onResendInBuild && resendInBuildContent && (
+              <Button
+                size="sm"
+                variant="default"
+                className="h-7 rounded-none font-mono text-xs"
+                disabled={disableActions || isStreaming}
+                onClick={() => onResendInBuild(resendInBuildContent)}
+              >
+                Build this
+              </Button>
+            )}
+          </div>
+        )}
 
         {/* Token Count (if available) */}
         {message.annotations?.tokenCount && (

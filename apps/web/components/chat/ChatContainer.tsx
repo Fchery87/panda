@@ -7,14 +7,31 @@ import { ChatInput } from './ChatInput'
 import { cn } from '@/lib/utils'
 import { Bot, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { Id } from '@convex/_generated/dataModel'
+import type { Message } from './types'
+
+type ChatMode = 'discuss' | 'build'
 
 interface ChatContainerProps {
-  projectId: Id<"projects">
+  messages: Message[]
+  mode: ChatMode
+  onModeChange: (mode: ChatMode) => void
+  onSendMessage: (content: string, mode: ChatMode) => void
+  isStreaming?: boolean
+  onStopStreaming?: () => void
+  onResendInBuild?: (content: string) => void
   className?: string
 }
 
-export function ChatContainer({ projectId, className }: ChatContainerProps) {
+export function ChatContainer({
+  messages,
+  mode,
+  onModeChange,
+  onSendMessage,
+  isStreaming = false,
+  onStopStreaming,
+  onResendInBuild,
+  className,
+}: ChatContainerProps) {
   const [isOpen, setIsOpen] = useState(true)
 
   return (
@@ -55,11 +72,17 @@ export function ChatContainer({ projectId, className }: ChatContainerProps) {
               
               {/* Messages */}
               <div className="flex-1 overflow-hidden">
-                <MessageList projectId={projectId} />
+                <MessageList messages={messages} isStreaming={isStreaming} onResendInBuild={onResendInBuild} />
               </div>
               
               {/* Input */}
-              <ChatInput projectId={projectId} />
+              <ChatInput
+                mode={mode}
+                onModeChange={onModeChange}
+                onSendMessage={onSendMessage}
+                isStreaming={isStreaming}
+                onStopStreaming={onStopStreaming}
+              />
             </div>
           </motion.div>
         )}

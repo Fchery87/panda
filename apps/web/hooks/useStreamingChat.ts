@@ -67,8 +67,22 @@ interface UseStreamingChatReturn {
 export function useStreamingChat(options: UseStreamingChatOptions): UseStreamingChatReturn {
   const { chatId, projectId, mode, onError, onFinish } = options;
   
-  // Fetch existing messages from Convex
-  const existingMessages = useQuery(api.messages.list, { chatId });
+  // Fetch existing messages from Convex (skip if no chatId)
+  const existingMessages = useQuery(api.messages.list, chatId ? { chatId } : "skip");
+  
+  // Fetch settings to get provider configuration
+  const settings = useQuery(api.settings.get);
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+  
+  // Debug logging
+  useEffect(() => {
+    const latestSettings = settingsRef.current;
+    console.log("[useStreamingChat] Settings loaded:", latestSettings);
+    if (latestSettings?.providerConfigs) {
+      console.log("[useStreamingChat] Provider configs:", latestSettings.providerConfigs);
+    }
+  }, [settings?.updatedAt]);
   
   // Convex mutations for persisting messages
   const addMessage = useMutation(api.messages.add);
@@ -81,6 +95,7 @@ export function useStreamingChat(options: UseStreamingChatOptions): UseStreaming
   
   // Abort controller for stopping stream
   const abortControllerRef = useRef<AbortController | null>(null);
+  const rafFlushRef = useRef<number | null>(null);
   
   // Combine existing messages with streaming message
   const messages: ChatMessage[] = [
@@ -108,6 +123,10 @@ export function useStreamingChat(options: UseStreamingChatOptions): UseStreaming
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
+    if (rafFlushRef.current !== null) {
+      cancelAnimationFrame(rafFlushRef.current);
+      rafFlushRef.current = null;
+    }
     setIsLoading(false);
   }, []);
 
@@ -133,22 +152,27 @@ export function useStreamingChat(options: UseStreamingChatOptions): UseStreaming
         content: userMessage,
       });
       
-      // Get API key from environment or settings
-      const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY || '';
-      const provider = process.env.NEXT_PUBLIC_LLM_PROVIDER || 'openai';
+      // Get provider and API key from settings, fallback to environment
+      const defaultProvider = settings?.defaultProvider || process.env.NEXT_PUBLIC_LLM_PROVIDER || 'openai';
+      const providerConfig = settings?.providerConfigs?.[defaultProvider];
+      const apiKey = providerConfig?.apiKey || process.env.NEXT_PUBLIC_OPENAI_API_KEY || '';
+      const provider = providerConfig?.enabled ? defaultProvider : 'openai';
       
       // Create abort controller for this request
       abortControllerRef.current = new AbortController();
       
-      // Call Convex HTTP action
-      const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL || '';
-      const response = await fetch(`${convexUrl}/api/llm/streamChat`, {
+      // Call Convex HTTP action (use convex.site for HTTP actions)
+      const convexSiteUrl = process.env.NEXT_PUBLIC_CONVEX_SITE_URL || process.env.NEXT_PUBLIC_CONVEX_URL || '';
+      const response = await fetch(`${convexSiteUrl}/api/llm/streamChat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          messages: [...(existingMessages || []), { role: 'user', content: userMessage }],
+          messages: [
+            ...(existingMessages || []).map(m => ({ role: m.role, content: m.content })),
+            { role: 'user', content: userMessage }
+          ],
           mode,
           provider,
           apiKey,
@@ -168,6 +192,17 @@ export function useStreamingChat(options: UseStreamingChatOptions): UseStreaming
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let fullContent = '';
+      let pendingPaint = false;
+
+      const schedulePaint = () => {
+        if (pendingPaint) return;
+        pendingPaint = true;
+        rafFlushRef.current = requestAnimationFrame(() => {
+          pendingPaint = false;
+          rafFlushRef.current = null;
+          setStreamingContent(fullContent);
+        });
+      };
       
       try {
         while (true) {
@@ -186,7 +221,7 @@ export function useStreamingChat(options: UseStreamingChatOptions): UseStreaming
                 const parsed = JSON.parse(data);
                 if (parsed.content) {
                   fullContent += parsed.content;
-                  setStreamingContent(fullContent);
+                  schedulePaint();
                 }
               } catch {
                 // Skip malformed JSON
@@ -220,7 +255,7 @@ export function useStreamingChat(options: UseStreamingChatOptions): UseStreaming
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [input, isLoading, chatId, existingMessages, mode, addMessage, onFinish, onError]);
+  }, [input, isLoading, chatId, existingMessages, mode, addMessage, onFinish, onError, settings]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -251,6 +286,9 @@ export function useStreamingChatManual(options: UseStreamingChatOptions): UseStr
   const { chatId, mode, onError, onFinish } = options;
   
   const addMessage = useMutation(api.messages.add);
+  
+  // Fetch settings to get provider configuration
+  const settings = useQuery(api.settings.get);
   
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -294,13 +332,16 @@ export function useStreamingChatManual(options: UseStreamingChatOptions): UseStr
     });
     
     try {
-      const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY || '';
-      const provider = process.env.NEXT_PUBLIC_LLM_PROVIDER || 'openai';
-      const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL || '';
+      // Get provider and API key from settings, fallback to environment
+      const defaultProvider = settings?.defaultProvider || process.env.NEXT_PUBLIC_LLM_PROVIDER || 'openai';
+      const providerConfig = settings?.providerConfigs?.[defaultProvider];
+      const apiKey = providerConfig?.apiKey || process.env.NEXT_PUBLIC_OPENAI_API_KEY || '';
+      const provider = providerConfig?.enabled ? defaultProvider : 'openai';
+      const convexSiteUrl = process.env.NEXT_PUBLIC_CONVEX_SITE_URL || process.env.NEXT_PUBLIC_CONVEX_URL || '';
       
       abortControllerRef.current = new AbortController();
       
-      const response = await fetch(`${convexUrl}/api/llm/streamChat`, {
+      const response = await fetch(`${convexSiteUrl}/api/llm/streamChat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -369,7 +410,7 @@ export function useStreamingChatManual(options: UseStreamingChatOptions): UseStr
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [input, isLoading, messages, chatId, mode, addMessage, onFinish, onError]);
+  }, [input, isLoading, messages, chatId, mode, addMessage, onFinish, onError, settings]);
 
   useEffect(() => {
     return () => abortControllerRef.current?.abort();

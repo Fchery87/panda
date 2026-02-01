@@ -8,7 +8,7 @@ export type ArtifactStatus = 'pending' | 'applied' | 'rejected'
 export interface FileWritePayload {
   filePath: string
   content: string
-  originalContent?: string
+  originalContent?: string | null
 }
 
 export interface CommandRunPayload {

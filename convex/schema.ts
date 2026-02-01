@@ -19,6 +19,16 @@ export default defineSchema({
     createdAt: v.number(),
     lastOpenedAt: v.optional(v.number()),
     repoUrl: v.optional(v.string()),
+    agentPolicy: v.optional(
+      v.union(
+        v.null(),
+        v.object({
+          autoApplyFiles: v.boolean(),
+          autoRunCommands: v.boolean(),
+          allowedCommandPrefixes: v.array(v.string()),
+        })
+      )
+    ),
   })
     .index("by_creator", ["createdBy"])
     .index("by_last_opened", ["createdBy", "lastOpenedAt"]),
@@ -50,6 +60,8 @@ export default defineSchema({
     projectId: v.id("projects"),
     title: v.optional(v.string()),
     mode: v.union(v.literal("discuss"), v.literal("build")),
+    planDraft: v.optional(v.string()),
+    planUpdatedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -96,6 +108,16 @@ export default defineSchema({
     language: v.optional(v.string()),
     defaultProvider: v.optional(v.string()),
     defaultModel: v.optional(v.string()),
+    agentDefaults: v.optional(
+      v.union(
+        v.null(),
+        v.object({
+          autoApplyFiles: v.boolean(),
+          autoRunCommands: v.boolean(),
+          allowedCommandPrefixes: v.array(v.string()),
+        })
+      )
+    ),
     updatedAt: v.number(),
   })
     .index("by_user", ["userId"]),

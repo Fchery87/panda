@@ -151,7 +151,7 @@ export function createToolContext(
   userId: string,
   convexClient: ConvexClient,
   artifactQueue: {
-    addFileArtifact: (path: string, content: string) => void;
+    addFileArtifact: (path: string, content: string, originalContent?: string | null) => void;
     addCommandArtifact: (command: string, cwd?: string) => void;
   },
   api: {
@@ -193,11 +193,25 @@ export function createToolContext(
     writeFiles: async (files: Array<{ path: string; content: string }>) => {
       try {
         const results: Array<{ path: string; success: boolean; error?: string }> = [];
-        
+        const paths = files.map((f) => f.path);
+        const existingByPath = new Map<string, string | null>();
+
+        try {
+          const existing = await convexClient.query(api.files.batchGet, {
+            projectId,
+            paths,
+          });
+          for (const row of existing as Array<{ path: string; content: string | null }>) {
+            existingByPath.set(row.path, row.content ?? null);
+          }
+        } catch (error) {
+          console.error('Failed to fetch original contents for write_files:', error);
+        }
+
         for (const file of files) {
           try {
             // Queue artifact for user review
-            artifactQueue.addFileArtifact(file.path, file.content);
+            artifactQueue.addFileArtifact(file.path, file.content, existingByPath.get(file.path) ?? null);
             results.push({ path: file.path, success: true });
           } catch (error) {
             results.push({

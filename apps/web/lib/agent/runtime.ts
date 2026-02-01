@@ -36,6 +36,7 @@ export type AgentEventType =
   | 'text'
   | 'tool_call'
   | 'tool_result'
+  | 'reset'
   | 'error'
   | 'complete';
 
@@ -47,6 +48,7 @@ export interface AgentEvent {
   content?: string;
   toolCall?: ToolCall;
   toolResult?: ToolExecutionResult;
+  resetReason?: 'plan_mode_rewrite' | 'build_mode_rewrite';
   error?: string;
   usage?: {
     promptTokens: number;
@@ -86,6 +88,43 @@ function hashToolCall(toolCall: ToolCall): string {
   return `${toolCall.function.name}:${toolCall.function.arguments}`;
 }
 
+export function shouldRewriteDiscussResponse(content: string): boolean {
+  // Claude Code Plan Mode expectation: no large code blocks / no fenced implementations.
+  // For now we treat fenced code blocks as a hard violation and trigger a single rewrite pass.
+  return content.includes('```');
+}
+
+export function shouldRewriteBuildResponse(content: string): boolean {
+  // Build Mode expectation (Claude Code-style): code changes should go through tools/artifacts,
+  // and the chat panel should not contain large code blocks.
+  // For now we treat fenced code blocks as a hard violation and trigger a single rewrite pass.
+  return content.includes('```');
+}
+
+function shouldRetryBuildForToolUse(args: {
+  promptContext: PromptContext;
+  content: string;
+  pendingToolCalls: ToolCall[];
+}): boolean {
+  if (args.promptContext.chatMode !== 'build') return false;
+  if (args.pendingToolCalls.length > 0) return false;
+
+  const user = (args.promptContext.userMessage ?? '').toLowerCase();
+  const userWantsExecution = /(build|implement|create|start|proceed|go ahead|let'?s do|do it|make it)/.test(
+    user
+  );
+  if (!userWantsExecution) return false;
+
+  const looksLikePlanningOutput =
+    args.content.includes('### Proposed Plan') ||
+    args.content.includes('### Next Step') ||
+    args.content.includes('Clarifying Questions') ||
+    args.content.includes('### Risks') ||
+    /I will begin by/i.test(args.content);
+
+  return looksLikePlanningOutput;
+}
+
 /**
  * Agent Runtime - manages agent execution
  */
@@ -112,6 +151,14 @@ export class AgentRuntime {
       executedToolCalls: new Set(),
       toolCallHistory: [],
     };
+
+    if (!state.messages || state.messages.length === 0) {
+      yield {
+        type: 'error',
+        error: 'Invalid prompt: messages must not be empty (no user message provided).',
+      };
+      return;
+    }
 
     const maxIterations = this.options.maxIterations ?? config?.maxIterations ?? 10;
     const maxToolCallsPerIteration = config?.maxToolCallsPerIteration ?? 5;
@@ -145,17 +192,55 @@ export class AgentRuntime {
         let pendingToolCalls: ToolCall[] = [];
         let finishReason: string | undefined;
         let usage: { promptTokens: number; completionTokens: number; totalTokens: number } | undefined;
+        let didPlanModeRewrite = false;
+        let didBuildModeRewrite = false;
+        let buildRewriteTriggeredDuringStream = false;
+        let planRewriteTriggeredDuringStream = false;
 
         for await (const chunk of this.options.provider.completionStream(completionOptions)) {
+          // Debug logging
+          console.log('[runtime] Chunk:', chunk.type, chunk.content?.slice(0, 30));
+          
           // Handle different chunk types
           switch (chunk.type) {
             case 'text':
               if (chunk.content) {
+                // In Build mode, prevent fenced code blocks from ever streaming into the UI.
+                // If we detect a code fence, stop streaming and do a single rewrite pass that uses tools/artifacts.
+                if (promptContext.chatMode === 'build') {
+                  const combined = fullContent + chunk.content;
+                  const fenceIndex = combined.indexOf('```');
+                  if (fenceIndex !== -1) {
+                    const safePrefixLen = Math.max(0, fenceIndex - fullContent.length);
+                    if (safePrefixLen > 0) {
+                      const safe = chunk.content.slice(0, safePrefixLen);
+                      fullContent += safe;
+                      yield { type: 'text', content: safe };
+                    }
+                    buildRewriteTriggeredDuringStream = true;
+                    break;
+                  }
+                }
+
+                // In Discuss mode, prevent fenced code blocks from ever streaming into the UI.
+                // If we detect a code fence, stop streaming and do a single rewrite pass into plan format.
+                if (promptContext.chatMode === 'discuss') {
+                  const combined = fullContent + chunk.content;
+                  const fenceIndex = combined.indexOf('```');
+                  if (fenceIndex !== -1) {
+                    const safePrefixLen = Math.max(0, fenceIndex - fullContent.length);
+                    if (safePrefixLen > 0) {
+                      const safe = chunk.content.slice(0, safePrefixLen);
+                      fullContent += safe;
+                      yield { type: 'text', content: safe };
+                    }
+                    planRewriteTriggeredDuringStream = true;
+                    break;
+                  }
+                }
+
                 fullContent += chunk.content;
-                yield {
-                  type: 'text',
-                  content: chunk.content,
-                };
+                yield { type: 'text', content: chunk.content };
               }
               break;
 
@@ -183,6 +268,167 @@ export class AgentRuntime {
               };
               return;
           }
+
+          if (buildRewriteTriggeredDuringStream) {
+            // Stop consuming the provider stream early to avoid leaking more code.
+            break;
+          }
+          if (planRewriteTriggeredDuringStream) {
+            // Stop consuming the provider stream early to avoid leaking more code.
+            break;
+          }
+        }
+
+        // Claude Code-style Plan Mode enforcement:
+        // If the model outputs code in discuss mode, do one automatic rewrite pass into plan format.
+        if (
+          promptContext.chatMode === 'discuss' &&
+          !didPlanModeRewrite &&
+          (planRewriteTriggeredDuringStream || shouldRewriteDiscussResponse(fullContent))
+        ) {
+          didPlanModeRewrite = true;
+
+          yield {
+            type: 'thinking',
+            content: 'Plan Mode: rewriting response into a plan (no code)…',
+          };
+          yield { type: 'reset', resetReason: 'plan_mode_rewrite' };
+
+          const retryMessages: CompletionMessage[] = [
+            ...state.messages,
+            {
+              role: 'user',
+              content:
+                'Rewrite your previous answer into Plan Mode format. Do not include any fenced code blocks. ' +
+                'Follow the required Plan Mode structure (clarifying questions, proposed plan, risks, next step). ' +
+                `\n\nPrevious answer:\n${fullContent}`,
+            },
+          ];
+
+          const retryOptions: CompletionOptions = {
+            ...completionOptions,
+            messages: retryMessages,
+            // No tools in discuss mode anyway, but keep explicit.
+            tools: undefined,
+          };
+
+          fullContent = '';
+          pendingToolCalls = [];
+          finishReason = undefined;
+          usage = undefined;
+
+          for await (const chunk of this.options.provider.completionStream(retryOptions)) {
+            switch (chunk.type) {
+              case 'text':
+                if (chunk.content) {
+                  fullContent += chunk.content;
+                  yield { type: 'text', content: chunk.content };
+                }
+                break;
+              case 'finish':
+                finishReason = chunk.finishReason;
+                if (chunk.usage) usage = chunk.usage;
+                break;
+              case 'error':
+                yield { type: 'error', error: chunk.error ?? 'Unknown error during streaming' };
+                return;
+              // Ignore tool events in plan rewrite (should not happen)
+              default:
+                break;
+            }
+          }
+        }
+
+        // Claude Code-style Build Mode enforcement:
+        // If the model dumps code blocks into chat OR "plans" without any tool calls when the user asked to build,
+        // do one automatic rewrite pass that uses tools/artifacts.
+        if (
+          promptContext.chatMode === 'build' &&
+          !didBuildModeRewrite &&
+          (buildRewriteTriggeredDuringStream ||
+            shouldRewriteBuildResponse(fullContent) ||
+            shouldRetryBuildForToolUse({
+              promptContext,
+              content: fullContent,
+              pendingToolCalls,
+            }))
+        ) {
+          didBuildModeRewrite = true;
+
+          yield {
+            type: 'thinking',
+            content: 'Build Mode: rewriting response to use artifacts (no code blocks)…',
+          };
+          yield { type: 'reset', resetReason: 'build_mode_rewrite' };
+
+          const retryMessages: CompletionMessage[] = [
+            ...state.messages,
+            {
+              role: 'user',
+              content:
+                'Your previous answer included fenced code blocks, which are not allowed in Build Mode. ' +
+                'If you only provided a plan without using tools, you must now EXECUTE the plan. ' +
+                'Redo the work using tools only:\n' +
+                '- Use read_files to inspect context as needed.\n' +
+                '- Use write_files to apply code changes (complete file contents).\n' +
+                '- Use run_command to validate.\n' +
+                'In chat, output only a short summary and next steps. Do not include any fenced code blocks.\n\n' +
+                `Previous answer:\n${fullContent}`,
+            },
+          ];
+
+          const retryOptions: CompletionOptions = {
+            ...completionOptions,
+            messages: retryMessages,
+            tools: AGENT_TOOLS,
+          };
+
+          fullContent = '';
+          pendingToolCalls = [];
+          finishReason = undefined;
+          usage = undefined;
+
+          for await (const chunk of this.options.provider.completionStream(retryOptions)) {
+            switch (chunk.type) {
+              case 'text':
+                if (chunk.content) {
+                  fullContent += chunk.content;
+                  yield { type: 'text', content: chunk.content };
+                }
+                break;
+              case 'tool_call':
+                if (chunk.toolCall) {
+                  pendingToolCalls.push(chunk.toolCall);
+                  yield { type: 'tool_call', toolCall: chunk.toolCall };
+                }
+                break;
+              case 'finish':
+                finishReason = chunk.finishReason;
+                if (chunk.usage) usage = chunk.usage;
+                break;
+              case 'error':
+                yield { type: 'error', error: chunk.error ?? 'Unknown error during streaming' };
+                return;
+              default:
+                break;
+            }
+          }
+        }
+
+        // Check for empty response - this can happen if the provider doesn't support tools
+        // or if there's an API issue that didn't trigger an error event
+        if (!fullContent.trim() && pendingToolCalls.length === 0) {
+          console.error('[runtime] Empty response detected - no content and no tool calls');
+          yield {
+            type: 'error',
+            error: 'Model produced no output. This may indicate:\n' +
+                   '1. The provider (Z.ai) does not support tools/function calling\n' +
+                   '2. The API endpoint is not responding correctly\n' +
+                   '3. The model configuration is incompatible\n\n' +
+                   'Try using Discuss mode (no tools) or switching to a different provider.',
+          };
+          state.isComplete = true;
+          break;
         }
 
         // Add assistant message to history

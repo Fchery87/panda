@@ -20,6 +20,10 @@ export function useFileContent(
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
     setContent(initialContent);
     setSavedContent(initialContent);
     setIsDirty(false);

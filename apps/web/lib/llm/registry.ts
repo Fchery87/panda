@@ -39,6 +39,7 @@ export class ProviderRegistry {
       case 'openai':
       case 'openrouter':
       case 'together':
+      case 'zai':
       case 'custom':
         provider = new OpenAICompatibleProvider(config);
         break;
@@ -235,6 +236,23 @@ export function createProviderFromEnv(): LLMProvider | null {
           baseUrl: process.env.OPENAI_BASE_URL,
         },
         defaultModel: process.env.OPENAI_DEFAULT_MODEL || 'gpt-4o',
+      },
+      true
+    );
+  }
+
+  // Try Z.ai - supports both API key and coding plan
+  const zaiApiKey = process.env.ZAI_API_KEY || process.env.ZAI_CODING_PLAN_KEY;
+  if (zaiApiKey) {
+    return registry.createProvider(
+      'zai',
+      {
+        provider: 'zai',
+        auth: {
+          apiKey: zaiApiKey,
+          baseUrl: process.env.ZAI_BASE_URL || 'https://api.z.ai/api/paas/v4',
+        },
+        defaultModel: process.env.ZAI_DEFAULT_MODEL || 'glm-4.7',
       },
       true
     );

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useMemo } from "react"
+import React, { useMemo, useState, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Package, Check, X, Trash2, Layers } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -10,8 +10,13 @@ import { Separator } from "@/components/ui/separator"
 import { ArtifactCard } from "./ArtifactCard"
 import { useArtifactStore } from "@/stores/artifactStore"
 import { cn } from "@/lib/utils"
+import { useAction, useConvex, useMutation } from "convex/react"
+import { api } from "@convex/_generated/api"
+import type { Id } from "@convex/_generated/dataModel"
+import { toast } from "sonner"
 
 interface ArtifactPanelProps {
+  projectId: Id<"projects">
   isOpen?: boolean
   onClose?: () => void
   position?: "right" | "floating"
@@ -21,11 +26,11 @@ interface ArtifactPanelProps {
 const selectArtifacts = (state: { artifacts: any[] }) => state.artifacts
 const selectApplyArtifact = (state: { applyArtifact: any }) => state.applyArtifact
 const selectRejectArtifact = (state: { rejectArtifact: any }) => state.rejectArtifact
-const selectApplyAll = (state: { applyAll: any }) => state.applyAll
 const selectRejectAll = (state: { rejectAll: any }) => state.rejectAll
 const selectClearQueue = (state: { clearQueue: any }) => state.clearQueue
 
 export function ArtifactPanel({
+  projectId,
   isOpen = true,
   onClose,
   position = "right",
@@ -33,9 +38,15 @@ export function ArtifactPanel({
   const artifacts = useArtifactStore(selectArtifacts)
   const applyArtifact = useArtifactStore(selectApplyArtifact)
   const rejectArtifact = useArtifactStore(selectRejectArtifact)
-  const applyAll = useArtifactStore(selectApplyAll)
   const rejectAll = useArtifactStore(selectRejectAll)
   const clearQueue = useArtifactStore(selectClearQueue)
+
+  const convex = useConvex()
+  const upsertFile = useMutation(api.files.upsert)
+  const createAndExecuteJob = useMutation(api.jobs.createAndExecute)
+  const executeJob = useAction(api.jobsExecution.execute)
+
+  const [isApplying, setIsApplying] = useState(false)
 
   // Memoize filtered artifacts to prevent recalculation on every render
   const pendingArtifacts = useMemo(() =>
@@ -54,13 +65,105 @@ export function ArtifactPanel({
   const pendingCount = pendingArtifacts.length
   const totalCount = artifacts.length
 
-  const handleApply = (id: string) => {
-    applyArtifact(id)
+  const inferJobType = (command: string) => {
+    const cmdLower = command.toLowerCase()
+    if (cmdLower.includes("build") || cmdLower.includes("compile")) return "build" as const
+    if (cmdLower.includes("test")) return "test" as const
+    if (cmdLower.includes("deploy")) return "deploy" as const
+    if (cmdLower.includes("lint")) return "lint" as const
+    if (cmdLower.includes("format")) return "format" as const
+    return "cli" as const
   }
+
+  const applyOneArtifact = useCallback(
+    async (artifact: any) => {
+      if (artifact.type === "file_write") {
+        const payload = artifact.payload as { filePath: string; content: string }
+        const existing = await convex.query(api.files.getByPath, {
+          projectId,
+          path: payload.filePath,
+        })
+
+        await upsertFile({
+          id: existing?._id,
+          projectId,
+          path: payload.filePath,
+          content: payload.content,
+          isBinary: false,
+        })
+
+        return { kind: "file" as const, description: payload.filePath }
+      }
+
+      if (artifact.type === "command_run") {
+        const payload = artifact.payload as { command: string; workingDirectory?: string }
+        const type = inferJobType(payload.command)
+        const { jobId, command, workingDirectory } = await createAndExecuteJob({
+          projectId,
+          type,
+          command: payload.command,
+          workingDirectory: payload.workingDirectory,
+        })
+
+        // Mark job for external execution (adds logs / status updates).
+        await executeJob({ jobId, command, workingDirectory })
+
+        return { kind: "command" as const, description: payload.command }
+      }
+
+      throw new Error("Unknown artifact type")
+    },
+    [convex, createAndExecuteJob, executeJob, projectId, upsertFile]
+  )
+
+  const handleApply = useCallback(
+    async (id: string) => {
+      const artifact = artifacts.find((a) => a.id === id)
+      if (!artifact) return
+
+      setIsApplying(true)
+      try {
+        const result = await applyOneArtifact(artifact)
+        applyArtifact(id)
+        toast.success(
+          result.kind === "file" ? "Applied file change" : "Queued command",
+          { description: result.description }
+        )
+      } catch (error) {
+        toast.error("Failed to apply artifact", {
+          description: error instanceof Error ? error.message : String(error),
+        })
+      } finally {
+        setIsApplying(false)
+      }
+    },
+    [applyArtifact, applyOneArtifact, artifacts]
+  )
 
   const handleReject = (id: string) => {
     rejectArtifact(id)
   }
+
+  const handleApplyAll = useCallback(async () => {
+    if (pendingArtifacts.length === 0) return
+    setIsApplying(true)
+    try {
+      for (const artifact of pendingArtifacts) {
+        // Apply sequentially to keep file writes and job creation ordered/predictable.
+        try {
+          await applyOneArtifact(artifact)
+          applyArtifact(artifact.id)
+        } catch (error) {
+          toast.error("Failed to apply artifact", {
+            description: error instanceof Error ? error.message : String(error),
+          })
+          break
+        }
+      }
+    } finally {
+      setIsApplying(false)
+    }
+  }, [applyArtifact, applyOneArtifact, pendingArtifacts])
 
   if (!isOpen) return null
 
@@ -75,9 +178,9 @@ export function ArtifactPanel({
         damping: 30,
       }}
       className={cn(
-        "flex flex-col bg-background/95 backdrop-blur-xl border-l shadow-2xl shadow-black/10",
+        "flex flex-col surface-1 border-l",
         position === "right" && "h-full w-96",
-        position === "floating" && "fixed right-4 top-4 bottom-4 w-96 rounded-2xl border shadow-2xl z-50"
+        position === "floating" && "fixed right-4 top-14 bottom-4 w-96 border z-50 max-h-[calc(100vh-4.5rem)]"
       )}
     >
       {/* Header */}
@@ -85,22 +188,13 @@ export function ArtifactPanel({
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="p-5 border-b bg-gradient-to-r from-amber-50/50 to-orange-50/50 dark:from-amber-950/20 dark:to-orange-950/20"
+        className="panel-header border-b shrink-0"
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <motion.div
-              initial={{ scale: 0, rotate: -180 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{
-                delay: 0.2,
-                type: "spring",
-                stiffness: 200,
-              }}
-              className="p-2.5 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl shadow-lg shadow-amber-500/30"
-            >
-              <Layers className="h-5 w-5 text-white" />
-            </motion.div>
+            <div className="p-2 bg-muted border rounded-none">
+              <Layers className="h-5 w-5" />
+            </div>
             <div>
               <h2 className="text-lg font-bold tracking-tight">
                 Artifact Queue
@@ -108,7 +202,7 @@ export function ArtifactPanel({
               <div className="flex items-center gap-2 mt-0.5">
                 <Badge
                   variant="outline"
-                  className="text-xs font-medium border-amber-500/50 text-amber-700 dark:text-amber-400"
+                  className="text-xs font-medium"
                 >
                   {pendingCount} pending
                 </Badge>
@@ -121,10 +215,11 @@ export function ArtifactPanel({
 
           {onClose && (
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon"
               onClick={onClose}
-              className="rounded-full hover:bg-accent"
+              className="rounded-none border hover:bg-destructive/10 hover:text-destructive hover:border-destructive"
+              title="Close panel (Esc)"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -137,30 +232,28 @@ export function ArtifactPanel({
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: "auto" }}
-          className="px-4 py-3 border-b bg-muted/30"
+          className="px-4 py-3 border-b"
         >
           <div className="flex gap-2">
-            <motion.div className="flex-1" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Button
-                onClick={applyAll}
-                className="w-full h-9 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-lg shadow-emerald-500/20 text-xs"
-                size="sm"
-              >
-                <Check className="h-3.5 w-3.5 mr-1.5" />
-                Apply All ({pendingCount})
-              </Button>
-            </motion.div>
-            <motion.div className="flex-1" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-              <Button
-                onClick={rejectAll}
-                variant="outline"
-                className="w-full h-9 border-rose-500/30 text-rose-700 hover:bg-rose-50 hover:text-rose-800 dark:hover:bg-rose-950/30 text-xs"
-                size="sm"
-              >
-                <X className="h-3.5 w-3.5 mr-1.5" />
-                Reject All
-              </Button>
-            </motion.div>
+            <Button
+              onClick={handleApplyAll}
+              disabled={isApplying}
+              className="flex-1 h-9 rounded-none text-xs"
+              size="sm"
+            >
+              <Check className="h-3.5 w-3.5 mr-1.5" />
+              Apply All ({pendingCount})
+            </Button>
+            <Button
+              onClick={rejectAll}
+              disabled={isApplying}
+              variant="outline"
+              className="flex-1 h-9 rounded-none text-xs"
+              size="sm"
+            >
+              <X className="h-3.5 w-3.5 mr-1.5" />
+              Reject All
+            </Button>
           </div>
         </motion.div>
       )}
@@ -184,7 +277,7 @@ export function ArtifactPanel({
                     repeat: Infinity,
                     ease: "easeInOut",
                   }}
-                  className="p-4 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 rounded-2xl mb-4"
+                  className="p-4 bg-muted border mb-4"
                 >
                   <Package className="h-8 w-8 text-slate-400" />
                 </motion.div>
@@ -237,7 +330,7 @@ export function ArtifactPanel({
                   >
                     <div className="flex items-center gap-2">
                       <Separator className="flex-1" />
-                      <span className="text-xs font-medium uppercase tracking-wider text-emerald-600/70">
+                      <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                         Applied ({appliedArtifacts.length})
                       </span>
                       <Separator className="flex-1" />
@@ -268,7 +361,7 @@ export function ArtifactPanel({
                   >
                     <div className="flex items-center gap-2">
                       <Separator className="flex-1" />
-                      <span className="text-xs font-medium uppercase tracking-wider text-rose-600/70">
+                      <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                         Rejected ({rejectedArtifacts.length})
                       </span>
                       <Separator className="flex-1" />
@@ -300,7 +393,7 @@ export function ArtifactPanel({
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-4 border-t bg-muted/30"
+          className="p-4 border-t"
         >
           <Button
             onClick={clearQueue}

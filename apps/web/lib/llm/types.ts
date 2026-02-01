@@ -11,7 +11,7 @@
 /**
  * Provider type - supported LLM providers
  */
-export type ProviderType = 'openai' | 'openrouter' | 'together' | 'anthropic' | 'custom';
+export type ProviderType = 'openai' | 'openrouter' | 'together' | 'anthropic' | 'zai' | 'custom';
 
 /**
  * Model capability flags

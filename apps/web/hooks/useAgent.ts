@@ -10,8 +10,8 @@
 
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { useMutation, useQuery } from 'convex/react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useMutation, useQuery, useConvex } from 'convex/react';
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import type { LLMProvider } from '../lib/llm/types';
@@ -81,6 +81,7 @@ interface UseAgentReturn {
     id: string;
     role: 'user' | 'assistant' | 'tool';
     content: string;
+    mode: ChatMode;
     toolCalls?: ToolCallInfo[];
   }>;
 
@@ -122,15 +123,18 @@ interface UseAgentReturn {
 export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const { chatId, projectId, mode, provider, model = 'gpt-4o' } = options;
 
+  const convex = useConvex();
+
   // Convex mutations
   const addMessage = useMutation(api.messages.add);
 
   // Artifact store
-  const artifactStore = useArtifactStore();
   const addToQueue = useArtifactStore((state) => state.addToQueue);
-  const pendingArtifacts = useArtifactStore(
-    (state) => state.artifacts
-  ).filter((a) => a.status === 'pending');
+  const artifacts = useArtifactStore((state) => state.artifacts);
+  const pendingArtifacts = useMemo(
+    () => artifacts.filter((a) => a.status === 'pending'),
+    [artifacts]
+  );
 
   // Local state
   const [messages, setMessages] = useState<UseAgentReturn['messages']>([]);
@@ -144,10 +148,11 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const abortControllerRef = useRef<AbortController | null>(null);
   const isRunningRef = useRef(false);
   const toolContextRef = useRef<ReturnType<typeof createToolContext> | null>(null);
+  const rafFlushRef = useRef<number | null>(null);
 
   // Create artifact queue helpers
   const artifactQueue = useRef({
-    addFileArtifact: (path: string, content: string) => {
+    addFileArtifact: (path: string, content: string, originalContent?: string | null) => {
       const artifactId = `artifact-${Date.now()}-${Math.random()
         .toString(36)
         .substr(2, 9)}`;
@@ -155,6 +160,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       const payload: FileWritePayload = {
         filePath: path,
         content,
+        originalContent,
       };
 
       addToQueue({
@@ -194,74 +200,25 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
 
   // Initialize tool context (will be populated when Convex client is available)
   useEffect(() => {
-    // Get Convex client from the React context
-    // Note: This assumes the component is wrapped in ConvexProvider
-    const convexClient = {
-      query: async (query: any, args: any) => {
-        // This will be populated by the actual Convex client
-        // when the hook is used within a ConvexProvider
-        throw new Error('Convex client not initialized');
-      },
-      mutation: async (mutation: any, args: any) => {
-        throw new Error('Convex client not initialized');
-      },
-    };
-
-    // For now, create a mock context that will work with the store
-    // In production, this should integrate with actual Convex mutations
-    toolContextRef.current = {
+    toolContextRef.current = createToolContext(
       projectId,
       chatId,
-      userId: 'mock-user-id',
-      readFiles: async (paths: string[]) => {
-        // TODO: Integrate with Convex files.batchGet
-        // This is a placeholder that should be replaced with actual Convex query
-        console.log('Reading files:', paths);
-        return paths.map((path) => ({ path, content: null }));
-      },
-      writeFiles: async (files: Array<{ path: string; content: string }>) => {
-        const results: Array<{ path: string; success: boolean; error?: string }> = [];
-
-        for (const file of files) {
-          try {
-            artifactQueue.current.addFileArtifact(file.path, file.content);
-            results.push({ path: file.path, success: true });
-          } catch (err) {
-            results.push({
-              path: file.path,
-              success: false,
-              error: err instanceof Error ? err.message : 'Failed to queue',
-            });
-          }
-        }
-
-        return results;
-      },
-      runCommand: async (command: string, timeout?: number, cwd?: string) => {
-        const startTime = Date.now();
-
-        // Queue command artifact
-        artifactQueue.current.addCommandArtifact(command, cwd);
-
-        // TODO: Create actual job in Convex
-        // For now, just return a success response
-        console.log('Creating job for command:', command);
-
-        return {
-          stdout: `Command queued: ${command}`,
-          stderr: '',
-          exitCode: 0,
-          durationMs: Date.now() - startTime,
-        };
-      },
-    };
-  }, [projectId, chatId, addToQueue]);
+      'mock-user-id',
+      convex,
+      artifactQueue.current,
+      { files: { batchGet: api.files.batchGet }, jobs: { create: api.jobs.create } }
+    );
+  }, [projectId, chatId, convex, addToQueue]);
 
   // Stop the agent
   const stop = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
+    }
+    if (rafFlushRef.current !== null) {
+      cancelAnimationFrame(rafFlushRef.current);
+      rafFlushRef.current = null;
     }
     isRunningRef.current = false;
     setStatus('idle');
@@ -293,6 +250,16 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       const userContent = input.trim();
       setInput('');
 
+      // Capture a snapshot of prior conversation for prompt building.
+      // Note: we exclude tool messages here because our UI message shape
+      // doesn't retain tool_call_id, which some providers require.
+      // IMPORTANT: Claude Code-style mode separation.
+      // When in Discuss (Plan Mode), don't include Build messages in context (and vice versa),
+      // otherwise the model continues implementation even after switching modes.
+      const previousMessagesSnapshot = messages
+        .filter((m) => (m.role === 'user' || m.role === 'assistant') && m.mode === mode)
+        .map((m) => ({ role: m.role, content: m.content }));
+
       // Add user message to local state
       const userMessageId = `msg-${Date.now()}-user`;
       setMessages((prev) => [
@@ -301,6 +268,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           id: userMessageId,
           role: 'user',
           content: userContent,
+          mode,
         },
       ]);
 
@@ -328,13 +296,20 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           chatId,
           userId: 'mock-user-id',
           chatMode: mode,
+          // Use the configured provider type (e.g. "zai") rather than the
+          // implementation class name (e.g. "openai-compatible").
+          provider: provider?.config?.provider || 'openai',
+          previousMessages: previousMessagesSnapshot,
+          userMessage: userContent,
           customInstructions: undefined,
         };
 
         // Create runtime config with deduplication
+        // Note: maxToolCallsPerIteration is set high to allow batch file generation
+        // The AI should be able to generate as many files as needed in one iteration
         const runtimeConfig: RuntimeConfig = {
           maxIterations: 10,
-          maxToolCallsPerIteration: 5,
+          maxToolCallsPerIteration: 50,
           enableToolDeduplication: true,
           toolLoopThreshold: 3,
         };
@@ -368,12 +343,50 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         let assistantContent = '';
         let assistantToolCalls: ToolCallInfo[] = [];
         const assistantMessageId = `msg-${Date.now()}-assistant`;
+        let pendingPaint = false;
+        let replaceOnNextText = false;
+        let rewriteNoticeShown = false;
+
+        const schedulePaint = () => {
+          if (pendingPaint) return;
+          pendingPaint = true;
+          rafFlushRef.current = requestAnimationFrame(() => {
+            pendingPaint = false;
+            rafFlushRef.current = null;
+            setMessages((prev) => {
+              const existingIndex = prev.findIndex((m) => m.id === assistantMessageId);
+              if (existingIndex >= 0) {
+                const updated = [...prev];
+                updated[existingIndex] = {
+                  ...updated[existingIndex],
+                  content: assistantContent,
+                  mode,
+                  toolCalls: assistantToolCalls,
+                };
+                return updated;
+              }
+              return [
+                ...prev,
+                {
+                  id: assistantMessageId,
+                  role: 'assistant',
+                  content: assistantContent,
+                  mode,
+                  toolCalls: assistantToolCalls,
+                },
+              ];
+            });
+          });
+        };
 
         for await (const event of runtime.run(promptContext, runtimeConfig)) {
           // Check for abort
           if (abortControllerRef.current?.signal.aborted) {
             break;
           }
+
+          // Debug logging
+          console.log('[useAgent] Event:', event.type, event.content?.slice(0, 50));
 
           switch (event.type) {
             case 'thinking': {
@@ -386,35 +399,59 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               break;
             }
 
+            case 'reset': {
+              // Runtime requested that we reset the current assistant message
+              // (e.g. Plan Mode auto-rewrite).
+              // Keep the existing content visible to avoid the message "vanishing".
+              // We’ll replace it cleanly when the first rewrite text chunk arrives.
+              replaceOnNextText = true;
+              assistantToolCalls = [];
+              if (!rewriteNoticeShown) {
+                rewriteNoticeShown = true;
+                setMessages((prev) => {
+                  const existingIndex = prev.findIndex((m) => m.id === assistantMessageId);
+                  if (existingIndex < 0) return prev;
+                  const updated = [...prev];
+                  const existing = updated[existingIndex]!;
+                  updated[existingIndex] = {
+                    ...existing,
+                    mode,
+                    toolCalls: [],
+                    content:
+                      (existing.content ? existing.content + "\n\n" : "") +
+                      "— Rewriting to match mode… —",
+                  };
+                  return updated;
+                });
+              }
+              break;
+            }
+
             case 'text':
               setStatus('streaming');
               if (event.content) {
-                assistantContent += event.content;
-                // Update the assistant message in real-time
-                setMessages((prev) => {
-                  const existingIndex = prev.findIndex(
-                    (m) => m.id === assistantMessageId
-                  );
-                  if (existingIndex >= 0) {
+                console.log('[useAgent] Text chunk:', event.content.slice(0, 30));
+                if (replaceOnNextText) {
+                  replaceOnNextText = false;
+                  assistantContent = '';
+                  // Immediately clear the visible content so we replace instead of append.
+                  setMessages((prev) => {
+                    const existingIndex = prev.findIndex((m) => m.id === assistantMessageId);
+                    if (existingIndex < 0) return prev;
                     const updated = [...prev];
                     updated[existingIndex] = {
-                      ...updated[existingIndex],
-                      content: assistantContent,
-                      toolCalls: assistantToolCalls,
+                      ...updated[existingIndex]!,
+                      content: '',
+                      mode,
+                      toolCalls: [],
                     };
                     return updated;
-                  } else {
-                    return [
-                      ...prev,
-                      {
-                        id: assistantMessageId,
-                        role: 'assistant',
-                        content: assistantContent,
-                        toolCalls: assistantToolCalls,
-                      },
-                    ];
-                  }
-                });
+                  });
+                }
+                assistantContent += event.content;
+                // Paint at most once per animation frame to avoid render thrash
+                // while still feeling like true streaming.
+                schedulePaint();
               }
               break;
 
@@ -439,6 +476,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                     const updated = [...prev];
                     updated[existingIndex] = {
                       ...updated[existingIndex],
+                      mode,
                       toolCalls: assistantToolCalls,
                     };
                     return updated;
@@ -540,7 +578,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         });
       }
     },
-    [input, chatId, projectId, mode, provider, model, addMessage]
+    [input, messages, chatId, projectId, mode, provider, model, addMessage]
   );
 
   // Cleanup on unmount

@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback } from "react"
+import { useCallback, useMemo } from "react"
 import { useMutation } from "convex/react"
 import { toast } from "sonner"
 import {
@@ -8,7 +8,6 @@ import {
   type Artifact,
   type ArtifactType,
   type ArtifactPayload,
-  selectPendingArtifacts,
   selectArtifactCount,
 } from "@/stores/artifactStore"
 import type { Id } from "@convex/_generated/dataModel"
@@ -19,7 +18,7 @@ import type { Id } from "@convex/_generated/dataModel"
  */
 export function useArtifacts(projectId?: Id<"projects">) {
   const artifacts = useArtifactStore((state) => state.artifacts)
-  const pendingArtifacts = useArtifactStore(selectPendingArtifacts)
+  const pendingArtifacts = useMemo(() => artifacts.filter((a) => a.status === "pending"), [artifacts])
   const pendingCount = useArtifactStore(selectArtifactCount)
 
   const addToQueue = useArtifactStore((state) => state.addToQueue)

@@ -40,6 +40,8 @@ export const create = mutation({
       projectId: args.projectId,
       title: args.title,
       mode: args.mode,
+      planDraft: undefined,
+      planUpdatedAt: undefined,
       createdAt: now,
       updatedAt: now,
     });
@@ -54,6 +56,7 @@ export const update = mutation({
     id: v.id('chats'),
     title: v.optional(v.string()),
     mode: v.optional(v.union(v.literal('discuss'), v.literal('build'))),
+    planDraft: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const chat = await ctx.db.get(args.id);
@@ -68,6 +71,10 @@ export const update = mutation({
     
     if (args.title !== undefined) updates.title = args.title;
     if (args.mode !== undefined) updates.mode = args.mode;
+    if (args.planDraft !== undefined) {
+      updates.planDraft = args.planDraft;
+      updates.planUpdatedAt = Date.now();
+    }
     
     await ctx.db.patch(args.id, updates);
     

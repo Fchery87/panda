@@ -5,16 +5,17 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { toast } from "sonner"
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
-import { ProviderCard } from "@/components/settings/ProviderCard"
-import { ThemeToggleFull } from "@/components/settings/ThemeToggle"
-import { User, Palette, Bot, Save, Loader2 } from "lucide-react"
+	import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+	import { Label } from "@/components/ui/label"
+	import { Button } from "@/components/ui/button"
+	import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+	import { Separator } from "@/components/ui/separator"
+	import { Switch } from "@/components/ui/switch"
+	import { Textarea } from "@/components/ui/textarea"
+	import { ProviderCard } from "@/components/settings/ProviderCard"
+	import { ThemeToggleFull } from "@/components/settings/ThemeToggle"
+	import { User, Palette, Bot, Save, Loader2 } from "lucide-react"
 
 interface ProviderConfig {
   name: string
@@ -23,6 +24,8 @@ interface ProviderConfig {
   enabled: boolean
   defaultModel: string
   availableModels: string[]
+  baseUrl?: string
+  useCodingPlan?: boolean
   testStatus?: "idle" | "testing" | "success" | "error"
 }
 
@@ -56,6 +59,7 @@ const defaultProviders: Record<string, ProviderConfig> = {
       "meta-llama/llama-3.1-70b-instruct",
       "google/gemini-pro",
     ],
+    baseUrl: "https://openrouter.ai/api/v1",
     testStatus: "idle",
   },
   together: {
@@ -70,6 +74,22 @@ const defaultProviders: Record<string, ProviderConfig> = {
       "mistralai/Mixtral-8x22B-Instruct-v0.1",
       "Qwen/Qwen2.5-72B-Instruct-Turbo",
     ],
+    baseUrl: "https://api.together.xyz/v1",
+    testStatus: "idle",
+  },
+  zai: {
+    name: "Z.ai",
+    description: "Z.ai GLM-4.7 series models for coding (supports API key or Coding Plan)",
+    apiKey: "",
+    enabled: false,
+    defaultModel: "glm-4.7",
+    availableModels: [
+      "glm-4.7",
+      "glm-4.7-flashx",
+      "glm-4.7-flash",
+    ],
+    baseUrl: "https://api.z.ai/api/paas/v4",
+    useCodingPlan: false,
     testStatus: "idle",
   },
 }
@@ -88,6 +108,25 @@ export default function SettingsPage() {
   const updateSettings = useMutation(api.settings.update)
   const [isSaving, setIsSaving] = React.useState(false)
 
+  // Convex `useQuery` results are not guaranteed to be referentially stable.
+  // Use a version key so our "sync from server" effect doesn't loop.
+  const settingsSyncKey =
+    settings === undefined ? "loading" : settings === null ? "missing" : String(settings.updatedAt)
+
+  const settingsRef = React.useRef(settings)
+  settingsRef.current = settings
+
+  const [agentDefaults, setAgentDefaults] = React.useState<{
+    autoApplyFiles: boolean
+    autoRunCommands: boolean
+    allowedCommandPrefixes: string[]
+  }>({
+    autoApplyFiles: false,
+    autoRunCommands: false,
+    allowedCommandPrefixes: [],
+  })
+  const [allowedCommandPrefixesText, setAllowedCommandPrefixesText] = React.useState("")
+
   // Local state for form
   const [formState, setFormState] = React.useState<SettingsState>({
     theme: "system",
@@ -99,24 +138,60 @@ export default function SettingsPage() {
 
   // Sync with Convex data
   React.useEffect(() => {
-    if (settings) {
+    const latestSettings = settingsRef.current
+    if (latestSettings === undefined) return
+
+    if (latestSettings === null) {
+      setAgentDefaults({
+        autoApplyFiles: false,
+        autoRunCommands: false,
+        allowedCommandPrefixes: [],
+      })
+      setAllowedCommandPrefixesText("")
       setFormState((prev) => ({
         ...prev,
-        theme: settings.theme,
-        language: settings.language || "en",
-        defaultProvider: settings.defaultProvider || "openai",
-        defaultModel: settings.defaultModel || "gpt-4o-mini",
-        providers: settings.providerConfigs
-          ? { ...defaultProviders, ...Object.fromEntries(
-              Object.entries(settings.providerConfigs).map(([key, config]: [string, any]) => [
-                key,
-                { ...defaultProviders[key], ...config, testStatus: "idle" },
-              ])
-            )}
-          : defaultProviders,
+        theme: "system",
+        language: "en",
+        defaultProvider: "openai",
+        defaultModel: "gpt-4o-mini",
+        providers: defaultProviders,
       }))
+      return
     }
-  }, [settings])
+
+    if (latestSettings.agentDefaults) {
+      setAgentDefaults(latestSettings.agentDefaults)
+      setAllowedCommandPrefixesText(
+        (latestSettings.agentDefaults.allowedCommandPrefixes || []).join("\n")
+      )
+    } else {
+      setAgentDefaults({
+        autoApplyFiles: false,
+        autoRunCommands: false,
+        allowedCommandPrefixes: [],
+      })
+      setAllowedCommandPrefixesText("")
+    }
+
+    setFormState((prev) => ({
+      ...prev,
+      theme: latestSettings.theme,
+      language: latestSettings.language || "en",
+      defaultProvider: latestSettings.defaultProvider || "openai",
+      defaultModel: latestSettings.defaultModel || "gpt-4o-mini",
+      providers: latestSettings.providerConfigs
+        ? {
+            ...defaultProviders,
+            ...Object.fromEntries(
+              Object.entries(latestSettings.providerConfigs).map(([key, config]: [string, any]) => [
+                key,
+                { ...(defaultProviders[key] ?? {}), ...config, testStatus: "idle" },
+              ])
+            ),
+          }
+        : defaultProviders,
+    }))
+  }, [settingsSyncKey])
 
   // Handle provider updates
   const updateProvider = (providerKey: string, updates: Partial<ProviderConfig>) => {
@@ -173,17 +248,34 @@ export default function SettingsPage() {
             enabled: config.enabled,
             defaultModel: config.defaultModel,
             availableModels: config.availableModels,
+            baseUrl: key === 'zai' && config.useCodingPlan
+              ? "https://api.z.ai/api/coding/paas/v4"
+              : (config.baseUrl || defaultProviders[key]?.baseUrl),
+            useCodingPlan: config.useCodingPlan,
           },
         ])
       )
 
-      await updateSettings({
-        theme: formState.theme,
-        language: formState.language,
+      console.log("[SettingsPage] Saving settings:", {
         defaultProvider: formState.defaultProvider,
-        defaultModel: formState.defaultModel,
         providerConfigs: providersForSave,
-      })
+      });
+
+	      await updateSettings({
+	        theme: formState.theme,
+	        language: formState.language,
+	        defaultProvider: formState.defaultProvider,
+	        defaultModel: formState.defaultModel,
+	        providerConfigs: providersForSave,
+	        agentDefaults: {
+	          autoApplyFiles: agentDefaults.autoApplyFiles,
+	          autoRunCommands: agentDefaults.autoRunCommands,
+	          allowedCommandPrefixes: allowedCommandPrefixesText
+	            .split("\n")
+	            .map((s) => s.trim())
+	            .filter(Boolean),
+	        },
+	      } as any)
 
       toast.success("Settings saved successfully!")
     } catch (error) {
@@ -225,9 +317,9 @@ export default function SettingsPage() {
           </TabsTrigger>
         </TabsList>
 
-        {/* General Tab */}
-        <TabsContent value="general" className="space-y-6">
-          <Card>
+	        {/* General Tab */}
+	        <TabsContent value="general" className="space-y-6">
+	          <Card>
             <CardHeader>
               <CardTitle>General Settings</CardTitle>
               <CardDescription>
@@ -314,9 +406,62 @@ export default function SettingsPage() {
                   </SelectContent>
                 </Select>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+	            </CardContent>
+	          </Card>
+
+	          <Card>
+	            <CardHeader>
+	              <CardTitle>Automation Defaults</CardTitle>
+	              <CardDescription>
+	                Choose whether Panda auto-applies file changes and auto-runs allowlisted commands by default.
+	              </CardDescription>
+	            </CardHeader>
+	            <CardContent className="space-y-6">
+	              <div className="flex items-center justify-between gap-4">
+	                <div className="space-y-1">
+	                  <Label className="font-mono text-xs">Auto-apply file writes</Label>
+	                  <p className="text-xs text-muted-foreground">
+	                    Applies queued file artifacts automatically in Build mode.
+	                  </p>
+	                </div>
+	                <Switch
+	                  checked={agentDefaults.autoApplyFiles}
+	                  onCheckedChange={(v) =>
+	                    setAgentDefaults((prev) => ({ ...prev, autoApplyFiles: v }))
+	                  }
+	                />
+	              </div>
+
+	              <Separator />
+
+	              <div className="flex items-center justify-between gap-4">
+	                <div className="space-y-1">
+	                  <Label className="font-mono text-xs">Auto-run allowlisted commands</Label>
+	                  <p className="text-xs text-muted-foreground">
+	                    Only runs commands whose prefixes match the allowlist.
+	                  </p>
+	                </div>
+	                <Switch
+	                  checked={agentDefaults.autoRunCommands}
+	                  onCheckedChange={(v) =>
+	                    setAgentDefaults((prev) => ({ ...prev, autoRunCommands: v }))
+	                  }
+	                />
+	              </div>
+
+	              <div className="space-y-2">
+	                <Label className="font-mono text-xs">Allowed command prefixes (one per line)</Label>
+	                <Textarea
+	                  value={allowedCommandPrefixesText}
+	                  onChange={(e) => setAllowedCommandPrefixesText(e.target.value)}
+	                  placeholder={"bun test\nbunx eslint\nbun run lint"}
+	                  className="min-h-[120px] rounded-none font-mono text-xs"
+	                  disabled={!agentDefaults.autoRunCommands}
+	                />
+	              </div>
+	            </CardContent>
+	          </Card>
+	        </TabsContent>
 
         {/* LLM Providers Tab */}
         <TabsContent value="providers" className="space-y-6">
