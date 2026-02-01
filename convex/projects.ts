@@ -1,36 +1,17 @@
 import { query, mutation } from './_generated/server'
 import { v } from 'convex/values'
-
-// Helper to get current user ID - returns 'mock-user-id' for now
-export function getCurrentUserId(): string {
-  return 'mock-user-id'
-}
+import { requireAuth, getCurrentUserId } from './lib/auth'
 
 // list (query) - list all projects for current user
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const userId = getCurrentUserId()
-    let userIdAsId = ctx.db.normalizeId('users', userId)
-
-    // If normalizeId fails, try to find by mock email
-    if (!userIdAsId) {
-      const mockUser = await ctx.db
-        .query('users')
-        .withIndex('by_email', (q) => q.eq('email', 'mock@example.com'))
-        .first()
-      if (mockUser) {
-        userIdAsId = mockUser._id
-      }
-    }
-
-    if (!userIdAsId) {
-      return []
-    }
+    const userId = await getCurrentUserId(ctx)
+    if (!userId) return []
 
     return await ctx.db
       .query('projects')
-      .withIndex('by_creator', (q) => q.eq('createdBy', userIdAsId))
+      .withIndex('by_creator', (q) => q.eq('createdBy', userId))
       .collect()
   },
 })
@@ -39,23 +20,12 @@ export const list = query({
 export const get = query({
   args: { id: v.id('projects') },
   handler: async (ctx, args) => {
-    const userId = getCurrentUserId()
-    let userIdAsId = ctx.db.normalizeId('users', userId)
-
-    // If normalizeId fails, try to find by mock email
-    if (!userIdAsId) {
-      const mockUser = await ctx.db
-        .query('users')
-        .withIndex('by_email', (q) => q.eq('email', 'mock@example.com'))
-        .first()
-      if (mockUser) {
-        userIdAsId = mockUser._id
-      }
-    }
+    const userId = await getCurrentUserId(ctx)
+    if (!userId) return null
 
     const project = await ctx.db.get(args.id)
 
-    if (!project || project.createdBy !== userIdAsId) {
+    if (!project || project.createdBy !== userId) {
       return null
     }
 
@@ -71,33 +41,14 @@ export const create = mutation({
     repoUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const userId = getCurrentUserId()
-    let userIdAsId = ctx.db.normalizeId('users', userId)
-
-    // If user doesn't exist, create a mock user
-    if (!userIdAsId) {
-      const existingUser = await ctx.db
-        .query('users')
-        .withIndex('by_email', (q) => q.eq('email', 'mock@example.com'))
-        .first()
-
-      if (existingUser) {
-        userIdAsId = existingUser._id
-      } else {
-        userIdAsId = await ctx.db.insert('users', {
-          email: 'mock@example.com',
-          name: 'Mock User',
-          createdAt: Date.now(),
-        })
-      }
-    }
+    const userId = await requireAuth(ctx)
 
     const now = Date.now()
 
     const projectId = await ctx.db.insert('projects', {
       name: args.name,
       description: args.description,
-      createdBy: userIdAsId,
+      createdBy: userId,
       createdAt: now,
       lastOpenedAt: now,
       repoUrl: args.repoUrl,
@@ -128,23 +79,11 @@ export const update = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const userId = getCurrentUserId()
-    let userIdAsId = ctx.db.normalizeId('users', userId)
-
-    // If normalizeId fails, try to find by mock email
-    if (!userIdAsId) {
-      const mockUser = await ctx.db
-        .query('users')
-        .withIndex('by_email', (q) => q.eq('email', 'mock@example.com'))
-        .first()
-      if (mockUser) {
-        userIdAsId = mockUser._id
-      }
-    }
+    const userId = await requireAuth(ctx)
 
     const project = await ctx.db.get(args.id)
 
-    if (!project || project.createdBy !== userIdAsId) {
+    if (!project || project.createdBy !== userId) {
       throw new Error('Project not found or access denied')
     }
 
@@ -166,23 +105,11 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id('projects') },
   handler: async (ctx, args) => {
-    const userId = getCurrentUserId()
-    let userIdAsId = ctx.db.normalizeId('users', userId)
-
-    // If normalizeId fails, try to find by mock email
-    if (!userIdAsId) {
-      const mockUser = await ctx.db
-        .query('users')
-        .withIndex('by_email', (q) => q.eq('email', 'mock@example.com'))
-        .first()
-      if (mockUser) {
-        userIdAsId = mockUser._id
-      }
-    }
+    const userId = await requireAuth(ctx)
 
     const project = await ctx.db.get(args.id)
 
-    if (!project || project.createdBy !== userIdAsId) {
+    if (!project || project.createdBy !== userId) {
       throw new Error('Project not found or access denied')
     }
 
