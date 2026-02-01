@@ -1,31 +1,31 @@
 /**
  * Agent Prompt Library
- * 
+ *
  * Contains prompt templates for different agent modes:
  * - discuss: Planning and discussion mode
  * - build: Coding and implementation mode
  */
 
-import type { CompletionMessage } from '../llm/types';
+import type { CompletionMessage } from '../llm/types'
 
 /**
  * Context for prompt generation
  */
 export interface PromptContext {
-  projectId: string;
-  chatId: string;
-  userId: string;
-  projectName?: string;
-  projectDescription?: string;
+  projectId: string
+  chatId: string
+  userId: string
+  projectName?: string
+  projectDescription?: string
   files?: Array<{
-    path: string;
-    content?: string;
-  }>;
-  chatMode: 'discuss' | 'build';
-  provider?: string;
-  previousMessages?: CompletionMessage[];
-  userMessage?: string;
-  customInstructions?: string;
+    path: string
+    content?: string
+  }>
+  chatMode: 'discuss' | 'build'
+  provider?: string
+  previousMessages?: CompletionMessage[]
+  userMessage?: string
+  customInstructions?: string
 }
 
 /**
@@ -63,7 +63,7 @@ When in discussion mode:
 
 You have access to the project files for context. Use this information to provide relevant, contextual advice.
 
-Be concise but thorough. Focus on actionable insights.`;
+Be concise but thorough. Focus on actionable insights.`
 
 /**
  * System prompt for build/coding mode
@@ -119,50 +119,50 @@ Guidelines:
 - Use TypeScript types properly
 - Keep functions focused and modular
 
-You must use the tools to accomplish tasks. Do not just describe what should be done - actually do it.`;
+You must use the tools to accomplish tasks. Do not just describe what should be done - actually do it.`
 
 /**
  * Get prompt for discussion/planning mode
  */
 export function getDiscussPrompt(context: PromptContext): CompletionMessage[] {
-  const providerId = context.provider?.toLowerCase();
-  const isZai = providerId === 'zai' || providerId === 'z.ai' || providerId?.includes('zai');
-  const messages: CompletionMessage[] = [];
-  
+  const providerId = context.provider?.toLowerCase()
+  const isZai = providerId === 'zai' || providerId === 'z.ai' || providerId?.includes('zai')
+  const messages: CompletionMessage[] = []
+
   // Build context content
-  let contextContent = '';
-  
+  let contextContent = ''
+
   if (context.projectName) {
-    contextContent += `Project: ${context.projectName}\n`;
+    contextContent += `Project: ${context.projectName}\n`
   }
   if (context.projectDescription) {
-    contextContent += `Description: ${context.projectDescription}\n`;
+    contextContent += `Description: ${context.projectDescription}\n`
   }
   if (context.files && context.files.length > 0) {
-    contextContent += '\nRelevant files:\n';
+    contextContent += '\nRelevant files:\n'
     contextContent += context.files
       .map((f) => `- ${f.path}${f.content ? `\n\`\`\`\n${f.content}\n\`\`\`` : ''}`)
-      .join('\n\n');
+      .join('\n\n')
   }
-  
+
   // For non-Z.ai: use system messages
   // For Z.ai: we'll combine with user message
   if (!isZai) {
     messages.push({
       role: 'system',
       content: DISCUSS_SYSTEM_PROMPT,
-    });
+    })
     if (contextContent) {
       messages.push({
         role: 'system',
         content: contextContent,
-      });
+      })
     }
   }
 
   // Add previous messages if available
   if (context.previousMessages && context.previousMessages.length > 0) {
-    messages.push(...context.previousMessages);
+    messages.push(...context.previousMessages)
   }
 
   // Add user message (with system context prepended for Z.ai)
@@ -171,63 +171,63 @@ export function getDiscussPrompt(context: PromptContext): CompletionMessage[] {
     // This must be done EVERY turn (not only the first), otherwise the model "forgets" the mode.
     const userContent = isZai
       ? `${DISCUSS_SYSTEM_PROMPT}\n\n${contextContent ? contextContent + '\n\n' : ''}User request: ${context.userMessage}`
-      : context.userMessage;
+      : context.userMessage
     messages.push({
       role: 'user',
       content: userContent,
-    });
+    })
   }
 
-  return messages;
+  return messages
 }
 
 /**
  * Get prompt for build/coding mode
  */
 export function getBuildPrompt(context: PromptContext): CompletionMessage[] {
-  const providerId = context.provider?.toLowerCase();
-  const isZai = providerId === 'zai' || providerId === 'z.ai' || providerId?.includes('zai');
-  const messages: CompletionMessage[] = [];
-  
+  const providerId = context.provider?.toLowerCase()
+  const isZai = providerId === 'zai' || providerId === 'z.ai' || providerId?.includes('zai')
+  const messages: CompletionMessage[] = []
+
   // Build context content
-  let contextContent = '';
-  
+  let contextContent = ''
+
   if (context.projectName) {
-    contextContent += `Project: ${context.projectName}\n`;
+    contextContent += `Project: ${context.projectName}\n`
   }
   if (context.projectDescription) {
-    contextContent += `Description: ${context.projectDescription}\n`;
+    contextContent += `Description: ${context.projectDescription}\n`
   }
   if (context.files && context.files.length > 0) {
-    contextContent += '\nCurrent files in project:\n';
+    contextContent += '\nCurrent files in project:\n'
     context.files.forEach((f) => {
-      contextContent += `\n--- ${f.path} ---\n`;
+      contextContent += `\n--- ${f.path} ---\n`
       if (f.content) {
-        contextContent += f.content;
+        contextContent += f.content
       } else {
-        contextContent += '[File content not loaded]';
+        contextContent += '[File content not loaded]'
       }
-    });
+    })
   }
-  
+
   // For non-Z.ai: use system messages
   // For Z.ai: we'll combine with user message
   if (!isZai) {
     messages.push({
       role: 'system',
       content: BUILD_SYSTEM_PROMPT,
-    });
+    })
     if (contextContent) {
       messages.push({
         role: 'system',
         content: contextContent,
-      });
+      })
     }
   }
 
   // Add previous messages if available
   if (context.previousMessages && context.previousMessages.length > 0) {
-    messages.push(...context.previousMessages);
+    messages.push(...context.previousMessages)
   }
 
   // Add user message (with system context prepended for Z.ai)
@@ -236,14 +236,14 @@ export function getBuildPrompt(context: PromptContext): CompletionMessage[] {
     // This must be done EVERY turn (not only the first), otherwise the model "forgets" the mode.
     const userContent = isZai
       ? `${BUILD_SYSTEM_PROMPT}\n\n${contextContent ? contextContent + '\n\n' : ''}User request: ${context.userMessage}`
-      : context.userMessage;
+      : context.userMessage
     messages.push({
       role: 'user',
       content: userContent,
-    });
+    })
   }
 
-  return messages;
+  return messages
 }
 
 /**
@@ -251,14 +251,14 @@ export function getBuildPrompt(context: PromptContext): CompletionMessage[] {
  */
 export function getPromptForMode(context: PromptContext): CompletionMessage[] {
   if (context.chatMode === 'build') {
-    return getBuildPrompt(context);
+    return getBuildPrompt(context)
   }
-  return getDiscussPrompt(context);
+  return getDiscussPrompt(context)
 }
 
 /**
  * Get system prompt only (for initial setup)
  */
 export function getSystemPrompt(mode: 'discuss' | 'build'): string {
-  return mode === 'build' ? BUILD_SYSTEM_PROMPT : DISCUSS_SYSTEM_PROMPT;
+  return mode === 'build' ? BUILD_SYSTEM_PROMPT : DISCUSS_SYSTEM_PROMPT
 }

@@ -93,3 +93,45 @@ tmp/
 # Backup files
 *.bak
 *.backup
+
+# Modern IDE/editor tools
+.history/          # VS Code local history
+.fleet/            # JetBrains Fleet
+.zed/              # Zed editor
+.vscode-test/      # VS Code test runner
+
+# Testing tools (future)
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+
+# Framework-specific
+.react-email/      # React Email preview
+.contentlayer/     # Contentlayer cache
+.million/          # Million.js cache
+.wrangler/         # Cloudflare Workers
+.netlify/          # Netlify local
+.svelte-kit/       # SvelteKit
+.astro/            # Astro
+
+# Secrets management
+.env.vault         # Infisical
+.infisical.json    # Infisical config
+.sentryclirc       # Sentry CLI
+
+# Archives
+*.tar.gz
+*.tgz
+*.zip
+*.7z
+
+# Misc development
+*.pid
+*.seed
+*.pid.lock
+.node_repl_history
+.yarn-integrity
+.pnp.*
+.cache-loader/
+*.code-workspace

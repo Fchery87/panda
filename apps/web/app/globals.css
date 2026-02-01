@@ -165,20 +165,12 @@
      DOT GRID PATTERN - Subtle texture
      ═══════════════════════════════════════════════════════════ */
   .dot-grid {
-    background-image: radial-gradient(
-      circle,
-      hsl(var(--foreground) / 0.08) 1px,
-      transparent 1px
-    );
+    background-image: radial-gradient(circle, hsl(var(--foreground) / 0.08) 1px, transparent 1px);
     background-size: 24px 24px;
   }
 
   .dark .dot-grid {
-    background-image: radial-gradient(
-      circle,
-      hsl(var(--foreground) / 0.04) 1px,
-      transparent 1px
-    );
+    background-image: radial-gradient(circle, hsl(var(--foreground) / 0.04) 1px, transparent 1px);
   }
 
   /* ═══════════════════════════════════════════════════════════
@@ -203,13 +195,13 @@
      PANEL HEADER STYLE
      ═══════════════════════════════════════════════════════════ */
   .panel-header {
-    @apply px-3 py-2 border-b border-border font-mono text-xs uppercase tracking-widest text-muted-foreground;
+    @apply border-b border-border px-3 py-2 font-mono text-xs uppercase tracking-widest text-muted-foreground;
     letter-spacing: 0.1em;
   }
 
   .panel-header-numbered::before {
     content: attr(data-number);
-    @apply text-primary mr-2 font-semibold;
+    @apply mr-2 font-semibold text-primary;
   }
 
   /* ═══════════════════════════════════════════════════════════

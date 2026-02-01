@@ -1,14 +1,14 @@
-"use client"
+'use client'
 
-import * as React from "react"
-import { useMutation } from "convex/react"
-import { toast } from "sonner"
-import { api } from "@convex/_generated/api"
-import type { Id } from "@convex/_generated/dataModel"
-import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
+import * as React from 'react'
+import { useMutation } from 'convex/react'
+import { toast } from 'sonner'
+import { api } from '@convex/_generated/api'
+import type { Id } from '@convex/_generated/dataModel'
+import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
 import {
   Dialog,
   DialogContent,
@@ -17,16 +17,16 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import type { AgentPolicy } from "@/lib/agent/automationPolicy"
-import { normalizePrefixList, resolveEffectiveAgentPolicy } from "@/lib/agent/automationPolicy"
+} from '@/components/ui/dialog'
+import type { AgentPolicy } from '@/lib/agent/automationPolicy'
+import { normalizePrefixList, resolveEffectiveAgentPolicy } from '@/lib/agent/automationPolicy'
 
 function prefixesToText(prefixes: string[] | null | undefined) {
-  return normalizePrefixList(prefixes).join("\n")
+  return normalizePrefixList(prefixes).join('\n')
 }
 
 function textToPrefixes(text: string) {
-  return normalizePrefixList(text.split("\n"))
+  return normalizePrefixList(text.split('\n'))
 }
 
 export function AgentAutomationDialog({
@@ -34,7 +34,7 @@ export function AgentAutomationDialog({
   projectPolicy,
   userDefaults,
 }: {
-  projectId: Id<"projects">
+  projectId: Id<'projects'>
   projectPolicy: AgentPolicy | null | undefined
   userDefaults: AgentPolicy | null | undefined
 }) {
@@ -76,10 +76,10 @@ export function AgentAutomationDialog({
           },
         } as any)
       }
-      toast.success("Automation settings saved")
+      toast.success('Automation settings saved')
       setOpen(false)
     } catch (error) {
-      toast.error("Failed to save automation settings", {
+      toast.error('Failed to save automation settings', {
         description: error instanceof Error ? error.message : String(error),
       })
     }
@@ -145,7 +145,7 @@ export function AgentAutomationDialog({
             <Textarea
               value={allowedPrefixesText}
               onChange={(e) => setAllowedPrefixesText(e.target.value)}
-              placeholder={"bun test\nbunx eslint\nbun run lint"}
+              placeholder={'bun test\nbunx eslint\nbun run lint'}
               className="min-h-[120px] rounded-none font-mono text-xs"
               disabled={inheritDefaults || !autoRunCommands}
             />

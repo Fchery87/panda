@@ -1,23 +1,13 @@
-"use client"
+'use client'
 
-import React from "react"
-import { motion } from "framer-motion"
-import { FileText, Terminal, Check, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { cn } from "@/lib/utils"
-import type {
-  Artifact,
-  FileWritePayload,
-  CommandRunPayload,
-} from "@/stores/artifactStore"
+import React from 'react'
+import { motion } from 'framer-motion'
+import { FileText, Terminal, Check, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
+import type { Artifact, FileWritePayload, CommandRunPayload } from '@/stores/artifactStore'
 
 interface ArtifactCardProps {
   artifact: Artifact
@@ -28,19 +18,19 @@ interface ArtifactCardProps {
 
 function isFileWritePayload(payload: unknown): payload is FileWritePayload {
   return (
-    typeof payload === "object" &&
+    typeof payload === 'object' &&
     payload !== null &&
-    "filePath" in payload &&
-    typeof (payload as FileWritePayload).filePath === "string"
+    'filePath' in payload &&
+    typeof (payload as FileWritePayload).filePath === 'string'
   )
 }
 
 function isCommandRunPayload(payload: unknown): payload is CommandRunPayload {
   return (
-    typeof payload === "object" &&
+    typeof payload === 'object' &&
     payload !== null &&
-    "command" in payload &&
-    typeof (payload as CommandRunPayload).command === "string"
+    'command' in payload &&
+    typeof (payload as CommandRunPayload).command === 'string'
   )
 }
 
@@ -50,21 +40,21 @@ export function ArtifactCard({
   onReject,
   isBatchAction = false,
 }: ArtifactCardProps) {
-  const isFileWrite = artifact.type === "file_write"
-  const isPending = artifact.status === "pending"
-  const isApplied = artifact.status === "applied"
-  const isRejected = artifact.status === "rejected"
+  const isFileWrite = artifact.type === 'file_write'
+  const isPending = artifact.status === 'pending'
+  const isApplied = artifact.status === 'applied'
+  const isRejected = artifact.status === 'rejected'
 
   const payload = artifact.payload
 
   const getArtifactTitle = () => {
     if (isFileWritePayload(payload)) {
-      return payload.filePath.split("/").pop() || "Unknown File"
+      return payload.filePath.split('/').pop() || 'Unknown File'
     }
     if (isCommandRunPayload(payload)) {
-      return payload.command.split(" ")[0] || "Unknown Command"
+      return payload.command.split(' ')[0] || 'Unknown Command'
     }
-    return "Unknown Artifact"
+    return 'Unknown Artifact'
   }
 
   const getArtifactSubtitle = () => {
@@ -74,7 +64,7 @@ export function ArtifactCard({
     if (isCommandRunPayload(payload)) {
       return payload.command
     }
-    return ""
+    return ''
   }
 
   return (
@@ -90,67 +80,56 @@ export function ArtifactCard({
     >
       <Card
         className={cn(
-          "relative overflow-hidden transition-all",
-          "border-l-2",
-          isPending && "border-l-border",
-          isApplied && "border-l-primary/50",
-          isRejected && "border-l-muted-foreground/50",
-          "hover:border-primary/20"
+          'relative overflow-hidden transition-all',
+          'border-l-2',
+          isPending && 'border-l-border',
+          isApplied && 'border-l-primary/50',
+          isRejected && 'border-l-muted-foreground/50',
+          'hover:border-primary/20'
         )}
       >
-
-        <CardHeader className="pb-2 relative z-10">
+        <CardHeader className="relative z-10 pb-2">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
-              <div className={cn(
-                "p-2 border",
-                isFileWrite
-                  ? "text-foreground"
-                  : "text-foreground"
-              )}>
-                {isFileWrite ? (
-                  <FileText className="h-5 w-5" />
-                ) : (
-                  <Terminal className="h-5 w-5" />
-                )}
+              <div
+                className={cn('border p-2', isFileWrite ? 'text-foreground' : 'text-foreground')}
+              >
+                {isFileWrite ? <FileText className="h-5 w-5" /> : <Terminal className="h-5 w-5" />}
               </div>
               <div className="space-y-1">
                 <CardTitle className="text-base font-semibold tracking-tight">
                   {getArtifactTitle()}
                 </CardTitle>
-                <CardDescription className="text-xs font-mono line-clamp-1">
+                <CardDescription className="line-clamp-1 font-mono text-xs">
                   {getArtifactSubtitle()}
                 </CardDescription>
               </div>
             </div>
 
-            <Badge
-              variant="outline"
-              className="text-xs font-medium uppercase tracking-wider"
-            >
+            <Badge variant="outline" className="text-xs font-medium uppercase tracking-wider">
               {artifact.status}
             </Badge>
           </div>
         </CardHeader>
 
-        <CardContent className="pt-2 relative z-10">
+        <CardContent className="relative z-10 pt-2">
           {isFileWritePayload(payload) && payload.originalContent !== undefined && (
             <div className="mb-4">
-              <div className="text-xs text-muted-foreground mb-1.5 font-medium uppercase tracking-wider">
+              <div className="mb-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Changes Preview
               </div>
-              <div className="bg-muted p-3 font-mono text-xs overflow-hidden border">
+              <div className="overflow-hidden border bg-muted p-3 font-mono text-xs">
                 <div className="flex gap-2">
                   <div className="flex-1 space-y-1">
                     {payload.originalContent && (
                       <div className="text-muted-foreground line-through opacity-60">
                         - {payload.originalContent.slice(0, 60)}
-                        {payload.originalContent.length > 60 ? "..." : ""}
+                        {payload.originalContent.length > 60 ? '...' : ''}
                       </div>
                     )}
                     <div className="text-foreground">
                       + {payload.content.slice(0, 60)}
-                      {payload.content.length > 60 ? "..." : ""}
+                      {payload.content.length > 60 ? '...' : ''}
                     </div>
                   </div>
                 </div>
@@ -160,25 +139,20 @@ export function ArtifactCard({
 
           {isCommandRunPayload(payload) && (
             <div className="mb-4">
-              <div className="text-xs text-muted-foreground mb-1.5 font-medium uppercase tracking-wider">
+              <div className="mb-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Command Details
               </div>
-              <div className="bg-muted p-3 font-mono text-xs border">
-                <span className="text-muted-foreground">$</span>{" "}
-                {payload.command}
+              <div className="border bg-muted p-3 font-mono text-xs">
+                <span className="text-muted-foreground">$</span> {payload.command}
                 {payload.workingDirectory && (
-                  <div className="mt-1 text-muted-foreground">
-                    cd {payload.workingDirectory}
-                  </div>
+                  <div className="mt-1 text-muted-foreground">cd {payload.workingDirectory}</div>
                 )}
               </div>
             </div>
           )}
 
           {artifact.description && (
-            <p className="text-sm text-muted-foreground mb-3 italic">
-              {artifact.description}
-            </p>
+            <p className="mb-3 text-sm italic text-muted-foreground">{artifact.description}</p>
           )}
 
           {isPending && !isBatchAction && (
@@ -188,7 +162,7 @@ export function ArtifactCard({
                 className="flex-1 rounded-none"
                 size="sm"
               >
-                <Check className="h-4 w-4 mr-1.5" />
+                <Check className="mr-1.5 h-4 w-4" />
                 Apply
               </Button>
               <Button
@@ -197,7 +171,7 @@ export function ArtifactCard({
                 className="flex-1 rounded-none"
                 size="sm"
               >
-                <X className="h-4 w-4 mr-1.5" />
+                <X className="mr-1.5 h-4 w-4" />
                 Reject
               </Button>
             </div>

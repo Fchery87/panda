@@ -35,23 +35,19 @@ export function ChatContainer({
   const [isOpen, setIsOpen] = useState(true)
 
   return (
-    <div className={cn("relative h-full flex", className)}>
+    <div className={cn('relative flex h-full', className)}>
       {/* Toggle Button */}
       <Button
         variant="ghost"
         size="icon"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "absolute -left-3 top-4 z-10 h-6 w-6 rounded-none",
-          "border border-border bg-background",
-          "transition-sharp hover:border-primary hover:text-primary"
+          'absolute -left-3 top-4 z-10 h-6 w-6 rounded-none',
+          'border border-border bg-background',
+          'transition-sharp hover:border-primary hover:text-primary'
         )}
       >
-        {isOpen ? (
-          <ChevronRight className="h-3 w-3" />
-        ) : (
-          <ChevronLeft className="h-3 w-3" />
-        )}
+        {isOpen ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
       </Button>
 
       <AnimatePresence initial={false}>
@@ -61,20 +57,24 @@ export function ChatContainer({
             animate={{ width: 360, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-            className="h-full overflow-hidden border-l border-border surface-1"
+            className="surface-1 h-full overflow-hidden border-l border-border"
           >
-            <div className="flex flex-col h-full w-[360px]">
+            <div className="flex h-full w-[360px] flex-col">
               {/* Header */}
               <div className="panel-header flex items-center gap-2" data-number="05">
                 <Bot className="h-3.5 w-3.5 text-primary" />
                 <span>Chat</span>
               </div>
-              
+
               {/* Messages */}
               <div className="flex-1 overflow-hidden">
-                <MessageList messages={messages} isStreaming={isStreaming} onResendInBuild={onResendInBuild} />
+                <MessageList
+                  messages={messages}
+                  isStreaming={isStreaming}
+                  onResendInBuild={onResendInBuild}
+                />
               </div>
-              
+
               {/* Input */}
               <ChatInput
                 mode={mode}

@@ -44,12 +44,7 @@ export function MessageBubble({
     : message.content
 
   return (
-    <div
-      className={cn(
-        'flex gap-3',
-        isUser ? 'flex-row-reverse' : 'flex-row'
-      )}
-    >
+    <div className={cn('flex gap-3', isUser ? 'flex-row-reverse' : 'flex-row')}>
       {/* Avatar */}
       <motion.div
         initial={{ scale: 0.8, opacity: 0 }}
@@ -73,14 +68,14 @@ export function MessageBubble({
       </motion.div>
 
       {/* Message Content */}
-      <div className={cn('flex flex-col gap-1 max-w-[75%]', isUser ? 'items-end' : 'items-start')}>
+      <div className={cn('flex max-w-[75%] flex-col gap-1', isUser ? 'items-end' : 'items-start')}>
         {/* Header */}
         <div className={cn('flex items-center gap-2', isUser ? 'flex-row-reverse' : 'flex-row')}>
           <span className="text-xs font-medium text-muted-foreground">
             {isUser ? 'You' : 'Assistant'}
           </span>
           {message.annotations?.model && (
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+            <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
               {message.annotations.model}
             </Badge>
           )}
@@ -95,10 +90,10 @@ export function MessageBubble({
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.2, delay: 0.05 }}
           className={cn(
-            'relative px-4 py-2.5 rounded-2xl text-sm leading-relaxed',
+            'relative rounded-2xl px-4 py-2.5 text-sm leading-relaxed',
             isUser
-              ? 'bg-primary text-primary-foreground rounded-tr-sm'
-              : 'bg-muted text-foreground rounded-tl-sm'
+              ? 'rounded-tr-sm bg-primary text-primary-foreground'
+              : 'rounded-tl-sm bg-muted text-foreground'
           )}
         >
           <div className="whitespace-pre-wrap break-words">
@@ -106,7 +101,7 @@ export function MessageBubble({
             {isStreaming && (
               <motion.span
                 className={cn(
-                  'inline-block w-0.5 h-4 ml-0.5 align-middle',
+                  'ml-0.5 inline-block h-4 w-0.5 align-middle',
                   isUser ? 'bg-primary-foreground' : 'bg-foreground'
                 )}
                 animate={{ opacity: [1, 0, 1] }}
@@ -118,10 +113,8 @@ export function MessageBubble({
 
         {isAssistant && isBuild && shouldRedactBuildCode && (
           <div className="flex items-center gap-2 px-1">
-            <span className="text-[10px] text-muted-foreground/70 font-mono">
-              Build mode
-            </span>
-            <span className="text-[10px] text-amber-500/90 font-mono">
+            <span className="font-mono text-[10px] text-muted-foreground/70">Build mode</span>
+            <span className="font-mono text-[10px] text-amber-500/90">
               (code hidden; use artifacts/editor)
             </span>
           </div>
@@ -129,11 +122,9 @@ export function MessageBubble({
 
         {isAssistant && isDiscuss && (
           <div className="flex items-center gap-2 px-1">
-            <span className="text-[10px] text-muted-foreground/70 font-mono">
-              Plan mode
-            </span>
+            <span className="font-mono text-[10px] text-muted-foreground/70">Plan mode</span>
             {hasFencedCode && (
-              <span className="text-[10px] text-amber-500/90 font-mono">
+              <span className="font-mono text-[10px] text-amber-500/90">
                 (response includes code; expected a plan)
               </span>
             )}
@@ -157,7 +148,7 @@ export function MessageBubble({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
-            className="text-[10px] text-muted-foreground/60 px-1"
+            className="px-1 text-[10px] text-muted-foreground/60"
           >
             {message.annotations.tokenCount} tokens
           </motion.span>

@@ -1,12 +1,22 @@
 # Panda.ai Implementation Plan - Updated
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to
+> implement this plan task-by-task.
 
-**Goal:** Build Panda.ai, a browser-based AI coding workbench with streaming chat agent (discuss/build modes), code editor, file tree, diff view, terminal, and preview in a Next.js + Convex stack.
+**Goal:** Build Panda.ai, a browser-based AI coding workbench with streaming
+chat agent (discuss/build modes), code editor, file tree, diff view, terminal,
+and preview in a Next.js + Convex stack.
 
-**Architecture:** Monorepo with `apps/web` (Next.js frontend), `convex/` (backend/storage). Agent runtime and LLM providers live in `apps/web/lib/` for simplicity. Convex handles all persistence (projects, files, chats, messages, jobs, artifacts) with HTTP actions for streaming. Uses Vercel AI SDK for streaming utilities.
+**Architecture:** Monorepo with `apps/web` (Next.js frontend), `convex/`
+(backend/storage). Agent runtime and LLM providers live in `apps/web/lib/` for
+simplicity. Convex handles all persistence (projects, files, chats, messages,
+jobs, artifacts) with HTTP actions for streaming. Uses Vercel AI SDK for
+streaming utilities.
 
-**Tech Stack:** Next.js 16+ (App Router, TypeScript, Tailwind/shadcn-ui), Convex (backend/database with HTTP actions), CodeMirror 6 (dynamic import, SSR-safe), Vercel AI SDK (streaming utilities), bun (package manager), shadcn/ui + Framer Motion (UI with resizable panels)
+**Tech Stack:** Next.js 16+ (App Router, TypeScript, Tailwind/shadcn-ui), Convex
+(backend/database with HTTP actions), CodeMirror 6 (dynamic import, SSR-safe),
+Vercel AI SDK (streaming utilities), bun (package manager), shadcn/ui + Framer
+Motion (UI with resizable panels)
 
 ---
 
@@ -15,6 +25,7 @@
 ### Task 1.1: Create Monorepo Structure
 
 **Files:**
+
 - Create: `package.json` (root workspace config)
 - Create: `tsconfig.json` (root)
 - Create: `turbo.json`
@@ -27,10 +38,7 @@
   "name": "panda-ai",
   "version": "0.1.0",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "workspaces": ["apps/*", "packages/*"],
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
@@ -113,6 +121,7 @@ git commit -m "chore: initialize monorepo structure with bun"
 ### Task 1.2: Setup Next.js App with Vercel AI SDK
 
 **Files:**
+
 - Create: `apps/web/package.json`
 - Create: `apps/web/tsconfig.json`
 - Create: `apps/web/next.config.ts`
@@ -204,6 +213,7 @@ git commit -m "feat: setup Next.js 16 with shadcn/ui, Framer Motion, Vercel AI S
 ### Task 1.3: Initialize Convex Backend with HTTP Actions
 
 **Files:**
+
 - Create: `convex/schema.ts`
 - Modify: `package.json` (root scripts)
 
@@ -223,6 +233,7 @@ bunx convex dev --help
 ```
 
 If errors occur, use:
+
 ```bash
 npm install -g convex
 convex dev
@@ -254,6 +265,7 @@ git commit -m "feat: initialize Convex backend with HTTP actions support"
 ### Task 2.1: Define Convex Schema
 
 **Files:**
+
 - Create: `convex/schema.ts`
 
 **Step 1: Write the Convex schema**
@@ -312,7 +324,11 @@ export default defineSchema({
 
   messages: defineTable({
     chatId: v.id('chats'),
-    role: v.union(v.literal('user'), v.literal('assistant'), v.literal('system')),
+    role: v.union(
+      v.literal('user'),
+      v.literal('assistant'),
+      v.literal('system')
+    ),
     content: v.string(),
     annotations: v.optional(v.any()),
     createdAt: v.number(),
@@ -324,7 +340,11 @@ export default defineSchema({
     chatId: v.id('chats'),
     messageId: v.id('messages'),
     actions: v.any(),
-    status: v.union(v.literal('pending'), v.literal('complete'), v.literal('failed')),
+    status: v.union(
+      v.literal('pending'),
+      v.literal('complete'),
+      v.literal('failed')
+    ),
     createdAt: v.number(),
   })
     .index('by_chatId', ['chatId'])
@@ -343,7 +363,12 @@ export default defineSchema({
   jobs: defineTable({
     projectId: v.id('projects'),
     type: v.union(v.literal('command'), v.literal('deploy')),
-    status: v.union(v.literal('pending'), v.literal('running'), v.literal('complete'), v.literal('failed')),
+    status: v.union(
+      v.literal('pending'),
+      v.literal('running'),
+      v.literal('complete'),
+      v.literal('failed')
+    ),
     command: v.optional(v.string()),
     logs: v.optional(v.string()),
     output: v.optional(v.string()),
@@ -369,6 +394,7 @@ git commit -m "feat: define Convex schema with artifacts and jobs"
 ### Task 2.2: Create CRUD Operations with Real-time Subscriptions
 
 **Files:**
+
 - Create: `convex/projects.ts`
 - Create: `convex/files.ts`
 - Create: `convex/chats.ts`
@@ -415,6 +441,7 @@ git commit -m "feat: add Convex CRUD with real-time subscriptions"
 ### Task 3.1: Create File Tree Component with Animations
 
 **Files:**
+
 - Create: `apps/web/components/workbench/FileTree.tsx`
 
 **Step 1: Implement file tree with Framer Motion animations**
@@ -433,6 +460,7 @@ git commit -m "feat: add FileTree with animations"
 ### Task 3.2: Create CodeMirror Editor (SSR-Safe)
 
 **Files:**
+
 - Create: `apps/web/components/workbench/CodeMirrorEditor.tsx`
 - Create: `apps/web/components/editor/EditorContainer.tsx`
 
@@ -507,6 +535,7 @@ git commit -m "feat: add SSR-safe CodeMirror editor"
 ### Task 3.3: Create Resizable Workbench Layout
 
 **Files:**
+
 - Create: `apps/web/components/workbench/Workbench.tsx`
 - Modify: `apps/web/app/(dashboard)/projects/[projectId]/page.tsx`
 
@@ -528,7 +557,7 @@ export function Workbench({ projectId }: { projectId: string }) {
     <PanelGroup direction="horizontal" className="h-full">
       {/* File Tree */}
       <Panel defaultSize={20} minSize={15} maxSize={30}>
-        <motion.div 
+        <motion.div
           className="h-full border-r"
           initial={{ x: -20, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
@@ -537,26 +566,26 @@ export function Workbench({ projectId }: { projectId: string }) {
           <FileTree projectId={projectId} />
         </motion.div>
       </Panel>
-      
+
       <PanelResizeHandle className="w-1 bg-border hover:bg-primary transition-colors" />
-      
+
       {/* Editor + Bottom Panel */}
       <Panel defaultSize={50}>
         <PanelGroup direction="vertical">
           <Panel defaultSize={70}>
             <EditorContainer />
           </Panel>
-          
+
           <PanelResizeHandle className="h-1 bg-border hover:bg-primary transition-colors" />
-          
+
           <Panel defaultSize={30} minSize={20}>
             <Terminal projectId={projectId} />
           </Panel>
         </PanelGroup>
       </Panel>
-      
+
       <PanelResizeHandle className="w-1 bg-border hover:bg-primary transition-colors" />
-      
+
       {/* Preview */}
       <Panel defaultSize={30} minSize={20}>
         <Preview />
@@ -578,6 +607,7 @@ git commit -m "feat: add resizable workbench layout"
 ### Task 3.4: Create Diff Viewer Component
 
 **Files:**
+
 - Create: `apps/web/components/workbench/DiffViewer.tsx`
 - Create: `apps/web/lib/diff.ts`
 
@@ -585,14 +615,17 @@ git commit -m "feat: add resizable workbench layout"
 
 ```typescript
 // apps/web/lib/diff.ts
-export function computeDiff(oldContent: string, newContent: string): DiffLine[] {
+export function computeDiff(
+  oldContent: string,
+  newContent: string
+): DiffLine[] {
   // Simple line-by-line diff
   const oldLines = oldContent.split('\n')
   const newLines = newContent.split('\n')
   const result: DiffLine[] = []
-  
+
   // Implementation here
-  
+
   return result
 }
 ```
@@ -613,7 +646,12 @@ interface DiffViewerProps {
   newLabel?: string
 }
 
-export function DiffViewer({ oldContent, newContent, oldLabel, newLabel }: DiffViewerProps) {
+export function DiffViewer({
+  oldContent,
+  newContent,
+  oldLabel,
+  newLabel,
+}: DiffViewerProps) {
   // Implementation with syntax highlighting
 }
 ```
@@ -632,6 +670,7 @@ git commit -m "feat: add diff viewer component"
 ### Task 4.1: Create Chat Components with shadcn
 
 **Files:**
+
 - Create: `apps/web/components/chat/ChatContainer.tsx`
 - Create: `apps/web/components/chat/MessageList.tsx`
 - Create: `apps/web/components/chat/MessageBubble.tsx`
@@ -640,6 +679,7 @@ git commit -m "feat: add diff viewer component"
 **Step 1: Build chat UI with shadcn Card, Avatar, Badge, and Framer Motion**
 
 Use shadcn components for consistent design:
+
 - Card for message containers
 - Avatar for user/bot icons
 - Badge for model info
@@ -658,6 +698,7 @@ git commit -m "feat: add chat UI with shadcn components"
 ### Task 4.2: Implement Streaming with Vercel AI SDK + Convex HTTP Actions
 
 **Files:**
+
 - Create: `apps/web/lib/llm/` (moved from packages/llm)
 - Create: `apps/web/lib/agent/` (moved from packages/agent)
 - Create: `convex/llm.ts` (HTTP action for streaming)
@@ -691,15 +732,16 @@ import { openai } from '@ai-sdk/openai'
 
 export const streamChat = httpAction(async (ctx, request) => {
   const { messages, mode } = await request.json()
-  
+
   const result = streamText({
     model: openai('gpt-4o-mini'),
     messages,
-    system: mode === 'build' 
-      ? 'You are a coding assistant...'
-      : 'You are a planning assistant...',
+    system:
+      mode === 'build'
+        ? 'You are a coding assistant...'
+        : 'You are a planning assistant...',
   })
-  
+
   return result.toDataStreamResponse()
 })
 ```
@@ -714,11 +756,23 @@ import { useChat } from '@ai-sdk/react'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 
-export function useStreamingChat({ chatId, projectId }: { chatId: string; projectId: string }) {
+export function useStreamingChat({
+  chatId,
+  projectId,
+}: {
+  chatId: string
+  projectId: string
+}) {
   const messages = useQuery(api.messages.list, { chatId })
   const addMessage = useMutation(api.messages.add)
-  
-  const { messages: streamMessages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+
+  const {
+    messages: streamMessages,
+    input,
+    handleInputChange,
+    handleSubmit,
+    isLoading,
+  } = useChat({
     api: '/api/chat',
     body: { chatId, projectId },
     onFinish: async (message) => {
@@ -730,7 +784,7 @@ export function useStreamingChat({ chatId, projectId }: { chatId: string; projec
       })
     },
   })
-  
+
   return { messages, input, handleInputChange, handleSubmit, isLoading }
 }
 ```
@@ -749,6 +803,7 @@ git commit -m "feat: add streaming chat with Vercel AI SDK and Convex HTTP actio
 ### Task 5.1: Create Artifact Transaction System
 
 **Files:**
+
 - Create: `apps/web/stores/artifactStore.ts`
 - Create: `apps/web/components/artifacts/ArtifactPanel.tsx`
 
@@ -775,19 +830,22 @@ interface ArtifactStore {
 
 export const useArtifactStore = create<ArtifactStore>((set) => ({
   queue: [],
-  addToQueue: (artifact) => set((state) => ({ 
-    queue: [...state.queue, artifact] 
-  })),
-  applyArtifact: (id) => set((state) => ({
-    queue: state.queue.map((a) => 
-      a.id === id ? { ...a, status: 'applied' } : a
-    )
-  })),
-  rejectArtifact: (id) => set((state) => ({
-    queue: state.queue.map((a) => 
-      a.id === id ? { ...a, status: 'rejected' } : a
-    )
-  })),
+  addToQueue: (artifact) =>
+    set((state) => ({
+      queue: [...state.queue, artifact],
+    })),
+  applyArtifact: (id) =>
+    set((state) => ({
+      queue: state.queue.map((a) =>
+        a.id === id ? { ...a, status: 'applied' } : a
+      ),
+    })),
+  rejectArtifact: (id) =>
+    set((state) => ({
+      queue: state.queue.map((a) =>
+        a.id === id ? { ...a, status: 'rejected' } : a
+      ),
+    })),
   clearQueue: () => set({ queue: [] }),
 }))
 ```
@@ -806,7 +864,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 
 export function ArtifactPanel() {
   const { queue, applyArtifact, rejectArtifact } = useArtifactStore()
-  
+
   return (
     <AnimatePresence>
       {queue.map((artifact) => (
@@ -820,14 +878,14 @@ export function ArtifactPanel() {
             <div className="flex justify-between items-center">
               <span>{artifact.type}: {artifact.payload.path}</span>
               <div className="flex gap-2">
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   variant="outline"
                   onClick={() => rejectArtifact(artifact.id)}
                 >
                   Reject
                 </Button>
-                <Button 
+                <Button
                   size="sm"
                   onClick={() => applyArtifact(artifact.id)}
                 >
@@ -855,6 +913,7 @@ git commit -m "feat: add artifact transaction system with apply/reject"
 ### Task 5.2: Implement Agent Tools
 
 **Files:**
+
 - Create: `apps/web/lib/agent/tools.ts`
 - Create: `apps/web/lib/agent/runtime.ts`
 
@@ -869,10 +928,10 @@ export const tools = [
     parameters: {
       type: 'object',
       properties: {
-        paths: { type: 'array', items: { type: 'string' } }
+        paths: { type: 'array', items: { type: 'string' } },
       },
-      required: ['paths']
-    }
+      required: ['paths'],
+    },
   },
   {
     name: 'write_files',
@@ -886,14 +945,14 @@ export const tools = [
             type: 'object',
             properties: {
               path: { type: 'string' },
-              content: { type: 'string' }
+              content: { type: 'string' },
             },
-            required: ['path', 'content']
-          }
-        }
+            required: ['path', 'content'],
+          },
+        },
       },
-      required: ['changes']
-    }
+      required: ['changes'],
+    },
   },
   {
     name: 'run_command',
@@ -901,11 +960,11 @@ export const tools = [
     parameters: {
       type: 'object',
       properties: {
-        command: { type: 'string' }
+        command: { type: 'string' },
       },
-      required: ['command']
-    }
-  }
+      required: ['command'],
+    },
+  },
 ]
 ```
 
@@ -923,6 +982,7 @@ git commit -m "feat: add agent tools and runtime"
 ### Task 6.1: Implement Terminal with Job Streaming
 
 **Files:**
+
 - Create: `apps/web/components/workbench/Terminal.tsx`
 - Create: `convex/jobs.ts`
 
@@ -938,9 +998,9 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 
 export function Terminal({ projectId }: { projectId: string }) {
   const jobs = useQuery(api.jobs.list, { projectId })
-  
+
   // Auto-subscribes to real-time updates!
-  
+
   return (
     <ScrollArea className="h-full">
       {jobs?.map((job) => (
@@ -995,8 +1055,8 @@ export const updateStatus = mutation({
     await ctx.db.patch(args.id, {
       ...args,
       ...(args.status === 'running' ? { startedAt: Date.now() } : {}),
-      ...(args.status === 'complete' || args.status === 'failed' 
-        ? { completedAt: Date.now() } 
+      ...(args.status === 'complete' || args.status === 'failed'
+        ? { completedAt: Date.now() }
         : {}),
     })
   },
@@ -1017,6 +1077,7 @@ git commit -m "feat: add terminal with real-time job streaming"
 ### Task 7.1: Create Settings Page
 
 **Files:**
+
 - Create: `apps/web/app/settings/page.tsx`
 
 **Step 1: Build settings UI with shadcn**
@@ -1038,6 +1099,7 @@ git commit -m "feat: add settings page"
 ### Task 7.2: Implement GitHub Import
 
 **Files:**
+
 - Create: `convex/github.ts`
 
 **Step 1: Add GitHub repo cloning**
@@ -1070,6 +1132,7 @@ git commit -m "feat: add GitHub repo import"
 ### Task 8.1: Connect All Components
 
 **Files:**
+
 - Modify: `apps/web/app/(dashboard)/projects/[projectId]/page.tsx`
 
 **Step 1: Integrate all components**
@@ -1103,6 +1166,7 @@ git commit -m "feat: integrate all workbench components"
 ### Task 8.2: Add Toast Notifications
 
 **Files:**
+
 - Modify: `apps/web/app/layout.tsx`
 
 **Step 1: Add Sonner toast provider**
@@ -1137,7 +1201,8 @@ git commit -m "feat: add toast notifications with sonner"
 - **Framework:** Next.js 16+ with App Router
 - **Database:** Convex with real-time subscriptions
 - **Streaming:** Vercel AI SDK + Convex HTTP actions
-- **UI:** shadcn/ui (button, card, dialog, tabs, tooltip, sonner, resizable, skeleton, toggle-group, context-menu)
+- **UI:** shadcn/ui (button, card, dialog, tabs, tooltip, sonner, resizable,
+  skeleton, toggle-group, context-menu)
 - **Animations:** Framer Motion
 - **Layout:** react-resizable-panels
 - **Editor:** CodeMirror 6 (dynamic import, SSR-safe)
@@ -1146,10 +1211,12 @@ git commit -m "feat: add toast notifications with sonner"
 - **LLM:** OpenRouter, Together.ai via AI SDK
 
 **Removed:**
+
 - MCP Exa/Context7 integration (not needed)
 - Project templates (not needed for small team)
 
 **Added:**
+
 - SSR-safe CodeMirror with dynamic imports
 - Resizable panels
 - Artifact apply/reject transaction system

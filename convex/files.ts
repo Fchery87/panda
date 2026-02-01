@@ -1,9 +1,9 @@
-import { query, mutation } from './_generated/server';
-import { v } from 'convex/values';
+import { query, mutation } from './_generated/server'
+import { v } from 'convex/values'
 
 // Helper to get current user ID - returns 'mock-user-id' for now
 export function getCurrentUserId(): string {
-  return 'mock-user-id';
+  return 'mock-user-id'
 }
 
 // list (query) - list files by projectId
@@ -13,17 +13,17 @@ export const list = query({
     return await ctx.db
       .query('files')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
-      .collect();
+      .collect()
   },
-});
+})
 
 // get (query) - get file by id
 export const get = query({
   args: { id: v.id('files') },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    return await ctx.db.get(args.id)
   },
-});
+})
 
 // getByPath (query) - get file by projectId + path
 export const getByPath = query({
@@ -35,9 +35,9 @@ export const getByPath = query({
     return await ctx.db
       .query('files')
       .withIndex('by_path', (q) => q.eq('projectId', args.projectId).eq('path', args.path))
-      .unique();
+      .unique()
   },
-});
+})
 
 // batchGet (query) - get multiple files by projectId + paths
 export const batchGet = query({
@@ -46,24 +46,24 @@ export const batchGet = query({
     paths: v.array(v.string()),
   },
   handler: async (ctx, args) => {
-    const results: Array<{ path: string; content: string | null; exists: boolean }> = [];
-    
+    const results: Array<{ path: string; content: string | null; exists: boolean }> = []
+
     for (const path of args.paths) {
       const file = await ctx.db
         .query('files')
         .withIndex('by_path', (q) => q.eq('projectId', args.projectId).eq('path', path))
-        .unique();
-      
+        .unique()
+
       results.push({
         path,
         content: file?.content ?? null,
         exists: file !== null,
-      });
+      })
     }
-    
-    return results;
+
+    return results
   },
-});
+})
 
 // upsert (mutation) - create or update file
 export const upsert = mutation({
@@ -75,15 +75,15 @@ export const upsert = mutation({
     isBinary: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const now = Date.now();
-    
+    const now = Date.now()
+
     if (args.id) {
       // Update existing file
-      const existing = await ctx.db.get(args.id);
+      const existing = await ctx.db.get(args.id)
       if (!existing) {
-        throw new Error('File not found');
+        throw new Error('File not found')
       }
-      
+
       // Check if content has changed for snapshot
       if (args.content !== undefined && args.content !== existing.content) {
         // Create snapshot before updating
@@ -91,25 +91,25 @@ export const upsert = mutation({
           .query('fileSnapshots')
           .withIndex('by_file', (q) => q.eq('fileId', args.id!))
           .order('desc')
-          .first();
-        
-        const snapshotNumber = lastSnapshot ? lastSnapshot.snapshotNumber + 1 : 1;
-        
+          .first()
+
+        const snapshotNumber = lastSnapshot ? lastSnapshot.snapshotNumber + 1 : 1
+
         await ctx.db.insert('fileSnapshots', {
           fileId: args.id,
           snapshotNumber,
           content: existing.content || '',
           createdAt: now,
-        });
+        })
       }
-      
+
       await ctx.db.patch(args.id, {
         content: args.content,
         isBinary: args.isBinary,
         updatedAt: now,
-      });
-      
-      return args.id;
+      })
+
+      return args.id
     } else {
       // Create new file
       return await ctx.db.insert('files', {
@@ -118,37 +118,37 @@ export const upsert = mutation({
         content: args.content,
         isBinary: args.isBinary,
         updatedAt: now,
-      });
+      })
     }
   },
-});
+})
 
 // remove (mutation) - delete file and its snapshots
 export const remove = mutation({
   args: { id: v.id('files') },
   handler: async (ctx, args) => {
-    const file = await ctx.db.get(args.id);
-    
+    const file = await ctx.db.get(args.id)
+
     if (!file) {
-      throw new Error('File not found');
+      throw new Error('File not found')
     }
-    
+
     // Delete all snapshots for this file
     const snapshots = await ctx.db
       .query('fileSnapshots')
       .withIndex('by_file', (q) => q.eq('fileId', args.id))
-      .collect();
-    
+      .collect()
+
     for (const snapshot of snapshots) {
-      await ctx.db.delete(snapshot._id);
+      await ctx.db.delete(snapshot._id)
     }
-    
+
     // Delete the file
-    await ctx.db.delete(args.id);
-    
-    return args.id;
+    await ctx.db.delete(args.id)
+
+    return args.id
   },
-});
+})
 
 // createSnapshot (mutation) - create version snapshot
 export const createSnapshot = mutation({
@@ -157,33 +157,33 @@ export const createSnapshot = mutation({
     content: v.string(),
   },
   handler: async (ctx, args) => {
-    const file = await ctx.db.get(args.fileId);
-    
+    const file = await ctx.db.get(args.fileId)
+
     if (!file) {
-      throw new Error('File not found');
+      throw new Error('File not found')
     }
-    
-    const now = Date.now();
-    
+
+    const now = Date.now()
+
     // Get the last snapshot number
     const lastSnapshot = await ctx.db
       .query('fileSnapshots')
       .withIndex('by_file', (q) => q.eq('fileId', args.fileId))
       .order('desc')
-      .first();
-    
-    const snapshotNumber = lastSnapshot ? lastSnapshot.snapshotNumber + 1 : 1;
-    
+      .first()
+
+    const snapshotNumber = lastSnapshot ? lastSnapshot.snapshotNumber + 1 : 1
+
     const snapshotId = await ctx.db.insert('fileSnapshots', {
       fileId: args.fileId,
       snapshotNumber,
       content: args.content,
       createdAt: now,
-    });
-    
-    return snapshotId;
+    })
+
+    return snapshotId
   },
-});
+})
 
 // listSnapshots (query) - list snapshots for a file
 export const listSnapshots = query({
@@ -193,6 +193,6 @@ export const listSnapshots = query({
       .query('fileSnapshots')
       .withIndex('by_file', (q) => q.eq('fileId', args.fileId))
       .order('desc')
-      .collect();
+      .collect()
   },
-});
+})

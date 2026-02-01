@@ -13,11 +13,7 @@ interface MessageListProps {
   onResendInBuild?: (content: string) => void
 }
 
-export function MessageList({
-  messages,
-  isStreaming = false,
-  onResendInBuild,
-}: MessageListProps) {
+export function MessageList({ messages, isStreaming = false, onResendInBuild }: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -35,12 +31,12 @@ export function MessageList({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
           className={cn(
-            'flex flex-col items-center justify-center h-full min-h-[300px]',
-            'text-center px-8'
+            'flex h-full min-h-[300px] flex-col items-center justify-center',
+            'px-8 text-center'
           )}
         >
-          <div className="text-muted-foreground text-sm">
-            <p className="font-medium mb-2">No messages yet</p>
+          <div className="text-sm text-muted-foreground">
+            <p className="mb-2 font-medium">No messages yet</p>
             <p className="text-xs">Start a conversation to begin chatting with the AI assistant.</p>
           </div>
         </motion.div>
@@ -50,21 +46,21 @@ export function MessageList({
 
   return (
     <ScrollArea className="h-full" ref={scrollRef}>
-	      <div className={cn('flex flex-col gap-4 p-4 min-h-full')}>
-	        {messages.map((message, index) => {
-	          let resendInBuildContent: string | undefined
-	          if (message.role === 'assistant' && message.annotations?.mode === 'discuss') {
-	            for (let i = index - 1; i >= 0; i--) {
-	              if (messages[i]?.role === 'user') {
-	                // Build mode will automatically include the current Plan Draft panel content in the prompt.
-	                // Make the handoff explicit so models that hesitate to use tools will start executing.
-	                resendInBuildContent =
-	                  "Implement the current Plan Draft now. " +
-	                  "Create/modify files using tools (write_files) and run commands using tools (run_command)."
-	                break
-	              }
-	            }
-	          }
+      <div className={cn('flex min-h-full flex-col gap-4 p-4')}>
+        {messages.map((message, index) => {
+          let resendInBuildContent: string | undefined
+          if (message.role === 'assistant' && message.annotations?.mode === 'discuss') {
+            for (let i = index - 1; i >= 0; i--) {
+              if (messages[i]?.role === 'user') {
+                // Build mode will automatically include the current Plan Draft panel content in the prompt.
+                // Make the handoff explicit so models that hesitate to use tools will start executing.
+                resendInBuildContent =
+                  'Implement the current Plan Draft now. ' +
+                  'Create/modify files using tools (write_files) and run commands using tools (run_command).'
+                break
+              }
+            }
+          }
 
           return (
             <motion.div
@@ -79,7 +75,9 @@ export function MessageList({
             >
               <MessageBubble
                 message={message}
-                isStreaming={isStreaming && index === messages.length - 1 && message.role === 'assistant'}
+                isStreaming={
+                  isStreaming && index === messages.length - 1 && message.role === 'assistant'
+                }
                 resendInBuildContent={resendInBuildContent}
                 onResendInBuild={onResendInBuild}
                 disableActions={isStreaming}

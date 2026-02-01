@@ -12,6 +12,8 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "convex:dev": "bunx convex dev",
     "convex:deploy": "bunx convex deploy"
   },
@@ -19,6 +21,9 @@
     "@types/node": "^25.1.0",
     "concurrently": "^9.2.1",
     "convex": "^1.19.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.8.1",
+    "prettier-plugin-tailwindcss": "^0.7.2",
     "turbo": "^2.4.0",
     "typescript": "^5.7.0"
   },

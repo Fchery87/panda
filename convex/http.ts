@@ -2,70 +2,70 @@
 
 /**
  * Convex HTTP Actions Router
- * 
+ *
  * HTTP actions are exposed at https://<deployment>.convex.site
  * This file defines all HTTP action routes for the application.
- * 
+ *
  * @file convex/http.ts
  */
 
-import { httpRouter } from "convex/server";
-import { httpAction } from "./_generated/server";
+import { httpRouter } from 'convex/server'
+import { httpAction } from './_generated/server'
 
 /**
  * CORS headers for cross-origin requests
  */
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  "Access-Control-Max-Age": "86400",
-};
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '86400',
+}
 
 /**
  * Message type for chat requests
  */
 interface ChatMessage {
-  role: "system" | "user" | "assistant" | "tool";
-  content: string;
-  name?: string;
-  tool_call_id?: string;
+  role: 'system' | 'user' | 'assistant' | 'tool'
+  content: string
+  name?: string
+  tool_call_id?: string
   tool_calls?: Array<{
-    id: string;
-    type: "function";
+    id: string
+    type: 'function'
     function: {
-      name: string;
-      arguments: string;
-    };
-  }>;
+      name: string
+      arguments: string
+    }
+  }>
 }
 
 /**
  * Chat request body
  */
 interface ChatRequest {
-  messages: ChatMessage[];
-  model?: string;
-  mode?: "discuss" | "build";
-  temperature?: number;
-  maxTokens?: number;
-  provider?: "openai" | "openrouter" | "together" | "zai";
-  apiKey?: string;
+  messages: ChatMessage[]
+  model?: string
+  mode?: 'discuss' | 'build'
+  temperature?: number
+  maxTokens?: number
+  provider?: 'openai' | 'openrouter' | 'together' | 'zai'
+  apiKey?: string
 }
 
 /**
  * Get system prompt based on mode
  */
-function getSystemPrompt(mode: "discuss" | "build" = "build"): string {
-  if (mode === "discuss") {
+function getSystemPrompt(mode: 'discuss' | 'build' = 'build'): string {
+  if (mode === 'discuss') {
     return `You are an expert software architect and planning assistant. 
 Help users think through their approach, suggest best practices, and break down complex tasks.
-Be thoughtful and thorough. Don't write code unless specifically asked.`;
+Be thoughtful and thorough. Don't write code unless specifically asked.`
   }
-  
+
   return `You are an expert software engineer. Write complete, working code.
 Follow existing code style and patterns. Add comments for complex logic.
-When modifying files, provide the complete new content.`;
+When modifying files, provide the complete new content.`
 }
 
 /**
@@ -74,168 +74,166 @@ When modifying files, provide the complete new content.`;
 function getProviderConfig(provider: string, apiKey?: string) {
   const configs: Record<string, { baseURL: string; defaultModel: string }> = {
     openai: {
-      baseURL: "https://api.openai.com/v1",
-      defaultModel: "gpt-4o-mini",
+      baseURL: 'https://api.openai.com/v1',
+      defaultModel: 'gpt-4o-mini',
     },
     openrouter: {
-      baseURL: "https://openrouter.ai/api/v1",
-      defaultModel: "openai/gpt-4o-mini",
+      baseURL: 'https://openrouter.ai/api/v1',
+      defaultModel: 'openai/gpt-4o-mini',
     },
     together: {
-      baseURL: "https://api.together.xyz/v1",
-      defaultModel: "meta-llama/Llama-3.1-8B-Instruct-Turbo",
+      baseURL: 'https://api.together.xyz/v1',
+      defaultModel: 'meta-llama/Llama-3.1-8B-Instruct-Turbo',
     },
     zai: {
-      baseURL: "https://api.z.ai/api/paas/v4",
-      defaultModel: "glm-4.7",
+      baseURL: 'https://api.z.ai/api/paas/v4',
+      defaultModel: 'glm-4.7',
     },
-  };
+  }
 
   // For Z.ai, determine if using Coding Plan or regular API
-  let zaiApiKey = "";
-  let baseURL = configs.zai.baseURL;
-  
-  if (provider === "zai") {
+  let zaiApiKey = ''
+  let baseURL = configs.zai.baseURL
+
+  if (provider === 'zai') {
     // Check if using Coding Plan key (different endpoint)
-    const codingPlanKey = process.env.ZAI_CODING_PLAN_KEY;
-    const regularKey = apiKey || process.env.ZAI_API_KEY;
-    
+    const codingPlanKey = process.env.ZAI_CODING_PLAN_KEY
+    const regularKey = apiKey || process.env.ZAI_API_KEY
+
     if (codingPlanKey) {
       // Using Coding Plan - use coding endpoint
-      zaiApiKey = codingPlanKey;
-      baseURL = "https://api.z.ai/api/coding/paas/v4";
-      console.log("[getProviderConfig] Using Z.ai Coding Plan endpoint");
+      zaiApiKey = codingPlanKey
+      baseURL = 'https://api.z.ai/api/coding/paas/v4'
+      console.log('[getProviderConfig] Using Z.ai Coding Plan endpoint')
     } else if (regularKey) {
       // Using regular API key
-      zaiApiKey = regularKey;
-      console.log("[getProviderConfig] Using Z.ai regular API endpoint");
+      zaiApiKey = regularKey
+      console.log('[getProviderConfig] Using Z.ai regular API endpoint')
     }
   }
 
   return {
-    baseURL: provider === "zai" ? baseURL : (configs[provider]?.baseURL || configs.openai.baseURL),
+    baseURL: provider === 'zai' ? baseURL : configs[provider]?.baseURL || configs.openai.baseURL,
     defaultModel: configs[provider]?.defaultModel || configs.openai.defaultModel,
-    apiKey: zaiApiKey || apiKey || process.env.OPENAI_API_KEY || "",
-  };
+    apiKey: zaiApiKey || apiKey || process.env.OPENAI_API_KEY || '',
+  }
 }
 
 // Create HTTP router
-const http = httpRouter();
+const http = httpRouter()
 
 /**
  * Health check endpoint - CORS preflight
  * OPTIONS /health
  */
 http.route({
-  path: "/health",
-  method: "OPTIONS",
+  path: '/health',
+  method: 'OPTIONS',
   handler: httpAction(async (_ctx, _request): Promise<Response> => {
     return new Response(null, {
       status: 204,
       headers: corsHeaders,
-    });
+    })
   }),
-});
+})
 
 /**
  * Health check endpoint
  * GET /health
  */
 http.route({
-  path: "/health",
-  method: "GET",
+  path: '/health',
+  method: 'GET',
   handler: httpAction(async (_ctx, _request): Promise<Response> => {
-    return new Response(
-      JSON.stringify({ status: "ok", timestamp: Date.now() }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ status: 'ok', timestamp: Date.now() }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }),
-});
+})
 
 /**
  * Stream chat completion - CORS preflight
  * OPTIONS /api/llm/streamChat
  */
 http.route({
-  path: "/api/llm/streamChat",
-  method: "OPTIONS",
+  path: '/api/llm/streamChat',
+  method: 'OPTIONS',
   handler: httpAction(async (_ctx, _request): Promise<Response> => {
     return new Response(null, {
       status: 204,
       headers: corsHeaders,
-    });
+    })
   }),
-});
+})
 
 /**
  * Stream chat completion
  * POST /api/llm/streamChat
  */
 http.route({
-  path: "/api/llm/streamChat",
-  method: "POST",
+  path: '/api/llm/streamChat',
+  method: 'POST',
   handler: httpAction(async (ctx, request): Promise<Response> => {
     try {
       // Parse request body
-      const body = await request.json() as ChatRequest;
-      const { 
-        messages, 
-        model, 
-        mode = "build", 
-        temperature = 0.7, 
+      const body = (await request.json()) as ChatRequest
+      const {
+        messages,
+        model,
+        mode = 'build',
+        temperature = 0.7,
         maxTokens = 4096,
-        provider = "openai",
+        provider = 'openai',
         apiKey,
-      } = body;
+      } = body
 
       // Log for debugging
-      console.log("StreamChat request:", { 
-        provider, 
-        model, 
-        mode, 
+      console.log('StreamChat request:', {
+        provider,
+        model,
+        mode,
         messageCount: messages?.length,
-        hasApiKey: !!apiKey 
-      });
+        hasApiKey: !!apiKey,
+      })
 
       // Validate required fields
       if (!messages || !Array.isArray(messages) || messages.length === 0) {
-        return new Response(
-          JSON.stringify({ error: "Missing or invalid messages array" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        return new Response(JSON.stringify({ error: 'Missing or invalid messages array' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
       }
 
       // Get provider configuration
-      const config = getProviderConfig(provider, apiKey);
-      
+      const config = getProviderConfig(provider, apiKey)
+
       // Check if API key is configured
       if (!config.apiKey) {
         return new Response(
           JSON.stringify({ error: `No API key configured for provider: ${provider}` }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
       }
-      const selectedModel = model || config.defaultModel;
+      const selectedModel = model || config.defaultModel
 
       // Add system message (skip for Z.ai as it doesn't support system role)
-      const systemMessage: ChatMessage | null = provider === "zai" 
-        ? null 
-        : { role: "system", content: getSystemPrompt(mode) };
+      const systemMessage: ChatMessage | null =
+        provider === 'zai' ? null : { role: 'system', content: getSystemPrompt(mode) }
 
-      const fullMessages = systemMessage 
-        ? [systemMessage, ...messages]
-        : messages;
+      const fullMessages = systemMessage ? [systemMessage, ...messages] : messages
 
       // Make request to LLM API
       const response = await fetch(`${config.baseURL}/chat/completions`, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${config.apiKey}`,
-          ...(provider === "openrouter" ? {
-            "HTTP-Referer": "https://panda.ai",
-            "X-Title": "Panda.ai",
-          } : {}),
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${config.apiKey}`,
+          ...(provider === 'openrouter'
+            ? {
+                'HTTP-Referer': 'https://panda.ai',
+                'X-Title': 'Panda.ai',
+              }
+            : {}),
         },
         body: JSON.stringify({
           model: selectedModel,
@@ -244,59 +242,57 @@ http.route({
           max_tokens: maxTokens,
           stream: true,
         }),
-      });
+      })
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error("[streamChat] LLM API error:", {
+        const errorText = await response.text()
+        console.error('[streamChat] LLM API error:', {
           status: response.status,
           statusText: response.statusText,
           error: errorText,
           provider,
           model: selectedModel,
           baseURL: config.baseURL,
-        });
+        })
         return new Response(
           JSON.stringify({ error: `LLM API error (${response.status}): ${errorText}` }),
-          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
       }
 
       // Create SSE response
       const stream = new ReadableStream({
         async start(controller) {
-          const reader = response.body?.getReader();
+          const reader = response.body?.getReader()
           if (!reader) {
-            controller.close();
-            return;
+            controller.close()
+            return
           }
 
-          const encoder = new TextEncoder();
+          const encoder = new TextEncoder()
 
           try {
             while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
+              const { done, value } = await reader.read()
+              if (done) break
 
               // Parse SSE chunks and forward
-              const chunk = new TextDecoder().decode(value);
-              const lines = chunk.split("\n");
+              const chunk = new TextDecoder().decode(value)
+              const lines = chunk.split('\n')
 
               for (const line of lines) {
-                if (line.startsWith("data: ")) {
-                  const data = line.slice(6);
-                  if (data === "[DONE]") {
-                    controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-                    continue;
+                if (line.startsWith('data: ')) {
+                  const data = line.slice(6)
+                  if (data === '[DONE]') {
+                    controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+                    continue
                   }
 
                   try {
-                    const parsed = JSON.parse(data);
-                    const content = parsed.choices?.[0]?.delta?.content;
+                    const parsed = JSON.parse(data)
+                    const content = parsed.choices?.[0]?.delta?.content
                     if (content) {
-                      controller.enqueue(
-                        encoder.encode(`data: ${JSON.stringify({ content })}\n\n`)
-                      );
+                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`))
                     }
                   } catch {
                     // Skip malformed JSON
@@ -305,100 +301,95 @@ http.route({
               }
             }
           } finally {
-            reader.releaseLock();
-            controller.close();
+            reader.releaseLock()
+            controller.close()
           }
         },
-      });
+      })
 
       return new Response(stream, {
         headers: {
           ...corsHeaders,
-          "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
-          "Connection": "keep-alive",
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          Connection: 'keep-alive',
         },
-      });
-
+      })
     } catch (error) {
-      console.error("Stream chat error:", error);
+      console.error('Stream chat error:', error)
       return new Response(
-        JSON.stringify({ 
-          error: error instanceof Error ? error.message : "Unknown error" 
+        JSON.stringify({
+          error: error instanceof Error ? error.message : 'Unknown error',
         }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
   }),
-});
+})
 
 /**
  * List available models - CORS preflight
  * OPTIONS /api/llm/listModels
  */
 http.route({
-  path: "/api/llm/listModels",
-  method: "OPTIONS",
+  path: '/api/llm/listModels',
+  method: 'OPTIONS',
   handler: httpAction(async (_ctx, _request): Promise<Response> => {
     return new Response(null, {
       status: 204,
       headers: corsHeaders,
-    });
+    })
   }),
-});
+})
 
 /**
  * List available models
  * GET /api/llm/listModels
  */
 http.route({
-  path: "/api/llm/listModels",
-  method: "GET",
+  path: '/api/llm/listModels',
+  method: 'GET',
   handler: httpAction(async (ctx, request): Promise<Response> => {
-    
     try {
-      const url = new URL(request.url);
-      const provider = url.searchParams.get("provider") || "openai";
-      const apiKey = url.searchParams.get("apiKey") || process.env.OPENAI_API_KEY;
-      
-      const config = getProviderConfig(provider, apiKey || undefined);
+      const url = new URL(request.url)
+      const provider = url.searchParams.get('provider') || 'openai'
+      const apiKey = url.searchParams.get('apiKey') || process.env.OPENAI_API_KEY
+
+      const config = getProviderConfig(provider, apiKey || undefined)
 
       const response = await fetch(`${config.baseURL}/models`, {
         headers: {
-          "Authorization": `Bearer ${config.apiKey}`,
+          Authorization: `Bearer ${config.apiKey}`,
         },
-      });
+      })
 
       if (!response.ok) {
         // Return default models if API doesn't support listing
         const defaultModels = [
-          { id: "gpt-4o", name: "GPT-4o" },
-          { id: "gpt-4o-mini", name: "GPT-4o Mini" },
-          { id: "gpt-4-turbo", name: "GPT-4 Turbo" },
-        ];
-        
-        return new Response(
-          JSON.stringify({ models: defaultModels }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+          { id: 'gpt-4o', name: 'GPT-4o' },
+          { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
+          { id: 'gpt-4-turbo', name: 'GPT-4 Turbo' },
+        ]
+
+        return new Response(JSON.stringify({ models: defaultModels }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
       }
 
-      const data = await response.json();
-      return new Response(
-        JSON.stringify(data),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-
+      const data = await response.json()
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     } catch (error) {
       return new Response(
-        JSON.stringify({ 
-          error: error instanceof Error ? error.message : "Unknown error" 
+        JSON.stringify({
+          error: error instanceof Error ? error.message : 'Unknown error',
         }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
   }),
-});
+})
 
 // Export the HTTP router as default
-export default http;
+export default http

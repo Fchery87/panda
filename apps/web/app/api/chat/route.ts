@@ -7,54 +7,54 @@
  * @file apps/web/app/api/chat/route.ts
  */
 
-import { streamText, type CoreMessage, type ToolSet } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
-import { NextRequest } from "next/server";
+import { streamText, type CoreMessage, type ToolSet } from 'ai'
+import { createOpenAI } from '@ai-sdk/openai'
+import { NextRequest } from 'next/server'
 
 /**
  * Message type for chat requests
  */
 interface ChatMessage {
-  role: "system" | "user" | "assistant" | "tool";
-  content: string;
-  name?: string;
-  tool_call_id?: string;
+  role: 'system' | 'user' | 'assistant' | 'tool'
+  content: string
+  name?: string
+  tool_call_id?: string
   tool_calls?: Array<{
-    id: string;
-    type: "function";
+    id: string
+    type: 'function'
     function: {
-      name: string;
-      arguments: string;
-    };
-  }>;
+      name: string
+      arguments: string
+    }
+  }>
 }
 
 /**
  * Tool definition for function calling
  */
 interface ToolDefinition {
-  name: string;
-  description: string;
+  name: string
+  description: string
   parameters: {
-    type: "object";
-    properties: Record<string, unknown>;
-    required?: string[];
-  };
+    type: 'object'
+    properties: Record<string, unknown>
+    required?: string[]
+  }
 }
 
 /**
  * Chat request body
  */
 interface ChatRequest {
-  messages: ChatMessage[];
-  model?: string;
-  provider?: "openai" | "openrouter" | "together" | "zai";
-  temperature?: number;
-  maxTokens?: number;
-  tools?: ToolDefinition[];
-  mode?: "discuss" | "build";
-  chatId?: string;
-  projectId?: string;
+  messages: ChatMessage[]
+  model?: string
+  provider?: 'openai' | 'openrouter' | 'together' | 'zai'
+  temperature?: number
+  maxTokens?: number
+  tools?: ToolDefinition[]
+  mode?: 'discuss' | 'build'
+  chatId?: string
+  projectId?: string
 }
 
 /**
@@ -62,31 +62,31 @@ interface ChatRequest {
  */
 function getProviderConfig(provider: string) {
   switch (provider) {
-    case "openrouter":
+    case 'openrouter':
       return {
         apiKey: process.env.OPENROUTER_API_KEY,
-        baseUrl: "https://openrouter.ai/api/v1",
-        defaultModel: "anthropic/claude-3.5-sonnet",
-      };
-    case "together":
+        baseUrl: 'https://openrouter.ai/api/v1',
+        defaultModel: 'anthropic/claude-3.5-sonnet',
+      }
+    case 'together':
       return {
         apiKey: process.env.TOGETHER_API_KEY,
-        baseUrl: "https://api.together.xyz/v1",
-        defaultModel: "togethercomputer/llama-3.1-70b",
-      };
-    case "zai":
+        baseUrl: 'https://api.together.xyz/v1',
+        defaultModel: 'togethercomputer/llama-3.1-70b',
+      }
+    case 'zai':
       return {
         apiKey: process.env.ZAI_API_KEY || process.env.ZAI_CODING_PLAN_KEY,
-        baseUrl: process.env.ZAI_BASE_URL || "https://api.z.ai/api/paas/v4",
-        defaultModel: "glm-4.7",
-      };
-    case "openai":
+        baseUrl: process.env.ZAI_BASE_URL || 'https://api.z.ai/api/paas/v4',
+        defaultModel: 'glm-4.7',
+      }
+    case 'openai':
     default:
       return {
         apiKey: process.env.OPENAI_API_KEY,
         baseUrl: process.env.OPENAI_BASE_URL,
-        defaultModel: "gpt-4o",
-      };
+        defaultModel: 'gpt-4o',
+      }
   }
 }
 
@@ -96,30 +96,27 @@ function getProviderConfig(provider: string) {
 export async function POST(req: NextRequest) {
   try {
     // Parse request body
-    const body: ChatRequest = await req.json();
+    const body: ChatRequest = await req.json()
     const {
       messages,
       model,
-      provider = "openai",
+      provider = 'openai',
       temperature = 0.7,
       maxTokens = 4096,
       tools,
-      mode = "discuss",
-    } = body;
+      mode = 'discuss',
+    } = body
 
     // Validate messages
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "Messages array is required" }),
-        {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+      return new Response(JSON.stringify({ error: 'Messages array is required' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      })
     }
 
     // Get provider configuration
-    const config = getProviderConfig(provider);
+    const config = getProviderConfig(provider)
 
     if (!config.apiKey) {
       return new Response(
@@ -128,9 +125,9 @@ export async function POST(req: NextRequest) {
         }),
         {
           status: 500,
-          headers: { "Content-Type": "application/json" },
+          headers: { 'Content-Type': 'application/json' },
         }
-      );
+      )
     }
 
     // Create OpenAI client with custom configuration
@@ -138,57 +135,57 @@ export async function POST(req: NextRequest) {
       apiKey: config.apiKey,
       baseURL: config.baseUrl,
       headers:
-        provider === "openrouter"
+        provider === 'openrouter'
           ? {
-              "HTTP-Referer": req.headers.get("origin") || "https://panda.ai",
-              "X-Title": "Panda.ai",
+              'HTTP-Referer': req.headers.get('origin') || 'https://panda.ai',
+              'X-Title': 'Panda.ai',
             }
           : undefined,
-    });
+    })
 
     // Select model
-    const selectedModel = model || config.defaultModel;
+    const selectedModel = model || config.defaultModel
 
     // Convert messages to AI SDK format
     const coreMessages: CoreMessage[] = messages.map((msg): CoreMessage => {
       // Build message based on role
-      if (msg.role === "tool") {
+      if (msg.role === 'tool') {
         return {
-          role: "tool",
+          role: 'tool',
           content: [{ type: 'text', text: msg.content }],
-          tool_call_id: msg.tool_call_id || "",
-        } as unknown as CoreMessage;
+          tool_call_id: msg.tool_call_id || '',
+        } as unknown as CoreMessage
       }
-      
+
       const baseMsg = {
         role: msg.role,
         content: msg.content,
-      } as CoreMessage;
-      
+      } as CoreMessage
+
       if (msg.name) {
-        (baseMsg as any).name = msg.name;
+        ;(baseMsg as any).name = msg.name
       }
       if (msg.tool_calls) {
-        (baseMsg as any).tool_calls = msg.tool_calls;
+        ;(baseMsg as any).tool_calls = msg.tool_calls
       }
-      
-      return baseMsg;
-    });
+
+      return baseMsg
+    })
 
     // Convert tools to AI SDK format if provided
     const sdkTools: ToolSet | undefined = tools?.reduce((acc, tool) => {
       acc[tool.name] = {
         description: tool.description,
         parameters: tool.parameters as any,
-      };
-      return acc;
-    }, {} as ToolSet);
+      }
+      return acc
+    }, {} as ToolSet)
 
     // Add mode-specific system message if not present
-    const hasSystemMessage = coreMessages.some((m) => m.role === "system");
+    const hasSystemMessage = coreMessages.some((m) => m.role === 'system')
     if (!hasSystemMessage) {
       const systemPrompt =
-        mode === "build"
+        mode === 'build'
           ? `You are Panda.ai, an AI software engineer. You help users write, modify, and improve code.
 
 You have access to tools:
@@ -212,12 +209,12 @@ You excel at:
 - Discussing trade-offs
 - Answering technical questions
 
-Be concise but thorough. Focus on actionable insights.`;
+Be concise but thorough. Focus on actionable insights.`
 
       coreMessages.unshift({
-        role: "system",
+        role: 'system',
         content: systemPrompt,
-      });
+      })
     }
 
     // Start streaming with Vercel AI SDK
@@ -227,28 +224,28 @@ Be concise but thorough. Focus on actionable insights.`;
       temperature,
       maxTokens,
       tools: sdkTools,
-    });
+    })
 
     // Return streaming response using AI SDK's toDataStreamResponse
     return result.toDataStreamResponse({
       headers: {
         // Add CORS headers if needed
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST",
-        "Access-Control-Allow-Headers": "Content-Type",
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST',
+        'Access-Control-Allow-Headers': 'Content-Type',
       },
-    });
+    })
   } catch (error) {
-    console.error("Error in chat API:", error);
+    console.error('Error in chat API:', error)
     return new Response(
       JSON.stringify({
-        error: error instanceof Error ? error.message : "Internal server error",
+        error: error instanceof Error ? error.message : 'Internal server error',
       }),
       {
         status: 500,
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
       }
-    );
+    )
   }
 }
 
@@ -259,9 +256,9 @@ export async function OPTIONS() {
   return new Response(null, {
     status: 204,
     headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
     },
-  });
+  })
 }

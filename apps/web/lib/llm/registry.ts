@@ -1,29 +1,29 @@
 /**
  * Provider Registry
- * 
+ *
  * Manages LLM provider instances and handles provider selection.
  * Supports multiple providers with different configurations.
  */
 
-import type { LLMProvider, ProviderConfig, ModelInfo, ProviderType } from './types';
-import { OpenAICompatibleProvider } from './providers/openai-compatible';
+import type { LLMProvider, ProviderConfig, ModelInfo, ProviderType } from './types'
+import { OpenAICompatibleProvider } from './providers/openai-compatible'
 
 /**
  * Registry entry for a provider instance
  */
 interface ProviderEntry {
-  id: string;
-  provider: LLMProvider;
-  config: ProviderConfig;
-  createdAt: number;
+  id: string
+  provider: LLMProvider
+  config: ProviderConfig
+  createdAt: number
 }
 
 /**
  * Provider Registry - manages LLM provider instances
  */
 export class ProviderRegistry {
-  private providers: Map<string, ProviderEntry> = new Map();
-  private defaultProviderId: string | null = null;
+  private providers: Map<string, ProviderEntry> = new Map()
+  private defaultProviderId: string | null = null
 
   /**
    * Create a new provider instance
@@ -32,7 +32,7 @@ export class ProviderRegistry {
    * @param setAsDefault - Whether to set as default provider
    */
   createProvider(id: string, config: ProviderConfig, setAsDefault = false): LLMProvider {
-    let provider: LLMProvider;
+    let provider: LLMProvider
 
     // Create appropriate provider based on type
     switch (config.provider) {
@@ -41,10 +41,10 @@ export class ProviderRegistry {
       case 'together':
       case 'zai':
       case 'custom':
-        provider = new OpenAICompatibleProvider(config);
-        break;
+        provider = new OpenAICompatibleProvider(config)
+        break
       default:
-        throw new Error(`Unsupported provider type: ${config.provider}`);
+        throw new Error(`Unsupported provider type: ${config.provider}`)
     }
 
     // Store provider instance
@@ -53,14 +53,14 @@ export class ProviderRegistry {
       provider,
       config,
       createdAt: Date.now(),
-    });
+    })
 
     // Set as default if requested
     if (setAsDefault) {
-      this.defaultProviderId = id;
+      this.defaultProviderId = id
     }
 
-    return provider;
+    return provider
   }
 
   /**
@@ -68,8 +68,8 @@ export class ProviderRegistry {
    * @param id - Provider instance ID
    */
   getProvider(id: string): LLMProvider | undefined {
-    const entry = this.providers.get(id);
-    return entry?.provider;
+    const entry = this.providers.get(id)
+    return entry?.provider
   }
 
   /**
@@ -78,10 +78,10 @@ export class ProviderRegistry {
   getDefaultProvider(): LLMProvider | undefined {
     if (!this.defaultProviderId) {
       // Return first provider if no default set
-      const first = this.providers.values().next().value;
-      return first?.provider;
+      const first = this.providers.values().next().value
+      return first?.provider
     }
-    return this.getProvider(this.defaultProviderId);
+    return this.getProvider(this.defaultProviderId)
   }
 
   /**
@@ -89,9 +89,9 @@ export class ProviderRegistry {
    */
   setDefaultProvider(id: string): void {
     if (!this.providers.has(id)) {
-      throw new Error(`Provider '${id}' not found`);
+      throw new Error(`Provider '${id}' not found`)
     }
-    this.defaultProviderId = id;
+    this.defaultProviderId = id
   }
 
   /**
@@ -99,9 +99,9 @@ export class ProviderRegistry {
    */
   removeProvider(id: string): boolean {
     if (this.defaultProviderId === id) {
-      this.defaultProviderId = null;
+      this.defaultProviderId = null
     }
-    return this.providers.delete(id);
+    return this.providers.delete(id)
   }
 
   /**
@@ -112,87 +112,87 @@ export class ProviderRegistry {
       id: entry.id,
       type: entry.config.provider,
       createdAt: entry.createdAt,
-    }));
+    }))
   }
 
   /**
    * Get provider configuration
    */
   getProviderConfig(id: string): ProviderConfig | undefined {
-    const entry = this.providers.get(id);
-    return entry?.config;
+    const entry = this.providers.get(id)
+    return entry?.config
   }
 
   /**
    * Update provider configuration
    */
   updateProviderConfig(id: string, config: Partial<ProviderConfig>): boolean {
-    const entry = this.providers.get(id);
-    if (!entry) return false;
+    const entry = this.providers.get(id)
+    if (!entry) return false
 
     // Create new provider with updated config
-    const newConfig = { ...entry.config, ...config };
-    
+    const newConfig = { ...entry.config, ...config }
+
     // Recreate provider with new config
-    this.createProvider(id, newConfig, this.defaultProviderId === id);
-    return true;
+    this.createProvider(id, newConfig, this.defaultProviderId === id)
+    return true
   }
 
   /**
    * Fetch all models from all providers
    */
   async listAllModels(): Promise<(ModelInfo & { providerId: string })[]> {
-    const allModels: (ModelInfo & { providerId: string })[] = [];
+    const allModels: (ModelInfo & { providerId: string })[] = []
 
     for (const [id, entry] of this.providers) {
       try {
-        const models = await entry.provider.listModels();
-        allModels.push(...models.map((m) => ({ ...m, providerId: id })));
+        const models = await entry.provider.listModels()
+        allModels.push(...models.map((m) => ({ ...m, providerId: id })))
       } catch (error) {
-        console.error(`Failed to list models for provider '${id}':`, error);
+        console.error(`Failed to list models for provider '${id}':`, error)
       }
     }
 
-    return allModels;
+    return allModels
   }
 
   /**
    * Clear all providers
    */
   clear(): void {
-    this.providers.clear();
-    this.defaultProviderId = null;
+    this.providers.clear()
+    this.defaultProviderId = null
   }
 }
 
 /**
  * Singleton instance for global use
  */
-let globalRegistry: ProviderRegistry | null = null;
+let globalRegistry: ProviderRegistry | null = null
 
 /**
  * Get or create global provider registry
  */
 export function getGlobalRegistry(): ProviderRegistry {
   if (!globalRegistry) {
-    globalRegistry = new ProviderRegistry();
+    globalRegistry = new ProviderRegistry()
   }
-  return globalRegistry;
+  return globalRegistry
 }
 
 /**
  * Reset global registry (useful for testing)
  */
 export function resetGlobalRegistry(): void {
-  globalRegistry = null;
+  globalRegistry = null
 }
 
 /**
  * Helper to create a provider from environment variables
  */
 export function createProviderFromEnv(): LLMProvider | null {
-  const registry = getGlobalRegistry();
-  
+  const registry = getGlobalRegistry()
+
   // Try OpenRouter
   if (process.env.OPENROUTER_API_KEY) {
     return registry.createProvider(
@@ -206,7 +206,7 @@ export function createProviderFromEnv(): LLMProvider | null {
         defaultModel: process.env.OPENROUTER_DEFAULT_MODEL || 'anthropic/claude-3.5-sonnet',
       },
       true
-    );
+    )
   }
 
   // Try Together.ai
@@ -222,7 +222,7 @@ export function createProviderFromEnv(): LLMProvider | null {
         defaultModel: process.env.TOGETHER_DEFAULT_MODEL || 'togethercomputer/llama-3.1-70b',
       },
       true
-    );
+    )
   }
 
   // Try OpenAI
@@ -238,11 +238,11 @@ export function createProviderFromEnv(): LLMProvider | null {
         defaultModel: process.env.OPENAI_DEFAULT_MODEL || 'gpt-4o',
       },
       true
-    );
+    )
   }
 
   // Try Z.ai - supports both API key and coding plan
-  const zaiApiKey = process.env.ZAI_API_KEY || process.env.ZAI_CODING_PLAN_KEY;
+  const zaiApiKey = process.env.ZAI_API_KEY || process.env.ZAI_CODING_PLAN_KEY
   if (zaiApiKey) {
     return registry.createProvider(
       'zai',
@@ -255,8 +255,8 @@ export function createProviderFromEnv(): LLMProvider | null {
         defaultModel: process.env.ZAI_DEFAULT_MODEL || 'glm-4.7',
       },
       true
-    );
+    )
   }
 
-  return null;
+  return null
 }

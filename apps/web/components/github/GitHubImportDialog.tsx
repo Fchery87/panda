@@ -1,10 +1,10 @@
-"use client"
+'use client'
 
-import * as React from "react"
-import { useAction } from "convex/react"
-import { api } from "@convex/_generated/api"
-import type { Id } from "@convex/_generated/dataModel"
-import { toast } from "sonner"
+import * as React from 'react'
+import { useAction } from 'convex/react'
+import { api } from '@convex/_generated/api'
+import type { Id } from '@convex/_generated/dataModel'
+import { toast } from 'sonner'
 
 import {
   Dialog,
@@ -14,29 +14,29 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Progress } from "@/components/ui/progress"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Github, Loader2, CheckCircle2, AlertCircle, GitBranch } from "lucide-react"
-import { cn } from "@/lib/utils"
+} from '@/components/ui/select'
+import { Progress } from '@/components/ui/progress'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Github, Loader2, CheckCircle2, AlertCircle, GitBranch } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface GitHubImportDialogProps {
-  projectId: Id<"projects">
+  projectId: Id<'projects'>
   children: React.ReactNode
   onImportComplete?: () => void
 }
 
-type ImportStatus = "idle" | "fetching_branches" | "importing" | "success" | "error"
+type ImportStatus = 'idle' | 'fetching_branches' | 'importing' | 'success' | 'error'
 
 interface ImportProgress {
   totalFiles: number
@@ -53,10 +53,10 @@ export function GitHubImportDialog({
   onImportComplete,
 }: GitHubImportDialogProps) {
   const [open, setOpen] = React.useState(false)
-  const [repoUrl, setRepoUrl] = React.useState("")
-  const [branch, setBranch] = React.useState("")
+  const [repoUrl, setRepoUrl] = React.useState('')
+  const [branch, setBranch] = React.useState('')
   const [branches, setBranches] = React.useState<string[]>([])
-  const [status, setStatus] = React.useState<ImportStatus>("idle")
+  const [status, setStatus] = React.useState<ImportStatus>('idle')
   const [progress, setProgress] = React.useState<ImportProgress | null>(null)
   const [error, setError] = React.useState<string | null>(null)
 
@@ -65,39 +65,37 @@ export function GitHubImportDialog({
 
   // Validate GitHub URL format
   const isValidUrl = (url: string): boolean => {
-    const patterns = [
-      /github\.com\/[^/]+\/[^/]+/,
-      /https:\/\/github\.com\/[^/]+\/[^/]+/,
-    ]
+    const patterns = [/github\.com\/[^/]+\/[^/]+/, /https:\/\/github\.com\/[^/]+\/[^/]+/]
     return patterns.some((pattern) => pattern.test(url))
   }
 
   // Fetch available branches when URL changes
   const handleUrlChange = async (url: string) => {
     setRepoUrl(url)
-    setBranch("")
+    setBranch('')
     setBranches([])
     setError(null)
 
     if (isValidUrl(url)) {
-      setStatus("fetching_branches")
+      setStatus('fetching_branches')
       try {
         const availableBranches = await getBranches({ repoUrl: url })
         setBranches(availableBranches)
         // Default to main or master if available
-        const defaultBranch = availableBranches.find((b: string) => b === "main") ||
-                             availableBranches.find((b: string) => b === "master") ||
-                             availableBranches[0]
+        const defaultBranch =
+          availableBranches.find((b: string) => b === 'main') ||
+          availableBranches.find((b: string) => b === 'master') ||
+          availableBranches[0]
         if (defaultBranch) {
           setBranch(defaultBranch)
         }
       } catch (err) {
-        console.error("Failed to fetch branches:", err)
+        console.error('Failed to fetch branches:', err)
         // Don't show error for branch fetching, just use default
-        setBranches(["main", "master"])
-        setBranch("main")
+        setBranches(['main', 'master'])
+        setBranch('main')
       } finally {
-        setStatus("idle")
+        setStatus('idle')
       }
     }
   }
@@ -105,11 +103,11 @@ export function GitHubImportDialog({
   // Handle import
   const handleImport = async () => {
     if (!isValidUrl(repoUrl)) {
-      setError("Please enter a valid GitHub URL (e.g., github.com/owner/repo)")
+      setError('Please enter a valid GitHub URL (e.g., github.com/owner/repo)')
       return
     }
 
-    setStatus("importing")
+    setStatus('importing')
     setError(null)
     setProgress({
       totalFiles: 0,
@@ -128,11 +126,9 @@ export function GitHubImportDialog({
       })
 
       setProgress(result)
-      setStatus("success")
-      
-      toast.success(
-        `Imported ${result.importedFiles} files (${result.skippedFiles} skipped)`
-      )
+      setStatus('success')
+
+      toast.success(`Imported ${result.importedFiles} files (${result.skippedFiles} skipped)`)
 
       if (onImportComplete) {
         onImportComplete()
@@ -144,8 +140,8 @@ export function GitHubImportDialog({
         resetState()
       }, 2000)
     } catch (err) {
-      setStatus("error")
-      const errorMsg = err instanceof Error ? err.message : "Import failed"
+      setStatus('error')
+      const errorMsg = err instanceof Error ? err.message : 'Import failed'
       setError(errorMsg)
       toast.error(errorMsg)
     }
@@ -153,10 +149,10 @@ export function GitHubImportDialog({
 
   // Reset state
   const resetState = () => {
-    setRepoUrl("")
-    setBranch("")
+    setRepoUrl('')
+    setBranch('')
     setBranches([])
-    setStatus("idle")
+    setStatus('idle')
     setProgress(null)
     setError(null)
   }
@@ -184,7 +180,8 @@ export function GitHubImportDialog({
             Import from GitHub
           </DialogTitle>
           <DialogDescription>
-            Import a public GitHub repository into your project. Text files up to 1MB will be imported.
+            Import a public GitHub repository into your project. Text files up to 1MB will be
+            imported.
           </DialogDescription>
         </DialogHeader>
 
@@ -193,23 +190,18 @@ export function GitHubImportDialog({
           <div className="space-y-2">
             <Label htmlFor="repo-url">Repository URL</Label>
             <div className="relative">
-              <Github className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Github className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="repo-url"
                 placeholder="github.com/owner/repo"
                 value={repoUrl}
                 onChange={(e) => handleUrlChange(e.target.value)}
-                disabled={status === "importing"}
-                className={cn(
-                  "pl-10",
-                  repoUrl && !isValidUrl(repoUrl) && "border-destructive"
-                )}
+                disabled={status === 'importing'}
+                className={cn('pl-10', repoUrl && !isValidUrl(repoUrl) && 'border-destructive')}
               />
             </div>
             {repoUrl && !isValidUrl(repoUrl) && (
-              <p className="text-sm text-destructive">
-                Please enter a valid GitHub URL
-              </p>
+              <p className="text-sm text-destructive">Please enter a valid GitHub URL</p>
             )}
           </div>
 
@@ -222,7 +214,7 @@ export function GitHubImportDialog({
             <Select
               value={branch}
               onValueChange={setBranch}
-              disabled={status === "importing" || branches.length === 0}
+              disabled={status === 'importing' || branches.length === 0}
             >
               <SelectTrigger id="branch">
                 <SelectValue placeholder="Select branch" />
@@ -246,12 +238,10 @@ export function GitHubImportDialog({
           )}
 
           {/* Import Progress */}
-          {status === "importing" && progress && (
+          {status === 'importing' && progress && (
             <div className="space-y-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  Importing files...
-                </span>
+                <span className="text-muted-foreground">Importing files...</span>
                 <span className="font-medium">{progressPercentage}%</span>
               </div>
               <Progress value={progressPercentage} className="h-2" />
@@ -260,14 +250,15 @@ export function GitHubImportDialog({
                   <p className="truncate">Current: {progress.currentFile}</p>
                 )}
                 <p>
-                  Imported: {progress.importedFiles} | Skipped: {progress.skippedFiles} | Total: {progress.totalFiles}
+                  Imported: {progress.importedFiles} | Skipped: {progress.skippedFiles} | Total:{' '}
+                  {progress.totalFiles}
                 </p>
               </div>
             </div>
           )}
 
           {/* Success State */}
-          {status === "success" && progress && (
+          {status === 'success' && progress && (
             <Alert className="border-green-500/50 bg-green-500/10">
               <CheckCircle2 className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-700">
@@ -282,24 +273,20 @@ export function GitHubImportDialog({
           <Button
             variant="outline"
             onClick={() => setOpen(false)}
-            disabled={status === "importing"}
+            disabled={status === 'importing'}
           >
             Cancel
           </Button>
           <Button
             onClick={handleImport}
-            disabled={
-              !isValidUrl(repoUrl) ||
-              status === "importing" ||
-              status === "success"
-            }
+            disabled={!isValidUrl(repoUrl) || status === 'importing' || status === 'success'}
           >
-            {status === "importing" ? (
+            {status === 'importing' ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Importing...
               </>
-            ) : status === "success" ? (
+            ) : status === 'success' ? (
               <>
                 <CheckCircle2 className="mr-2 h-4 w-4" />
                 Done

@@ -1,32 +1,30 @@
-"use client"
+'use client'
 
-import { ConvexProvider, ConvexReactClient } from "convex/react"
-import { Toaster } from "@/components/ui/sonner"
-import { ThemeProvider } from "next-themes"
-import { useMemo } from "react"
+import { ConvexProvider, ConvexReactClient } from 'convex/react'
+import { Toaster } from '@/components/ui/sonner'
+import { ThemeProvider } from 'next-themes'
+import { useMemo } from 'react'
 
 function MissingConvexConfig() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
-      <div className="max-w-xl w-full border border-border bg-muted/30 p-6">
-        <h1 className="font-mono text-lg mb-3">Convex not configured</h1>
-        <p className="text-sm text-muted-foreground mb-4">
+    <div className="flex min-h-screen items-center justify-center bg-background p-6 text-foreground">
+      <div className="w-full max-w-xl border border-border bg-muted/30 p-6">
+        <h1 className="mb-3 font-mono text-lg">Convex not configured</h1>
+        <p className="mb-4 text-sm text-muted-foreground">
           The app needs <code className="font-mono">NEXT_PUBLIC_CONVEX_URL</code> to connect to your
           Convex deployment.
         </p>
-        <div className="text-sm space-y-2">
+        <div className="space-y-2 text-sm">
           <div className="font-mono text-xs text-muted-foreground">Local dev steps</div>
-          <pre className="text-xs font-mono bg-background border border-border p-3 overflow-auto">
-{`# in repo root
+          <pre className="overflow-auto border border-border bg-background p-3 font-mono text-xs">
+            {`# in repo root
 bunx convex dev
 
 # create/update apps/web/.env.local with:
 NEXT_PUBLIC_CONVEX_URL="https://<your-deployment>.convex.cloud"
 `}
           </pre>
-          <p className="text-xs text-muted-foreground">
-            After setting it, restart the dev server.
-          </p>
+          <p className="text-xs text-muted-foreground">After setting it, restart the dev server.</p>
         </div>
       </div>
     </div>
@@ -50,7 +48,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       {convex ? (
         <ConvexProvider client={convex}>
           {children}
-          <Toaster 
+          <Toaster
             position="bottom-right"
             toastOptions={{
               style: {

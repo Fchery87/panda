@@ -1,13 +1,13 @@
 /**
  * Agent Tools
- * 
+ *
  * Tool definitions for the agent runtime:
  * - read_files: Read file contents
  * - write_files: Write or modify files
  * - run_command: Run CLI commands
  */
 
-import type { ToolDefinition, ToolCall, ToolResult } from '../llm/types';
+import type { ToolDefinition, ToolCall, ToolResult } from '../llm/types'
 
 /**
  * Tool definitions for the agent
@@ -17,7 +17,8 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     type: 'function',
     function: {
       name: 'read_files',
-      description: 'Read the contents of one or more files. Use this to understand the codebase before making changes.',
+      description:
+        'Read the contents of one or more files. Use this to understand the codebase before making changes.',
       parameters: {
         type: 'object',
         properties: {
@@ -38,7 +39,8 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     type: 'function',
     function: {
       name: 'write_files',
-      description: 'Write or modify files. Provide complete file content, not diffs. Creates files if they don\'t exist.',
+      description:
+        "Write or modify files. Provide complete file content, not diffs. Creates files if they don't exist.",
       parameters: {
         type: 'object',
         properties: {
@@ -69,7 +71,8 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     type: 'function',
     function: {
       name: 'run_command',
-      description: 'Run a CLI command (tests, builds, linting, etc.). Use to verify changes work correctly.',
+      description:
+        'Run a CLI command (tests, builds, linting, etc.). Use to verify changes work correctly.',
       parameters: {
         type: 'object',
         properties: {
@@ -90,46 +93,52 @@ export const AGENT_TOOLS: ToolDefinition[] = [
       },
     },
   },
-];
+]
 
 /**
  * Tool handler type
  */
-export type ToolHandler = (call: ToolCall) => Promise<ToolResult>;
+export type ToolHandler = (call: ToolCall) => Promise<ToolResult>
 
 /**
  * Tool call with parsed arguments
  */
 export interface ParsedToolCall extends ToolCall {
-  parsedArgs: Record<string, unknown>;
+  parsedArgs: Record<string, unknown>
 }
 
 /**
  * Tool execution result with metadata
  */
 export interface ToolExecutionResult extends ToolResult {
-  timestamp: number;
-  retryCount: number;
+  timestamp: number
+  retryCount: number
 }
 
 /**
  * Tool context passed to handlers
  */
 export interface ToolContext {
-  projectId: string;
-  chatId: string;
-  messageId?: string;
-  userId: string;
+  projectId: string
+  chatId: string
+  messageId?: string
+  userId: string
   // File operations
-  readFiles: (paths: string[]) => Promise<Array<{ path: string; content: string | null }>>;
-  writeFiles: (files: Array<{ path: string; content: string }>) => Promise<Array<{ path: string; success: boolean; error?: string }>>;
+  readFiles: (paths: string[]) => Promise<Array<{ path: string; content: string | null }>>
+  writeFiles: (
+    files: Array<{ path: string; content: string }>
+  ) => Promise<Array<{ path: string; success: boolean; error?: string }>>
   // Command execution
-  runCommand: (command: string, timeout?: number, cwd?: string) => Promise<{
-    stdout: string;
-    stderr: string;
-    exitCode: number;
-    durationMs: number;
-  }>;
+  runCommand: (
+    command: string,
+    timeout?: number,
+    cwd?: string
+  ) => Promise<{
+    stdout: string
+    stderr: string
+    exitCode: number
+    durationMs: number
+  }>
 }
 
 /**
@@ -137,8 +146,8 @@ export interface ToolContext {
  * Creates a ToolContext that uses Convex client for actual operations
  */
 export interface ConvexClient {
-  query: (query: any, args: any) => Promise<any>;
-  mutation: (mutation: any, args: any) => Promise<any>;
+  query: (query: any, args: any) => Promise<any>
+  mutation: (mutation: any, args: any) => Promise<any>
 }
 
 /**
@@ -151,136 +160,140 @@ export function createToolContext(
   userId: string,
   convexClient: ConvexClient,
   artifactQueue: {
-    addFileArtifact: (path: string, content: string, originalContent?: string | null) => void;
-    addCommandArtifact: (command: string, cwd?: string) => void;
+    addFileArtifact: (path: string, content: string, originalContent?: string | null) => void
+    addCommandArtifact: (command: string, cwd?: string) => void
   },
   api: {
     files: {
-      batchGet: any;
-    };
+      batchGet: any
+    }
     jobs: {
-      create: any;
-    };
+      create: any
+    }
   }
 ): ToolContext {
   return {
     projectId,
     chatId,
     userId,
-    
+
     // Read files using Convex batchGet query
     readFiles: async (paths: string[]) => {
       try {
         const results = await convexClient.query(api.files.batchGet, {
           projectId,
           paths,
-        });
-        
+        })
+
         return results.map((result: { path: string; content: string | null; exists: boolean }) => ({
           path: result.path,
           content: result.content,
-        }));
+        }))
       } catch (error) {
-        console.error('Failed to read files:', error);
+        console.error('Failed to read files:', error)
         return paths.map((path) => ({
           path,
           content: null,
-        }));
+        }))
       }
     },
-    
+
     // Write files by queueing artifacts (don't write immediately)
     writeFiles: async (files: Array<{ path: string; content: string }>) => {
       try {
-        const results: Array<{ path: string; success: boolean; error?: string }> = [];
-        const paths = files.map((f) => f.path);
-        const existingByPath = new Map<string, string | null>();
+        const results: Array<{ path: string; success: boolean; error?: string }> = []
+        const paths = files.map((f) => f.path)
+        const existingByPath = new Map<string, string | null>()
 
         try {
           const existing = await convexClient.query(api.files.batchGet, {
             projectId,
             paths,
-          });
+          })
           for (const row of existing as Array<{ path: string; content: string | null }>) {
-            existingByPath.set(row.path, row.content ?? null);
+            existingByPath.set(row.path, row.content ?? null)
           }
         } catch (error) {
-          console.error('Failed to fetch original contents for write_files:', error);
+          console.error('Failed to fetch original contents for write_files:', error)
         }
 
         for (const file of files) {
           try {
             // Queue artifact for user review
-            artifactQueue.addFileArtifact(file.path, file.content, existingByPath.get(file.path) ?? null);
-            results.push({ path: file.path, success: true });
+            artifactQueue.addFileArtifact(
+              file.path,
+              file.content,
+              existingByPath.get(file.path) ?? null
+            )
+            results.push({ path: file.path, success: true })
           } catch (error) {
             results.push({
               path: file.path,
               success: false,
               error: error instanceof Error ? error.message : 'Failed to queue artifact',
-            });
+            })
           }
         }
-        
-        return results;
+
+        return results
       } catch (error) {
-        console.error('Failed to queue file artifacts:', error);
+        console.error('Failed to queue file artifacts:', error)
         return files.map((file) => ({
           path: file.path,
           success: false,
           error: error instanceof Error ? error.message : 'Failed to queue artifacts',
-        }));
+        }))
       }
     },
-    
+
     // Run command by creating a job in Convex
     runCommand: async (command: string, timeout?: number, cwd?: string) => {
-      const startTime = Date.now();
-      
+      const startTime = Date.now()
+
       try {
         // Queue command artifact for visibility
-        artifactQueue.addCommandArtifact(command, cwd);
-        
+        artifactQueue.addCommandArtifact(command, cwd)
+
         // Determine job type from command
-        let jobType: 'cli' | 'build' | 'test' | 'deploy' | 'lint' | 'format' = 'cli';
-        const cmdLower = command.toLowerCase();
+        let jobType: 'cli' | 'build' | 'test' | 'deploy' | 'lint' | 'format' = 'cli'
+        const cmdLower = command.toLowerCase()
         if (cmdLower.includes('build') || cmdLower.includes('compile')) {
-          jobType = 'build';
+          jobType = 'build'
         } else if (cmdLower.includes('test')) {
-          jobType = 'test';
+          jobType = 'test'
         } else if (cmdLower.includes('deploy')) {
-          jobType = 'deploy';
+          jobType = 'deploy'
         } else if (cmdLower.includes('lint')) {
-          jobType = 'lint';
+          jobType = 'lint'
         } else if (cmdLower.includes('format')) {
-          jobType = 'format';
+          jobType = 'format'
         }
-        
+
         // Create job in Convex
         const jobId = await convexClient.mutation(api.jobs.create, {
           projectId,
           type: jobType,
           command,
-        });
-        
+        })
+
         // Return immediate response (job is async)
         return {
           stdout: `Job created with ID: ${jobId}. Command will execute asynchronously.`,
           stderr: '',
           exitCode: 0,
           durationMs: Date.now() - startTime,
-        };
+        }
       } catch (error) {
-        console.error('Failed to create job:', error);
+        console.error('Failed to create job:', error)
         return {
           stdout: '',
           stderr: error instanceof Error ? error.message : 'Failed to create job',
           exitCode: 1,
           durationMs: Date.now() - startTime,
-        };
+        }
       }
     },
-  };
+  }
 }
 
 /**
@@ -290,36 +303,36 @@ export async function executeTool(
   toolCall: ToolCall,
   context: ToolContext
 ): Promise<ToolExecutionResult> {
-  const startTime = Date.now();
-  const retryCount = 0;
+  const startTime = Date.now()
+  const retryCount = 0
 
   try {
-    const args = JSON.parse(toolCall.function.arguments);
-    let output = '';
-    let error: string | undefined;
+    const args = JSON.parse(toolCall.function.arguments)
+    let output = ''
+    let error: string | undefined
 
     switch (toolCall.function.name) {
       case 'read_files': {
-        const paths = args.paths as string[];
-        const results = await context.readFiles(paths);
-        output = JSON.stringify(results, null, 2);
-        break;
+        const paths = args.paths as string[]
+        const results = await context.readFiles(paths)
+        output = JSON.stringify(results, null, 2)
+        break
       }
 
       case 'write_files': {
-        const files = args.files as Array<{ path: string; content: string }>;
-        const results = await context.writeFiles(files);
-        output = JSON.stringify(results, null, 2);
-        const failures = results.filter((r) => !r.success);
+        const files = args.files as Array<{ path: string; content: string }>
+        const results = await context.writeFiles(files)
+        output = JSON.stringify(results, null, 2)
+        const failures = results.filter((r) => !r.success)
         if (failures.length > 0) {
-          error = `Failed to write ${failures.length} file(s): ${failures.map((f) => f.path).join(', ')}`;
+          error = `Failed to write ${failures.length} file(s): ${failures.map((f) => f.path).join(', ')}`
         }
-        break;
+        break
       }
 
       case 'run_command': {
-        const { command, timeout, cwd } = args;
-        const result = await context.runCommand(command, timeout, cwd);
+        const { command, timeout, cwd } = args
+        const result = await context.runCommand(command, timeout, cwd)
         output = JSON.stringify(
           {
             stdout: result.stdout,
@@ -328,15 +341,15 @@ export async function executeTool(
           },
           null,
           2
-        );
+        )
         if (result.exitCode !== 0) {
-          error = `Command failed with exit code ${result.exitCode}`;
+          error = `Command failed with exit code ${result.exitCode}`
         }
-        break;
+        break
       }
 
       default:
-        error = `Unknown tool: ${toolCall.function.name}`;
+        error = `Unknown tool: ${toolCall.function.name}`
     }
 
     return {
@@ -348,7 +361,7 @@ export async function executeTool(
       durationMs: Date.now() - startTime,
       timestamp: startTime,
       retryCount,
-    };
+    }
   } catch (err) {
     return {
       toolCallId: toolCall.id,
@@ -359,7 +372,7 @@ export async function executeTool(
       durationMs: Date.now() - startTime,
       timestamp: startTime,
       retryCount,
-    };
+    }
   }
 }
 
@@ -371,12 +384,12 @@ export function parseToolCall(toolCall: ToolCall): ParsedToolCall {
     return {
       ...toolCall,
       parsedArgs: JSON.parse(toolCall.function.arguments),
-    };
+    }
   } catch {
     return {
       ...toolCall,
       parsedArgs: {},
-    };
+    }
   }
 }
 
@@ -385,15 +398,15 @@ export function parseToolCall(toolCall: ToolCall): ParsedToolCall {
  */
 export function formatToolResult(result: ToolResult): string {
   if (result.error) {
-    return `❌ ${result.toolName} failed: ${result.error}\n\nOutput:\n${result.output}`;
+    return `❌ ${result.toolName} failed: ${result.error}\n\nOutput:\n${result.output}`
   }
-  return `✅ ${result.toolName} completed (${result.durationMs}ms)\n\nOutput:\n${result.output}`;
+  return `✅ ${result.toolName} completed (${result.durationMs}ms)\n\nOutput:\n${result.output}`
 }
 
 /**
  * Format tool call for display
  */
 export function formatToolCall(toolCall: ToolCall): string {
-  const args = JSON.parse(toolCall.function.arguments);
-  return `🔧 ${toolCall.function.name}(${JSON.stringify(args, null, 2)})`;
+  const args = JSON.parse(toolCall.function.arguments)
+  return `🔧 ${toolCall.function.name}(${JSON.stringify(args, null, 2)})`
 }

@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+*.lock
+.pnpm-store/
+
+# Build outputs
+.next/
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.test
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Convex
+.convex/
+convex/_generated/
+
+# Turbo
+.turbo/
+
+# Vercel
+.vercel
+
+# Logs
+*.log
+
+# Testing
+coverage/
+test-results/
+playwright-report/
+
+# Misc
+*.pem
+*.cert
+*.key
+.worktrees/
+.eslintcache
+
+# Generated files
+convex/_generated/**

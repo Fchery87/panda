@@ -1,1 +1,1 @@
-export { GitHubImportDialog } from "./GitHubImportDialog"
+export { GitHubImportDialog } from './GitHubImportDialog'

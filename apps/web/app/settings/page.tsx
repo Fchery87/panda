@@ -1,22 +1,28 @@
-"use client"
+'use client'
 
-import * as React from "react"
-import { useRouter } from "next/navigation"
-import { useQuery, useMutation } from "convex/react"
-import { api } from "@convex/_generated/api"
-import { toast } from "sonner"
+import * as React from 'react'
+import { useRouter } from 'next/navigation'
+import { useQuery, useMutation } from 'convex/react'
+import { api } from '@convex/_generated/api'
+import { toast } from 'sonner'
 
-	import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-	import { Label } from "@/components/ui/label"
-	import { Button } from "@/components/ui/button"
-	import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-	import { Separator } from "@/components/ui/separator"
-	import { Switch } from "@/components/ui/switch"
-	import { Textarea } from "@/components/ui/textarea"
-	import { ProviderCard } from "@/components/settings/ProviderCard"
-	import { ThemeToggleFull } from "@/components/settings/ThemeToggle"
-	import { User, Palette, Bot, Save, Loader2, ArrowLeft } from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
+import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
+import { ProviderCard } from '@/components/settings/ProviderCard'
+import { ThemeToggleFull } from '@/components/settings/ThemeToggle'
+import { User, Palette, Bot, Save, Loader2, ArrowLeft } from 'lucide-react'
 
 interface ProviderConfig {
   name: string
@@ -27,11 +33,11 @@ interface ProviderConfig {
   availableModels: string[]
   baseUrl?: string
   useCodingPlan?: boolean
-  testStatus?: "idle" | "testing" | "success" | "error"
+  testStatus?: 'idle' | 'testing' | 'success' | 'error'
 }
 
 interface SettingsState {
-  theme: "light" | "dark" | "system"
+  theme: 'light' | 'dark' | 'system'
   language: string
   defaultProvider: string
   defaultModel: string
@@ -40,68 +46,64 @@ interface SettingsState {
 
 const defaultProviders: Record<string, ProviderConfig> = {
   openai: {
-    name: "OpenAI",
-    description: "Official OpenAI API for GPT models",
-    apiKey: "",
+    name: 'OpenAI',
+    description: 'Official OpenAI API for GPT models',
+    apiKey: '',
     enabled: false,
-    defaultModel: "gpt-4o-mini",
-    availableModels: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"],
-    testStatus: "idle",
+    defaultModel: 'gpt-4o-mini',
+    availableModels: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+    testStatus: 'idle',
   },
   openrouter: {
-    name: "OpenRouter",
-    description: "Access multiple AI models through a single API",
-    apiKey: "",
+    name: 'OpenRouter',
+    description: 'Access multiple AI models through a single API',
+    apiKey: '',
     enabled: false,
-    defaultModel: "anthropic/claude-3.5-sonnet",
+    defaultModel: 'anthropic/claude-3.5-sonnet',
     availableModels: [
-      "anthropic/claude-3.5-sonnet",
-      "anthropic/claude-3-opus",
-      "meta-llama/llama-3.1-70b-instruct",
-      "google/gemini-pro",
+      'anthropic/claude-3.5-sonnet',
+      'anthropic/claude-3-opus',
+      'meta-llama/llama-3.1-70b-instruct',
+      'google/gemini-pro',
     ],
-    baseUrl: "https://openrouter.ai/api/v1",
-    testStatus: "idle",
+    baseUrl: 'https://openrouter.ai/api/v1',
+    testStatus: 'idle',
   },
   together: {
-    name: "Together.ai",
-    description: "Fast inference for open-source models",
-    apiKey: "",
+    name: 'Together.ai',
+    description: 'Fast inference for open-source models',
+    apiKey: '',
     enabled: false,
-    defaultModel: "meta-llama/Llama-3.1-70B-Instruct-Turbo",
+    defaultModel: 'meta-llama/Llama-3.1-70B-Instruct-Turbo',
     availableModels: [
-      "meta-llama/Llama-3.1-70B-Instruct-Turbo",
-      "meta-llama/Llama-3.1-8B-Instruct-Turbo",
-      "mistralai/Mixtral-8x22B-Instruct-v0.1",
-      "Qwen/Qwen2.5-72B-Instruct-Turbo",
+      'meta-llama/Llama-3.1-70B-Instruct-Turbo',
+      'meta-llama/Llama-3.1-8B-Instruct-Turbo',
+      'mistralai/Mixtral-8x22B-Instruct-v0.1',
+      'Qwen/Qwen2.5-72B-Instruct-Turbo',
     ],
-    baseUrl: "https://api.together.xyz/v1",
-    testStatus: "idle",
+    baseUrl: 'https://api.together.xyz/v1',
+    testStatus: 'idle',
   },
   zai: {
-    name: "Z.ai",
-    description: "Z.ai GLM-4.7 series models for coding (supports API key or Coding Plan)",
-    apiKey: "",
+    name: 'Z.ai',
+    description: 'Z.ai GLM-4.7 series models for coding (supports API key or Coding Plan)',
+    apiKey: '',
     enabled: false,
-    defaultModel: "glm-4.7",
-    availableModels: [
-      "glm-4.7",
-      "glm-4.7-flashx",
-      "glm-4.7-flash",
-    ],
-    baseUrl: "https://api.z.ai/api/paas/v4",
+    defaultModel: 'glm-4.7',
+    availableModels: ['glm-4.7', 'glm-4.7-flashx', 'glm-4.7-flash'],
+    baseUrl: 'https://api.z.ai/api/paas/v4',
     useCodingPlan: false,
-    testStatus: "idle",
+    testStatus: 'idle',
   },
 }
 
 const languages = [
-  { value: "en", label: "English" },
-  { value: "es", label: "Spanish" },
-  { value: "fr", label: "French" },
-  { value: "de", label: "German" },
-  { value: "zh", label: "Chinese" },
-  { value: "ja", label: "Japanese" },
+  { value: 'en', label: 'English' },
+  { value: 'es', label: 'Spanish' },
+  { value: 'fr', label: 'French' },
+  { value: 'de', label: 'German' },
+  { value: 'zh', label: 'Chinese' },
+  { value: 'ja', label: 'Japanese' },
 ]
 
 export default function SettingsPage() {
@@ -113,7 +115,7 @@ export default function SettingsPage() {
   // Convex `useQuery` results are not guaranteed to be referentially stable.
   // Use a version key so our "sync from server" effect doesn't loop.
   const settingsSyncKey =
-    settings === undefined ? "loading" : settings === null ? "missing" : String(settings.updatedAt)
+    settings === undefined ? 'loading' : settings === null ? 'missing' : String(settings.updatedAt)
 
   const settingsRef = React.useRef(settings)
   settingsRef.current = settings
@@ -127,14 +129,14 @@ export default function SettingsPage() {
     autoRunCommands: false,
     allowedCommandPrefixes: [],
   })
-  const [allowedCommandPrefixesText, setAllowedCommandPrefixesText] = React.useState("")
+  const [allowedCommandPrefixesText, setAllowedCommandPrefixesText] = React.useState('')
 
   // Local state for form
   const [formState, setFormState] = React.useState<SettingsState>({
-    theme: "system",
-    language: "en",
-    defaultProvider: "openai",
-    defaultModel: "gpt-4o-mini",
+    theme: 'system',
+    language: 'en',
+    defaultProvider: 'openai',
+    defaultModel: 'gpt-4o-mini',
     providers: defaultProviders,
   })
 
@@ -149,13 +151,13 @@ export default function SettingsPage() {
         autoRunCommands: false,
         allowedCommandPrefixes: [],
       })
-      setAllowedCommandPrefixesText("")
+      setAllowedCommandPrefixesText('')
       setFormState((prev) => ({
         ...prev,
-        theme: "system",
-        language: "en",
-        defaultProvider: "openai",
-        defaultModel: "gpt-4o-mini",
+        theme: 'system',
+        language: 'en',
+        defaultProvider: 'openai',
+        defaultModel: 'gpt-4o-mini',
         providers: defaultProviders,
       }))
       return
@@ -164,7 +166,7 @@ export default function SettingsPage() {
     if (latestSettings.agentDefaults) {
       setAgentDefaults(latestSettings.agentDefaults)
       setAllowedCommandPrefixesText(
-        (latestSettings.agentDefaults.allowedCommandPrefixes || []).join("\n")
+        (latestSettings.agentDefaults.allowedCommandPrefixes || []).join('\n')
       )
     } else {
       setAgentDefaults({
@@ -172,22 +174,22 @@ export default function SettingsPage() {
         autoRunCommands: false,
         allowedCommandPrefixes: [],
       })
-      setAllowedCommandPrefixesText("")
+      setAllowedCommandPrefixesText('')
     }
 
     setFormState((prev) => ({
       ...prev,
       theme: latestSettings.theme,
-      language: latestSettings.language || "en",
-      defaultProvider: latestSettings.defaultProvider || "openai",
-      defaultModel: latestSettings.defaultModel || "gpt-4o-mini",
+      language: latestSettings.language || 'en',
+      defaultProvider: latestSettings.defaultProvider || 'openai',
+      defaultModel: latestSettings.defaultModel || 'gpt-4o-mini',
       providers: latestSettings.providerConfigs
         ? {
             ...defaultProviders,
             ...Object.fromEntries(
               Object.entries(latestSettings.providerConfigs).map(([key, config]: [string, any]) => [
                 key,
-                { ...(defaultProviders[key] ?? {}), ...config, testStatus: "idle" },
+                { ...(defaultProviders[key] ?? {}), ...config, testStatus: 'idle' },
               ])
             ),
           }
@@ -213,20 +215,20 @@ export default function SettingsPage() {
   const testProvider = async (providerKey: string) => {
     const provider = formState.providers[providerKey]
     if (!provider.apiKey) {
-      toast.error("Please enter an API key first")
+      toast.error('Please enter an API key first')
       return
     }
 
-    updateProvider(providerKey, { testStatus: "testing" })
+    updateProvider(providerKey, { testStatus: 'testing' })
 
     // Simulate API test
     setTimeout(() => {
       // In a real implementation, you would make an actual API call here
       const success = provider.apiKey.length > 10
-      updateProvider(providerKey, { 
-        testStatus: success ? "success" : "error" 
+      updateProvider(providerKey, {
+        testStatus: success ? 'success' : 'error',
       })
-      
+
       if (success) {
         toast.success(`${provider.name} connection successful!`)
       } else {
@@ -250,38 +252,39 @@ export default function SettingsPage() {
             enabled: config.enabled,
             defaultModel: config.defaultModel,
             availableModels: config.availableModels,
-            baseUrl: key === 'zai' && config.useCodingPlan
-              ? "https://api.z.ai/api/coding/paas/v4"
-              : (config.baseUrl || defaultProviders[key]?.baseUrl),
+            baseUrl:
+              key === 'zai' && config.useCodingPlan
+                ? 'https://api.z.ai/api/coding/paas/v4'
+                : config.baseUrl || defaultProviders[key]?.baseUrl,
             useCodingPlan: config.useCodingPlan,
           },
         ])
       )
 
-      console.log("[SettingsPage] Saving settings:", {
+      console.log('[SettingsPage] Saving settings:', {
         defaultProvider: formState.defaultProvider,
         providerConfigs: providersForSave,
-      });
+      })
 
-	      await updateSettings({
-	        theme: formState.theme,
-	        language: formState.language,
-	        defaultProvider: formState.defaultProvider,
-	        defaultModel: formState.defaultModel,
-	        providerConfigs: providersForSave,
-	        agentDefaults: {
-	          autoApplyFiles: agentDefaults.autoApplyFiles,
-	          autoRunCommands: agentDefaults.autoRunCommands,
-	          allowedCommandPrefixes: allowedCommandPrefixesText
-	            .split("\n")
-	            .map((s) => s.trim())
-	            .filter(Boolean),
-	        },
-	      } as any)
+      await updateSettings({
+        theme: formState.theme,
+        language: formState.language,
+        defaultProvider: formState.defaultProvider,
+        defaultModel: formState.defaultModel,
+        providerConfigs: providersForSave,
+        agentDefaults: {
+          autoApplyFiles: agentDefaults.autoApplyFiles,
+          autoRunCommands: agentDefaults.autoRunCommands,
+          allowedCommandPrefixes: allowedCommandPrefixesText
+            .split('\n')
+            .map((s) => s.trim())
+            .filter(Boolean),
+        },
+      } as any)
 
-      toast.success("Settings saved successfully!")
+      toast.success('Settings saved successfully!')
     } catch (error) {
-      toast.error("Failed to save settings")
+      toast.error('Failed to save settings')
       console.error(error)
     } finally {
       setIsSaving(false)
@@ -295,21 +298,19 @@ export default function SettingsPage() {
   }, [formState.defaultProvider, formState.providers])
 
   return (
-    <div className="container mx-auto max-w-4xl py-8 px-4">
+    <div className="container mx-auto max-w-4xl px-4 py-8">
       <div className="mb-8">
         <Button
           variant="ghost"
           size="sm"
-          className="mb-4 -ml-2 text-muted-foreground hover:text-foreground"
-          onClick={() => router.push("/")}
+          className="-ml-2 mb-4 text-muted-foreground hover:text-foreground"
+          onClick={() => router.push('/')}
         >
           <ArrowLeft className="mr-1 h-4 w-4" />
           Back to Projects
         </Button>
         <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="text-muted-foreground mt-1">
-          Manage your preferences and API configurations
-        </p>
+        <p className="mt-1 text-muted-foreground">Manage your preferences and API configurations</p>
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
@@ -328,14 +329,12 @@ export default function SettingsPage() {
           </TabsTrigger>
         </TabsList>
 
-	        {/* General Tab */}
-	        <TabsContent value="general" className="space-y-6">
-	          <Card>
+        {/* General Tab */}
+        <TabsContent value="general" className="space-y-6">
+          <Card>
             <CardHeader>
               <CardTitle>General Settings</CardTitle>
-              <CardDescription>
-                Configure your basic preferences
-              </CardDescription>
+              <CardDescription>Configure your basic preferences</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Language Selection */}
@@ -343,9 +342,7 @@ export default function SettingsPage() {
                 <Label htmlFor="language">Language</Label>
                 <Select
                   value={formState.language}
-                  onValueChange={(value) =>
-                    setFormState((prev) => ({ ...prev, language: value }))
-                  }
+                  onValueChange={(value) => setFormState((prev) => ({ ...prev, language: value }))}
                 >
                   <SelectTrigger id="language" className="w-full max-w-sm">
                     <SelectValue placeholder="Select language" />
@@ -371,7 +368,7 @@ export default function SettingsPage() {
                     setFormState((prev) => ({
                       ...prev,
                       defaultProvider: value,
-                      defaultModel: prev.providers[value]?.defaultModel || "",
+                      defaultModel: prev.providers[value]?.defaultModel || '',
                     }))
                   }
                 >
@@ -417,62 +414,63 @@ export default function SettingsPage() {
                   </SelectContent>
                 </Select>
               </div>
-	            </CardContent>
-	          </Card>
+            </CardContent>
+          </Card>
 
-	          <Card>
-	            <CardHeader>
-	              <CardTitle>Automation Defaults</CardTitle>
-	              <CardDescription>
-	                Choose whether Panda auto-applies file changes and auto-runs allowlisted commands by default.
-	              </CardDescription>
-	            </CardHeader>
-	            <CardContent className="space-y-6">
-	              <div className="flex items-center justify-between gap-4">
-	                <div className="space-y-1">
-	                  <Label className="font-mono text-xs">Auto-apply file writes</Label>
-	                  <p className="text-xs text-muted-foreground">
-	                    Applies queued file artifacts automatically in Build mode.
-	                  </p>
-	                </div>
-	                <Switch
-	                  checked={agentDefaults.autoApplyFiles}
-	                  onCheckedChange={(v) =>
-	                    setAgentDefaults((prev) => ({ ...prev, autoApplyFiles: v }))
-	                  }
-	                />
-	              </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Automation Defaults</CardTitle>
+              <CardDescription>
+                Choose whether Panda auto-applies file changes and auto-runs allowlisted commands by
+                default.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <Label className="font-mono text-xs">Auto-apply file writes</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Applies queued file artifacts automatically in Build mode.
+                  </p>
+                </div>
+                <Switch
+                  checked={agentDefaults.autoApplyFiles}
+                  onCheckedChange={(v) =>
+                    setAgentDefaults((prev) => ({ ...prev, autoApplyFiles: v }))
+                  }
+                />
+              </div>
 
-	              <Separator />
+              <Separator />
 
-	              <div className="flex items-center justify-between gap-4">
-	                <div className="space-y-1">
-	                  <Label className="font-mono text-xs">Auto-run allowlisted commands</Label>
-	                  <p className="text-xs text-muted-foreground">
-	                    Only runs commands whose prefixes match the allowlist.
-	                  </p>
-	                </div>
-	                <Switch
-	                  checked={agentDefaults.autoRunCommands}
-	                  onCheckedChange={(v) =>
-	                    setAgentDefaults((prev) => ({ ...prev, autoRunCommands: v }))
-	                  }
-	                />
-	              </div>
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <Label className="font-mono text-xs">Auto-run allowlisted commands</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Only runs commands whose prefixes match the allowlist.
+                  </p>
+                </div>
+                <Switch
+                  checked={agentDefaults.autoRunCommands}
+                  onCheckedChange={(v) =>
+                    setAgentDefaults((prev) => ({ ...prev, autoRunCommands: v }))
+                  }
+                />
+              </div>
 
-	              <div className="space-y-2">
-	                <Label className="font-mono text-xs">Allowed command prefixes (one per line)</Label>
-	                <Textarea
-	                  value={allowedCommandPrefixesText}
-	                  onChange={(e) => setAllowedCommandPrefixesText(e.target.value)}
-	                  placeholder={"bun test\nbunx eslint\nbun run lint"}
-	                  className="min-h-[120px] rounded-none font-mono text-xs"
-	                  disabled={!agentDefaults.autoRunCommands}
-	                />
-	              </div>
-	            </CardContent>
-	          </Card>
-	        </TabsContent>
+              <div className="space-y-2">
+                <Label className="font-mono text-xs">Allowed command prefixes (one per line)</Label>
+                <Textarea
+                  value={allowedCommandPrefixesText}
+                  onChange={(e) => setAllowedCommandPrefixesText(e.target.value)}
+                  placeholder={'bun test\nbunx eslint\nbun run lint'}
+                  className="min-h-[120px] rounded-none font-mono text-xs"
+                  disabled={!agentDefaults.autoRunCommands}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         {/* LLM Providers Tab */}
         <TabsContent value="providers" className="space-y-6">
@@ -493,18 +491,14 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Appearance</CardTitle>
-              <CardDescription>
-                Customize how Panda.ai looks for you
-              </CardDescription>
+              <CardDescription>Customize how Panda.ai looks for you</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-3">
                 <Label>Theme</Label>
                 <ThemeToggleFull
                   value={formState.theme}
-                  onChange={(theme) =>
-                    setFormState((prev) => ({ ...prev, theme }))
-                  }
+                  onChange={(theme) => setFormState((prev) => ({ ...prev, theme }))}
                 />
                 <p className="text-sm text-muted-foreground">
                   Choose your preferred color scheme. System will follow your OS preference.
@@ -517,12 +511,7 @@ export default function SettingsPage() {
 
       {/* Save Button */}
       <div className="mt-8 flex justify-end">
-        <Button
-          onClick={handleSave}
-          disabled={isSaving}
-          size="lg"
-          className="min-w-[140px]"
-        >
+        <Button onClick={handleSave} disabled={isSaving} size="lg" className="min-w-[140px]">
           {isSaving ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

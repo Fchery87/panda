@@ -1,32 +1,35 @@
-"use client"
+'use client'
 
-import { useEffect, useMemo, useRef } from "react"
-import { useAction, useConvex, useMutation } from "convex/react"
-import { toast } from "sonner"
-import { api } from "@convex/_generated/api"
-import type { Id } from "@convex/_generated/dataModel"
-import { useArtifactStore } from "@/stores/artifactStore"
-import { shouldAutoApplyArtifact, type AgentPolicy } from "@/lib/agent/automationPolicy"
+import { useEffect, useMemo, useRef } from 'react'
+import { useAction, useConvex, useMutation } from 'convex/react'
+import { toast } from 'sonner'
+import { api } from '@convex/_generated/api'
+import type { Id } from '@convex/_generated/dataModel'
+import { useArtifactStore } from '@/stores/artifactStore'
+import { shouldAutoApplyArtifact, type AgentPolicy } from '@/lib/agent/automationPolicy'
 
 function inferJobType(command: string) {
   const cmdLower = command.toLowerCase()
-  if (cmdLower.includes("build") || cmdLower.includes("compile")) return "build" as const
-  if (cmdLower.includes("test")) return "test" as const
-  if (cmdLower.includes("deploy")) return "deploy" as const
-  if (cmdLower.includes("lint")) return "lint" as const
-  if (cmdLower.includes("format")) return "format" as const
-  return "cli" as const
+  if (cmdLower.includes('build') || cmdLower.includes('compile')) return 'build' as const
+  if (cmdLower.includes('test')) return 'test' as const
+  if (cmdLower.includes('deploy')) return 'deploy' as const
+  if (cmdLower.includes('lint')) return 'lint' as const
+  if (cmdLower.includes('format')) return 'format' as const
+  return 'cli' as const
 }
 
 const selectApplyArtifact = (state: { applyArtifact: any }) => state.applyArtifact
 const selectArtifacts = (state: { artifacts: any[] }) => state.artifacts
 
 export function useAutoApplyArtifacts(args: {
-  projectId: Id<"projects">
+  projectId: Id<'projects'>
   policy: AgentPolicy | null
 }) {
   const artifacts = useArtifactStore(selectArtifacts)
-  const pendingArtifacts = useMemo(() => artifacts.filter((a) => a.status === "pending"), [artifacts])
+  const pendingArtifacts = useMemo(
+    () => artifacts.filter((a) => a.status === 'pending'),
+    [artifacts]
+  )
   const applyArtifact = useArtifactStore(selectApplyArtifact)
 
   const convex = useConvex()
@@ -52,7 +55,7 @@ export function useAutoApplyArtifacts(args: {
       policy: policy,
       isApplying: isApplyingRef.current,
     })
-    
+
     if (pendingArtifacts.length === 0) {
       console.log('[useAutoApplyArtifacts] No pending artifacts, skipping')
       return
@@ -68,10 +71,10 @@ export function useAutoApplyArtifacts(args: {
       type: next.type,
       status: next.status,
     })
-    
+
     const shouldApply = shouldAutoApplyArtifact(policy, next as any)
     console.log('[useAutoApplyArtifacts] Should auto-apply?', shouldApply, 'Policy:', policy)
-    
+
     if (!shouldApply) {
       console.log('[useAutoApplyArtifacts] Auto-apply disabled for this artifact type')
       return
@@ -82,16 +85,16 @@ export function useAutoApplyArtifacts(args: {
 
     void (async () => {
       try {
-        if (next.type === "file_write") {
+        if (next.type === 'file_write') {
           const payload = next.payload as { filePath: string; content: string }
           console.log('[useAutoApplyArtifacts] Auto-applying file write:', payload.filePath)
-          
+
           const existing = await convex.query(api.files.getByPath, {
             projectId: args.projectId,
             path: payload.filePath,
           })
           console.log('[useAutoApplyArtifacts] Existing file:', existing ? 'yes' : 'no')
-          
+
           await upsertFile({
             id: existing?._id,
             projectId: args.projectId,
@@ -100,13 +103,13 @@ export function useAutoApplyArtifacts(args: {
             isBinary: false,
           })
           console.log('[useAutoApplyArtifacts] File upserted successfully')
-          
+
           applyArtifact(next.id)
           console.log('[useAutoApplyArtifacts] Artifact marked as applied')
           return
         }
 
-        if (next.type === "command_run") {
+        if (next.type === 'command_run') {
           const payload = next.payload as { command: string; workingDirectory?: string }
           const type = inferJobType(payload.command)
           const { jobId, command, workingDirectory } = await createAndExecuteJob({
@@ -121,7 +124,7 @@ export function useAutoApplyArtifacts(args: {
         }
       } catch (error) {
         console.error('[useAutoApplyArtifacts] Auto-apply failed:', error)
-        toast.error("Auto-apply failed", {
+        toast.error('Auto-apply failed', {
           description: error instanceof Error ? error.message : String(error),
         })
       } finally {

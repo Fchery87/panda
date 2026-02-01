@@ -1,29 +1,29 @@
-"use client"
+'use client'
 
-import React, { useState, useCallback, useMemo } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { 
-  Folder, 
-  FolderOpen, 
-  FileText, 
-  FileCode, 
-  FileJson, 
+import React, { useState, useCallback, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Folder,
+  FolderOpen,
+  FileText,
+  FileCode,
+  FileJson,
   FileImage,
   ChevronRight,
-  Plus, 
-  Trash2, 
+  Plus,
+  Trash2,
   Edit2,
-  File as FileIcon
-} from "lucide-react"
-import { cn } from "@/lib/utils"
-import { Input } from "@/components/ui/input"
+  File as FileIcon,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { Input } from '@/components/ui/input'
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
-} from "@/components/ui/context-menu"
+} from '@/components/ui/context-menu'
 
 // Get appropriate icon for file type
 function getFileIcon(filename: string) {
@@ -33,30 +33,30 @@ function getFileIcon(filename: string) {
     case 'tsx':
     case 'js':
     case 'jsx':
-      return <FileCode className="w-4 h-4 text-primary" />
+      return <FileCode className="h-4 w-4 text-primary" />
     case 'json':
-      return <FileJson className="w-4 h-4 text-primary/70" />
+      return <FileJson className="h-4 w-4 text-primary/70" />
     case 'md':
     case 'txt':
-      return <FileText className="w-4 h-4 text-muted-foreground" />
+      return <FileText className="h-4 w-4 text-muted-foreground" />
     case 'png':
     case 'jpg':
     case 'jpeg':
     case 'gif':
     case 'svg':
-      return <FileImage className="w-4 h-4 text-muted-foreground" />
+      return <FileImage className="h-4 w-4 text-muted-foreground" />
     case 'css':
     case 'scss':
-      return <FileCode className="w-4 h-4 text-muted-foreground" />
+      return <FileCode className="h-4 w-4 text-muted-foreground" />
     default:
-      return <FileIcon className="w-4 h-4 text-muted-foreground" />
+      return <FileIcon className="h-4 w-4 text-muted-foreground" />
   }
 }
 
 interface FileTreeNode {
   name: string
   path: string
-  type: "file" | "directory"
+  type: 'file' | 'directory'
   children: FileTreeNode[]
   isBinary: boolean
   updatedAt: number
@@ -78,12 +78,12 @@ interface FileTreeProps {
 }
 
 // Build tree structure from flat file list
-function buildTree(files: FileTreeProps["files"]): FileTreeNode[] {
+function buildTree(files: FileTreeProps['files']): FileTreeNode[] {
   // Guard against undefined/null files
   if (!files || !Array.isArray(files) || files.length === 0) {
     return []
   }
-  
+
   const root: FileTreeNode[] = []
   const nodeMap = new Map<string, FileTreeNode>()
 
@@ -91,8 +91,8 @@ function buildTree(files: FileTreeProps["files"]): FileTreeNode[] {
   const sortedFiles = [...files].sort((a, b) => a.path.localeCompare(b.path))
 
   for (const file of sortedFiles) {
-    const parts = file.path.split("/")
-    let currentPath = ""
+    const parts = file.path.split('/')
+    let currentPath = ''
 
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i]
@@ -104,7 +104,7 @@ function buildTree(files: FileTreeProps["files"]): FileTreeNode[] {
         const node: FileTreeNode = {
           name: part,
           path: currentPath,
-          type: isLastPart ? "file" : "directory",
+          type: isLastPart ? 'file' : 'directory',
           children: [],
           isBinary: isLastPart ? file.isBinary : false,
           updatedAt: isLastPart ? file.updatedAt : 0,
@@ -129,7 +129,7 @@ function buildTree(files: FileTreeProps["files"]): FileTreeNode[] {
       if (a.type === b.type) {
         return a.name.localeCompare(b.name)
       }
-      return a.type === "directory" ? -1 : 1
+      return a.type === 'directory' ? -1 : 1
     })
     nodes.forEach((node) => {
       if (node.children.length > 0) {
@@ -170,7 +170,7 @@ function TreeItem({
   const [renameValue, setRenameValue] = useState(node.name)
   const isExpanded = expandedPaths.has(node.path)
   const isSelected = selectedPath === node.path
-  const isDirectory = node.type === "directory"
+  const isDirectory = node.type === 'directory'
 
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -188,7 +188,7 @@ function TreeItem({
   const handleRenameSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (renameValue && renameValue !== node.name) {
-      const parentPath = node.path.substring(0, node.path.lastIndexOf("/"))
+      const parentPath = node.path.substring(0, node.path.lastIndexOf('/'))
       const newPath = parentPath ? `${parentPath}/${renameValue}` : renameValue
       onRename(node.path, newPath)
     }
@@ -219,11 +219,11 @@ function TreeItem({
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.15, delay: depth * 0.02 }}
             className={cn(
-              "group relative flex items-center gap-1.5 px-2 py-1.5 cursor-pointer select-none",
-              "transition-all duration-150 mx-1 rounded-md",
+              'group relative flex cursor-pointer select-none items-center gap-1.5 px-2 py-1.5',
+              'mx-1 rounded-md transition-all duration-150',
               isSelected
-                ? "bg-primary/10 text-foreground"
-                : "hover:bg-secondary/60 text-muted-foreground hover:text-foreground"
+                ? 'bg-primary/10 text-foreground'
+                : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground'
             )}
             style={{ paddingLeft: `${depth * 14 + 6}px` }}
             onClick={handleSelect}
@@ -232,7 +232,7 @@ function TreeItem({
             {isSelected && (
               <motion.div
                 layoutId="file-tree-selection"
-                className="absolute left-0 top-1 bottom-1 w-0.5 bg-primary rounded-full"
+                className="absolute bottom-1 left-0 top-1 w-0.5 rounded-full bg-primary"
                 transition={{ duration: 0.15 }}
               />
             )}
@@ -240,13 +240,13 @@ function TreeItem({
             {isDirectory && (
               <button
                 onClick={handleToggle}
-                className="flex items-center justify-center w-4 h-4 rounded hover:bg-primary/10 transition-colors"
+                className="flex h-4 w-4 items-center justify-center rounded transition-colors hover:bg-primary/10"
               >
                 <motion.div
                   animate={{ rotate: isExpanded ? 90 : 0 }}
                   transition={{ duration: 0.15 }}
                 >
-                  <ChevronRight className="w-3.5 h-3.5" />
+                  <ChevronRight className="h-3.5 w-3.5" />
                 </motion.div>
               </button>
             )}
@@ -255,9 +255,9 @@ function TreeItem({
 
             {isDirectory ? (
               isExpanded ? (
-                <FolderOpen className="w-4 h-4 text-primary" />
+                <FolderOpen className="h-4 w-4 text-primary" />
               ) : (
-                <Folder className="w-4 h-4 text-primary/70" />
+                <Folder className="h-4 w-4 text-primary/70" />
               )
             ) : (
               getFileIcon(node.name)
@@ -271,7 +271,7 @@ function TreeItem({
                   onChange={(e) => setRenameValue(e.target.value)}
                   onBlur={handleRenameSubmit}
                   onKeyDown={(e) => {
-                    if (e.key === "Escape") {
+                    if (e.key === 'Escape') {
                       setIsRenaming(false)
                       setRenameValue(node.name)
                     }
@@ -283,8 +283,8 @@ function TreeItem({
             ) : (
               <span
                 className={cn(
-                  "flex-1 text-[13px] truncate font-mono",
-                  isSelected && "font-medium text-foreground"
+                  'flex-1 truncate font-mono text-[13px]',
+                  isSelected && 'font-medium text-foreground'
                 )}
               >
                 {node.name}
@@ -297,19 +297,19 @@ function TreeItem({
           {isDirectory && (
             <>
               <ContextMenuItem onClick={handleCreateFile}>
-                <Plus className="w-4 h-4 mr-2" />
+                <Plus className="mr-2 h-4 w-4" />
                 New File
               </ContextMenuItem>
               <ContextMenuSeparator />
             </>
           )}
           <ContextMenuItem onClick={handleRename}>
-            <Edit2 className="w-4 h-4 mr-2" />
+            <Edit2 className="mr-2 h-4 w-4" />
             Rename
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem onClick={handleDelete} className="text-destructive">
-            <Trash2 className="w-4 h-4 mr-2" />
+            <Trash2 className="mr-2 h-4 w-4" />
             Delete
           </ContextMenuItem>
         </ContextMenuContent>
@@ -319,7 +319,7 @@ function TreeItem({
         {isDirectory && isExpanded && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
+            animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
             className="overflow-hidden"
@@ -354,7 +354,7 @@ interface NewFileInputProps {
 }
 
 function NewFileInput({ parentPath, onSubmit, onCancel, depth }: NewFileInputProps) {
-  const [value, setValue] = useState("")
+  const [value, setValue] = useState('')
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -375,19 +375,19 @@ function NewFileInput({ parentPath, onSubmit, onCancel, depth }: NewFileInputPro
       className="flex items-center gap-1 px-2 py-1.5"
       style={{ paddingLeft: `${depth * 12 + 24}px` }}
     >
-      <FileIcon className="w-4 h-4 text-muted-foreground" />
+      <FileIcon className="h-4 w-4 text-muted-foreground" />
       <Input
         autoFocus
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onBlur={handleSubmit}
         onKeyDown={(e) => {
-          if (e.key === "Escape") {
+          if (e.key === 'Escape') {
             onCancel()
           }
         }}
         placeholder="filename.ext"
-        className="h-6 py-0 text-sm flex-1"
+        className="h-6 flex-1 py-0 text-sm"
       />
     </motion.form>
   )
@@ -439,8 +439,8 @@ export function FileTree({
   // Auto-expand directories containing the selected file
   React.useEffect(() => {
     if (selectedPath) {
-      const parts = selectedPath.split("/")
-      let currentPath = ""
+      const parts = selectedPath.split('/')
+      let currentPath = ''
       const pathsToExpand = new Set<string>()
 
       for (let i = 0; i < parts.length - 1; i++) {
@@ -454,14 +454,10 @@ export function FileTree({
 
   if (tree.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-        <Folder className="w-10 h-10 text-muted-foreground/30 mb-3" />
-        <p className="text-sm text-muted-foreground">
-          No files yet
-        </p>
-        <p className="text-xs text-muted-foreground/60 mt-1">
-          Right-click to create one
-        </p>
+      <div className="flex flex-col items-center justify-center px-4 py-8 text-center">
+        <Folder className="mb-3 h-10 w-10 text-muted-foreground/30" />
+        <p className="text-sm text-muted-foreground">No files yet</p>
+        <p className="mt-1 text-xs text-muted-foreground/60">Right-click to create one</p>
       </div>
     )
   }

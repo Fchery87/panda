@@ -77,46 +77,45 @@ export function ChatInput({
     }
   }, [isStreaming])
 
-  const placeholderText = mode === 'discuss' 
-    ? 'Ask a question or discuss your project...' 
-    : 'Tell me what to build or modify...'
+  const placeholderText =
+    mode === 'discuss'
+      ? 'Ask a question or discuss your project...'
+      : 'Tell me what to build or modify...'
 
   return (
-    <div className="border-t border-border surface-2 p-3">
+    <div className="surface-2 border-t border-border p-3">
       {/* Mode Toggle */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="mb-3 flex items-center justify-between">
         <div className="flex font-mono text-xs">
           <button
             onClick={() => setMode('discuss')}
             disabled={isStreaming}
             className={cn(
-              "px-3 py-1.5 border border-r-0 transition-sharp",
+              'transition-sharp border border-r-0 px-3 py-1.5',
               mode === 'discuss'
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-transparent text-muted-foreground border-border hover:text-foreground"
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-border bg-transparent text-muted-foreground hover:text-foreground'
             )}
           >
-            <MessageCircle className="h-3 w-3 inline-block mr-1.5" />
+            <MessageCircle className="mr-1.5 inline-block h-3 w-3" />
             Discuss
           </button>
           <button
             onClick={() => setMode('build')}
             disabled={isStreaming}
             className={cn(
-              "px-3 py-1.5 border transition-sharp",
+              'transition-sharp border px-3 py-1.5',
               mode === 'build'
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-transparent text-muted-foreground border-border hover:text-foreground"
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-border bg-transparent text-muted-foreground hover:text-foreground'
             )}
           >
-            <Hammer className="h-3 w-3 inline-block mr-1.5" />
+            <Hammer className="mr-1.5 inline-block h-3 w-3" />
             Build
           </button>
         </div>
 
-        <span className="text-[10px] text-muted-foreground font-mono">
-          Enter to send
-        </span>
+        <span className="font-mono text-[10px] text-muted-foreground">Enter to send</span>
       </div>
 
       {/* Input Area */}
@@ -129,10 +128,10 @@ export function ChatInput({
           placeholder={placeholderText}
           disabled={isStreaming}
           className={cn(
-            'min-h-[80px] max-h-[200px] pr-12 resize-none',
-            'bg-background border border-border rounded-none',
-            'focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary',
-            'text-sm font-mono placeholder:text-muted-foreground/50'
+            'max-h-[200px] min-h-[80px] resize-none pr-12',
+            'rounded-none border border-border bg-background',
+            'focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary',
+            'font-mono text-sm placeholder:text-muted-foreground/50'
           )}
           rows={1}
         />
@@ -171,9 +170,9 @@ export function ChatInput({
                 onClick={handleSend}
                 disabled={!input.trim()}
                 className={cn(
-                  'h-7 w-7 rounded-none transition-sharp',
-                  input.trim() 
-                    ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+                  'transition-sharp h-7 w-7 rounded-none',
+                  input.trim()
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                     : 'bg-secondary text-muted-foreground'
                 )}
               >

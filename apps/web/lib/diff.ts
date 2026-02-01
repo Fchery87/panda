@@ -4,10 +4,10 @@
  */
 
 export interface DiffLine {
-  type: 'unchanged' | 'added' | 'removed';
-  oldLine: number | null;
-  newLine: number | null;
-  content: string;
+  type: 'unchanged' | 'added' | 'removed'
+  oldLine: number | null
+  newLine: number | null
+  content: string
 }
 
 /**
@@ -18,16 +18,16 @@ export interface DiffLine {
  * @returns Array of DiffLine objects representing the differences
  */
 export function computeDiff(oldContent: string, newContent: string): DiffLine[] {
-  const oldLines = oldContent.split('\n');
-  const newLines = newContent.split('\n');
-  const result: DiffLine[] = [];
+  const oldLines = oldContent.split('\n')
+  const newLines = newContent.split('\n')
+  const result: DiffLine[] = []
 
-  let oldIndex = 0;
-  let newIndex = 0;
+  let oldIndex = 0
+  let newIndex = 0
 
   while (oldIndex < oldLines.length || newIndex < newLines.length) {
-    const oldLine = oldLines[oldIndex];
-    const newLine = newLines[newIndex];
+    const oldLine = oldLines[oldIndex]
+    const newLine = newLines[newIndex]
 
     // Both lines exist and match
     if (oldIndex < oldLines.length && newIndex < newLines.length && oldLine === newLine) {
@@ -36,15 +36,15 @@ export function computeDiff(oldContent: string, newContent: string): DiffLine[] 
         oldLine: oldIndex + 1,
         newLine: newIndex + 1,
         content: oldLine,
-      });
-      oldIndex++;
-      newIndex++;
+      })
+      oldIndex++
+      newIndex++
     }
     // Line was removed (exists in old but not in new, or different)
     else if (oldIndex < oldLines.length && (newIndex >= newLines.length || oldLine !== newLine)) {
       // Check if this line appears later in new (would be a move, treat as removal + addition)
-      const newIndexOfOld = newLines.slice(newIndex).indexOf(oldLine);
-      
+      const newIndexOfOld = newLines.slice(newIndex).indexOf(oldLine)
+
       if (newIndexOfOld === -1 || newIndexOfOld > 5) {
         // Line not found in new (or too far), mark as removed
         result.push({
@@ -52,8 +52,8 @@ export function computeDiff(oldContent: string, newContent: string): DiffLine[] 
           oldLine: oldIndex + 1,
           newLine: null,
           content: oldLine,
-        });
-        oldIndex++;
+        })
+        oldIndex++
       } else {
         // Found later, add the intervening new lines first
         for (let i = 0; i < newIndexOfOld; i++) {
@@ -62,9 +62,9 @@ export function computeDiff(oldContent: string, newContent: string): DiffLine[] 
             oldLine: null,
             newLine: newIndex + i + 1,
             content: newLines[newIndex + i],
-          });
+          })
         }
-        newIndex += newIndexOfOld;
+        newIndex += newIndexOfOld
       }
     }
     // Line was added (exists in new but not in old)
@@ -74,12 +74,12 @@ export function computeDiff(oldContent: string, newContent: string): DiffLine[] 
         oldLine: null,
         newLine: newIndex + 1,
         content: newLine,
-      });
-      newIndex++;
+      })
+      newIndex++
     }
   }
 
-  return result;
+  return result
 }
 
 /**
@@ -91,23 +91,23 @@ export function computeSideBySideDiff(
   oldContent: string,
   newContent: string
 ): { left: DiffLine[]; right: DiffLine[] } {
-  const diff = computeDiff(oldContent, newContent);
-  const left: DiffLine[] = [];
-  const right: DiffLine[] = [];
+  const diff = computeDiff(oldContent, newContent)
+  const left: DiffLine[] = []
+  const right: DiffLine[] = []
 
   for (const line of diff) {
     if (line.type === 'unchanged') {
-      left.push(line);
-      right.push(line);
+      left.push(line)
+      right.push(line)
     } else if (line.type === 'removed') {
-      left.push(line);
+      left.push(line)
       // Add a spacer on the right side
       right.push({
         type: 'unchanged',
         oldLine: null,
         newLine: null,
         content: '',
-      });
+      })
     } else if (line.type === 'added') {
       // Add a spacer on the left side
       left.push({
@@ -115,10 +115,10 @@ export function computeSideBySideDiff(
         oldLine: null,
         newLine: null,
         content: '',
-      });
-      right.push(line);
+      })
+      right.push(line)
     }
   }
 
-  return { left, right };
+  return { left, right }
 }
