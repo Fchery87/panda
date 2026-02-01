@@ -1,0 +1,42 @@
+import { query, mutation } from '../_generated/server'
+import { v } from 'convex/values'
+import { getAuthUserId } from '@convex-dev/auth/server'
+
+export async function getCurrentUserId(ctx: any): Promise<string | null> {
+  return await getAuthUserId(ctx)
+}
+
+export async function requireAuth(ctx: any): Promise<string> {
+  const userId = await getAuthUserId(ctx)
+  if (!userId) {
+    throw new Error('Unauthorized: Authentication required')
+  }
+  return userId
+}
+
+export const getOrCreateUser = mutation({
+  args: {
+    email: v.string(),
+    name: v.optional(v.string()),
+    avatarUrl: v.optional(v.string()),
+    tokenIdentifier: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query('users')
+      .withIndex('by_email', (q) => q.eq('email', args.email))
+      .first()
+
+    if (existing) {
+      return existing._id
+    }
+
+    return await ctx.db.insert('users', {
+      email: args.email,
+      name: args.name,
+      avatarUrl: args.avatarUrl,
+      tokenIdentifier: args.tokenIdentifier,
+      createdAt: Date.now(),
+    })
+  },
+})
