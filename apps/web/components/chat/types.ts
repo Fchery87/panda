@@ -2,6 +2,6 @@ export interface Message {
   _id: string
   role: 'user' | 'assistant' | 'system'
   content: string
-  annotations?: { model?: string; tokenCount?: number }
+  annotations?: { model?: string; tokenCount?: number; mode?: 'discuss' | 'build' }
   createdAt: number
 }

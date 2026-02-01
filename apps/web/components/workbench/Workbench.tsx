@@ -16,6 +16,19 @@ import type { Id } from "@convex/_generated/dataModel"
 
 interface WorkbenchProps {
   projectId: Id<"projects">
+  files: Array<{
+    _id: Id<"files">
+    path: string
+    content?: string
+    isBinary: boolean
+    updatedAt: number
+  }>
+  selectedFilePath: string | null
+  onSelectFile: (path: string) => void
+  onCreateFile: (path: string) => void
+  onRenameFile: (oldPath: string, newPath: string) => void
+  onDeleteFile: (path: string) => void
+  onSaveFile: (filePath: string, content: string) => void
 }
 
 function VerticalResizeHandle({ className }: { className?: string }) {
@@ -36,9 +49,18 @@ function HorizontalResizeHandle({ className }: { className?: string }) {
 
 type EditorTab = "code" | "preview"
 
-export function Workbench({ projectId }: WorkbenchProps) {
-  const [selectedFileId, setSelectedFileId] = useState<string | null>(null)
+export function Workbench({
+  projectId,
+  files,
+  selectedFilePath,
+  onSelectFile,
+  onCreateFile,
+  onRenameFile,
+  onDeleteFile,
+  onSaveFile,
+}: WorkbenchProps) {
   const [activeTab, setActiveTab] = useState<EditorTab>("code")
+  const selectedFile = selectedFilePath ? files.find((f) => f.path === selectedFilePath) : undefined
 
   return (
     <div className="h-full w-full surface-0">
@@ -59,9 +81,18 @@ export function Workbench({ projectId }: WorkbenchProps) {
             {/* Content */}
             <div className="flex-1 overflow-auto scrollbar-thin">
               <FileTree 
-                projectId={projectId}
-                selectedFileId={selectedFileId}
-                onSelectFile={setSelectedFileId}
+                files={files.map((f) => ({
+                  _id: f._id,
+                  path: f.path,
+                  content: f.content ?? "",
+                  isBinary: f.isBinary,
+                  updatedAt: f.updatedAt,
+                }))}
+                selectedPath={selectedFilePath}
+                onSelect={onSelectFile}
+                onCreate={onCreateFile}
+                onRename={onRenameFile}
+                onDelete={onDeleteFile}
               />
             </div>
           </div>
@@ -106,8 +137,12 @@ export function Workbench({ projectId }: WorkbenchProps) {
                 {/* Tab Content */}
                 <div className="flex-1 overflow-hidden">
                   {activeTab === "code" ? (
-                    selectedFileId ? (
-                      <EditorContainer fileId={selectedFileId as Id<"files">} />
+                    selectedFile ? (
+                      <EditorContainer
+                        filePath={selectedFile.path}
+                        content={selectedFile.content ?? ""}
+                        onSave={(content) => onSaveFile(selectedFile.path, content)}
+                      />
                     ) : (
                       <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-4">
                         <div className="font-mono text-sm">

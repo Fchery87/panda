@@ -10,9 +10,14 @@ import type { Message } from './types'
 interface MessageListProps {
   messages: Message[]
   isStreaming?: boolean
+  onResendInBuild?: (content: string) => void
 }
 
-export function MessageList({ messages, isStreaming = false }: MessageListProps) {
+export function MessageList({
+  messages,
+  isStreaming = false,
+  onResendInBuild,
+}: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -45,24 +50,43 @@ export function MessageList({ messages, isStreaming = false }: MessageListProps)
 
   return (
     <ScrollArea className="h-full" ref={scrollRef}>
-      <div className={cn('flex flex-col gap-4 p-4 min-h-full')}>
-        {messages.map((message, index) => (
-          <motion.div
-            key={message._id}
-            initial={{ opacity: 0, x: message.role === 'user' ? 20 : -20, y: 10 }}
-            animate={{ opacity: 1, x: 0, y: 0 }}
-            transition={{
-              duration: 0.3,
-              delay: index * 0.05,
-              ease: [0.25, 0.46, 0.45, 0.94],
-            }}
-          >
-            <MessageBubble
-              message={message}
-              isStreaming={isStreaming && index === messages.length - 1 && message.role === 'assistant'}
-            />
-          </motion.div>
-        ))}
+	      <div className={cn('flex flex-col gap-4 p-4 min-h-full')}>
+	        {messages.map((message, index) => {
+	          let resendInBuildContent: string | undefined
+	          if (message.role === 'assistant' && message.annotations?.mode === 'discuss') {
+	            for (let i = index - 1; i >= 0; i--) {
+	              if (messages[i]?.role === 'user') {
+	                // Build mode will automatically include the current Plan Draft panel content in the prompt.
+	                // Make the handoff explicit so models that hesitate to use tools will start executing.
+	                resendInBuildContent =
+	                  "Implement the current Plan Draft now. " +
+	                  "Create/modify files using tools (write_files) and run commands using tools (run_command)."
+	                break
+	              }
+	            }
+	          }
+
+          return (
+            <motion.div
+              key={message._id}
+              initial={{ opacity: 0, x: message.role === 'user' ? 20 : -20, y: 10 }}
+              animate={{ opacity: 1, x: 0, y: 0 }}
+              transition={{
+                duration: 0.3,
+                delay: index * 0.05,
+                ease: [0.25, 0.46, 0.45, 0.94],
+              }}
+            >
+              <MessageBubble
+                message={message}
+                isStreaming={isStreaming && index === messages.length - 1 && message.role === 'assistant'}
+                resendInBuildContent={resendInBuildContent}
+                onResendInBuild={onResendInBuild}
+                disableActions={isStreaming}
+              />
+            </motion.div>
+          )
+        })}
         <div ref={bottomRef} className="h-1" />
       </div>
     </ScrollArea>

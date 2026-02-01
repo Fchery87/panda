@@ -9,15 +9,13 @@ import {
   FileCode, 
   FileJson, 
   FileImage,
-  ChevronRight, 
-  ChevronDown, 
+  ChevronRight,
   Plus, 
   Trash2, 
   Edit2,
   File as FileIcon
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
   ContextMenu,
@@ -377,7 +375,7 @@ function NewFileInput({ parentPath, onSubmit, onCancel, depth }: NewFileInputPro
       className="flex items-center gap-1 px-2 py-1.5"
       style={{ paddingLeft: `${depth * 12 + 24}px` }}
     >
-      <File className="w-4 h-4 text-muted-foreground" />
+      <FileIcon className="w-4 h-4 text-muted-foreground" />
       <Input
         autoFocus
         value={value}

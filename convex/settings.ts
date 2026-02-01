@@ -13,21 +13,33 @@ export const get = query({
     const userId = getCurrentUserId();
     let userIdAsId = ctx.db.normalizeId('users', userId);
     
-    // Dev-mode fallback: allow settings to work before auth is wired.
+    // If normalizeId fails, try to find by dev email
     if (!userIdAsId) {
-      const existingDevUser = await ctx.db
+      const devUser = await ctx.db
         .query('users')
         .withIndex('by_email', (q) => q.eq('email', 'dev@example.com'))
         .first();
-      userIdAsId = existingDevUser?._id ?? null;
+      if (devUser) {
+        userIdAsId = devUser._id;
+      }
     }
     
-    if (!userIdAsId) return null;
+    console.log("[settings/get] Fetching settings for user:", userId, "userIdAsId:", userIdAsId);
+    
+    if (!userIdAsId) {
+      console.log("[settings/get] No user found");
+      return null;
+    }
     
     const settings = await ctx.db
       .query('settings')
       .withIndex('by_user', (q) => q.eq('userId', userIdAsId))
       .unique();
+    
+    console.log("[settings/get] Found settings:", settings ? "yes" : "no", {
+      defaultProvider: settings?.defaultProvider,
+      hasProviderConfigs: !!settings?.providerConfigs,
+    });
     
     return settings;
   },
@@ -56,21 +68,30 @@ export const update = mutation({
     const userId = getCurrentUserId();
     let userIdAsId = ctx.db.normalizeId('users', userId);
     
-    // Dev-mode fallback: create a default user record if none exists yet.
-    // This avoids blocking settings for local development while auth is not wired.
+    // If normalizeId fails, try to find by dev email
     if (!userIdAsId) {
-      const existingDevUser = await ctx.db
+      const devUser = await ctx.db
         .query('users')
         .withIndex('by_email', (q) => q.eq('email', 'dev@example.com'))
         .first();
-
-      userIdAsId =
-        existingDevUser?._id ??
-        (await ctx.db.insert('users', {
-          email: 'dev@example.com',
-          name: 'Developer',
-          createdAt: Date.now(),
-        }));
+      if (devUser) {
+        userIdAsId = devUser._id;
+      }
+    }
+    
+    console.log("[settings/update] Saving settings for user:", userId, "userIdAsId:", userIdAsId, {
+      defaultProvider: args.defaultProvider,
+      providerConfigsKeys: args.providerConfigs ? Object.keys(args.providerConfigs) : null,
+    });
+    
+    // Create user if they don't exist (for development)
+    if (!userIdAsId) {
+      userIdAsId = await ctx.db.insert('users', {
+        email: 'dev@example.com',
+        name: 'Developer',
+        createdAt: Date.now(),
+      });
+      console.log("[settings/update] Created new user with ID:", userIdAsId);
     }
     
     const now = Date.now();

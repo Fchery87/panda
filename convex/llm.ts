@@ -38,7 +38,7 @@ interface ChatRequest {
   mode?: "discuss" | "build";
   temperature?: number;
   maxTokens?: number;
-  provider?: "openai" | "openrouter" | "together";
+  provider?: "openai" | "openrouter" | "together" | "zai";
   apiKey?: string;
 }
 
@@ -74,11 +74,20 @@ function getProviderConfig(provider: string, apiKey?: string) {
       baseURL: "https://api.together.xyz/v1",
       defaultModel: "meta-llama/Llama-3.1-8B-Instruct-Turbo",
     },
+    zai: {
+      baseURL: "https://api.z.ai/api/paas/v4",
+      defaultModel: "glm-4.7",
+    },
   };
+
+  // For Z.ai, check both API key and coding plan key
+  const zaiApiKey = provider === "zai" 
+    ? (apiKey || process.env.ZAI_API_KEY || process.env.ZAI_CODING_PLAN_KEY || "")
+    : "";
 
   return {
     ...configs[provider] || configs.openai,
-    apiKey: apiKey || process.env.OPENAI_API_KEY || "",
+    apiKey: zaiApiKey || apiKey || process.env.OPENAI_API_KEY || "",
   };
 }
 
@@ -105,13 +114,14 @@ export const streamChat = httpAction(async (ctx, request): Promise<Response> => 
     const config = getProviderConfig(provider, apiKey);
     const selectedModel = model || config.defaultModel;
 
-    // Add system message
-    const systemMessage: ChatMessage = {
-      role: "system",
-      content: getSystemPrompt(mode),
-    };
+    // Add system message (skip for Z.ai as it doesn't support system role)
+    const systemMessage: ChatMessage | null = provider === "zai"
+      ? null
+      : { role: "system", content: getSystemPrompt(mode) };
 
-    const fullMessages = [systemMessage, ...messages];
+    const fullMessages = systemMessage
+      ? [systemMessage, ...messages]
+      : messages;
 
     // Make request to LLM API
     const response = await fetch(`${config.baseURL}/chat/completions`, {

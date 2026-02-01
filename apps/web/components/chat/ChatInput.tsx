@@ -10,19 +10,34 @@ import { Send, Square, MessageCircle, Hammer } from 'lucide-react'
 type ChatMode = 'discuss' | 'build'
 
 interface ChatInputProps {
+  mode?: ChatMode
+  onModeChange?: (mode: ChatMode) => void
   onSendMessage?: (content: string, mode: ChatMode) => void
   isStreaming?: boolean
   onStopStreaming?: () => void
 }
 
 export function ChatInput({
+  mode: controlledMode,
+  onModeChange,
   onSendMessage,
   isStreaming = false,
   onStopStreaming,
 }: ChatInputProps) {
   const [input, setInput] = useState('')
-  const [mode, setMode] = useState<ChatMode>('discuss')
+  const [uncontrolledMode, setUncontrolledMode] = useState<ChatMode>('discuss')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const mode = controlledMode ?? uncontrolledMode
+  const setMode = useCallback(
+    (nextMode: ChatMode) => {
+      onModeChange?.(nextMode)
+      if (controlledMode === undefined) {
+        setUncontrolledMode(nextMode)
+      }
+    },
+    [controlledMode, onModeChange]
+  )
 
   const handleSend = useCallback(() => {
     if (input.trim() && !isStreaming) {
@@ -73,6 +88,7 @@ export function ChatInput({
         <div className="flex font-mono text-xs">
           <button
             onClick={() => setMode('discuss')}
+            disabled={isStreaming}
             className={cn(
               "px-3 py-1.5 border border-r-0 transition-sharp",
               mode === 'discuss'
@@ -85,6 +101,7 @@ export function ChatInput({
           </button>
           <button
             onClick={() => setMode('build')}
+            disabled={isStreaming}
             className={cn(
               "px-3 py-1.5 border transition-sharp",
               mode === 'build'

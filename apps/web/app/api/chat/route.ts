@@ -48,7 +48,7 @@ interface ToolDefinition {
 interface ChatRequest {
   messages: ChatMessage[];
   model?: string;
-  provider?: "openai" | "openrouter" | "together";
+  provider?: "openai" | "openrouter" | "together" | "zai";
   temperature?: number;
   maxTokens?: number;
   tools?: ToolDefinition[];
@@ -73,6 +73,12 @@ function getProviderConfig(provider: string) {
         apiKey: process.env.TOGETHER_API_KEY,
         baseUrl: "https://api.together.xyz/v1",
         defaultModel: "togethercomputer/llama-3.1-70b",
+      };
+    case "zai":
+      return {
+        apiKey: process.env.ZAI_API_KEY || process.env.ZAI_CODING_PLAN_KEY,
+        baseUrl: process.env.ZAI_BASE_URL || "https://api.z.ai/api/paas/v4",
+        defaultModel: "glm-4.7",
       };
     case "openai":
     default:

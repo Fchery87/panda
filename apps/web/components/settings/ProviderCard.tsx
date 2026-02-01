@@ -19,6 +19,7 @@ interface ProviderConfig {
   defaultModel: string
   availableModels: string[]
   testStatus?: "idle" | "testing" | "success" | "error"
+  useCodingPlan?: boolean
 }
 
 interface ProviderCardProps {
@@ -114,6 +115,26 @@ export function ProviderCard({ provider, onChange, onTest, className }: Provider
             </SelectContent>
           </Select>
         </div>
+
+        {/* Coding Plan Toggle - Only for Z.ai */}
+        {provider.name === "Z.ai" && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor={`${provider.name}-coding-plan`}>Use Coding Plan</Label>
+                <p className="text-sm text-muted-foreground">
+                  Use the Coding Plan endpoint for better coding assistance
+                </p>
+              </div>
+              <Switch
+                id={`${provider.name}-coding-plan`}
+                checked={provider.useCodingPlan ?? false}
+                onCheckedChange={(checked) => onChange({ useCodingPlan: checked })}
+                disabled={!provider.enabled}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Test Connection Button */}
         <Button
