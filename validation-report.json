@@ -1,0 +1,201 @@
+{
+  "scanMetadata": {
+    "timestamp": "2026-02-01T00:00:00.000Z",
+    "profile": "perfectionist",
+    "toolVersion": "1.0.0",
+    "duration": "~120s"
+  },
+  "health": {
+    "score": 85,
+    "maxScore": 100,
+    "targetScore": 95,
+    "meetsPerfectionistState": false,
+    "blockingReasons": [
+      "Test coverage below threshold (0.05% < 80%)",
+      "2 high severity tasks remaining",
+      "Health score below target (85 < 95)"
+    ]
+  },
+  "techStack": {
+    "languages": ["TypeScript", "JavaScript"],
+    "frameworks": ["Next.js", "React", "Convex"],
+    "styling": ["Tailwind CSS", "shadcn/ui"],
+    "testing": ["Bun Test", "Playwright"],
+    "tools": ["ESLint", "Prettier", "TurboRepo"],
+    "packageManager": "Bun 1.2.0"
+  },
+  "statistics": {
+    "typescriptFiles": 7384,
+    "testFiles": 4,
+    "unitTests": 13,
+    "e2eTests": 3,
+    "testPassRate": 100,
+    "typeErrors": 0,
+    "eslintErrors": 0,
+    "eslintWarnings": 0
+  },
+  "commands": [
+    {
+      "name": "typecheck",
+      "command": "bun run typecheck",
+      "exitCode": 0,
+      "duration": "25.368s",
+      "status": "pass",
+      "errors": 0,
+      "warnings": 0
+    },
+    {
+      "name": "lint",
+      "command": "bun run lint",
+      "exitCode": 0,
+      "duration": "20.55s",
+      "status": "pass",
+      "errors": 0,
+      "warnings": 0
+    },
+    {
+      "name": "test",
+      "command": "bun test lib/**/*.test.ts",
+      "exitCode": 0,
+      "duration": "60ms",
+      "status": "pass",
+      "tests": {
+        "total": 13,
+        "passed": 13,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "name": "format:check",
+      "command": "bun run format:check",
+      "exitCode": null,
+      "duration": ">30s",
+      "status": "warn",
+      "issues": "Generated .next/ files flagged"
+    }
+  ],
+  "tasks": {
+    "critical": [],
+    "high": [
+      {
+        "id": "TASK-H001",
+        "severity": "high",
+        "category": "test",
+        "scope": "global",
+        "status": "todo",
+        "summary": "Limited Test Coverage",
+        "location": "apps/web/lib/**/*.ts",
+        "details": "Only 4 test files for 7,384 TypeScript files (~0.05% coverage)"
+      },
+      {
+        "id": "TASK-H002",
+        "severity": "high",
+        "category": "config",
+        "scope": "global",
+        "status": "todo",
+        "summary": "No Test Coverage Reporting",
+        "location": "apps/web/package.json",
+        "details": "Project lacks coverage reporting configuration"
+      }
+    ],
+    "medium": [
+      {
+        "id": "TASK-M001",
+        "severity": "medium",
+        "category": "config",
+        "scope": "apps/web",
+        "status": "todo",
+        "summary": "Test Script Configuration Bug",
+        "location": "apps/web/package.json:12",
+        "details": "bun test --exclude flag not supported"
+      },
+      {
+        "id": "TASK-M002",
+        "severity": "medium",
+        "category": "lint",
+        "scope": "global",
+        "status": "todo",
+        "summary": "Prettier Formatting Warnings",
+        "location": ".next/",
+        "details": "Build files flagged during format check"
+      },
+      {
+        "id": "TASK-M003",
+        "severity": "medium",
+        "category": "config",
+        "scope": "global",
+        "status": "todo",
+        "summary": "Environment File Structure",
+        "location": ".env.local",
+        "details": "Missing .env.example for developer onboarding"
+      }
+    ],
+    "low": [
+      {
+        "id": "TASK-L001",
+        "severity": "low",
+        "category": "build",
+        "scope": "global",
+        "status": "todo",
+        "summary": "Missing Build Validation"
+      },
+      {
+        "id": "TASK-L002",
+        "severity": "low",
+        "category": "test",
+        "scope": "apps/web",
+        "status": "todo",
+        "summary": "E2E Tests Not Executed"
+      },
+      {
+        "id": "TASK-L003",
+        "severity": "low",
+        "category": "config",
+        "scope": "global",
+        "status": "todo",
+        "summary": "Missing Validation Config"
+      },
+      {
+        "id": "TASK-L004",
+        "severity": "low",
+        "category": "code-smell",
+        "scope": "lib/",
+        "status": "todo",
+        "summary": "Console Log Statements in Code"
+      }
+    ]
+  },
+  "security": {
+    "status": "clean",
+    "secretsFound": false,
+    "exposedCredentials": [],
+    "recommendations": [
+      "Continue using .env.local for sensitive values",
+      "Add .env.example for developer onboarding"
+    ]
+  },
+  "recommendations": {
+    "immediate": [
+      "Fix test script in apps/web/package.json",
+      "Run full build validation",
+      "Create .env.example file"
+    ],
+    "shortTerm": [
+      "Add test coverage reporting",
+      "Write tests for lib/chat/planDraft.ts",
+      "Add component tests for critical UI"
+    ],
+    "mediumTerm": [
+      "Achieve 60% test coverage",
+      "Set up CI/CD validation pipeline",
+      "Create validation.config.json"
+    ],
+    "longTerm": [
+      "Target 80% test coverage",
+      "Add performance testing",
+      "Regular security audits"
+    ]
+  },
+  "ciSummary": "VALIDATION: profile=perfectionist score=85 critical=0 high=2 medium=3 low=4 meetsPerfectionist=false"
+}
