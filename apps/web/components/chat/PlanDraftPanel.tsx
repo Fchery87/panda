@@ -25,36 +25,38 @@ export function PlanDraftPanel({
 
   return (
     <div className={cn("border-b border-border surface-2", className)}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-muted/30 transition-colors"
-      >
-        {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-          Plan Draft
-        </span>
-        <span className="ml-auto flex items-center gap-2">
-          {updatedAt ? (
-            <span className="text-[10px] text-muted-foreground/70 font-mono">
-              {new Date(updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-            </span>
-          ) : (
-            <span className="text-[10px] text-muted-foreground/70 font-mono">not saved</span>
-          )}
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            className="h-7 rounded-none font-mono text-xs"
-            onClick={onSaveNow}
-            disabled={!onSaveNow || isSaving}
-          >
-            <Save className={cn("h-3.5 w-3.5", isSaving && "animate-pulse")} />
-            <span className="ml-2">{isSaving ? "Saving" : "Saved"}</span>
-          </Button>
-        </span>
-      </button>
+      <div className="flex items-center px-3 py-2">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex-1 flex items-center gap-2 text-left hover:bg-muted/30 transition-colors -mx-3 -my-2 px-3 py-2"
+        >
+          {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+            Plan Draft
+          </span>
+          <span className="ml-auto flex items-center gap-2">
+            {updatedAt ? (
+              <span className="text-[10px] text-muted-foreground/70 font-mono">
+                {new Date(updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            ) : (
+              <span className="text-[10px] text-muted-foreground/70 font-mono">not saved</span>
+            )}
+          </span>
+        </button>
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          className="h-7 rounded-none font-mono text-xs ml-2"
+          onClick={onSaveNow}
+          disabled={!onSaveNow || isSaving}
+        >
+          <Save className={cn("h-3.5 w-3.5", isSaving && "animate-pulse")} />
+          <span className="ml-2">{isSaving ? "Saving" : "Saved"}</span>
+        </Button>
+      </div>
 
       {open && (
         <div className="px-3 pb-3">

@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@convex/_generated/api"
 import { toast } from "sonner"
@@ -15,7 +16,7 @@ import { toast } from "sonner"
 	import { Textarea } from "@/components/ui/textarea"
 	import { ProviderCard } from "@/components/settings/ProviderCard"
 	import { ThemeToggleFull } from "@/components/settings/ThemeToggle"
-	import { User, Palette, Bot, Save, Loader2 } from "lucide-react"
+	import { User, Palette, Bot, Save, Loader2, ArrowLeft } from "lucide-react"
 
 interface ProviderConfig {
   name: string
@@ -104,6 +105,7 @@ const languages = [
 ]
 
 export default function SettingsPage() {
+  const router = useRouter()
   const settings = useQuery(api.settings.get)
   const updateSettings = useMutation(api.settings.update)
   const [isSaving, setIsSaving] = React.useState(false)
@@ -295,6 +297,15 @@ export default function SettingsPage() {
   return (
     <div className="container mx-auto max-w-4xl py-8 px-4">
       <div className="mb-8">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="mb-4 -ml-2 text-muted-foreground hover:text-foreground"
+          onClick={() => router.push("/")}
+        >
+          <ArrowLeft className="mr-1 h-4 w-4" />
+          Back to Projects
+        </Button>
         <h1 className="text-3xl font-bold">Settings</h1>
         <p className="text-muted-foreground mt-1">
           Manage your preferences and API configurations
