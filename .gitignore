@@ -80,6 +80,7 @@ tmp/
 *.pem
 *.cert
 *.key
+.worktrees/
 .eslintcache
 .stylelintcache
 .parcel-cache
