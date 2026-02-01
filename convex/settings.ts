@@ -11,11 +11,18 @@ export const get = query({
   args: {},
   handler: async (ctx) => {
     const userId = getCurrentUserId();
-    const userIdAsId = ctx.db.normalizeId('users', userId);
+    let userIdAsId = ctx.db.normalizeId('users', userId);
     
+    // Dev-mode fallback: allow settings to work before auth is wired.
     if (!userIdAsId) {
-      return null;
+      const existingDevUser = await ctx.db
+        .query('users')
+        .withIndex('by_email', (q) => q.eq('email', 'dev@example.com'))
+        .first();
+      userIdAsId = existingDevUser?._id ?? null;
     }
+    
+    if (!userIdAsId) return null;
     
     const settings = await ctx.db
       .query('settings')
@@ -34,13 +41,36 @@ export const update = mutation({
     language: v.optional(v.string()),
     defaultProvider: v.optional(v.string()),
     defaultModel: v.optional(v.string()),
+    agentDefaults: v.optional(
+      v.union(
+        v.null(),
+        v.object({
+          autoApplyFiles: v.boolean(),
+          autoRunCommands: v.boolean(),
+          allowedCommandPrefixes: v.array(v.string()),
+        })
+      )
+    ),
   },
   handler: async (ctx, args) => {
     const userId = getCurrentUserId();
-    const userIdAsId = ctx.db.normalizeId('users', userId);
+    let userIdAsId = ctx.db.normalizeId('users', userId);
     
+    // Dev-mode fallback: create a default user record if none exists yet.
+    // This avoids blocking settings for local development while auth is not wired.
     if (!userIdAsId) {
-      throw new Error('User not found');
+      const existingDevUser = await ctx.db
+        .query('users')
+        .withIndex('by_email', (q) => q.eq('email', 'dev@example.com'))
+        .first();
+
+      userIdAsId =
+        existingDevUser?._id ??
+        (await ctx.db.insert('users', {
+          email: 'dev@example.com',
+          name: 'Developer',
+          createdAt: Date.now(),
+        }));
     }
     
     const now = Date.now();
@@ -62,6 +92,7 @@ export const update = mutation({
       if (args.language !== undefined) updates.language = args.language;
       if (args.defaultProvider !== undefined) updates.defaultProvider = args.defaultProvider;
       if (args.defaultModel !== undefined) updates.defaultModel = args.defaultModel;
+      if (args.agentDefaults !== undefined) updates.agentDefaults = args.agentDefaults;
       
       await ctx.db.patch(existing._id, updates);
       return existing._id;
@@ -74,6 +105,7 @@ export const update = mutation({
         language: args.language,
         defaultProvider: args.defaultProvider,
         defaultModel: args.defaultModel,
+        agentDefaults: args.agentDefaults ?? null,
         updatedAt: now,
       });
       

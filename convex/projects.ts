@@ -101,6 +101,7 @@ export const create = mutation({
       createdAt: now,
       lastOpenedAt: now,
       repoUrl: args.repoUrl,
+      agentPolicy: null,
     });
     
     return projectId;
@@ -115,6 +116,16 @@ export const update = mutation({
     description: v.optional(v.string()),
     repoUrl: v.optional(v.string()),
     lastOpenedAt: v.optional(v.number()),
+    agentPolicy: v.optional(
+      v.union(
+        v.null(),
+        v.object({
+          autoApplyFiles: v.boolean(),
+          autoRunCommands: v.boolean(),
+          allowedCommandPrefixes: v.array(v.string()),
+        })
+      )
+    ),
   },
   handler: async (ctx, args) => {
     const userId = getCurrentUserId();
@@ -143,6 +154,7 @@ export const update = mutation({
     if (args.description !== undefined) updates.description = args.description;
     if (args.repoUrl !== undefined) updates.repoUrl = args.repoUrl;
     if (args.lastOpenedAt !== undefined) updates.lastOpenedAt = args.lastOpenedAt;
+    if (args.agentPolicy !== undefined) updates.agentPolicy = args.agentPolicy;
     
     await ctx.db.patch(args.id, updates);
     
