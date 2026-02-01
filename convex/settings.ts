@@ -1,16 +1,14 @@
 import { query, mutation } from './_generated/server'
 import { v } from 'convex/values'
-
-// Helper to get current user ID - returns 'mock-user-id' for now
-export function getCurrentUserId(): string {
-  return 'mock-user-id'
-}
+import { requireAuth, getCurrentUserId } from './lib/auth'
 
 // get (query) - get settings for current user
 export const get = query({
   args: {},
   handler: async (ctx) => {
-    const userId = getCurrentUserId()
+    const userId = await getCurrentUserId(ctx)
+    if (!userId) return null
+
     let userIdAsId = ctx.db.normalizeId('users', userId)
 
     // If normalizeId fails, try to find by dev email
@@ -65,7 +63,7 @@ export const update = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const userId = getCurrentUserId()
+    const userId = await requireAuth(ctx)
     let userIdAsId = ctx.db.normalizeId('users', userId)
 
     // If normalizeId fails, try to find by dev email

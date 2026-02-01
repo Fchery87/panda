@@ -1,10 +1,6 @@
 import { query, mutation } from './_generated/server'
 import { v } from 'convex/values'
-
-// Helper to get current user ID - returns 'mock-user-id' for now
-export function getCurrentUserId(): string {
-  return 'mock-user-id'
-}
+import { requireAuth, getCurrentUserId } from './lib/auth'
 
 // list (query) - list artifacts by chatId
 export const list = query({

@@ -2,11 +2,7 @@ import { query, mutation, action } from './_generated/server'
 import { api } from './_generated/api'
 import { v } from 'convex/values'
 import JSZip from 'jszip'
-
-// Helper to get current user ID - returns 'mock-user-id' for now
-export function getCurrentUserId(): string {
-  return 'mock-user-id'
-}
+import { requireAuth, getCurrentUserId } from './lib/auth'
 
 // list (query) - list files by projectId
 export const list = query({

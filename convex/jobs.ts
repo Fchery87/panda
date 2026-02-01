@@ -1,10 +1,6 @@
 import { query, mutation, action } from './_generated/server'
 import { v } from 'convex/values'
-
-// Helper to get current user ID - returns 'mock-user-id' for now
-export function getCurrentUserId(): string {
-  return 'mock-user-id'
-}
+import { requireAuth, getCurrentUserId } from './lib/auth'
 
 // list (query) - list jobs by projectId
 export const list = query({
