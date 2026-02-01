@@ -12,13 +12,15 @@
 When working on this codebase:
 
 1. **Always run quality checks** before finishing any task:
+
    ```bash
    bun run typecheck && bun run lint && bun run format:check && bun test
    ```
 
 2. **Zero tolerance for warnings** - Fix all ESLint/TypeScript issues
 
-3. **Follow the brutalist design system** - Sharp corners, monospace fonts, precise spacing
+3. **Follow the brutalist design system** - Sharp corners, monospace fonts,
+   precise spacing
 
 4. **Use Convex for all data** - No local state for persistent data
 
@@ -29,7 +31,9 @@ When working on this codebase:
 ## Project Philosophy
 
 ### Perfect Health Standard
+
 We maintain a **100/100 health score**. This means:
+
 - ✅ Zero TypeScript errors
 - ✅ Zero ESLint warnings
 - ✅ All tests passing (13 unit + E2E)
@@ -39,6 +43,7 @@ We maintain a **100/100 health score**. This means:
 **Never commit code that breaks this standard.**
 
 ### Brutalist Design System
+
 Our UI follows a strict brutalist aesthetic:
 
 ```typescript
@@ -46,19 +51,19 @@ Our UI follows a strict brutalist aesthetic:
 const designTokens = {
   // Border radius - always sharp
   borderRadius: 'rounded-none',
-  
+
   // Fonts - monospace for UI elements
   fontMono: 'font-mono',
-  
+
   // Spacing - precise, uniform
   spacing: 'space-y-4', // or space-y-8 for sections
-  
+
   // Borders - thin, sharp
   border: 'border-border',
-  
+
   // Shadows - sharp, directional
   shadow: 'shadow-sharp-md', // or shadow-sharp-lg
-  
+
   // Colors - use semantic tokens
   surface1: 'surface-1',
   surface2: 'surface-2',
@@ -66,6 +71,7 @@ const designTokens = {
 ```
 
 **Key Rules:**
+
 - No rounded corners (use `rounded-none`)
 - Monospace fonts for buttons, labels, navigation
 - Sharp shadows with `shadow-sharp-*`
@@ -77,6 +83,7 @@ const designTokens = {
 ## Architecture Overview
 
 ### Tech Stack
+
 ```
 Frontend:        Next.js 16 (App Router) + React 19 + TypeScript 5.7
 Backend:         Convex (real-time database + HTTP actions)
@@ -90,6 +97,7 @@ Monorepo:        TurboRepo 2.4
 ```
 
 ### Directory Structure
+
 ```
 panda-ai/
 ├── apps/
@@ -130,15 +138,18 @@ panda-ai/
 ### File Organization
 
 **Components:**
+
 - Co-locate related files: `Component.tsx`, `Component.test.ts`, `index.ts`
 - Use barrel exports via `index.ts`
 - One component per file (with rare exceptions)
 
 **Hooks:**
+
 - Prefix with `use`: `useAgent.ts`, `useStreamingChat.ts`
 - Co-locate test files: `useAgent.test.ts`
 
 **Convex Functions:**
+
 - Queries: `projects.ts` contains multiple query functions
 - Mutations: Same file, prefixed with action intent
 - HTTP Actions: `llm.ts`, `http.ts` for streaming
@@ -197,6 +208,7 @@ import { useArtifactStore } from '@/stores/artifactStore'
 ### Server vs Client Components
 
 **Default to Server Components:**
+
 ```typescript
 // app/page.tsx - Server Component by default
 export default function HomePage() {
@@ -207,6 +219,7 @@ export default function HomePage() {
 ```
 
 **Use Client Directive when needed:**
+
 ```typescript
 // hooks/useAgent.ts
 'use client' // Required for hooks
@@ -243,10 +256,10 @@ interface MyComponentProps {
   onAction?: () => void
 }
 
-export function MyComponent({ 
-  title, 
-  className, 
-  onAction 
+export function MyComponent({
+  title,
+  className,
+  onAction
 }: MyComponentProps) {
   return (
     <motion.div
@@ -259,7 +272,7 @@ export function MyComponent({
       )}
     >
       <h2 className="text-label font-mono">{title}</h2>
-      <Button 
+      <Button
         onClick={onAction}
         className="rounded-none font-mono"
       >
@@ -271,6 +284,7 @@ export function MyComponent({
 ```
 
 **Barrel Export:**
+
 ```typescript
 // components/my-feature/index.ts
 export { MyComponent } from './MyComponent'
@@ -280,6 +294,7 @@ export type { MyComponentProps } from './MyComponent'
 ### Styling with Tailwind
 
 **Always use the `cn()` utility:**
+
 ```typescript
 import { cn } from '@/lib/utils'
 
@@ -305,6 +320,7 @@ className={cn(
 ```
 
 **Use Tailwind's arbitrary values sparingly:**
+
 ```typescript
 // ❌ Avoid
 <div className="w-[123px]">
@@ -316,6 +332,7 @@ className={cn(
 ### Animation Patterns
 
 **Framer Motion is required for animations:**
+
 ```typescript
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -363,6 +380,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 ### Database Schema
 
 We have 9 tables defined in `convex/schema.ts`:
+
 - `users` - User accounts
 - `projects` - Code projects
 - `files` - Project files
@@ -387,7 +405,7 @@ export const list = query({
   handler: async (ctx, args) => {
     return await ctx.db
       .query('projects')
-      .withIndex('by_creator', q => q.eq('createdBy', args.userId))
+      .withIndex('by_creator', (q) => q.eq('createdBy', args.userId))
       .order('desc')
       .take(100)
   },
@@ -409,7 +427,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const now = Date.now()
-    
+
     const projectId = await ctx.db.insert('projects', {
       name: args.name,
       description: args.description,
@@ -417,7 +435,7 @@ export const create = mutation({
       createdAt: now,
       lastOpenedAt: now,
     })
-    
+
     return projectId
   },
 })
@@ -433,11 +451,11 @@ import { api } from '@convex/_generated/api'
 export function ProjectList({ userId }: { userId: Id<'users'> }) {
   // Automatically re-renders when data changes
   const projects = useQuery(api.projects.list, { userId })
-  
+
   if (projects === undefined) {
     return <Loading /> // Loading state
   }
-  
+
   return (
     <div>
       {projects.map(project => (
@@ -457,7 +475,7 @@ import { httpAction } from './_generated/server'
 export const streamChat = httpAction(async (ctx, req) => {
   // Handle streaming LLM responses
   const encoder = new TextEncoder()
-  
+
   const stream = new ReadableStream({
     async start(controller) {
       // Stream chunks...
@@ -465,7 +483,7 @@ export const streamChat = httpAction(async (ctx, req) => {
       controller.close()
     },
   })
-  
+
   return new Response(stream, {
     headers: {
       'Content-Type': 'text/event-stream',
@@ -497,9 +515,10 @@ interface UIState {
 export const useUIStore = create<UIState>((set) => ({
   sidebarOpen: true,
   activePanel: 'editor',
-  toggleSidebar: () => set((state) => ({ 
-    sidebarOpen: !state.sidebarOpen 
-  })),
+  toggleSidebar: () =>
+    set((state) => ({
+      sidebarOpen: !state.sidebarOpen,
+    })),
   setActivePanel: (panel) => set({ activePanel: panel }),
 }))
 ```
@@ -507,6 +526,7 @@ export const useUIStore = create<UIState>((set) => ({
 ### Convex for Persistent State
 
 **ALWAYS** use Convex for data that should persist:
+
 - User settings
 - Projects
 - Files
@@ -530,7 +550,7 @@ describe('cn', () => {
   test('merges classes', () => {
     expect(cn('foo', 'bar')).toBe('foo bar')
   })
-  
+
   test('handles conditionals', () => {
     expect(cn('foo', false && 'bar', 'baz')).toBe('foo baz')
   })
@@ -538,6 +558,7 @@ describe('cn', () => {
 ```
 
 **Run tests:**
+
 ```bash
 bun test                    # Run all tests
 bun test path/to/test.ts    # Run specific test
@@ -558,6 +579,7 @@ test('landing page loads', async ({ page }) => {
 ```
 
 **Run E2E tests:**
+
 ```bash
 cd apps/web
 bun run test:e2e           # Run all E2E tests
@@ -572,6 +594,7 @@ bun run test:e2e:debug     # Debug mode
 ### Adding a New Page
 
 1. Create the page file:
+
 ```typescript
 // app/my-page/page.tsx
 export default function MyPage() {
@@ -580,6 +603,7 @@ export default function MyPage() {
 ```
 
 2. If it needs data, create a loading state:
+
 ```typescript
 // app/my-page/loading.tsx
 export default function Loading() {
@@ -588,13 +612,14 @@ export default function Loading() {
 ```
 
 3. Add error handling:
+
 ```typescript
 // app/my-page/error.tsx
 'use client'
 
-export default function Error({ error, reset }: { 
+export default function Error({ error, reset }: {
   error: Error
-  reset: () => void 
+  reset: () => void
 }) {
   return (
     <div>
@@ -654,6 +679,7 @@ while (reader) {
 ```
 
 **Key rules:**
+
 - Always handle stream cleanup (abort controllers)
 - Show loading states during streaming
 - Handle errors gracefully
@@ -693,7 +719,7 @@ const tools = {
       return await convex.query(api.files.get, { path })
     },
   },
-  
+
   writeFile: {
     description: 'Write file contents',
     execute: async ({ path, content }) => {
@@ -718,7 +744,7 @@ const tools = {
 ❌ **Use setState in loops** - Batch updates properly  
 ❌ **Forget error boundaries** - Wrap risky components  
 ❌ **Mix sync/async state** - Keep state updates predictable  
-❌ **Use innerHTML** - Always React components  
+❌ **Use innerHTML** - Always React components
 
 ### ALWAYS Do These
 
@@ -731,7 +757,7 @@ const tools = {
 ✅ **Follow design system** - Brutalist aesthetic consistently  
 ✅ **Write tests** - For complex logic and components  
 ✅ **Document complex code** - Comments for non-obvious logic  
-✅ **Use proper types** - No `any`, explicit return types  
+✅ **Use proper types** - No `any`, explicit return types
 
 ---
 
@@ -768,6 +794,7 @@ If you break something:
 ## Appendix: File Templates
 
 ### New Component
+
 ```typescript
 // components/[feature]/ComponentName.tsx
 'use client'
@@ -788,6 +815,7 @@ export function ComponentName({ className }: ComponentNameProps) {
 ```
 
 ### New Hook
+
 ```typescript
 // hooks/useHookName.ts
 'use client'
@@ -809,6 +837,7 @@ export function useHookName(options: UseHookNameOptions): UseHookNameReturn {
 ```
 
 ### New Convex Query
+
 ```typescript
 // convex/feature.ts
 import { query } from './_generated/server'
@@ -826,6 +855,7 @@ export const list = query({
 ```
 
 ### New E2E Test
+
 ```typescript
 // e2e/feature.spec.ts
 import { test, expect } from '@playwright/test'
@@ -840,4 +870,5 @@ test.describe('Feature', () => {
 
 ---
 
-**Remember:** Perfect health (100/100) is the standard. Never compromise on quality. 🐼
+**Remember:** Perfect health (100/100) is the standard. Never compromise on
+quality. 🐼

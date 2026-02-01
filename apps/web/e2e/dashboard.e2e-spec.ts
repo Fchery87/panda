@@ -53,10 +53,12 @@ test.describe('Dashboard', () => {
     const projectsHeading = page.getByRole('heading', { name: /your work|projects/i })
     await expect(projectsHeading).toBeVisible()
 
-    const projectList = page.locator('div').filter({ has: page.getByText(/just now|ago|yesterday/i) })
-    
+    const projectList = page
+      .locator('div')
+      .filter({ has: page.getByText(/just now|ago|yesterday/i) })
+
     const emptyState = page.getByText(/no projects yet|create your first project/i)
-    const hasProjects = await projectList.count() > 0
+    const hasProjects = (await projectList.count()) > 0
     const hasEmptyState = await emptyState.isVisible().catch(() => false)
 
     expect(hasProjects || hasEmptyState).toBeTruthy()
@@ -64,7 +66,7 @@ test.describe('Dashboard', () => {
 
   test('can create a new project', async ({ page }) => {
     const projectName = `Test Project ${Date.now()}`
-    
+
     await createProject(page, projectName, 'A test project created by E2E tests')
 
     await expect(page.getByText(projectName)).toBeVisible()
@@ -82,7 +84,7 @@ test.describe('Dashboard', () => {
 
     const nameInput = page.getByLabel(/project name/i)
     await nameInput.fill('Valid Project Name')
-    
+
     await expect(createButton).toBeEnabled()
 
     await nameInput.clear()
@@ -159,8 +161,8 @@ test.describe('Dashboard', () => {
     ]
 
     const hasEmptyState = await Promise.all(
-      emptyStateElements.map(el => el.isVisible().catch(() => false))
-    ).then(results => results.some(Boolean))
+      emptyStateElements.map((el) => el.isVisible().catch(() => false))
+    ).then((results) => results.some(Boolean))
 
     if (hasEmptyState) {
       const createButton = page.getByRole('button', { name: /new project/i })

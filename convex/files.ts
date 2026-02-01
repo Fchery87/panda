@@ -1,5 +1,7 @@
-import { query, mutation } from './_generated/server'
+import { query, mutation, action } from './_generated/server'
+import { api } from './_generated/api'
 import { v } from 'convex/values'
+import JSZip from 'jszip'
 
 // Helper to get current user ID - returns 'mock-user-id' for now
 export function getCurrentUserId(): string {
@@ -194,5 +196,52 @@ export const listSnapshots = query({
       .withIndex('by_file', (q) => q.eq('fileId', args.fileId))
       .order('desc')
       .collect()
+  },
+})
+
+// downloadProject (action) - generate ZIP of all project files
+export const downloadProject = action({
+  args: { projectId: v.id('projects') },
+  returns: v.object({
+    zipData: v.string(), // Base64 encoded ZIP
+    filename: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    // Get project details
+    const project: { name: string } | null = await ctx.runQuery(api.projects.get, {
+      id: args.projectId,
+    })
+    if (!project) {
+      throw new Error('Project not found')
+    }
+
+    // Get all files for this project
+    const files: Array<{ path: string; content?: string | null }> = await ctx.runQuery(
+      api.files.list,
+      { projectId: args.projectId }
+    )
+
+    // Create ZIP archive
+    const zip = new JSZip()
+
+    for (const file of files) {
+      if (file.content !== undefined && file.content !== null) {
+        zip.file(file.path, file.content)
+      }
+    }
+
+    // Generate ZIP as base64 string
+    const zipBase64: string = await zip.generateAsync({ type: 'base64' })
+
+    // Format filename: project-name-YYYY-MM-DD.zip
+    const date = new Date()
+    const dateStr: string = date.toISOString().split('T')[0]
+    const sanitizedName: string = project.name.replace(/[^a-zA-Z0-9-_]/g, '-')
+    const filename: string = `${sanitizedName}-${dateStr}.zip`
+
+    return {
+      zipData: zipBase64,
+      filename,
+    }
   },
 })

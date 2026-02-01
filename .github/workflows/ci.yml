@@ -163,7 +163,7 @@ jobs:
           echo "Tests: ${{ needs.test.result }}"
           echo "Build: ${{ needs.build.result }}"
           echo "E2E: ${{ needs.e2e.result }}"
-          
+
           if [ "${{ needs.lint.result }}" != "success" ] || \
              [ "${{ needs.typecheck.result }}" != "success" ] || \
              [ "${{ needs.format.result }}" != "success" ] || \
@@ -173,5 +173,5 @@ jobs:
             echo "❌ CI failed"
             exit 1
           fi
-          
+
           echo "✅ All checks passed!"

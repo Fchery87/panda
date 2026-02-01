@@ -52,10 +52,15 @@ test.describe('Homepage', () => {
   })
 
   test('features section renders', async ({ page }) => {
-    const featuresHeading = page.getByRole('heading', { name: /features|everything you need/i, level: 2 })
+    const featuresHeading = page.getByRole('heading', {
+      name: /features|everything you need/i,
+      level: 2,
+    })
     await expect(featuresHeading).toBeVisible()
 
-    const featureCards = page.locator('[class*="grid"] > div').filter({ hasText: /AI-Powered|Smart File|Integrated Terminal|Real-time/ })
+    const featureCards = page
+      .locator('[class*="grid"] > div')
+      .filter({ hasText: /AI-Powered|Smart File|Integrated Terminal|Real-time/ })
     await expect(featureCards).toHaveCount(4)
 
     await expect(page.getByText(/AI-Powered Coding/i)).toBeVisible()
@@ -90,11 +95,7 @@ test.describe('Homepage', () => {
     const terminalSection = page.locator('div').filter({ hasText: /panda\.ai — terminal/i })
     await expect(terminalSection).toBeVisible()
 
-    const terminalCommands = [
-      /npm create panda-project/i,
-      /panda dev/i,
-      /ready at http/i,
-    ]
+    const terminalCommands = [/npm create panda-project/i, /panda dev/i, /ready at http/i]
 
     for (const command of terminalCommands) {
       await expect(page.getByText(command)).toBeVisible()

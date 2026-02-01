@@ -1,14 +1,18 @@
 'use client'
 
 import { useState } from 'react'
+import { useAction } from 'convex/react'
+import { api } from '@convex/_generated/api'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { FileTree } from './FileTree'
 import { Terminal } from './Terminal'
 import { EditorContainer } from '../editor/EditorContainer'
 import { Preview } from './Preview'
 import { cn } from '@/lib/utils'
-import { Code2, Eye } from 'lucide-react'
+import { Code2, Eye, Download, Loader2 } from 'lucide-react'
 import type { Id } from '@convex/_generated/dataModel'
+import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 
 interface WorkbenchProps {
   projectId: Id<'projects'>
@@ -56,7 +60,46 @@ export function Workbench({
   onSaveFile,
 }: WorkbenchProps) {
   const [activeTab, setActiveTab] = useState<EditorTab>('code')
+  const [isDownloading, setIsDownloading] = useState(false)
+  const downloadProject = useAction(api.files.downloadProject)
   const selectedFile = selectedFilePath ? files.find((f) => f.path === selectedFilePath) : undefined
+
+  const handleDownload = async () => {
+    if (isDownloading) return
+
+    setIsDownloading(true)
+    try {
+      // Call Convex action to generate ZIP
+      const result = await downloadProject({ projectId })
+
+      // Convert base64 to blob
+      const byteCharacters = atob(result.zipData)
+      const byteNumbers = new Array(byteCharacters.length)
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i)
+      }
+      const byteArray = new Uint8Array(byteNumbers)
+      const blob = new Blob([byteArray], { type: 'application/zip' })
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = result.filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+
+      toast.success('Project downloaded successfully')
+    } catch (error) {
+      toast.error('Failed to download project', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      })
+    } finally {
+      setIsDownloading(false)
+    }
+  }
 
   return (
     <div className="surface-0 h-full w-full">
@@ -72,6 +115,20 @@ export function Workbench({
             {/* Header */}
             <div className="panel-header flex items-center justify-between" data-number="01">
               <span>Explorer</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 rounded-none"
+                onClick={handleDownload}
+                disabled={isDownloading || files.length === 0}
+                title="Download project as ZIP"
+              >
+                {isDownloading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Download className="h-3.5 w-3.5" />
+                )}
+              </Button>
             </div>
 
             {/* Content */}
