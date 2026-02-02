@@ -11,7 +11,7 @@ export default defineSchema({
     email: v.string(),
     name: v.optional(v.string()),
     avatarUrl: v.optional(v.string()),
-    tokenIdentifier: v.string(),
+    tokenIdentifier: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index('by_email', ['email'])
