@@ -11,7 +11,7 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
-import { useMutation, useConvex } from 'convex/react'
+import { useMutation, useConvex, useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import type { LLMProvider } from '../lib/llm/types'
@@ -119,7 +119,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
 
   const convex = useConvex()
 
-  // Convex mutations
+  // Convex queries & mutations
+  const currentUser = useQuery(api.users.getCurrent)
   const addMessage = useMutation(api.messages.add)
 
   // Artifact store
@@ -188,17 +189,22 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     },
   })
 
+  // Get user ID from auth
+  const userId = currentUser?._id ?? null
+
   // Initialize tool context (will be populated when Convex client is available)
   useEffect(() => {
+    if (!userId) return
+
     toolContextRef.current = createToolContext(
       projectId,
       chatId,
-      'mock-user-id',
+      userId,
       convex,
       artifactQueue.current,
       { files: { batchGet: api.files.batchGet }, jobs: { create: api.jobs.create } }
     )
-  }, [projectId, chatId, convex, addToQueue])
+  }, [projectId, chatId, convex, addToQueue, userId])
 
   // Stop the agent
   const stop = useCallback(() => {
@@ -278,10 +284,14 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
 
       try {
         // Create prompt context
+        if (!userId) {
+          throw new Error('User not authenticated')
+        }
+
         const promptContext: PromptContext = {
           projectId,
           chatId,
-          userId: 'mock-user-id',
+          userId,
           chatMode: mode,
           // Use the configured provider type (e.g. "zai") rather than the
           // implementation class name (e.g. "openai-compatible").
@@ -302,12 +312,16 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         }
 
         // Get tool context
+        if (!userId) {
+          throw new Error('User not authenticated')
+        }
+
         const toolContext =
           toolContextRef.current ||
           createToolContext(
             projectId,
             chatId,
-            'mock-user-id',
+            userId,
             {
               query: async () => [],
               mutation: async () => '',
@@ -561,7 +575,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         })
       }
     },
-    [input, messages, chatId, projectId, mode, provider, model, addMessage]
+    [input, messages, chatId, projectId, mode, provider, model, addMessage, userId]
   )
 
   // Cleanup on unmount

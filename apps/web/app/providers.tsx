@@ -1,9 +1,7 @@
 'use client'
 
-import { ConvexProvider, ConvexReactClient } from 'convex/react'
 import { Toaster } from '@/components/ui/sonner'
 import { ThemeProvider } from 'next-themes'
-import { useMemo } from 'react'
 import { ConvexAuthProvider } from '@/components/auth/ConvexAuthProvider'
 
 function MissingConvexConfig() {
@@ -34,10 +32,10 @@ NEXT_PUBLIC_CONVEX_URL="https://<your-deployment>.convex.cloud"
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL
-  const convex = useMemo(() => {
-    if (!convexUrl) return null
-    return new ConvexReactClient(convexUrl)
-  }, [convexUrl])
+
+  if (!convexUrl) {
+    return <MissingConvexConfig />
+  }
 
   return (
     <ConvexAuthProvider>
@@ -47,23 +45,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
         enableSystem
         disableTransitionOnChange={false}
       >
-        {convex ? (
-          <ConvexProvider client={convex}>
-            {children}
-            <Toaster
-              position="bottom-right"
-              toastOptions={{
-                style: {
-                  background: 'hsl(var(--background))',
-                  border: '1px solid hsl(var(--border))',
-                  color: 'hsl(var(--foreground))',
-                },
-              }}
-            />
-          </ConvexProvider>
-        ) : (
-          <MissingConvexConfig />
-        )}
+        {children}
+        <Toaster
+          position="bottom-right"
+          toastOptions={{
+            style: {
+              background: 'hsl(var(--background))',
+              border: '1px solid hsl(var(--border))',
+              color: 'hsl(var(--foreground))',
+            },
+          }}
+        />
       </ThemeProvider>
     </ConvexAuthProvider>
   )

@@ -1,5 +1,6 @@
 import { query, mutation } from './_generated/server'
 import { v } from 'convex/values'
+import type { Id } from './_generated/dataModel'
 import { requireAuth, getCurrentUserId } from './lib/auth'
 
 // list (query) - list all projects for current user
@@ -11,7 +12,7 @@ export const list = query({
 
     return await ctx.db
       .query('projects')
-      .withIndex('by_creator', (q) => q.eq('createdBy', userId))
+      .withIndex('by_creator', (q) => q.eq('createdBy', userId as Id<'users'>))
       .collect()
   },
 })
@@ -25,7 +26,7 @@ export const get = query({
 
     const project = await ctx.db.get(args.id)
 
-    if (!project || project.createdBy !== userId) {
+    if (!project || project.createdBy !== (userId as Id<'users'>)) {
       return null
     }
 

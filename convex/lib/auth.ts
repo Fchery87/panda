@@ -1,17 +1,19 @@
 import { query, mutation } from '../_generated/server'
 import { v } from 'convex/values'
+import type { Id } from '../_generated/dataModel'
 import { getAuthUserId } from '@convex-dev/auth/server'
 
-export async function getCurrentUserId(ctx: any): Promise<string | null> {
-  return await getAuthUserId(ctx)
+export async function getCurrentUserId(ctx: any): Promise<Id<'users'> | null> {
+  const userId = await getAuthUserId(ctx)
+  return userId as Id<'users'> | null
 }
 
-export async function requireAuth(ctx: any): Promise<string> {
+export async function requireAuth(ctx: any): Promise<Id<'users'>> {
   const userId = await getAuthUserId(ctx)
   if (!userId) {
     throw new Error('Unauthorized: Authentication required')
   }
-  return userId
+  return userId as Id<'users'>
 }
 
 export const getOrCreateUser = mutation({

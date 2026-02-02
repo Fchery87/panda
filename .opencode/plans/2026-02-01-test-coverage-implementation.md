@@ -1,17 +1,23 @@
 # Complete Test Coverage Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to
+> implement this plan task-by-task.
 
-**Goal:** Bootstrap comprehensive test coverage from 0.18% (13 tests) to 60%+ by adding unit tests for core utilities, Convex functions, UI components, and integration tests for critical user flows.
+**Goal:** Bootstrap comprehensive test coverage from 0.18% (13 tests) to 60%+ by
+adding unit tests for core utilities, Convex functions, UI components, and
+integration tests for critical user flows.
 
 **Architecture:**
+
 - Use Bun's built-in test runner (already configured)
-- Implement test utilities and mocks for Convex, React components, and LLM providers
+- Implement test utilities and mocks for Convex, React components, and LLM
+  providers
 - Follow testing pyramid: 70% unit tests, 20% integration tests, 10% E2E tests
 - Add coverage reporting with Istanbul/c8
 - Test files co-located with source files using `.test.ts` pattern
 
 **Tech Stack:**
+
 - Bun test runner (built-in)
 - @testing-library/react for component tests
 - Jest-DOM matchers for DOM assertions
@@ -23,6 +29,7 @@
 ## Current State Analysis
 
 **Metrics:**
+
 - Total TypeScript files: ~7,384
 - Current test files: 4
 - Current tests: 13
@@ -30,6 +37,7 @@
 - Target coverage: 60% (Month 1), 80% (Month 3)
 
 **Existing Tests:**
+
 - `lib/chat/planDraft.test.ts`
 - `lib/agent/runtime.plan-mode.test.ts`
 - `lib/agent/runtime.build-mode.test.ts`
@@ -42,16 +50,19 @@
 ### Task 1: Fix Test Script Configuration
 
 **Files:**
+
 - Modify: `apps/web/package.json`
 
 **Step 1: Update test script**
 
 Current broken script:
+
 ```json
 "test": "bun test --exclude 'e2e/**'"
 ```
 
 Replace with:
+
 ```json
 "test": "bun test",
 "test:watch": "bun test --watch",
@@ -61,6 +72,7 @@ Replace with:
 **Step 2: Verify it works**
 
 Run:
+
 ```bash
 cd /home/nochaserz/Documents/Coding Projects/panda/apps/web
 bun test
@@ -80,6 +92,7 @@ git commit -m "chore(test): fix test script configuration"
 ### Task 2: Create Testing Utilities
 
 **Files:**
+
 - Create: `apps/web/lib/test-utils.tsx`
 - Create: `apps/web/lib/test-utils/ConvexMock.ts`
 - Create: `apps/web/lib/test-utils/index.ts`
@@ -87,6 +100,7 @@ git commit -m "chore(test): fix test script configuration"
 **Step 1: Create test utilities for React components**
 
 Create `apps/web/lib/test-utils.tsx`:
+
 ```typescript
 import React, { ReactElement } from 'react'
 import { render as rtlRender, RenderOptions } from '@testing-library/react'
@@ -98,7 +112,7 @@ function render(
   options?: Omit<RenderOptions, 'wrapper'>
 ) {
   const user = userEvent.setup()
-  
+
   const Wrapper = ({ children }: { children: React.ReactNode }) => (
     // Add any providers needed (ThemeProvider, ConvexProvider, etc.)
     <>{children}</>
@@ -118,6 +132,7 @@ export { render }
 **Step 2: Create Convex mock utilities**
 
 Create `apps/web/lib/test-utils/ConvexMock.ts`:
+
 ```typescript
 import type { DataModel } from '@convex/_generated/dataModel'
 
@@ -140,7 +155,7 @@ export class ConvexMock {
 
   get(table: string, id: string): any | null {
     const docs = this.data.get(table) || []
-    return docs.find(d => d._id === id) || null
+    return docs.find((d) => d._id === id) || null
   }
 
   query(table: string): any[] {
@@ -149,7 +164,7 @@ export class ConvexMock {
 
   patch(table: string, id: string, updates: any): void {
     const docs = this.data.get(table) || []
-    const doc = docs.find(d => d._id === id)
+    const doc = docs.find((d) => d._id === id)
     if (doc) {
       Object.assign(doc, updates)
     }
@@ -157,7 +172,7 @@ export class ConvexMock {
 
   delete(table: string, id: string): void {
     const docs = this.data.get(table) || []
-    const index = docs.findIndex(d => d._id === id)
+    const index = docs.findIndex((d) => d._id === id)
     if (index > -1) {
       docs.splice(index, 1)
     }
@@ -177,6 +192,7 @@ export function createMockConvex(): ConvexMock {
 **Step 3: Create index file**
 
 Create `apps/web/lib/test-utils/index.ts`:
+
 ```typescript
 export { render } from './test-utils'
 export { createMockConvex, ConvexMock } from './ConvexMock'
@@ -201,12 +217,14 @@ git commit -m "feat(test): add testing utilities and mocks"
 ### Task 3: Setup Coverage Reporting
 
 **Files:**
+
 - Create: `apps/web/vitest.config.ts` (if switching to vitest) OR
 - Modify: Testing configuration for c8
 
 **Step 1: Add coverage configuration**
 
 Create `apps/web/test-coverage.json`:
+
 ```json
 {
   "reporter": ["text", "html", "json"],
@@ -244,6 +262,7 @@ Create `apps/web/test-coverage.json`:
 **Step 3: Add coverage to .gitignore**
 
 Append to `.gitignore`:
+
 ```
 # Test coverage
 coverage/
@@ -264,6 +283,7 @@ git commit -m "feat(test): setup coverage reporting with thresholds"
 ### Task 4: Test Utility Functions (lib/)
 
 **Files:**
+
 - Create: `apps/web/lib/utils.test.ts`
 - Create: `apps/web/lib/diff.test.ts`
 - Create: `apps/web/lib/chat/planDraft.test.ts` (already exists, add more tests)
@@ -271,6 +291,7 @@ git commit -m "feat(test): setup coverage reporting with thresholds"
 **Step 1: Test utils.ts (cn function)**
 
 Create `apps/web/lib/utils.test.ts`:
+
 ```typescript
 import { describe, test, expect } from 'bun:test'
 import { cn } from './utils'
@@ -306,6 +327,7 @@ describe('cn (className utility)', () => {
 **Step 2: Test diff.ts**
 
 Create `apps/web/lib/diff.test.ts`:
+
 ```typescript
 import { describe, test, expect } from 'bun:test'
 import { computeDiff, applyDiff, type DiffResult } from './diff'
@@ -322,7 +344,7 @@ describe('computeDiff', () => {
     const newText = 'line1\nline2'
     const result = computeDiff(oldText, newText)
     expect(result.hasChanges).toBe(true)
-    expect(result.changes.some(c => c.type === 'add')).toBe(true)
+    expect(result.changes.some((c) => c.type === 'add')).toBe(true)
   })
 
   test('detects removed lines', () => {
@@ -330,7 +352,7 @@ describe('computeDiff', () => {
     const newText = 'line1'
     const result = computeDiff(oldText, newText)
     expect(result.hasChanges).toBe(true)
-    expect(result.changes.some(c => c.type === 'remove')).toBe(true)
+    expect(result.changes.some((c) => c.type === 'remove')).toBe(true)
   })
 
   test('detects modified lines', () => {
@@ -338,7 +360,7 @@ describe('computeDiff', () => {
     const newText = 'line1\nnew line'
     const result = computeDiff(oldText, newText)
     expect(result.hasChanges).toBe(true)
-    expect(result.changes.some(c => c.type === 'modify')).toBe(true)
+    expect(result.changes.some((c) => c.type === 'modify')).toBe(true)
   })
 })
 
@@ -366,6 +388,7 @@ describe('applyDiff', () => {
 **Step 3: Add more tests to planDraft.test.ts**
 
 Add to existing `apps/web/lib/chat/planDraft.test.ts`:
+
 ```typescript
 describe('buildMessageWithPlanDraft', () => {
   test('includes plan draft when provided', () => {
@@ -385,11 +408,13 @@ describe('buildMessageWithPlanDraft', () => {
 
 describe('deriveNextPlanDraft', () => {
   test('extracts plan from assistant message', () => {
-    const messages = [{
-      role: 'assistant' as const,
-      content: 'Plan:\n1. Step one\n2. Step two',
-      mode: 'discuss' as const,
-    }]
+    const messages = [
+      {
+        role: 'assistant' as const,
+        content: 'Plan:\n1. Step one\n2. Step two',
+        mode: 'discuss' as const,
+      },
+    ]
     const result = deriveNextPlanDraft({
       mode: 'discuss',
       agentStatus: 'complete',
@@ -401,11 +426,13 @@ describe('deriveNextPlanDraft', () => {
   })
 
   test('returns null when no plan detected', () => {
-    const messages = [{
-      role: 'assistant' as const,
-      content: 'Just chatting',
-      mode: 'discuss' as const,
-    }]
+    const messages = [
+      {
+        role: 'assistant' as const,
+        content: 'Just chatting',
+        mode: 'discuss' as const,
+      },
+    ]
     const result = deriveNextPlanDraft({
       mode: 'discuss',
       agentStatus: 'complete',
@@ -438,15 +465,21 @@ git commit -m "test: add tests for core utility functions"
 ### Task 5: Test LLM Provider Registry
 
 **Files:**
+
 - Create: `apps/web/lib/llm/registry.test.ts`
 - Create: `apps/web/lib/llm/providers/openai-compatible.test.ts`
 
 **Step 1: Test provider registry**
 
 Create `apps/web/lib/llm/registry.test.ts`:
+
 ```typescript
 import { describe, test, expect, beforeEach } from 'bun:test'
-import { ProviderRegistry, getGlobalRegistry, resetGlobalRegistry } from './registry'
+import {
+  ProviderRegistry,
+  getGlobalRegistry,
+  resetGlobalRegistry,
+} from './registry'
 import type { ProviderConfig } from './types'
 
 describe('ProviderRegistry', () => {
@@ -474,8 +507,10 @@ describe('ProviderRegistry', () => {
     }
     registry.createProvider('provider1', config, true)
     registry.createProvider('provider2', config)
-    
-    expect(registry.getDefaultProvider()).toBe(registry.getProvider('provider1'))
+
+    expect(registry.getDefaultProvider()).toBe(
+      registry.getProvider('provider1')
+    )
   })
 
   test('lists all providers', () => {
@@ -485,11 +520,11 @@ describe('ProviderRegistry', () => {
     }
     registry.createProvider('p1', config)
     registry.createProvider('p2', config)
-    
+
     const list = registry.listProviders()
     expect(list).toHaveLength(2)
-    expect(list.map(p => p.id)).toContain('p1')
-    expect(list.map(p => p.id)).toContain('p2')
+    expect(list.map((p) => p.id)).toContain('p1')
+    expect(list.map((p) => p.id)).toContain('p2')
   })
 
   test('removes provider', () => {
@@ -499,7 +534,7 @@ describe('ProviderRegistry', () => {
     }
     registry.createProvider('to-remove', config)
     expect(registry.getProvider('to-remove')).toBeDefined()
-    
+
     registry.removeProvider('to-remove')
     expect(registry.getProvider('to-remove')).toBeUndefined()
   })
@@ -509,7 +544,9 @@ describe('ProviderRegistry', () => {
       provider: 'unsupported' as any,
       auth: { apiKey: 'test-key' },
     }
-    expect(() => registry.createProvider('test', config)).toThrow('Unsupported provider type')
+    expect(() => registry.createProvider('test', config)).toThrow(
+      'Unsupported provider type'
+    )
   })
 })
 
@@ -517,13 +554,17 @@ describe('createProviderFromEnv', () => {
   test('creates provider from OPENAI_API_KEY', () => {
     process.env.OPENAI_API_KEY = 'test-openai-key'
     resetGlobalRegistry()
-    
+
     const registry = getGlobalRegistry()
-    const provider = registry.createProvider('openai', {
-      provider: 'openai',
-      auth: { apiKey: process.env.OPENAI_API_KEY },
-    }, true)
-    
+    const provider = registry.createProvider(
+      'openai',
+      {
+        provider: 'openai',
+        auth: { apiKey: process.env.OPENAI_API_KEY },
+      },
+      true
+    )
+
     expect(provider).toBeDefined()
     delete process.env.OPENAI_API_KEY
   })
@@ -533,6 +574,7 @@ describe('createProviderFromEnv', () => {
 **Step 2: Test OpenAI compatible provider**
 
 Create `apps/web/lib/llm/providers/openai-compatible.test.ts`:
+
 ```typescript
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
 import { OpenAICompatibleProvider } from './openai-compatible'
@@ -587,12 +629,14 @@ git commit -m "test: add tests for LLM provider registry and implementations"
 ### Task 6: Test Convex Projects Functions
 
 **Files:**
+
 - Create: `convex/projects.test.ts`
 - Create: `convex/lib/test-helpers.ts`
 
 **Step 1: Create Convex test helpers**
 
 Create `convex/lib/test-helpers.ts`:
+
 ```typescript
 import type { QueryCtx, MutationCtx } from '../_generated/server'
 import type { DataModel } from '../_generated/dataModel'
@@ -606,7 +650,7 @@ export function createMockQueryCtx(overrides?: Partial<QueryCtx>): QueryCtx {
       get: async (id: string) => {
         const [table] = id.split('-')
         const docs = data.get(table) || []
-        return docs.find(d => d._id === id) || null
+        return docs.find((d) => d._id === id) || null
       },
       query: (tableName: string) => ({
         collect: async () => data.get(tableName) || [],
@@ -628,16 +672,17 @@ export function createMockQueryCtx(overrides?: Partial<QueryCtx>): QueryCtx {
       patch: async (id: string, updates: any) => {
         const [table] = id.split('-')
         const docs = data.get(table) || []
-        const doc = docs.find(d => d._id === id)
+        const doc = docs.find((d) => d._id === id)
         if (doc) Object.assign(doc, updates)
       },
       delete: async (id: string) => {
         const [table] = id.split('-')
         const docs = data.get(table) || []
-        const index = docs.findIndex(d => d._id === id)
+        const index = docs.findIndex((d) => d._id === id)
         if (index > -1) docs.splice(index, 1)
       },
-      normalizeId: (table: string, id: string) => id.startsWith(table) ? id : null,
+      normalizeId: (table: string, id: string) =>
+        id.startsWith(table) ? id : null,
     },
     auth: {
       getUserId: async () => 'users-1', // Mock authenticated user
@@ -646,7 +691,9 @@ export function createMockQueryCtx(overrides?: Partial<QueryCtx>): QueryCtx {
   } as any
 }
 
-export function createMockMutationCtx(overrides?: Partial<MutationCtx>): MutationCtx {
+export function createMockMutationCtx(
+  overrides?: Partial<MutationCtx>
+): MutationCtx {
   return createMockQueryCtx(overrides) as any
 }
 ```
@@ -654,6 +701,7 @@ export function createMockMutationCtx(overrides?: Partial<MutationCtx>): Mutatio
 **Step 2: Test projects functions**
 
 Create `convex/projects.test.ts`:
+
 ```typescript
 import { describe, test, expect, beforeEach } from 'bun:test'
 import { list, get, create, update, remove } from './projects'
@@ -752,10 +800,10 @@ describe('projects mutations', () => {
 
     test('throws when not authenticated', async () => {
       ctx.auth.getUserId = async () => null
-      
-      await expect(
-        create(ctx, { name: 'New Project' })
-      ).rejects.toThrow('Unauthorized')
+
+      await expect(create(ctx, { name: 'New Project' })).rejects.toThrow(
+        'Unauthorized'
+      )
     })
   })
 
@@ -832,6 +880,7 @@ git commit -m "test(convex): add tests for projects functions"
 ### Task 7: Test Files and Settings Functions
 
 **Files:**
+
 - Create: `convex/files.test.ts`
 - Create: `convex/settings.test.ts`
 - Create: `convex/chats.test.ts`
@@ -839,6 +888,7 @@ git commit -m "test(convex): add tests for projects functions"
 **Step 1: Test files functions**
 
 Create `convex/files.test.ts`:
+
 ```typescript
 import { describe, test, expect, beforeEach } from 'bun:test'
 import { list, get, upsert, remove } from './files'
@@ -962,7 +1012,8 @@ describe('files mutations', () => {
 
 **Step 2: Create settings and chats tests**
 
-Create similar test files for `convex/settings.test.ts` and `convex/chats.test.ts` following the same pattern.
+Create similar test files for `convex/settings.test.ts` and
+`convex/chats.test.ts` following the same pattern.
 
 **Step 3: Commit**
 
@@ -978,6 +1029,7 @@ git commit -m "test(convex): add tests for files, settings, and chats functions"
 ### Task 8: Test UI Components
 
 **Files:**
+
 - Create: `apps/web/components/ui/button.test.tsx`
 - Create: `apps/web/components/ui/input.test.tsx`
 - Create: `apps/web/components/ui/dialog.test.tsx`
@@ -986,6 +1038,7 @@ git commit -m "test(convex): add tests for files, settings, and chats functions"
 **Step 1: Test Button component**
 
 Create `apps/web/components/ui/button.test.tsx`:
+
 ```typescript
 import { describe, test, expect, mock } from 'bun:test'
 import { render, screen, fireEvent } from '@testing-library/react'
@@ -1000,7 +1053,7 @@ describe('Button', () => {
   test('handles click events', () => {
     const handleClick = mock(() => {})
     render(<Button onClick={handleClick}>Click me</Button>)
-    
+
     fireEvent.click(screen.getByText('Click me'))
     expect(handleClick).toHaveBeenCalledTimes(1)
   })
@@ -1025,6 +1078,7 @@ describe('Button', () => {
 **Step 2: Test Input component**
 
 Create `apps/web/components/ui/input.test.tsx`:
+
 ```typescript
 import { describe, test, expect } from 'bun:test'
 import { render, screen, fireEvent } from '@testing-library/react'
@@ -1039,7 +1093,7 @@ describe('Input', () => {
   test('handles value changes', () => {
     const handleChange = mock(() => {})
     render(<Input onChange={handleChange} />)
-    
+
     const input = screen.getByRole('textbox')
     fireEvent.change(input, { target: { value: 'test' } })
     expect(handleChange).toHaveBeenCalled()
@@ -1060,6 +1114,7 @@ describe('Input', () => {
 **Step 3: Test Dialog component**
 
 Create `apps/web/components/ui/dialog.test.tsx`:
+
 ```typescript
 import { describe, test, expect } from 'bun:test'
 import { render, screen, fireEvent } from '@testing-library/react'
@@ -1085,7 +1140,7 @@ describe('Dialog', () => {
         </DialogContent>
       </Dialog>
     )
-    
+
     expect(screen.getByText('Open Dialog')).toBeInTheDocument()
   })
 
@@ -1098,7 +1153,7 @@ describe('Dialog', () => {
         </DialogContent>
       </Dialog>
     )
-    
+
     fireEvent.click(screen.getByText('Open Dialog'))
     expect(screen.getByText('Dialog Title')).toBeInTheDocument()
   })
@@ -1108,6 +1163,7 @@ describe('Dialog', () => {
 **Step 4: Test ChatInput component**
 
 Create `apps/web/components/chat/ChatInput.test.tsx`:
+
 ```typescript
 import { describe, test, expect, mock } from 'bun:test'
 import { render, screen, fireEvent } from '@testing-library/react'
@@ -1130,21 +1186,21 @@ describe('ChatInput', () => {
   test('sends message on submit', () => {
     const onSendMessage = mock(() => {})
     render(<ChatInput {...defaultProps} onSendMessage={onSendMessage} />)
-    
+
     const input = screen.getByPlaceholderText(/Type your message/i)
     fireEvent.change(input, { target: { value: 'Hello' } })
     fireEvent.submit(input.closest('form')!)
-    
+
     expect(onSendMessage).toHaveBeenCalledWith('Hello', 'discuss')
   })
 
   test('toggles mode', () => {
     const onModeChange = mock(() => {})
     render(<ChatInput {...defaultProps} onModeChange={onModeChange} />)
-    
+
     const buildButton = screen.getByText(/Build/i)
     fireEvent.click(buildButton)
-    
+
     expect(onModeChange).toHaveBeenCalledWith('build')
   })
 
@@ -1172,6 +1228,7 @@ git commit -m "test(ui): add component tests for UI elements"
 ### Task 9: Test React Hooks
 
 **Files:**
+
 - Create: `apps/web/hooks/useAgent.test.ts`
 - Create: `apps/web/stores/artifactStore.test.ts`
 - Create: `apps/web/hooks/useJobs.test.ts`
@@ -1179,6 +1236,7 @@ git commit -m "test(ui): add component tests for UI elements"
 **Step 1: Test artifact store**
 
 Create `apps/web/stores/artifactStore.test.ts`:
+
 ```typescript
 import { describe, test, expect, beforeEach } from 'bun:test'
 import { useArtifactStore } from './artifactStore'
@@ -1191,7 +1249,7 @@ describe('ArtifactStore', () => {
 
   test('adds artifact to queue', () => {
     const store = useArtifactStore.getState()
-    
+
     store.addToQueue({
       id: 'test-1',
       type: 'file_write',
@@ -1205,49 +1263,49 @@ describe('ArtifactStore', () => {
 
   test('applies artifact', () => {
     const store = useArtifactStore.getState()
-    
+
     store.addToQueue({
       id: 'test-1',
       type: 'file_write',
       payload: { filePath: 'test.ts', content: 'test' },
       description: 'Test file',
     })
-    
+
     store.applyArtifact('test-1')
     expect(store.artifacts[0].status).toBe('applied')
   })
 
   test('rejects artifact', () => {
     const store = useArtifactStore.getState()
-    
+
     store.addToQueue({
       id: 'test-1',
       type: 'file_write',
       payload: { filePath: 'test.ts', content: 'test' },
       description: 'Test file',
     })
-    
+
     store.rejectArtifact('test-1')
     expect(store.artifacts[0].status).toBe('rejected')
   })
 
   test('clears queue', () => {
     const store = useArtifactStore.getState()
-    
+
     store.addToQueue({
       id: 'test-1',
       type: 'file_write',
       payload: { filePath: 'test.ts', content: 'test' },
       description: 'Test file',
     })
-    
+
     store.clearQueue()
     expect(store.artifacts).toHaveLength(0)
   })
 
   test('gets pending artifacts', () => {
     const store = useArtifactStore.getState()
-    
+
     store.addToQueue({
       id: 'test-1',
       type: 'file_write',
@@ -1269,11 +1327,21 @@ describe('ArtifactStore', () => {
 
   test('applies all pending artifacts', () => {
     const store = useArtifactStore.getState()
-    
-    store.addToQueue({ id: 'test-1', type: 'file_write', payload: { filePath: 'a.ts', content: '' }, description: '' })
-    store.addToQueue({ id: 'test-2', type: 'file_write', payload: { filePath: 'b.ts', content: '' }, description: '' })
+
+    store.addToQueue({
+      id: 'test-1',
+      type: 'file_write',
+      payload: { filePath: 'a.ts', content: '' },
+      description: '',
+    })
+    store.addToQueue({
+      id: 'test-2',
+      type: 'file_write',
+      payload: { filePath: 'b.ts', content: '' },
+      description: '',
+    })
     store.rejectArtifact('test-1')
-    
+
     store.applyAll()
     expect(store.artifacts[1].status).toBe('applied')
   })
@@ -1282,7 +1350,8 @@ describe('ArtifactStore', () => {
 
 **Step 2: Create tests for other hooks**
 
-Create `apps/web/hooks/useAgent.test.ts` and `apps/web/hooks/useJobs.test.ts` with similar patterns.
+Create `apps/web/hooks/useAgent.test.ts` and `apps/web/hooks/useJobs.test.ts`
+with similar patterns.
 
 **Step 3: Commit**
 
@@ -1300,6 +1369,7 @@ git commit -m "test(hooks): add tests for hooks and stores"
 ### Task 10: Test Critical User Flows
 
 **Files:**
+
 - Create: `apps/web/e2e/project-creation.spec.ts`
 - Create: `apps/web/e2e/file-operations.spec.ts`
 - Create: `apps/web/e2e/chat-flow.spec.ts`
@@ -1307,6 +1377,7 @@ git commit -m "test(hooks): add tests for hooks and stores"
 **Step 1: Test project creation flow**
 
 Create `apps/web/e2e/project-creation.spec.ts`:
+
 ```typescript
 import { test, expect } from '@playwright/test'
 
@@ -1314,17 +1385,17 @@ test.describe('Project Creation Flow', () => {
   test('user can create a new project', async ({ page }) => {
     // Navigate to projects page
     await page.goto('/projects')
-    
+
     // Click create project button
     await page.click('text=New Project')
-    
+
     // Fill in project details
     await page.fill('input[name="name"]', 'Test Project')
     await page.fill('input[name="description"]', 'A test project')
-    
+
     // Submit form
     await page.click('button[type="submit"]')
-    
+
     // Verify project was created
     await expect(page.locator('text=Test Project')).toBeVisible()
   })
@@ -1332,7 +1403,7 @@ test.describe('Project Creation Flow', () => {
   test('user cannot create project without name', async ({ page }) => {
     await page.goto('/projects')
     await page.click('text=New Project')
-    
+
     // Try to submit without name
     const submitButton = page.locator('button[type="submit"]')
     await expect(submitButton).toBeDisabled()
@@ -1343,6 +1414,7 @@ test.describe('Project Creation Flow', () => {
 **Step 2: Test file operations**
 
 Create `apps/web/e2e/file-operations.spec.ts`:
+
 ```typescript
 import { test, expect } from '@playwright/test'
 
@@ -1353,7 +1425,7 @@ test.describe('File Operations', () => {
     await page.click('text=New Project')
     await page.fill('input[name="name"]', 'File Test Project')
     await page.click('button[type="submit"]')
-    
+
     // Navigate to project
     await page.click('text=File Test Project')
   })
@@ -1362,11 +1434,11 @@ test.describe('File Operations', () => {
     // Right-click in file explorer
     await page.click('[data-testid="file-explorer"]')
     await page.click('text=New File')
-    
+
     // Enter file name
     await page.fill('input[placeholder="filename.ts"]', 'test.ts')
     await page.press('input[placeholder="filename.ts"]', 'Enter')
-    
+
     // Verify file appears
     await expect(page.locator('text=test.ts')).toBeVisible()
   })
@@ -1374,13 +1446,13 @@ test.describe('File Operations', () => {
   test('user can edit file content', async ({ page }) => {
     // Select file
     await page.click('text=test.ts')
-    
+
     // Type in editor
     await page.fill('[data-testid="editor"]', 'console.log("hello")')
-    
+
     // Save file
     await page.keyboard.press('Control+s')
-    
+
     // Verify save toast
     await expect(page.locator('text=Saved test.ts')).toBeVisible()
   })
@@ -1390,6 +1462,7 @@ test.describe('File Operations', () => {
 **Step 3: Test chat flow**
 
 Create `apps/web/e2e/chat-flow.spec.ts`:
+
 ```typescript
 import { test, expect } from '@playwright/test'
 
@@ -1406,23 +1479,27 @@ test.describe('Chat Flow', () => {
   test('user can send a message', async ({ page }) => {
     // Type message
     await page.fill('[data-testid="chat-input"]', 'Hello AI')
-    
+
     // Send message
     await page.click('text=Send')
-    
+
     // Verify message appears
     await expect(page.locator('text=Hello AI')).toBeVisible()
   })
 
   test('user can toggle between discuss and build modes', async ({ page }) => {
     // Check initial mode (discuss)
-    await expect(page.locator('[data-testid="mode-discuss"]')).toHaveClass(/active/)
-    
+    await expect(page.locator('[data-testid="mode-discuss"]')).toHaveClass(
+      /active/
+    )
+
     // Switch to build mode
     await page.click('text=Build')
-    
+
     // Verify mode changed
-    await expect(page.locator('[data-testid="mode-build"]')).toHaveClass(/active/)
+    await expect(page.locator('[data-testid="mode-build"]')).toHaveClass(
+      /active/
+    )
   })
 })
 ```
@@ -1452,6 +1529,7 @@ bun run test:coverage
 **Step 2: Analyze coverage output**
 
 Check coverage report in `coverage/index.html`:
+
 - Overall coverage percentage
 - Coverage by file
 - Uncovered lines
@@ -1459,6 +1537,7 @@ Check coverage report in `coverage/index.html`:
 **Step 3: Identify gaps**
 
 Document uncovered areas:
+
 - Which files have <50% coverage?
 - Which critical paths are untested?
 - What edge cases are missing?
@@ -1492,6 +1571,7 @@ This comprehensive testing plan provides:
 **Target Coverage:** 60-70% (Month 1), 80% (Month 3)
 
 **Key Deliverables:**
+
 - All critical code paths have tests
 - Coverage reporting in CI/CD
 - E2E tests for user journeys

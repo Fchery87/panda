@@ -38,7 +38,7 @@ export function UserMenu() {
             <span className="text-xs text-muted-foreground">{user.email}</span>
           </div>
         </div>
-        <DropdownMenuItem onClick={() => signOut()} className="rounded-none cursor-pointer">
+        <DropdownMenuItem onClick={() => signOut()} className="cursor-pointer rounded-none">
           <LogOut className="mr-2 h-4 w-4" />
           Sign out
         </DropdownMenuItem>

@@ -1,10 +1,14 @@
 # Convex Authentication with Google OAuth Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to
+> implement this plan task-by-task.
 
-**Goal:** Replace the mock `mock-user-id` authentication system with real Convex Auth using Google OAuth, enabling secure user authentication, session management, and proper access control.
+**Goal:** Replace the mock `mock-user-id` authentication system with real Convex
+Auth using Google OAuth, enabling secure user authentication, session
+management, and proper access control.
 
-**Architecture:** 
+**Architecture:**
+
 - Use `@convex-dev/auth` library for Convex-native authentication
 - Implement Google OAuth provider for seamless sign-in
 - Update all Convex functions to use real user context from `ctx.auth`
@@ -12,6 +16,7 @@
 - Ensure backward compatibility during migration
 
 **Tech Stack:**
+
 - @convex-dev/auth (Convex authentication library)
 - Google OAuth 2.0
 - Next.js 16 middleware
@@ -22,6 +27,7 @@
 ## Prerequisites
 
 Before starting, ensure you have:
+
 - Google Cloud Console project with OAuth 2.0 credentials
 - `CONVEX_SITE_URL` and `CONVEX_DEPLOYMENT_URL` environment variables set
 - Admin access to Convex dashboard
@@ -33,12 +39,14 @@ Before starting, ensure you have:
 ### Task 1: Install Convex Auth Dependencies
 
 **Files:**
+
 - Modify: `package.json` (both root and apps/web)
 - Create: `.env.local` (if not exists)
 
 **Step 1: Install dependencies**
 
 Run:
+
 ```bash
 cd /home/nochaserz/Documents/Coding Projects/panda
 bun add @convex-dev/auth
@@ -50,6 +58,7 @@ Expected: Packages installed successfully
 **Step 2: Add environment variables**
 
 Create or modify `apps/web/.env.local`:
+
 ```env
 # Convex Auth Configuration
 NEXT_PUBLIC_CONVEX_URL=https://your-deployment.convex.cloud
@@ -75,12 +84,14 @@ git commit -m "chore: install convex auth dependencies and configure env"
 ### Task 2: Initialize Convex Auth
 
 **Files:**
+
 - Create: `convex/auth.ts`
 - Create: `convex/http.ts` (or modify existing)
 
 **Step 1: Create auth configuration file**
 
 Create `convex/auth.ts`:
+
 ```typescript
 import { convexAuth } from '@convex-dev/auth/server'
 import Google from '@convex-dev/auth/providers/Google'
@@ -98,6 +109,7 @@ export const { auth, signIn, signOut, store } = convexAuth({
 **Step 2: Update HTTP router to include auth routes**
 
 Modify `convex/http.ts` (or create if not exists):
+
 ```typescript
 import { httpRouter } from 'convex/server'
 import { auth } from './auth'
@@ -124,11 +136,13 @@ git commit -m "feat(auth): initialize convex auth with google oauth"
 ### Task 3: Update Schema for Auth
 
 **Files:**
+
 - Modify: `convex/schema.ts`
 
 **Step 1: Add auth tables to schema**
 
 Modify `convex/schema.ts`:
+
 ```typescript
 import { defineSchema, defineTable } from 'convex/server'
 import { v } from 'convex/values'
@@ -166,12 +180,14 @@ git commit -m "feat(auth): add auth tables to schema"
 ### Task 4: Create User Management Helpers
 
 **Files:**
+
 - Create: `convex/lib/auth.ts`
 - Delete: `getCurrentUserId()` from all files (we'll replace with proper auth)
 
 **Step 1: Create auth helper utilities**
 
 Create `convex/lib/auth.ts`:
+
 ```typescript
 import { query, mutation } from '../_generated/server'
 import { v } from 'convex/values'
@@ -239,11 +255,13 @@ git commit -m "feat(auth): create auth helper utilities"
 ### Task 5: Update Projects Convex Functions
 
 **Files:**
+
 - Modify: `convex/projects.ts`
 
 **Step 1: Update imports and replace mock auth**
 
 Modify `convex/projects.ts`:
+
 ```typescript
 import { query, mutation } from './_generated/server'
 import { api } from './_generated/api'
@@ -257,7 +275,7 @@ export const list = query({
   args: {},
   handler: async (ctx) => {
     const userId = await getCurrentUserId(ctx)
-    
+
     if (!userId) {
       return [] // Return empty if not authenticated
     }
@@ -274,7 +292,7 @@ export const get = query({
   args: { id: v.id('projects') },
   handler: async (ctx, args) => {
     const userId = await getCurrentUserId(ctx)
-    
+
     if (!userId) {
       return null
     }
@@ -348,7 +366,8 @@ export const update = mutation({
     if (args.name !== undefined) updates.name = args.name
     if (args.description !== undefined) updates.description = args.description
     if (args.repoUrl !== undefined) updates.repoUrl = args.repoUrl
-    if (args.lastOpenedAt !== undefined) updates.lastOpenedAt = args.lastOpenedAt
+    if (args.lastOpenedAt !== undefined)
+      updates.lastOpenedAt = args.lastOpenedAt
     if (args.agentPolicy !== undefined) updates.agentPolicy = args.agentPolicy
 
     await ctx.db.patch(args.id, updates)
@@ -370,7 +389,7 @@ export const remove = mutation({
     }
 
     // ... rest of deletion logic remains the same ...
-    
+
     await ctx.db.delete(args.id)
     return args.id
   },
@@ -389,6 +408,7 @@ git commit -m "feat(auth): update projects functions with real authentication"
 ### Task 6: Update Remaining Convex Functions
 
 **Files:**
+
 - Modify: `convex/files.ts`
 - Modify: `convex/settings.ts`
 - Modify: `convex/chats.ts`
@@ -399,6 +419,7 @@ git commit -m "feat(auth): update projects functions with real authentication"
 **Step 1: Update files.ts**
 
 Replace mock auth with real auth:
+
 ```typescript
 import { query, mutation, action } from './_generated/server'
 import { api } from './_generated/api'
@@ -433,6 +454,7 @@ export const get = query({
 **Step 3: Repeat for remaining files**
 
 Apply the same pattern to:
+
 - `convex/chats.ts`
 - `convex/messages.ts`
 - `convex/artifacts.ts`
@@ -452,6 +474,7 @@ git commit -m "feat(auth): update all convex functions with real authentication"
 ### Task 7: Create Authentication Provider
 
 **Files:**
+
 - Create: `apps/web/components/auth/ConvexAuthProvider.tsx`
 - Create: `apps/web/components/auth/SignInButton.tsx`
 - Create: `apps/web/components/auth/UserMenu.tsx`
@@ -459,6 +482,7 @@ git commit -m "feat(auth): update all convex functions with real authentication"
 **Step 1: Create Convex Auth Provider**
 
 Create `apps/web/components/auth/ConvexAuthProvider.tsx`:
+
 ```typescript
 'use client'
 
@@ -480,6 +504,7 @@ export function ConvexAuthProvider({ children }: { children: ReactNode }) {
 **Step 2: Create Sign In Button**
 
 Create `apps/web/components/auth/SignInButton.tsx`:
+
 ```typescript
 'use client'
 
@@ -506,6 +531,7 @@ export function SignInButton() {
 **Step 3: Create User Menu**
 
 Create `apps/web/components/auth/UserMenu.tsx`:
+
 ```typescript
 'use client'
 
@@ -572,11 +598,13 @@ git commit -m "feat(auth): create authentication components"
 ### Task 8: Create Users Query
 
 **Files:**
+
 - Create: `convex/users.ts`
 
 **Step 1: Create user queries**
 
 Create `convex/users.ts`:
+
 ```typescript
 import { query } from './_generated/server'
 import { getCurrentUserId } from './lib/auth'
@@ -604,11 +632,13 @@ git commit -m "feat(auth): add user queries"
 ### Task 9: Update Root Layout
 
 **Files:**
+
 - Modify: `apps/web/app/layout.tsx`
 
 **Step 1: Wrap app with auth provider**
 
 Modify `apps/web/app/layout.tsx`:
+
 ```typescript
 import { ConvexAuthProvider } from '@/components/auth/ConvexAuthProvider'
 
@@ -644,24 +674,27 @@ git commit -m "feat(auth): integrate auth provider into root layout"
 ### Task 10: Create Protected Route Middleware
 
 **Files:**
+
 - Create: `apps/web/middleware.ts`
 - Create: `apps/web/components/auth/ProtectedRoute.tsx`
 
 **Step 1: Create Next.js middleware**
 
 Create `apps/web/middleware.ts`:
+
 ```typescript
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export function middleware(request: NextRequest) {
   // Protect dashboard routes
-  if (request.nextUrl.pathname.startsWith('/projects') || 
-      request.nextUrl.pathname.startsWith('/settings')) {
-    
+  if (
+    request.nextUrl.pathname.startsWith('/projects') ||
+    request.nextUrl.pathname.startsWith('/settings')
+  ) {
     // Check for auth cookie/token
     const token = request.cookies.get(' ConvexAuthToken ')?.value
-    
+
     if (!token) {
       // Redirect to login page
       return NextResponse.redirect(new URL('/login', request.url))
@@ -679,6 +712,7 @@ export const config = {
 **Step 2: Create ProtectedRoute component**
 
 Create `apps/web/components/auth/ProtectedRoute.tsx`:
+
 ```typescript
 'use client'
 
@@ -725,11 +759,13 @@ git commit -m "feat(auth): add protected route middleware and component"
 ### Task 11: Create Login Page
 
 **Files:**
+
 - Create: `apps/web/app/login/page.tsx`
 
 **Step 1: Create login page**
 
 Create `apps/web/app/login/page.tsx`:
+
 ```typescript
 'use client'
 
@@ -777,12 +813,14 @@ git commit -m "feat(auth): create login page"
 ### Task 12: Update Navigation UI
 
 **Files:**
+
 - Modify: `apps/web/app/(dashboard)/projects/page.tsx`
 - Modify: `apps/web/app/(dashboard)/projects/[projectId]/page.tsx`
 
 **Step 1: Add UserMenu to projects page header**
 
 Modify `apps/web/app/(dashboard)/projects/page.tsx`:
+
 ```typescript
 import { UserMenu } from '@/components/auth/UserMenu'
 
@@ -799,6 +837,7 @@ import { UserMenu } from '@/components/auth/UserMenu'
 **Step 2: Wrap dashboard routes with ProtectedRoute**
 
 Modify `apps/web/app/(dashboard)/layout.tsx`:
+
 ```typescript
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 
@@ -825,12 +864,14 @@ git commit -m "feat(auth): protect dashboard routes and add user menu"
 ### Task 13: Add Authentication Tests
 
 **Files:**
+
 - Create: `apps/web/components/auth/auth.test.tsx`
 - Create: `convex/lib/auth.test.ts`
 
 **Step 1: Test auth helpers**
 
 Create `convex/lib/auth.test.ts`:
+
 ```typescript
 import { describe, test, expect } from 'bun:test'
 import { requireAuth, getCurrentUserId } from './auth'
@@ -852,6 +893,7 @@ describe('auth helpers', () => {
 **Step 2: Test auth components**
 
 Create `apps/web/components/auth/auth.test.tsx`:
+
 ```typescript
 import { describe, test, expect } from 'bun:test'
 import { render, screen } from '@testing-library/react'
@@ -917,13 +959,15 @@ Expected: Deployment successful
 ### Task 15: Update Documentation
 
 **Files:**
+
 - Modify: `README.md`
 - Modify: `AGENTS.md`
 
 **Step 1: Add authentication section to README**
 
 Add to `README.md`:
-```markdown
+
+````markdown
 ## Authentication
 
 Panda.ai uses Convex Auth with Google OAuth for authentication.
@@ -932,7 +976,8 @@ Panda.ai uses Convex Auth with Google OAuth for authentication.
 
 1. Create a project in [Google Cloud Console](https://console.cloud.google.com/)
 2. Configure OAuth 2.0 credentials
-3. Add authorized redirect URI: `https://your-deployment.convex.site/api/auth/callback/google`
+3. Add authorized redirect URI:
+   `https://your-deployment.convex.site/api/auth/callback/google`
 4. Copy client ID and secret to `.env.local`
 
 ### Environment Variables
@@ -942,7 +987,9 @@ AUTH_GOOGLE_ID=your-client-id.apps.googleusercontent.com
 AUTH_GOOGLE_SECRET=your-client-secret
 CONVEX_AUTH_SECRET=your-random-secret
 ```
-```
+````
+
+````
 
 **Step 2: Update AGENTS.md auth section**
 
@@ -953,7 +1000,7 @@ Modify `AGENTS.md` to remove references to `mock-user-id` and document the new a
 ```bash
 git add README.md AGENTS.md
 git commit -m "docs(auth): update documentation for new authentication system"
-```
+````
 
 ---
 
@@ -971,6 +1018,7 @@ This implementation plan provides:
 **Expected Timeline:** 3-4 days (8-12 hours)
 
 **Key Deliverables:**
+
 - Users can sign in with Google
 - All data is properly user-scoped
 - Routes are protected from unauthenticated access

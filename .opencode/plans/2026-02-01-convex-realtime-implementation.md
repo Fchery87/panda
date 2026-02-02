@@ -1,10 +1,14 @@
 # Convex Real-Time Features Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to
+> implement this plan task-by-task.
 
-**Goal:** Add real-time collaboration features including multi-user cursors, live presence indicators, user avatars, shared cursors, and collaborative editing using Convex's real-time subscriptions.
+**Goal:** Add real-time collaboration features including multi-user cursors,
+live presence indicators, user avatars, shared cursors, and collaborative
+editing using Convex's real-time subscriptions.
 
 **Architecture:**
+
 - Use Convex real-time queries (`useQuery`) for live data synchronization
 - Implement presence system using Convex's reactive subscriptions
 - Use Yjs for operational transform-based collaborative text editing
@@ -12,6 +16,7 @@
 - Implement user presence with heartbeat pattern
 
 **Tech Stack:**
+
 - Convex real-time subscriptions
 - Yjs (CRDT library for collaborative editing)
 - Socket.io or Convex internal channels for cursor sync
@@ -23,6 +28,7 @@
 ## Prerequisites
 
 Before starting:
+
 - Authentication system must be implemented (users need identities)
 - Basic project structure must be stable
 - Team understands real-time data flow patterns
@@ -34,11 +40,13 @@ Before starting:
 ### Task 1: Create Presence Schema
 
 **Files:**
+
 - Modify: `convex/schema.ts`
 
 **Step 1: Add presence table to schema**
 
 Modify `convex/schema.ts`:
+
 ```typescript
 import { defineSchema, defineTable } from 'convex/server'
 import { v } from 'convex/values'
@@ -55,19 +63,23 @@ export default defineSchema({
       v.literal('away'),
       v.literal('offline')
     ),
-    cursor: v.optional(v.object({
-      x: v.number(),
-      y: v.number(),
-      filePath: v.optional(v.string()),
-      timestamp: v.number(),
-    })),
-    selection: v.optional(v.object({
-      filePath: v.string(),
-      startLine: v.number(),
-      startColumn: v.number(),
-      endLine: v.number(),
-      endColumn: v.number(),
-    })),
+    cursor: v.optional(
+      v.object({
+        x: v.number(),
+        y: v.number(),
+        filePath: v.optional(v.string()),
+        timestamp: v.number(),
+      })
+    ),
+    selection: v.optional(
+      v.object({
+        filePath: v.string(),
+        startLine: v.number(),
+        startColumn: v.number(),
+        endLine: v.number(),
+        endColumn: v.number(),
+      })
+    ),
     lastSeenAt: v.number(),
   })
     .index('by_project', ['projectId'])
@@ -106,11 +118,13 @@ git commit -m "feat(realtime): add presence and activity tables to schema"
 ### Task 2: Create Presence Convex Functions
 
 **Files:**
+
 - Create: `convex/presence.ts`
 
 **Step 1: Implement presence queries and mutations**
 
 Create `convex/presence.ts`:
+
 ```typescript
 import { query, mutation, internalMutation } from './_generated/server'
 import { api } from './_generated/api'
@@ -143,19 +157,23 @@ export const update = mutation({
       v.literal('away'),
       v.literal('offline')
     ),
-    cursor: v.optional(v.object({
-      x: v.number(),
-      y: v.number(),
-      filePath: v.optional(v.string()),
-      timestamp: v.number(),
-    })),
-    selection: v.optional(v.object({
-      filePath: v.string(),
-      startLine: v.number(),
-      startColumn: v.number(),
-      endLine: v.number(),
-      endColumn: v.number(),
-    })),
+    cursor: v.optional(
+      v.object({
+        x: v.number(),
+        y: v.number(),
+        filePath: v.optional(v.string()),
+        timestamp: v.number(),
+      })
+    ),
+    selection: v.optional(
+      v.object({
+        filePath: v.string(),
+        startLine: v.number(),
+        startColumn: v.number(),
+        endLine: v.number(),
+        endColumn: v.number(),
+      })
+    ),
   },
   handler: async (ctx, args) => {
     const userId = await requireAuth(ctx)
@@ -163,7 +181,7 @@ export const update = mutation({
     // Check if presence record exists
     const existing = await ctx.db
       .query('presence')
-      .withIndex('by_user_project', (q) => 
+      .withIndex('by_user_project', (q) =>
         q.eq('userId', userId).eq('projectId', args.projectId)
       )
       .first()
@@ -207,7 +225,7 @@ export const updateCursor = mutation({
 
     const existing = await ctx.db
       .query('presence')
-      .withIndex('by_user_project', (q) => 
+      .withIndex('by_user_project', (q) =>
         q.eq('userId', userId).eq('projectId', args.projectId)
       )
       .first()
@@ -231,7 +249,7 @@ export const heartbeat = mutation({
 
     const existing = await ctx.db
       .query('presence')
-      .withIndex('by_user_project', (q) => 
+      .withIndex('by_user_project', (q) =>
         q.eq('userId', userId).eq('projectId', args.projectId)
       )
       .first()
@@ -276,11 +294,13 @@ git commit -m "feat(realtime): implement presence convex functions"
 ### Task 3: Create Activity Tracking Functions
 
 **Files:**
+
 - Create: `convex/activity.ts`
 
 **Step 1: Implement activity tracking**
 
 Create `convex/activity.ts`:
+
 ```typescript
 import { query, mutation } from './_generated/server'
 import { v } from 'convex/values'
@@ -348,11 +368,13 @@ git commit -m "feat(realtime): add activity tracking functions"
 ### Task 4: Create Presence Hook
 
 **Files:**
+
 - Create: `apps/web/hooks/usePresence.ts`
 
 **Step 1: Implement presence hook**
 
 Create `apps/web/hooks/usePresence.ts`:
+
 ```typescript
 'use client'
 
@@ -376,10 +398,9 @@ interface PresenceUser {
 
 export function usePresence(projectId: Id<'projects'>) {
   // Subscribe to other users' presence
-  const otherUsers = useQuery(
-    api.presence.list,
-    { projectId }
-  ) as PresenceUser[] | undefined
+  const otherUsers = useQuery(api.presence.list, { projectId }) as
+    | PresenceUser[]
+    | undefined
 
   // Mutations
   const updatePresence = useMutation(api.presence.update)
@@ -471,11 +492,13 @@ git commit -m "feat(realtime): create presence hook"
 ### Task 5: Create Activity Feed Hook
 
 **Files:**
+
 - Create: `apps/web/hooks/useActivity.ts`
 
 **Step 1: Implement activity hook**
 
 Create `apps/web/hooks/useActivity.ts`:
+
 ```typescript
 'use client'
 
@@ -484,7 +507,7 @@ import { useQuery, useMutation } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 
-type ActivityType = 
+type ActivityType =
   | 'file_edit'
   | 'file_create'
   | 'file_delete'
@@ -501,10 +524,9 @@ interface Activity {
 
 export function useActivity(projectId: Id<'projects'>, limit?: number) {
   // Subscribe to activity feed
-  const activities = useQuery(
-    api.activity.list,
-    { projectId, limit }
-  ) as Activity[] | undefined
+  const activities = useQuery(api.activity.list, { projectId, limit }) as
+    | Activity[]
+    | undefined
 
   // Record activity
   const recordActivity = useMutation(api.activity.record)
@@ -541,11 +563,13 @@ git commit -m "feat(realtime): create activity feed hook"
 ### Task 6: Create User Avatars Component
 
 **Files:**
+
 - Create: `apps/web/components/presence/UserAvatars.tsx`
 
 **Step 1: Create user avatars component**
 
 Create `apps/web/components/presence/UserAvatars.tsx`:
+
 ```typescript
 'use client'
 
@@ -585,8 +609,8 @@ export function UserAvatars({
 
   const userDetails = useQuery(
     api.users.listByIds,
-    { 
-      userIds: users?.map(u => u.userId) || [] 
+    {
+      userIds: users?.map(u => u.userId) || []
     }
   ) as Array<{
     _id: Id<'users'>
@@ -661,6 +685,7 @@ export function UserAvatars({
 **Step 2: Create users list query**
 
 Add to `convex/users.ts`:
+
 ```typescript
 export const listByIds = query({
   args: {
@@ -692,11 +717,13 @@ git commit -m "feat(realtime): create user avatars component"
 ### Task 7: Create Cursor Overlay Component
 
 **Files:**
+
 - Create: `apps/web/components/presence/CursorOverlay.tsx`
 
 **Step 1: Create cursor overlay component**
 
 Create `apps/web/components/presence/CursorOverlay.tsx`:
+
 ```typescript
 'use client'
 
@@ -830,6 +857,7 @@ git commit -m "feat(realtime): create cursor overlay component"
 ### Task 8: Setup Yjs Integration
 
 **Files:**
+
 - Install: yjs, y-websocket, @yjs/react
 - Create: `apps/web/lib/collaboration/yjs-provider.ts`
 - Create: `apps/web/components/editor/CollaborativeEditor.tsx`
@@ -844,6 +872,7 @@ bun add yjs y-websocket @yjs/react y-codemirror.next
 **Step 2: Create Yjs provider**
 
 Create `apps/web/lib/collaboration/yjs-provider.ts`:
+
 ```typescript
 import * as Y from 'yjs'
 import { ConvexProvider } from './convex-yjs-provider'
@@ -864,7 +893,7 @@ export class CollaborationProvider {
   constructor(options: YjsProviderOptions) {
     this.doc = new Y.Doc()
     this.text = this.doc.getText('content')
-    
+
     // Initialize Convex Yjs provider
     this.provider = new ConvexProvider(
       `project-${options.projectId}-file-${options.fileId}`,
@@ -909,6 +938,7 @@ export class CollaborationProvider {
 **Step 3: Create Convex Yjs provider**
 
 Create `apps/web/lib/collaboration/convex-yjs-provider.ts`:
+
 ```typescript
 import * as Y from 'yjs'
 import { useMutation, useQuery } from 'convex/react'
@@ -925,11 +955,7 @@ export class ConvexProvider {
   private options: ConvexProviderOptions
   private awareness: Map<string, any>
 
-  constructor(
-    roomId: string,
-    doc: Y.Doc,
-    options: ConvexProviderOptions
-  ) {
+  constructor(roomId: string, doc: Y.Doc, options: ConvexProviderOptions) {
     this.roomId = roomId
     this.doc = doc
     this.options = options
@@ -942,7 +968,7 @@ export class ConvexProvider {
     // Subscribe to document updates from other users
     // This is a simplified version - real implementation would use
     // Convex real-time subscriptions for Yjs updates
-    
+
     // For now, we'll use periodic sync
     setInterval(() => {
       this.syncDocument()
@@ -952,7 +978,7 @@ export class ConvexProvider {
   private async syncDocument(): Promise<void> {
     // Get current state vector
     const stateVector = Y.encodeStateAsUpdate(this.doc)
-    
+
     // Send to server (would be a Convex mutation)
     // await convex.mutation(api.collaboration.syncDocument, {
     //   roomId: this.roomId,
@@ -987,11 +1013,13 @@ git commit -m "feat(realtime): setup Yjs for collaborative editing"
 ### Task 9: Create Collaborative Editor
 
 **Files:**
+
 - Create: `apps/web/components/editor/CollaborativeEditor.tsx`
 
 **Step 1: Create collaborative editor component**
 
 Create `apps/web/components/editor/CollaborativeEditor.tsx`:
+
 ```typescript
 'use client'
 
@@ -1088,12 +1116,14 @@ git commit -m "feat(realtime): create collaborative editor component"
 ### Task 10: Update Workbench with Real-Time Features
 
 **Files:**
+
 - Modify: `apps/web/components/workbench/Workbench.tsx`
 - Modify: `apps/web/app/(dashboard)/projects/[projectId]/page.tsx`
 
 **Step 1: Integrate presence into workbench**
 
 Modify `apps/web/components/workbench/Workbench.tsx`:
+
 ```typescript
 import { useRef } from 'react'
 import { UserAvatars } from '@/components/presence/UserAvatars'
@@ -1109,11 +1139,11 @@ export function Workbench({
 
   return (
     <div ref={workbenchRef} className="surface-0 h-full w-full relative">
-      <CursorOverlay 
-        projectId={projectId} 
-        containerRef={workbenchRef} 
+      <CursorOverlay
+        projectId={projectId}
+        containerRef={workbenchRef}
       />
-      
+
       {/* Existing workbench content */}
       <PanelGroup direction="horizontal" className="h-full">
         {/* ... */}
@@ -1126,6 +1156,7 @@ export function Workbench({
 **Step 2: Add user avatars to project header**
 
 Modify `apps/web/app/(dashboard)/projects/[projectId]/page.tsx`:
+
 ```typescript
 import { UserAvatars } from '@/components/presence/UserAvatars'
 
@@ -1149,11 +1180,13 @@ git commit -m "feat(realtime): integrate presence features into workbench"
 ### Task 11: Create Activity Feed Panel
 
 **Files:**
+
 - Create: `apps/web/components/presence/ActivityFeed.tsx`
 
 **Step 1: Create activity feed component**
 
 Create `apps/web/components/presence/ActivityFeed.tsx`:
+
 ```typescript
 'use client'
 
@@ -1170,7 +1203,7 @@ interface ActivityFeedProps {
   className?: string
 }
 
-type ActivityType = 
+type ActivityType =
   | 'file_edit'
   | 'file_create'
   | 'file_delete'
@@ -1269,6 +1302,7 @@ export function ActivityFeed({ projectId, className }: ActivityFeedProps) {
 **Step 2: Add activity feed to sidebar**
 
 Modify `apps/web/components/workbench/Workbench.tsx`:
+
 ```typescript
 import { ActivityFeed } from '@/components/presence/ActivityFeed'
 
@@ -1296,6 +1330,7 @@ git commit -m "feat(realtime): add activity feed panel"
 ### Task 12: Test Real-Time Features
 
 **Files:**
+
 - Create: `apps/web/hooks/usePresence.test.ts`
 - Create: `apps/web/components/presence/UserAvatars.test.tsx`
 - Create: `convex/presence.test.ts`
@@ -1303,6 +1338,7 @@ git commit -m "feat(realtime): add activity feed panel"
 **Step 1: Test presence hook**
 
 Create `apps/web/hooks/usePresence.test.ts`:
+
 ```typescript
 import { describe, test, expect, mock, beforeEach } from 'bun:test'
 import { renderHook, act } from '@testing-library/react'
@@ -1315,20 +1351,20 @@ describe('usePresence', () => {
 
   test('returns other users list', () => {
     const { result } = renderHook(() => usePresence('projects-1' as any))
-    
+
     expect(result.current.otherUsers).toBeDefined()
     expect(Array.isArray(result.current.otherUsers)).toBe(true)
   })
 
   test('provides broadcastCursor function', () => {
     const { result } = renderHook(() => usePresence('projects-1' as any))
-    
+
     expect(typeof result.current.broadcastCursor).toBe('function')
   })
 
   test('provides setAway function', () => {
     const { result } = renderHook(() => usePresence('projects-1' as any))
-    
+
     expect(typeof result.current.setAway).toBe('function')
   })
 })
@@ -1337,6 +1373,7 @@ describe('usePresence', () => {
 **Step 2: Test presence Convex functions**
 
 Create `convex/presence.test.ts`:
+
 ```typescript
 import { describe, test, expect, beforeEach } from 'bun:test'
 import { list, update, updateCursor, heartbeat } from './presence'
@@ -1375,7 +1412,7 @@ describe('presence queries', () => {
 
     test('filters out stale presence records', async () => {
       const tenMinutesAgo = Date.now() - 10 * 60 * 1000
-      
+
       await ctx.db.insert('presence', {
         userId,
         projectId,
@@ -1455,9 +1492,9 @@ describe('presence mutations', () => {
 
       const presence = await ctx.db
         .query('presence')
-        .filter(q => q.eq('userId', userId))
+        .filter((q) => q.eq('userId', userId))
         .first()
-      
+
       expect(presence?.cursor?.x).toBe(100)
       expect(presence?.cursor?.y).toBe(200)
     })
@@ -1479,12 +1516,14 @@ git commit -m "test(realtime): add tests for real-time features"
 ### Task 13: Optimize Performance
 
 **Files:**
+
 - Modify: `apps/web/hooks/usePresence.ts`
 - Modify: `convex/presence.ts`
 
 **Step 1: Optimize cursor update frequency**
 
 Modify `apps/web/hooks/usePresence.ts`:
+
 ```typescript
 import { useCallback, useRef } from 'react'
 import { throttle } from 'lodash-es'
@@ -1511,6 +1550,7 @@ export function usePresence(projectId: Id<'projects'>) {
 **Step 2: Add cursor update rate limiting on server**
 
 Modify `convex/presence.ts`:
+
 ```typescript
 export const updateCursor = mutation({
   args: {
@@ -1527,7 +1567,7 @@ export const updateCursor = mutation({
 
     const existing = await ctx.db
       .query('presence')
-      .withIndex('by_user_project', (q) => 
+      .withIndex('by_user_project', (q) =>
         q.eq('userId', userId).eq('projectId', args.projectId)
       )
       .first()
@@ -1567,7 +1607,8 @@ git commit -m "perf(realtime): optimize cursor update frequency"
 
 This implementation plan provides:
 
-1. **Presence System**: Real-time user tracking with cursors, status, and activity
+1. **Presence System**: Real-time user tracking with cursors, status, and
+   activity
 2. **User Avatars**: Visual indicator of active users with status
 3. **Cursor Tracking**: Live cursor positions of other users
 4. **Activity Feed**: Real-time stream of user actions
@@ -1577,6 +1618,7 @@ This implementation plan provides:
 **Expected Timeline:** 1-2 weeks
 
 **Key Deliverables:**
+
 - Users see who else is online
 - Live cursor positions displayed
 - Activity feed shows recent actions

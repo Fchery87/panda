@@ -87,6 +87,7 @@ export const update = mutation({
       userIdAsId = await ctx.db.insert('users', {
         email: 'dev@example.com',
         name: 'Developer',
+        tokenIdentifier: 'dev-token-' + Date.now(),
         createdAt: Date.now(),
       })
       console.log('[settings/update] Created new user with ID:', userIdAsId)
