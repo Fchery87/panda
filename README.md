@@ -173,11 +173,30 @@ panda-ai/
    # or
    TOGETHER_API_KEY=...
    
-   # Optional: GitHub integration
-   GITHUB_TOKEN=ghp_...
-   ```
-
-## Development Workflow
+    # Optional: GitHub integration
+    GITHUB_TOKEN=ghp_...
+    ```
+ 
+ ## Authentication
+ 
+ Panda.ai uses Convex Auth with Google OAuth for authentication.
+ 
+ ### Setup
+ 
+ 1. Create a project in [Google Cloud Console](https://console.cloud.google.com/)
+ 2. Configure OAuth 2.0 credentials
+ 3. Add authorized redirect URI: `https://your-deployment.convex.site/api/auth/callback/google`
+ 4. Copy client ID and secret to `.env.local`
+ 
+ ### Environment Variables
+ 
+ ```env
+ AUTH_GOOGLE_ID=your-client-id.apps.googleusercontent.com
+ AUTH_GOOGLE_SECRET=your-client-secret
+ CONVEX_AUTH_SECRET=your-random-secret
+ ```
+ 
+ ## Development Workflow
 
 ### Start Development Server
 

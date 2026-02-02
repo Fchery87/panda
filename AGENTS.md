@@ -87,6 +87,7 @@ const designTokens = {
 ```
 Frontend:        Next.js 16 (App Router) + React 19 + TypeScript 5.7
 Backend:         Convex (real-time database + HTTP actions)
+Authentication:  Convex Auth with Google OAuth
 UI Components:   shadcn/ui (30+ components)
 Styling:         Tailwind CSS 3.4 + brutalist custom theme
 Animations:      Framer Motion
