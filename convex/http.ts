@@ -268,14 +268,6 @@ http.route({
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.error('[streamChat] LLM API error:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorText,
-          provider,
-          model: selectedModel,
-          baseURL: config.baseURL,
-        })
         return new Response(
           JSON.stringify({ error: `LLM API error (${response.status}): ${errorText}` }),
           { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -381,7 +373,6 @@ http.route({
         },
       })
     } catch (error) {
-      console.error('Stream chat error:', error)
       return new Response(
         JSON.stringify({
           error: error instanceof Error ? error.message : 'Unknown error',

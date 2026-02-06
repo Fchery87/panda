@@ -2,7 +2,10 @@
 
 import { Toaster } from '@/components/ui/sonner'
 import { ThemeProvider } from 'next-themes'
-import { ConvexAuthProvider } from '@/components/auth/ConvexAuthProvider'
+import { ConvexAuthNextjsProvider } from '@convex-dev/auth/nextjs'
+import { ConvexReactClient } from 'convex/react'
+
+const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
 
 function MissingConvexConfig() {
   return (
@@ -38,7 +41,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <ConvexAuthProvider>
+    <ConvexAuthNextjsProvider client={convex}>
       <ThemeProvider
         attribute="class"
         defaultTheme="dark"
@@ -57,6 +60,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
           }}
         />
       </ThemeProvider>
-    </ConvexAuthProvider>
+    </ConvexAuthNextjsProvider>
   )
 }

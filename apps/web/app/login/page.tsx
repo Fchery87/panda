@@ -2,7 +2,7 @@
 
 import { SignInButton } from '@/components/auth/SignInButton'
 import { PandaLogo } from '@/components/ui/panda-logo'
-import { Authenticated, Unauthenticated } from '@/components/auth/ConvexAuthProvider'
+import { Authenticated, AuthLoading, Unauthenticated } from '@/components/auth/ConvexAuthProvider'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 
@@ -19,6 +19,11 @@ function AuthenticatedRedirect() {
 export default function LoginPage() {
   return (
     <>
+      <AuthLoading>
+        <div className="flex min-h-screen items-center justify-center p-4 text-sm text-muted-foreground">
+          Checking authentication...
+        </div>
+      </AuthLoading>
       <Authenticated>
         <AuthenticatedRedirect />
       </Authenticated>

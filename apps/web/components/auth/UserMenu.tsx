@@ -18,13 +18,17 @@ export function UserMenu() {
   const user = useQuery(api.users.getCurrent)
 
   if (!user) return null
+  const displayName = user.name || 'User'
+  const displayEmail = user.email || ''
+  const avatarSrc = user.avatarUrl || user.image || undefined
+  const avatarAlt = displayEmail ? `${displayName} (${displayEmail})` : displayName
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="h-8 w-8 rounded-none p-0">
           <Avatar className="h-8 w-8 rounded-none">
-            <AvatarImage src={user.avatarUrl || undefined} alt={user.name || user.email} />
+            <AvatarImage src={avatarSrc} alt={avatarAlt} />
             <AvatarFallback className="rounded-none">
               <User className="h-4 w-4" />
             </AvatarFallback>
@@ -34,8 +38,8 @@ export function UserMenu() {
       <DropdownMenuContent align="end" className="rounded-none">
         <div className="flex items-center gap-2 p-2">
           <div className="flex flex-col">
-            <span className="text-sm font-medium">{user.name || 'User'}</span>
-            <span className="text-xs text-muted-foreground">{user.email}</span>
+            <span className="text-sm font-medium">{displayName}</span>
+            <span className="text-xs text-muted-foreground">{displayEmail}</span>
           </div>
         </div>
         <DropdownMenuItem onClick={() => signOut()} className="cursor-pointer rounded-none">

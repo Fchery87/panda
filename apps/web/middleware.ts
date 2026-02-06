@@ -1,22 +1,25 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import {
+  convexAuthNextjsMiddleware,
+  createRouteMatcher,
+  nextjsMiddlewareRedirect,
+} from '@convex-dev/auth/nextjs/server'
+import { shouldRedirectToLogin, shouldRedirectToProjects } from '@/lib/auth/routeGuards'
 
-export function middleware(request: NextRequest) {
-  // Protect dashboard routes
-  if (
-    request.nextUrl.pathname.startsWith('/projects') ||
-    request.nextUrl.pathname.startsWith('/settings')
-  ) {
-    const token = request.cookies.get('ConvexAuthToken')?.value
+const isProtectedRoute = createRouteMatcher(['/projects(.*)', '/settings(.*)'])
+const isLoginRoute = createRouteMatcher(['/login'])
 
-    if (!token) {
-      return NextResponse.redirect(new URL('/login', request.url))
-    }
+export default convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
+  const authenticated = await convexAuth.isAuthenticated()
+  if (isProtectedRoute(request) && shouldRedirectToLogin(request.nextUrl.pathname, authenticated)) {
+    return nextjsMiddlewareRedirect(request, '/login')
   }
-
-  return NextResponse.next()
-}
+  if (isLoginRoute(request) && shouldRedirectToProjects(request.nextUrl.pathname, authenticated)) {
+    return nextjsMiddlewareRedirect(request, '/projects')
+  }
+})
 
 export const config = {
-  matcher: ['/projects/:path*', '/settings/:path*'],
+  // Run auth middleware on all app routes so Convex Auth can proxy /api/auth
+  // actions and handle auth callbacks/token refresh consistently.
+  matcher: ['/((?!_next|.*\\..*).*)'],
 }

@@ -15,17 +15,14 @@ export const get = query({
     if (!userIdAsId) {
       const devUser = await ctx.db
         .query('users')
-        .withIndex('by_email', (q) => q.eq('email', 'dev@example.com'))
+        .withIndex('email', (q) => q.eq('email', 'dev@example.com'))
         .first()
       if (devUser) {
         userIdAsId = devUser._id
       }
     }
 
-    console.log('[settings/get] Fetching settings for user:', userId, 'userIdAsId:', userIdAsId)
-
     if (!userIdAsId) {
-      console.log('[settings/get] No user found')
       return null
     }
 
@@ -33,11 +30,6 @@ export const get = query({
       .query('settings')
       .withIndex('by_user', (q) => q.eq('userId', userIdAsId))
       .unique()
-
-    console.log('[settings/get] Found settings:', settings ? 'yes' : 'no', {
-      defaultProvider: settings?.defaultProvider,
-      hasProviderConfigs: !!settings?.providerConfigs,
-    })
 
     return settings
   },
@@ -70,17 +62,12 @@ export const update = mutation({
     if (!userIdAsId) {
       const devUser = await ctx.db
         .query('users')
-        .withIndex('by_email', (q) => q.eq('email', 'dev@example.com'))
+        .withIndex('email', (q) => q.eq('email', 'dev@example.com'))
         .first()
       if (devUser) {
         userIdAsId = devUser._id
       }
     }
-
-    console.log('[settings/update] Saving settings for user:', userId, 'userIdAsId:', userIdAsId, {
-      defaultProvider: args.defaultProvider,
-      providerConfigsKeys: args.providerConfigs ? Object.keys(args.providerConfigs) : null,
-    })
 
     // Create user if they don't exist (for development)
     if (!userIdAsId) {
@@ -90,7 +77,6 @@ export const update = mutation({
         tokenIdentifier: 'dev-token-' + Date.now(),
         createdAt: Date.now(),
       })
-      console.log('[settings/update] Created new user with ID:', userIdAsId)
     }
 
     const now = Date.now()

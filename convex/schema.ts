@@ -10,11 +10,18 @@ export default defineSchema({
   users: defineTable({
     email: v.string(),
     name: v.optional(v.string()),
+    image: v.optional(v.string()),
+    emailVerificationTime: v.optional(v.number()),
+    phone: v.optional(v.string()),
+    phoneVerificationTime: v.optional(v.number()),
+    isAnonymous: v.optional(v.boolean()),
     avatarUrl: v.optional(v.string()),
     tokenIdentifier: v.optional(v.string()),
-    createdAt: v.number(),
+    createdAt: v.optional(v.number()),
   })
-    .index('by_email', ['email'])
+    // Required by @convex-dev/auth internals (looks up users via withIndex("email")).
+    .index('email', ['email'])
+    .index('phone', ['phone'])
     .index('by_tokenIdentifier', ['tokenIdentifier']),
 
   // 2. Projects table - code projects

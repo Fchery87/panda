@@ -206,7 +206,6 @@ export const streamChat = httpAction(async (ctx, request): Promise<Response> => 
       },
     })
   } catch (error) {
-    console.error('Stream chat error:', error)
     return new Response(
       JSON.stringify({
         error: error instanceof Error ? error.message : 'Unknown error',

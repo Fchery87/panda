@@ -79,7 +79,7 @@ development/testing).
 
 ## Step 4: Configure Environment Variables
 
-1. Open your `.env.local` file:
+1. Open your frontend `.env.local` file:
 
    ```bash
    code /home/nochaserz/Documents/Coding\ Projects/panda/apps/web/.env.local
@@ -105,6 +105,28 @@ development/testing).
    Copy the output and paste it as your `CONVEX_AUTH_SECRET`
 
 4. **Save the file** (Ctrl+S or Cmd+S)
+
+5. **Important: Convex Auth reads credentials from Convex deployment env, not
+   just frontend env.**
+
+   Set required backend variables:
+
+   ```bash
+   cd /home/nochaserz/Documents/Coding\ Projects/panda
+   set -a; source apps/web/.env.local; set +a
+
+   npx convex env set AUTH_GOOGLE_ID "$AUTH_GOOGLE_ID"
+   npx convex env set AUTH_GOOGLE_SECRET "$AUTH_GOOGLE_SECRET"
+   npx convex env set CONVEX_AUTH_SECRET "$CONVEX_AUTH_SECRET"
+   npx convex env set SITE_URL "http://localhost:3000"
+   ```
+
+6. **Generate JWT keys required by @convex-dev/auth** (sets `JWT_PRIVATE_KEY`
+   and `JWKS`):
+
+   ```bash
+   npx @convex-dev/auth --web-server-url http://localhost:3000 --allow-dirty-git-state --skip-git-check
+   ```
 
 ---
 
@@ -264,6 +286,31 @@ AUTH_GOOGLE_ID=your-client-id.apps.googleusercontent.com
 AUTH_GOOGLE_SECRET=your-client-secret
 CONVEX_AUTH_SECRET=your-random-32-char-secret
 ```
+
+Your Convex deployment environment must contain:
+
+```env
+AUTH_GOOGLE_ID=...
+AUTH_GOOGLE_SECRET=...
+CONVEX_AUTH_SECRET=...
+SITE_URL=http://localhost:3000
+JWT_PRIVATE_KEY=...
+JWKS=...
+```
+
+---
+
+## Schema Compatibility Notes (@convex-dev/auth)
+
+If you define your own `users` table instead of only spreading `authTables`,
+ensure it stays compatible with `@convex-dev/auth`:
+
+1. Include index `.index("email", ["email"])` (required; exact name matters)
+2. Include index `.index("phone", ["phone"])` if phone auth fields exist
+3. Do not require app-specific fields (for example `createdAt`) on auth-created
+   users
+4. Keep auth-managed profile fields optional (`name`, `image`,
+   `emailVerificationTime`, etc.)
 
 ---
 

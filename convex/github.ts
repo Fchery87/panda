@@ -392,7 +392,6 @@ export const importRepo = action({
         } catch (error) {
           const errorMsg = `Failed to import ${file.path}: ${error instanceof Error ? error.message : 'Unknown error'}`
           progress.errors.push(errorMsg)
-          console.error(errorMsg)
         }
       }
 
