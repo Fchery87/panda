@@ -25,13 +25,14 @@ export const get = query({
 export const create = mutation({
   args: {
     chatId: v.id('chats'),
-    messageId: v.id('messages'),
+    messageId: v.optional(v.id('messages')),
     actions: v.array(v.record(v.string(), v.any())),
     status: v.union(
       v.literal('pending'),
       v.literal('in_progress'),
       v.literal('completed'),
-      v.literal('failed')
+      v.literal('failed'),
+      v.literal('rejected')
     ),
   },
   handler: async (ctx, args) => {
@@ -57,7 +58,8 @@ export const updateStatus = mutation({
       v.literal('pending'),
       v.literal('in_progress'),
       v.literal('completed'),
-      v.literal('failed')
+      v.literal('failed'),
+      v.literal('rejected')
     ),
     actions: v.optional(v.array(v.record(v.string(), v.any()))),
   },

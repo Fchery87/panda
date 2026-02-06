@@ -95,13 +95,14 @@ export default defineSchema({
   // 7. Artifacts table - AI-generated artifacts from chats
   artifacts: defineTable({
     chatId: v.id('chats'),
-    messageId: v.id('messages'),
+    messageId: v.optional(v.id('messages')),
     actions: v.array(v.record(v.string(), v.any())),
     status: v.union(
       v.literal('pending'),
       v.literal('in_progress'),
       v.literal('completed'),
-      v.literal('failed')
+      v.literal('failed'),
+      v.literal('rejected')
     ),
     createdAt: v.number(),
   })
@@ -160,4 +161,49 @@ export default defineSchema({
     .index('by_status', ['status'])
     .index('by_project_status', ['projectId', 'status'])
     .index('by_created', ['projectId', 'createdAt']),
+
+  // 10. AgentRuns table - canonical run lifecycle per chat turn
+  agentRuns: defineTable({
+    projectId: v.id('projects'),
+    chatId: v.id('chats'),
+    userId: v.id('users'),
+    mode: v.union(v.literal('discuss'), v.literal('build')),
+    provider: v.optional(v.string()),
+    model: v.optional(v.string()),
+    status: v.union(
+      v.literal('running'),
+      v.literal('completed'),
+      v.literal('failed'),
+      v.literal('stopped')
+    ),
+    userMessage: v.optional(v.string()),
+    summary: v.optional(v.string()),
+    error: v.optional(v.string()),
+    usage: v.optional(v.record(v.string(), v.any())),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index('by_chat_started', ['chatId', 'startedAt'])
+    .index('by_project_started', ['projectId', 'startedAt'])
+    .index('by_user_started', ['userId', 'startedAt']),
+
+  // 11. AgentRunEvents table - persisted timeline events for each run
+  agentRunEvents: defineTable({
+    runId: v.id('agentRuns'),
+    chatId: v.id('chats'),
+    sequence: v.number(),
+    type: v.string(),
+    content: v.optional(v.string()),
+    status: v.optional(v.string()),
+    toolCallId: v.optional(v.string()),
+    toolName: v.optional(v.string()),
+    args: v.optional(v.record(v.string(), v.any())),
+    output: v.optional(v.string()),
+    error: v.optional(v.string()),
+    durationMs: v.optional(v.number()),
+    usage: v.optional(v.record(v.string(), v.any())),
+    createdAt: v.number(),
+  })
+    .index('by_run_sequence', ['runId', 'sequence'])
+    .index('by_chat_created', ['chatId', 'createdAt']),
 })

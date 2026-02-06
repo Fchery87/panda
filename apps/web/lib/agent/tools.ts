@@ -169,6 +169,10 @@ export function createToolContext(
     }
     jobs: {
       create: any
+      updateStatus: any
+    }
+    artifacts: {
+      create: any
     }
   }
 ): ToolContext {
@@ -219,12 +223,26 @@ export function createToolContext(
 
         for (const file of files) {
           try {
-            // Queue artifact for user review
-            artifactQueue.addFileArtifact(
-              file.path,
-              file.content,
-              existingByPath.get(file.path) ?? null
-            )
+            const originalContent = existingByPath.get(file.path) ?? null
+            if (api.artifacts.create) {
+              await convexClient.mutation(api.artifacts.create, {
+                chatId,
+                actions: [
+                  {
+                    type: 'file_write',
+                    payload: {
+                      filePath: file.path,
+                      content: file.content,
+                      originalContent,
+                    },
+                  },
+                ],
+                status: 'pending',
+              })
+            } else {
+              // Backward-compatible local fallback.
+              artifactQueue.addFileArtifact(file.path, file.content, originalContent)
+            }
             results.push({ path: file.path, success: true })
           } catch (error) {
             results.push({
@@ -251,8 +269,24 @@ export function createToolContext(
       const startTime = Date.now()
 
       try {
-        // Queue command artifact for visibility
-        artifactQueue.addCommandArtifact(command, cwd)
+        if (api.artifacts.create) {
+          await convexClient.mutation(api.artifacts.create, {
+            chatId,
+            actions: [
+              {
+                type: 'command_run',
+                payload: {
+                  command,
+                  workingDirectory: cwd,
+                },
+              },
+            ],
+            status: 'pending',
+          })
+        } else {
+          // Backward-compatible local fallback.
+          artifactQueue.addCommandArtifact(command, cwd)
+        }
 
         // Determine job type from command
         let jobType: 'cli' | 'build' | 'test' | 'deploy' | 'lint' | 'format' = 'cli'
@@ -276,12 +310,89 @@ export function createToolContext(
           command,
         })
 
-        // Return immediate response (job is async)
+        // If we cannot mutate job status, fall back to queued-only behavior.
+        if (!api.jobs.updateStatus) {
+          return {
+            stdout: `Job created with ID: ${jobId}. Command queued for execution.`,
+            stderr: '',
+            exitCode: 0,
+            durationMs: Date.now() - startTime,
+          }
+        }
+
+        const startedAt = Date.now()
+        await convexClient.mutation(api.jobs.updateStatus, {
+          id: jobId,
+          status: 'running',
+          startedAt,
+          logs: [`[${new Date(startedAt).toISOString()}] Running: ${command}`],
+        })
+
+        const response = await fetch('/api/jobs/execute', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            command,
+            workingDirectory: cwd,
+            timeoutMs: timeout,
+          }),
+        })
+
+        if (!response.ok) {
+          const errorText = await response.text()
+          await convexClient.mutation(api.jobs.updateStatus, {
+            id: jobId,
+            status: 'failed',
+            completedAt: Date.now(),
+            error: errorText,
+            logs: [
+              `[${new Date(startedAt).toISOString()}] Running: ${command}`,
+              `[${new Date().toISOString()}] Failed to execute command: ${errorText}`,
+            ],
+          })
+
+          return {
+            stdout: '',
+            stderr: errorText,
+            exitCode: 1,
+            durationMs: Date.now() - startTime,
+          }
+        }
+
+        const payload = (await response.json()) as {
+          stdout: string
+          stderr: string
+          exitCode: number
+          durationMs: number
+          timedOut: boolean
+        }
+
+        const completedAt = Date.now()
+        const succeeded = payload.exitCode === 0
+
+        await convexClient.mutation(api.jobs.updateStatus, {
+          id: jobId,
+          status: succeeded ? 'completed' : 'failed',
+          output: payload.stdout || undefined,
+          error: payload.stderr || undefined,
+          completedAt,
+          logs: [
+            `[${new Date(startedAt).toISOString()}] Running: ${command}`,
+            `[${new Date(completedAt).toISOString()}] Exit code: ${payload.exitCode}`,
+            ...(payload.timedOut
+              ? [`[${new Date(completedAt).toISOString()}] Command timed out`]
+              : []),
+          ],
+        })
+
+        // Return command result to the model for the next loop iteration.
         return {
-          stdout: `Job created with ID: ${jobId}. Command will execute asynchronously.`,
-          stderr: '',
-          exitCode: 0,
-          durationMs: Date.now() - startTime,
+          stdout: payload.stdout,
+          stderr: payload.stderr,
+          exitCode: payload.exitCode,
+          durationMs: payload.durationMs,
         }
       } catch (error) {
         console.error('Failed to create job:', error)

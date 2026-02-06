@@ -14,6 +14,7 @@ import { Workbench } from '@/components/workbench/Workbench'
 import { ChatInput } from '@/components/chat/ChatInput'
 import { MessageList } from '@/components/chat/MessageList'
 import { PlanDraftPanel } from '@/components/chat/PlanDraftPanel'
+import { RunTimelinePanel } from '@/components/chat/RunTimelinePanel'
 import { ArtifactPanel } from '@/components/artifacts/ArtifactPanel'
 import { AgentAutomationDialog } from '@/components/projects/AgentAutomationDialog'
 import { Button } from '@/components/ui/button'
@@ -26,8 +27,6 @@ import { useJobs } from '@/hooks/useJobs'
 import { useAgent } from '@/hooks/useAgent'
 import { useAutoApplyArtifacts } from '@/hooks/useAutoApplyArtifacts'
 
-// Stores
-import { useArtifactStore } from '@/stores/artifactStore'
 import type { Message } from '@/components/chat/types'
 import { buildMessageWithPlanDraft, deriveNextPlanDraft } from '@/lib/chat/planDraft'
 import { resolveEffectiveAgentPolicy, type AgentPolicy } from '@/lib/agent/automationPolicy'
@@ -149,7 +148,7 @@ export default function ProjectPage() {
     return policy
   }, [projectAgentPolicy, userAgentDefaults])
 
-  useAutoApplyArtifacts({ projectId, policy: effectiveAutomationPolicy })
+  useAutoApplyArtifacts({ projectId, chatId: activeChat?._id, policy: effectiveAutomationPolicy })
 
   // Create LLM provider from settings
   const provider = useMemo<LLMProvider | null>(() => {
@@ -205,8 +204,16 @@ export default function ProjectPage() {
       settings?.providerConfigs?.[settings?.defaultProvider || 'openai']?.defaultModel || 'gpt-4o',
   })
 
-  // Artifact store clear function
-  const clearArtifactQueue = useArtifactStore((state) => state.clearQueue)
+  const artifactRecords = useQuery(
+    api.artifacts.list,
+    activeChat ? { chatId: activeChat._id } : 'skip'
+  ) as
+    | Array<{
+        _id: Id<'artifacts'>
+        status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'rejected'
+      }>
+    | undefined
+  const pendingArtifactCount = (artifactRecords || []).filter((a) => a.status === 'pending').length
 
   // Reset workspace handler
   const handleResetWorkspace = useCallback(() => {
@@ -216,8 +223,6 @@ export default function ProjectPage() {
     agent.clear()
     // Clear input
     agent.setInput('')
-    // Clear artifacts
-    clearArtifactQueue()
     // Clear plan draft
     setPlanDraft('')
     // Reset mode to discuss
@@ -228,7 +233,7 @@ export default function ProjectPage() {
     toast.success('Workspace reset', {
       description: 'Chat, artifacts, and plan draft have been cleared',
     })
-  }, [agent, clearArtifactQueue])
+  }, [agent])
 
   // Handle sending pending message after chat is created
   useEffect(() => {
@@ -240,10 +245,10 @@ export default function ProjectPage() {
 
   // Auto-open artifact panel when there are pending artifacts in build mode
   useEffect(() => {
-    if (chatMode === 'build' && agent.pendingArtifacts.length > 0 && !isArtifactPanelOpen) {
+    if (chatMode === 'build' && pendingArtifactCount > 0 && !isArtifactPanelOpen) {
       setIsArtifactPanelOpen(true)
     }
-  }, [agent.pendingArtifacts.length, chatMode, isArtifactPanelOpen])
+  }, [pendingArtifactCount, chatMode, isArtifactPanelOpen])
 
   // Fetch messages for active chat (fallback when not streaming)
   const convexMessages = useQuery(
@@ -274,6 +279,12 @@ export default function ProjectPage() {
                   reasoningTokens: msg.annotations[0]?.reasoningTokens as number | undefined,
                 }
               : undefined,
+          toolCalls:
+            Array.isArray(msg.annotations) &&
+            msg.annotations.length > 0 &&
+            Array.isArray(msg.annotations[0]?.toolCalls)
+              ? (msg.annotations[0]?.toolCalls as Message['toolCalls'])
+              : undefined,
           createdAt: msg.createdAt,
         })) || []
       )
@@ -287,8 +298,9 @@ export default function ProjectPage() {
         role: msg.role as 'user' | 'assistant' | 'system',
         content: msg.content,
         reasoningContent: msg.reasoningContent,
+        toolCalls: msg.toolCalls,
         annotations: { mode: msg.mode },
-        createdAt: Date.now(), // Agent messages don't have createdAt, use current time
+        createdAt: msg.createdAt,
       }))
   }, [agent.messages, activeChat, convexMessages])
 
@@ -590,7 +602,7 @@ export default function ProjectPage() {
 
         <div className="flex items-center gap-2">
           {/* Show pending artifact count badge */}
-          {agent.pendingArtifacts.length > 0 && (
+          {pendingArtifactCount > 0 && (
             <Button
               variant="destructive"
               size="sm"
@@ -598,7 +610,7 @@ export default function ProjectPage() {
               onClick={() => setIsArtifactPanelOpen(true)}
             >
               <span className="flex h-2 w-2 animate-pulse rounded-full bg-white" />
-              {agent.pendingArtifacts.length} Pending
+              {pendingArtifactCount} Pending
             </Button>
           )}
           <AgentAutomationDialog
@@ -671,6 +683,7 @@ export default function ProjectPage() {
                 isSaving={isPlanSaving}
                 updatedAt={planUpdatedAt}
               />
+              <RunTimelinePanel chatId={activeChat?._id} />
 
               {/* Messages */}
               <div className="flex-1 overflow-hidden">
@@ -703,6 +716,7 @@ export default function ProjectPage() {
           >
             <ArtifactPanel
               projectId={projectId}
+              chatId={activeChat?._id}
               isOpen={true}
               onClose={() => setIsArtifactPanelOpen(false)}
               position="floating"

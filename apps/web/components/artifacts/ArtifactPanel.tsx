@@ -8,75 +8,120 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { ArtifactCard } from './ArtifactCard'
-import { useArtifactStore } from '@/stores/artifactStore'
 import { cn } from '@/lib/utils'
-import { useAction, useConvex, useMutation } from 'convex/react'
+import { useConvex, useMutation, useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { toast } from 'sonner'
 
+type ArtifactAction = {
+  type: 'file_write' | 'command_run'
+  payload: Record<string, unknown>
+}
+
+type ArtifactRecord = {
+  _id: Id<'artifacts'>
+  actions: Array<Record<string, unknown>>
+  status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'rejected'
+  createdAt: number
+}
+
 interface ArtifactPanelProps {
   projectId: Id<'projects'>
+  chatId: Id<'chats'> | null | undefined
   isOpen?: boolean
   onClose?: () => void
   position?: 'right' | 'floating'
 }
 
-// Memoized selectors to prevent infinite loop warnings
-const selectArtifacts = (state: { artifacts: any[] }) => state.artifacts
-const selectApplyArtifact = (state: { applyArtifact: any }) => state.applyArtifact
-const selectRejectArtifact = (state: { rejectArtifact: any }) => state.rejectArtifact
-const selectRejectAll = (state: { rejectAll: any }) => state.rejectAll
-const selectClearQueue = (state: { clearQueue: any }) => state.clearQueue
+function inferJobType(command: string) {
+  const cmdLower = command.toLowerCase()
+  if (cmdLower.includes('build') || cmdLower.includes('compile')) return 'build' as const
+  if (cmdLower.includes('test')) return 'test' as const
+  if (cmdLower.includes('deploy')) return 'deploy' as const
+  if (cmdLower.includes('lint')) return 'lint' as const
+  if (cmdLower.includes('format')) return 'format' as const
+  return 'cli' as const
+}
+
+function getPrimaryAction(record: ArtifactRecord): ArtifactAction | null {
+  const action = record.actions?.[0] as ArtifactAction | undefined
+  if (!action || (action.type !== 'file_write' && action.type !== 'command_run')) return null
+  return action
+}
+
+function mapStatusToCardStatus(
+  status: ArtifactRecord['status']
+): 'pending' | 'applied' | 'rejected' {
+  if (status === 'completed') return 'applied'
+  if (status === 'failed' || status === 'rejected') return 'rejected'
+  return 'pending'
+}
 
 export function ArtifactPanel({
   projectId,
+  chatId,
   isOpen = true,
   onClose,
   position = 'right',
 }: ArtifactPanelProps) {
-  const artifacts = useArtifactStore(selectArtifacts)
-  const applyArtifact = useArtifactStore(selectApplyArtifact)
-  const rejectArtifact = useArtifactStore(selectRejectArtifact)
-  const rejectAll = useArtifactStore(selectRejectAll)
-  const clearQueue = useArtifactStore(selectClearQueue)
+  const records = useQuery(api.artifacts.list, chatId ? { chatId } : 'skip') as
+    | ArtifactRecord[]
+    | undefined
 
   const convex = useConvex()
   const upsertFile = useMutation(api.files.upsert)
   const createAndExecuteJob = useMutation(api.jobs.createAndExecute)
-  const executeJob = useAction(api.jobsExecution.execute)
+  const updateJobStatus = useMutation(api.jobs.updateStatus)
+  const updateArtifactStatus = useMutation(api.artifacts.updateStatus)
 
   const [isApplying, setIsApplying] = useState(false)
 
-  // Memoize filtered artifacts to prevent recalculation on every render
+  const mappedArtifacts = useMemo(() => {
+    return (records || [])
+      .map((record) => {
+        const action = getPrimaryAction(record)
+        if (!action) return null
+
+        return {
+          id: record._id,
+          type: action.type,
+          payload: action.payload as any,
+          createdAt: record.createdAt,
+          description: action.type === 'file_write' ? 'File change queued' : 'Command queued',
+          status: mapStatusToCardStatus(record.status),
+          rawStatus: record.status,
+        }
+      })
+      .filter(Boolean) as Array<{
+      id: Id<'artifacts'>
+      type: 'file_write' | 'command_run'
+      payload: any
+      createdAt: number
+      description: string
+      status: 'pending' | 'applied' | 'rejected'
+      rawStatus: ArtifactRecord['status']
+    }>
+  }, [records])
+
   const pendingArtifacts = useMemo(
-    () => artifacts.filter((a) => a.status === 'pending'),
-    [artifacts]
+    () => mappedArtifacts.filter((a) => a.rawStatus === 'pending' || a.rawStatus === 'in_progress'),
+    [mappedArtifacts]
   )
   const appliedArtifacts = useMemo(
-    () => artifacts.filter((a) => a.status === 'applied'),
-    [artifacts]
+    () => mappedArtifacts.filter((a) => a.rawStatus === 'completed'),
+    [mappedArtifacts]
   )
   const rejectedArtifacts = useMemo(
-    () => artifacts.filter((a) => a.status === 'rejected'),
-    [artifacts]
+    () => mappedArtifacts.filter((a) => a.rawStatus === 'failed' || a.rawStatus === 'rejected'),
+    [mappedArtifacts]
   )
 
   const pendingCount = pendingArtifacts.length
-  const totalCount = artifacts.length
-
-  const inferJobType = (command: string) => {
-    const cmdLower = command.toLowerCase()
-    if (cmdLower.includes('build') || cmdLower.includes('compile')) return 'build' as const
-    if (cmdLower.includes('test')) return 'test' as const
-    if (cmdLower.includes('deploy')) return 'deploy' as const
-    if (cmdLower.includes('lint')) return 'lint' as const
-    if (cmdLower.includes('format')) return 'format' as const
-    return 'cli' as const
-  }
+  const totalCount = mappedArtifacts.length
 
   const applyOneArtifact = useCallback(
-    async (artifact: any) => {
+    async (artifact: (typeof pendingArtifacts)[number]) => {
       if (artifact.type === 'file_write') {
         const payload = artifact.payload as { filePath: string; content: string }
         const existing = await convex.query(api.files.getByPath, {
@@ -95,40 +140,80 @@ export function ArtifactPanel({
         return { kind: 'file' as const, description: payload.filePath }
       }
 
-      if (artifact.type === 'command_run') {
-        const payload = artifact.payload as { command: string; workingDirectory?: string }
-        const type = inferJobType(payload.command)
-        const { jobId, command, workingDirectory } = await createAndExecuteJob({
-          projectId,
-          type,
+      const payload = artifact.payload as { command: string; workingDirectory?: string }
+      const type = inferJobType(payload.command)
+      const { jobId } = await createAndExecuteJob({
+        projectId,
+        type,
+        command: payload.command,
+        workingDirectory: payload.workingDirectory,
+      })
+
+      const startedAt = Date.now()
+      await updateJobStatus({
+        id: jobId,
+        status: 'running',
+        startedAt,
+        logs: [`[${new Date(startedAt).toISOString()}] Running: ${payload.command}`],
+      })
+
+      const executeResponse = await fetch('/api/jobs/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           command: payload.command,
           workingDirectory: payload.workingDirectory,
+        }),
+      })
+
+      if (!executeResponse.ok) {
+        const errorText = await executeResponse.text()
+        await updateJobStatus({
+          id: jobId,
+          status: 'failed',
+          completedAt: Date.now(),
+          error: errorText,
         })
-
-        // Mark job for external execution (adds logs / status updates).
-        await executeJob({ jobId, command, workingDirectory })
-
-        return { kind: 'command' as const, description: payload.command }
+        throw new Error(errorText)
       }
 
-      throw new Error('Unknown artifact type')
+      const result = (await executeResponse.json()) as {
+        stdout: string
+        stderr: string
+        exitCode: number
+      }
+      await updateJobStatus({
+        id: jobId,
+        status: result.exitCode === 0 ? 'completed' : 'failed',
+        completedAt: Date.now(),
+        output: result.stdout || undefined,
+        error: result.stderr || undefined,
+        logs: [
+          `[${new Date(startedAt).toISOString()}] Running: ${payload.command}`,
+          `[${new Date().toISOString()}] Exit code: ${result.exitCode}`,
+        ],
+      })
+
+      return { kind: 'command' as const, description: payload.command }
     },
-    [convex, createAndExecuteJob, executeJob, projectId, upsertFile]
+    [convex, createAndExecuteJob, projectId, updateJobStatus, upsertFile]
   )
 
   const handleApply = useCallback(
     async (id: string) => {
-      const artifact = artifacts.find((a) => a.id === id)
+      const artifact = pendingArtifacts.find((a) => a.id === id)
       if (!artifact) return
 
       setIsApplying(true)
       try {
+        await updateArtifactStatus({ id: artifact.id, status: 'in_progress' })
         const result = await applyOneArtifact(artifact)
-        applyArtifact(id)
-        toast.success(result.kind === 'file' ? 'Applied file change' : 'Queued command', {
+        await updateArtifactStatus({ id: artifact.id, status: 'completed' })
+        toast.success(result.kind === 'file' ? 'Applied file change' : 'Executed command', {
           description: result.description,
         })
       } catch (error) {
+        await updateArtifactStatus({ id: artifact.id, status: 'failed' })
         toast.error('Failed to apply artifact', {
           description: error instanceof Error ? error.message : String(error),
         })
@@ -136,23 +221,29 @@ export function ArtifactPanel({
         setIsApplying(false)
       }
     },
-    [applyArtifact, applyOneArtifact, artifacts]
+    [applyOneArtifact, pendingArtifacts, updateArtifactStatus]
   )
 
-  const handleReject = (id: string) => {
-    rejectArtifact(id)
-  }
+  const handleReject = useCallback(
+    async (id: string) => {
+      const artifact = pendingArtifacts.find((a) => a.id === id)
+      if (!artifact) return
+      await updateArtifactStatus({ id: artifact.id, status: 'rejected' })
+    },
+    [pendingArtifacts, updateArtifactStatus]
+  )
 
   const handleApplyAll = useCallback(async () => {
     if (pendingArtifacts.length === 0) return
     setIsApplying(true)
     try {
       for (const artifact of pendingArtifacts) {
-        // Apply sequentially to keep file writes and job creation ordered/predictable.
         try {
+          await updateArtifactStatus({ id: artifact.id, status: 'in_progress' })
           await applyOneArtifact(artifact)
-          applyArtifact(artifact.id)
+          await updateArtifactStatus({ id: artifact.id, status: 'completed' })
         } catch (error) {
+          await updateArtifactStatus({ id: artifact.id, status: 'failed' })
           toast.error('Failed to apply artifact', {
             description: error instanceof Error ? error.message : String(error),
           })
@@ -162,7 +253,19 @@ export function ArtifactPanel({
     } finally {
       setIsApplying(false)
     }
-  }, [applyArtifact, applyOneArtifact, pendingArtifacts])
+  }, [applyOneArtifact, pendingArtifacts, updateArtifactStatus])
+
+  const handleRejectAll = useCallback(async () => {
+    for (const artifact of pendingArtifacts) {
+      await updateArtifactStatus({ id: artifact.id, status: 'rejected' })
+    }
+  }, [pendingArtifacts, updateArtifactStatus])
+
+  const handleClearAll = useCallback(async () => {
+    for (const artifact of pendingArtifacts) {
+      await updateArtifactStatus({ id: artifact.id, status: 'rejected' })
+    }
+  }, [pendingArtifacts, updateArtifactStatus])
 
   if (!isOpen) return null
 
@@ -171,11 +274,7 @@ export function ArtifactPanel({
       initial={{ opacity: 0, x: 100 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 100 }}
-      transition={{
-        type: 'spring',
-        stiffness: 300,
-        damping: 30,
-      }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       className={cn(
         'surface-1 flex flex-col border-l',
         position === 'right' && 'h-full w-96',
@@ -183,7 +282,6 @@ export function ArtifactPanel({
           'fixed bottom-4 right-4 top-14 z-50 max-h-[calc(100vh-4.5rem)] w-96 border'
       )}
     >
-      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -220,7 +318,6 @@ export function ArtifactPanel({
         </div>
       </motion.div>
 
-      {/* Batch Actions */}
       {pendingCount > 0 && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
@@ -238,7 +335,7 @@ export function ArtifactPanel({
               Apply All ({pendingCount})
             </Button>
             <Button
-              onClick={rejectAll}
+              onClick={handleRejectAll}
               disabled={isApplying}
               variant="outline"
               className="h-9 flex-1 rounded-none text-xs"
@@ -251,11 +348,10 @@ export function ArtifactPanel({
         </motion.div>
       )}
 
-      {/* Content */}
       <ScrollArea className="flex-1">
         <div className="space-y-3 p-4">
           <AnimatePresence mode="popLayout">
-            {artifacts.length === 0 ? (
+            {mappedArtifacts.length === 0 ? (
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -265,11 +361,7 @@ export function ArtifactPanel({
                 <motion.div
                   initial={{ y: 10 }}
                   animate={{ y: [0, -10, 0] }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: 'easeInOut',
-                  }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
                   className="mb-4 border bg-muted p-4"
                 >
                   <Package className="h-8 w-8 text-slate-400" />
@@ -283,7 +375,6 @@ export function ArtifactPanel({
               </motion.div>
             ) : (
               <>
-                {/* Pending Artifacts */}
                 {pendingArtifacts.length > 0 && (
                   <motion.div
                     initial={{ opacity: 0 }}
@@ -305,7 +396,7 @@ export function ArtifactPanel({
                         transition={{ delay: index * 0.05 }}
                       >
                         <ArtifactCard
-                          artifact={artifact}
+                          artifact={artifact as any}
                           onApply={handleApply}
                           onReject={handleReject}
                         />
@@ -314,7 +405,6 @@ export function ArtifactPanel({
                   </motion.div>
                 )}
 
-                {/* Applied Artifacts */}
                 {appliedArtifacts.length > 0 && (
                   <motion.div
                     initial={{ opacity: 0 }}
@@ -336,7 +426,7 @@ export function ArtifactPanel({
                         transition={{ delay: index * 0.05 }}
                       >
                         <ArtifactCard
-                          artifact={artifact}
+                          artifact={artifact as any}
                           onApply={handleApply}
                           onReject={handleReject}
                         />
@@ -345,7 +435,6 @@ export function ArtifactPanel({
                   </motion.div>
                 )}
 
-                {/* Rejected Artifacts */}
                 {rejectedArtifacts.length > 0 && (
                   <motion.div
                     initial={{ opacity: 0 }}
@@ -367,7 +456,7 @@ export function ArtifactPanel({
                         transition={{ delay: index * 0.05 }}
                       >
                         <ArtifactCard
-                          artifact={artifact}
+                          artifact={artifact as any}
                           onApply={handleApply}
                           onReject={handleReject}
                         />
@@ -381,7 +470,6 @@ export function ArtifactPanel({
         </div>
       </ScrollArea>
 
-      {/* Footer */}
       {totalCount > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -389,22 +477,19 @@ export function ArtifactPanel({
           className="border-t p-4"
         >
           <Button
-            onClick={clearQueue}
+            onClick={handleClearAll}
             variant="ghost"
             size="sm"
             className="w-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
           >
             <Trash2 className="mr-2 h-4 w-4" />
-            Clear All Artifacts
+            Clear Pending Artifacts
           </Button>
         </motion.div>
       )}
     </motion.div>
   )
 
-  if (position === 'right') {
-    return panelContent
-  }
-
+  if (position === 'right') return panelContent
   return <AnimatePresence>{isOpen && panelContent}</AnimatePresence>
 }

@@ -7,7 +7,26 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
-import type { Artifact, FileWritePayload, CommandRunPayload } from '@/stores/artifactStore'
+
+interface FileWritePayload {
+  filePath: string
+  content: string
+  originalContent?: string | null
+}
+
+interface CommandRunPayload {
+  command: string
+  workingDirectory?: string
+}
+
+interface Artifact {
+  id: string
+  type: 'file_write' | 'command_run'
+  payload: FileWritePayload | CommandRunPayload
+  status: 'pending' | 'applied' | 'rejected'
+  createdAt: number
+  description?: string
+}
 
 interface ArtifactCardProps {
   artifact: Artifact

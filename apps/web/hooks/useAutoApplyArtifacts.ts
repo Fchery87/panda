@@ -1,12 +1,22 @@
 'use client'
 
 import { useEffect, useMemo, useRef } from 'react'
-import { useAction, useConvex, useMutation } from 'convex/react'
+import { useConvex, useMutation, useQuery } from 'convex/react'
 import { toast } from 'sonner'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
-import { useArtifactStore } from '@/stores/artifactStore'
 import { shouldAutoApplyArtifact, type AgentPolicy } from '@/lib/agent/automationPolicy'
+
+type ArtifactAction = {
+  type: 'file_write' | 'command_run'
+  payload: Record<string, unknown>
+}
+
+type ArtifactRecord = {
+  _id: Id<'artifacts'>
+  actions: Array<Record<string, unknown>>
+  status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'rejected'
+}
 
 function inferJobType(command: string) {
   const cmdLower = command.toLowerCase()
@@ -18,24 +28,46 @@ function inferJobType(command: string) {
   return 'cli' as const
 }
 
-const selectApplyArtifact = (state: { applyArtifact: any }) => state.applyArtifact
-const selectArtifacts = (state: { artifacts: any[] }) => state.artifacts
+function getPrimaryAction(record: ArtifactRecord): ArtifactAction | null {
+  const action = record.actions?.[0] as ArtifactAction | undefined
+  if (!action || (action.type !== 'file_write' && action.type !== 'command_run')) return null
+  return action
+}
 
 export function useAutoApplyArtifacts(args: {
   projectId: Id<'projects'>
+  chatId: Id<'chats'> | null | undefined
   policy: AgentPolicy | null
 }) {
-  const artifacts = useArtifactStore(selectArtifacts)
-  const pendingArtifacts = useMemo(
-    () => artifacts.filter((a) => a.status === 'pending'),
-    [artifacts]
-  )
-  const applyArtifact = useArtifactStore(selectApplyArtifact)
+  const artifactRecords = useQuery(
+    api.artifacts.list,
+    args.chatId ? { chatId: args.chatId } : 'skip'
+  ) as ArtifactRecord[] | undefined
+
+  const pendingArtifacts = useMemo(() => {
+    return (artifactRecords || [])
+      .filter((a) => a.status === 'pending')
+      .map((record) => {
+        const action = getPrimaryAction(record)
+        if (!action) return null
+        return {
+          id: record._id,
+          type: action.type,
+          payload: action.payload,
+        }
+      })
+      .filter(Boolean) as Array<{
+      id: Id<'artifacts'>
+      type: 'file_write' | 'command_run'
+      payload: any
+    }>
+  }, [artifactRecords])
 
   const convex = useConvex()
   const upsertFile = useMutation(api.files.upsert)
   const createAndExecuteJob = useMutation(api.jobs.createAndExecute)
-  const executeJob = useAction(api.jobsExecution.execute)
+  const updateJobStatus = useMutation(api.jobs.updateStatus)
+  const updateArtifactStatus = useMutation(api.artifacts.updateStatus)
 
   const isApplyingRef = useRef(false)
 
@@ -50,50 +82,28 @@ export function useAutoApplyArtifacts(args: {
   }, [args.policy])
 
   useEffect(() => {
-    console.log('[useAutoApplyArtifacts] Effect triggered:', {
-      pendingCount: pendingArtifacts.length,
-      policy: policy,
-      isApplying: isApplyingRef.current,
-    })
-
-    if (pendingArtifacts.length === 0) {
-      console.log('[useAutoApplyArtifacts] No pending artifacts, skipping')
-      return
-    }
-    if (isApplyingRef.current) {
-      console.log('[useAutoApplyArtifacts] Already applying, skipping')
-      return
-    }
+    if (pendingArtifacts.length === 0) return
+    if (isApplyingRef.current) return
 
     const next = pendingArtifacts[0]!
-    console.log('[useAutoApplyArtifacts] Next artifact:', {
-      id: next.id,
+    const shouldApply = shouldAutoApplyArtifact(policy, {
       type: next.type,
-      status: next.status,
+      payload: next.payload,
     })
-
-    const shouldApply = shouldAutoApplyArtifact(policy, next as any)
-    console.log('[useAutoApplyArtifacts] Should auto-apply?', shouldApply, 'Policy:', policy)
-
-    if (!shouldApply) {
-      console.log('[useAutoApplyArtifacts] Auto-apply disabled for this artifact type')
-      return
-    }
+    if (!shouldApply) return
 
     isApplyingRef.current = true
-    console.log('[useAutoApplyArtifacts] Starting auto-apply for:', next.id)
 
     void (async () => {
       try {
+        await updateArtifactStatus({ id: next.id, status: 'in_progress' })
+
         if (next.type === 'file_write') {
           const payload = next.payload as { filePath: string; content: string }
-          console.log('[useAutoApplyArtifacts] Auto-applying file write:', payload.filePath)
-
           const existing = await convex.query(api.files.getByPath, {
             projectId: args.projectId,
             path: payload.filePath,
           })
-          console.log('[useAutoApplyArtifacts] Existing file:', existing ? 'yes' : 'no')
 
           await upsertFile({
             id: existing?._id,
@@ -102,34 +112,78 @@ export function useAutoApplyArtifacts(args: {
             content: payload.content,
             isBinary: false,
           })
-          console.log('[useAutoApplyArtifacts] File upserted successfully')
 
-          applyArtifact(next.id)
-          console.log('[useAutoApplyArtifacts] Artifact marked as applied')
+          await updateArtifactStatus({ id: next.id, status: 'completed' })
           return
         }
 
         if (next.type === 'command_run') {
           const payload = next.payload as { command: string; workingDirectory?: string }
           const type = inferJobType(payload.command)
-          const { jobId, command, workingDirectory } = await createAndExecuteJob({
+          const { jobId } = await createAndExecuteJob({
             projectId: args.projectId,
             type,
             command: payload.command,
             workingDirectory: payload.workingDirectory,
           })
-          await executeJob({ jobId, command, workingDirectory })
-          applyArtifact(next.id)
+
+          const startedAt = Date.now()
+          await updateJobStatus({
+            id: jobId,
+            status: 'running',
+            startedAt,
+            logs: [`[${new Date(startedAt).toISOString()}] Running: ${payload.command}`],
+          })
+
+          const executeResponse = await fetch('/api/jobs/execute', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              command: payload.command,
+              workingDirectory: payload.workingDirectory,
+            }),
+          })
+
+          if (!executeResponse.ok) {
+            const errorText = await executeResponse.text()
+            await updateJobStatus({
+              id: jobId,
+              status: 'failed',
+              completedAt: Date.now(),
+              error: errorText,
+            })
+            throw new Error(errorText)
+          }
+
+          const result = (await executeResponse.json()) as {
+            stdout: string
+            stderr: string
+            exitCode: number
+          }
+          await updateJobStatus({
+            id: jobId,
+            status: result.exitCode === 0 ? 'completed' : 'failed',
+            completedAt: Date.now(),
+            output: result.stdout || undefined,
+            error: result.stderr || undefined,
+            logs: [
+              `[${new Date(startedAt).toISOString()}] Running: ${payload.command}`,
+              `[${new Date().toISOString()}] Exit code: ${result.exitCode}`,
+            ],
+          })
+
+          await updateArtifactStatus({ id: next.id, status: 'completed' })
           return
         }
+
+        await updateArtifactStatus({ id: next.id, status: 'failed' })
       } catch (error) {
-        console.error('[useAutoApplyArtifacts] Auto-apply failed:', error)
+        await updateArtifactStatus({ id: next.id, status: 'failed' })
         toast.error('Auto-apply failed', {
           description: error instanceof Error ? error.message : String(error),
         })
       } finally {
         isApplyingRef.current = false
-        console.log('[useAutoApplyArtifacts] Apply process completed')
       }
     })()
   }, [
@@ -139,7 +193,7 @@ export function useAutoApplyArtifacts(args: {
     convex,
     upsertFile,
     createAndExecuteJob,
-    executeJob,
-    applyArtifact,
+    updateJobStatus,
+    updateArtifactStatus,
   ])
 }

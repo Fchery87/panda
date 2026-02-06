@@ -23,12 +23,6 @@ import {
   type RuntimeConfig,
 } from '../lib/agent'
 import type { PromptContext } from '../lib/agent/prompt-library'
-import {
-  useArtifactStore,
-  type ArtifactType,
-  type FileWritePayload,
-  type CommandRunPayload,
-} from '../stores/artifactStore'
 import { toast } from 'sonner'
 
 /**
@@ -59,6 +53,7 @@ interface ToolCallInfo {
 interface PersistedMessageAnnotation {
   mode?: unknown
   reasoningSummary?: unknown
+  toolCalls?: unknown
 }
 
 interface ReasoningProviderConfig {
@@ -66,6 +61,19 @@ interface ReasoningProviderConfig {
   reasoningEnabled?: boolean
   reasoningBudget?: number
   reasoningMode?: 'auto' | 'low' | 'medium' | 'high'
+}
+
+interface RunEventInput {
+  type: string
+  content?: string
+  status?: string
+  toolCallId?: string
+  toolName?: string
+  args?: Record<string, unknown>
+  output?: string
+  error?: string
+  durationMs?: number
+  usage?: Record<string, unknown>
 }
 
 /**
@@ -90,6 +98,7 @@ interface UseAgentReturn {
     content: string
     reasoningContent?: string
     mode: ChatMode
+    createdAt: number
     toolCalls?: ToolCallInfo[]
   }>
 
@@ -106,7 +115,7 @@ interface UseAgentReturn {
   toolCalls: ToolCallInfo[]
 
   // Artifacts
-  pendingArtifacts: ReturnType<typeof useArtifactStore.getState>['artifacts']
+  pendingArtifacts: Array<{ _id: string }>
 
   // Actions
   handleSubmit: (e?: React.FormEvent) => Promise<void>
@@ -138,13 +147,20 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const persistedMessages = useQuery(api.messages.list, chatId ? { chatId } : 'skip')
   const settings = useQuery(api.settings.get)
   const addMessage = useMutation(api.messages.add)
+  const createRun = useMutation(api.agentRuns.create)
+  const appendRunEvents = useMutation(api.agentRuns.appendEvents)
+  const completeRun = useMutation(api.agentRuns.complete)
+  const failRun = useMutation(api.agentRuns.fail)
+  const stopRun = useMutation(api.agentRuns.stop)
 
   // Artifact store
-  const addToQueue = useArtifactStore((state) => state.addToQueue)
-  const artifacts = useArtifactStore((state) => state.artifacts)
+  const pendingArtifactRecords = useQuery(api.artifacts.list, chatId ? { chatId } : 'skip')
   const pendingArtifacts = useMemo(
-    () => artifacts.filter((a) => a.status === 'pending'),
-    [artifacts]
+    () =>
+      (pendingArtifactRecords || [])
+        .filter((a) => a.status === 'pending')
+        .map((a) => ({ _id: a._id as string })),
+    [pendingArtifactRecords]
   )
 
   // Local state
@@ -160,48 +176,22 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const isRunningRef = useRef(false)
   const toolContextRef = useRef<ReturnType<typeof createToolContext> | null>(null)
   const rafFlushRef = useRef<number | null>(null)
+  const runIdRef = useRef<Id<'agentRuns'> | null>(null)
+  const runSequenceRef = useRef(0)
 
   // Create artifact queue helpers
   const artifactQueue = useRef({
     addFileArtifact: (path: string, content: string, originalContent?: string | null) => {
-      const artifactId = `artifact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-
-      const payload: FileWritePayload = {
-        filePath: path,
-        content,
-        originalContent,
-      }
-
-      addToQueue({
-        id: artifactId,
-        type: 'file_write' as ArtifactType,
-        payload,
-        description: `File write: ${path}`,
-      })
-
-      toast.info('File artifact added to queue', {
-        description: path,
-      })
+      // Legacy fallback only. Canonical artifact persistence happens via Convex in tool handlers.
+      void path
+      void content
+      void originalContent
     },
 
     addCommandArtifact: (command: string, cwd?: string) => {
-      const artifactId = `artifact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-
-      const payload: CommandRunPayload = {
-        command,
-        workingDirectory: cwd,
-      }
-
-      addToQueue({
-        id: artifactId,
-        type: 'command_run' as ArtifactType,
-        payload,
-        description: `Command: ${command}`,
-      })
-
-      toast.info('Command artifact added to queue', {
-        description: command,
-      })
+      // Legacy fallback only. Canonical artifact persistence happens via Convex in tool handlers.
+      void command
+      void cwd
     },
   })
 
@@ -218,9 +208,13 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       userId,
       convex,
       artifactQueue.current,
-      { files: { batchGet: api.files.batchGet }, jobs: { create: api.jobs.create } }
+      {
+        files: { batchGet: api.files.batchGet },
+        jobs: { create: api.jobs.create, updateStatus: api.jobs.updateStatus },
+        artifacts: { create: api.artifacts.create },
+      }
     )
-  }, [projectId, chatId, convex, addToQueue, userId])
+  }, [projectId, chatId, convex, userId])
 
   // Stop the agent
   const getReasoningRuntimeSettings = useCallback(() => {
@@ -256,6 +250,22 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     }
   }, [provider, settings])
 
+  const appendRunEvent = useCallback(
+    async (event: RunEventInput) => {
+      if (!runIdRef.current) return
+      runSequenceRef.current += 1
+      try {
+        await appendRunEvents({
+          runId: runIdRef.current,
+          events: [{ sequence: runSequenceRef.current, ...event }],
+        })
+      } catch (err) {
+        console.error('Failed to append run event:', err)
+      }
+    },
+    [appendRunEvents]
+  )
+
   // Stop the agent
   const stop = useCallback(() => {
     if (abortControllerRef.current) {
@@ -266,9 +276,14 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       cancelAnimationFrame(rafFlushRef.current)
       rafFlushRef.current = null
     }
+    if (runIdRef.current) {
+      void stopRun({ runId: runIdRef.current })
+      runIdRef.current = null
+      runSequenceRef.current = 0
+    }
     isRunningRef.current = false
     setStatus('idle')
-  }, [])
+  }, [stopRun])
 
   // Clear messages
   const clear = useCallback(() => {
@@ -300,13 +315,16 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           id: msg._id,
           role: msg.role as 'user' | 'assistant' | 'tool',
           content: msg.content,
+          createdAt: msg.createdAt,
           reasoningContent:
             runtimeSettings.showReasoningPanel &&
             typeof firstAnnotation?.reasoningSummary === 'string'
               ? firstAnnotation.reasoningSummary
               : '',
           mode: hydratedMode,
-          toolCalls: [] as ToolCallInfo[],
+          toolCalls: Array.isArray(firstAnnotation?.toolCalls)
+            ? (firstAnnotation.toolCalls as ToolCallInfo[])
+            : ([] as ToolCallInfo[]),
         }
       })
 
@@ -342,6 +360,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           role: 'user',
           content: userContent,
           mode,
+          createdAt: Date.now(),
         },
       ])
 
@@ -367,6 +386,58 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         if (!userId) {
           throw new Error('User not authenticated')
         }
+
+        const runId = await createRun({
+          projectId,
+          chatId,
+          userId,
+          mode,
+          provider: provider?.config?.provider,
+          model,
+          userMessage: userContent,
+        })
+        runIdRef.current = runId
+        runSequenceRef.current = 0
+        let runFinalized = false
+
+        const finalizeRunCompleted = async (summary?: string, usage?: Record<string, unknown>) => {
+          if (!runIdRef.current || runFinalized) return
+          runFinalized = true
+          await completeRun({
+            runId: runIdRef.current,
+            summary,
+            usage,
+          })
+          runIdRef.current = null
+          runSequenceRef.current = 0
+        }
+
+        const finalizeRunFailed = async (message: string) => {
+          if (!runIdRef.current || runFinalized) return
+          runFinalized = true
+          await failRun({
+            runId: runIdRef.current,
+            error: message,
+          })
+          runIdRef.current = null
+          runSequenceRef.current = 0
+        }
+
+        const finalizeRunStopped = async () => {
+          if (!runIdRef.current || runFinalized) return
+          runFinalized = true
+          await stopRun({
+            runId: runIdRef.current,
+          })
+          runIdRef.current = null
+          runSequenceRef.current = 0
+        }
+
+        await appendRunEvent({
+          type: 'run_started',
+          content: userContent,
+          status: 'running',
+        })
 
         const promptContext: PromptContext = {
           projectId,
@@ -407,7 +478,11 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               mutation: async () => '',
             },
             artifactQueue.current,
-            { files: { batchGet: null }, jobs: { create: null } }
+            {
+              files: { batchGet: null },
+              jobs: { create: null, updateStatus: null },
+              artifacts: { create: null },
+            }
           )
 
         // Create agent runtime
@@ -446,6 +521,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                   content: assistantContent,
                   reasoningContent: runtimeSettings.showReasoningPanel ? assistantReasoning : '',
                   mode,
+                  createdAt: updated[existingIndex]!.createdAt,
                   toolCalls: assistantToolCalls,
                 }
                 return updated
@@ -458,6 +534,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                   content: assistantContent,
                   reasoningContent: runtimeSettings.showReasoningPanel ? assistantReasoning : '',
                   mode,
+                  createdAt: Date.now(),
                   toolCalls: assistantToolCalls,
                 },
               ]
@@ -475,6 +552,13 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             case 'thinking':
             case 'status_thinking': {
               setStatus('thinking')
+              if (event.content) {
+                void appendRunEvent({
+                  type: 'status',
+                  content: event.content,
+                  status: 'thinking',
+                })
+              }
               // Extract iteration number from content
               const iterationMatch = event.content?.match(/Iteration (\d+)/)
               if (iterationMatch) {
@@ -490,6 +574,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               // We’ll replace it cleanly when the first rewrite text chunk arrives.
               replaceOnNextText = true
               assistantToolCalls = []
+              void appendRunEvent({
+                type: 'reset',
+                content: event.resetReason ?? 'rewrite',
+              })
               if (!rewriteNoticeShown) {
                 rewriteNoticeShown = true
                 setMessages((prev) => {
@@ -556,6 +644,13 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                 }
                 assistantToolCalls.push(toolInfo)
                 setToolCalls((prev) => [...prev, toolInfo])
+                void appendRunEvent({
+                  type: 'tool_call',
+                  toolCallId: toolInfo.id,
+                  toolName: toolInfo.name,
+                  args: toolInfo.args,
+                  status: toolInfo.status,
+                })
 
                 // Update assistant message with tool calls
                 setMessages((prev) => {
@@ -620,6 +715,16 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                   }
                   return prev
                 })
+
+                void appendRunEvent({
+                  type: 'tool_result',
+                  toolCallId: event.toolResult.toolCallId,
+                  toolName: event.toolResult.toolName,
+                  output: event.toolResult.output,
+                  error: event.toolResult.error,
+                  durationMs: event.toolResult.durationMs,
+                  status: event.toolResult.error ? 'error' : 'completed',
+                })
               }
               break
 
@@ -633,6 +738,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                   mode,
                   model,
                   provider: provider?.config?.provider,
+                  ...(assistantToolCalls.length > 0 ? { toolCalls: assistantToolCalls } : {}),
                 }
                 if (assistantReasoning) {
                   annotations.reasoningSummary = assistantReasoning
@@ -647,6 +753,16 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                   content: assistantContent,
                   annotations: [annotations],
                 })
+                void appendRunEvent({
+                  type: 'assistant_message',
+                  content: assistantContent,
+                  usage: event.usage as Record<string, unknown> | undefined,
+                  status: 'completed',
+                })
+                await finalizeRunCompleted(
+                  assistantContent,
+                  event.usage as Record<string, unknown> | undefined
+                )
               } catch (err) {
                 console.error('Failed to persist assistant message:', err)
               }
@@ -656,6 +772,12 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               setStatus('error')
               setError(event.error || 'Unknown error')
               isRunningRef.current = false
+              void appendRunEvent({
+                type: 'error',
+                error: event.error || 'Unknown error',
+                status: 'failed',
+              })
+              await finalizeRunFailed(event.error || 'Unknown error')
               toast.error('Agent error', {
                 description: event.error,
               })
@@ -667,13 +789,30 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         if (isRunningRef.current) {
           setStatus('idle')
           isRunningRef.current = false
+          await finalizeRunStopped()
         }
       } catch (err) {
         setStatus('error')
-        setError(err instanceof Error ? err.message : String(err))
+        const message = err instanceof Error ? err.message : String(err)
+        setError(message)
         isRunningRef.current = false
+        void appendRunEvent({
+          type: 'error',
+          error: message,
+          status: 'failed',
+        })
+        if (runIdRef.current) {
+          try {
+            await failRun({ runId: runIdRef.current, error: message })
+          } catch (runErr) {
+            console.error('Failed to finalize run failure:', runErr)
+          } finally {
+            runIdRef.current = null
+            runSequenceRef.current = 0
+          }
+        }
         toast.error('Agent failed', {
-          description: err instanceof Error ? err.message : String(err),
+          description: message,
         })
       }
     },
@@ -686,6 +825,11 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       provider,
       model,
       addMessage,
+      createRun,
+      appendRunEvent,
+      completeRun,
+      failRun,
+      stopRun,
       userId,
       getReasoningRuntimeSettings,
     ]

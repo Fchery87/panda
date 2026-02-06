@@ -158,6 +158,25 @@ export function MessageBubble({
             {message.annotations.tokenCount} tokens
           </motion.span>
         )}
+
+        {isAssistant && message.toolCalls && message.toolCalls.length > 0 && (
+          <div className="w-full space-y-1 px-1 pt-1">
+            {message.toolCalls.map((call) => (
+              <div
+                key={call.id}
+                className="border border-border bg-background/70 px-2 py-1 font-mono text-[10px]"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate">{call.name}</span>
+                  <span className="uppercase text-muted-foreground">{call.status}</span>
+                </div>
+                {call.result?.error && (
+                  <div className="mt-1 text-destructive">{call.result.error}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

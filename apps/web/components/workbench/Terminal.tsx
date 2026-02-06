@@ -7,8 +7,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useJobs, type Job, type JobStatus } from '@/hooks/useJobs'
-import { api } from '../../../../convex/_generated/api'
-import { useAction } from 'convex/react'
 import { toast } from 'sonner'
 import type { Id } from '../../../../convex/_generated/dataModel'
 import {
@@ -251,11 +249,10 @@ export function Terminal({ projectId }: TerminalProps) {
     isLoading,
     isAnyJobRunning,
     createAndExecute,
+    updateJobStatus,
     cancelJob,
     removeJob,
   } = useJobs(projectId as Id<'projects'>)
-
-  const executeAction = useAction(api.jobsExecution.execute)
 
   const [command, setCommand] = useState('')
   const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set())
@@ -297,20 +294,46 @@ export function Terminal({ projectId }: TerminalProps) {
         command: command.trim(),
       })
 
-      // Trigger execution via action
       if (result?.jobId) {
         // Auto-expand the new job
         setExpandedJobs((prev) => new Set(prev).add(result.jobId))
+        const startedAt = Date.now()
+        await updateJobStatus(result.jobId, 'running', {
+          startedAt,
+          logs: [`[${new Date(startedAt).toISOString()}] Running: ${command.trim()}`],
+        })
 
-        // Execute the job
-        executeAction({
-          jobId: result.jobId,
-          command: command.trim(),
-        }).catch((error) => {
-          console.error('Execution failed:', error)
-          toast.error('Command execution failed', {
-            description: error.message,
+        const executeResponse = await fetch('/api/jobs/execute', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command: command.trim() }),
+        })
+
+        if (!executeResponse.ok) {
+          const errorText = await executeResponse.text()
+          await updateJobStatus(result.jobId, 'failed', {
+            completedAt: Date.now(),
+            error: errorText,
           })
+          throw new Error(errorText)
+        }
+
+        const payload = (await executeResponse.json()) as {
+          stdout: string
+          stderr: string
+          exitCode: number
+          durationMs: number
+          timedOut: boolean
+        }
+
+        await updateJobStatus(result.jobId, payload.exitCode === 0 ? 'completed' : 'failed', {
+          completedAt: Date.now(),
+          output: payload.stdout || undefined,
+          error: payload.stderr || undefined,
+          logs: [
+            `[${new Date(startedAt).toISOString()}] Running: ${command.trim()}`,
+            `[${new Date().toISOString()}] Exit code: ${payload.exitCode}`,
+          ],
         })
       }
 
