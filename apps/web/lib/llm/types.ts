@@ -22,6 +22,11 @@ export interface ModelCapabilities {
   vision: boolean
   jsonMode: boolean
   toolUse: boolean
+  supportsReasoning?: boolean
+  supportsInterleavedReasoning?: boolean
+  supportsReasoningSummary?: boolean
+  supportsToolStreaming?: boolean
+  reasoningControl?: ReasoningControl
 }
 
 /**
@@ -127,12 +132,20 @@ export interface ProviderConfig {
   timeout?: number
   maxRetries?: number
   customHeaders?: Record<string, string>
+  capabilities?: ProviderCapabilities
 }
 
 /**
  * Streaming chunk types
  */
-export type StreamChunkType = 'text' | 'tool_call' | 'tool_result' | 'error' | 'finish'
+export type StreamChunkType =
+  | 'status_thinking'
+  | 'reasoning'
+  | 'text'
+  | 'tool_call'
+  | 'tool_result'
+  | 'error'
+  | 'finish'
 
 /**
  * Streaming chunk from LLM
@@ -140,6 +153,7 @@ export type StreamChunkType = 'text' | 'tool_call' | 'tool_result' | 'error' | '
 export interface StreamChunk {
   type: StreamChunkType
   content?: string
+  reasoningContent?: string
   toolCall?: ToolCall
   toolResult?: ToolResult
   finishReason?: 'stop' | 'length' | 'tool_calls' | 'error'
@@ -165,6 +179,74 @@ export interface CompletionOptions {
   tools?: ToolDefinition[]
   stream?: boolean
   responseFormat?: { type: 'text' | 'json_object' }
+  reasoning?: ReasoningOptions
+}
+
+/**
+ * Reasoning control strategy
+ */
+export type ReasoningControl = 'none' | 'budget' | 'effort' | 'level'
+
+/**
+ * Normalized reasoning options
+ */
+export interface ReasoningOptions {
+  enabled?: boolean
+  budgetTokens?: number
+  effort?: 'low' | 'medium' | 'high' | 'max'
+  level?: 'minimal' | 'low' | 'medium' | 'high'
+  summary?: 'none' | 'auto' | 'detailed'
+}
+
+/**
+ * Provider capability flags used for runtime gating.
+ */
+export interface ProviderCapabilities {
+  supportsReasoning: boolean
+  supportsInterleavedReasoning: boolean
+  supportsReasoningSummary: boolean
+  supportsToolStreaming: boolean
+  reasoningControl: ReasoningControl
+}
+
+export function getDefaultProviderCapabilities(type: ProviderType): ProviderCapabilities {
+  switch (type) {
+    case 'anthropic':
+      return {
+        supportsReasoning: true,
+        supportsInterleavedReasoning: true,
+        supportsReasoningSummary: true,
+        supportsToolStreaming: true,
+        reasoningControl: 'budget',
+      }
+    case 'zai':
+      return {
+        supportsReasoning: true,
+        supportsInterleavedReasoning: false,
+        supportsReasoningSummary: false,
+        supportsToolStreaming: true,
+        reasoningControl: 'budget',
+      }
+    case 'openai':
+    case 'openrouter':
+    case 'together':
+    case 'custom':
+      return {
+        supportsReasoning: false,
+        supportsInterleavedReasoning: false,
+        supportsReasoningSummary: false,
+        supportsToolStreaming: true,
+        reasoningControl: 'none',
+      }
+    default:
+      return {
+        supportsReasoning: false,
+        supportsInterleavedReasoning: false,
+        supportsReasoningSummary: false,
+        supportsToolStreaming: true,
+        reasoningControl: 'none',
+      }
+  }
 }
 
 /**

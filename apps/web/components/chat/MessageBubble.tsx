@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { User, Bot } from 'lucide-react'
 import type { Message } from './types'
+import { ReasoningPanel } from './ReasoningPanel'
 
 interface MessageBubbleProps {
   message: Message
@@ -69,6 +70,10 @@ export function MessageBubble({
 
       {/* Message Content */}
       <div className={cn('flex max-w-[75%] flex-col gap-1', isUser ? 'items-end' : 'items-start')}>
+        {isAssistant && message.reasoningContent && (
+          <ReasoningPanel content={message.reasoningContent} isStreaming={isStreaming} />
+        )}
+
         {/* Header */}
         <div className={cn('flex items-center gap-2', isUser ? 'flex-row-reverse' : 'flex-row')}>
           <span className="text-xs font-medium text-muted-foreground">

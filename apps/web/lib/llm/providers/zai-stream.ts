@@ -18,15 +18,22 @@ export async function* zaiCompletionStream(
   options: CompletionOptions,
   config: { apiKey: string; baseUrl: string }
 ): AsyncGenerator<StreamChunk> {
-  console.log('[zaiCompletionStream] Starting direct Z.ai stream')
-  console.log('[zaiCompletionStream] BaseURL:', config.baseUrl)
-  console.log('[zaiCompletionStream] Model:', options.model)
-  console.log('[zaiCompletionStream] Tools:', options.tools?.length || 0)
-
   const url = `${config.baseUrl}/chat/completions`
 
   // Build request body with Z.ai-specific parameters
-  const requestBody: any = {
+  const requestBody: {
+    model: string
+    messages: CompletionOptions['messages']
+    temperature?: number
+    max_tokens?: number
+    top_p?: number
+    frequency_penalty?: number
+    presence_penalty?: number
+    stream: true
+    tools?: CompletionOptions['tools']
+    tool_choice?: 'auto'
+    tool_stream?: boolean
+  } = {
     model: options.model,
     messages: options.messages,
     temperature: options.temperature ?? 0.7,
@@ -44,8 +51,6 @@ export async function* zaiCompletionStream(
     // Z.ai-specific: enable tool streaming
     requestBody.tool_stream = true
   }
-
-  console.log('[zaiCompletionStream] Request body:', JSON.stringify(requestBody, null, 2))
 
   try {
     const response = await fetch(url, {
@@ -99,25 +104,17 @@ export async function* zaiCompletionStream(
           const data = trimmed.slice(6) // Remove 'data: ' prefix
 
           if (data === '[DONE]') {
-            console.log('[zaiCompletionStream] Stream complete')
             continue
           }
 
           try {
             const chunk = JSON.parse(data)
-            console.log(
-              '[zaiCompletionStream] Received chunk:',
-              JSON.stringify(chunk).slice(0, 200)
-            )
 
             const delta = chunk.choices?.[0]?.delta
 
             if (!delta) {
-              console.log('[zaiCompletionStream] No delta in chunk')
               continue
             }
-
-            console.log('[zaiCompletionStream] Delta:', JSON.stringify(delta).slice(0, 200))
 
             // Handle text content
             if (delta.content) {
@@ -130,20 +127,15 @@ export async function* zaiCompletionStream(
             // Handle reasoning content (thinking mode)
             if (delta.reasoning_content) {
               yield {
-                type: 'text',
-                content: delta.reasoning_content,
+                type: 'reasoning',
+                reasoningContent: delta.reasoning_content,
               }
             }
 
             // Handle tool calls - collect them during streaming but DON'T yield yet
             // We need to wait for all chunks to arrive to get complete arguments
             if (delta.tool_calls) {
-              console.log(
-                '[zaiCompletionStream] Tool calls in delta:',
-                JSON.stringify(delta.tool_calls)
-              )
               for (const toolCall of delta.tool_calls) {
-                console.log('[zaiCompletionStream] Processing tool call:', JSON.stringify(toolCall))
                 const index = toolCall.index ?? 0
 
                 if (!toolCalls.has(index)) {
@@ -156,32 +148,24 @@ export async function* zaiCompletionStream(
                       arguments: toolCall.function?.arguments || '',
                     },
                   }
-                  console.log('[zaiCompletionStream] Creating new tool call:', newToolCall)
                   toolCalls.set(index, newToolCall)
                 } else {
                   // Append to existing tool call
                   const existing = toolCalls.get(index)!
                   if (toolCall.function?.arguments) {
                     existing.function.arguments += toolCall.function.arguments
-                    console.log(
-                      '[zaiCompletionStream] Appended arguments, now:',
-                      existing.function.arguments.slice(0, 100)
-                    )
                   }
                   if (toolCall.function?.name) {
                     existing.function.name = toolCall.function.name
                   }
-                  console.log('[zaiCompletionStream] Updated tool call:', existing)
                 }
 
                 // DON'T yield here - arguments are still incomplete
                 // We'll yield all tool calls at the end of the stream
               }
-            } else {
-              console.log('[zaiCompletionStream] No tool_calls in delta')
             }
-          } catch (parseError) {
-            console.warn('[zaiCompletionStream] Failed to parse SSE chunk:', parseError)
+          } catch {
+            // Skip malformed SSE chunks
           }
         }
       }
@@ -191,24 +175,12 @@ export async function* zaiCompletionStream(
 
     // Yield final tool calls (now complete with all arguments)
     if (toolCalls.size > 0) {
-      console.log('[zaiCompletionStream] Final tool calls:', toolCalls.size)
-      for (const [index, toolCall] of toolCalls) {
-        console.log(`[zaiCompletionStream] Yielding complete tool call #${index}:`, {
-          id: toolCall.id,
-          name: toolCall.function.name,
-          argumentsLength: toolCall.function.arguments.length,
-          argumentsPreview: toolCall.function.arguments.slice(0, 100),
-        })
-
+      for (const [, toolCall] of toolCalls) {
         // Validate the arguments are complete JSON
         try {
           JSON.parse(toolCall.function.arguments)
-          console.log(`[zaiCompletionStream] Tool call #${index} has valid JSON arguments`)
         } catch {
-          console.warn(
-            `[zaiCompletionStream] Tool call #${index} has incomplete/invalid JSON arguments:`,
-            toolCall.function.arguments
-          )
+          // Skip validation failures here; downstream tool execution can still surface errors.
         }
 
         yield {
@@ -223,8 +195,6 @@ export async function* zaiCompletionStream(
       type: 'finish',
       finishReason: toolCalls.size > 0 ? 'tool_calls' : 'stop',
     }
-
-    console.log('[zaiCompletionStream] Stream complete successfully')
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error)
     console.error('[zaiCompletionStream] Error:', error)

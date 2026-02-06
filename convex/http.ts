@@ -50,7 +50,7 @@ interface ChatRequest {
   mode?: 'discuss' | 'build'
   temperature?: number
   maxTokens?: number
-  provider?: 'openai' | 'openrouter' | 'together' | 'zai'
+  provider?: 'openai' | 'openrouter' | 'together' | 'zai' | 'anthropic'
   apiKey?: string
 }
 
@@ -90,6 +90,10 @@ function getProviderConfig(provider: string, apiKey?: string) {
       baseURL: 'https://api.z.ai/api/paas/v4',
       defaultModel: 'glm-4.7',
     },
+    anthropic: {
+      baseURL: 'https://api.anthropic.com/v1',
+      defaultModel: 'claude-sonnet-4-5',
+    },
   }
 
   // For Z.ai, determine if using Coding Plan or regular API
@@ -105,11 +109,9 @@ function getProviderConfig(provider: string, apiKey?: string) {
       // Using Coding Plan - use coding endpoint
       zaiApiKey = codingPlanKey
       baseURL = 'https://api.z.ai/api/coding/paas/v4'
-      console.log('[getProviderConfig] Using Z.ai Coding Plan endpoint')
     } else if (regularKey) {
       // Using regular API key
       zaiApiKey = regularKey
-      console.log('[getProviderConfig] Using Z.ai regular API endpoint')
     }
   }
 
@@ -188,15 +190,6 @@ http.route({
         apiKey,
       } = body
 
-      // Log for debugging
-      console.log('StreamChat request:', {
-        provider,
-        model,
-        mode,
-        messageCount: messages?.length,
-        hasApiKey: !!apiKey,
-      })
-
       // Validate required fields
       if (!messages || !Array.isArray(messages) || messages.length === 0) {
         return new Response(JSON.stringify({ error: 'Missing or invalid messages array' }), {
@@ -217,33 +210,61 @@ http.route({
       }
       const selectedModel = model || config.defaultModel
 
-      // Add system message (skip for Z.ai as it doesn't support system role)
-      const systemMessage: ChatMessage | null =
-        provider === 'zai' ? null : { role: 'system', content: getSystemPrompt(mode) }
+      // Build request and endpoint based on provider.
+      let response: Response
+      if (provider === 'anthropic') {
+        const systemPrompt = getSystemPrompt(mode)
+        const anthropicMessages = messages
+          .filter((m) => m.role !== 'system')
+          .map((m) => ({
+            role: m.role === 'assistant' ? 'assistant' : 'user',
+            content: m.content,
+          }))
 
-      const fullMessages = systemMessage ? [systemMessage, ...messages] : messages
+        response = await fetch(`${config.baseURL}/messages`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': config.apiKey,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: selectedModel,
+            max_tokens: maxTokens,
+            temperature,
+            system: systemPrompt,
+            messages: anthropicMessages,
+            stream: true,
+          }),
+        })
+      } else {
+        // Add system message (skip for Z.ai as it doesn't support system role)
+        const systemMessage: ChatMessage | null =
+          provider === 'zai' ? null : { role: 'system', content: getSystemPrompt(mode) }
 
-      // Make request to LLM API
-      const response = await fetch(`${config.baseURL}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${config.apiKey}`,
-          ...(provider === 'openrouter'
-            ? {
-                'HTTP-Referer': 'https://panda.ai',
-                'X-Title': 'Panda.ai',
-              }
-            : {}),
-        },
-        body: JSON.stringify({
-          model: selectedModel,
-          messages: fullMessages,
-          temperature,
-          max_tokens: maxTokens,
-          stream: true,
-        }),
-      })
+        const fullMessages = systemMessage ? [systemMessage, ...messages] : messages
+
+        response = await fetch(`${config.baseURL}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${config.apiKey}`,
+            ...(provider === 'openrouter'
+              ? {
+                  'HTTP-Referer': 'https://panda.ai',
+                  'X-Title': 'Panda.ai',
+                }
+              : {}),
+          },
+          body: JSON.stringify({
+            model: selectedModel,
+            messages: fullMessages,
+            temperature,
+            max_tokens: maxTokens,
+            stream: true,
+          }),
+        })
+      }
 
       if (!response.ok) {
         const errorText = await response.text()
@@ -277,7 +298,7 @@ http.route({
               const { done, value } = await reader.read()
               if (done) break
 
-              // Parse SSE chunks and forward
+              // Parse SSE chunks and forward as canonical events.
               const chunk = new TextDecoder().decode(value)
               const lines = chunk.split('\n')
 
@@ -285,15 +306,58 @@ http.route({
                 if (line.startsWith('data: ')) {
                   const data = line.slice(6)
                   if (data === '[DONE]') {
+                    controller.enqueue(
+                      encoder.encode(`data: ${JSON.stringify({ type: 'finish' })}\n\n`)
+                    )
                     controller.enqueue(encoder.encode('data: [DONE]\n\n'))
                     continue
                   }
 
                   try {
                     const parsed = JSON.parse(data)
-                    const content = parsed.choices?.[0]?.delta?.content
+
+                    // Anthropic streaming events
+                    if (provider === 'anthropic') {
+                      const eventType = parsed.type
+                      if (eventType === 'content_block_delta') {
+                        const delta = parsed.delta
+                        if (delta?.type === 'thinking_delta' && delta?.thinking) {
+                          controller.enqueue(
+                            encoder.encode(
+                              `data: ${JSON.stringify({ type: 'reasoning', reasoningContent: delta.thinking })}\n\n`
+                            )
+                          )
+                        }
+                        if (delta?.type === 'text_delta' && delta?.text) {
+                          controller.enqueue(
+                            encoder.encode(
+                              `data: ${JSON.stringify({ type: 'text', content: delta.text })}\n\n`
+                            )
+                          )
+                        }
+                      }
+                      continue
+                    }
+
+                    // OpenAI-compatible streaming events
+                    const delta = parsed.choices?.[0]?.delta
+                    const content = delta?.content
+                    const reasoning =
+                      delta?.reasoning_content ??
+                      delta?.reasoning ??
+                      (typeof parsed.reasoning === 'string' ? parsed.reasoning : undefined)
+
+                    if (reasoning) {
+                      controller.enqueue(
+                        encoder.encode(
+                          `data: ${JSON.stringify({ type: 'reasoning', reasoningContent: reasoning })}\n\n`
+                        )
+                      )
+                    }
                     if (content) {
-                      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`))
+                      controller.enqueue(
+                        encoder.encode(`data: ${JSON.stringify({ type: 'text', content })}\n\n`)
+                      )
                     }
                   } catch {
                     // Skip malformed JSON

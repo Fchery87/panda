@@ -7,6 +7,7 @@
 
 import type { LLMProvider, ProviderConfig, ModelInfo, ProviderType } from './types'
 import { OpenAICompatibleProvider } from './providers/openai-compatible'
+import { AnthropicProvider } from './providers/anthropic'
 
 /**
  * Registry entry for a provider instance
@@ -42,6 +43,9 @@ export class ProviderRegistry {
       case 'zai':
       case 'custom':
         provider = new OpenAICompatibleProvider(config)
+        break
+      case 'anthropic':
+        provider = new AnthropicProvider(config)
         break
       default:
         throw new Error(`Unsupported provider type: ${config.provider}`)
@@ -220,6 +224,22 @@ export function createProviderFromEnv(): LLMProvider | null {
           baseUrl: 'https://api.together.xyz/v1',
         },
         defaultModel: process.env.TOGETHER_DEFAULT_MODEL || 'togethercomputer/llama-3.1-70b',
+      },
+      true
+    )
+  }
+
+  // Try Anthropic
+  if (process.env.ANTHROPIC_API_KEY) {
+    return registry.createProvider(
+      'anthropic',
+      {
+        provider: 'anthropic',
+        auth: {
+          apiKey: process.env.ANTHROPIC_API_KEY,
+          baseUrl: process.env.ANTHROPIC_BASE_URL,
+        },
+        defaultModel: process.env.ANTHROPIC_DEFAULT_MODEL || 'claude-sonnet-4-5',
       },
       true
     )

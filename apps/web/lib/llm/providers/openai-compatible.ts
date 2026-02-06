@@ -130,26 +130,12 @@ export class OpenAICompatibleProvider implements LLMProvider {
    * Yields chunks of text, tool calls, and finish events
    */
   async *completionStream(options: CompletionOptions): AsyncGenerator<StreamChunk> {
-    console.log('[completionStream] Starting with model:', options.model)
-    console.log('[completionStream] BaseURL:', this.config.auth.baseUrl)
-    console.log('[completionStream] Messages count:', options.messages.length)
-    console.log('[completionStream] Tools provided:', options.tools?.length || 0)
-    if (options.messages.length > 0) {
-      console.log('[completionStream] First message role:', options.messages[0]?.role)
-      console.log(
-        '[completionStream] First message preview:',
-        options.messages[0]?.content?.slice(0, 100)
-      )
-    }
-
     // Detect Z.ai provider
     const isZai = this.config.auth.baseUrl?.includes('z.ai') ?? false
-    console.log('[completionStream] Is Z.ai provider:', isZai)
 
     // Z.ai requires special handling for tool streaming
     // Use direct fetch implementation that properly handles tool_stream parameter
     if (isZai && options.tools && options.tools.length > 0) {
-      console.log('[completionStream] Using direct Z.ai implementation for tool streaming')
       yield* zaiCompletionStream(options, {
         apiKey: this.config.auth.apiKey,
         baseUrl: this.config.auth.baseUrl || 'https://api.z.ai/api/coding/paas/v4',
@@ -158,250 +144,76 @@ export class OpenAICompatibleProvider implements LLMProvider {
     }
 
     try {
-      // Only send tools if they're provided and not empty
       const tools =
         options.tools && options.tools.length > 0 ? this.convertTools(options.tools) : undefined
 
-      console.log('[completionStream] Tools converted:', tools ? 'yes' : 'no')
-      if (tools) {
-        console.log('[completionStream] Tool names:', Object.keys(tools).join(', '))
+      const streamOptions: any = {
+        model: this.client(options.model),
+        messages: this.convertMessages(options.messages),
+        temperature: options.temperature ?? 0.7,
+        maxTokens: options.maxTokens,
+        topP: options.topP,
+        frequencyPenalty: options.frequencyPenalty,
+        presencePenalty: options.presencePenalty,
+        ...(tools && { tools }),
       }
 
-      let result
-      try {
-        const streamOptions: any = {
-          model: this.client(options.model),
-          messages: this.convertMessages(options.messages),
-          temperature: options.temperature ?? 0.7,
-          maxTokens: options.maxTokens,
-          topP: options.topP,
-          frequencyPenalty: options.frequencyPenalty,
-          presencePenalty: options.presencePenalty,
-          ...(tools && { tools }),
-        }
-
-        // Z.ai requires tool_stream=true parameter when using tools with streaming
-        // This is a Z.ai-specific parameter not supported by standard OpenAI API
-        if (isZai && tools) {
-          console.log('[completionStream] Adding Z.ai specific tool_stream parameter')
-          // Add providerOptions for Z.ai - this may work with newer AI SDK versions
-          streamOptions.providerOptions = {
-            openai: {
-              tool_stream: true,
-            },
-          }
-          // Also try adding as a custom header that Z.ai might recognize
-          streamOptions.headers = {
-            ...streamOptions.headers,
-            'X-Tool-Stream': 'true',
-          }
-        }
-
-        result = streamText(streamOptions)
-        console.log('[completionStream] streamText created successfully')
-      } catch (setupError) {
-        const errorMsg = setupError instanceof Error ? setupError.message : String(setupError)
-        console.error('[completionStream] Failed to create streamText:', setupError)
-        yield {
-          type: 'error',
-          error: `Failed to start stream: ${errorMsg}`,
-        }
-        return
-      }
-
-      const toolCalls: ToolCall[] = []
-
-      // Stream text deltas
-      console.log('[completionStream] Starting text stream loop...')
-      try {
-        let chunkCount = 0
-        for await (const delta of result.textStream) {
-          chunkCount++
-          console.log(`[completionStream] Received delta #${chunkCount}:`, delta?.slice(0, 50))
-
-          if (!delta) {
-            console.log('[completionStream] Received empty delta, skipping')
-            continue
-          }
-
-          // Some providers buffer tokens and emit large chunks. Split to improve perceived
-          // streaming (closer to token-by-token) without changing model output.
-          const chunks = splitForPerceivedStreaming(delta)
-          console.log(`[completionStream] Split into ${chunks.length} chunks`)
-
-          for (const chunk of chunks) {
-            yield {
-              type: 'text',
-              content: chunk,
+      const result = streamText(streamOptions)
+      for await (const part of result.fullStream as AsyncIterable<any>) {
+        switch (part.type) {
+          case 'text-delta': {
+            const delta = part.textDelta ?? part.text
+            if (!delta) break
+            const chunks = splitForPerceivedStreaming(delta)
+            for (const chunk of chunks) {
+              yield { type: 'text', content: chunk }
             }
+            break
           }
-        }
-        console.log(`[completionStream] Text stream loop complete. Total deltas: ${chunkCount}`)
-
-        // Check if we got any content - if not, this might be a provider issue
-        if (chunkCount === 0) {
-          console.error(
-            '[completionStream] WARNING: Received 0 deltas from stream. This may indicate:'
-          )
-          console.error('  1. Provider (Z.ai) does not support streaming')
-          console.error('  2. Provider does not support tools with this model')
-          console.error('  3. API key or endpoint is invalid')
-          console.error('  4. Network or timeout issue')
-        }
-      } catch (streamError) {
-        const errorMsg = streamError instanceof Error ? streamError.message : String(streamError)
-        console.error('[completionStream] Error during text streaming:', streamError)
-        yield {
-          type: 'error',
-          error: `Stream error: ${errorMsg}`,
-        }
-        return
-      }
-
-      // Get the final result for tool calls and usage
-      console.log('[completionStream] Getting final result...')
-      let finalResult
-      try {
-        finalResult = await result
-        console.log('[completionStream] Final result object received, awaiting properties...')
-      } catch (finalError) {
-        const errorMsg = finalError instanceof Error ? finalError.message : String(finalError)
-        console.error('[completionStream] Error getting final result:', finalError)
-        yield {
-          type: 'error',
-          error: `Failed to complete: ${errorMsg}`,
-        }
-        return
-      }
-
-      // Handle tool calls - toolCalls is a Promise, need to await it
-      console.log('[completionStream] Checking for tool calls...')
-      let toolCallsResult
-      try {
-        toolCallsResult = await finalResult.toolCalls
-        console.log(
-          '[completionStream] Tool calls result:',
-          toolCallsResult?.length || 0,
-          'tool calls'
-        )
-
-        if (toolCallsResult && toolCallsResult.length > 0) {
-          for (const toolCall of toolCallsResult) {
-            console.log('[completionStream] Yielding tool call:', toolCall.toolName)
-            const tc: ToolCall = {
-              id: toolCall.toolCallId,
+          case 'reasoning-delta': {
+            const reasoning = part.textDelta ?? part.text
+            if (!reasoning) break
+            yield { type: 'reasoning', reasoningContent: reasoning }
+            break
+          }
+          case 'tool-call': {
+            const toolCall: ToolCall = {
+              id: part.toolCallId,
               type: 'function',
               function: {
-                name: toolCall.toolName,
-                arguments: JSON.stringify(toolCall.args),
+                name: part.toolName,
+                arguments: JSON.stringify(part.input ?? part.args ?? {}),
               },
             }
-            toolCalls.push(tc)
-
+            yield { type: 'tool_call', toolCall }
+            break
+          }
+          case 'error':
             yield {
-              type: 'tool_call',
-              toolCall: tc,
+              type: 'error',
+              error: part.error?.message ?? String(part.error ?? 'Unknown stream error'),
             }
-          }
-        }
-      } catch (toolError) {
-        const errorMsg = toolError instanceof Error ? toolError.message : String(toolError)
-        console.error('[completionStream] Error extracting tool calls:', toolError)
-        yield {
-          type: 'error',
-          error: `Failed to extract tool calls: ${errorMsg}`,
-        }
-        return
-      }
-
-      // Get finishReason and usage - both may be Promises that need awaiting
-      console.log('[completionStream] Getting finishReason and usage...')
-      let finishReason: string = 'unknown'
-      let usageResult:
-        | { promptTokens: number; completionTokens: number; totalTokens: number }
-        | undefined
-
-      // Helper to await with timeout
-      const awaitWithTimeout = async <T>(
-        promise: Promise<T>,
-        timeoutMs: number,
-        defaultValue: T
-      ): Promise<T> => {
-        try {
-          return await Promise.race([
-            promise,
-            new Promise<T>((_, reject) =>
-              setTimeout(() => reject(new Error(`Timeout after ${timeoutMs}ms`)), timeoutMs)
-            ),
-          ])
-        } catch (error) {
-          console.warn(`[completionStream] Promise timed out or failed:`, error)
-          return defaultValue
+            return
+          case 'finish':
+            yield {
+              type: 'finish',
+              finishReason: (part.finishReason ?? 'stop') as any,
+              usage: part.totalUsage
+                ? {
+                    promptTokens: part.totalUsage.inputTokens ?? 0,
+                    completionTokens: part.totalUsage.outputTokens ?? 0,
+                    totalTokens:
+                      (part.totalUsage.inputTokens ?? 0) + (part.totalUsage.outputTokens ?? 0),
+                  }
+                : undefined,
+            }
+            break
+          default:
+            break
         }
       }
-
-      try {
-        // finishReason might be a Promise or a value - use timeout to prevent hanging
-        const finishReasonValue = await awaitWithTimeout(
-          Promise.resolve(finalResult.finishReason),
-          5000,
-          'unknown'
-        )
-        finishReason = finishReasonValue as string
-        console.log('[completionStream] Finish reason:', finishReason)
-      } catch (finishError) {
-        console.error('[completionStream] Error getting finishReason:', finishError)
-        finishReason = 'unknown'
-      }
-
-      try {
-        // usage might be a Promise or a value - use timeout to prevent hanging
-        const usageValue = await awaitWithTimeout(
-          Promise.resolve(finalResult.usage),
-          5000,
-          undefined
-        )
-        usageResult = usageValue as {
-          promptTokens: number
-          completionTokens: number
-          totalTokens: number
-        }
-        console.log('[completionStream] Usage received:', usageResult)
-      } catch (usageError) {
-        console.error('[completionStream] Error getting usage:', usageError)
-      }
-
-      // Yield finish event
-      try {
-        if (usageResult) {
-          yield {
-            type: 'finish',
-            finishReason: finishReason as any,
-            usage: {
-              promptTokens: usageResult.promptTokens,
-              completionTokens: usageResult.completionTokens,
-              totalTokens: usageResult.totalTokens,
-            },
-          }
-        } else {
-          yield {
-            type: 'finish',
-            finishReason: finishReason as any,
-          }
-        }
-      } catch (yieldError) {
-        const errorMsg = yieldError instanceof Error ? yieldError.message : String(yieldError)
-        console.error('[completionStream] Error yielding finish event:', yieldError)
-        yield {
-          type: 'error',
-          error: `Failed to yield finish: ${errorMsg}`,
-        }
-      }
-
-      console.log('[completionStream] Stream complete successfully')
     } catch (outerError) {
       const errorMsg = outerError instanceof Error ? outerError.message : String(outerError)
-      console.error('[completionStream] Unexpected error:', outerError)
       yield {
         type: 'error',
         error: `Unexpected error: ${errorMsg}`,

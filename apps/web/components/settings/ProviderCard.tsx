@@ -26,16 +26,27 @@ interface ProviderConfig {
   availableModels: string[]
   testStatus?: 'idle' | 'testing' | 'success' | 'error'
   useCodingPlan?: boolean
+  reasoningEnabled?: boolean
+  reasoningMode?: 'auto' | 'low' | 'medium' | 'high'
+  reasoningBudget?: number
+  showReasoningPanel?: boolean
 }
 
 interface ProviderCardProps {
   provider: ProviderConfig
+  supportsReasoning?: boolean
   onChange: (updates: Partial<ProviderConfig>) => void
   onTest: () => void
   className?: string
 }
 
-export function ProviderCard({ provider, onChange, onTest, className }: ProviderCardProps) {
+export function ProviderCard({
+  provider,
+  supportsReasoning = false,
+  onChange,
+  onTest,
+  className,
+}: ProviderCardProps) {
   const [showApiKey, setShowApiKey] = React.useState(false)
 
   const getStatusIcon = () => {
@@ -137,6 +148,74 @@ export function ProviderCard({ provider, onChange, onTest, className }: Provider
                 checked={provider.useCodingPlan ?? false}
                 onCheckedChange={(checked) => onChange({ useCodingPlan: checked })}
                 disabled={!provider.enabled}
+              />
+            </div>
+          </div>
+        )}
+
+        {supportsReasoning && (
+          <div className="space-y-3 border-t border-border pt-3">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor={`${provider.name}-reasoning-enabled`}>Reasoning</Label>
+                <p className="text-sm text-muted-foreground">
+                  Enable model reasoning/thinking when supported.
+                </p>
+              </div>
+              <Switch
+                id={`${provider.name}-reasoning-enabled`}
+                checked={provider.reasoningEnabled ?? false}
+                onCheckedChange={(checked) => onChange({ reasoningEnabled: checked })}
+                disabled={!provider.enabled}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Reasoning Mode</Label>
+              <Select
+                value={provider.reasoningMode ?? 'auto'}
+                onValueChange={(value) =>
+                  onChange({ reasoningMode: value as 'auto' | 'low' | 'medium' | 'high' })
+                }
+                disabled={!provider.enabled || !(provider.reasoningEnabled ?? false)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select reasoning mode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">Auto</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor={`${provider.name}-reasoning-budget`}>Reasoning Budget Tokens</Label>
+              <Input
+                id={`${provider.name}-reasoning-budget`}
+                type="number"
+                min={0}
+                step={1000}
+                value={provider.reasoningBudget ?? 6000}
+                onChange={(e) => onChange({ reasoningBudget: Number(e.target.value) || 0 })}
+                disabled={!provider.enabled || !(provider.reasoningEnabled ?? false)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor={`${provider.name}-show-reasoning`}>Show Reasoning Panel</Label>
+                <p className="text-sm text-muted-foreground">
+                  Display reasoning in the chat panel when available.
+                </p>
+              </div>
+              <Switch
+                id={`${provider.name}-show-reasoning`}
+                checked={provider.showReasoningPanel ?? true}
+                onCheckedChange={(checked) => onChange({ showReasoningPanel: checked })}
+                disabled={!provider.enabled || !(provider.reasoningEnabled ?? false)}
               />
             </div>
           </div>

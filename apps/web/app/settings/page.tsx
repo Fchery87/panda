@@ -23,8 +23,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { ProviderCard } from '@/components/settings/ProviderCard'
 import { ThemeToggleFull } from '@/components/settings/ThemeToggle'
 import { User, Palette, Bot, Save, Loader2, ArrowLeft } from 'lucide-react'
+import { getDefaultProviderCapabilities, type ProviderType } from '@/lib/llm/types'
 
 interface ProviderConfig {
+  provider?: string
   name: string
   description: string
   apiKey: string
@@ -33,6 +35,10 @@ interface ProviderConfig {
   availableModels: string[]
   baseUrl?: string
   useCodingPlan?: boolean
+  reasoningEnabled?: boolean
+  reasoningMode?: 'auto' | 'low' | 'medium' | 'high'
+  reasoningBudget?: number
+  showReasoningPanel?: boolean
   testStatus?: 'idle' | 'testing' | 'success' | 'error'
 }
 
@@ -44,8 +50,11 @@ interface SettingsState {
   providers: Record<string, ProviderConfig>
 }
 
+type StoredProviderConfig = Partial<ProviderConfig> & Record<string, unknown>
+
 const defaultProviders: Record<string, ProviderConfig> = {
   openai: {
+    provider: 'openai',
     name: 'OpenAI',
     description: 'Official OpenAI API for GPT models',
     apiKey: '',
@@ -55,6 +64,7 @@ const defaultProviders: Record<string, ProviderConfig> = {
     testStatus: 'idle',
   },
   openrouter: {
+    provider: 'openrouter',
     name: 'OpenRouter',
     description: 'Access multiple AI models through a single API',
     apiKey: '',
@@ -70,6 +80,7 @@ const defaultProviders: Record<string, ProviderConfig> = {
     testStatus: 'idle',
   },
   together: {
+    provider: 'together',
     name: 'Together.ai',
     description: 'Fast inference for open-source models',
     apiKey: '',
@@ -84,7 +95,23 @@ const defaultProviders: Record<string, ProviderConfig> = {
     baseUrl: 'https://api.together.xyz/v1',
     testStatus: 'idle',
   },
+  anthropic: {
+    provider: 'anthropic',
+    name: 'Anthropic',
+    description: 'Native Anthropic Claude API',
+    apiKey: '',
+    enabled: false,
+    defaultModel: 'claude-sonnet-4-5',
+    availableModels: ['claude-opus-4-6', 'claude-sonnet-4-5'],
+    baseUrl: 'https://api.anthropic.com/v1',
+    reasoningEnabled: true,
+    reasoningMode: 'auto',
+    reasoningBudget: 6000,
+    showReasoningPanel: true,
+    testStatus: 'idle',
+  },
   zai: {
+    provider: 'zai',
     name: 'Z.ai',
     description: 'Z.ai GLM-4.7 series models for coding (supports API key or Coding Plan)',
     apiKey: '',
@@ -93,6 +120,10 @@ const defaultProviders: Record<string, ProviderConfig> = {
     availableModels: ['glm-4.7', 'glm-4.7-flashx', 'glm-4.7-flash'],
     baseUrl: 'https://api.z.ai/api/paas/v4',
     useCodingPlan: false,
+    reasoningEnabled: true,
+    reasoningMode: 'auto',
+    reasoningBudget: 6000,
+    showReasoningPanel: true,
     testStatus: 'idle',
   },
 }
@@ -187,10 +218,14 @@ export default function SettingsPage() {
         ? {
             ...defaultProviders,
             ...Object.fromEntries(
-              Object.entries(latestSettings.providerConfigs).map(([key, config]: [string, any]) => [
-                key,
-                { ...(defaultProviders[key] ?? {}), ...config, testStatus: 'idle' },
-              ])
+              Object.entries(latestSettings.providerConfigs).map(([key, config]) => {
+                const mergedConfig = {
+                  ...(defaultProviders[key] ?? {}),
+                  ...(config as StoredProviderConfig),
+                  testStatus: 'idle' as const,
+                }
+                return [key, mergedConfig]
+              })
             ),
           }
         : defaultProviders,
@@ -246,6 +281,7 @@ export default function SettingsPage() {
         Object.entries(formState.providers).map(([key, config]) => [
           key,
           {
+            provider: config.provider || key,
             name: config.name,
             description: config.description,
             apiKey: config.apiKey,
@@ -257,14 +293,13 @@ export default function SettingsPage() {
                 ? 'https://api.z.ai/api/coding/paas/v4'
                 : config.baseUrl || defaultProviders[key]?.baseUrl,
             useCodingPlan: config.useCodingPlan,
+            reasoningEnabled: config.reasoningEnabled,
+            reasoningMode: config.reasoningMode,
+            reasoningBudget: config.reasoningBudget,
+            showReasoningPanel: config.showReasoningPanel,
           },
         ])
       )
-
-      console.log('[SettingsPage] Saving settings:', {
-        defaultProvider: formState.defaultProvider,
-        providerConfigs: providersForSave,
-      })
 
       await updateSettings({
         theme: formState.theme,
@@ -280,12 +315,12 @@ export default function SettingsPage() {
             .map((s) => s.trim())
             .filter(Boolean),
         },
-      } as any)
+      })
 
       toast.success('Settings saved successfully!')
     } catch (error) {
       toast.error('Failed to save settings')
-      console.error(error)
+      console.error('[SettingsPage] Failed to save settings:', error)
     } finally {
       setIsSaving(false)
     }
@@ -475,14 +510,22 @@ export default function SettingsPage() {
         {/* LLM Providers Tab */}
         <TabsContent value="providers" className="space-y-6">
           <div className="grid gap-6">
-            {Object.entries(formState.providers).map(([key, provider]) => (
-              <ProviderCard
-                key={key}
-                provider={provider}
-                onChange={(updates) => updateProvider(key, updates)}
-                onTest={() => testProvider(key)}
-              />
-            ))}
+            {Object.entries(formState.providers).map(([key, provider]) => {
+              // Capability-gated controls: only render reasoning controls where supported.
+              // This keeps settings consistent regardless of provider selection.
+              const providerType = (provider.provider || key) as ProviderType
+              const supportsReasoning =
+                getDefaultProviderCapabilities(providerType).supportsReasoning
+              return (
+                <ProviderCard
+                  key={key}
+                  provider={provider}
+                  supportsReasoning={supportsReasoning}
+                  onChange={(updates) => updateProvider(key, updates)}
+                  onTest={() => testProvider(key)}
+                />
+              )
+            })}
           </div>
         </TabsContent>
 

@@ -55,6 +55,73 @@ interface UseStreamingChatReturn {
   stop: () => void
 }
 
+type ParsedSseEvent =
+  | { type: 'text'; content: string }
+  | { type: 'reasoning'; reasoningContent: string }
+  | { type: 'finish' }
+
+interface ParseSseChunkResult {
+  events: ParsedSseEvent[]
+  buffer: string
+}
+
+const DATA_PREFIX = 'data: '
+
+function parseSseDataPayload(data: string): ParsedSseEvent | null {
+  if (data === '[DONE]') {
+    return null
+  }
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(data)
+  } catch {
+    return null
+  }
+
+  if (!parsed || typeof parsed !== 'object') {
+    return null
+  }
+
+  const payload = parsed as Record<string, unknown>
+  const eventType = payload.type
+
+  if (eventType === 'text' && typeof payload.content === 'string') {
+    return { type: 'text', content: payload.content }
+  }
+  if (eventType === 'reasoning' && typeof payload.reasoningContent === 'string') {
+    return { type: 'reasoning', reasoningContent: payload.reasoningContent }
+  }
+  if (eventType === 'finish') {
+    return { type: 'finish' }
+  }
+
+  // Backward compatibility with older payload shape.
+  if (typeof payload.content === 'string') {
+    return { type: 'text', content: payload.content }
+  }
+
+  return null
+}
+
+export function parseSseChunk(chunk: string, previousBuffer = ''): ParseSseChunkResult {
+  const input = `${previousBuffer}${chunk}`
+  const lines = input.split('\n')
+  const buffer = lines.pop() ?? ''
+  const events: ParsedSseEvent[] = []
+
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (!trimmed.startsWith(DATA_PREFIX)) continue
+    const event = parseSseDataPayload(trimmed.slice(DATA_PREFIX.length))
+    if (event) {
+      events.push(event)
+    }
+  }
+
+  return { events, buffer }
+}
+
 /**
  * Hook for streaming chat with Convex integration
  *
@@ -72,17 +139,6 @@ export function useStreamingChat(options: UseStreamingChatOptions): UseStreaming
 
   // Fetch settings to get provider configuration
   const settings = useQuery(api.settings.get)
-  const settingsRef = useRef(settings)
-  settingsRef.current = settings
-
-  // Debug logging
-  useEffect(() => {
-    const latestSettings = settingsRef.current
-    console.log('[useStreamingChat] Settings loaded:', latestSettings)
-    if (latestSettings?.providerConfigs) {
-      console.log('[useStreamingChat] Provider configs:', latestSettings.providerConfigs)
-    }
-  }, [settings?.updatedAt])
 
   // Convex mutations for persisting messages
   const addMessage = useMutation(api.messages.add)
@@ -163,6 +219,7 @@ export function useStreamingChat(options: UseStreamingChatOptions): UseStreaming
         const providerConfig = settings?.providerConfigs?.[defaultProvider]
         const apiKey = providerConfig?.apiKey || process.env.NEXT_PUBLIC_OPENAI_API_KEY || ''
         const provider = providerConfig?.enabled ? defaultProvider : 'openai'
+        const selectedModel = providerConfig?.defaultModel || 'gpt-4o-mini'
 
         // Create abort controller for this request
         abortControllerRef.current = new AbortController()
@@ -199,7 +256,9 @@ export function useStreamingChat(options: UseStreamingChatOptions): UseStreaming
         const reader = response.body.getReader()
         const decoder = new TextDecoder()
         let fullContent = ''
+        let fullReasoning = ''
         let pendingPaint = false
+        let sseBuffer = ''
 
         const schedulePaint = () => {
           if (pendingPaint) return
@@ -216,23 +275,33 @@ export function useStreamingChat(options: UseStreamingChatOptions): UseStreaming
             const { done, value } = await reader.read()
             if (done) break
 
-            const chunk = decoder.decode(value)
-            const lines = chunk.split('\n')
+            const decodedChunk = decoder.decode(value, { stream: true })
+            const parsed = parseSseChunk(decodedChunk, sseBuffer)
+            sseBuffer = parsed.buffer
 
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const data = line.slice(6)
-                if (data === '[DONE]') continue
+            for (const event of parsed.events) {
+              if (event.type === 'text') {
+                fullContent += event.content
+                schedulePaint()
+                continue
+              }
+              if (event.type === 'reasoning') {
+                fullReasoning += event.reasoningContent
+                continue
+              }
+            }
+          }
 
-                try {
-                  const parsed = JSON.parse(data)
-                  if (parsed.content) {
-                    fullContent += parsed.content
-                    schedulePaint()
-                  }
-                } catch {
-                  // Skip malformed JSON
-                }
+          if (sseBuffer) {
+            const finalParsed = parseSseChunk('\n', sseBuffer)
+            for (const event of finalParsed.events) {
+              if (event.type === 'text') {
+                fullContent += event.content
+                schedulePaint()
+                continue
+              }
+              if (event.type === 'reasoning') {
+                fullReasoning += event.reasoningContent
               }
             }
           }
@@ -246,7 +315,13 @@ export function useStreamingChat(options: UseStreamingChatOptions): UseStreaming
             chatId,
             role: 'assistant',
             content: fullContent,
-            annotations: [{ model: 'gpt-4o-mini', provider }],
+            annotations: [
+              {
+                model: selectedModel,
+                provider,
+                ...(fullReasoning ? { reasoningSummary: fullReasoning } : {}),
+              },
+            ],
           })
         }
 
@@ -344,6 +419,7 @@ export function useStreamingChatManual(options: UseStreamingChatOptions): UseStr
         const providerConfig = settings?.providerConfigs?.[defaultProvider]
         const apiKey = providerConfig?.apiKey || process.env.NEXT_PUBLIC_OPENAI_API_KEY || ''
         const provider = providerConfig?.enabled ? defaultProvider : 'openai'
+        const selectedModel = providerConfig?.defaultModel || 'gpt-4o-mini'
         const convexSiteUrl =
           process.env.NEXT_PUBLIC_CONVEX_SITE_URL || process.env.NEXT_PUBLIC_CONVEX_URL || ''
 
@@ -367,29 +443,40 @@ export function useStreamingChatManual(options: UseStreamingChatOptions): UseStr
         const reader = response.body.getReader()
         const decoder = new TextDecoder()
         let fullContent = ''
+        let fullReasoning = ''
+        let sseBuffer = ''
 
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
 
-          const chunk = decoder.decode(value)
-          const lines = chunk.split('\n')
+          const decodedChunk = decoder.decode(value, { stream: true })
+          const parsed = parseSseChunk(decodedChunk, sseBuffer)
+          sseBuffer = parsed.buffer
 
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6)
-              if (data === '[DONE]') continue
+          for (const event of parsed.events) {
+            if (event.type === 'text') {
+              fullContent += event.content
+              // Update messages with streaming content
+              setMessages([...newMessages, { role: 'assistant', content: fullContent }])
+              continue
+            }
+            if (event.type === 'reasoning') {
+              fullReasoning += event.reasoningContent
+            }
+          }
+        }
 
-              try {
-                const parsed = JSON.parse(data)
-                if (parsed.content) {
-                  fullContent += parsed.content
-                  // Update messages with streaming content
-                  setMessages([...newMessages, { role: 'assistant', content: fullContent }])
-                }
-              } catch {
-                // Skip malformed JSON
-              }
+        if (sseBuffer) {
+          const finalParsed = parseSseChunk('\n', sseBuffer)
+          for (const event of finalParsed.events) {
+            if (event.type === 'text') {
+              fullContent += event.content
+              setMessages([...newMessages, { role: 'assistant', content: fullContent }])
+              continue
+            }
+            if (event.type === 'reasoning') {
+              fullReasoning += event.reasoningContent
             }
           }
         }
@@ -400,7 +487,13 @@ export function useStreamingChatManual(options: UseStreamingChatOptions): UseStr
             chatId,
             role: 'assistant',
             content: fullContent,
-            annotations: [{ model: 'gpt-4o-mini', provider }],
+            annotations: [
+              {
+                model: selectedModel,
+                provider,
+                ...(fullReasoning ? { reasoningSummary: fullReasoning } : {}),
+              },
+            ],
           })
         }
 

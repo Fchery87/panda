@@ -9,4 +9,5 @@ export {
   OpenAICompatibleProvider,
   createOpenAICompatibleProvider,
 } from './providers/openai-compatible'
+export { AnthropicProvider, createAnthropicProvider } from './providers/anthropic'
 export { ProviderRegistry, getGlobalRegistry, createProviderFromEnv } from './registry'

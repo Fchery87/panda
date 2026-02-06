@@ -14,14 +14,15 @@
     "test:e2e:debug": "playwright test --debug"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "1.2.12",
     "@ai-sdk/openai": "^1.1.0",
-    "@convex-dev/auth": "^0.0.90",
     "@ai-sdk/react": "^1.1.0",
     "@codemirror/commands": "^6.7.0",
     "@codemirror/lang-javascript": "^6.2.2",
     "@codemirror/state": "^6.5.0",
     "@codemirror/theme-one-dark": "^6.1.2",
     "@codemirror/view": "^6.36.0",
+    "@convex-dev/auth": "^0.0.90",
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-toggle": "^1.1.10",
     "@uiw/react-codemirror": "^4.23.0",

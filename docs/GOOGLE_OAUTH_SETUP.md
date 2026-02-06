@@ -1,6 +1,7 @@
 # Google OAuth 2.0 Setup Guide for Panda.ai
 
-> **Source:** [Official Google OAuth 2.0 for Web Server Apps](https://developers.google.com/identity/protocols/oauth2/web-server)
+> **Source:**
+> [Official Google OAuth 2.0 for Web Server Apps](https://developers.google.com/identity/protocols/oauth2/web-server)
 
 ---
 
@@ -31,14 +32,16 @@
 6. On **Scopes** → Click **"Add or Remove Scopes"**
 7. Add these required scopes:
    - `openid` (already included)
-   - `email` 
+   - `email`
    - `profile`
 8. Click **"Update"** → **"Save and Continue"**
 9. On **Test users** → Click **"Add Users"**
 10. Enter your email address and click **"Add"**
 11. Click **"Save and Continue"** then **"Back to Dashboard"**
 
-**⚠️ Important:** While in testing mode, only test users can sign in. You'll see "unverified app" warnings until you complete app verification (not required for development/testing).
+**⚠️ Important:** While in testing mode, only test users can sign in. You'll see
+"unverified app" warnings until you complete app verification (not required for
+development/testing).
 
 ---
 
@@ -50,11 +53,13 @@
 4. **Name:** `Panda.ai Web Client`
 5. Under **"Authorized redirect URIs"**, click **"+ Add URI"**
 6. Enter your Convex callback URL:
+
    ```
    https://<your-deployment>.convex.site/api/auth/callback/google
    ```
-   
+
    **To find your URL:**
+
    ```bash
    cd /home/nochaserz/Documents/Coding\ Projects/panda
    cat .env.local | grep CONVEX_SITE_URL
@@ -67,31 +72,36 @@
 8. **⚠️ CRITICAL:** A dialog will show your **Client ID** and **Client Secret**
    - Click **"Download JSON"** to save the credentials
    - Also copy the values manually - you'll need them immediately
-   - **Note:** The client secret is only shown once. If you lose it, you'll need to reset it.
+   - **Note:** The client secret is only shown once. If you lose it, you'll need
+     to reset it.
 
 ---
 
 ## Step 4: Configure Environment Variables
 
 1. Open your `.env.local` file:
+
    ```bash
    code /home/nochaserz/Documents/Coding\ Projects/panda/apps/web/.env.local
    ```
 
 2. Add your actual credentials:
+
    ```env
    # Google OAuth 2.0 (from Google Cloud Console)
    AUTH_GOOGLE_ID=123456789-abcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com
    AUTH_GOOGLE_SECRET=GOCSPX-youractualsecretstringhere
-   
+
    # Convex Auth Secret (generate with OpenSSL)
    CONVEX_AUTH_SECRET=your-32-character-random-secret-here
    ```
 
 3. **Generate CONVEX_AUTH_SECRET:**
+
    ```bash
    openssl rand -base64 32
    ```
+
    Copy the output and paste it as your `CONVEX_AUTH_SECRET`
 
 4. **Save the file** (Ctrl+S or Cmd+S)
@@ -108,6 +118,7 @@ bunx convex dev
 ```
 
 For production deployment:
+
 ```bash
 bunx convex deploy
 ```
@@ -117,6 +128,7 @@ bunx convex deploy
 ## Step 6: Test the Authentication Flow
 
 1. **Start your Next.js dev server:**
+
    ```bash
    cd /home/nochaserz/Documents/Coding\ Projects/panda/apps/web
    bun run dev
@@ -136,7 +148,9 @@ bunx convex deploy
 
 ## OAuth 2.0 Flow Overview
 
-According to [Google's official documentation](https://developers.google.com/identity/protocols/oauth2/web-server), the OAuth 2.0 flow works like this:
+According to
+[Google's official documentation](https://developers.google.com/identity/protocols/oauth2/web-server),
+the OAuth 2.0 flow works like this:
 
 ```
 1. Your App          → Redirects user to Google OAuth server
@@ -153,13 +167,14 @@ According to [Google's official documentation](https://developers.google.com/ide
 
 ## Required OAuth 2.0 Scopes
 
-| Scope | Purpose | Required |
-|-------|---------|----------|
-| `openid` | OpenID Connect authentication | ✅ Yes |
-| `email` | Access user's email address | ✅ Yes |
-| `profile` | Access user's basic profile info | ✅ Yes |
+| Scope     | Purpose                          | Required |
+| --------- | -------------------------------- | -------- |
+| `openid`  | OpenID Connect authentication    | ✅ Yes   |
+| `email`   | Access user's email address      | ✅ Yes   |
+| `profile` | Access user's basic profile info | ✅ Yes   |
 
 **Note:** Panda.ai uses these scopes to:
+
 - Authenticate the user (openid)
 - Store user's email (email)
 - Display user's name/avatar (profile)
@@ -169,39 +184,51 @@ According to [Google's official documentation](https://developers.google.com/ide
 ## Troubleshooting Common Issues
 
 ### Issue: "redirect_uri_mismatch" Error
-**Cause:** The redirect URI in your Google Cloud Console doesn't match what Convex is sending.
+
+**Cause:** The redirect URI in your Google Cloud Console doesn't match what
+Convex is sending.
 
 **Fix:**
+
 1. Go to Credentials → Your Web Client
 2. Check **"Authorized redirect URIs"**
-3. Must exactly match: `https://YOUR_DEPLOYMENT.convex.site/api/auth/callback/google`
+3. Must exactly match:
+   `https://YOUR_DEPLOYMENT.convex.site/api/auth/callback/google`
 4. Check for typos, missing/extra slashes, or wrong protocol (must be https)
 
 ### Issue: "Access blocked" or "Unverified App"
+
 **Cause:** Your app is in testing mode and the user isn't a test user.
 
 **Fix:**
+
 1. Go to **"OAuth consent screen"**
 2. Add the user's email to **"Test users"**
 3. Or submit for verification (not needed for development)
 
 ### Issue: "This app isn't verified"
+
 **Cause:** Google hasn't verified your app yet.
 
-**Fix:** Click "Advanced" → "Go to [your app] (unsafe)" during testing. Verification is only required for production apps with many users.
+**Fix:** Click "Advanced" → "Go to [your app] (unsafe)" during testing.
+Verification is only required for production apps with many users.
 
 ### Issue: Environment variables not loading
+
 **Cause:** Next.js caches environment variables at build time.
 
 **Fix:**
+
 1. Ensure `.env.local` is in `apps/web/` directory
 2. Restart your dev server: `Ctrl+C` then `bun run dev`
 3. Check variables: `cat apps/web/.env.local | grep AUTH`
 
 ### Issue: Convex auth endpoints not found (404)
+
 **Cause:** Convex functions haven't been deployed.
 
 **Fix:**
+
 ```bash
 cd /home/nochaserz/Documents/Coding\ Projects/panda
 bunx convex dev
@@ -211,11 +238,13 @@ bunx convex dev
 
 ## Security Best Practices
 
-Per [Google's OAuth 2.0 Security Guidelines](https://developers.google.com/identity/protocols/oauth2/web-server):
+Per
+[Google's OAuth 2.0 Security Guidelines](https://developers.google.com/identity/protocols/oauth2/web-server):
 
 1. **✅ DO:** Store `AUTH_GOOGLE_SECRET` in environment variables (not code)
 2. **✅ DO:** Use `https://` for production redirect URIs (never http)
-3. **✅ DO:** Verify the `state` parameter to prevent CSRF attacks (handled by @convex-dev/auth)
+3. **✅ DO:** Verify the `state` parameter to prevent CSRF attacks (handled by
+   @convex-dev/auth)
 4. **❌ DON'T:** Commit `client_secret.json` to Git
 5. **❌ DON'T:** Share your client secret in code repositories
 
@@ -248,4 +277,5 @@ CONVEX_AUTH_SECRET=your-random-32-char-secret
 6. ✅ Test authentication flow
 7. 🔄 [Optional] Submit for Google app verification (for production)
 
-**Need help?** Check the [official Google OAuth 2.0 troubleshooting guide](https://developers.google.com/identity/protocols/oauth2/web-server#troubleshooting)
+**Need help?** Check the
+[official Google OAuth 2.0 troubleshooting guide](https://developers.google.com/identity/protocols/oauth2/web-server#troubleshooting)

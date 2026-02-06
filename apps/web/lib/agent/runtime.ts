@@ -5,7 +5,14 @@
  * Manages the conversation loop, tool execution, and response streaming.
  */
 
-import type { LLMProvider, CompletionMessage, CompletionOptions, ToolCall } from '../llm/types'
+import type {
+  LLMProvider,
+  CompletionMessage,
+  CompletionOptions,
+  ToolCall,
+  ReasoningOptions,
+} from '../llm/types'
+import { getDefaultProviderCapabilities } from '../llm/types'
 import type { PromptContext } from './prompt-library'
 import type { ToolContext, ToolExecutionResult } from './tools'
 import { getPromptForMode } from './prompt-library'
@@ -20,12 +27,16 @@ export interface RuntimeOptions {
   maxIterations?: number
   temperature?: number
   maxTokens?: number
+  reasoning?: ReasoningOptions
 }
 
 /**
  * Agent event types for streaming
  */
 export type AgentEventType =
+  | 'status_thinking'
+  | 'reasoning'
+  // Backward compatibility for existing hook switch statements.
   | 'thinking'
   | 'text'
   | 'tool_call'
@@ -40,6 +51,7 @@ export type AgentEventType =
 export interface AgentEvent {
   type: AgentEventType
   content?: string
+  reasoningContent?: string
   toolCall?: ToolCall
   toolResult?: ToolExecutionResult
   resetReason?: 'plan_mode_rewrite' | 'build_mode_rewrite'
@@ -158,6 +170,9 @@ export class AgentRuntime {
     const enableDeduplication = config?.enableToolDeduplication ?? true
     const toolLoopThreshold = config?.toolLoopThreshold ?? 3
     const model = this.options.model ?? 'gpt-4o'
+    const providerCapabilities =
+      this.options.provider.config.capabilities ??
+      getDefaultProviderCapabilities(this.options.provider.config.provider)
 
     try {
       // Main agent loop
@@ -166,7 +181,7 @@ export class AgentRuntime {
 
         // Yield thinking event
         yield {
-          type: 'thinking',
+          type: 'status_thinking',
           content: `Iteration ${state.iteration}: Generating response...`,
         }
 
@@ -178,6 +193,9 @@ export class AgentRuntime {
           maxTokens: this.options.maxTokens,
           tools: promptContext.chatMode === 'build' ? AGENT_TOOLS : undefined,
           stream: true,
+          ...(providerCapabilities.supportsReasoning && this.options.reasoning
+            ? { reasoning: this.options.reasoning }
+            : {}),
         }
 
         // Stream the completion
@@ -192,9 +210,6 @@ export class AgentRuntime {
         let planRewriteTriggeredDuringStream = false
 
         for await (const chunk of this.options.provider.completionStream(completionOptions)) {
-          // Debug logging
-          console.log('[runtime] Chunk:', chunk.type, chunk.content?.slice(0, 30))
-
           // Handle different chunk types
           switch (chunk.type) {
             case 'text':
@@ -235,6 +250,20 @@ export class AgentRuntime {
 
                 fullContent += chunk.content
                 yield { type: 'text', content: chunk.content }
+              }
+              break
+            case 'status_thinking':
+              yield {
+                type: 'status_thinking',
+                content: chunk.content,
+              }
+              break
+            case 'reasoning':
+              if (chunk.reasoningContent || chunk.content) {
+                yield {
+                  type: 'reasoning',
+                  reasoningContent: chunk.reasoningContent ?? chunk.content,
+                }
               }
               break
 
@@ -282,7 +311,7 @@ export class AgentRuntime {
           didPlanModeRewrite = true
 
           yield {
-            type: 'thinking',
+            type: 'status_thinking',
             content: 'Plan Mode: rewriting response into a plan (no code)…',
           }
           yield { type: 'reset', resetReason: 'plan_mode_rewrite' }
@@ -347,7 +376,7 @@ export class AgentRuntime {
           didBuildModeRewrite = true
 
           yield {
-            type: 'thinking',
+            type: 'status_thinking',
             content: 'Build Mode: rewriting response to use artifacts (no code blocks)…',
           }
           yield { type: 'reset', resetReason: 'build_mode_rewrite' }
@@ -434,7 +463,7 @@ export class AgentRuntime {
           // Limit tool calls per iteration to prevent abuse
           if (pendingToolCalls.length > maxToolCallsPerIteration) {
             yield {
-              type: 'thinking',
+              type: 'status_thinking',
               content: `Limiting to ${maxToolCallsPerIteration} tool calls out of ${pendingToolCalls.length} requested...`,
             }
             pendingToolCalls = pendingToolCalls.slice(0, maxToolCallsPerIteration)
@@ -448,7 +477,7 @@ export class AgentRuntime {
 
               if (state.executedToolCalls.has(toolHash)) {
                 yield {
-                  type: 'thinking',
+                  type: 'status_thinking',
                   content: `Skipping duplicate tool call: ${toolCall.function.name}`,
                 }
                 continue
@@ -480,7 +509,7 @@ export class AgentRuntime {
           // Execute each tool call
           for (const toolCall of pendingToolCalls) {
             yield {
-              type: 'thinking',
+              type: 'status_thinking',
               content: `Executing tool: ${toolCall.function.name}...`,
             }
 

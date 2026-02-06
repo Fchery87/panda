@@ -62,8 +62,9 @@ interface ConvexMessage {
   _id: Id<'messages'>
   _creationTime: number
   chatId: Id<'chats'>
-  role: 'user' | 'assistant'
+  role: 'user' | 'assistant' | 'system'
   content: string
+  annotations?: Array<Record<string, unknown>>
   createdAt: number
 }
 
@@ -258,6 +259,21 @@ export default function ProjectPage() {
           _id: msg._id,
           role: msg.role,
           content: msg.content,
+          reasoningContent:
+            Array.isArray(msg.annotations) &&
+            msg.annotations.length > 0 &&
+            typeof msg.annotations[0]?.reasoningSummary === 'string'
+              ? (msg.annotations[0]?.reasoningSummary as string)
+              : undefined,
+          annotations:
+            Array.isArray(msg.annotations) && msg.annotations.length > 0
+              ? {
+                  mode: msg.annotations[0]?.mode as 'discuss' | 'build' | undefined,
+                  model: msg.annotations[0]?.model as string | undefined,
+                  provider: msg.annotations[0]?.provider as string | undefined,
+                  reasoningTokens: msg.annotations[0]?.reasoningTokens as number | undefined,
+                }
+              : undefined,
           createdAt: msg.createdAt,
         })) || []
       )
@@ -270,6 +286,7 @@ export default function ProjectPage() {
         _id: msg.id,
         role: msg.role as 'user' | 'assistant' | 'system',
         content: msg.content,
+        reasoningContent: msg.reasoningContent,
         annotations: { mode: msg.mode },
         createdAt: Date.now(), // Agent messages don't have createdAt, use current time
       }))

@@ -7,11 +7,7 @@ import { ReactNode } from 'react'
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
 
 export function ConvexAuthProvider({ children }: { children: ReactNode }) {
-  return (
-    <ConvexAuthProviderBase client={convex}>
-      {children}
-    </ConvexAuthProviderBase>
-  )
+  return <ConvexAuthProviderBase client={convex}>{children}</ConvexAuthProviderBase>
 }
 
 export { Authenticated, Unauthenticated, AuthLoading } from 'convex/react'

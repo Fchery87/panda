@@ -14,7 +14,8 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useMutation, useConvex, useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
-import type { LLMProvider } from '../lib/llm/types'
+import type { LLMProvider, ProviderType, ReasoningOptions } from '../lib/llm/types'
+import { getDefaultProviderCapabilities } from '../lib/llm/types'
 import {
   createAgentRuntime,
   createToolContext,
@@ -55,6 +56,18 @@ interface ToolCallInfo {
   }
 }
 
+interface PersistedMessageAnnotation {
+  mode?: unknown
+  reasoningSummary?: unknown
+}
+
+interface ReasoningProviderConfig {
+  showReasoningPanel?: boolean
+  reasoningEnabled?: boolean
+  reasoningBudget?: number
+  reasoningMode?: 'auto' | 'low' | 'medium' | 'high'
+}
+
 /**
  * Options for useAgent hook
  */
@@ -75,6 +88,7 @@ interface UseAgentReturn {
     id: string
     role: 'user' | 'assistant' | 'tool'
     content: string
+    reasoningContent?: string
     mode: ChatMode
     toolCalls?: ToolCallInfo[]
   }>
@@ -121,6 +135,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
 
   // Convex queries & mutations
   const currentUser = useQuery(api.users.getCurrent)
+  const persistedMessages = useQuery(api.messages.list, chatId ? { chatId } : 'skip')
+  const settings = useQuery(api.settings.get)
   const addMessage = useMutation(api.messages.add)
 
   // Artifact store
@@ -207,6 +223,40 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   }, [projectId, chatId, convex, addToQueue, userId])
 
   // Stop the agent
+  const getReasoningRuntimeSettings = useCallback(() => {
+    const providerType = (provider?.config?.provider || 'openai') as ProviderType
+    const capabilities =
+      provider?.config?.capabilities ?? getDefaultProviderCapabilities(providerType)
+
+    const providerKey = settings?.defaultProvider || providerType
+    const providerConfig = (settings?.providerConfigs?.[providerKey] ??
+      {}) as ReasoningProviderConfig
+
+    const showReasoningPanel = providerConfig.showReasoningPanel !== false
+    const reasoningEnabled = Boolean(providerConfig.reasoningEnabled)
+    const reasoningBudget = Number(providerConfig.reasoningBudget ?? 6000)
+    const reasoningMode = String(providerConfig.reasoningMode ?? 'auto')
+
+    let reasoning: ReasoningOptions | undefined
+    if (capabilities.supportsReasoning && reasoningEnabled) {
+      reasoning = {
+        enabled: true,
+        ...(Number.isFinite(reasoningBudget) && reasoningBudget > 0
+          ? { budgetTokens: reasoningBudget }
+          : {}),
+      }
+      if (reasoningMode === 'low' || reasoningMode === 'medium' || reasoningMode === 'high') {
+        reasoning.effort = reasoningMode
+      }
+    }
+
+    return {
+      showReasoningPanel,
+      reasoning,
+    }
+  }, [provider, settings])
+
+  // Stop the agent
   const stop = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
@@ -232,6 +282,36 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value)
   }, [])
+
+  // Hydrate local chat state from Convex when chat changes.
+  useEffect(() => {
+    if (!persistedMessages || isRunningRef.current) return
+    const runtimeSettings = getReasoningRuntimeSettings()
+
+    const hydrated: UseAgentReturn['messages'] = persistedMessages
+      .filter((msg) => msg.role === 'user' || msg.role === 'assistant')
+      .map((msg) => {
+        const firstAnnotation = Array.isArray(msg.annotations)
+          ? (msg.annotations[0] as PersistedMessageAnnotation | undefined)
+          : undefined
+        const hydratedMode: ChatMode = firstAnnotation?.mode === 'build' ? 'build' : 'discuss'
+
+        return {
+          id: msg._id,
+          role: msg.role as 'user' | 'assistant' | 'tool',
+          content: msg.content,
+          reasoningContent:
+            runtimeSettings.showReasoningPanel &&
+            typeof firstAnnotation?.reasoningSummary === 'string'
+              ? firstAnnotation.reasoningSummary
+              : '',
+          mode: hydratedMode,
+          toolCalls: [] as ToolCallInfo[],
+        }
+      })
+
+    setMessages(hydrated)
+  }, [chatId, persistedMessages, getReasoningRuntimeSettings])
 
   // Main submit handler
   const handleSubmit = useCallback(
@@ -331,17 +411,20 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           )
 
         // Create agent runtime
+        const runtimeSettings = getReasoningRuntimeSettings()
         const runtime = createAgentRuntime(
           {
             provider,
             model,
             maxIterations: runtimeConfig.maxIterations,
+            ...(runtimeSettings.reasoning ? { reasoning: runtimeSettings.reasoning } : {}),
           },
           toolContext
         )
 
         // Run the agent
         let assistantContent = ''
+        let assistantReasoning = ''
         let assistantToolCalls: ToolCallInfo[] = []
         const assistantMessageId = `msg-${Date.now()}-assistant`
         let pendingPaint = false
@@ -361,6 +444,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                 updated[existingIndex] = {
                   ...updated[existingIndex],
                   content: assistantContent,
+                  reasoningContent: runtimeSettings.showReasoningPanel ? assistantReasoning : '',
                   mode,
                   toolCalls: assistantToolCalls,
                 }
@@ -372,6 +456,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                   id: assistantMessageId,
                   role: 'assistant',
                   content: assistantContent,
+                  reasoningContent: runtimeSettings.showReasoningPanel ? assistantReasoning : '',
                   mode,
                   toolCalls: assistantToolCalls,
                 },
@@ -386,11 +471,9 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             break
           }
 
-          // Debug logging
-          console.log('[useAgent] Event:', event.type, event.content?.slice(0, 50))
-
           switch (event.type) {
-            case 'thinking': {
+            case 'thinking':
+            case 'status_thinking': {
               setStatus('thinking')
               // Extract iteration number from content
               const iterationMatch = event.content?.match(/Iteration (\d+)/)
@@ -431,7 +514,6 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             case 'text':
               setStatus('streaming')
               if (event.content) {
-                console.log('[useAgent] Text chunk:', event.content.slice(0, 30))
                 if (replaceOnNextText) {
                   replaceOnNextText = false
                   assistantContent = ''
@@ -443,6 +525,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                     updated[existingIndex] = {
                       ...updated[existingIndex]!,
                       content: '',
+                      reasoningContent: '',
                       mode,
                       toolCalls: [],
                     }
@@ -452,6 +535,12 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                 assistantContent += event.content
                 // Paint at most once per animation frame to avoid render thrash
                 // while still feeling like true streaming.
+                schedulePaint()
+              }
+              break
+            case 'reasoning':
+              if (runtimeSettings.showReasoningPanel && event.reasoningContent) {
+                assistantReasoning += event.reasoningContent
                 schedulePaint()
               }
               break
@@ -540,10 +629,23 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
 
               // Persist assistant message to Convex
               try {
+                const annotations: Record<string, unknown> = {
+                  mode,
+                  model,
+                  provider: provider?.config?.provider,
+                }
+                if (assistantReasoning) {
+                  annotations.reasoningSummary = assistantReasoning
+                  if (event.usage?.completionTokens) {
+                    annotations.reasoningTokens = event.usage.completionTokens
+                  }
+                }
+
                 await addMessage({
                   chatId,
                   role: 'assistant',
                   content: assistantContent,
+                  annotations: [annotations],
                 })
               } catch (err) {
                 console.error('Failed to persist assistant message:', err)
@@ -575,7 +677,18 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         })
       }
     },
-    [input, messages, chatId, projectId, mode, provider, model, addMessage, userId]
+    [
+      input,
+      messages,
+      chatId,
+      projectId,
+      mode,
+      provider,
+      model,
+      addMessage,
+      userId,
+      getReasoningRuntimeSettings,
+    ]
   )
 
   // Cleanup on unmount
@@ -615,16 +728,13 @@ export function useAgentSync(options: UseAgentOptions) {
   const [isLoading, setIsLoading] = useState(false)
 
   const run = useCallback(
-    async (content: string) => {
+    async (_content: string) => {
       setIsLoading(true)
       setResult(null)
 
       try {
         // TODO: Implement sync agent execution
         // This would call the runAgent helper function
-        console.log('Running agent with content:', content)
-
-        // Placeholder result
         setResult({
           content: 'Agent execution placeholder',
           toolResults: [],
