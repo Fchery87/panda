@@ -24,6 +24,7 @@ import { ProviderCard } from '@/components/settings/ProviderCard'
 import { ThemeToggleFull } from '@/components/settings/ThemeToggle'
 import { User, Palette, Bot, Save, Loader2, ArrowLeft } from 'lucide-react'
 import { getDefaultProviderCapabilities, type ProviderType } from '@/lib/llm/types'
+import { extractOpenRouterFreeCodingModelIds } from '@/lib/llm/openrouter-free-models'
 
 interface ProviderConfig {
   provider?: string
@@ -69,12 +70,11 @@ const defaultProviders: Record<string, ProviderConfig> = {
     description: 'Access multiple AI models through a single API',
     apiKey: '',
     enabled: false,
-    defaultModel: 'anthropic/claude-3.5-sonnet',
+    defaultModel: 'qwen/qwen3-coder:free',
     availableModels: [
-      'anthropic/claude-3.5-sonnet',
-      'anthropic/claude-3-opus',
-      'meta-llama/llama-3.1-70b-instruct',
-      'google/gemini-pro',
+      'qwen/qwen3-coder:free',
+      'moonshotai/kimi-dev-72b:free',
+      'deepseek/deepseek-coder:free',
     ],
     baseUrl: 'https://openrouter.ai/api/v1',
     testStatus: 'idle',
@@ -231,6 +231,62 @@ export default function SettingsPage() {
         : defaultProviders,
     }))
   }, [settingsSyncKey])
+
+  const openRouterApiKey = formState.providers.openrouter?.apiKey ?? ''
+
+  React.useEffect(() => {
+    let cancelled = false
+
+    const loadOpenRouterFreeModels = async () => {
+      try {
+        const headers: HeadersInit = {}
+        if (openRouterApiKey.trim()) {
+          headers.Authorization = `Bearer ${openRouterApiKey.trim()}`
+        }
+
+        const response = await fetch('https://openrouter.ai/api/v1/models', { headers })
+        if (!response.ok) return
+
+        const payload = await response.json()
+        const freeModels = extractOpenRouterFreeCodingModelIds(payload)
+        if (freeModels.length === 0 || cancelled) return
+
+        setFormState((prev) => {
+          const openrouter = prev.providers.openrouter
+          if (!openrouter) return prev
+
+          const openRouterDefault = freeModels.includes(openrouter.defaultModel)
+            ? openrouter.defaultModel
+            : freeModels[0]
+          const globalDefault =
+            prev.defaultProvider === 'openrouter' && !freeModels.includes(prev.defaultModel)
+              ? openRouterDefault
+              : prev.defaultModel
+
+          return {
+            ...prev,
+            defaultModel: globalDefault,
+            providers: {
+              ...prev.providers,
+              openrouter: {
+                ...openrouter,
+                availableModels: freeModels,
+                defaultModel: openRouterDefault,
+              },
+            },
+          }
+        })
+      } catch (error) {
+        console.error('[SettingsPage] Failed to load OpenRouter free models:', error)
+      }
+    }
+
+    void loadOpenRouterFreeModels()
+
+    return () => {
+      cancelled = true
+    }
+  }, [openRouterApiKey])
 
   // Handle provider updates
   const updateProvider = (providerKey: string, updates: Partial<ProviderConfig>) => {
