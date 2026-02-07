@@ -79,10 +79,10 @@ development/testing).
 
 ## Step 4: Configure Environment Variables
 
-1. Open your frontend `.env.local` file:
+1. Open your project `.env.local` file:
 
    ```bash
-   code /home/nochaserz/Documents/Coding\ Projects/panda/apps/web/.env.local
+   code /home/nochaserz/Documents/Coding\ Projects/panda/.env.local
    ```
 
 2. Add your actual credentials:
@@ -113,7 +113,7 @@ development/testing).
 
    ```bash
    cd /home/nochaserz/Documents/Coding\ Projects/panda
-   set -a; source apps/web/.env.local; set +a
+   set -a; source .env.local; set +a
 
    npx convex env set AUTH_GOOGLE_ID "$AUTH_GOOGLE_ID"
    npx convex env set AUTH_GOOGLE_SECRET "$AUTH_GOOGLE_SECRET"
@@ -241,9 +241,9 @@ Verification is only required for production apps with many users.
 
 **Fix:**
 
-1. Ensure `.env.local` is in `apps/web/` directory
+1. Ensure `.env.local` exists in the repo root (`/panda/.env.local`)
 2. Restart your dev server: `Ctrl+C` then `bun run dev`
-3. Check variables: `cat apps/web/.env.local | grep AUTH`
+3. Check variables: `cat .env.local | grep AUTH`
 
 ### Issue: Convex auth endpoints not found (404)
 
@@ -274,12 +274,12 @@ Per
 
 ## Complete Environment Variables Reference
 
-Your `apps/web/.env.local` should contain:
+Your repo root `.env.local` should contain:
 
 ```env
 # Convex Configuration
 NEXT_PUBLIC_CONVEX_URL=https://your-deployment.convex.cloud
-NEXT_PUBLIC_CONVEX_SITE_URL=https://your-deployment.convex.site
+CONVEX_SITE_URL=https://your-deployment.convex.site
 
 # Google OAuth 2.0 Credentials (from Google Cloud Console)
 AUTH_GOOGLE_ID=your-client-id.apps.googleusercontent.com
