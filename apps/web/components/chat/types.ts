@@ -19,6 +19,15 @@ export interface Message {
   annotations?: {
     model?: string
     tokenCount?: number
+    promptTokens?: number
+    completionTokens?: number
+    totalTokens?: number
+    tokenSource?: 'exact' | 'estimated'
+    contextWindow?: number
+    contextUsedTokens?: number
+    contextRemainingTokens?: number
+    contextUsagePct?: number
+    contextSource?: 'map' | 'provider' | 'fallback'
     mode?: 'discuss' | 'build'
     provider?: string
     reasoningTokens?: number

@@ -14,7 +14,6 @@ interface MessageListProps {
 }
 
 export function MessageList({ messages, isStreaming = false, onResendInBuild }: MessageListProps) {
-  const scrollRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -45,7 +44,7 @@ export function MessageList({ messages, isStreaming = false, onResendInBuild }: 
   }
 
   return (
-    <ScrollArea className="h-full" ref={scrollRef}>
+    <ScrollArea className="h-full">
       <div className={cn('flex min-h-full flex-col gap-4 p-4')}>
         {messages.map((message, index) => {
           let resendInBuildContent: string | undefined

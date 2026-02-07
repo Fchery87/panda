@@ -147,17 +147,36 @@ export function MessageBubble({
           </div>
         )}
 
-        {/* Token Count (if available) */}
-        {message.annotations?.tokenCount && (
+        {/* Token Usage (if available) */}
+        {(message.annotations?.totalTokens || message.annotations?.tokenCount) && (
           <motion.span
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
-            className="px-1 text-[10px] text-muted-foreground/60"
+            className="px-1 font-mono text-[10px] text-muted-foreground/70"
           >
-            {message.annotations.tokenCount} tokens
+            Tokens:{' '}
+            {message.annotations?.promptTokens !== undefined &&
+            message.annotations?.completionTokens !== undefined
+              ? `${message.annotations.promptTokens} + ${message.annotations.completionTokens} = `
+              : ''}
+            {message.annotations?.totalTokens ?? message.annotations?.tokenCount}
+            {message.annotations?.tokenSource === 'estimated' ? ' (est)' : ''}
           </motion.span>
         )}
+
+        {message.annotations?.contextWindow &&
+          message.annotations?.contextUsagePct !== undefined && (
+            <motion.span
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.35 }}
+              className="px-1 font-mono text-[10px] text-muted-foreground/60"
+            >
+              Context: {message.annotations.contextUsedTokens ?? 0}/
+              {message.annotations.contextWindow} ({message.annotations.contextUsagePct}%)
+            </motion.span>
+          )}
 
         {isAssistant && message.toolCalls && message.toolCalls.length > 0 && (
           <div className="w-full space-y-1 px-1 pt-1">

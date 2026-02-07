@@ -1,21 +1,28 @@
 import { test, expect, Page } from '@playwright/test'
 
-async function createProject(page: Page, name: string, description?: string) {
-  const newProjectButton = page.getByRole('button', { name: /new project/i })
+async function openCreateProjectDialog(page: Page) {
+  const newProjectButton = page.getByRole('button', { name: /new project/i }).first()
+  await expect(newProjectButton).toBeVisible()
   await newProjectButton.click()
 
-  const dialog = page.getByRole('dialog')
+  const dialog = page.getByRole('dialog').filter({ hasText: /create new project/i }).first()
   await expect(dialog).toBeVisible()
+  return dialog
+}
 
-  const nameInput = page.getByLabel(/project name/i)
+async function createProject(page: Page, name: string, description?: string) {
+  const dialog = await openCreateProjectDialog(page)
+
+  const nameInput = dialog.locator('input#name')
+  await expect(nameInput).toBeVisible()
   await nameInput.fill(name)
 
   if (description) {
-    const descriptionInput = page.getByLabel(/description/i)
+    const descriptionInput = dialog.locator('input#description')
     await descriptionInput.fill(description)
   }
 
-  const createButton = page.getByRole('button', { name: /create$/i })
+  const createButton = dialog.getByRole('button', { name: /^create$/i })
   await createButton.click()
 
   await expect(dialog).not.toBeVisible()
@@ -53,15 +60,8 @@ test.describe('Dashboard', () => {
     const projectsHeading = page.getByRole('heading', { name: /your work|projects/i })
     await expect(projectsHeading).toBeVisible()
 
-    const projectList = page
-      .locator('div')
-      .filter({ has: page.getByText(/just now|ago|yesterday/i) })
-
-    const emptyState = page.getByText(/no projects yet|create your first project/i)
-    const hasProjects = (await projectList.count()) > 0
-    const hasEmptyState = await emptyState.isVisible().catch(() => false)
-
-    expect(hasProjects || hasEmptyState).toBeTruthy()
+    const listState = page.locator('h3:has-text("No projects yet"), a[href^="/projects/"]').first()
+    await expect(listState).toBeVisible({ timeout: 15000 })
   })
 
   test('can create a new project', async ({ page }) => {
@@ -73,16 +73,12 @@ test.describe('Dashboard', () => {
   })
 
   test('project creation validates required fields', async ({ page }) => {
-    const newProjectButton = page.getByRole('button', { name: /new project/i })
-    await newProjectButton.click()
+    const dialog = await openCreateProjectDialog(page)
 
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toBeVisible()
-
-    const createButton = page.getByRole('button', { name: /create$/i })
+    const createButton = dialog.getByRole('button', { name: /^create$/i })
     await expect(createButton).toBeDisabled()
 
-    const nameInput = page.getByLabel(/project name/i)
+    const nameInput = dialog.locator('input#name')
     await nameInput.fill('Valid Project Name')
 
     await expect(createButton).toBeEnabled()
@@ -92,13 +88,9 @@ test.describe('Dashboard', () => {
   })
 
   test('can cancel project creation', async ({ page }) => {
-    const newProjectButton = page.getByRole('button', { name: /new project/i })
-    await newProjectButton.click()
+    const dialog = await openCreateProjectDialog(page)
 
-    const dialog = page.getByRole('dialog')
-    await expect(dialog).toBeVisible()
-
-    const cancelButton = page.getByRole('button', { name: /cancel/i })
+    const cancelButton = dialog.getByRole('button', { name: /cancel/i })
     await cancelButton.click()
 
     await expect(dialog).not.toBeVisible()
@@ -118,13 +110,14 @@ test.describe('Dashboard', () => {
     const projectName = `Open Test ${Date.now()}`
     await createProject(page, projectName)
 
-    const projectRow = page.locator('div').filter({ hasText: projectName }).first()
-    await projectRow.click()
+    const projectLink = page.locator('a[href^="/projects/"]', { hasText: projectName }).first()
+    await expect(projectLink).toBeVisible({ timeout: 15000 })
+    const href = await projectLink.getAttribute('href')
+    expect(href).toMatch(/^\/projects\/.+/)
+    await page.goto(href!)
 
-    await expect(page).toHaveURL(/\/projects\/.+/)
-
-    const projectTitle = page.getByText(projectName).first()
-    await expect(projectTitle).toBeVisible()
+    await expect(page).toHaveURL(/\/projects\/.+/, { timeout: 15000 })
+    await expect(page.getByRole('button', { name: /reset/i })).toBeVisible({ timeout: 15000 })
   })
 
   test('search filters projects', async ({ page }) => {

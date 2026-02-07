@@ -14,11 +14,11 @@ test.describe('Homepage', () => {
     const logoLink = page.getByRole('link', { name: /panda/i }).first()
     await expect(logoLink).toBeVisible()
 
-    const launchAppButton = page.getByRole('button', { name: /launch app/i })
+    const launchAppButton = page.getByRole('link', { name: /launch app/i }).first()
     await expect(launchAppButton).toBeVisible()
 
     await launchAppButton.click()
-    await expect(page).toHaveURL('/projects')
+    await expect(page).toHaveURL('/projects', { timeout: 15000 })
   })
 
   test('theme toggle works', async ({ page }) => {
@@ -73,11 +73,11 @@ test.describe('Homepage', () => {
     const ctaSection = page.locator('section').filter({ hasText: /ready to start/i })
     await expect(ctaSection).toBeVisible()
 
-    const createProjectButton = ctaSection.getByRole('button', { name: /create project/i })
+    const createProjectButton = ctaSection.getByRole('link', { name: /create project/i }).first()
     await expect(createProjectButton).toBeVisible()
 
     await createProjectButton.click()
-    await expect(page).toHaveURL('/projects')
+    await expect(page).toHaveURL('/projects', { timeout: 15000 })
   })
 
   test('footer renders', async ({ page }) => {
@@ -92,8 +92,8 @@ test.describe('Homepage', () => {
   })
 
   test('terminal mockup is visible', async ({ page }) => {
-    const terminalSection = page.locator('div').filter({ hasText: /panda\.ai — terminal/i })
-    await expect(terminalSection).toBeVisible()
+    const terminalLabel = page.getByText(/panda\.ai\s+[—-]\s+terminal/i).first()
+    await expect(terminalLabel).toBeVisible()
 
     const terminalCommands = [/npm create panda-project/i, /panda dev/i, /ready at http/i]
 

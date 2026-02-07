@@ -9,6 +9,10 @@ const isProtectedRoute = createRouteMatcher(['/projects(.*)', '/settings(.*)'])
 const isLoginRoute = createRouteMatcher(['/login'])
 
 export default convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
+  if (process.env.E2E_AUTH_BYPASS === 'true') {
+    return
+  }
+
   const authenticated = await convexAuth.isAuthenticated()
   if (isProtectedRoute(request) && shouldRedirectToLogin(request.nextUrl.pathname, authenticated)) {
     return nextjsMiddlewareRedirect(request, '/login')

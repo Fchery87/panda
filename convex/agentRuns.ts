@@ -158,6 +158,42 @@ export const listByChat = query({
   },
 })
 
+export const usageByChatMode = query({
+  args: {
+    chatId: v.id('chats'),
+    mode: v.optional(v.union(v.literal('discuss'), v.literal('build'))),
+  },
+  handler: async (ctx, args) => {
+    const runs = await ctx.db
+      .query('agentRuns')
+      .withIndex('by_chat_started', (q) => q.eq('chatId', args.chatId))
+      .collect()
+
+    const usage = {
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      runCount: 0,
+    }
+
+    for (const run of runs) {
+      if (args.mode && run.mode !== args.mode) continue
+      if (run.status !== 'completed' || !run.usage) continue
+
+      const promptTokens = Number(run.usage.promptTokens ?? 0)
+      const completionTokens = Number(run.usage.completionTokens ?? 0)
+      const totalTokens = Number(run.usage.totalTokens ?? promptTokens + completionTokens)
+
+      usage.promptTokens += Number.isFinite(promptTokens) ? promptTokens : 0
+      usage.completionTokens += Number.isFinite(completionTokens) ? completionTokens : 0
+      usage.totalTokens += Number.isFinite(totalTokens) ? totalTokens : 0
+      usage.runCount += 1
+    }
+
+    return usage
+  },
+})
+
 export const listEventsByChat = query({
   args: {
     chatId: v.id('chats'),

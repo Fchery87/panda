@@ -101,6 +101,8 @@ interface AgentRunEvent {
   createdAt: number
 }
 
+const FALLBACK_PROVIDER = {} as LLMProvider
+
 export default function ProjectPage() {
   const params = useParams()
   const projectId = params.projectId as Id<'projects'>
@@ -235,7 +237,7 @@ export default function ProjectPage() {
     chatId: activeChat?._id as Id<'chats'>,
     projectId,
     mode: chatMode,
-    provider: provider || ({} as LLMProvider), // Type-safe fallback - checked before use
+    provider: provider ?? FALLBACK_PROVIDER, // Stable fallback - checked before use
     model:
       settings?.providerConfigs?.[settings?.defaultProvider || 'openai']?.defaultModel || 'gpt-4o',
   })
@@ -316,6 +318,22 @@ export default function ProjectPage() {
                   mode: msg.annotations[0]?.mode as 'discuss' | 'build' | undefined,
                   model: msg.annotations[0]?.model as string | undefined,
                   provider: msg.annotations[0]?.provider as string | undefined,
+                  tokenCount: msg.annotations[0]?.tokenCount as number | undefined,
+                  promptTokens: msg.annotations[0]?.promptTokens as number | undefined,
+                  completionTokens: msg.annotations[0]?.completionTokens as number | undefined,
+                  totalTokens: msg.annotations[0]?.totalTokens as number | undefined,
+                  tokenSource: msg.annotations[0]?.tokenSource as 'exact' | 'estimated' | undefined,
+                  contextWindow: msg.annotations[0]?.contextWindow as number | undefined,
+                  contextUsedTokens: msg.annotations[0]?.contextUsedTokens as number | undefined,
+                  contextRemainingTokens: msg.annotations[0]?.contextRemainingTokens as
+                    | number
+                    | undefined,
+                  contextUsagePct: msg.annotations[0]?.contextUsagePct as number | undefined,
+                  contextSource: msg.annotations[0]?.contextSource as
+                    | 'map'
+                    | 'provider'
+                    | 'fallback'
+                    | undefined,
                   reasoningTokens: msg.annotations[0]?.reasoningTokens as number | undefined,
                 }
               : undefined,
@@ -339,7 +357,10 @@ export default function ProjectPage() {
         content: msg.content,
         reasoningContent: msg.reasoningContent,
         toolCalls: msg.toolCalls,
-        annotations: { mode: msg.mode },
+        annotations: {
+          ...(msg.annotations || {}),
+          mode: msg.mode,
+        },
         createdAt: msg.createdAt,
       }))
   }, [agent.messages, activeChat, convexMessages])
@@ -719,6 +740,18 @@ export default function ProjectPage() {
               <div className="panel-header flex items-center gap-2" data-number="04">
                 <Bot className="h-3.5 w-3.5 text-primary" />
                 <span>Chat</span>
+                <div className="ml-2 hidden min-w-0 flex-1 overflow-hidden md:block">
+                  <div className="truncate font-mono text-[10px] text-muted-foreground/80">
+                    Context {agent.usageMetrics.usedTokens.toLocaleString()}/
+                    {agent.usageMetrics.contextWindow.toLocaleString()} (
+                    {agent.usageMetrics.usagePct}%)
+                  </div>
+                  <div className="truncate font-mono text-[10px] text-muted-foreground/60">
+                    Remaining {agent.usageMetrics.remainingTokens.toLocaleString()} • Session{' '}
+                    {agent.usageMetrics.session.totalTokens.toLocaleString()}
+                    {agent.usageMetrics.currentRun?.source === 'estimated' ? ' + live est' : ''}
+                  </div>
+                </div>
                 <div className="ml-auto flex items-center gap-2">
                   {agent.status !== 'idle' &&
                     agent.status !== 'complete' &&

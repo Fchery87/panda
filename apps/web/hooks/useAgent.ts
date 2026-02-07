@@ -14,8 +14,14 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useMutation, useConvex, useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
-import type { LLMProvider, ProviderType, ReasoningOptions } from '../lib/llm/types'
+import type { LLMProvider, ModelInfo, ProviderType, ReasoningOptions } from '../lib/llm/types'
 import { getDefaultProviderCapabilities } from '../lib/llm/types'
+import { resolveContextWindow, type ContextWindowSource } from '../lib/llm/model-metadata'
+import {
+  computeContextMetrics,
+  estimateCompletionTokens,
+  estimatePromptTokens,
+} from '../lib/llm/token-usage'
 import {
   createAgentRuntime,
   createToolContext,
@@ -71,6 +77,19 @@ interface PersistedMessageAnnotation {
   mode?: unknown
   reasoningSummary?: unknown
   toolCalls?: unknown
+  model?: unknown
+  provider?: unknown
+  tokenCount?: unknown
+  promptTokens?: unknown
+  completionTokens?: unknown
+  totalTokens?: unknown
+  tokenSource?: unknown
+  contextWindow?: unknown
+  contextUsedTokens?: unknown
+  contextRemainingTokens?: unknown
+  contextUsagePct?: unknown
+  contextSource?: unknown
+  reasoningTokens?: unknown
 }
 
 interface ReasoningProviderConfig {
@@ -97,11 +116,40 @@ interface RunEventInput {
   usage?: Record<string, unknown>
 }
 
+type TokenSource = 'exact' | 'estimated'
+
+interface UsageTotals {
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+}
+
+interface UsageMetrics {
+  mode: ChatMode
+  session: UsageTotals
+  currentRun?: UsageTotals & { source: TokenSource }
+  contextWindow: number
+  usedTokens: number
+  remainingTokens: number
+  usagePct: number
+  contextSource: ContextWindowSource
+}
+
 function summarizeArgs(args: Record<string, unknown> | undefined): string | undefined {
   if (!args) return undefined
   const serialized = JSON.stringify(args)
   if (!serialized) return undefined
   return serialized.length > 140 ? `${serialized.slice(0, 137)}...` : serialized
+}
+
+function toFiniteNumber(value: unknown, fallback = 0): number {
+  const num = Number(value)
+  return Number.isFinite(num) ? num : fallback
+}
+
+function toOptionalFiniteNumber(value: unknown): number | undefined {
+  const num = Number(value)
+  return Number.isFinite(num) ? num : undefined
 }
 
 /**
@@ -128,6 +176,22 @@ interface UseAgentReturn {
     mode: ChatMode
     createdAt: number
     toolCalls?: ToolCallInfo[]
+    annotations?: {
+      model?: string
+      tokenCount?: number
+      promptTokens?: number
+      completionTokens?: number
+      totalTokens?: number
+      tokenSource?: TokenSource
+      mode?: ChatMode
+      provider?: string
+      reasoningTokens?: number
+      contextWindow?: number
+      contextUsedTokens?: number
+      contextRemainingTokens?: number
+      contextUsagePct?: number
+      contextSource?: ContextWindowSource
+    }
   }>
 
   // Input
@@ -142,6 +206,7 @@ interface UseAgentReturn {
   // Tool calls
   toolCalls: ToolCallInfo[]
   progressSteps: ProgressStep[]
+  usageMetrics: UsageMetrics
 
   // Artifacts
   pendingArtifacts: Array<{ _id: string }>
@@ -175,6 +240,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const currentUser = useQuery(api.users.getCurrent)
   const persistedMessages = useQuery(api.messages.list, chatId ? { chatId } : 'skip')
   const settings = useQuery(api.settings.get)
+  const persistedModeUsage = useQuery(
+    api.agentRuns.usageByChatMode,
+    chatId ? { chatId, mode } : 'skip'
+  )
   const addMessage = useMutation(api.messages.add)
   const createRun = useMutation(api.agentRuns.create)
   const appendRunEvents = useMutation(api.agentRuns.appendEvents)
@@ -200,6 +269,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const [toolCalls, setToolCalls] = useState<ToolCallInfo[]>([])
   const [progressSteps, setProgressSteps] = useState<ProgressStep[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [providerModels, setProviderModels] = useState<ModelInfo[]>([])
+  const [currentRunUsage, setCurrentRunUsage] = useState<UsageTotals & { source: TokenSource }>()
 
   // Refs for controlling the agent
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -280,6 +351,71 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     }
   }, [provider, settings])
 
+  useEffect(() => {
+    let cancelled = false
+
+    const loadProviderModels = async () => {
+      if (!provider || typeof provider.listModels !== 'function') {
+        setProviderModels([])
+        return
+      }
+      try {
+        const models = await provider.listModels()
+        if (!cancelled) {
+          setProviderModels(Array.isArray(models) ? models : [])
+        }
+      } catch {
+        if (!cancelled) {
+          setProviderModels([])
+        }
+      }
+    }
+
+    void loadProviderModels()
+
+    return () => {
+      cancelled = true
+    }
+  }, [provider])
+
+  const providerType = (provider?.config?.provider || 'openai') as ProviderType
+  const contextWindowResolution = useMemo(
+    () => resolveContextWindow({ providerType, model, providerModels }),
+    [providerType, model, providerModels]
+  )
+
+  const sessionUsage = useMemo<UsageTotals>(
+    () => ({
+      promptTokens: toFiniteNumber(persistedModeUsage?.promptTokens),
+      completionTokens: toFiniteNumber(persistedModeUsage?.completionTokens),
+      totalTokens: toFiniteNumber(persistedModeUsage?.totalTokens),
+    }),
+    [persistedModeUsage]
+  )
+
+  const usageMetrics = useMemo<UsageMetrics>(() => {
+    const sessionWithCurrent: UsageTotals = {
+      promptTokens: sessionUsage.promptTokens + (currentRunUsage?.promptTokens ?? 0),
+      completionTokens: sessionUsage.completionTokens + (currentRunUsage?.completionTokens ?? 0),
+      totalTokens: sessionUsage.totalTokens + (currentRunUsage?.totalTokens ?? 0),
+    }
+    const context = computeContextMetrics({
+      usedTokens: sessionWithCurrent.totalTokens,
+      contextWindow: contextWindowResolution.contextWindow,
+    })
+
+    return {
+      mode,
+      session: sessionUsage,
+      ...(currentRunUsage ? { currentRun: currentRunUsage } : {}),
+      contextWindow: contextWindowResolution.contextWindow,
+      usedTokens: context.usedTokens,
+      remainingTokens: context.remainingTokens,
+      usagePct: context.usagePct,
+      contextSource: contextWindowResolution.source,
+    }
+  }, [mode, sessionUsage, currentRunUsage, contextWindowResolution])
+
   const appendRunEvent = useCallback(
     async (event: RunEventInput) => {
       if (!runIdRef.current) return
@@ -322,6 +458,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     setProgressSteps([])
     setError(null)
     setCurrentIteration(0)
+    setCurrentRunUsage(undefined)
   }, [])
 
   // Handle input change
@@ -333,6 +470,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   useEffect(() => {
     if (!persistedMessages || isRunningRef.current) return
     const runtimeSettings = getReasoningRuntimeSettings()
+    setCurrentRunUsage(undefined)
 
     const hydrated: UseAgentReturn['messages'] = persistedMessages
       .filter((msg) => msg.role === 'user' || msg.role === 'assistant')
@@ -356,6 +494,32 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           toolCalls: Array.isArray(firstAnnotation?.toolCalls)
             ? (firstAnnotation.toolCalls as ToolCallInfo[])
             : ([] as ToolCallInfo[]),
+          annotations: {
+            mode: hydratedMode,
+            model: typeof firstAnnotation?.model === 'string' ? firstAnnotation.model : undefined,
+            provider:
+              typeof firstAnnotation?.provider === 'string' ? firstAnnotation.provider : undefined,
+            tokenCount: toOptionalFiniteNumber(firstAnnotation?.tokenCount),
+            promptTokens: toOptionalFiniteNumber(firstAnnotation?.promptTokens),
+            completionTokens: toOptionalFiniteNumber(firstAnnotation?.completionTokens),
+            totalTokens: toOptionalFiniteNumber(firstAnnotation?.totalTokens),
+            tokenSource:
+              firstAnnotation?.tokenSource === 'exact' ||
+              firstAnnotation?.tokenSource === 'estimated'
+                ? firstAnnotation.tokenSource
+                : undefined,
+            reasoningTokens: toOptionalFiniteNumber(firstAnnotation?.reasoningTokens),
+            contextWindow: toOptionalFiniteNumber(firstAnnotation?.contextWindow),
+            contextUsedTokens: toOptionalFiniteNumber(firstAnnotation?.contextUsedTokens),
+            contextRemainingTokens: toOptionalFiniteNumber(firstAnnotation?.contextRemainingTokens),
+            contextUsagePct: toOptionalFiniteNumber(firstAnnotation?.contextUsagePct),
+            contextSource:
+              firstAnnotation?.contextSource === 'map' ||
+              firstAnnotation?.contextSource === 'provider' ||
+              firstAnnotation?.contextSource === 'fallback'
+                ? firstAnnotation.contextSource
+                : undefined,
+          },
         }
       })
 
@@ -381,6 +545,19 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       const previousMessagesSnapshot = messages
         .filter((m) => (m.role === 'user' || m.role === 'assistant') && m.mode === mode)
         .map((m) => ({ role: m.role, content: m.content }))
+
+      const estimatedPromptTokens = estimatePromptTokens({
+        providerType,
+        model,
+        messages: [...previousMessagesSnapshot, { role: 'user', content: userContent }],
+      })
+      let runUsage: UsageTotals & { source: TokenSource } = {
+        promptTokens: estimatedPromptTokens,
+        completionTokens: 0,
+        totalTokens: estimatedPromptTokens,
+        source: 'estimated',
+      }
+      setCurrentRunUsage(runUsage)
 
       // Add user message to local state
       const userMessageId = `msg-${Date.now()}-user`
@@ -537,6 +714,27 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         let pendingPaint = false
         let replaceOnNextText = false
         let rewriteNoticeShown = false
+        const buildUsageAnnotations = () => {
+          const context = computeContextMetrics({
+            usedTokens: sessionUsage.totalTokens + runUsage.totalTokens,
+            contextWindow: contextWindowResolution.contextWindow,
+          })
+          return {
+            mode,
+            model,
+            provider: provider?.config?.provider,
+            tokenCount: runUsage.totalTokens,
+            promptTokens: runUsage.promptTokens,
+            completionTokens: runUsage.completionTokens,
+            totalTokens: runUsage.totalTokens,
+            tokenSource: runUsage.source,
+            contextWindow: contextWindowResolution.contextWindow,
+            contextUsedTokens: context.usedTokens,
+            contextRemainingTokens: context.remainingTokens,
+            contextUsagePct: context.usagePct,
+            contextSource: contextWindowResolution.source,
+          }
+        }
 
         const schedulePaint = () => {
           if (pendingPaint) return
@@ -555,6 +753,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                   mode,
                   createdAt: updated[existingIndex]!.createdAt,
                   toolCalls: assistantToolCalls,
+                  annotations: buildUsageAnnotations(),
                 }
                 return updated
               }
@@ -568,6 +767,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                   mode,
                   createdAt: Date.now(),
                   toolCalls: assistantToolCalls,
+                  annotations: buildUsageAnnotations(),
                 },
               ]
             })
@@ -653,6 +853,16 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                   })
                 }
                 assistantContent += event.content
+                runUsage = {
+                  ...runUsage,
+                  completionTokens: estimateCompletionTokens({
+                    providerType,
+                    model,
+                    content: assistantContent,
+                  }),
+                }
+                runUsage.totalTokens = runUsage.promptTokens + runUsage.completionTokens
+                setCurrentRunUsage(runUsage)
                 // Paint at most once per animation frame to avoid render thrash
                 // while still feeling like true streaming.
                 schedulePaint()
@@ -806,19 +1016,46 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             case 'complete':
               setStatus('complete')
               isRunningRef.current = false
+              if (event.usage) {
+                runUsage = {
+                  promptTokens: toFiniteNumber(event.usage.promptTokens),
+                  completionTokens: toFiniteNumber(event.usage.completionTokens),
+                  totalTokens: toFiniteNumber(
+                    event.usage.totalTokens,
+                    toFiniteNumber(event.usage.promptTokens) +
+                      toFiniteNumber(event.usage.completionTokens)
+                  ),
+                  source: 'exact',
+                }
+              }
+              setCurrentRunUsage(runUsage)
 
               // Persist assistant message to Convex
               try {
+                const context = computeContextMetrics({
+                  usedTokens: sessionUsage.totalTokens + runUsage.totalTokens,
+                  contextWindow: contextWindowResolution.contextWindow,
+                })
                 const annotations: Record<string, unknown> = {
                   mode,
                   model,
                   provider: provider?.config?.provider,
+                  tokenCount: runUsage.totalTokens,
+                  promptTokens: runUsage.promptTokens,
+                  completionTokens: runUsage.completionTokens,
+                  totalTokens: runUsage.totalTokens,
+                  tokenSource: runUsage.source,
+                  contextWindow: contextWindowResolution.contextWindow,
+                  contextUsedTokens: context.usedTokens,
+                  contextRemainingTokens: context.remainingTokens,
+                  contextUsagePct: context.usagePct,
+                  contextSource: contextWindowResolution.source,
                   ...(assistantToolCalls.length > 0 ? { toolCalls: assistantToolCalls } : {}),
                 }
                 if (assistantReasoning) {
                   annotations.reasoningSummary = assistantReasoning
-                  if (event.usage?.completionTokens) {
-                    annotations.reasoningTokens = event.usage.completionTokens
+                  if (runUsage.completionTokens) {
+                    annotations.reasoningTokens = runUsage.completionTokens
                   }
                 }
 
@@ -899,6 +1136,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       mode,
       provider,
       model,
+      providerType,
       addMessage,
       createRun,
       appendRunEvent,
@@ -907,6 +1145,9 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       stopRun,
       userId,
       getReasoningRuntimeSettings,
+      sessionUsage.totalTokens,
+      contextWindowResolution.contextWindow,
+      contextWindowResolution.source,
     ]
   )
 
@@ -926,6 +1167,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     currentIteration,
     toolCalls,
     progressSteps,
+    usageMetrics,
     pendingArtifacts,
     handleSubmit,
     handleInputChange,

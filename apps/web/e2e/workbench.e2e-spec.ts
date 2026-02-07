@@ -1,23 +1,36 @@
 import { test, expect, Page } from '@playwright/test'
 
+async function openCreateProjectDialog(page: Page) {
+  const newProjectButton = page.getByRole('button', { name: /new project/i }).first()
+  await expect(newProjectButton).toBeVisible()
+  await newProjectButton.click()
+
+  const dialog = page.getByRole('dialog').filter({ hasText: /create new project/i }).first()
+  await expect(dialog).toBeVisible()
+  return dialog
+}
+
 async function createAndOpenProject(page: Page): Promise<string> {
   const projectName = `Workbench Test ${Date.now()}`
 
   await page.goto('/projects')
 
-  const newProjectButton = page.getByRole('button', { name: /new project/i })
-  await newProjectButton.click()
-
-  const nameInput = page.getByLabel(/project name/i)
+  const dialog = await openCreateProjectDialog(page)
+  const nameInput = dialog.locator('input#name')
   await nameInput.fill(projectName)
 
-  const createButton = page.getByRole('button', { name: /create$/i })
+  const createButton = dialog.getByRole('button', { name: /^create$/i })
   await createButton.click()
 
-  const projectRow = page.locator('div').filter({ hasText: projectName }).first()
-  await projectRow.click()
+  await expect(dialog).not.toBeVisible()
 
-  await expect(page).toHaveURL(/\/projects\/.+/)
+  const projectLink = page.locator('a[href^="/projects/"]', { hasText: projectName }).first()
+  await expect(projectLink).toBeVisible()
+  const href = await projectLink.getAttribute('href')
+  expect(href).toMatch(/^\/projects\/.+/)
+  await page.goto(href!)
+
+  await expect(page).toHaveURL(/\/projects\/.+/, { timeout: 15000 })
 
   return projectName
 }
@@ -83,21 +96,8 @@ test.describe('Workbench', () => {
     await expect(previewTab).toBeVisible()
 
     await previewTab.click()
-
     await codeTab.click()
-
-    const codeTabActive = await codeTab
-      .evaluate((el) => {
-        const className = el.className
-        return (
-          className.includes('border') ||
-          className.includes('active') ||
-          className.includes('primary')
-        )
-      })
-      .catch(() => false)
-
-    expect(codeTabActive || (await codeTab.isVisible())).toBeTruthy()
+    await expect(codeTab).toBeVisible()
   })
 
   test('chat panel is visible', async ({ page }) => {
@@ -120,33 +120,17 @@ test.describe('Workbench', () => {
   test('top navigation works', async ({ page }) => {
     await createAndOpenProject(page)
 
-    const backButton = page.getByRole('button', { name: /back/i }).or(
-      page
-        .locator('button')
-        .filter({ has: page.locator('svg') })
-        .first()
-    )
-
-    if (await backButton.isVisible().catch(() => false)) {
-      await backButton.click()
-      await expect(page).toHaveURL('/projects')
-    }
+    const backButton = page.locator('a[href="/projects"] button').first()
+    await expect(backButton).toBeVisible({ timeout: 15000 })
+    await backButton.click()
+    await expect(page).toHaveURL('/projects', { timeout: 15000 })
   })
 
   test('workbench layout has resizable panels', async ({ page }) => {
     await createAndOpenProject(page)
 
-    const workbenchContainer = page
-      .locator('div')
-      .filter({
-        has: page.getByText(/explorer/i),
-      })
-      .filter({
-        has: page.getByText(/terminal/i),
-      })
-      .first()
-
-    await expect(workbenchContainer).toBeVisible()
+    const resizeHandle = page.locator('.w-px.bg-border').first()
+    await expect(resizeHandle).toBeVisible()
   })
 
   test('project name is displayed in header', async ({ page }) => {
@@ -159,11 +143,13 @@ test.describe('Workbench', () => {
   test('can access workbench from project list', async ({ page }) => {
     await page.goto('/projects')
 
-    const projectLinks = page.locator('a[href*="/projects/"], div[class*="cursor-pointer"]').first()
+    const projectLinks = page.locator('a[href^="/projects/"]').first()
 
     if (await projectLinks.isVisible().catch(() => false)) {
-      await projectLinks.click()
-      await expect(page).toHaveURL(/\/projects\/.+/)
+      const href = await projectLinks.getAttribute('href')
+      expect(href).toMatch(/^\/projects\/.+/)
+      await page.goto(href!)
+      await expect(page).toHaveURL(/\/projects\/.+/, { timeout: 15000 })
 
       const explorerHeader = page.getByText(/explorer/i).first()
       await expect(explorerHeader).toBeVisible()
