@@ -5,6 +5,7 @@ import { useAction } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { FileTree } from './FileTree'
+import { ProjectSearchPanel } from './ProjectSearchPanel'
 import { Terminal } from './Terminal'
 import { EditorContainer } from '../editor/EditorContainer'
 import { Preview } from './Preview'
@@ -24,7 +25,12 @@ interface WorkbenchProps {
     updatedAt: number
   }>
   selectedFilePath: string | null
-  onSelectFile: (path: string) => void
+  selectedLocation?: {
+    line: number
+    column: number
+    nonce: number
+  } | null
+  onSelectFile: (path: string, location?: { line: number; column: number }) => void
   onCreateFile: (path: string) => void
   onRenameFile: (oldPath: string, newPath: string) => void
   onDeleteFile: (path: string) => void
@@ -48,11 +54,13 @@ function HorizontalResizeHandle({ className }: { className?: string }) {
 }
 
 type EditorTab = 'code' | 'preview'
+type SidebarTab = 'explorer' | 'search'
 
 export function Workbench({
   projectId,
   files,
   selectedFilePath,
+  selectedLocation,
   onSelectFile,
   onCreateFile,
   onRenameFile,
@@ -60,6 +68,7 @@ export function Workbench({
   onSaveFile,
 }: WorkbenchProps) {
   const [activeTab, setActiveTab] = useState<EditorTab>('code')
+  const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>('explorer')
   const [isDownloading, setIsDownloading] = useState(false)
   const downloadProject = useAction(api.files.downloadProject)
   const selectedFile = selectedFilePath ? files.find((f) => f.path === selectedFilePath) : undefined
@@ -114,7 +123,7 @@ export function Workbench({
           <div className="flex h-full flex-col">
             {/* Header */}
             <div className="panel-header flex items-center justify-between" data-number="01">
-              <span>Explorer</span>
+              <span>{activeSidebarTab === 'explorer' ? 'Explorer' : 'Search'}</span>
               <Button
                 variant="ghost"
                 size="icon"
@@ -131,22 +140,53 @@ export function Workbench({
               </Button>
             </div>
 
+            <div className="flex border-b border-border">
+              <button
+                type="button"
+                onClick={() => setActiveSidebarTab('explorer')}
+                className={cn(
+                  'transition-sharp flex-1 border-r border-border px-2 py-1.5 font-mono text-[10px] uppercase tracking-widest',
+                  activeSidebarTab === 'explorer'
+                    ? 'bg-surface-2 text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                Explorer
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveSidebarTab('search')}
+                className={cn(
+                  'transition-sharp flex-1 px-2 py-1.5 font-mono text-[10px] uppercase tracking-widest',
+                  activeSidebarTab === 'search'
+                    ? 'bg-surface-2 text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                Search
+              </button>
+            </div>
+
             {/* Content */}
             <div className="scrollbar-thin flex-1 overflow-auto">
-              <FileTree
-                files={files.map((f) => ({
-                  _id: f._id,
-                  path: f.path,
-                  content: f.content ?? '',
-                  isBinary: f.isBinary,
-                  updatedAt: f.updatedAt,
-                }))}
-                selectedPath={selectedFilePath}
-                onSelect={onSelectFile}
-                onCreate={onCreateFile}
-                onRename={onRenameFile}
-                onDelete={onDeleteFile}
-              />
+              {activeSidebarTab === 'explorer' ? (
+                <FileTree
+                  files={files.map((f) => ({
+                    _id: f._id,
+                    path: f.path,
+                    content: f.content ?? '',
+                    isBinary: f.isBinary,
+                    updatedAt: f.updatedAt,
+                  }))}
+                  selectedPath={selectedFilePath}
+                  onSelect={onSelectFile}
+                  onCreate={onCreateFile}
+                  onRename={onRenameFile}
+                  onDelete={onDeleteFile}
+                />
+              ) : (
+                <ProjectSearchPanel onSelectFile={onSelectFile} />
+              )}
             </div>
           </div>
         </Panel>
@@ -194,6 +234,7 @@ export function Workbench({
                       <EditorContainer
                         filePath={selectedFile.path}
                         content={selectedFile.content ?? ''}
+                        jumpTo={selectedLocation}
                         onSave={(content) => onSaveFile(selectedFile.path, content)}
                       />
                     ) : (

@@ -30,12 +30,18 @@ const CodeMirrorEditor = dynamic(
 interface EditorContainerProps {
   filePath: string
   content: string
+  jumpTo?: {
+    line: number
+    column: number
+    nonce: number
+  } | null
   onSave?: (content: string) => void
 }
 
 export function EditorContainer({
   filePath,
   content: initialContent,
+  jumpTo,
   onSave: externalOnSave,
 }: EditorContainerProps) {
   const { content, isDirty, updateContent } = useFileContent(initialContent, externalOnSave)
@@ -56,7 +62,12 @@ export function EditorContainer({
         </div>
       </div>
       <div className="flex-1 overflow-hidden">
-        <CodeMirrorEditor filePath={filePath} content={content} onSave={handleSave} />
+        <CodeMirrorEditor
+          filePath={filePath}
+          content={content}
+          jumpTo={jumpTo}
+          onSave={handleSave}
+        />
       </div>
     </div>
   )

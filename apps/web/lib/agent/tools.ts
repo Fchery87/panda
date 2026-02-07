@@ -5,6 +5,8 @@
  * - read_files: Read file contents
  * - write_files: Write or modify files
  * - run_command: Run CLI commands
+ * - search_code: Search code with ripgrep/fallbacks
+ * - search_code_ast: Structural AST-aware search
  */
 
 import type { ToolDefinition, ToolCall, ToolResult } from '../llm/types'
@@ -93,6 +95,103 @@ export const AGENT_TOOLS: ToolDefinition[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'search_code',
+      description:
+        'Search text across project files using ripgrep when available, with safe fallback engines.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: 'Text or regex query to search for',
+          },
+          mode: {
+            type: 'string',
+            enum: ['literal', 'regex'],
+            description: 'Search mode (default: literal)',
+          },
+          caseSensitive: {
+            type: 'boolean',
+            description: 'Whether search is case-sensitive (default: false)',
+          },
+          includeGlobs: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Optional include glob patterns',
+          },
+          excludeGlobs: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Optional exclude glob patterns',
+          },
+          paths: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Optional relative paths to search',
+          },
+          maxResults: {
+            type: 'number',
+            description: 'Maximum number of matches to return',
+          },
+          maxMatchesPerFile: {
+            type: 'number',
+            description: 'Maximum matches to return per file',
+          },
+          contextLines: {
+            type: 'number',
+            description: 'Number of context lines around each match',
+          },
+          timeoutMs: {
+            type: 'number',
+            description: 'Search timeout in milliseconds',
+          },
+        },
+        required: ['query'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'search_code_ast',
+      description: 'Search code structurally using ast-grep patterns.',
+      parameters: {
+        type: 'object',
+        properties: {
+          pattern: {
+            type: 'string',
+            description: 'AST pattern to search for',
+          },
+          language: {
+            type: 'string',
+            description: 'Optional language override (e.g. typescript, tsx)',
+          },
+          paths: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Optional relative paths to search',
+          },
+          maxResults: {
+            type: 'number',
+            description: 'Maximum number of matches to return',
+          },
+          timeoutMs: {
+            type: 'number',
+            description: 'Search timeout in milliseconds',
+          },
+          jsonStyle: {
+            type: 'string',
+            enum: ['pretty', 'stream', 'compact'],
+            description: 'ast-grep JSON output style',
+          },
+        },
+        required: ['pattern'],
+      },
+    },
+  },
 ]
 
 /**
@@ -138,6 +237,68 @@ export interface ToolContext {
     stderr: string
     exitCode: number
     durationMs: number
+  }>
+  searchCode?: (params: {
+    query: string
+    mode?: 'literal' | 'regex'
+    caseSensitive?: boolean
+    includeGlobs?: string[]
+    excludeGlobs?: string[]
+    paths?: string[]
+    maxResults?: number
+    maxMatchesPerFile?: number
+    contextLines?: number
+    timeoutMs?: number
+    cwd?: string
+  }) => Promise<{
+    engine: string
+    query: string
+    mode: string
+    truncated: boolean
+    stats: {
+      durationMs: number
+      filesMatched: number
+      matchesReturned: number
+      filesScanned?: number
+    }
+    warnings: string[]
+    matches: Array<{
+      file: string
+      line: number
+      column: number
+      snippet: string
+      endLine?: number
+      endColumn?: number
+    }>
+  }>
+  searchCodeAst?: (params: {
+    pattern: string
+    language?: string
+    paths?: string[]
+    maxResults?: number
+    timeoutMs?: number
+    jsonStyle?: 'pretty' | 'stream' | 'compact'
+    cwd?: string
+  }) => Promise<{
+    engine: string
+    query: string
+    mode: string
+    truncated: boolean
+    stats: {
+      durationMs: number
+      filesMatched: number
+      matchesReturned: number
+      filesScanned?: number
+    }
+    warnings: string[]
+    matches: Array<{
+      file: string
+      line: number
+      column: number
+      snippet: string
+      endLine?: number
+      endColumn?: number
+    }>
   }>
 }
 
@@ -404,6 +565,102 @@ export function createToolContext(
         }
       }
     },
+
+    searchCode: async (params) => {
+      const response = await fetch('/api/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'text',
+          query: params.query,
+          mode: params.mode,
+          caseSensitive: params.caseSensitive,
+          includeGlobs: params.includeGlobs,
+          excludeGlobs: params.excludeGlobs,
+          paths: params.paths,
+          maxResults: params.maxResults,
+          maxMatchesPerFile: params.maxMatchesPerFile,
+          contextLines: params.contextLines,
+          timeoutMs: params.timeoutMs,
+          workingDirectory: params.cwd,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.text()
+        throw new Error(error || 'search_code failed')
+      }
+
+      return (await response.json()) as {
+        engine: string
+        query: string
+        mode: string
+        truncated: boolean
+        stats: {
+          durationMs: number
+          filesMatched: number
+          matchesReturned: number
+          filesScanned?: number
+        }
+        warnings: string[]
+        matches: Array<{
+          file: string
+          line: number
+          column: number
+          snippet: string
+          endLine?: number
+          endColumn?: number
+        }>
+      }
+    },
+
+    searchCodeAst: async (params) => {
+      const response = await fetch('/api/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'ast',
+          pattern: params.pattern,
+          language: params.language,
+          paths: params.paths,
+          maxResults: params.maxResults,
+          timeoutMs: params.timeoutMs,
+          jsonStyle: params.jsonStyle,
+          workingDirectory: params.cwd,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.text()
+        throw new Error(error || 'search_code_ast failed')
+      }
+
+      return (await response.json()) as {
+        engine: string
+        query: string
+        mode: string
+        truncated: boolean
+        stats: {
+          durationMs: number
+          filesMatched: number
+          matchesReturned: number
+          filesScanned?: number
+        }
+        warnings: string[]
+        matches: Array<{
+          file: string
+          line: number
+          column: number
+          snippet: string
+          endLine?: number
+          endColumn?: number
+        }>
+      }
+    },
   }
 }
 
@@ -456,6 +713,54 @@ export async function executeTool(
         if (result.exitCode !== 0) {
           error = `Command failed with exit code ${result.exitCode}`
         }
+        break
+      }
+
+      case 'search_code': {
+        if (!context.searchCode) {
+          throw new Error('search_code is not available in this context')
+        }
+        const result = await context.searchCode({
+          query: String(args.query ?? ''),
+          mode: args.mode === 'regex' ? 'regex' : 'literal',
+          caseSensitive: args.caseSensitive === true,
+          includeGlobs: Array.isArray(args.includeGlobs)
+            ? (args.includeGlobs as string[])
+            : undefined,
+          excludeGlobs: Array.isArray(args.excludeGlobs)
+            ? (args.excludeGlobs as string[])
+            : undefined,
+          paths: Array.isArray(args.paths) ? (args.paths as string[]) : undefined,
+          maxResults: typeof args.maxResults === 'number' ? args.maxResults : undefined,
+          maxMatchesPerFile:
+            typeof args.maxMatchesPerFile === 'number' ? args.maxMatchesPerFile : undefined,
+          contextLines: typeof args.contextLines === 'number' ? args.contextLines : undefined,
+          timeoutMs: typeof args.timeoutMs === 'number' ? args.timeoutMs : undefined,
+          cwd: typeof args.cwd === 'string' ? args.cwd : undefined,
+        })
+        output = JSON.stringify(result, null, 2)
+        break
+      }
+
+      case 'search_code_ast': {
+        if (!context.searchCodeAst) {
+          throw new Error('search_code_ast is not available in this context')
+        }
+        const result = await context.searchCodeAst({
+          pattern: String(args.pattern ?? ''),
+          language: typeof args.language === 'string' ? args.language : undefined,
+          paths: Array.isArray(args.paths) ? (args.paths as string[]) : undefined,
+          maxResults: typeof args.maxResults === 'number' ? args.maxResults : undefined,
+          timeoutMs: typeof args.timeoutMs === 'number' ? args.timeoutMs : undefined,
+          jsonStyle:
+            args.jsonStyle === 'pretty' || args.jsonStyle === 'compact'
+              ? args.jsonStyle
+              : args.jsonStyle === 'stream'
+                ? 'stream'
+                : undefined,
+          cwd: typeof args.cwd === 'string' ? args.cwd : undefined,
+        })
+        output = JSON.stringify(result, null, 2)
         break
       }
 

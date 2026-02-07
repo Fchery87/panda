@@ -415,6 +415,7 @@ export class AgentRuntime {
                 'Your previous answer included fenced code blocks, which are not allowed in Build Mode. ' +
                 'If you only provided a plan without using tools, you must now EXECUTE the plan. ' +
                 'Redo the work using tools only:\n' +
+                '- Use search_code or search_code_ast to locate relevant code quickly.\n' +
                 '- Use read_files to inspect context as needed.\n' +
                 '- Use write_files to apply code changes (complete file contents).\n' +
                 '- Use run_command to validate.\n' +

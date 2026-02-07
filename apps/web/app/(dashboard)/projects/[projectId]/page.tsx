@@ -110,6 +110,11 @@ export default function ProjectPage() {
   // UI State
   const [isArtifactPanelOpen, setIsArtifactPanelOpen] = useState(false)
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
+  const [selectedFileLocation, setSelectedFileLocation] = useState<{
+    line: number
+    column: number
+    nonce: number
+  } | null>(null)
   const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false)
   const [isDebugDialogOpen, setIsDebugDialogOpen] = useState(false)
 
@@ -481,9 +486,20 @@ export default function ProjectPage() {
   }, [agent.messages, agent.status, chatMode, planDraft, discussBrainstormEnabled])
 
   // File operations
-  const handleFileSelect = useCallback((path: string) => {
-    setSelectedFilePath(path)
-  }, [])
+  const handleFileSelect = useCallback(
+    (path: string, location?: { line: number; column: number }) => {
+      setSelectedFilePath(path)
+      if (location) {
+        setSelectedFileLocation({
+          ...location,
+          nonce: Date.now(),
+        })
+        return
+      }
+      setSelectedFileLocation(null)
+    },
+    []
+  )
 
   const handleFileCreate = useCallback(
     async (path: string) => {
@@ -496,6 +512,7 @@ export default function ProjectPage() {
         })
         toast.success(`Created ${path}`)
         setSelectedFilePath(path)
+        setSelectedFileLocation(null)
       } catch (error) {
         toast.error('Failed to create file', {
           description: error instanceof Error ? error.message : 'Unknown error',
@@ -528,6 +545,7 @@ export default function ProjectPage() {
         toast.success(`Renamed to ${newPath}`)
         if (selectedFilePath === oldPath) {
           setSelectedFilePath(newPath)
+          setSelectedFileLocation(null)
         }
       } catch (error) {
         toast.error('Failed to rename file', {
@@ -552,6 +570,7 @@ export default function ProjectPage() {
 
         if (selectedFilePath === path) {
           setSelectedFilePath(null)
+          setSelectedFileLocation(null)
         }
       } catch (error) {
         toast.error('Failed to delete file', {
@@ -727,6 +746,7 @@ export default function ProjectPage() {
               projectId={projectId}
               files={files}
               selectedFilePath={selectedFilePath}
+              selectedLocation={selectedFileLocation}
               onSelectFile={handleFileSelect}
               onCreateFile={handleFileCreate}
               onRenameFile={handleFileRename}
