@@ -7,9 +7,30 @@ import { api } from '@convex/_generated/api'
 import { ChevronDown, ChevronRight, Wrench, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export function RunTimelinePanel({ chatId }: { chatId: Id<'chats'> | null | undefined }) {
-  const [open, setOpen] = useState(false)
-  const events = useQuery(api.agentRuns.listEventsByChat, chatId ? { chatId, limit: 60 } : 'skip')
+interface RunEvent {
+  _id: string
+  type: string
+  status?: string
+  toolName?: string
+  content?: string
+  error?: string
+}
+
+export function RunTimelinePanel({
+  chatId,
+  events: externalEvents,
+  defaultOpen = false,
+}: {
+  chatId: Id<'chats'> | null | undefined
+  events?: RunEvent[] | undefined
+  defaultOpen?: boolean
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  const queriedEvents = useQuery(
+    api.agentRuns.listEventsByChat,
+    chatId ? { chatId, limit: 60 } : 'skip'
+  )
+  const events = externalEvents ?? queriedEvents
 
   const toolEventCount = (events || []).filter((e) => e.type === 'tool_call').length
 

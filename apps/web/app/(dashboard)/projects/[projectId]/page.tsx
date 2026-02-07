@@ -13,12 +13,22 @@ import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { Workbench } from '@/components/workbench/Workbench'
 import { ChatInput } from '@/components/chat/ChatInput'
 import { MessageList } from '@/components/chat/MessageList'
-import { PlanDraftPanel } from '@/components/chat/PlanDraftPanel'
 import { RunTimelinePanel } from '@/components/chat/RunTimelinePanel'
+import { LiveRunPanel } from '@/components/chat/LiveRunPanel'
+import { mapLatestRunProgressSteps } from '@/components/chat/live-run-utils'
 import { ArtifactPanel } from '@/components/artifacts/ArtifactPanel'
 import { AgentAutomationDialog } from '@/components/projects/AgentAutomationDialog'
 import { Button } from '@/components/ui/button'
 import { PandaLogo } from '@/components/ui/panda-logo'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { PanelRight, ChevronLeft, Bot, RotateCcw } from 'lucide-react'
 import Link from 'next/link'
 
@@ -29,6 +39,7 @@ import { useAutoApplyArtifacts } from '@/hooks/useAutoApplyArtifacts'
 
 import type { Message } from '@/components/chat/types'
 import { buildMessageWithPlanDraft, deriveNextPlanDraft } from '@/lib/chat/planDraft'
+import { resolveChatPanelVisibility } from '@/lib/chat/panelVisibility'
 import { resolveEffectiveAgentPolicy, type AgentPolicy } from '@/lib/agent/automationPolicy'
 
 // LLM Provider
@@ -67,6 +78,29 @@ interface ConvexMessage {
   createdAt: number
 }
 
+interface AgentRunEvent {
+  _id: Id<'agentRunEvents'>
+  _creationTime: number
+  runId: Id<'agentRuns'>
+  chatId: Id<'chats'>
+  sequence: number
+  type: string
+  content?: string
+  status?: string
+  progressCategory?: string
+  progressToolName?: string
+  progressHasArtifactTarget?: boolean
+  targetFilePaths?: string[]
+  toolCallId?: string
+  toolName?: string
+  args?: Record<string, unknown>
+  output?: string
+  error?: string
+  durationMs?: number
+  usage?: Record<string, unknown>
+  createdAt: number
+}
+
 export default function ProjectPage() {
   const params = useParams()
   const projectId = params.projectId as Id<'projects'>
@@ -74,6 +108,8 @@ export default function ProjectPage() {
   // UI State
   const [isArtifactPanelOpen, setIsArtifactPanelOpen] = useState(false)
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
+  const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false)
+  const [isDebugDialogOpen, setIsDebugDialogOpen] = useState(false)
 
   // Fetch project data
   const project = useQuery(api.projects.get, { id: projectId })
@@ -255,6 +291,10 @@ export default function ProjectPage() {
     api.messages.list,
     activeChat ? { chatId: activeChat._id } : 'skip'
   ) as ConvexMessage[] | undefined
+  const runEvents = useQuery(
+    api.agentRuns.listEventsByChat,
+    activeChat ? { chatId: activeChat._id, limit: 120 } : 'skip'
+  ) as AgentRunEvent[] | undefined
 
   // Convert agent messages to MessageList format
   const chatMessages: Message[] = useMemo(() => {
@@ -303,6 +343,18 @@ export default function ProjectPage() {
         createdAt: msg.createdAt,
       }))
   }, [agent.messages, activeChat, convexMessages])
+
+  const replayProgressSteps = useMemo(
+    () => mapLatestRunProgressSteps(runEvents ?? []).slice(-24),
+    [runEvents]
+  )
+  const panelVisibility = useMemo(
+    () => resolveChatPanelVisibility({ showAdvancedDebugInChat: false }),
+    []
+  )
+  const liveRunSteps = useMemo(() => {
+    return agent.progressSteps.length > 0 ? agent.progressSteps : replayProgressSteps
+  }, [agent.progressSteps, replayProgressSteps])
 
   // File mutations
   const upsertFileMutation = useMutation(api.files.upsert)
@@ -667,23 +719,101 @@ export default function ProjectPage() {
               <div className="panel-header flex items-center gap-2" data-number="04">
                 <Bot className="h-3.5 w-3.5 text-primary" />
                 <span>Chat</span>
-                {agent.status !== 'idle' &&
-                  agent.status !== 'complete' &&
-                  agent.status !== 'error' && (
-                    <span className="ml-auto text-xs capitalize text-muted-foreground">
-                      {agent.status.replace('_', ' ')}
-                    </span>
-                  )}
+                <div className="ml-auto flex items-center gap-2">
+                  {agent.status !== 'idle' &&
+                    agent.status !== 'complete' &&
+                    agent.status !== 'error' && (
+                      <span className="text-xs capitalize text-muted-foreground">
+                        {agent.status.replace('_', ' ')}
+                      </span>
+                    )}
+                  <Dialog open={isPlanDialogOpen} onOpenChange={setIsPlanDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 rounded-none font-mono text-xs"
+                      >
+                        Plan
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="rounded-none border-border sm:max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle className="font-mono text-sm uppercase tracking-wide">
+                          Plan Draft
+                        </DialogTitle>
+                        <DialogDescription>
+                          Discuss mode updates this draft. Build mode automatically uses it.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[10px] text-muted-foreground/70">
+                            {planUpdatedAt
+                              ? `Saved ${new Date(planUpdatedAt).toLocaleTimeString([], {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}`
+                              : 'Not saved'}
+                          </span>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            className="h-7 rounded-none font-mono text-xs"
+                            onClick={savePlanDraftNow}
+                            disabled={!activeChat?._id || isPlanSaving}
+                          >
+                            {isPlanSaving ? 'Saving' : 'Save now'}
+                          </Button>
+                        </div>
+                        <Textarea
+                          value={planDraft}
+                          onChange={(e) => setPlanDraft(e.target.value)}
+                          placeholder="Discuss mode will auto-update this plan draft. You can edit it anytime."
+                          className="min-h-[320px] rounded-none border-border bg-background font-mono text-xs leading-relaxed"
+                        />
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  <Dialog open={isDebugDialogOpen} onOpenChange={setIsDebugDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 rounded-none font-mono text-xs"
+                      >
+                        Debug
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="rounded-none border-border sm:max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle className="font-mono text-sm uppercase tracking-wide">
+                          Run Timeline
+                        </DialogTitle>
+                        <DialogDescription>
+                          Detailed run events for troubleshooting and tool-level inspection.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <RunTimelinePanel
+                        chatId={activeChat?._id}
+                        events={runEvents}
+                        defaultOpen={true}
+                      />
+                    </DialogContent>
+                  </Dialog>
+                </div>
               </div>
 
-              <PlanDraftPanel
-                value={planDraft}
-                onChange={setPlanDraft}
-                onSaveNow={activeChat?._id ? savePlanDraftNow : undefined}
-                isSaving={isPlanSaving}
-                updatedAt={planUpdatedAt}
+              {panelVisibility.showInlineRunTimeline ? (
+                <RunTimelinePanel chatId={activeChat?._id} events={runEvents} />
+              ) : null}
+              <LiveRunPanel
+                steps={liveRunSteps}
+                isStreaming={agent.isLoading}
+                onOpenFile={handleFileSelect}
+                onOpenArtifacts={() => setIsArtifactPanelOpen(true)}
               />
-              <RunTimelinePanel chatId={activeChat?._id} />
 
               {/* Messages */}
               <div className="flex-1 overflow-hidden">

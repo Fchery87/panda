@@ -22,6 +22,7 @@ import {
   type AgentEvent,
   type RuntimeConfig,
 } from '../lib/agent'
+import { extractTargetFilePaths } from '../components/chat/live-run-utils'
 import type { PromptContext } from '../lib/agent/prompt-library'
 import { toast } from 'sonner'
 
@@ -50,6 +51,22 @@ interface ToolCallInfo {
   }
 }
 
+interface ProgressStep {
+  id: string
+  content: string
+  status: 'running' | 'completed' | 'error'
+  category?: 'analysis' | 'rewrite' | 'tool' | 'complete' | 'other'
+  details?: {
+    toolName?: string
+    argsSummary?: string
+    durationMs?: number
+    errorExcerpt?: string
+    targetFilePaths?: string[]
+    hasArtifactTarget?: boolean
+  }
+  createdAt: number
+}
+
 interface PersistedMessageAnnotation {
   mode?: unknown
   reasoningSummary?: unknown
@@ -67,6 +84,10 @@ interface RunEventInput {
   type: string
   content?: string
   status?: string
+  progressCategory?: 'analysis' | 'rewrite' | 'tool' | 'complete' | 'other'
+  progressToolName?: string
+  progressHasArtifactTarget?: boolean
+  targetFilePaths?: string[]
   toolCallId?: string
   toolName?: string
   args?: Record<string, unknown>
@@ -74,6 +95,13 @@ interface RunEventInput {
   error?: string
   durationMs?: number
   usage?: Record<string, unknown>
+}
+
+function summarizeArgs(args: Record<string, unknown> | undefined): string | undefined {
+  if (!args) return undefined
+  const serialized = JSON.stringify(args)
+  if (!serialized) return undefined
+  return serialized.length > 140 ? `${serialized.slice(0, 137)}...` : serialized
 }
 
 /**
@@ -113,6 +141,7 @@ interface UseAgentReturn {
 
   // Tool calls
   toolCalls: ToolCallInfo[]
+  progressSteps: ProgressStep[]
 
   // Artifacts
   pendingArtifacts: Array<{ _id: string }>
@@ -169,6 +198,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const [status, setStatus] = useState<AgentStatus>('idle')
   const [currentIteration, setCurrentIteration] = useState(0)
   const [toolCalls, setToolCalls] = useState<ToolCallInfo[]>([])
+  const [progressSteps, setProgressSteps] = useState<ProgressStep[]>([])
   const [error, setError] = useState<string | null>(null)
 
   // Refs for controlling the agent
@@ -289,6 +319,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const clear = useCallback(() => {
     setMessages([])
     setToolCalls([])
+    setProgressSteps([])
     setError(null)
     setCurrentIteration(0)
   }, [])
@@ -380,6 +411,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       abortControllerRef.current = new AbortController()
       setStatus('thinking')
       setError(null)
+      setProgressSteps([])
 
       try {
         // Create prompt context
@@ -626,6 +658,49 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                 schedulePaint()
               }
               break
+            case 'progress_step': {
+              if (event.content) {
+                const step: ProgressStep = {
+                  id: `progress-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                  content: event.content,
+                  status: event.progressStatus ?? 'running',
+                  category: event.progressCategory ?? 'other',
+                  details:
+                    event.progressToolName ||
+                    event.progressArgs ||
+                    event.progressDurationMs ||
+                    event.progressError
+                      ? {
+                          toolName: event.progressToolName,
+                          argsSummary: summarizeArgs(event.progressArgs),
+                          durationMs: event.progressDurationMs,
+                          errorExcerpt: event.progressError?.slice(0, 160),
+                          targetFilePaths: extractTargetFilePaths(
+                            event.progressToolName,
+                            event.progressArgs
+                          ),
+                          hasArtifactTarget: Boolean(event.progressHasArtifactTarget),
+                        }
+                      : undefined,
+                  createdAt: Date.now(),
+                }
+                setProgressSteps((prev) => [...prev, step].slice(-30))
+                void appendRunEvent({
+                  type: 'progress_step',
+                  content: step.content,
+                  status: step.status,
+                  progressCategory: step.category,
+                  progressToolName: step.details?.toolName,
+                  progressHasArtifactTarget: step.details?.hasArtifactTarget,
+                  targetFilePaths: step.details?.targetFilePaths,
+                  toolName: step.details?.toolName,
+                  args: event.progressArgs,
+                  durationMs: step.details?.durationMs,
+                  error: step.details?.errorExcerpt,
+                })
+              }
+              break
+            }
             case 'reasoning':
               if (runtimeSettings.showReasoningPanel && event.reasoningContent) {
                 assistantReasoning += event.reasoningContent
@@ -850,6 +925,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     isLoading: status === 'thinking' || status === 'streaming' || status === 'executing_tools',
     currentIteration,
     toolCalls,
+    progressSteps,
     pendingArtifacts,
     handleSubmit,
     handleInputChange,

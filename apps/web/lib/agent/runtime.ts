@@ -38,6 +38,7 @@ export type AgentEventType =
   | 'reasoning'
   // Backward compatibility for existing hook switch statements.
   | 'thinking'
+  | 'progress_step'
   | 'text'
   | 'tool_call'
   | 'tool_result'
@@ -51,6 +52,13 @@ export type AgentEventType =
 export interface AgentEvent {
   type: AgentEventType
   content?: string
+  progressStatus?: 'running' | 'completed' | 'error'
+  progressCategory?: 'analysis' | 'rewrite' | 'tool' | 'complete'
+  progressToolName?: string
+  progressArgs?: Record<string, unknown>
+  progressDurationMs?: number
+  progressError?: string
+  progressHasArtifactTarget?: boolean
   reasoningContent?: string
   toolCall?: ToolCall
   toolResult?: ToolExecutionResult
@@ -184,6 +192,12 @@ export class AgentRuntime {
           type: 'status_thinking',
           content: `Iteration ${state.iteration}: Generating response...`,
         }
+        yield {
+          type: 'progress_step',
+          content: `Iteration ${state.iteration}: analyzing context and drafting response`,
+          progressStatus: 'running',
+          progressCategory: 'analysis',
+        }
 
         // Create completion options
         const completionOptions: CompletionOptions = {
@@ -314,6 +328,12 @@ export class AgentRuntime {
             type: 'status_thinking',
             content: 'Plan Mode: rewriting response into a plan (no code)…',
           }
+          yield {
+            type: 'progress_step',
+            content: 'Plan mode guardrail triggered: rewriting response into plan format',
+            progressStatus: 'running',
+            progressCategory: 'rewrite',
+          }
           yield { type: 'reset', resetReason: 'plan_mode_rewrite' }
 
           const retryMessages: CompletionMessage[] = [
@@ -378,6 +398,12 @@ export class AgentRuntime {
           yield {
             type: 'status_thinking',
             content: 'Build Mode: rewriting response to use artifacts (no code blocks)…',
+          }
+          yield {
+            type: 'progress_step',
+            content: 'Build mode guardrail triggered: rewriting response to execute via tools',
+            progressStatus: 'running',
+            progressCategory: 'rewrite',
           }
           yield { type: 'reset', resetReason: 'build_mode_rewrite' }
 
@@ -512,6 +538,23 @@ export class AgentRuntime {
               type: 'status_thinking',
               content: `Executing tool: ${toolCall.function.name}...`,
             }
+            yield {
+              type: 'progress_step',
+              content: `Executing tool: ${toolCall.function.name}`,
+              progressStatus: 'running',
+              progressCategory: 'tool',
+              progressToolName: toolCall.function.name,
+              progressHasArtifactTarget:
+                toolCall.function.name === 'write_files' ||
+                toolCall.function.name === 'run_command',
+              progressArgs: (() => {
+                try {
+                  return JSON.parse(toolCall.function.arguments) as Record<string, unknown>
+                } catch {
+                  return undefined
+                }
+              })(),
+            }
 
             const result = await executeTool(toolCall, this.toolContext)
             state.toolResults.push(result)
@@ -519,6 +562,20 @@ export class AgentRuntime {
             yield {
               type: 'tool_result',
               toolResult: result,
+            }
+            yield {
+              type: 'progress_step',
+              content: result.error
+                ? `Tool failed: ${toolCall.function.name}`
+                : `Tool completed: ${toolCall.function.name}`,
+              progressStatus: result.error ? 'error' : 'completed',
+              progressCategory: 'tool',
+              progressToolName: toolCall.function.name,
+              progressHasArtifactTarget:
+                toolCall.function.name === 'write_files' ||
+                toolCall.function.name === 'run_command',
+              progressDurationMs: result.durationMs,
+              progressError: result.error,
             }
 
             // Add tool result to messages
@@ -539,6 +596,12 @@ export class AgentRuntime {
         state.isComplete = true
 
         // Yield complete event
+        yield {
+          type: 'progress_step',
+          content: 'Run complete: final response ready',
+          progressStatus: 'completed',
+          progressCategory: 'complete',
+        }
         yield {
           type: 'complete',
           content: fullContent,
