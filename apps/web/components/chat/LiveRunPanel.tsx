@@ -7,6 +7,7 @@ import {
   describeStepMeta,
   formatElapsed,
   groupProgressSteps,
+  reconcileProgressSteps,
   type LiveProgressStep,
 } from './live-run-utils'
 
@@ -17,12 +18,16 @@ interface LiveRunPanelProps {
   onOpenArtifacts?: () => void
 }
 
+const LIVE_RUN_OPEN_STORAGE_KEY = 'panda.liveRun.isOpen'
+
 export function LiveRunPanel({
   steps,
   isStreaming,
   onOpenFile,
   onOpenArtifacts,
 }: LiveRunPanelProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [hasLoadedOpenPreference, setHasLoadedOpenPreference] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     analysis: true,
     rewrite: true,
@@ -38,8 +43,33 @@ export function LiveRunPanel({
     return () => window.clearInterval(timer)
   }, [isStreaming])
 
+  useEffect(() => {
+    try {
+      const persisted = window.localStorage.getItem(LIVE_RUN_OPEN_STORAGE_KEY)
+      if (persisted === '1') setIsOpen(true)
+      if (persisted === '0') setIsOpen(false)
+    } catch {
+      // Ignore storage access failures; keep default closed behavior.
+    } finally {
+      setHasLoadedOpenPreference(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!hasLoadedOpenPreference) return
+    try {
+      window.localStorage.setItem(LIVE_RUN_OPEN_STORAGE_KEY, isOpen ? '1' : '0')
+    } catch {
+      // Ignore storage access failures.
+    }
+  }, [isOpen, hasLoadedOpenPreference])
+
   const visibleSteps = useMemo(() => steps.slice(-24), [steps])
-  const groups = useMemo(() => groupProgressSteps(visibleSteps), [visibleSteps])
+  const reconciledSteps = useMemo(
+    () => reconcileProgressSteps(visibleSteps, { isStreaming }),
+    [visibleSteps, isStreaming]
+  )
+  const groups = useMemo(() => groupProgressSteps(reconciledSteps), [reconciledSteps])
   const startedAt = visibleSteps[0]?.createdAt ?? null
   const elapsedMs = startedAt ? Math.max(0, nowMs - startedAt) : 0
 
@@ -49,23 +79,30 @@ export function LiveRunPanel({
 
   return (
     <div className="surface-2 border-b border-border px-3 py-2">
-      <div className="mb-2 flex items-center justify-between">
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        className="mb-2 flex w-full items-center gap-2 text-left"
+      >
+        {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
           Live Run
         </span>
-        <span className="font-mono text-[10px] text-muted-foreground/70">
+        <span className="ml-auto font-mono text-[10px] text-muted-foreground/70">
           {startedAt ? formatElapsed(elapsedMs) : '0s'}
           {isStreaming ? ' • streaming' : ' • latest'}
         </span>
-      </div>
+      </button>
 
-      {groups.length === 0 ? (
+      {!isOpen ? null : groups.length === 0 ? (
         <div className="font-mono text-xs text-muted-foreground">Preparing run...</div>
       ) : (
         <div className="space-y-1">
           {groups.map((group) => {
             const expanded = expandedGroups[group.key] ?? true
-            const latestStatus = group.steps[group.steps.length - 1]?.status ?? 'running'
+            const hasError = group.steps.some((step) => step.status === 'error')
+            const hasRunning = group.steps.some((step) => step.status === 'running')
+            const latestStatus = hasError ? 'error' : hasRunning ? 'running' : 'completed'
             return (
               <div key={group.key} className="border border-border bg-background/70">
                 <button

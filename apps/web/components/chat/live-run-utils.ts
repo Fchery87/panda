@@ -205,3 +205,40 @@ export function mapLatestRunProgressSteps(events: PersistedRunEvent[]): LiveProg
 
   return mapRunEventsToProgressSteps(scopedEvents)
 }
+
+export function reconcileProgressSteps(
+  steps: LiveProgressStep[],
+  options: { isStreaming: boolean }
+): LiveProgressStep[] {
+  const completedToolNames = new Set(
+    steps
+      .filter(
+        (step) =>
+          step.category === 'tool' &&
+          (step.status === 'completed' || step.status === 'error') &&
+          typeof step.details?.toolName === 'string'
+      )
+      .map((step) => step.details!.toolName as string)
+  )
+  const hasCompleteMarker = steps.some(
+    (step) => step.category === 'complete' && step.status === 'completed'
+  )
+
+  return steps.map((step) => {
+    if (step.status !== 'running') return step
+
+    if (step.category === 'tool') {
+      const toolName = step.details?.toolName
+      if (toolName && completedToolNames.has(toolName)) {
+        return { ...step, status: 'completed' }
+      }
+      return step
+    }
+
+    if (!options.isStreaming && step.category === 'analysis' && hasCompleteMarker) {
+      return { ...step, status: 'completed' }
+    }
+
+    return step
+  })
+}

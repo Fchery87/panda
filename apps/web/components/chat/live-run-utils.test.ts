@@ -6,6 +6,7 @@ import {
   groupProgressSteps,
   mapLatestRunProgressSteps,
   mapRunEventsToProgressSteps,
+  reconcileProgressSteps,
   type LiveProgressStep,
 } from './live-run-utils'
 
@@ -143,5 +144,57 @@ describe('live run utils', () => {
     ])
 
     expect(steps.map((s) => s.content)).toEqual(['New run step 1', 'New run step 2'])
+  })
+
+  it('reconciles stale running tool steps when matching completion exists', () => {
+    const steps = reconcileProgressSteps(
+      [
+        {
+          id: 's1',
+          content: 'Executing tool: write_files',
+          status: 'running',
+          category: 'tool',
+          createdAt: 1,
+          details: { toolName: 'write_files' },
+        },
+        {
+          id: 's2',
+          content: 'Tool completed: write_files',
+          status: 'completed',
+          category: 'tool',
+          createdAt: 2,
+          details: { toolName: 'write_files' },
+        },
+      ],
+      { isStreaming: false }
+    )
+
+    expect(steps[0]?.status).toBe('completed')
+    expect(steps[1]?.status).toBe('completed')
+  })
+
+  it('reconciles analysis running steps after completion marker when not streaming', () => {
+    const steps = reconcileProgressSteps(
+      [
+        {
+          id: 'a1',
+          content: 'Iteration 1: analyzing context and drafting response',
+          status: 'running',
+          category: 'analysis',
+          createdAt: 1,
+        },
+        {
+          id: 'c1',
+          content: 'Run complete: final response ready',
+          status: 'completed',
+          category: 'complete',
+          createdAt: 2,
+        },
+      ],
+      { isStreaming: false }
+    )
+
+    expect(steps[0]?.status).toBe('completed')
+    expect(steps[1]?.status).toBe('completed')
   })
 })
