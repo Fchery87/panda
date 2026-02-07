@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test'
+import { extractBrainstormPhase } from './brainstorming'
 import {
   buildMessageWithPlanDraft,
   deriveNextPlanDraft,
@@ -82,5 +83,59 @@ describe('planDraft helpers', () => {
         messages,
       })
     ).toBeNull()
+  })
+
+  it('extractBrainstormPhase parses the marker line', () => {
+    expect(
+      extractBrainstormPhase('Brainstorm phase: discovery\n\nQuestion: preferred stack?')
+    ).toBe('discovery')
+    expect(
+      extractBrainstormPhase(
+        'Some intro text\nBrainstorm phase: options\n\nOption A/B/C with recommendation'
+      )
+    ).toBe('options')
+    expect(extractBrainstormPhase('No marker here')).toBeNull()
+  })
+
+  it('deriveNextPlanDraft gates discuss persistence until validated phase when enabled', () => {
+    const unvalidated = [
+      { role: 'user' as const, mode: 'discuss' as const, content: 'help me plan auth' },
+      {
+        role: 'assistant' as const,
+        mode: 'discuss' as const,
+        content: 'Brainstorm phase: discovery\n\nQuestion: Which auth provider do you prefer?',
+      },
+    ]
+
+    expect(
+      deriveNextPlanDraft({
+        mode: 'discuss',
+        agentStatus: 'complete',
+        currentPlanDraft: '',
+        messages: unvalidated,
+        requireValidatedBrainstorm: true,
+      })
+    ).toBeNull()
+
+    const validated = [
+      ...unvalidated,
+      { role: 'user' as const, mode: 'discuss' as const, content: 'Use Better Auth.' },
+      {
+        role: 'assistant' as const,
+        mode: 'discuss' as const,
+        content:
+          'Brainstorm phase: validated_plan\n\n1) Clarifying questions\n2) Proposed plan\n3) Risks\n4) Next step',
+      },
+    ]
+
+    expect(
+      deriveNextPlanDraft({
+        mode: 'discuss',
+        agentStatus: 'complete',
+        currentPlanDraft: '',
+        messages: validated,
+        requireValidatedBrainstorm: true,
+      })
+    ).toBe('1) Clarifying questions\n2) Proposed plan\n3) Risks\n4) Next step')
   })
 })

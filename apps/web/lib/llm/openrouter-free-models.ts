@@ -62,15 +62,7 @@ export function extractOpenRouterFreeModelIds(payload: OpenRouterModelsPayload):
   return result
 }
 
-const CODING_KEYWORDS = [
-  'code',
-  'coder',
-  'coding',
-  'program',
-  'software',
-  'developer',
-  'dev',
-]
+const CODING_KEYWORDS = ['code', 'coder', 'coding', 'program', 'software', 'developer', 'dev']
 
 const isCodingModel = (model: OpenRouterModelRecord): boolean => {
   const haystack = [model.id, model.name, model.description]

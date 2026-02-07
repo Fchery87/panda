@@ -5,7 +5,10 @@ async function openCreateProjectDialog(page: Page) {
   await expect(newProjectButton).toBeVisible()
   await newProjectButton.click()
 
-  const dialog = page.getByRole('dialog').filter({ hasText: /create new project/i }).first()
+  const dialog = page
+    .getByRole('dialog')
+    .filter({ hasText: /create new project/i })
+    .first()
   await expect(dialog).toBeVisible()
   return dialog
 }

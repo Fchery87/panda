@@ -5,13 +5,15 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
-import { Send, Square, MessageCircle, Hammer } from 'lucide-react'
+import { Send, Square, MessageCircle, Hammer, Lightbulb } from 'lucide-react'
 
 type ChatMode = 'discuss' | 'build'
 
 interface ChatInputProps {
   mode?: ChatMode
   onModeChange?: (mode: ChatMode) => void
+  discussBrainstormEnabled?: boolean
+  onDiscussBrainstormEnabledChange?: (enabled: boolean) => void
   onSendMessage?: (content: string, mode: ChatMode) => void
   isStreaming?: boolean
   onStopStreaming?: () => void
@@ -20,6 +22,8 @@ interface ChatInputProps {
 export function ChatInput({
   mode: controlledMode,
   onModeChange,
+  discussBrainstormEnabled = false,
+  onDiscussBrainstormEnabledChange,
   onSendMessage,
   isStreaming = false,
   onStopStreaming,
@@ -117,6 +121,28 @@ export function ChatInput({
 
         <span className="font-mono text-[10px] text-muted-foreground">Enter to send</span>
       </div>
+
+      {mode === 'discuss' ? (
+        <div className="mb-3 flex items-center justify-between border border-border px-2 py-1.5">
+          <span className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground">
+            <Lightbulb className="h-3 w-3" />
+            Brainstorm
+          </span>
+          <button
+            type="button"
+            disabled={isStreaming}
+            onClick={() => onDiscussBrainstormEnabledChange?.(!discussBrainstormEnabled)}
+            className={cn(
+              'transition-sharp border px-2 py-0.5 font-mono text-[10px] uppercase',
+              discussBrainstormEnabled
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-border text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {discussBrainstormEnabled ? 'On' : 'Off'}
+          </button>
+        </div>
+      ) : null}
 
       {/* Input Area */}
       <div className="relative">

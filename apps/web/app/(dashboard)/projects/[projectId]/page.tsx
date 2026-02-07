@@ -151,6 +151,9 @@ export default function ProjectPage() {
 
   // Chat mode state - synchronized with ChatInput's internal mode
   const [chatMode, setChatMode] = useState<'discuss' | 'build'>('discuss')
+  const [discussBrainstormEnabled, setDiscussBrainstormEnabled] = useState(
+    process.env.NEXT_PUBLIC_ENABLE_DISCUSS_BRAINSTORM === 'true'
+  )
 
   // Pending message for when we need to create chat first
   const [pendingMessage, setPendingMessage] = useState<{
@@ -237,6 +240,7 @@ export default function ProjectPage() {
     chatId: activeChat?._id as Id<'chats'>,
     projectId,
     mode: chatMode,
+    discussBrainstormEnabled,
     provider: provider ?? FALLBACK_PROVIDER, // Stable fallback - checked before use
     model:
       settings?.providerConfigs?.[settings?.defaultProvider || 'openai']?.defaultModel || 'gpt-4o',
@@ -457,6 +461,7 @@ export default function ProjectPage() {
       mode: chatMode,
       agentStatus: agent.status,
       currentPlanDraft: planDraft,
+      requireValidatedBrainstorm: discussBrainstormEnabled,
       messages: agent.messages
         .filter(
           (
@@ -473,7 +478,7 @@ export default function ProjectPage() {
     if (planDraft.trim() !== lastSavedPlanDraftRef.current.trim()) return
 
     setPlanDraft(next)
-  }, [agent.messages, agent.status, chatMode, planDraft])
+  }, [agent.messages, agent.status, chatMode, planDraft, discussBrainstormEnabled])
 
   // File operations
   const handleFileSelect = useCallback((path: string) => {
@@ -861,6 +866,8 @@ export default function ProjectPage() {
               <ChatInput
                 mode={chatMode}
                 onModeChange={setChatMode}
+                discussBrainstormEnabled={discussBrainstormEnabled}
+                onDiscussBrainstormEnabledChange={setDiscussBrainstormEnabled}
                 onSendMessage={handleSendMessage}
                 isStreaming={agent.isLoading}
                 onStopStreaming={agent.stop}

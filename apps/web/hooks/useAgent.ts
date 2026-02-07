@@ -161,6 +161,7 @@ interface UseAgentOptions {
   mode: ChatMode
   provider: LLMProvider
   model?: string
+  discussBrainstormEnabled?: boolean
 }
 
 /**
@@ -232,7 +233,14 @@ interface UseAgentReturn {
  * - Tool call deduplication and loop detection
  */
 export function useAgent(options: UseAgentOptions): UseAgentReturn {
-  const { chatId, projectId, mode, provider, model = 'gpt-4o' } = options
+  const {
+    chatId,
+    projectId,
+    mode,
+    provider,
+    model = 'gpt-4o',
+    discussBrainstormEnabled = false,
+  } = options
 
   const convex = useConvex()
 
@@ -658,7 +666,9 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           provider: provider?.config?.provider || 'openai',
           previousMessages: previousMessagesSnapshot,
           userMessage: userContent,
-          customInstructions: undefined,
+          customInstructions: discussBrainstormEnabled
+            ? 'Discuss brainstorming protocol: enabled'
+            : undefined,
         }
 
         // Create runtime config with deduplication
@@ -1137,6 +1147,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       provider,
       model,
       providerType,
+      discussBrainstormEnabled,
       addMessage,
       createRun,
       appendRunEvent,

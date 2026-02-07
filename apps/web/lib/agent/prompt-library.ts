@@ -65,6 +65,24 @@ You have access to the project files for context. Use this information to provid
 
 Be concise but thorough. Focus on actionable insights.`
 
+const DISCUSS_BRAINSTORM_PROTOCOL = `
+
+Brainstorming protocol (enabled):
+- Operate in phases and include this exact marker near the top of every response:
+  Brainstorm phase: discovery | options | validated_plan
+- In discovery phase:
+  - Ask exactly one clarifying question per response.
+  - Prefer multiple-choice questions when possible.
+  - Do not produce a full implementation plan yet.
+- In options phase:
+  - Present 2-3 viable approaches with trade-offs.
+  - Lead with your recommended option and why.
+  - End with exactly one question to choose/confirm direction.
+- In validated_plan phase:
+  - Present the final plan using the required Plan Mode structure.
+  - Keep implementation out of chat and suggest Build mode for execution.
+- Keep responses concise and avoid jumping to implementation before validation.`
+
 /**
  * System prompt for build/coding mode
  */
@@ -128,6 +146,12 @@ export function getDiscussPrompt(context: PromptContext): CompletionMessage[] {
   const providerId = context.provider?.toLowerCase()
   const isZai = providerId === 'zai' || providerId === 'z.ai' || providerId?.includes('zai')
   const messages: CompletionMessage[] = []
+  const brainstormEnabled = context.customInstructions
+    ?.toLowerCase()
+    .includes('discuss brainstorming protocol: enabled')
+  const discussSystemPrompt = brainstormEnabled
+    ? `${DISCUSS_SYSTEM_PROMPT}${DISCUSS_BRAINSTORM_PROTOCOL}`
+    : DISCUSS_SYSTEM_PROMPT
 
   // Build context content
   let contextContent = ''
@@ -150,7 +174,7 @@ export function getDiscussPrompt(context: PromptContext): CompletionMessage[] {
   if (!isZai) {
     messages.push({
       role: 'system',
-      content: DISCUSS_SYSTEM_PROMPT,
+      content: discussSystemPrompt,
     })
     if (contextContent) {
       messages.push({
@@ -170,7 +194,7 @@ export function getDiscussPrompt(context: PromptContext): CompletionMessage[] {
     // Z.ai cannot accept a system role, so we embed the system prompt into the user message.
     // This must be done EVERY turn (not only the first), otherwise the model "forgets" the mode.
     const userContent = isZai
-      ? `${DISCUSS_SYSTEM_PROMPT}\n\n${contextContent ? contextContent + '\n\n' : ''}User request: ${context.userMessage}`
+      ? `${discussSystemPrompt}\n\n${contextContent ? contextContent + '\n\n' : ''}User request: ${context.userMessage}`
       : context.userMessage
     messages.push({
       role: 'user',

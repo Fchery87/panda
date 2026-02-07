@@ -2,17 +2,26 @@
 
 ## Summary
 
-Current workspace preview UI is present but not functionally wired to a runtime URL. The `Preview` component only renders an iframe when `url` is provided, and `Workbench` currently mounts `<Preview />` without that prop.
+Current workspace preview UI is present but not functionally wired to a runtime
+URL. The `Preview` component only renders an iframe when `url` is provided, and
+`Workbench` currently mounts `<Preview />` without that prop.
 
-This plan defines a safe rollout to make preview functional with an in-browser runtime model, starting with static + Vite support and adding Next.js in a later phase.
+This plan defines a safe rollout to make preview functional with an in-browser
+runtime model, starting with static + Vite support and adding Next.js in a later
+phase.
 
 ## Current-State Findings
 
-1. Preview tab exists and toggles correctly in `apps/web/components/workbench/Workbench.tsx`.
-2. `Preview` supports iframe/device controls but requires `url` (`apps/web/components/workbench/Preview.tsx`).
-3. No preview runtime state exists in project page/container (`apps/web/app/(dashboard)/projects/[projectId]/page.tsx`).
-4. Terminal execution is short-lived and timeout-based via `/api/jobs/execute`, so it is not a persistent preview runtime.
-5. No schema fields or store bindings currently track preview URL/runtime lifecycle.
+1. Preview tab exists and toggles correctly in
+   `apps/web/components/workbench/Workbench.tsx`.
+2. `Preview` supports iframe/device controls but requires `url`
+   (`apps/web/components/workbench/Preview.tsx`).
+3. No preview runtime state exists in project page/container
+   (`apps/web/app/(dashboard)/projects/[projectId]/page.tsx`).
+4. Terminal execution is short-lived and timeout-based via `/api/jobs/execute`,
+   so it is not a persistent preview runtime.
+5. No schema fields or store bindings currently track preview URL/runtime
+   lifecycle.
 
 ## Product Decisions Locked
 
@@ -24,7 +33,10 @@ This plan defines a safe rollout to make preview functional with an in-browser r
 
 ## Why "Open localhost" Alone Is Not Enough
 
-In web deployments, `http://localhost:*` resolves on the end user's own machine. A reliable workspace preview requires a runtime in the same browser context (or a public proxy URL). This roadmap uses browser-hosted runtime URLs as the source of truth.
+In web deployments, `http://localhost:*` resolves on the end user's own machine.
+A reliable workspace preview requires a runtime in the same browser context (or
+a public proxy URL). This roadmap uses browser-hosted runtime URLs as the source
+of truth.
 
 ## Public Interface / Contract Changes
 
@@ -159,4 +171,3 @@ Add:
    - Mitigation: deterministic detection + clear fallback messaging.
 3. Risk: resource leaks from orphaned processes.
    - Mitigation: teardown on unmount and retry path with cleanup.
-

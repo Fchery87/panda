@@ -8,7 +8,7 @@ describe('LiveRunPanel', () => {
     expect(content).toContain("const LIVE_RUN_OPEN_STORAGE_KEY = 'panda.liveRun.isOpen'")
     expect(content).toContain('window.localStorage.getItem(LIVE_RUN_OPEN_STORAGE_KEY)')
     expect(content).toContain(
-      'window.localStorage.setItem(LIVE_RUN_OPEN_STORAGE_KEY, isOpen ? \'1\' : \'0\')'
+      "window.localStorage.setItem(LIVE_RUN_OPEN_STORAGE_KEY, isOpen ? '1' : '0')"
     )
     expect(content).toContain('onClick={() => setIsOpen((prev) => !prev)}')
     expect(content).toContain(

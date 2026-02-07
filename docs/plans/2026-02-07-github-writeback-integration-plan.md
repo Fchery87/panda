@@ -1,18 +1,30 @@
 # GitHub Writeback Integration Plan (Commit, Push, PR, Sync)
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to
+> implement this plan task-by-task.
 
-**Goal:** Implement a secure GitHub integration in Panda so users can connect repositories, commit and push changes, create pull requests, and sync branch state back into Panda.
+**Goal:** Implement a secure GitHub integration in Panda so users can connect
+repositories, commit and push changes, create pull requests, and sync branch
+state back into Panda.
 
-**Architecture:** Use a GitHub App with installation-scoped access and short-lived tokens minted server-side in Convex actions. Keep Panda’s source of truth in Convex `files`, then generate Git commits via GitHub Git Data APIs (blobs/trees/commits/refs) instead of local persistent worktrees. Expose a dedicated GitHub panel in the workbench and require explicit user confirmation for all write actions.
+**Architecture:** Use a GitHub App with installation-scoped access and
+short-lived tokens minted server-side in Convex actions. Keep Panda’s source of
+truth in Convex `files`, then generate Git commits via GitHub Git Data APIs
+(blobs/trees/commits/refs) instead of local persistent worktrees. Expose a
+dedicated GitHub panel in the workbench and require explicit user confirmation
+for all write actions.
 
-**Tech Stack:** Next.js 16, Convex (queries/mutations/actions/httpAction), Convex Auth, GitHub App APIs, Tailwind/shadcn UI, Bun test + Playwright.
+**Tech Stack:** Next.js 16, Convex (queries/mutations/actions/httpAction),
+Convex Auth, GitHub App APIs, Tailwind/shadcn UI, Bun test + Playwright.
 
 ## Summary
 
-Implement a secure GitHub App based integration so Panda users can connect selected repositories, commit and push changes from Convex-managed files, create pull requests, and sync branch state back into Panda.
+Implement a secure GitHub App based integration so Panda users can connect
+selected repositories, commit and push changes from Convex-managed files, create
+pull requests, and sync branch state back into Panda.
 
 Chosen defaults:
+
 1. Auth model: GitHub App.
 2. Write model: GitHub API-based commits (no local Git worktree).
 3. MVP scope: Commit + Push + PR + Sync.
@@ -26,6 +38,7 @@ Chosen defaults:
 ### Convex schema changes
 
 Modify `convex/schema.ts`:
+
 - Add `githubConnections` table:
   - `userId: Id<'users'>`
   - `installationId: v.number()`
@@ -39,28 +52,38 @@ Modify `convex/schema.ts`:
 
 ### New/updated Convex functions
 
-Refactor `convex/github.ts` into modular actions/mutations/queries with strict auth checks:
-- `createInstallIntent` (mutation): returns signed `state` and GitHub App install URL.
-- `completeInstall` (action): validates signed state + installation ID and saves `githubConnections`.
+Refactor `convex/github.ts` into modular actions/mutations/queries with strict
+auth checks:
+
+- `createInstallIntent` (mutation): returns signed `state` and GitHub App
+  install URL.
+- `completeInstall` (action): validates signed state + installation ID and saves
+  `githubConnections`.
 - `listInstallRepos` (action): lists selectable repos for user installations.
-- `linkProjectRepo` (mutation): binds project to `{installationId, owner, repo, defaultBranch}`.
+- `linkProjectRepo` (mutation): binds project to
+  `{installationId, owner, repo, defaultBranch}`.
 - `getProjectGitStatus` (action): compares Panda files vs GitHub branch tree.
-- `commitAndPush` (action): creates blobs/tree/commit and updates feature branch ref.
+- `commitAndPush` (action): creates blobs/tree/commit and updates feature branch
+  ref.
 - `createPullRequest` (action): opens PR from Panda branch to target branch.
-- `syncFromBranch` (action): pulls branch files into Panda `files` table and updates `lastSyncedHeadSha`.
+- `syncFromBranch` (action): pulls branch files into Panda `files` table and
+  updates `lastSyncedHeadSha`.
 - `unlinkProjectRepo` (mutation).
 - Keep existing `importRepo` but require auth + ownership.
 
 Add strict ownership/auth checks in all GitHub functions:
+
 - `requireAuth(ctx)` and project ownership verification before any repo action.
 
 ### HTTP endpoints
 
 Update `convex/http.ts`:
+
 - Add GitHub webhook endpoint:
   - `POST /api/github/webhook`
   - Verify `X-Hub-Signature-256` using `GITHUB_WEBHOOK_SECRET`.
-  - Handle `installation`, `installation_repositories`, `installation.deleted` to keep connection/repo linkage valid.
+  - Handle `installation`, `installation_repositories`, `installation.deleted`
+    to keep connection/repo linkage valid.
 
 ### Frontend UI
 
@@ -71,7 +94,8 @@ Update `convex/http.ts`:
   - Commit message input.
   - Actions: `Commit & Push`, `Create PR`, `Sync`.
   - Confirmation modal for each write action.
-- Integrate panel into `apps/web/components/workbench/Workbench.tsx` (or project page side panel).
+- Integrate panel into `apps/web/components/workbench/Workbench.tsx` (or project
+  page side panel).
 - Add `apps/web/hooks/useGitHub.ts`:
   - Wrap Convex queries/actions and normalize loading/error states.
 - Keep `GitHubImportDialog` but gate with auth and linked repo metadata.
@@ -79,10 +103,13 @@ Update `convex/http.ts`:
 ### Agent tool surface
 
 Extend `apps/web/lib/agent/tools.ts` and related tool definitions:
-- Add `github_commit_push`, `github_create_pr`, `github_sync`.
-- All write tools return a pending approval artifact instead of executing immediately.
 
-Extend artifact handling to include GitHub operation artifacts (explicit apply required).
+- Add `github_commit_push`, `github_create_pr`, `github_sync`.
+- All write tools return a pending approval artifact instead of executing
+  immediately.
+
+Extend artifact handling to include GitHub operation artifacts (explicit apply
+required).
 
 ## Implementation Details
 
@@ -113,7 +140,8 @@ Extend artifact handling to include GitHub operation artifacts (explicit apply r
 ### 3. PR flow
 
 1. Ensure feature branch exists (create on first push if needed).
-2. Create PR `head=<owner>:<feature-branch>` to `base=<defaultBranch or user-selected>`.
+2. Create PR `head=<owner>:<feature-branch>` to
+   `base=<defaultBranch or user-selected>`.
 3. Store latest PR URL in project GitHub metadata for quick reopen.
 
 ### 4. Sync flow
@@ -126,7 +154,8 @@ Extend artifact handling to include GitHub operation artifacts (explicit apply r
 
 ### 5. Security hardening
 
-1. Add auth/ownership checks to existing GitHub actions and related project operations.
+1. Add auth/ownership checks to existing GitHub actions and related project
+   operations.
 2. Validate all repo/branch inputs.
 3. Restrict operations to linked repository only.
 4. Log audit events (user, project, op type, repo, branch, timestamp, result).
@@ -177,7 +206,8 @@ Extend artifact handling to include GitHub operation artifacts (explicit apply r
 3. User can open PR to target branch from Panda.
 4. User can sync branch changes back into Panda files.
 5. No GitHub write operation executes without explicit user confirmation.
-6. Unauthorized users cannot read/write GitHub state for projects they do not own.
+6. Unauthorized users cannot read/write GitHub state for projects they do not
+   own.
 7. Existing public-repo import continues to work.
 
 ## Assumptions and Defaults
@@ -186,5 +216,6 @@ Extend artifact handling to include GitHub operation artifacts (explicit apply r
 2. GitHub App is installed on selected repos only.
 3. First version supports text-file workflows (binary files remain skipped).
 4. Sync is branch-to-Panda overwrite with confirmation for destructive changes.
-5. Merge/rebase conflict resolution UI is out of scope for v1 (returns actionable errors).
+5. Merge/rebase conflict resolution UI is out of scope for v1 (returns
+   actionable errors).
 6. Existing terminal remains generic; GitHub v1 is panel + agent-tool driven.

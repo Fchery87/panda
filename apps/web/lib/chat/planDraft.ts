@@ -1,3 +1,5 @@
+import { extractBrainstormPhase, stripBrainstormPhaseMarker } from './brainstorming'
+
 export type ChatMode = 'discuss' | 'build'
 export type AgentStatus =
   | 'idle'
@@ -39,20 +41,28 @@ export function deriveNextPlanDraft({
   agentStatus,
   currentPlanDraft,
   messages,
+  requireValidatedBrainstorm = false,
 }: {
   mode: ChatMode
   agentStatus: AgentStatus
   currentPlanDraft: string | null | undefined
   messages: Array<{ role: 'user' | 'assistant'; mode: ChatMode; content: string }>
+  requireValidatedBrainstorm?: boolean
 }): string | null {
   if (mode !== 'discuss') return null
   if (agentStatus !== 'complete') return null
 
   const latest = pickLatestDiscussAssistantPlan(messages)
   if (!latest) return null
+  if (requireValidatedBrainstorm && extractBrainstormPhase(latest) !== 'validated_plan') {
+    return null
+  }
+
+  const normalizedLatest = stripBrainstormPhaseMarker(latest).trim()
+  if (!normalizedLatest) return null
 
   const current = currentPlanDraft?.trim() ?? ''
-  if (current && current === latest.trim()) return null
+  if (current && current === normalizedLatest) return null
 
-  return latest
+  return normalizedLatest
 }
