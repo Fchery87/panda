@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/dialog'
 import { PanelRight, ChevronLeft, Bot, RotateCcw } from 'lucide-react'
 import Link from 'next/link'
+import { cn } from '@/lib/utils'
 
 // Hooks
 import { useJobs } from '@/hooks/useJobs'
@@ -117,6 +118,11 @@ export default function ProjectPage() {
   } | null>(null)
   const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false)
   const [isDebugDialogOpen, setIsDebugDialogOpen] = useState(false)
+  const [isMobileLayout, setIsMobileLayout] = useState(false)
+  const [mobilePrimaryPanel, setMobilePrimaryPanel] = useState<'workspace' | 'chat'>('workspace')
+  const [mobileUnreadCount, setMobileUnreadCount] = useState(0)
+  const [isMobileKeyboardOpen, setIsMobileKeyboardOpen] = useState(false)
+  const lastAssistantMessageIdRef = useRef<string | null>(null)
 
   // Fetch project data
   const project = useQuery(api.projects.get, { id: projectId })
@@ -129,6 +135,14 @@ export default function ProjectPage() {
 
   // Get or create default chat
   const [activeChatId, setActiveChatId] = useState<Id<'chats'> | null>(null)
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 1023px)')
+    const update = () => setIsMobileLayout(media.matches)
+    update()
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
 
   useEffect(() => {
     if (!chats || chats.length === 0) return
@@ -497,6 +511,7 @@ export default function ProjectPage() {
   // File operations
   const handleFileSelect = useCallback(
     (path: string, location?: { line: number; column: number }) => {
+      setMobilePrimaryPanel('workspace')
       setSelectedFilePath(path)
       if (location) {
         setSelectedFileLocation({
@@ -622,6 +637,7 @@ export default function ProjectPage() {
 
       // Update chat mode
       setChatMode(mode)
+      setMobilePrimaryPanel('chat')
 
       const finalContent =
         mode === 'build' ? buildMessageWithPlanDraft(planDraft, content) : content
@@ -663,6 +679,206 @@ export default function ProjectPage() {
       await handleSendMessage(content, 'build')
     },
     [handleSendMessage]
+  )
+
+  useEffect(() => {
+    if (!isMobileLayout || mobilePrimaryPanel === 'chat') {
+      setMobileUnreadCount(0)
+    }
+  }, [isMobileLayout, mobilePrimaryPanel])
+
+  useEffect(() => {
+    const latestAssistant = [...chatMessages].reverse().find((msg) => msg.role === 'assistant')
+    if (!latestAssistant) return
+
+    if (!lastAssistantMessageIdRef.current) {
+      lastAssistantMessageIdRef.current = latestAssistant._id
+      return
+    }
+
+    if (latestAssistant._id !== lastAssistantMessageIdRef.current) {
+      lastAssistantMessageIdRef.current = latestAssistant._id
+      if (isMobileLayout && mobilePrimaryPanel === 'workspace') {
+        setMobileUnreadCount((count) => Math.min(99, count + 1))
+      }
+    }
+  }, [chatMessages, isMobileLayout, mobilePrimaryPanel])
+
+  useEffect(() => {
+    if (!isMobileLayout) {
+      setIsMobileKeyboardOpen(false)
+      return
+    }
+
+    let focusedInput = false
+    let viewportKeyboardOpen = false
+
+    const commitState = () => setIsMobileKeyboardOpen(focusedInput || viewportKeyboardOpen)
+
+    const isTextInputTarget = (target: EventTarget | null): boolean => {
+      if (!(target instanceof HTMLElement)) return false
+      if (target.isContentEditable) return true
+      return Boolean(target.closest('input, textarea, [contenteditable="true"]'))
+    }
+
+    const onFocusIn = (event: FocusEvent) => {
+      focusedInput = isTextInputTarget(event.target)
+      commitState()
+    }
+
+    const onFocusOut = () => {
+      window.setTimeout(() => {
+        focusedInput = isTextInputTarget(document.activeElement)
+        commitState()
+      }, 0)
+    }
+
+    const onViewportChange = () => {
+      if (!window.visualViewport) return
+      const heightDelta = window.innerHeight - window.visualViewport.height
+      viewportKeyboardOpen = heightDelta > 140
+      commitState()
+    }
+
+    document.addEventListener('focusin', onFocusIn)
+    document.addEventListener('focusout', onFocusOut)
+    window.visualViewport?.addEventListener('resize', onViewportChange)
+    window.visualViewport?.addEventListener('scroll', onViewportChange)
+    onViewportChange()
+    commitState()
+
+    return () => {
+      document.removeEventListener('focusin', onFocusIn)
+      document.removeEventListener('focusout', onFocusOut)
+      window.visualViewport?.removeEventListener('resize', onViewportChange)
+      window.visualViewport?.removeEventListener('scroll', onViewportChange)
+    }
+  }, [isMobileLayout])
+
+  const chatPanelContent = (
+    <div
+      className={cn(
+        'surface-1 flex h-full flex-col border-border',
+        isMobileLayout ? 'border-t' : 'border-l'
+      )}
+    >
+      {/* Chat Header */}
+      <div className="panel-header flex items-center gap-2" data-number="04">
+        <Bot className="h-3.5 w-3.5 text-primary" />
+        <span>Chat</span>
+        <div className="ml-2 hidden min-w-0 flex-1 overflow-hidden md:block">
+          <div className="truncate font-mono text-[10px] text-muted-foreground/80">
+            Context {agent.usageMetrics.usedTokens.toLocaleString()}/
+            {agent.usageMetrics.contextWindow.toLocaleString()} ({agent.usageMetrics.usagePct}%)
+          </div>
+          <div className="truncate font-mono text-[10px] text-muted-foreground/60">
+            Remaining {agent.usageMetrics.remainingTokens.toLocaleString()} • Session{' '}
+            {agent.usageMetrics.session.totalTokens.toLocaleString()}
+            {agent.usageMetrics.currentRun?.source === 'estimated' ? ' + live est' : ''}
+          </div>
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          {agent.status !== 'idle' && agent.status !== 'complete' && agent.status !== 'error' && (
+            <span className="text-xs capitalize text-muted-foreground">
+              {agent.status.replace('_', ' ')}
+            </span>
+          )}
+          <Dialog open={isPlanDialogOpen} onOpenChange={setIsPlanDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-7 rounded-none font-mono text-xs">
+                Plan
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="rounded-none border-border sm:max-w-2xl">
+              <DialogHeader>
+                <DialogTitle className="font-mono text-sm uppercase tracking-wide">
+                  Plan Draft
+                </DialogTitle>
+                <DialogDescription>
+                  Discuss mode updates this draft. Build mode automatically uses it.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[10px] text-muted-foreground/70">
+                    {planUpdatedAt
+                      ? `Saved ${new Date(planUpdatedAt).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}`
+                      : 'Not saved'}
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="h-7 rounded-none font-mono text-xs"
+                    onClick={savePlanDraftNow}
+                    disabled={!activeChat?._id || isPlanSaving}
+                  >
+                    {isPlanSaving ? 'Saving' : 'Save now'}
+                  </Button>
+                </div>
+                <Textarea
+                  value={planDraft}
+                  onChange={(e) => setPlanDraft(e.target.value)}
+                  placeholder="Discuss mode will auto-update this plan draft. You can edit it anytime."
+                  className="min-h-[320px] rounded-none border-border bg-background font-mono text-xs leading-relaxed"
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={isDebugDialogOpen} onOpenChange={setIsDebugDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-7 rounded-none font-mono text-xs">
+                Debug
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="rounded-none border-border sm:max-w-2xl">
+              <DialogHeader>
+                <DialogTitle className="font-mono text-sm uppercase tracking-wide">
+                  Run Timeline
+                </DialogTitle>
+                <DialogDescription>
+                  Detailed run events for troubleshooting and tool-level inspection.
+                </DialogDescription>
+              </DialogHeader>
+              <RunTimelinePanel chatId={activeChat?._id} events={runEvents} defaultOpen={true} />
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      {panelVisibility.showInlineRunTimeline ? (
+        <RunTimelinePanel chatId={activeChat?._id} events={runEvents} />
+      ) : null}
+      <LiveRunPanel
+        steps={liveRunSteps}
+        isStreaming={agent.isLoading}
+        onOpenFile={handleFileSelect}
+        onOpenArtifacts={() => setIsArtifactPanelOpen(true)}
+      />
+
+      {/* Messages */}
+      <div className="flex-1 overflow-hidden">
+        <MessageList
+          messages={chatMessages}
+          isStreaming={agent.isLoading}
+          onResendInBuild={handleResendInBuild}
+        />
+      </div>
+
+      {/* Input */}
+      <ChatInput
+        mode={chatMode}
+        onModeChange={setChatMode}
+        discussBrainstormEnabled={discussBrainstormEnabled}
+        onDiscussBrainstormEnabledChange={setDiscussBrainstormEnabled}
+        onSendMessage={handleSendMessage}
+        isStreaming={agent.isLoading}
+        onStopStreaming={agent.stop}
+      />
+    </div>
   )
 
   // Loading state
@@ -746,162 +962,82 @@ export default function ProjectPage() {
 
       {/* Main Content */}
       <div className="relative flex-1 overflow-hidden">
-        <PanelGroup direction="horizontal" className="h-full">
-          {/* Workbench Panel */}
-          <Panel defaultSize={70} minSize={40} className="flex flex-col">
-            <Workbench
-              projectId={projectId}
-              files={files}
-              selectedFilePath={selectedFilePath}
-              selectedLocation={selectedFileLocation}
-              onSelectFile={handleFileSelect}
-              onCreateFile={handleFileCreate}
-              onRenameFile={handleFileRename}
-              onDeleteFile={handleFileDelete}
-              onSaveFile={handleEditorSave}
-            />
-          </Panel>
-
-          {/* Resize Handle */}
-          <PanelResizeHandle className="w-px bg-border transition-colors hover:bg-primary" />
-
-          {/* Chat Panel - Always Visible */}
-          <Panel defaultSize={30} minSize={25} maxSize={50} className="flex flex-col">
-            <div className="surface-1 flex h-full flex-col border-l border-border">
-              {/* Chat Header */}
-              <div className="panel-header flex items-center gap-2" data-number="04">
-                <Bot className="h-3.5 w-3.5 text-primary" />
-                <span>Chat</span>
-                <div className="ml-2 hidden min-w-0 flex-1 overflow-hidden md:block">
-                  <div className="truncate font-mono text-[10px] text-muted-foreground/80">
-                    Context {agent.usageMetrics.usedTokens.toLocaleString()}/
-                    {agent.usageMetrics.contextWindow.toLocaleString()} (
-                    {agent.usageMetrics.usagePct}%)
-                  </div>
-                  <div className="truncate font-mono text-[10px] text-muted-foreground/60">
-                    Remaining {agent.usageMetrics.remainingTokens.toLocaleString()} • Session{' '}
-                    {agent.usageMetrics.session.totalTokens.toLocaleString()}
-                    {agent.usageMetrics.currentRun?.source === 'estimated' ? ' + live est' : ''}
-                  </div>
-                </div>
-                <div className="ml-auto flex items-center gap-2">
-                  {agent.status !== 'idle' &&
-                    agent.status !== 'complete' &&
-                    agent.status !== 'error' && (
-                      <span className="text-xs capitalize text-muted-foreground">
-                        {agent.status.replace('_', ' ')}
-                      </span>
-                    )}
-                  <Dialog open={isPlanDialogOpen} onOpenChange={setIsPlanDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 rounded-none font-mono text-xs"
-                      >
-                        Plan
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="rounded-none border-border sm:max-w-2xl">
-                      <DialogHeader>
-                        <DialogTitle className="font-mono text-sm uppercase tracking-wide">
-                          Plan Draft
-                        </DialogTitle>
-                        <DialogDescription>
-                          Discuss mode updates this draft. Build mode automatically uses it.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="font-mono text-[10px] text-muted-foreground/70">
-                            {planUpdatedAt
-                              ? `Saved ${new Date(planUpdatedAt).toLocaleTimeString([], {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })}`
-                              : 'Not saved'}
-                          </span>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            className="h-7 rounded-none font-mono text-xs"
-                            onClick={savePlanDraftNow}
-                            disabled={!activeChat?._id || isPlanSaving}
-                          >
-                            {isPlanSaving ? 'Saving' : 'Save now'}
-                          </Button>
-                        </div>
-                        <Textarea
-                          value={planDraft}
-                          onChange={(e) => setPlanDraft(e.target.value)}
-                          placeholder="Discuss mode will auto-update this plan draft. You can edit it anytime."
-                          className="min-h-[320px] rounded-none border-border bg-background font-mono text-xs leading-relaxed"
-                        />
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                  <Dialog open={isDebugDialogOpen} onOpenChange={setIsDebugDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 rounded-none font-mono text-xs"
-                      >
-                        Debug
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="rounded-none border-border sm:max-w-2xl">
-                      <DialogHeader>
-                        <DialogTitle className="font-mono text-sm uppercase tracking-wide">
-                          Run Timeline
-                        </DialogTitle>
-                        <DialogDescription>
-                          Detailed run events for troubleshooting and tool-level inspection.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <RunTimelinePanel
-                        chatId={activeChat?._id}
-                        events={runEvents}
-                        defaultOpen={true}
-                      />
-                    </DialogContent>
-                  </Dialog>
-                </div>
-              </div>
-
-              {panelVisibility.showInlineRunTimeline ? (
-                <RunTimelinePanel chatId={activeChat?._id} events={runEvents} />
-              ) : null}
-              <LiveRunPanel
-                steps={liveRunSteps}
-                isStreaming={agent.isLoading}
-                onOpenFile={handleFileSelect}
-                onOpenArtifacts={() => setIsArtifactPanelOpen(true)}
-              />
-
-              {/* Messages */}
-              <div className="flex-1 overflow-hidden">
-                <MessageList
-                  messages={chatMessages}
-                  isStreaming={agent.isLoading}
-                  onResendInBuild={handleResendInBuild}
+        {isMobileLayout ? (
+          <div className="flex h-full flex-col">
+            <div className="flex-1 overflow-hidden">
+              {mobilePrimaryPanel === 'workspace' ? (
+                <Workbench
+                  projectId={projectId}
+                  files={files}
+                  selectedFilePath={selectedFilePath}
+                  selectedLocation={selectedFileLocation}
+                  onSelectFile={handleFileSelect}
+                  onCreateFile={handleFileCreate}
+                  onRenameFile={handleFileRename}
+                  onDeleteFile={handleFileDelete}
+                  onSaveFile={handleEditorSave}
                 />
-              </div>
-
-              {/* Input */}
-              <ChatInput
-                mode={chatMode}
-                onModeChange={setChatMode}
-                discussBrainstormEnabled={discussBrainstormEnabled}
-                onDiscussBrainstormEnabledChange={setDiscussBrainstormEnabled}
-                onSendMessage={handleSendMessage}
-                isStreaming={agent.isLoading}
-                onStopStreaming={agent.stop}
-              />
+              ) : (
+                chatPanelContent
+              )}
             </div>
-          </Panel>
-        </PanelGroup>
+            {!isMobileKeyboardOpen && (
+              <div className="surface-1 grid h-12 grid-cols-2 border-t border-border font-mono text-[11px] uppercase tracking-widest">
+                <button
+                  type="button"
+                  onClick={() => setMobilePrimaryPanel('workspace')}
+                  className={cn(
+                    'h-full border-r border-border',
+                    mobilePrimaryPanel === 'workspace'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  Workspace
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMobilePrimaryPanel('chat')}
+                  className={cn(
+                    'relative h-full',
+                    mobilePrimaryPanel === 'chat'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  Chat
+                  {mobileUnreadCount > 0 && mobilePrimaryPanel !== 'chat' && (
+                    <span className="absolute right-2 top-1.5 min-w-5 border border-border bg-destructive px-1.5 py-0.5 text-center font-mono text-[10px] text-destructive-foreground">
+                      {mobileUnreadCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <PanelGroup direction="horizontal" className="h-full">
+            <Panel defaultSize={70} minSize={40} className="flex flex-col">
+              <Workbench
+                projectId={projectId}
+                files={files}
+                selectedFilePath={selectedFilePath}
+                selectedLocation={selectedFileLocation}
+                onSelectFile={handleFileSelect}
+                onCreateFile={handleFileCreate}
+                onRenameFile={handleFileRename}
+                onDeleteFile={handleFileDelete}
+                onSaveFile={handleEditorSave}
+              />
+            </Panel>
+
+            <PanelResizeHandle className="h-full w-px bg-border transition-colors hover:bg-primary" />
+
+            <Panel defaultSize={30} minSize={25} maxSize={50} className="flex flex-col">
+              {chatPanelContent}
+            </Panel>
+          </PanelGroup>
+        )}
 
         {/* Floating Artifact Panel */}
         {isArtifactPanelOpen && (

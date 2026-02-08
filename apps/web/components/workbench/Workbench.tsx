@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAction } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
@@ -69,9 +69,25 @@ export function Workbench({
 }: WorkbenchProps) {
   const [activeTab, setActiveTab] = useState<EditorTab>('code')
   const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>('explorer')
+  const [mobilePanel, setMobilePanel] = useState<'files' | 'editor' | 'terminal'>('editor')
+  const [isMobile, setIsMobile] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
   const downloadProject = useAction(api.files.downloadProject)
   const selectedFile = selectedFilePath ? files.find((f) => f.path === selectedFilePath) : undefined
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 1023px)')
+    const update = () => setIsMobile(media.matches)
+    update()
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
+
+  useEffect(() => {
+    if (selectedFilePath) {
+      setMobilePanel('editor')
+    }
+  }, [selectedFilePath])
 
   const handleDownload = async () => {
     if (isDownloading) return
@@ -108,6 +124,191 @@ export function Workbench({
     } finally {
       setIsDownloading(false)
     }
+  }
+
+  if (isMobile) {
+    return (
+      <div className="surface-0 h-full w-full">
+        <div className="surface-1 flex h-11 shrink-0 border-b border-border font-mono text-[11px] uppercase tracking-widest">
+          <button
+            type="button"
+            onClick={() => setMobilePanel('files')}
+            className={cn(
+              'h-full min-h-11 flex-1 border-r border-border',
+              mobilePanel === 'files'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            Files
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobilePanel('editor')}
+            className={cn(
+              'h-full min-h-11 flex-1 border-r border-border',
+              mobilePanel === 'editor'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            Editor
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobilePanel('terminal')}
+            className={cn(
+              'h-full min-h-11 flex-1',
+              mobilePanel === 'terminal'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            Terminal
+          </button>
+        </div>
+
+        <div className="h-[calc(100%-2.75rem)]">
+          {mobilePanel === 'files' && (
+            <div className="surface-1 flex h-full flex-col">
+              <div className="panel-header flex items-center justify-between" data-number="01">
+                <span>{activeSidebarTab === 'explorer' ? 'Explorer' : 'Search'}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-none"
+                  onClick={handleDownload}
+                  disabled={isDownloading || files.length === 0}
+                  title="Download project as ZIP"
+                >
+                  {isDownloading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+
+              <div className="flex border-b border-border">
+                <button
+                  type="button"
+                  onClick={() => setActiveSidebarTab('explorer')}
+                  className={cn(
+                    'min-h-11 flex-1 border-r border-border px-2 py-2 font-mono text-[11px] uppercase tracking-widest',
+                    activeSidebarTab === 'explorer'
+                      ? 'bg-surface-2 text-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  Explorer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveSidebarTab('search')}
+                  className={cn(
+                    'min-h-11 flex-1 px-2 py-2 font-mono text-[11px] uppercase tracking-widest',
+                    activeSidebarTab === 'search'
+                      ? 'bg-surface-2 text-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  Search
+                </button>
+              </div>
+
+              <div className="scrollbar-thin flex-1 overflow-auto">
+                {activeSidebarTab === 'explorer' ? (
+                  <FileTree
+                    files={files.map((f) => ({
+                      _id: f._id,
+                      path: f.path,
+                      content: f.content ?? '',
+                      isBinary: f.isBinary,
+                      updatedAt: f.updatedAt,
+                    }))}
+                    selectedPath={selectedFilePath}
+                    onSelect={onSelectFile}
+                    onCreate={onCreateFile}
+                    onRename={onRenameFile}
+                    onDelete={onDeleteFile}
+                  />
+                ) : (
+                  <ProjectSearchPanel onSelectFile={onSelectFile} />
+                )}
+              </div>
+            </div>
+          )}
+
+          {mobilePanel === 'editor' && (
+            <div className="surface-0 flex h-full flex-col">
+              <div className="panel-header flex items-center gap-0 p-0" data-number="02">
+                <button
+                  onClick={() => setActiveTab('code')}
+                  className={cn(
+                    'min-h-11 flex items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-widest',
+                    activeTab === 'code'
+                      ? 'border-b-2 border-primary bg-background text-primary'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <Code2 className="h-3.5 w-3.5" />
+                  Code
+                </button>
+                <button
+                  onClick={() => setActiveTab('preview')}
+                  className={cn(
+                    'min-h-11 flex items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-widest',
+                    activeTab === 'preview'
+                      ? 'border-b-2 border-primary bg-background text-primary'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                  Preview
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-hidden">
+                {activeTab === 'code' ? (
+                  selectedFile ? (
+                    <EditorContainer
+                      filePath={selectedFile.path}
+                      content={selectedFile.content ?? ''}
+                      jumpTo={selectedLocation}
+                      onSave={(content) => onSaveFile(selectedFile.path, content)}
+                    />
+                  ) : (
+                    <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center text-muted-foreground">
+                      <div className="font-mono text-sm">
+                        <span className="text-primary">{'{'}</span>
+                        <span className="mx-2">No file selected</span>
+                        <span className="text-primary">{'}'}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground/60">
+                        Open Files tab and select a file
+                      </p>
+                    </div>
+                  )
+                ) : (
+                  <Preview />
+                )}
+              </div>
+            </div>
+          )}
+
+          {mobilePanel === 'terminal' && (
+            <div className="surface-1 flex h-full flex-col border-t border-border">
+              <div className="panel-header flex items-center justify-between" data-number="03">
+                <span>Terminal</span>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <Terminal projectId={projectId} />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    )
   }
 
   return (
