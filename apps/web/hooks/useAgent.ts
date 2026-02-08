@@ -213,6 +213,7 @@ interface UseAgentReturn {
   pendingArtifacts: Array<{ _id: string }>
 
   // Actions
+  sendMessage: (content: string) => Promise<void>
   handleSubmit: (e?: React.FormEvent) => Promise<void>
   handleInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
   stop: () => void
@@ -535,13 +536,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   }, [chatId, persistedMessages, getReasoningRuntimeSettings])
 
   // Main submit handler
-  const handleSubmit = useCallback(
-    async (e?: React.FormEvent) => {
-      e?.preventDefault()
-
-      if (!input.trim() || isRunningRef.current) return
-
-      const userContent = input.trim()
+  const sendMessage = useCallback(
+    async (rawContent: string) => {
+      const userContent = rawContent.trim()
+      if (!userContent || isRunningRef.current) return
       setInput('')
 
       // Capture a snapshot of prior conversation for prompt building.
@@ -567,6 +565,13 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       }
       setCurrentRunUsage(runUsage)
 
+      // Lock as running before any awaited work to prevent duplicate submits.
+      isRunningRef.current = true
+      abortControllerRef.current = new AbortController()
+      setStatus('thinking')
+      setError(null)
+      setProgressSteps([])
+
       // Add user message to local state
       const userMessageId = `msg-${Date.now()}-user`
       setMessages((prev) => [
@@ -590,13 +595,6 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       } catch (err) {
         console.error('Failed to persist user message:', err)
       }
-
-      // Start agent execution
-      isRunningRef.current = true
-      abortControllerRef.current = new AbortController()
-      setStatus('thinking')
-      setError(null)
-      setProgressSteps([])
 
       try {
         // Create prompt context
@@ -1139,7 +1137,6 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       }
     },
     [
-      input,
       messages,
       chatId,
       projectId,
@@ -1162,6 +1159,14 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     ]
   )
 
+  const handleSubmit = useCallback(
+    async (e?: React.FormEvent) => {
+      e?.preventDefault()
+      await sendMessage(input)
+    },
+    [input, sendMessage]
+  )
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -1180,6 +1185,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     progressSteps,
     usageMetrics,
     pendingArtifacts,
+    sendMessage,
     handleSubmit,
     handleInputChange,
     stop,

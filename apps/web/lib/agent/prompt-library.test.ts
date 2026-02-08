@@ -39,4 +39,23 @@ describe('prompt-library discuss brainstorming protocol', () => {
 
     expect(systemText).not.toContain('Brainstorm phase: discovery | options | validated_plan')
   })
+
+  it('allows concise direct answers for straightforward factual questions', () => {
+    const messages = getDiscussPrompt({
+      projectId: 'p',
+      chatId: 'c',
+      userId: 'u',
+      chatMode: 'discuss',
+      provider: 'openai',
+      userMessage: 'what model are you?',
+    })
+
+    const systemText = messages
+      .filter((m) => m.role === 'system')
+      .map((m) => m.content)
+      .join('\n\n')
+
+    expect(systemText).toContain('For straightforward factual questions')
+    expect(systemText).toContain('Answer directly in plain language')
+  })
 })

@@ -162,9 +162,11 @@ export default function ProjectPage() {
 
   // Pending message for when we need to create chat first
   const [pendingMessage, setPendingMessage] = useState<{
+    id: string
     content: string
     mode: 'discuss' | 'build'
   } | null>(null)
+  const pendingMessageDispatchRef = useRef<string | null>(null)
 
   // Plan Draft (Claude Code-like plan panel)
   const [planDraft, setPlanDraft] = useState('')
@@ -250,6 +252,7 @@ export default function ProjectPage() {
     model:
       settings?.providerConfigs?.[settings?.defaultProvider || 'openai']?.defaultModel || 'gpt-4o',
   })
+  const sendAgentMessage = agent.sendMessage
 
   const artifactRecords = useQuery(
     api.artifacts.list,
@@ -284,11 +287,17 @@ export default function ProjectPage() {
 
   // Handle sending pending message after chat is created
   useEffect(() => {
-    if (pendingMessage && activeChat && chatMode === pendingMessage.mode) {
-      agent.handleSubmit()
-      setPendingMessage(null)
-    }
-  }, [pendingMessage, activeChat, chatMode, agent])
+    if (!pendingMessage || !activeChat || chatMode !== pendingMessage.mode) return
+    if (pendingMessageDispatchRef.current === pendingMessage.id) return
+
+    pendingMessageDispatchRef.current = pendingMessage.id
+    void sendAgentMessage(pendingMessage.content).finally(() => {
+      setPendingMessage((current) => (current?.id === pendingMessage.id ? null : current))
+      if (pendingMessageDispatchRef.current === pendingMessage.id) {
+        pendingMessageDispatchRef.current = null
+      }
+    })
+  }, [pendingMessage, activeChat, chatMode, sendAgentMessage])
 
   // Auto-open artifact panel when there are pending artifacts in build mode
   useEffect(() => {
@@ -628,8 +637,7 @@ export default function ProjectPage() {
           toast.success('Chat created')
           setActiveChatId(newChatId)
           // Store pending message - will be sent once chat is active and hook is ready
-          agent.setInput(finalContent)
-          setPendingMessage({ content: finalContent, mode })
+          setPendingMessage({ id: `pending-${Date.now()}`, content: finalContent, mode })
         } catch {
           toast.error('Failed to create chat')
         }
@@ -644,11 +652,10 @@ export default function ProjectPage() {
         return
       }
 
-      // Use agent hook
-      agent.setInput(finalContent)
-      setPendingMessage({ content: finalContent, mode })
+      // Send directly for existing chats.
+      await sendAgentMessage(finalContent)
     },
-    [activeChat, projectId, createChatMutation, agent, provider, planDraft, setActiveChatId]
+    [activeChat, projectId, createChatMutation, sendAgentMessage, provider, planDraft, setActiveChatId]
   )
 
   const handleResendInBuild = useCallback(
