@@ -11,6 +11,8 @@ import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 
 // Components
 import { Workbench } from '@/components/workbench/Workbench'
+import { Breadcrumb, buildBreadcrumbItems } from '@/components/workbench/Breadcrumb'
+import { StatusBar } from '@/components/workbench/StatusBar'
 import { ChatInput } from '@/components/chat/ChatInput'
 import { MessageList } from '@/components/chat/MessageList'
 import { RunTimelinePanel } from '@/components/chat/RunTimelinePanel'
@@ -23,7 +25,6 @@ import { ShareButton } from '@/components/chat/ShareButton'
 import { ChatHistoryActions } from '@/components/chat/ChatHistoryActions'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { PandaLogo } from '@/components/ui/panda-logo'
 import {
   Dialog,
   DialogContent,
@@ -32,7 +33,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { PanelRight, ChevronLeft, Bot, RotateCcw, AlertTriangle } from 'lucide-react'
+import {
+  PanelRight,
+  PanelRightClose,
+  ChevronLeft,
+  Bot,
+  RotateCcw,
+  AlertTriangle,
+} from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
@@ -121,12 +129,17 @@ export default function ProjectPage() {
 
   // UI State
   const [isArtifactPanelOpen, setIsArtifactPanelOpen] = useState(false)
+  const [isChatPanelOpen, setIsChatPanelOpen] = useState(true)
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
   const [selectedFileLocation, setSelectedFileLocation] = useState<{
     line: number
     column: number
     nonce: number
   } | null>(null)
+  const [openTabs, setOpenTabs] = useState<Array<{ path: string; isDirty?: boolean }>>([])
+  const [cursorPosition, setCursorPosition] = useState<{ line: number; column: number } | null>(
+    null
+  )
   const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false)
   const [isDebugDialogOpen, setIsDebugDialogOpen] = useState(false)
   const [isMobileLayout, setIsMobileLayout] = useState(false)
@@ -153,6 +166,18 @@ export default function ProjectPage() {
     update()
     media.addEventListener('change', update)
     return () => media.removeEventListener('change', update)
+  }, [])
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
+        e.preventDefault()
+        setIsChatPanelOpen((prev) => !prev)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
   useEffect(() => {
@@ -572,11 +597,34 @@ export default function ProjectPage() {
           ...location,
           nonce: Date.now(),
         })
-        return
+        setCursorPosition({ line: location.line, column: location.column })
+      } else {
+        setSelectedFileLocation(null)
+        setCursorPosition(null)
       }
-      setSelectedFileLocation(null)
+      setOpenTabs((prev) => {
+        if (prev.some((t) => t.path === path)) return prev
+        return [...prev, { path }]
+      })
     },
     []
+  )
+
+  const handleTabClose = useCallback(
+    (path: string) => {
+      setOpenTabs((prev) => {
+        const next = prev.filter((t) => t.path !== path)
+        if (next.length === 0) {
+          setSelectedFilePath(null)
+        } else if (selectedFilePath === path) {
+          const index = prev.findIndex((t) => t.path === path)
+          const nextTab = next[Math.min(index, next.length - 1)]
+          setSelectedFilePath(nextTab?.path ?? null)
+        }
+        return next
+      })
+    },
+    [selectedFilePath]
   )
 
   const handleFileCreate = useCallback(
@@ -996,8 +1044,8 @@ export default function ProjectPage() {
         animate={{ y: 0, opacity: 1 }}
         className="surface-1 flex h-14 shrink-0 items-center justify-between border-b border-border px-4"
       >
-        <div className="flex items-center gap-3">
-          <Link href="/projects">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <Link href="/projects" className="shrink-0">
             <Button
               variant="ghost"
               size="icon"
@@ -1011,18 +1059,18 @@ export default function ProjectPage() {
 
           <div className="h-6 w-px bg-border" />
 
-          <div className="flex items-center gap-3">
-            <PandaLogo size="sm" variant="icon" />
-            <div className="flex items-center gap-2">
-              <h1 className="font-mono text-sm font-semibold">{project.name}</h1>
-              {isAnyJobRunning && (
-                <span
-                  className="flex h-2 w-2 animate-pulse rounded-full bg-primary"
-                  title="Jobs running"
-                />
-              )}
-            </div>
-          </div>
+          <Breadcrumb
+            projectName={project.name}
+            projectId={projectId}
+            items={buildBreadcrumbItems(selectedFilePath)}
+          />
+
+          {isAnyJobRunning && (
+            <span
+              className="ml-2 flex h-2 w-2 animate-pulse rounded-full bg-primary"
+              title="Jobs running"
+            />
+          )}
         </div>
 
         <div className="flex items-center gap-1">
@@ -1049,6 +1097,20 @@ export default function ProjectPage() {
           {/* Secondary Actions */}
           <div className="flex items-center gap-1 pl-3">
             <Button
+              variant={isChatPanelOpen ? 'secondary' : 'ghost'}
+              size="sm"
+              className="h-8 gap-1.5 rounded-none font-mono text-xs"
+              onClick={() => setIsChatPanelOpen(!isChatPanelOpen)}
+              title="Toggle chat panel (Ctrl+B)"
+            >
+              {isChatPanelOpen ? (
+                <PanelRightClose className="h-4 w-4" />
+              ) : (
+                <PanelRight className="h-4 w-4" />
+              )}
+              <span className="hidden lg:inline">Chat</span>
+            </Button>
+            <Button
               variant={isArtifactPanelOpen ? 'secondary' : 'ghost'}
               size="sm"
               className="h-8 gap-1.5 rounded-none font-mono text-xs"
@@ -1072,107 +1134,129 @@ export default function ProjectPage() {
       </motion.div>
 
       {/* Main Content */}
-      <div className="relative flex-1 overflow-hidden">
-        {isMobileLayout ? (
-          <div className="flex h-full flex-col">
-            <div className="flex-1 overflow-hidden">
-              {mobilePrimaryPanel === 'workspace' ? (
+      <div className="relative flex flex-1 flex-col overflow-hidden">
+        <div className="relative flex-1 overflow-hidden">
+          {isMobileLayout ? (
+            <div className="flex h-full flex-col">
+              <div className="flex-1 overflow-hidden">
+                {mobilePrimaryPanel === 'workspace' ? (
+                  <Workbench
+                    projectId={projectId}
+                    files={files}
+                    selectedFilePath={selectedFilePath}
+                    selectedLocation={selectedFileLocation}
+                    openTabs={openTabs}
+                    onSelectFile={handleFileSelect}
+                    onCloseTab={handleTabClose}
+                    onCreateFile={handleFileCreate}
+                    onRenameFile={handleFileRename}
+                    onDeleteFile={handleFileDelete}
+                    onSaveFile={handleEditorSave}
+                  />
+                ) : (
+                  chatPanelContent
+                )}
+              </div>
+              {!isMobileKeyboardOpen && (
+                <div className="surface-1 grid h-12 grid-cols-2 border-t border-border font-mono text-xs uppercase tracking-widest">
+                  <button
+                    type="button"
+                    onClick={() => setMobilePrimaryPanel('workspace')}
+                    className={cn(
+                      'h-full border-r border-border',
+                      mobilePrimaryPanel === 'workspace'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    Workspace
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMobilePrimaryPanel('chat')}
+                    className={cn(
+                      'relative h-full',
+                      mobilePrimaryPanel === 'chat'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    Chat
+                    {mobileUnreadCount > 0 && mobilePrimaryPanel !== 'chat' && (
+                      <span className="absolute right-2 top-1.5 min-w-5 border border-border bg-destructive px-1.5 py-0.5 text-center font-mono text-xs text-destructive-foreground">
+                        {mobileUnreadCount}
+                      </span>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <PanelGroup direction="horizontal" className="h-full">
+              <Panel
+                defaultSize={isChatPanelOpen ? 70 : 100}
+                minSize={40}
+                className="flex flex-col"
+              >
                 <Workbench
                   projectId={projectId}
                   files={files}
                   selectedFilePath={selectedFilePath}
                   selectedLocation={selectedFileLocation}
+                  openTabs={openTabs}
                   onSelectFile={handleFileSelect}
+                  onCloseTab={handleTabClose}
                   onCreateFile={handleFileCreate}
                   onRenameFile={handleFileRename}
                   onDeleteFile={handleFileDelete}
                   onSaveFile={handleEditorSave}
                 />
-              ) : (
-                chatPanelContent
+              </Panel>
+
+              {isChatPanelOpen && (
+                <>
+                  <PanelResizeHandle className="h-full w-px bg-border transition-colors hover:bg-primary" />
+
+                  <Panel defaultSize={30} minSize={25} maxSize={50} className="flex flex-col">
+                    {chatPanelContent}
+                  </Panel>
+                </>
               )}
-            </div>
-            {!isMobileKeyboardOpen && (
-              <div className="surface-1 grid h-12 grid-cols-2 border-t border-border font-mono text-xs uppercase tracking-widest">
-                <button
-                  type="button"
-                  onClick={() => setMobilePrimaryPanel('workspace')}
-                  className={cn(
-                    'h-full border-r border-border',
-                    mobilePrimaryPanel === 'workspace'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  Workspace
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMobilePrimaryPanel('chat')}
-                  className={cn(
-                    'relative h-full',
-                    mobilePrimaryPanel === 'chat'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  Chat
-                  {mobileUnreadCount > 0 && mobilePrimaryPanel !== 'chat' && (
-                    <span className="absolute right-2 top-1.5 min-w-5 border border-border bg-destructive px-1.5 py-0.5 text-center font-mono text-xs text-destructive-foreground">
-                      {mobileUnreadCount}
-                    </span>
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <PanelGroup direction="horizontal" className="h-full">
-            <Panel defaultSize={70} minSize={40} className="flex flex-col">
-              <Workbench
+            </PanelGroup>
+          )}
+
+          {/* Floating Artifact Panel */}
+          {isArtifactPanelOpen && (
+            <motion.div
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 50 }}
+              className="absolute bottom-12 right-4 top-4 z-40"
+            >
+              <ArtifactPanel
                 projectId={projectId}
-                files={files}
-                selectedFilePath={selectedFilePath}
-                selectedLocation={selectedFileLocation}
-                onSelectFile={handleFileSelect}
-                onCreateFile={handleFileCreate}
-                onRenameFile={handleFileRename}
-                onDeleteFile={handleFileDelete}
-                onSaveFile={handleEditorSave}
+                chatId={activeChat?._id}
+                isOpen={true}
+                onClose={() => setIsArtifactPanelOpen(false)}
+                position="floating"
               />
-            </Panel>
+            </motion.div>
+          )}
 
-            <PanelResizeHandle className="h-full w-px bg-border transition-colors hover:bg-primary" />
+          {/* Command Palette */}
+          <CommandPalette
+            files={files?.map((f) => ({ path: f.path })) ?? []}
+            onModeChange={handleModeChange}
+            currentMode={chatMode}
+          />
+        </div>
 
-            <Panel defaultSize={30} minSize={25} maxSize={50} className="flex flex-col">
-              {chatPanelContent}
-            </Panel>
-          </PanelGroup>
-        )}
-
-        {/* Floating Artifact Panel */}
-        {isArtifactPanelOpen && (
-          <motion.div
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 50 }}
-            className="absolute bottom-4 right-4 top-4 z-40"
-          >
-            <ArtifactPanel
-              projectId={projectId}
-              chatId={activeChat?._id}
-              isOpen={true}
-              onClose={() => setIsArtifactPanelOpen(false)}
-              position="floating"
-            />
-          </motion.div>
-        )}
-
-        {/* Command Palette */}
-        <CommandPalette
-          files={files?.map((f) => ({ path: f.path })) ?? []}
-          onModeChange={handleModeChange}
-          currentMode={chatMode}
+        {/* Status Bar */}
+        <StatusBar
+          filePath={selectedFilePath}
+          cursorPosition={cursorPosition}
+          isConnected={true}
+          isStreaming={agent.isLoading}
         />
       </div>
     </div>

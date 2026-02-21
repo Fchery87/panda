@@ -1,10 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useAction } from 'convex/react'
-import { api } from '@convex/_generated/api'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { FileTree } from './FileTree'
+import { FileTabs } from './FileTabs'
 import { ProjectSearchPanel } from './ProjectSearchPanel'
 import { Terminal } from './Terminal'
 import { EditorContainer } from '../editor/EditorContainer'
@@ -13,7 +12,11 @@ import { cn } from '@/lib/utils'
 import { Code2, Eye, FileCode, Plus, Search } from 'lucide-react'
 import type { Id } from '@convex/_generated/dataModel'
 import { Button } from '@/components/ui/button'
-import { toast } from 'sonner'
+
+interface OpenFileTab {
+  path: string
+  isDirty?: boolean
+}
 
 interface WorkbenchProps {
   projectId: Id<'projects'>
@@ -30,7 +33,9 @@ interface WorkbenchProps {
     column: number
     nonce: number
   } | null
+  openTabs?: OpenFileTab[]
   onSelectFile: (path: string, location?: { line: number; column: number }) => void
+  onCloseTab?: (path: string) => void
   onCreateFile: (path: string) => void
   onRenameFile: (oldPath: string, newPath: string) => void
   onDeleteFile: (path: string) => void
@@ -117,7 +122,9 @@ export function Workbench({
   files,
   selectedFilePath,
   selectedLocation,
+  openTabs = [],
   onSelectFile,
+  onCloseTab,
   onCreateFile,
   onRenameFile,
   onDeleteFile,
@@ -375,8 +382,24 @@ export function Workbench({
             {/* Editor + Preview (tabbed) */}
             <Panel defaultSize={70}>
               <div className="surface-0 flex h-full flex-col">
+                {/* File Tabs */}
+                {openTabs.length > 0 && (
+                  <FileTabs
+                    tabs={openTabs}
+                    activePath={selectedFilePath}
+                    onSelect={onSelectFile}
+                    onClose={onCloseTab || (() => {})}
+                  />
+                )}
+
                 {/* Tab Header */}
-                <div className="panel-header flex items-center gap-0 p-0" data-number="02">
+                <div
+                  className={cn(
+                    'panel-header flex items-center gap-0 p-0',
+                    openTabs.length === 0 && ''
+                  )}
+                  data-number="02"
+                >
                   <button
                     onClick={() => setActiveTab('code')}
                     className={cn(
