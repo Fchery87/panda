@@ -69,7 +69,7 @@ export function useAutoApplyArtifacts(args: {
   const updateJobStatus = useMutation(api.jobs.updateStatus)
   const updateArtifactStatus = useMutation(api.artifacts.updateStatus)
 
-  const isApplyingRef = useRef(false)
+  const processingRef = useRef<Set<string>>(new Set())
 
   const policy = useMemo<AgentPolicy>(() => {
     return (
@@ -83,109 +83,114 @@ export function useAutoApplyArtifacts(args: {
 
   useEffect(() => {
     if (pendingArtifacts.length === 0) return
-    if (isApplyingRef.current) return
 
-    const next = pendingArtifacts[0]!
-    const shouldApply = shouldAutoApplyArtifact(policy, {
-      type: next.type,
-      payload: next.payload,
-    })
-    if (!shouldApply) return
+    for (const artifact of pendingArtifacts) {
+      if (processingRef.current.has(artifact.id)) continue
 
-    isApplyingRef.current = true
+      const shouldApply = shouldAutoApplyArtifact(policy, {
+        type: artifact.type,
+        payload: artifact.payload,
+      })
+      if (!shouldApply) continue
 
-    void (async () => {
-      try {
-        await updateArtifactStatus({ id: next.id, status: 'in_progress' })
+      processingRef.current.add(artifact.id)
 
-        if (next.type === 'file_write') {
-          const payload = next.payload as { filePath: string; content: string }
-          const existing = await convex.query(api.files.getByPath, {
-            projectId: args.projectId,
-            path: payload.filePath,
-          })
+      void (async () => {
+        try {
+          await updateArtifactStatus({ id: artifact.id, status: 'in_progress' })
 
-          await upsertFile({
-            id: existing?._id,
-            projectId: args.projectId,
-            path: payload.filePath,
-            content: payload.content,
-            isBinary: false,
-          })
+          if (artifact.type === 'file_write') {
+            const payload = artifact.payload as { filePath: string; content: string }
+            const existing = await convex.query(api.files.getByPath, {
+              projectId: args.projectId,
+              path: payload.filePath,
+            })
 
-          await updateArtifactStatus({ id: next.id, status: 'completed' })
-          return
-        }
+            await upsertFile({
+              id: existing?._id,
+              projectId: args.projectId,
+              path: payload.filePath,
+              content: payload.content,
+              isBinary: false,
+            })
 
-        if (next.type === 'command_run') {
-          const payload = next.payload as { command: string; workingDirectory?: string }
-          const type = inferJobType(payload.command)
-          const { jobId } = await createAndExecuteJob({
-            projectId: args.projectId,
-            type,
-            command: payload.command,
-            workingDirectory: payload.workingDirectory,
-          })
+            await updateArtifactStatus({ id: artifact.id, status: 'completed' })
+            toast.success('File applied', {
+              description: existing ? `Updated ${payload.filePath}` : `Created ${payload.filePath}`,
+            })
+            return
+          }
 
-          const startedAt = Date.now()
-          await updateJobStatus({
-            id: jobId,
-            status: 'running',
-            startedAt,
-            logs: [`[${new Date(startedAt).toISOString()}] Running: ${payload.command}`],
-          })
-
-          const executeResponse = await fetch('/api/jobs/execute', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+          if (artifact.type === 'command_run') {
+            const payload = artifact.payload as { command: string; workingDirectory?: string }
+            const type = inferJobType(payload.command)
+            const { jobId } = await createAndExecuteJob({
+              projectId: args.projectId,
+              type,
               command: payload.command,
               workingDirectory: payload.workingDirectory,
-            }),
-          })
+            })
 
-          if (!executeResponse.ok) {
-            const errorText = await executeResponse.text()
+            const startedAt = Date.now()
             await updateJobStatus({
               id: jobId,
-              status: 'failed',
-              completedAt: Date.now(),
-              error: errorText,
+              status: 'running',
+              startedAt,
+              logs: [`[${new Date(startedAt).toISOString()}] Running: ${payload.command}`],
             })
-            throw new Error(errorText)
+
+            const executeResponse = await fetch('/api/jobs/execute', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                command: payload.command,
+                workingDirectory: payload.workingDirectory,
+              }),
+            })
+
+            if (!executeResponse.ok) {
+              const errorText = await executeResponse.text()
+              await updateJobStatus({
+                id: jobId,
+                status: 'failed',
+                completedAt: Date.now(),
+                error: errorText,
+              })
+              throw new Error(errorText)
+            }
+
+            const result = (await executeResponse.json()) as {
+              stdout: string
+              stderr: string
+              exitCode: number
+            }
+            await updateJobStatus({
+              id: jobId,
+              status: result.exitCode === 0 ? 'completed' : 'failed',
+              completedAt: Date.now(),
+              output: result.stdout || undefined,
+              error: result.stderr || undefined,
+              logs: [
+                `[${new Date(startedAt).toISOString()}] Running: ${payload.command}`,
+                `[${new Date().toISOString()}] Exit code: ${result.exitCode}`,
+              ],
+            })
+
+            await updateArtifactStatus({ id: artifact.id, status: 'completed' })
+            return
           }
 
-          const result = (await executeResponse.json()) as {
-            stdout: string
-            stderr: string
-            exitCode: number
-          }
-          await updateJobStatus({
-            id: jobId,
-            status: result.exitCode === 0 ? 'completed' : 'failed',
-            completedAt: Date.now(),
-            output: result.stdout || undefined,
-            error: result.stderr || undefined,
-            logs: [
-              `[${new Date(startedAt).toISOString()}] Running: ${payload.command}`,
-              `[${new Date().toISOString()}] Exit code: ${result.exitCode}`,
-            ],
+          await updateArtifactStatus({ id: artifact.id, status: 'failed' })
+        } catch (error) {
+          await updateArtifactStatus({ id: artifact.id, status: 'failed' })
+          toast.error('Auto-apply failed', {
+            description: error instanceof Error ? error.message : String(error),
           })
-
-          await updateArtifactStatus({ id: next.id, status: 'completed' })
-          return
+        } finally {
+          processingRef.current.delete(artifact.id)
         }
-
-        await updateArtifactStatus({ id: next.id, status: 'failed' })
-      } catch (error) {
-        await updateArtifactStatus({ id: next.id, status: 'failed' })
-        toast.error('Auto-apply failed', {
-          description: error instanceof Error ? error.message : String(error),
-        })
-      } finally {
-        isApplyingRef.current = false
-      }
-    })()
+      })()
+    }
   }, [
     pendingArtifacts,
     policy,

@@ -5,7 +5,8 @@
  */
 
 import { createAnthropic } from '@ai-sdk/anthropic'
-import { generateText, streamText, type CoreMessage, type ToolSet } from 'ai'
+import { generateText, jsonSchema, streamText, type CoreMessage, type ToolSet } from 'ai'
+import { formatProviderError } from './error-utils'
 import type {
   CompletionMessage,
   CompletionOptions,
@@ -81,6 +82,7 @@ export class AnthropicProvider implements LLMProvider {
       messages: this.convertMessages(options.messages),
       temperature: options.temperature ?? 0.7,
       maxTokens: options.maxTokens,
+      maxRetries: this.config.maxRetries ?? 0,
       topP: options.topP,
       tools: this.convertTools(options.tools),
     })
@@ -117,6 +119,7 @@ export class AnthropicProvider implements LLMProvider {
       messages: this.convertMessages(options.messages),
       temperature: options.temperature ?? 0.7,
       maxTokens: options.maxTokens,
+      maxRetries: this.config.maxRetries ?? 0,
       topP: options.topP,
       ...(tools ? { tools } : {}),
       providerOptions: {
@@ -155,7 +158,7 @@ export class AnthropicProvider implements LLMProvider {
           case 'error':
             yield {
               type: 'error',
-              error: part.error?.message ?? String(part.error ?? 'Unknown Anthropic stream error'),
+              error: formatProviderError(part.error ?? 'Unknown Anthropic stream error'),
             }
             return
           case 'finish':
@@ -179,7 +182,7 @@ export class AnthropicProvider implements LLMProvider {
     } catch (error) {
       yield {
         type: 'error',
-        error: error instanceof Error ? error.message : String(error),
+        error: formatProviderError(error),
       }
     }
   }
@@ -211,7 +214,7 @@ export class AnthropicProvider implements LLMProvider {
     tools.forEach((tool) => {
       toolSet[tool.function.name] = {
         description: tool.function.description,
-        parameters: tool.function.parameters as any,
+        parameters: jsonSchema(tool.function.parameters as any),
       }
     })
     return toolSet

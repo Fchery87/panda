@@ -22,9 +22,13 @@ interface ProviderConfig {
   description: string
   apiKey: string
   enabled: boolean
+  baseUrl?: string
   defaultModel: string
   availableModels: string[]
   testStatus?: 'idle' | 'testing' | 'success' | 'error'
+  testCompletionStatus?: 'idle' | 'testing' | 'success' | 'error'
+  testStatusMessage?: string
+  testCompletionStatusMessage?: string
   useCodingPlan?: boolean
   reasoningEnabled?: boolean
   reasoningMode?: 'auto' | 'low' | 'medium' | 'high'
@@ -37,6 +41,7 @@ interface ProviderCardProps {
   supportsReasoning?: boolean
   onChange: (updates: Partial<ProviderConfig>) => void
   onTest: () => void
+  onTestCompletion?: () => void
   className?: string
 }
 
@@ -45,12 +50,31 @@ export function ProviderCard({
   supportsReasoning = false,
   onChange,
   onTest,
+  onTestCompletion,
   className,
 }: ProviderCardProps) {
   const [showApiKey, setShowApiKey] = React.useState(false)
 
+  const copyToClipboard = React.useCallback((value: string) => {
+    if (typeof navigator === 'undefined' || !navigator.clipboard) return
+    void navigator.clipboard.writeText(value)
+  }, [])
+
   const getStatusIcon = () => {
     switch (provider.testStatus) {
+      case 'testing':
+        return <Loader2 className="h-4 w-4 animate-spin" />
+      case 'success':
+        return <Check className="h-4 w-4 text-green-500" />
+      case 'error':
+        return <X className="h-4 w-4 text-red-500" />
+      default:
+        return <TestTube className="h-4 w-4" />
+    }
+  }
+
+  const getCompletionStatusIcon = () => {
+    switch (provider.testCompletionStatus) {
       case 'testing':
         return <Loader2 className="h-4 w-4 animate-spin" />
       case 'success':
@@ -110,6 +134,19 @@ export function ProviderCard({
               {showApiKey ? 'Hide' : 'Show'}
             </Button>
           </div>
+        </div>
+
+        {/* Base URL Input */}
+        <div className="space-y-2">
+          <Label htmlFor={`${provider.name}-base-url`}>Base URL</Label>
+          <Input
+            id={`${provider.name}-base-url`}
+            type="text"
+            placeholder="https://llm.chutes.ai/v1"
+            value={provider.baseUrl ?? ''}
+            onChange={(e) => onChange({ baseUrl: e.target.value })}
+            disabled={!provider.enabled}
+          />
         </div>
 
         {/* Model Selection */}
@@ -234,6 +271,24 @@ export function ProviderCard({
           </span>
         </Button>
 
+        {onTestCompletion && (
+          <Button
+            variant="outline"
+            onClick={onTestCompletion}
+            disabled={
+              !provider.enabled || !provider.apiKey || provider.testCompletionStatus === 'testing'
+            }
+            className="w-full"
+          >
+            {getCompletionStatusIcon()}
+            <span className="ml-2">
+              {provider.testCompletionStatus === 'testing'
+                ? 'Testing completion...'
+                : 'Test Completion'}
+            </span>
+          </Button>
+        )}
+
         {/* Status Message */}
         {provider.testStatus === 'success' && (
           <p className="flex items-center gap-1 text-sm text-green-600">
@@ -241,9 +296,55 @@ export function ProviderCard({
           </p>
         )}
         {provider.testStatus === 'error' && (
-          <p className="flex items-center gap-1 text-sm text-red-600">
-            <X className="h-3 w-3" /> Connection failed. Check your API key.
+          <div className="space-y-1">
+            <p className="flex items-center gap-1 text-sm text-red-600">
+              <X className="h-3 w-3" /> Connection failed. Check your API key.
+            </p>
+            {provider.testStatusMessage && (
+              <div className="flex items-start gap-2">
+                <p className="line-clamp-3 flex-1 font-mono text-xs text-red-700">
+                  {provider.testStatusMessage}
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-6 rounded-none px-2 font-mono text-xs"
+                  onClick={() => copyToClipboard(provider.testStatusMessage!)}
+                >
+                  Copy
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+        {provider.testCompletionStatus === 'success' && (
+          <p className="flex items-center gap-1 text-sm text-green-600">
+            <Check className="h-3 w-3" /> Completion test succeeded
           </p>
+        )}
+        {provider.testCompletionStatus === 'error' && (
+          <div className="space-y-1">
+            <p className="flex items-center gap-1 text-sm text-red-600">
+              <X className="h-3 w-3" /> Completion test failed. Verify model and endpoint.
+            </p>
+            {provider.testCompletionStatusMessage && (
+              <div className="flex items-start gap-2">
+                <p className="line-clamp-4 flex-1 font-mono text-xs text-red-700">
+                  {provider.testCompletionStatusMessage}
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-6 rounded-none px-2 font-mono text-xs"
+                  onClick={() => copyToClipboard(provider.testCompletionStatusMessage!)}
+                >
+                  Copy
+                </Button>
+              </div>
+            )}
+          </div>
         )}
       </CardContent>
     </Card>

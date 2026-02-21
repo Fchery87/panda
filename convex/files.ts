@@ -82,6 +82,16 @@ export const upsert = mutation({
         throw new Error('File not found')
       }
 
+      if (args.path !== existing.path) {
+        const pathConflict = await ctx.db
+          .query('files')
+          .withIndex('by_path', (q) => q.eq('projectId', args.projectId).eq('path', args.path))
+          .unique()
+        if (pathConflict && pathConflict._id !== args.id) {
+          throw new Error(`File already exists at path: ${args.path}`)
+        }
+      }
+
       // Check if content has changed for snapshot
       if (args.content !== undefined && args.content !== existing.content) {
         // Create snapshot before updating
@@ -102,6 +112,7 @@ export const upsert = mutation({
       }
 
       await ctx.db.patch(args.id, {
+        path: args.path,
         content: args.content,
         isBinary: args.isBinary,
         updatedAt: now,
@@ -109,6 +120,14 @@ export const upsert = mutation({
 
       return args.id
     } else {
+      const existingByPath = await ctx.db
+        .query('files')
+        .withIndex('by_path', (q) => q.eq('projectId', args.projectId).eq('path', args.path))
+        .unique()
+      if (existingByPath) {
+        throw new Error(`File already exists at path: ${args.path}`)
+      }
+
       // Create new file
       return await ctx.db.insert('files', {
         projectId: args.projectId,

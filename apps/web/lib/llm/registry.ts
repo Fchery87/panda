@@ -8,6 +8,15 @@
 import type { LLMProvider, ProviderConfig, ModelInfo, ProviderType } from './types'
 import { OpenAICompatibleProvider } from './providers/openai-compatible'
 import { AnthropicProvider } from './providers/anthropic'
+import { ChutesProvider } from './providers/chutes'
+import { DeepSeekProvider } from './providers/deepseek'
+import { GroqProvider } from './providers/groq'
+import { FireworksProvider } from './providers/fireworks'
+import {
+  fetchModelsDevMetadata,
+  mapModelsDevToModelInfo,
+  type ModelsDevResponse,
+} from './models-dev'
 
 /**
  * Registry entry for a provider instance
@@ -25,6 +34,7 @@ interface ProviderEntry {
 export class ProviderRegistry {
   private providers: Map<string, ProviderEntry> = new Map()
   private defaultProviderId: string | null = null
+  private modelsDevCache: ModelsDevResponse | null = null
 
   /**
    * Create a new provider instance
@@ -46,6 +56,18 @@ export class ProviderRegistry {
         break
       case 'anthropic':
         provider = new AnthropicProvider(config)
+        break
+      case 'chutes':
+        provider = new ChutesProvider(config)
+        break
+      case 'deepseek':
+        provider = new DeepSeekProvider(config)
+        break
+      case 'groq':
+        provider = new GroqProvider(config)
+        break
+      case 'fireworks':
+        provider = new FireworksProvider(config)
         break
       default:
         throw new Error(`Unsupported provider type: ${config.provider}`)
@@ -161,11 +183,47 @@ export class ProviderRegistry {
   }
 
   /**
+   * Refresh models from Models.dev
+   */
+  async refreshModelsFromModelsDev(): Promise<void> {
+    try {
+      this.modelsDevCache = await fetchModelsDevMetadata()
+    } catch (error) {
+      console.error('Failed to fetch Models.dev metadata:', error)
+    }
+  }
+
+  /**
+   * Get models from Models.dev for a specific provider
+   */
+  getModelsFromModelsDev(providerId: string): ModelInfo[] {
+    if (!this.modelsDevCache) return []
+    return mapModelsDevToModelInfo(providerId, this.modelsDevCache)
+  }
+
+  /**
+   * Get all models from Models.dev
+   */
+  async getAllModelsFromModelsDev(): Promise<{ providerId: string; models: ModelInfo[] }[]> {
+    if (!this.modelsDevCache) {
+      await this.refreshModelsFromModelsDev()
+    }
+
+    if (!this.modelsDevCache) return []
+
+    return Object.keys(this.modelsDevCache).map((providerId) => ({
+      providerId,
+      models: mapModelsDevToModelInfo(providerId, this.modelsDevCache!),
+    }))
+  }
+
+  /**
    * Clear all providers
    */
   clear(): void {
     this.providers.clear()
     this.defaultProviderId = null
+    this.modelsDevCache = null
   }
 }
 
@@ -273,6 +331,72 @@ export function createProviderFromEnv(): LLMProvider | null {
           baseUrl: process.env.ZAI_BASE_URL || 'https://api.z.ai/api/paas/v4',
         },
         defaultModel: process.env.ZAI_DEFAULT_MODEL || 'glm-4.7',
+      },
+      true
+    )
+  }
+
+  // Try Chutes.ai
+  if (process.env.CHUTES_API_KEY) {
+    return registry.createProvider(
+      'chutes',
+      {
+        provider: 'chutes',
+        auth: {
+          apiKey: process.env.CHUTES_API_KEY,
+          baseUrl: process.env.CHUTES_BASE_URL || 'https://llm.chutes.ai/v1',
+        },
+        defaultModel: process.env.CHUTES_DEFAULT_MODEL || 'meta-llama/Llama-3.1-8B-Instruct',
+      },
+      true
+    )
+  }
+
+  // Try DeepSeek
+  if (process.env.DEEPSEEK_API_KEY) {
+    return registry.createProvider(
+      'deepseek',
+      {
+        provider: 'deepseek',
+        auth: {
+          apiKey: process.env.DEEPSEEK_API_KEY,
+          baseUrl: process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1',
+        },
+        defaultModel: process.env.DEEPSEEK_DEFAULT_MODEL || 'deepseek-chat',
+      },
+      true
+    )
+  }
+
+  // Try Groq
+  if (process.env.GROQ_API_KEY) {
+    return registry.createProvider(
+      'groq',
+      {
+        provider: 'groq',
+        auth: {
+          apiKey: process.env.GROQ_API_KEY,
+          baseUrl: process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1',
+        },
+        defaultModel: process.env.GROQ_DEFAULT_MODEL || 'llama-3.3-70b-versatile',
+      },
+      true
+    )
+  }
+
+  // Try Fireworks AI
+  if (process.env.FIREWORKS_API_KEY) {
+    return registry.createProvider(
+      'fireworks',
+      {
+        provider: 'fireworks',
+        auth: {
+          apiKey: process.env.FIREWORKS_API_KEY,
+          baseUrl: process.env.FIREWORKS_BASE_URL || 'https://api.fireworks.ai/inference/v1',
+        },
+        defaultModel:
+          process.env.FIREWORKS_DEFAULT_MODEL ||
+          'accounts/fireworks/models/llama-v3p3-70b-instruct',
       },
       true
     )

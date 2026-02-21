@@ -2,6 +2,22 @@ import { defineSchema, defineTable } from 'convex/server'
 import { authTables } from '@convex-dev/auth/server'
 import { v } from 'convex/values'
 
+/**
+ * Chat mode type - used across the application
+ * - ask: Read-only Q&A
+ * - architect: System design, limited edits
+ * - code: Default coding mode
+ * - build: Full implementation
+ */
+export const ChatMode = v.union(
+  v.literal('ask'),
+  v.literal('architect'),
+  v.literal('code'),
+  v.literal('build')
+)
+
+export type ChatModeType = 'ask' | 'architect' | 'code' | 'build'
+
 export default defineSchema({
   // Auth tables (accounts, sessions, verification codes, etc.)
   ...authTables,
@@ -18,11 +34,22 @@ export default defineSchema({
     avatarUrl: v.optional(v.string()),
     tokenIdentifier: v.optional(v.string()),
     createdAt: v.optional(v.number()),
+    // Admin fields
+    isAdmin: v.optional(v.boolean()),
+    adminRole: v.optional(v.union(v.literal('super'), v.literal('admin'), v.literal('moderator'))),
+    adminGrantedAt: v.optional(v.number()),
+    adminGrantedBy: v.optional(v.id('users')),
+    // User status
+    isBanned: v.optional(v.boolean()),
+    bannedAt: v.optional(v.number()),
+    bannedReason: v.optional(v.string()),
   })
     // Required by @convex-dev/auth internals (looks up users via withIndex("email")).
     .index('email', ['email'])
     .index('phone', ['phone'])
-    .index('by_tokenIdentifier', ['tokenIdentifier']),
+    .index('by_tokenIdentifier', ['tokenIdentifier'])
+    .index('by_admin', ['isAdmin'])
+    .index('by_banned', ['isBanned']),
 
   // 2. Projects table - code projects
   projects: defineTable({
@@ -72,7 +99,7 @@ export default defineSchema({
   chats: defineTable({
     projectId: v.id('projects'),
     title: v.optional(v.string()),
-    mode: v.union(v.literal('discuss'), v.literal('build')),
+    mode: ChatMode,
     planDraft: v.optional(v.string()),
     planUpdatedAt: v.optional(v.number()),
     createdAt: v.number(),
@@ -128,6 +155,16 @@ export default defineSchema({
         })
       )
     ),
+    permissions: v.optional(
+      v.object({
+        tools: v.optional(v.record(v.string(), v.string())),
+        bash: v.optional(v.record(v.string(), v.string())),
+      })
+    ),
+    // Admin override tracking
+    overrideGlobalProvider: v.optional(v.boolean()),
+    overrideGlobalModel: v.optional(v.boolean()),
+    overrideProviderConfigs: v.optional(v.record(v.string(), v.boolean())),
     updatedAt: v.number(),
   }).index('by_user', ['userId']),
 
@@ -167,7 +204,7 @@ export default defineSchema({
     projectId: v.id('projects'),
     chatId: v.id('chats'),
     userId: v.id('users'),
-    mode: v.union(v.literal('discuss'), v.literal('build')),
+    mode: ChatMode,
     provider: v.optional(v.string()),
     model: v.optional(v.string()),
     status: v.union(
@@ -210,4 +247,212 @@ export default defineSchema({
   })
     .index('by_run_sequence', ['runId', 'sequence'])
     .index('by_chat_created', ['chatId', 'createdAt']),
+
+  // 12. Checkpoints table - versioned snapshots for rollback
+  checkpoints: defineTable({
+    projectId: v.id('projects'),
+    chatId: v.id('chats'),
+    name: v.string(),
+    description: v.optional(v.string()),
+    filesChanged: v.array(v.string()),
+    snapshotIds: v.array(v.id('fileSnapshots')),
+    createdAt: v.number(),
+  })
+    .index('by_project', ['projectId'])
+    .index('by_chat', ['chatId'])
+    .index('by_project_created', ['projectId', 'createdAt']),
+
+  // 13. Provider tokens table - OAuth tokens for LLM providers
+  providerTokens: defineTable({
+    userId: v.id('users'),
+    provider: v.string(),
+    accessToken: v.string(),
+    refreshToken: v.optional(v.string()),
+    expiresAt: v.optional(v.number()),
+    scope: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_user', ['userId'])
+    .index('by_user_provider', ['userId', 'provider']),
+
+  // 14. Shared chats table - public sharing links for chat sessions
+  sharedChats: defineTable({
+    chatId: v.id('chats'),
+    shareId: v.string(),
+    createdBy: v.id('users'),
+    createdAt: v.number(),
+    isPublic: v.boolean(),
+  })
+    .index('by_chat', ['chatId'])
+    .index('by_shareId', ['shareId'])
+    .index('by_creator', ['createdBy']),
+
+  // 15. MCP Servers table - user-configured MCP servers
+  mcpServers: defineTable({
+    userId: v.id('users'),
+    name: v.string(),
+    transport: v.union(v.literal('stdio'), v.literal('sse')),
+    command: v.optional(v.string()),
+    args: v.optional(v.array(v.string())),
+    url: v.optional(v.string()),
+    enabled: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_user', ['userId'])
+    .index('by_user_name', ['userId', 'name']),
+
+  // 16. Custom Subagents table - user-defined subagents
+  subagents: defineTable({
+    userId: v.id('users'),
+    name: v.string(),
+    description: v.string(),
+    prompt: v.optional(v.string()),
+    model: v.optional(v.string()),
+    temperature: v.optional(v.number()),
+    maxSteps: v.optional(v.number()),
+    permissions: v.optional(
+      v.object({
+        tools: v.optional(v.record(v.string(), v.string())),
+        bash: v.optional(v.record(v.string(), v.string())),
+      })
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_user', ['userId'])
+    .index('by_user_name', ['userId', 'name']),
+
+  // 17. Admin Settings table - global system configuration
+  adminSettings: defineTable({
+    // Global LLM Configuration
+    globalDefaultProvider: v.optional(v.string()),
+    globalDefaultModel: v.optional(v.string()),
+    globalProviderConfigs: v.optional(v.record(v.string(), v.record(v.string(), v.any()))),
+
+    // Feature flags
+    allowUserOverrides: v.optional(v.boolean()),
+    allowUserMCP: v.optional(v.boolean()),
+    allowUserSubagents: v.optional(v.boolean()),
+
+    // System controls
+    systemMaintenance: v.optional(v.boolean()),
+    registrationEnabled: v.optional(v.boolean()),
+    maxProjectsPerUser: v.optional(v.number()),
+    maxChatsPerProject: v.optional(v.number()),
+
+    // Analytics tracking
+    trackUsageAnalytics: v.optional(v.boolean()),
+    trackProviderUsage: v.optional(v.boolean()),
+
+    // Updated timestamp
+    updatedAt: v.number(),
+    updatedBy: v.optional(v.id('users')),
+  }).index('by_updated', ['updatedAt']),
+
+  // 18. User Analytics table - per-user usage tracking
+  userAnalytics: defineTable({
+    userId: v.id('users'),
+    totalChats: v.optional(v.number()),
+    totalMessages: v.optional(v.number()),
+    totalProjects: v.optional(v.number()),
+    totalTokensUsed: v.optional(v.number()),
+    lastActiveAt: v.optional(v.number()),
+    providerUsage: v.optional(v.record(v.string(), v.number())),
+    updatedAt: v.number(),
+  })
+    .index('by_user', ['userId'])
+    .index('by_last_active', ['lastActiveAt']),
+
+  // 19. Audit Log table - administrative actions
+  auditLog: defineTable({
+    userId: v.optional(v.id('users')),
+    action: v.string(),
+    resource: v.string(),
+    resourceId: v.optional(v.string()),
+    details: v.optional(v.record(v.string(), v.any())),
+    ipAddress: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index('by_user', ['userId'])
+    .index('by_action', ['action'])
+    .index('by_created', ['createdAt'])
+    .index('by_resource', ['resource', 'resourceId']),
+
+  // 20. Sessions table - agentic harness sessions
+  agentSessions: defineTable({
+    projectId: v.id('projects'),
+    parentSessionId: v.optional(v.id('agentSessions')),
+    status: v.union(v.literal('idle'), v.literal('busy'), v.literal('waiting'), v.literal('error')),
+    agent: v.string(),
+    model: v.optional(
+      v.object({
+        providerId: v.string(),
+        modelId: v.string(),
+      })
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    compactionCount: v.optional(v.number()),
+  })
+    .index('by_project', ['projectId'])
+    .index('by_parent', ['parentSessionId'])
+    .index('by_status', ['projectId', 'status']),
+
+  // 21. Message Parts table - structured parts for agentic messages
+  messageParts: defineTable({
+    sessionId: v.id('agentSessions'),
+    messageId: v.id('messages'),
+    partType: v.union(
+      v.literal('text'),
+      v.literal('reasoning'),
+      v.literal('file'),
+      v.literal('tool'),
+      v.literal('subtask'),
+      v.literal('agent'),
+      v.literal('step_start'),
+      v.literal('step_finish'),
+      v.literal('snapshot'),
+      v.literal('patch'),
+      v.literal('retry'),
+      v.literal('compaction'),
+      v.literal('permission')
+    ),
+    data: v.record(v.string(), v.any()),
+    sequence: v.number(),
+    createdAt: v.number(),
+  })
+    .index('by_session', ['sessionId'])
+    .index('by_message', ['messageId'])
+    .index('by_session_sequence', ['sessionId', 'sequence']),
+
+  // 22. Permission Requests table - pending permission requests
+  permissionRequests: defineTable({
+    sessionId: v.id('agentSessions'),
+    messageId: v.id('messages'),
+    tool: v.string(),
+    pattern: v.string(),
+    metadata: v.optional(v.record(v.string(), v.any())),
+    decision: v.optional(v.union(v.literal('allow'), v.literal('deny'), v.literal('ask'))),
+    reason: v.optional(v.string()),
+    createdAt: v.number(),
+    decidedAt: v.optional(v.number()),
+  })
+    .index('by_session', ['sessionId'])
+    .index('by_decision', ['sessionId', 'decision']),
+
+  // 23. Snapshots table - git snapshots for undo
+  gitSnapshots: defineTable({
+    sessionId: v.id('agentSessions'),
+    messageId: v.id('messages'),
+    hash: v.string(),
+    step: v.number(),
+    files: v.array(v.string()),
+    createdAt: v.number(),
+  })
+    .index('by_session', ['sessionId'])
+    .index('by_hash', ['hash'])
+    .index('by_session_step', ['sessionId', 'step']),
 })

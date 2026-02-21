@@ -1,3 +1,5 @@
+import type { ChatMode } from './prompt-library'
+
 export type AgentPolicy = {
   autoApplyFiles: boolean
   autoRunCommands: boolean
@@ -21,15 +23,24 @@ export function isCommandAllowedByPrefix(command: string, allowedPrefixes: strin
   return false
 }
 
-export function resolveEffectiveAgentPolicy(args: {
-  projectPolicy: AgentPolicy | null | undefined
-  userDefaults: AgentPolicy | null | undefined
-}): AgentPolicy {
-  const defaults: AgentPolicy = {
-    autoApplyFiles: false,
+export function getDefaultPolicyForMode(mode: ChatMode): AgentPolicy {
+  const isWriteMode = mode === 'code' || mode === 'build'
+  return {
+    autoApplyFiles: isWriteMode,
     autoRunCommands: false,
     allowedCommandPrefixes: [],
   }
+}
+
+export function resolveEffectiveAgentPolicy(args: {
+  projectPolicy: AgentPolicy | null | undefined
+  userDefaults: AgentPolicy | null | undefined
+  mode?: ChatMode
+}): AgentPolicy {
+  const modeDefaults = args.mode
+    ? getDefaultPolicyForMode(args.mode)
+    : getDefaultPolicyForMode('code')
+  const defaults: AgentPolicy = modeDefaults
 
   const base = args.userDefaults ?? defaults
   const project = args.projectPolicy

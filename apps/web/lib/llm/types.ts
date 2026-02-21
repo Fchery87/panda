@@ -11,7 +11,31 @@
 /**
  * Provider type - supported LLM providers
  */
-export type ProviderType = 'openai' | 'openrouter' | 'together' | 'anthropic' | 'zai' | 'custom'
+export type ProviderType =
+  | 'openai'
+  | 'openrouter'
+  | 'together'
+  | 'anthropic'
+  | 'zai'
+  | 'chutes'
+  | 'deepseek'
+  | 'groq'
+  | 'fireworks'
+  | 'custom'
+
+/**
+ * Model variant for different reasoning/effort levels
+ */
+export interface ModelVariant {
+  id: string
+  name: string
+  options: {
+    reasoningEffort?: 'low' | 'medium' | 'high' | 'max'
+    reasoningBudget?: number
+    temperature?: number
+    textVerbosity?: 'low' | 'medium' | 'high'
+  }
+}
 
 /**
  * Model capability flags
@@ -44,6 +68,7 @@ export interface ModelInfo {
     inputPerToken: number
     outputPerToken: number
   }
+  variants?: ModelVariant[]
 }
 
 /**
@@ -227,17 +252,21 @@ export function getDefaultProviderCapabilities(type: ProviderType): ProviderCapa
         supportsToolStreaming: true,
         reasoningControl: 'budget',
       }
+    case 'deepseek':
+      return {
+        supportsReasoning: true,
+        supportsInterleavedReasoning: false,
+        supportsReasoningSummary: true,
+        supportsToolStreaming: true,
+        reasoningControl: 'effort',
+      }
     case 'openai':
     case 'openrouter':
     case 'together':
+    case 'chutes':
+    case 'groq':
+    case 'fireworks':
     case 'custom':
-      return {
-        supportsReasoning: false,
-        supportsInterleavedReasoning: false,
-        supportsReasoningSummary: false,
-        supportsToolStreaming: true,
-        reasoningControl: 'none',
-      }
     default:
       return {
         supportsReasoning: false,

@@ -10,12 +10,22 @@ export interface ToolCallInfo {
   }
 }
 
+import type { ChatMode } from '@/lib/agent/prompt-library'
+
+export interface SuggestedAction {
+  label: string
+  prompt: string
+  /** If set, clicking this action also switches to the specified mode */
+  targetMode?: ChatMode
+}
+
 export interface Message {
   _id: string
   role: 'user' | 'assistant' | 'system'
   content: string
   reasoningContent?: string
   toolCalls?: ToolCallInfo[]
+  suggestedActions?: SuggestedAction[]
   annotations?: {
     model?: string
     tokenCount?: number
@@ -28,7 +38,7 @@ export interface Message {
     contextRemainingTokens?: number
     contextUsagePct?: number
     contextSource?: 'map' | 'provider' | 'fallback'
-    mode?: 'discuss' | 'build'
+    mode?: ChatMode
     provider?: string
     reasoningTokens?: number
   }

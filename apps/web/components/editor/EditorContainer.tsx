@@ -36,6 +36,7 @@ interface EditorContainerProps {
     nonce: number
   } | null
   onSave?: (content: string) => void
+  onInlineChat?: (prompt: string, selectedText: string, filePath: string) => Promise<string | null>
 }
 
 export function EditorContainer({
@@ -43,6 +44,7 @@ export function EditorContainer({
   content: initialContent,
   jumpTo,
   onSave: externalOnSave,
+  onInlineChat,
 }: EditorContainerProps) {
   const { content, isDirty, updateContent } = useFileContent(initialContent, externalOnSave)
 
@@ -57,8 +59,10 @@ export function EditorContainer({
     <div className="flex h-full w-full flex-col">
       <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900 px-4 py-2">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-zinc-400">{filePath}</span>
-          {isDirty && <span className="text-xs font-medium text-amber-500">Unsaved changes</span>}
+          <span className="font-mono text-sm text-zinc-400">{filePath}</span>
+          {isDirty && (
+            <span className="font-mono text-xs font-medium text-amber-500">Unsaved changes</span>
+          )}
         </div>
       </div>
       <div className="flex-1 overflow-hidden">
@@ -67,6 +71,7 @@ export function EditorContainer({
           content={content}
           jumpTo={jumpTo}
           onSave={handleSave}
+          onInlineChat={onInlineChat}
         />
       </div>
     </div>

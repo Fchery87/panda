@@ -1,11 +1,13 @@
 'use client'
 
-import React from 'react'
+import React, { useRef, useCallback, useState, useEffect } from 'react'
 import { EditorSelection, StateEffect, StateField } from '@codemirror/state'
 import { Decoration, EditorView } from '@codemirror/view'
 import CodeMirror from '@uiw/react-codemirror'
 import { javascript } from '@codemirror/lang-javascript'
 import { oneDark } from '@codemirror/theme-one-dark'
+import { useHotkeys } from 'react-hotkeys-hook'
+import { InlineChat } from './InlineChat'
 
 interface CodeMirrorEditorProps {
   filePath: string
@@ -16,6 +18,7 @@ interface CodeMirrorEditorProps {
     nonce: number
   } | null
   onSave?: (content: string) => void
+  onInlineChat?: (prompt: string, selectedText: string, filePath: string) => Promise<string | null>
 }
 
 const addJumpHighlightEffect = StateEffect.define<{ from: number; to: number }>()
@@ -54,23 +57,83 @@ const jumpHighlightTheme = EditorView.theme({
   },
 })
 
-export function CodeMirrorEditor({ filePath, content, jumpTo, onSave }: CodeMirrorEditorProps) {
-  const editorViewRef = React.useRef<EditorView | null>(null)
-  const clearHighlightTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+export function CodeMirrorEditor({
+  filePath,
+  content,
+  jumpTo,
+  onSave,
+  onInlineChat,
+}: CodeMirrorEditorProps) {
+  const editorViewRef = useRef<EditorView | null>(null)
+  const clearHighlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [inlineChatState, setInlineChatState] = useState<{
+    isOpen: boolean
+    selectedText: string
+    position: { top: number; left: number }
+  } | null>(null)
+
   const isTypeScript =
     filePath.endsWith('.ts') ||
     filePath.endsWith('.tsx') ||
     filePath.endsWith('.mts') ||
     filePath.endsWith('.cts')
 
-  const handleChange = React.useCallback(
+  const handleChange = useCallback(
     (value: string) => {
       onSave?.(value)
     },
     [onSave]
   )
 
-  React.useEffect(() => {
+  const openInlineChat = useCallback(() => {
+    const view = editorViewRef.current
+    if (!view) return
+
+    const selection = view.state.selection.main
+    if (selection.from === selection.to) return
+
+    const selectedText = view.state.doc.sliceString(selection.from, selection.to)
+    const coords = view.coordsAtPos(selection.from)
+    if (!coords) return
+
+    setInlineChatState({
+      isOpen: true,
+      selectedText,
+      position: { top: coords.top, left: coords.left },
+    })
+  }, [])
+
+  const closeInlineChat = useCallback(() => {
+    setInlineChatState(null)
+  }, [])
+
+  const handleInlineChatSubmit = useCallback(
+    async (prompt: string, selectedText: string) => {
+      if (!onInlineChat) return
+
+      const result = await onInlineChat(prompt, selectedText, filePath)
+      if (result !== null && editorViewRef.current) {
+        const view = editorViewRef.current
+        const selection = view.state.selection.main
+        view.dispatch({
+          changes: { from: selection.from, to: selection.to, insert: result },
+        })
+      }
+      closeInlineChat()
+    },
+    [onInlineChat, filePath, closeInlineChat]
+  )
+
+  useHotkeys('mod+k', (e) => {
+    e.preventDefault()
+    if (inlineChatState?.isOpen) {
+      closeInlineChat()
+    } else {
+      openInlineChat()
+    }
+  })
+
+  useEffect(() => {
     if (!jumpTo) return
     const view = editorViewRef.current
     if (!view) return
@@ -101,7 +164,7 @@ export function CodeMirrorEditor({ filePath, content, jumpTo, onSave }: CodeMirr
     }, 900)
   }, [filePath, jumpTo])
 
-  React.useEffect(() => {
+  useEffect(() => {
     return () => {
       if (clearHighlightTimerRef.current) {
         clearTimeout(clearHighlightTimerRef.current)
@@ -145,6 +208,14 @@ export function CodeMirrorEditor({ filePath, content, jumpTo, onSave }: CodeMirr
         onChange={handleChange}
         className="h-full text-sm"
       />
+      {inlineChatState?.isOpen && onInlineChat && (
+        <InlineChat
+          selectedText={inlineChatState.selectedText}
+          position={inlineChatState.position}
+          onClose={closeInlineChat}
+          onSubmit={handleInlineChatSubmit}
+        />
+      )}
     </div>
   )
 }

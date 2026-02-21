@@ -14,8 +14,8 @@
 
 Panda.ai is a browser-based AI coding workbench that combines streaming chat
 agents, code editing, file management, terminal integration, and real-time
-collaboration in a unified interface. It enables developers to discuss code
-changes, execute commands, and build projects with AI assistance.
+collaboration in a unified interface. It enables developers to ask questions,
+plan changes, write code, and build projects with AI assistance.
 
 ## Project Health
 
@@ -56,8 +56,8 @@ All validation checks are passing. The codebase is in excellent health.
 
 ### Core Features
 
-- **AI-Powered Chat** - Streaming chat in discuss and build modes with run
-  timeline and progress events
+- **AI-Powered Chat** - Streaming chat across Ask, Plan, Code, and Build modes
+  with run timeline and progress events
 - **Smart File Management** - Tree view with Framer Motion animations for file
   operations
 - **Code Editor** - SSR-safe CodeMirror 6 with TypeScript and JavaScript support
@@ -128,7 +128,7 @@ panda-ai/
 | `projects`       | Project metadata and repos          |
 | `files`          | File contents and paths             |
 | `fileSnapshots`  | Version history                     |
-| `chats`          | Chat sessions (discuss/build modes) |
+| `chats`          | Chat sessions (Ask/Plan/Code/Build modes) |
 | `messages`       | Chat messages with streaming        |
 | `artifacts`      | AI-generated code changes           |
 | `jobs`           | Terminal command executions         |
@@ -408,7 +408,7 @@ apps/web/
   toggle
 - **MessageList** - Virtualized message rendering with streaming
 - **MessageBubble** - Styled message with syntax highlighting
-- **ChatInput** - Input for discuss/build modes
+- **ChatInput** - Input for Ask/Plan/Code/Build modes
 - **LiveRunPanel** - Live progress events for the active run
 - **RunTimelinePanel** - Persisted run timeline browser
 

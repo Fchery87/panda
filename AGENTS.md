@@ -173,7 +173,7 @@ export const create = mutation({...})
 
 // Types/Interfaces: PascalCase
 interface Project { }
-type ChatMode = 'discuss' | 'build'
+type ChatMode = 'ask' | 'architect' | 'code' | 'build'
 
 // Constants: UPPER_SNAKE_CASE
 const MAX_RETRY_ATTEMPTS = 3

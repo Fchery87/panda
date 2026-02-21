@@ -37,11 +37,11 @@ export function PlanDraftPanel({
           </span>
           <span className="ml-auto flex items-center gap-2">
             {updatedAt ? (
-              <span className="font-mono text-[10px] text-muted-foreground/70">
+              <span className="font-mono text-xs text-muted-foreground/70">
                 {new Date(updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
             ) : (
-              <span className="font-mono text-[10px] text-muted-foreground/70">not saved</span>
+              <span className="font-mono text-xs text-muted-foreground/70">not saved</span>
             )}
           </span>
         </button>
@@ -63,7 +63,7 @@ export function PlanDraftPanel({
           <Textarea
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            placeholder="Discuss mode will auto-update this plan draft. You can edit it anytime."
+            placeholder="Plan mode will auto-update this draft. You can edit it anytime."
             className={cn(
               'min-h-[140px] rounded-none font-mono text-xs leading-relaxed',
               'border border-border bg-background'

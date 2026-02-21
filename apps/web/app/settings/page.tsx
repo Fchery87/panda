@@ -18,11 +18,15 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
-import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
 import { ProviderCard } from '@/components/settings/ProviderCard'
+import { ConnectProvider } from '@/components/settings/ConnectProvider'
 import { ThemeToggleFull } from '@/components/settings/ThemeToggle'
-import { User, Palette, Bot, Save, Loader2, ArrowLeft } from 'lucide-react'
+import { PermissionsEditor } from '@/components/settings/PermissionsEditor'
+import { MCPServerEditor } from '@/components/settings/MCPServerEditor'
+import { SubagentEditor } from '@/components/settings/SubagentEditor'
+import { UserLLMConfig } from '@/components/settings/UserLLMConfig'
+import { type PermissionsConfig, DEFAULT_PERMISSIONS } from '@/lib/permissions'
+import { User, Palette, Bot, Save, Loader2, ArrowLeft, Settings2 } from 'lucide-react'
 import { getDefaultProviderCapabilities, type ProviderType } from '@/lib/llm/types'
 import { extractOpenRouterFreeCodingModelIds } from '@/lib/llm/openrouter-free-models'
 
@@ -41,6 +45,9 @@ interface ProviderConfig {
   reasoningBudget?: number
   showReasoningPanel?: boolean
   testStatus?: 'idle' | 'testing' | 'success' | 'error'
+  testCompletionStatus?: 'idle' | 'testing' | 'success' | 'error'
+  testStatusMessage?: string
+  testCompletionStatusMessage?: string
 }
 
 interface SettingsState {
@@ -49,6 +56,9 @@ interface SettingsState {
   defaultProvider: string
   defaultModel: string
   providers: Record<string, ProviderConfig>
+  // Admin override tracking
+  overrideGlobalProvider: boolean
+  overrideGlobalModel: boolean
 }
 
 type StoredProviderConfig = Partial<ProviderConfig> & Record<string, unknown>
@@ -126,6 +136,70 @@ const defaultProviders: Record<string, ProviderConfig> = {
     showReasoningPanel: true,
     testStatus: 'idle',
   },
+  chutes: {
+    provider: 'chutes',
+    name: 'Chutes.ai',
+    description: 'Decentralized AI platform with access to Llama, DeepSeek, Qwen models',
+    apiKey: '',
+    enabled: false,
+    defaultModel: 'deepseek-ai/DeepSeek-V3',
+    availableModels: [
+      'deepseek-ai/DeepSeek-V3',
+      'meta-llama/Llama-3.1-70B-Instruct',
+      'meta-llama/Llama-3.1-8B-Instruct',
+      'meta-llama/Llama-3.2-11B-Vision-Instruct',
+      'Qwen/Qwen2.5-72B-Instruct',
+    ],
+    baseUrl: 'https://llm.chutes.ai/v1',
+    testStatus: 'idle',
+  },
+  deepseek: {
+    provider: 'deepseek',
+    name: 'DeepSeek',
+    description: 'DeepSeek AI models with advanced reasoning capabilities',
+    apiKey: '',
+    enabled: false,
+    defaultModel: 'deepseek-chat',
+    availableModels: ['deepseek-chat', 'deepseek-coder', 'deepseek-reasoner'],
+    baseUrl: 'https://api.deepseek.com/v1',
+    reasoningEnabled: true,
+    reasoningMode: 'auto',
+    reasoningBudget: 6000,
+    showReasoningPanel: true,
+    testStatus: 'idle',
+  },
+  groq: {
+    provider: 'groq',
+    name: 'Groq',
+    description: 'Ultra-fast LLM inference with LPU technology',
+    apiKey: '',
+    enabled: false,
+    defaultModel: 'llama-3.3-70b-versatile',
+    availableModels: [
+      'llama-3.3-70b-versatile',
+      'llama-3.1-8b-instant',
+      'mixtral-8x7b-32768',
+      'gemma2-9b-it',
+    ],
+    baseUrl: 'https://api.groq.com/openai/v1',
+    testStatus: 'idle',
+  },
+  fireworks: {
+    provider: 'fireworks',
+    name: 'Fireworks AI',
+    description: 'Fast inference serverless platform with fine-tuning support',
+    apiKey: '',
+    enabled: false,
+    defaultModel: 'accounts/fireworks/models/llama-v3p1-70b-instruct',
+    availableModels: [
+      'accounts/fireworks/models/llama-v3p1-70b-instruct',
+      'accounts/fireworks/models/llama-v3p1-8b-instruct',
+      'accounts/fireworks/models/qwen2p5-72b-instruct',
+      'accounts/fireworks/models/deepseek-v3',
+    ],
+    baseUrl: 'https://api.fireworks.ai/inference/v1',
+    testStatus: 'idle',
+  },
 }
 
 const languages = [
@@ -140,6 +214,7 @@ const languages = [
 export default function SettingsPage() {
   const router = useRouter()
   const settings = useQuery(api.settings.get)
+  const adminDefaults = useQuery(api.settings.getAdminDefaults)
   const updateSettings = useMutation(api.settings.update)
   const [isSaving, setIsSaving] = React.useState(false)
 
@@ -151,16 +226,7 @@ export default function SettingsPage() {
   const settingsRef = React.useRef(settings)
   settingsRef.current = settings
 
-  const [agentDefaults, setAgentDefaults] = React.useState<{
-    autoApplyFiles: boolean
-    autoRunCommands: boolean
-    allowedCommandPrefixes: string[]
-  }>({
-    autoApplyFiles: false,
-    autoRunCommands: false,
-    allowedCommandPrefixes: [],
-  })
-  const [allowedCommandPrefixesText, setAllowedCommandPrefixesText] = React.useState('')
+  const [permissions, setPermissions] = React.useState<PermissionsConfig>(DEFAULT_PERMISSIONS)
 
   // Local state for form
   const [formState, setFormState] = React.useState<SettingsState>({
@@ -169,6 +235,8 @@ export default function SettingsPage() {
     defaultProvider: 'openai',
     defaultModel: 'gpt-4o-mini',
     providers: defaultProviders,
+    overrideGlobalProvider: false,
+    overrideGlobalModel: false,
   })
 
   // Sync with Convex data
@@ -177,12 +245,7 @@ export default function SettingsPage() {
     if (latestSettings === undefined) return
 
     if (latestSettings === null) {
-      setAgentDefaults({
-        autoApplyFiles: false,
-        autoRunCommands: false,
-        allowedCommandPrefixes: [],
-      })
-      setAllowedCommandPrefixesText('')
+      setPermissions(DEFAULT_PERMISSIONS)
       setFormState((prev) => ({
         ...prev,
         theme: 'system',
@@ -190,22 +253,16 @@ export default function SettingsPage() {
         defaultProvider: 'openai',
         defaultModel: 'gpt-4o-mini',
         providers: defaultProviders,
+        overrideGlobalProvider: false,
+        overrideGlobalModel: false,
       }))
       return
     }
 
-    if (latestSettings.agentDefaults) {
-      setAgentDefaults(latestSettings.agentDefaults)
-      setAllowedCommandPrefixesText(
-        (latestSettings.agentDefaults.allowedCommandPrefixes || []).join('\n')
-      )
+    if ((latestSettings as Record<string, unknown>).permissions) {
+      setPermissions((latestSettings as Record<string, unknown>).permissions as PermissionsConfig)
     } else {
-      setAgentDefaults({
-        autoApplyFiles: false,
-        autoRunCommands: false,
-        allowedCommandPrefixes: [],
-      })
-      setAllowedCommandPrefixesText('')
+      setPermissions(DEFAULT_PERMISSIONS)
     }
 
     setFormState((prev) => ({
@@ -229,6 +286,8 @@ export default function SettingsPage() {
             ),
           }
         : defaultProviders,
+      overrideGlobalProvider: latestSettings.overrideGlobalProvider ?? false,
+      overrideGlobalModel: latestSettings.overrideGlobalModel ?? false,
     }))
   }, [settingsSyncKey])
 
@@ -290,19 +349,57 @@ export default function SettingsPage() {
 
   // Handle provider updates
   const updateProvider = (providerKey: string, updates: Partial<ProviderConfig>) => {
-    setFormState((prev) => ({
-      ...prev,
-      providers: {
+    setFormState((prev) => {
+      const nextProviders = {
         ...prev.providers,
         [providerKey]: {
           ...prev.providers[providerKey],
           ...updates,
         },
-      },
-    }))
+      }
+
+      const nextState: SettingsState = {
+        ...prev,
+        providers: nextProviders,
+      }
+
+      if (providerKey === prev.defaultProvider && typeof updates.defaultModel === 'string') {
+        nextState.defaultModel = updates.defaultModel
+      }
+
+      return nextState
+    })
   }
 
   // Test provider connection
+  const testChutesViaApi = async (params: {
+    apiKey: string
+    baseUrl?: string
+    model?: string
+    mode: 'models' | 'completion'
+  }): Promise<{ models?: string[]; model?: string; completionPreview?: string }> => {
+    const response = await fetch('/api/providers/chutes/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    })
+
+    const payload = await response.json()
+    if (!response.ok) {
+      const parts = [
+        payload?.error,
+        payload?.guidance,
+        payload?.detail,
+        payload?.retryAfter ? `retry-after=${payload.retryAfter}s` : null,
+      ]
+        .filter((part): part is string => typeof part === 'string' && part.trim().length > 0)
+        .join(' | ')
+
+      throw new Error(parts || `Chutes test failed (${response.status})`)
+    }
+    return payload
+  }
+
   const testProvider = async (providerKey: string) => {
     const provider = formState.providers[providerKey]
     if (!provider.apiKey) {
@@ -310,22 +407,103 @@ export default function SettingsPage() {
       return
     }
 
-    updateProvider(providerKey, { testStatus: 'testing' })
+    updateProvider(providerKey, { testStatus: 'testing', testStatusMessage: undefined })
 
-    // Simulate API test
-    setTimeout(() => {
-      // In a real implementation, you would make an actual API call here
-      const success = provider.apiKey.length > 10
+    try {
+      let success = false
+
+      if (providerKey === 'chutes') {
+        const payload = await testChutesViaApi({
+          apiKey: provider.apiKey,
+          baseUrl: provider.baseUrl,
+          mode: 'models',
+        })
+        const models = payload.models ?? []
+        success = true
+
+        if (models.length > 0) {
+          updateProvider(providerKey, {
+            availableModels: models,
+            defaultModel: models.includes(provider.defaultModel)
+              ? provider.defaultModel
+              : models[0],
+            testStatusMessage: undefined,
+          })
+          toast.success(`${provider.name} connection successful! Found ${models.length} models.`)
+        } else {
+          toast.success(`${provider.name} connection successful!`)
+        }
+      } else {
+        // Simulate API test for other providers
+        await new Promise((resolve) => setTimeout(resolve, 1500))
+        success = provider.apiKey.length > 10
+
+        if (success) {
+          toast.success(`${provider.name} connection successful!`)
+        } else {
+          toast.error(`${provider.name} connection failed`)
+        }
+      }
+
       updateProvider(providerKey, {
         testStatus: success ? 'success' : 'error',
+        ...(success ? { testStatusMessage: undefined } : {}),
       })
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : 'Unknown error'
+      updateProvider(providerKey, { testStatus: 'error', testStatusMessage: detail })
+      toast.error(`${provider.name} connection failed`, { description: detail })
+    }
+  }
 
-      if (success) {
-        toast.success(`${provider.name} connection successful!`)
-      } else {
-        toast.error(`${provider.name} connection failed`)
+  const testProviderCompletion = async (providerKey: string) => {
+    const provider = formState.providers[providerKey]
+    if (!provider.apiKey) {
+      toast.error('Please enter an API key first')
+      return
+    }
+
+    updateProvider(providerKey, {
+      testCompletionStatus: 'testing',
+      testCompletionStatusMessage: undefined,
+    })
+
+    try {
+      if (providerKey === 'chutes') {
+        const payload = await testChutesViaApi({
+          apiKey: provider.apiKey,
+          baseUrl: provider.baseUrl,
+          model: provider.defaultModel,
+          mode: 'completion',
+        })
+
+        updateProvider(providerKey, {
+          testCompletionStatus: 'success',
+          testCompletionStatusMessage: undefined,
+          ...(payload.model ? { defaultModel: payload.model } : {}),
+        })
+        toast.success(`${provider.name} completion test successful`, {
+          description: payload.model ? `Model: ${payload.model}` : undefined,
+        })
+        return
       }
-    }, 1500)
+
+      const detail = 'Completion test is currently implemented for Chutes only'
+      updateProvider(providerKey, {
+        testCompletionStatus: 'error',
+        testCompletionStatusMessage: detail,
+      })
+      toast.error(detail)
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : 'Unknown error'
+      updateProvider(providerKey, {
+        testCompletionStatus: 'error',
+        testCompletionStatusMessage: detail,
+      })
+      toast.error(`${provider.name} completion test failed`, {
+        description: detail,
+      })
+    }
   }
 
   // Save settings
@@ -363,15 +541,10 @@ export default function SettingsPage() {
         defaultProvider: formState.defaultProvider,
         defaultModel: formState.defaultModel,
         providerConfigs: providersForSave,
-        agentDefaults: {
-          autoApplyFiles: agentDefaults.autoApplyFiles,
-          autoRunCommands: agentDefaults.autoRunCommands,
-          allowedCommandPrefixes: allowedCommandPrefixesText
-            .split('\n')
-            .map((s) => s.trim())
-            .filter(Boolean),
-        },
-      })
+        permissions,
+        overrideGlobalProvider: formState.overrideGlobalProvider,
+        overrideGlobalModel: formState.overrideGlobalModel,
+      } as Parameters<typeof updateSettings>[0])
 
       toast.success('Settings saved successfully!')
     } catch (error) {
@@ -381,12 +554,6 @@ export default function SettingsPage() {
       setIsSaving(false)
     }
   }
-
-  // Get available models for the selected default provider
-  const availableDefaultModels = React.useMemo(() => {
-    const provider = formState.providers[formState.defaultProvider]
-    return provider?.enabled ? provider.availableModels : []
-  }, [formState.defaultProvider, formState.providers])
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-8">
@@ -405,7 +572,7 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+        <TabsList className="grid w-full grid-cols-4 lg:w-[520px]">
           <TabsTrigger value="general" className="flex items-center gap-2">
             <User className="h-4 w-4" />
             General
@@ -413,6 +580,10 @@ export default function SettingsPage() {
           <TabsTrigger value="providers" className="flex items-center gap-2">
             <Bot className="h-4 w-4" />
             LLM Providers
+          </TabsTrigger>
+          <TabsTrigger value="advanced" className="flex items-center gap-2">
+            <Settings2 className="h-4 w-4" />
+            Advanced
           </TabsTrigger>
           <TabsTrigger value="appearance" className="flex items-center gap-2">
             <Palette className="h-4 w-4" />
@@ -450,115 +621,41 @@ export default function SettingsPage() {
 
               <Separator />
 
-              {/* Default Provider Selection */}
-              <div className="space-y-2">
-                <Label htmlFor="default-provider">Default LLM Provider</Label>
-                <Select
-                  value={formState.defaultProvider}
-                  onValueChange={(value) =>
-                    setFormState((prev) => ({
-                      ...prev,
-                      defaultProvider: value,
-                      defaultModel: prev.providers[value]?.defaultModel || '',
-                    }))
-                  }
-                >
-                  <SelectTrigger id="default-provider" className="w-full max-w-sm">
-                    <SelectValue placeholder="Select provider" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(formState.providers)
-                      .filter(([_, p]) => p.enabled)
-                      .map(([key, provider]) => (
-                        <SelectItem key={key} value={key}>
-                          {provider.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-                {Object.values(formState.providers).filter((p) => p.enabled).length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    Enable at least one provider in the LLM Providers tab
-                  </p>
+              {/* User LLM Configuration with Admin Override Support */}
+              <UserLLMConfig
+                adminDefaults={adminDefaults}
+                userSettings={{
+                  defaultProvider: formState.defaultProvider,
+                  defaultModel: formState.defaultModel,
+                  overrideGlobalProvider: formState.overrideGlobalProvider,
+                  overrideGlobalModel: formState.overrideGlobalModel,
+                  providers: formState.providers,
+                }}
+                onUpdate={(config) => {
+                  setFormState((prev) => ({
+                    ...prev,
+                    ...config,
+                  }))
+                }}
+                availableProviders={Object.fromEntries(
+                  Object.entries(formState.providers).map(([key, p]) => [
+                    key,
+                    { name: p.name, availableModels: p.availableModels, enabled: p.enabled },
+                  ])
                 )}
-              </div>
-
-              {/* Default Model Selection */}
-              <div className="space-y-2">
-                <Label htmlFor="default-model">Default Model</Label>
-                <Select
-                  value={formState.defaultModel}
-                  onValueChange={(value) =>
-                    setFormState((prev) => ({ ...prev, defaultModel: value }))
-                  }
-                  disabled={availableDefaultModels.length === 0}
-                >
-                  <SelectTrigger id="default-model" className="w-full max-w-sm">
-                    <SelectValue placeholder="Select model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableDefaultModels.map((model) => (
-                      <SelectItem key={model} value={model}>
-                        {model}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              />
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Automation Defaults</CardTitle>
+              <CardTitle>Permissions</CardTitle>
               <CardDescription>
-                Choose whether Panda auto-applies file changes and auto-runs allowlisted commands by
-                default.
+                Configure fine-grained permissions for tools and commands.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <Label className="font-mono text-xs">Auto-apply file writes</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Applies queued file artifacts automatically in Build mode.
-                  </p>
-                </div>
-                <Switch
-                  checked={agentDefaults.autoApplyFiles}
-                  onCheckedChange={(v) =>
-                    setAgentDefaults((prev) => ({ ...prev, autoApplyFiles: v }))
-                  }
-                />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <Label className="font-mono text-xs">Auto-run allowlisted commands</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Only runs commands whose prefixes match the allowlist.
-                  </p>
-                </div>
-                <Switch
-                  checked={agentDefaults.autoRunCommands}
-                  onCheckedChange={(v) =>
-                    setAgentDefaults((prev) => ({ ...prev, autoRunCommands: v }))
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="font-mono text-xs">Allowed command prefixes (one per line)</Label>
-                <Textarea
-                  value={allowedCommandPrefixesText}
-                  onChange={(e) => setAllowedCommandPrefixesText(e.target.value)}
-                  placeholder={'bun test\nbunx eslint\nbun run lint'}
-                  className="min-h-[120px] rounded-none font-mono text-xs"
-                  disabled={!agentDefaults.autoRunCommands}
-                />
-              </div>
+            <CardContent>
+              <PermissionsEditor value={permissions} onChange={setPermissions} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -579,10 +676,50 @@ export default function SettingsPage() {
                   supportsReasoning={supportsReasoning}
                   onChange={(updates) => updateProvider(key, updates)}
                   onTest={() => testProvider(key)}
+                  onTestCompletion={
+                    key === 'chutes' ? () => testProviderCompletion(key) : undefined
+                  }
                 />
               )
             })}
           </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>OAuth Connections</CardTitle>
+              <CardDescription>
+                Connect providers using OAuth for seamless authentication (no API key needed)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <ConnectProvider provider="chutes" />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Advanced Tab */}
+        <TabsContent value="advanced" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>MCP Servers</CardTitle>
+              <CardDescription>
+                Configure Model Context Protocol servers for extended capabilities
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <MCPServerEditor />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Custom Subagents</CardTitle>
+              <CardDescription>Create specialized agents for specific tasks</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SubagentEditor />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Appearance Tab */}

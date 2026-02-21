@@ -1,12 +1,13 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
+import { ChatMode } from './schema'
 
 export const create = mutation({
   args: {
     projectId: v.id('projects'),
     chatId: v.id('chats'),
     userId: v.id('users'),
-    mode: v.union(v.literal('discuss'), v.literal('build')),
+    mode: ChatMode,
     provider: v.optional(v.string()),
     model: v.optional(v.string()),
     userMessage: v.optional(v.string()),
@@ -161,7 +162,7 @@ export const listByChat = query({
 export const usageByChatMode = query({
   args: {
     chatId: v.id('chats'),
-    mode: v.optional(v.union(v.literal('discuss'), v.literal('build'))),
+    mode: v.optional(ChatMode),
   },
   handler: async (ctx, args) => {
     const runs = await ctx.db

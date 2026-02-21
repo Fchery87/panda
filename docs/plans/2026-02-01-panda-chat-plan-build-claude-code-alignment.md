@@ -1,4 +1,4 @@
-# Panda Chat: Discuss (Plan) + Build Mode Alignment (Claude Code-style)
+# Panda Chat: Plan + Build Mode Alignment (Claude Code-style)
 
 **Date:** 2026-02-01  
 **Primary worktree:** `.worktrees/plan-mode-guardrails/`
@@ -7,7 +7,7 @@
 
 Panda’s chat UX was not behaving like “Claude Code”-style workflows:
 
-1. **Discuss mode (Plan Mode) produced code** (sometimes streaming large code
+1. **Plan mode produced code** (sometimes streaming large code
    blocks into the chat panel).
 2. **Build mode didn’t reliably execute** (often produced another plan instead
    of writing files / running commands).
@@ -21,13 +21,13 @@ Panda’s chat UX was not behaving like “Claude Code”-style workflows:
    - `The result of getServerSnapshot should be cached to avoid an infinite loop`
    - `Maximum update depth exceeded`
 
-The goal of the changes was to make Discuss/Build behave predictably, prevent
+The goal of the changes was to make Plan/Build behave predictably, prevent
 code from appearing in the chat panel, and ensure Build actions actually
 materialize as files/jobs in the Workbench.
 
 ## High-level target behavior (what “good” looks like)
 
-### Discuss mode (“Plan Mode”)
+### Plan mode
 
 - Assistant should **plan with the user** (clarifying questions + plan draft).
 - Chat should **not dump full implementation code**.
@@ -48,7 +48,7 @@ materialize as files/jobs in the Workbench.
 
 ## What we implemented (specific changes)
 
-### 1) Runtime guardrails to keep code out of chat (Discuss + Build)
+### 1) Runtime guardrails to keep code out of chat (Plan + Build)
 
 **Goal:** Ensure chat output stays “human-readable planning” and does not stream
 large fenced code blocks into the chat panel.
@@ -87,14 +87,14 @@ large fenced code blocks into the chat panel.
 
 ### 3) Plan Draft Panel: persist and reuse plan between modes
 
-**Goal:** Make Discuss mode generate a reusable plan that becomes the “source of
+**Goal:** Make Plan mode generate a reusable plan that becomes the “source of
 truth” for Build mode, similar to Claude Code.
 
 **Implementation:**
 
 - Plan Draft panel is stored per chat (`chats.planDraft` +
   `chats.planUpdatedAt`).
-- After Discuss completes, we auto-derive a plan draft from the latest assistant
+- After Plan completes, we auto-derive a plan draft from the latest assistant
   response.
 - When user switches to Build / clicks “Build this”, Build prompts are
   automatically prefixed with the Plan Draft content.
@@ -263,7 +263,7 @@ wasn’t copied.
 
 ## What this enables (end-to-end flow)
 
-1. **Discuss:** user asks → assistant streams clarifying questions + plan (no
+1. **Plan:** user asks → assistant streams clarifying questions + plan (no
    large code).
 2. **Plan Draft:** plan is captured and editable.
 3. **Build:** user clicks “Build this” → assistant uses tools →

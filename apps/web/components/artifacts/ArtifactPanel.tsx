@@ -310,6 +310,7 @@ export function ArtifactPanel({
               size="icon"
               onClick={onClose}
               className="rounded-none border hover:border-destructive hover:bg-destructive/10 hover:text-destructive"
+              aria-label="Close panel"
               title="Close panel (Esc)"
             >
               <X className="h-4 w-4" />

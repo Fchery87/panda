@@ -59,7 +59,13 @@ export function DashboardHeader() {
           <ThemeToggle />
 
           <Link href="/settings">
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-11 w-11 rounded-none"
+              aria-label="Settings"
+              title="Settings"
+            >
               <User className="h-4 w-4" />
             </Button>
           </Link>

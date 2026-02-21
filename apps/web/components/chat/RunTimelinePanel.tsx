@@ -45,7 +45,7 @@ export function RunTimelinePanel({
         <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
           Run Timeline
         </span>
-        <span className="ml-auto font-mono text-[10px] text-muted-foreground/70">
+        <span className="ml-auto font-mono text-xs text-muted-foreground/70">
           {events ? `${events.length} events` : 'loading'}
           {toolEventCount > 0 ? ` • ${toolEventCount} tools` : ''}
         </span>
@@ -67,7 +67,7 @@ export function RunTimelinePanel({
                   <div
                     key={event._id}
                     className={cn(
-                      'flex items-center gap-2 border border-border bg-background/60 px-2 py-1 font-mono text-[10px]',
+                      'flex items-center gap-2 border border-border bg-background/60 px-2 py-1 font-mono text-xs',
                       isError && 'border-destructive/30 text-destructive'
                     )}
                   >

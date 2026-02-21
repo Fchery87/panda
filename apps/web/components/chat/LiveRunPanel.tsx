@@ -88,7 +88,7 @@ export function LiveRunPanel({
         <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
           Live Run
         </span>
-        <span className="ml-auto font-mono text-[10px] text-muted-foreground/70">
+        <span className="ml-auto font-mono text-xs text-muted-foreground/70">
           {startedAt ? formatElapsed(elapsedMs) : '0s'}
           {isStreaming ? ' • streaming' : ' • latest'}
         </span>
@@ -107,7 +107,7 @@ export function LiveRunPanel({
               <div key={group.key} className="border border-border bg-background/70">
                 <button
                   type="button"
-                  className="flex w-full items-center gap-2 px-2 py-1 text-left font-mono text-[10px]"
+                  className="flex w-full items-center gap-2 px-2 py-1 text-left font-mono text-xs"
                   onClick={() =>
                     setExpandedGroups((prev) => ({
                       ...prev,
@@ -129,7 +129,7 @@ export function LiveRunPanel({
                       <div
                         key={step.id}
                         className={cn(
-                          'flex items-start gap-2 px-1 py-0.5 font-mono text-[10px]',
+                          'flex items-start gap-2 px-1 py-0.5 font-mono text-xs',
                           step.status === 'error' && 'text-destructive'
                         )}
                       >
@@ -165,7 +165,7 @@ export function LiveRunPanel({
                                         key={`${step.id}-${path}`}
                                         type="button"
                                         onClick={() => onOpenFile?.(path)}
-                                        className="border border-border px-1.5 py-0.5 text-[10px] hover:bg-muted/40"
+                                        className="border border-border px-1.5 py-0.5 text-xs hover:bg-muted/40"
                                       >
                                         open {path}
                                       </button>
@@ -177,7 +177,7 @@ export function LiveRunPanel({
                                     <button
                                       type="button"
                                       onClick={() => onOpenArtifacts?.()}
-                                      className="border border-border px-1.5 py-0.5 text-[10px] hover:bg-muted/40"
+                                      className="border border-border px-1.5 py-0.5 text-xs hover:bg-muted/40"
                                     >
                                       open artifacts
                                     </button>

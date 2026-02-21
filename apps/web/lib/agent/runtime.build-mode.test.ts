@@ -84,6 +84,7 @@ describe('Build Mode no-code guardrails', () => {
         readFiles: async () => [],
         writeFiles: async () => [{ path: 'x.ts', success: true }],
         runCommand: async () => ({ stdout: '', stderr: '', exitCode: 0, durationMs: 0 }),
+        updateMemoryBank: async () => ({ success: true }),
       }
     )
 
@@ -171,6 +172,7 @@ describe('Build Mode no-code guardrails', () => {
         readFiles: async () => [],
         writeFiles: async () => [{ path: 'index.html', success: true }],
         runCommand: async () => ({ stdout: '', stderr: '', exitCode: 0, durationMs: 0 }),
+        updateMemoryBank: async () => ({ success: true }),
       }
     )
 

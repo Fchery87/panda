@@ -10,7 +10,7 @@ import { Terminal } from './Terminal'
 import { EditorContainer } from '../editor/EditorContainer'
 import { Preview } from './Preview'
 import { cn } from '@/lib/utils'
-import { Code2, Eye, Download, Loader2 } from 'lucide-react'
+import { Code2, Eye, FileCode, Plus, Search } from 'lucide-react'
 import type { Id } from '@convex/_generated/dataModel'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
@@ -53,6 +53,62 @@ function HorizontalResizeHandle({ className }: { className?: string }) {
   )
 }
 
+interface EmptyStateProps {
+  onCreateFile?: (path: string) => void
+  onOpenSearch?: () => void
+  variant?: 'desktop' | 'mobile'
+}
+
+function EmptyState({ onCreateFile, onOpenSearch, variant = 'desktop' }: EmptyStateProps) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-6 px-6 text-center text-muted-foreground">
+      <div className="flex flex-col items-center gap-4">
+        <div className="flex h-16 w-16 items-center justify-center rounded-none border border-border bg-muted/50">
+          <FileCode className="h-8 w-8 text-muted-foreground" />
+        </div>
+        <div className="space-y-2">
+          <h3 className="font-mono text-lg font-medium text-foreground">No file selected</h3>
+          <p className="max-w-xs text-sm text-muted-foreground">
+            {variant === 'mobile'
+              ? 'Open Files tab and select a file to edit'
+              : 'Select a file from the explorer, or create a new file to get started'}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex gap-3">
+        {onCreateFile && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 rounded-none font-mono text-xs"
+            onClick={() => onCreateFile('')}
+          >
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            New File
+          </Button>
+        )}
+        {onOpenSearch && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 rounded-none font-mono text-xs"
+            onClick={onOpenSearch}
+          >
+            <Search className="mr-1.5 h-3.5 w-3.5" />
+            Search
+          </Button>
+        )}
+      </div>
+
+      <div className="font-mono text-xs text-muted-foreground/50">
+        <kbd className="rounded-none bg-muted px-1.5 py-0.5">Ctrl</kbd>+
+        <kbd className="rounded-none bg-muted px-1.5 py-0.5">K</kbd> to open command palette
+      </div>
+    </div>
+  )
+}
+
 type EditorTab = 'code' | 'preview'
 type SidebarTab = 'explorer' | 'search'
 
@@ -71,8 +127,6 @@ export function Workbench({
   const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>('explorer')
   const [mobilePanel, setMobilePanel] = useState<'files' | 'editor' | 'terminal'>('editor')
   const [isMobile, setIsMobile] = useState(false)
-  const [isDownloading, setIsDownloading] = useState(false)
-  const downloadProject = useAction(api.files.downloadProject)
   const selectedFile = selectedFilePath ? files.find((f) => f.path === selectedFilePath) : undefined
 
   useEffect(() => {
@@ -89,47 +143,10 @@ export function Workbench({
     }
   }, [selectedFilePath])
 
-  const handleDownload = async () => {
-    if (isDownloading) return
-
-    setIsDownloading(true)
-    try {
-      // Call Convex action to generate ZIP
-      const result = await downloadProject({ projectId })
-
-      // Convert base64 to blob
-      const byteCharacters = atob(result.zipData)
-      const byteNumbers = new Array(byteCharacters.length)
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i)
-      }
-      const byteArray = new Uint8Array(byteNumbers)
-      const blob = new Blob([byteArray], { type: 'application/zip' })
-
-      // Create download link
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = result.filename
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      window.URL.revokeObjectURL(url)
-
-      toast.success('Project downloaded successfully')
-    } catch (error) {
-      toast.error('Failed to download project', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      })
-    } finally {
-      setIsDownloading(false)
-    }
-  }
-
   if (isMobile) {
     return (
       <div className="surface-0 h-full w-full">
-        <div className="surface-1 flex h-11 shrink-0 border-b border-border font-mono text-[11px] uppercase tracking-widest">
+        <div className="surface-1 flex h-11 shrink-0 border-b border-border font-mono text-xs uppercase tracking-widest">
           <button
             type="button"
             onClick={() => setMobilePanel('files')}
@@ -171,30 +188,12 @@ export function Workbench({
         <div className="h-[calc(100%-2.75rem)]">
           {mobilePanel === 'files' && (
             <div className="surface-1 flex h-full flex-col">
-              <div className="panel-header flex items-center justify-between" data-number="01">
-                <span>{activeSidebarTab === 'explorer' ? 'Explorer' : 'Search'}</span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-none"
-                  onClick={handleDownload}
-                  disabled={isDownloading || files.length === 0}
-                  title="Download project as ZIP"
-                >
-                  {isDownloading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Download className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-
               <div className="flex border-b border-border">
                 <button
                   type="button"
                   onClick={() => setActiveSidebarTab('explorer')}
                   className={cn(
-                    'min-h-11 flex-1 border-r border-border px-2 py-2 font-mono text-[11px] uppercase tracking-widest',
+                    'min-h-11 flex-1 border-r border-border px-2 py-2 font-mono text-xs uppercase tracking-widest',
                     activeSidebarTab === 'explorer'
                       ? 'bg-surface-2 text-foreground'
                       : 'text-muted-foreground hover:text-foreground'
@@ -206,7 +205,7 @@ export function Workbench({
                   type="button"
                   onClick={() => setActiveSidebarTab('search')}
                   className={cn(
-                    'min-h-11 flex-1 px-2 py-2 font-mono text-[11px] uppercase tracking-widest',
+                    'min-h-11 flex-1 px-2 py-2 font-mono text-xs uppercase tracking-widest',
                     activeSidebarTab === 'search'
                       ? 'bg-surface-2 text-foreground'
                       : 'text-muted-foreground hover:text-foreground'
@@ -245,7 +244,7 @@ export function Workbench({
                 <button
                   onClick={() => setActiveTab('code')}
                   className={cn(
-                    'min-h-11 flex items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-widest',
+                    'flex min-h-11 items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-widest',
                     activeTab === 'code'
                       ? 'border-b-2 border-primary bg-background text-primary'
                       : 'text-muted-foreground hover:text-foreground'
@@ -257,7 +256,7 @@ export function Workbench({
                 <button
                   onClick={() => setActiveTab('preview')}
                   className={cn(
-                    'min-h-11 flex items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-widest',
+                    'flex min-h-11 items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-widest',
                     activeTab === 'preview'
                       ? 'border-b-2 border-primary bg-background text-primary'
                       : 'text-muted-foreground hover:text-foreground'
@@ -278,16 +277,11 @@ export function Workbench({
                       onSave={(content) => onSaveFile(selectedFile.path, content)}
                     />
                   ) : (
-                    <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center text-muted-foreground">
-                      <div className="font-mono text-sm">
-                        <span className="text-primary">{'{'}</span>
-                        <span className="mx-2">No file selected</span>
-                        <span className="text-primary">{'}'}</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground/60">
-                        Open Files tab and select a file
-                      </p>
-                    </div>
+                    <EmptyState
+                      onCreateFile={onCreateFile}
+                      onOpenSearch={() => setActiveSidebarTab('search')}
+                      variant="mobile"
+                    />
                   )
                 ) : (
                   <Preview />
@@ -322,31 +316,12 @@ export function Workbench({
           className="surface-1 border-r border-border"
         >
           <div className="flex h-full flex-col">
-            {/* Header */}
-            <div className="panel-header flex items-center justify-between" data-number="01">
-              <span>{activeSidebarTab === 'explorer' ? 'Explorer' : 'Search'}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 rounded-none"
-                onClick={handleDownload}
-                disabled={isDownloading || files.length === 0}
-                title="Download project as ZIP"
-              >
-                {isDownloading ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Download className="h-3.5 w-3.5" />
-                )}
-              </Button>
-            </div>
-
             <div className="flex border-b border-border">
               <button
                 type="button"
                 onClick={() => setActiveSidebarTab('explorer')}
                 className={cn(
-                  'transition-sharp flex-1 border-r border-border px-2 py-1.5 font-mono text-[10px] uppercase tracking-widest',
+                  'transition-sharp flex-1 border-r border-border px-2 py-1.5 font-mono text-xs uppercase tracking-widest',
                   activeSidebarTab === 'explorer'
                     ? 'bg-surface-2 text-foreground'
                     : 'text-muted-foreground hover:text-foreground'
@@ -358,7 +333,7 @@ export function Workbench({
                 type="button"
                 onClick={() => setActiveSidebarTab('search')}
                 className={cn(
-                  'transition-sharp flex-1 px-2 py-1.5 font-mono text-[10px] uppercase tracking-widest',
+                  'transition-sharp flex-1 px-2 py-1.5 font-mono text-xs uppercase tracking-widest',
                   activeSidebarTab === 'search'
                     ? 'bg-surface-2 text-foreground'
                     : 'text-muted-foreground hover:text-foreground'
@@ -439,16 +414,11 @@ export function Workbench({
                         onSave={(content) => onSaveFile(selectedFile.path, content)}
                       />
                     ) : (
-                      <div className="flex h-full flex-col items-center justify-center gap-4 text-muted-foreground">
-                        <div className="font-mono text-sm">
-                          <span className="text-primary">{'{'}</span>
-                          <span className="mx-2">No file selected</span>
-                          <span className="text-primary">{'}'}</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground/60">
-                          Select a file from the explorer
-                        </p>
-                      </div>
+                      <EmptyState
+                        onCreateFile={onCreateFile}
+                        onOpenSearch={() => setActiveSidebarTab('search')}
+                        variant="desktop"
+                      />
                     )
                   ) : (
                     <Preview />
@@ -460,18 +430,8 @@ export function Workbench({
             <HorizontalResizeHandle />
 
             {/* Terminal */}
-            <Panel defaultSize={30} minSize={15}>
-              <div className="surface-1 flex h-full flex-col border-t border-border">
-                {/* Header */}
-                <div className="panel-header flex items-center justify-between" data-number="03">
-                  <span>Terminal</span>
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 overflow-hidden">
-                  <Terminal projectId={projectId} />
-                </div>
-              </div>
+            <Panel defaultSize={30} minSize={15} className="border-t border-border">
+              <Terminal projectId={projectId} />
             </Panel>
           </PanelGroup>
         </Panel>

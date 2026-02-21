@@ -12,7 +12,7 @@ const features = [
   {
     number: '01',
     title: 'AI-Powered Coding',
-    description: 'Stream conversations with AI that understands context. Discuss, refactor, debug.',
+    description: 'Stream conversations with AI that understands context. Ask, plan, code, build.',
     icon: Bot,
     size: 'small',
   },

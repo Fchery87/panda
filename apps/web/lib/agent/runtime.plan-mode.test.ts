@@ -54,6 +54,7 @@ describe('Plan Mode rewrite guardrails', () => {
         readFiles: async () => [],
         writeFiles: async () => [],
         runCommand: async () => ({ stdout: '', stderr: '', exitCode: 0, durationMs: 0 }),
+        updateMemoryBank: async () => ({ success: true }),
       }
     )
 
@@ -62,7 +63,7 @@ describe('Plan Mode rewrite guardrails', () => {
       projectId: 'p',
       chatId: 'c',
       userId: 'u',
-      chatMode: 'discuss',
+      chatMode: 'architect',
       provider: 'zai',
       userMessage: 'help me plan',
     })) {
@@ -114,6 +115,7 @@ describe('Plan Mode rewrite guardrails', () => {
         readFiles: async () => [],
         writeFiles: async () => [],
         runCommand: async () => ({ stdout: '', stderr: '', exitCode: 0, durationMs: 0 }),
+        updateMemoryBank: async () => ({ success: true }),
       }
     )
 
@@ -122,7 +124,7 @@ describe('Plan Mode rewrite guardrails', () => {
       projectId: 'p',
       chatId: 'c',
       userId: 'u',
-      chatMode: 'discuss',
+      chatMode: 'architect',
       provider: 'zai',
       userMessage: 'help me plan',
     })) {

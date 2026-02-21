@@ -1,0 +1,52 @@
+import { query, mutation } from './_generated/server'
+import { v } from 'convex/values'
+
+/** The reserved file path used for the project-level memory bank */
+export const MEMORY_BANK_PATH = 'MEMORY_BANK.md'
+
+/**
+ * Get the memory bank content for a project.
+ * Returns null if no memory bank exists yet.
+ */
+export const get = query({
+  args: { projectId: v.id('projects') },
+  handler: async (ctx, args) => {
+    const file = await ctx.db
+      .query('files')
+      .withIndex('by_path', (q) => q.eq('projectId', args.projectId).eq('path', MEMORY_BANK_PATH))
+      .unique()
+
+    return file?.content ?? null
+  },
+})
+
+/**
+ * Set (create or overwrite) the memory bank for a project.
+ * Uses the existing files table — no schema changes required.
+ */
+export const update = mutation({
+  args: {
+    projectId: v.id('projects'),
+    content: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now()
+
+    const existing = await ctx.db
+      .query('files')
+      .withIndex('by_path', (q) => q.eq('projectId', args.projectId).eq('path', MEMORY_BANK_PATH))
+      .unique()
+
+    if (existing) {
+      await ctx.db.patch(existing._id, { content: args.content, updatedAt: now })
+      return existing._id
+    } else {
+      return await ctx.db.insert('files', {
+        projectId: args.projectId,
+        path: MEMORY_BANK_PATH,
+        content: args.content,
+        updatedAt: now,
+      })
+    }
+  },
+})

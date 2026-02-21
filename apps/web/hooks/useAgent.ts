@@ -28,14 +28,10 @@ import {
   type AgentEvent,
   type RuntimeConfig,
 } from '../lib/agent'
+import { getUserFacingAgentError } from '../lib/chat/error-messages'
 import { extractTargetFilePaths } from '../components/chat/live-run-utils'
-import type { PromptContext } from '../lib/agent/prompt-library'
+import { normalizeChatMode, type PromptContext, type ChatMode } from '../lib/agent/prompt-library'
 import { toast } from 'sonner'
-
-/**
- * Chat mode type
- */
-type ChatMode = 'discuss' | 'build'
 
 /**
  * Agent status type
@@ -161,7 +157,7 @@ interface UseAgentOptions {
   mode: ChatMode
   provider: LLMProvider
   model?: string
-  discussBrainstormEnabled?: boolean
+  architectBrainstormEnabled?: boolean
 }
 
 /**
@@ -212,8 +208,12 @@ interface UseAgentReturn {
   // Artifacts
   pendingArtifacts: Array<{ _id: string }>
 
+  // Memory bank
+  memoryBank: string | null | undefined
+  updateMemoryBank: (content: string) => Promise<void>
+
   // Actions
-  sendMessage: (content: string) => Promise<void>
+  sendMessage: (content: string, contextFiles?: string[]) => Promise<void>
   handleSubmit: (e?: React.FormEvent) => Promise<void>
   handleInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
   stop: () => void
@@ -240,7 +240,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     mode,
     provider,
     model = 'gpt-4o',
-    discussBrainstormEnabled = false,
+    architectBrainstormEnabled = false,
   } = options
 
   const convex = useConvex()
@@ -259,6 +259,13 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const completeRun = useMutation(api.agentRuns.complete)
   const failRun = useMutation(api.agentRuns.fail)
   const stopRun = useMutation(api.agentRuns.stop)
+
+  // Memory bank
+  const memoryBankContent = useQuery(
+    (api as any).memoryBank.get,
+    projectId ? { projectId: projectId as Id<'projects'> } : 'skip'
+  )
+  const updateMemoryBankMutation = useMutation((api as any).memoryBank.update)
 
   // Artifact store
   const pendingArtifactRecords = useQuery(api.artifacts.list, chatId ? { chatId } : 'skip')
@@ -319,9 +326,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       convex,
       artifactQueue.current,
       {
-        files: { batchGet: api.files.batchGet },
+        files: { batchGet: api.files.batchGet, list: api.files.list },
         jobs: { create: api.jobs.create, updateStatus: api.jobs.updateStatus },
         artifacts: { create: api.artifacts.create },
+        memoryBank: { update: (api as any).memoryBank.update },
       }
     )
   }, [projectId, chatId, convex, userId])
@@ -487,7 +495,9 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         const firstAnnotation = Array.isArray(msg.annotations)
           ? (msg.annotations[0] as PersistedMessageAnnotation | undefined)
           : undefined
-        const hydratedMode: ChatMode = firstAnnotation?.mode === 'build' ? 'build' : 'discuss'
+
+        // Map stored and legacy modes consistently to the current 4-mode model.
+        const hydratedMode = normalizeChatMode(firstAnnotation?.mode, mode)
 
         return {
           id: msg._id,
@@ -501,7 +511,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               : '',
           mode: hydratedMode,
           toolCalls: Array.isArray(firstAnnotation?.toolCalls)
-            ? (firstAnnotation.toolCalls as ToolCallInfo[])
+            ? (firstAnnotation?.toolCalls as ToolCallInfo[])
             : ([] as ToolCallInfo[]),
           annotations: {
             mode: hydratedMode,
@@ -533,11 +543,11 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       })
 
     setMessages(hydrated)
-  }, [chatId, persistedMessages, getReasoningRuntimeSettings])
+  }, [chatId, persistedMessages, getReasoningRuntimeSettings, mode])
 
   // Main submit handler
   const sendMessage = useCallback(
-    async (rawContent: string) => {
+    async (rawContent: string, contextFiles?: string[]) => {
       const userContent = rawContent.trim()
       if (!userContent || isRunningRef.current) return
       setInput('')
@@ -546,7 +556,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       // Note: we exclude tool messages here because our UI message shape
       // doesn't retain tool_call_id, which some providers require.
       // IMPORTANT: Claude Code-style mode separation.
-      // When in Discuss (Plan Mode), don't include Build messages in context (and vice versa),
+      // When in Plan mode, don't include Build messages in context (and vice versa),
       // otherwise the model continues implementation even after switching modes.
       const previousMessagesSnapshot = messages
         .filter((m) => (m.role === 'user' || m.role === 'assistant') && m.mode === mode)
@@ -591,6 +601,13 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           chatId,
           role: 'user',
           content: userContent,
+          annotations: [
+            {
+              mode,
+              model,
+              provider: provider?.config?.provider,
+            },
+          ],
         })
       } catch (err) {
         console.error('Failed to persist user message:', err)
@@ -663,9 +680,13 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           // implementation class name (e.g. "openai-compatible").
           provider: provider?.config?.provider || 'openai',
           previousMessages: previousMessagesSnapshot,
-          userMessage: userContent,
-          customInstructions: discussBrainstormEnabled
-            ? 'Discuss brainstorming protocol: enabled'
+          memoryBank: memoryBankContent ?? undefined,
+          userMessage:
+            contextFiles && contextFiles.length > 0
+              ? `${userContent}\n\n[Context files referenced by user: ${contextFiles.map((f) => `@file:${f}`).join(', ')}. Read these files first when relevant to the request.]`
+              : userContent,
+          customInstructions: architectBrainstormEnabled
+            ? 'Architect brainstorming protocol: enabled'
             : undefined,
         }
 
@@ -696,9 +717,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             },
             artifactQueue.current,
             {
-              files: { batchGet: null },
+              files: { batchGet: null, list: null },
               jobs: { create: null, updateStatus: null },
               artifacts: { create: null },
+              memoryBank: { update: null },
             }
           )
 
@@ -1089,8 +1111,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               break
 
             case 'error':
+              {
+                const userFacing = getUserFacingAgentError(event.error)
               setStatus('error')
-              setError(event.error || 'Unknown error')
+              setError(userFacing.description)
               isRunningRef.current = false
               void appendRunEvent({
                 type: 'error',
@@ -1098,10 +1122,11 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                 status: 'failed',
               })
               await finalizeRunFailed(event.error || 'Unknown error')
-              toast.error('Agent error', {
-                description: event.error,
+              toast.error(userFacing.title, {
+                description: userFacing.description,
               })
               break
+              }
           }
         }
 
@@ -1112,9 +1137,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           await finalizeRunStopped()
         }
       } catch (err) {
-        setStatus('error')
         const message = err instanceof Error ? err.message : String(err)
-        setError(message)
+        const userFacing = getUserFacingAgentError(message)
+        setStatus('error')
+        setError(userFacing.description)
         isRunningRef.current = false
         void appendRunEvent({
           type: 'error',
@@ -1131,8 +1157,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             runSequenceRef.current = 0
           }
         }
-        toast.error('Agent failed', {
-          description: message,
+        toast.error(userFacing.title, {
+          description: userFacing.description,
         })
       }
     },
@@ -1144,7 +1170,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       provider,
       model,
       providerType,
-      discussBrainstormEnabled,
+      architectBrainstormEnabled,
       addMessage,
       createRun,
       appendRunEvent,
@@ -1156,6 +1182,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       sessionUsage.totalTokens,
       contextWindowResolution.contextWindow,
       contextWindowResolution.source,
+      memoryBankContent,
     ]
   )
 
@@ -1185,6 +1212,11 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     progressSteps,
     usageMetrics,
     pendingArtifacts,
+    memoryBank: memoryBankContent,
+    updateMemoryBank: async (content: string) => {
+      if (!projectId) return
+      await updateMemoryBankMutation({ projectId: projectId as Id<'projects'>, content })
+    },
     sendMessage,
     handleSubmit,
     handleInputChange,

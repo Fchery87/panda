@@ -1,6 +1,6 @@
 import { extractBrainstormPhase, stripBrainstormPhaseMarker } from './brainstorming'
+import type { ChatMode } from '../agent/prompt-library'
 
-export type ChatMode = 'discuss' | 'build'
 export type AgentStatus =
   | 'idle'
   | 'thinking'
@@ -24,12 +24,12 @@ export function buildMessageWithPlanDraft(
   return `Plan draft:\n${plan}\n\nUser request:\n${userContent}`
 }
 
-export function pickLatestDiscussAssistantPlan(
+export function pickLatestArchitectAssistantPlan(
   messages: Array<{ role: 'user' | 'assistant'; mode: ChatMode; content: string }>
 ): string | null {
   for (let i = messages.length - 1; i >= 0; i--) {
     const m = messages[i]
-    if (m.role === 'assistant' && m.mode === 'discuss' && m.content.trim()) {
+    if (m.role === 'assistant' && m.mode === 'architect' && m.content.trim()) {
       return m.content
     }
   }
@@ -49,10 +49,10 @@ export function deriveNextPlanDraft({
   messages: Array<{ role: 'user' | 'assistant'; mode: ChatMode; content: string }>
   requireValidatedBrainstorm?: boolean
 }): string | null {
-  if (mode !== 'discuss') return null
+  if (mode !== 'architect') return null
   if (agentStatus !== 'complete') return null
 
-  const latest = pickLatestDiscussAssistantPlan(messages)
+  const latest = pickLatestArchitectAssistantPlan(messages)
   if (!latest) return null
   if (requireValidatedBrainstorm && extractBrainstormPhase(latest) !== 'validated_plan') {
     return null

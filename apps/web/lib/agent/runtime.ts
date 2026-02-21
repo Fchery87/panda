@@ -16,7 +16,7 @@ import { getDefaultProviderCapabilities } from '../llm/types'
 import type { PromptContext } from './prompt-library'
 import type { ToolContext, ToolExecutionResult } from './tools'
 import { getPromptForMode } from './prompt-library'
-import { AGENT_TOOLS, executeTool } from './tools'
+import { getToolsForMode, executeTool } from './tools'
 
 /**
  * Runtime options for agent execution
@@ -102,6 +102,15 @@ function hashToolCall(toolCall: ToolCall): string {
   return `${toolCall.function.name}:${toolCall.function.arguments}`
 }
 
+function buildToolCallPattern(toolCalls: ToolCall[]): string {
+  return toolCalls.map((toolCall) => hashToolCall(toolCall)).join('||')
+}
+
+function summarizeToolCallNames(toolCalls: ToolCall[]): string {
+  const names = Array.from(new Set(toolCalls.map((toolCall) => toolCall.function.name)))
+  return names.join(', ')
+}
+
 export function shouldRewriteDiscussResponse(content: string): boolean {
   // Claude Code Plan Mode expectation: no large code blocks / no fenced implementations.
   // For now we treat fenced code blocks as a hard violation and trigger a single rewrite pass.
@@ -136,6 +145,79 @@ function shouldRetryBuildForToolUse(args: {
     /I will begin by/i.test(args.content)
 
   return looksLikePlanningOutput
+}
+
+function extractInlineToolCalls(content: string): {
+  cleanedContent: string
+  toolCalls: ToolCall[]
+} {
+  const toolCalls: ToolCall[] = []
+  const toolCallIds = new Set<string>()
+
+  const validToolNames = [
+    'read_files',
+    'write_files',
+    'run_command',
+    'search_code',
+    'search_code_ast',
+    'update_memory_bank',
+  ]
+
+  const patterns = [
+    /\{[^{}]*"name"\s*:\s*"([^"]+)"[^{}]*"arguments"\s*:\s*(\{[\s\S]*?\})\s*\}/g,
+    /\{[^{}]*"function"\s*:\s*\{[^{}]*"name"\s*:\s*"([^"]+)"[^{}]*"arguments"\s*:\s*(\{[\s\S]*?\})[^{}]*\}[^{}]*\}/g,
+    /```json\s*\n?\s*(\{[\s\S]*?"name"\s*:\s*"([^"]+)"[\s\S]*?"arguments"\s*:\s*(\{[\s\S]*?\})[\s\S]*?\})\s*\n?\s*```/g,
+  ]
+
+  const extractFromMatch = (toolName: string, argsStr: string, _fullMatch: string): boolean => {
+    if (!validToolNames.includes(toolName)) return false
+
+    try {
+      const args = JSON.parse(argsStr)
+      const id = `inline_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+
+      if (toolCallIds.has(id)) return false
+      toolCallIds.add(id)
+
+      const toolCall: ToolCall = {
+        id,
+        type: 'function',
+        function: {
+          name: toolName,
+          arguments: JSON.stringify(args),
+        },
+      }
+      toolCalls.push(toolCall)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  for (const pattern of patterns) {
+    let match
+    while ((match = pattern.exec(content)) !== null) {
+      if (pattern.source.includes('```json')) {
+        extractFromMatch(match[2], match[3], match[0])
+      } else {
+        extractFromMatch(match[1], match[2], match[0])
+      }
+    }
+  }
+
+  let cleanedContent = content
+
+  if (toolCalls.length > 0) {
+    for (const pattern of patterns) {
+      cleanedContent = cleanedContent.replace(pattern, '')
+    }
+    cleanedContent = cleanedContent
+      .replace(/\n\s*\n\s*\n/g, '\n\n')
+      .replace(/^[\s\n]+|[\s\n]+$/g, '')
+      .trim()
+  }
+
+  return { cleanedContent, toolCalls }
 }
 
 /**
@@ -205,7 +287,7 @@ export class AgentRuntime {
           messages: state.messages,
           temperature: this.options.temperature ?? 0.7,
           maxTokens: this.options.maxTokens,
-          tools: promptContext.chatMode === 'build' ? AGENT_TOOLS : undefined,
+          tools: getToolsForMode(promptContext.chatMode),
           stream: true,
           ...(providerCapabilities.supportsReasoning && this.options.reasoning
             ? { reasoning: this.options.reasoning }
@@ -245,9 +327,9 @@ export class AgentRuntime {
                   }
                 }
 
-                // In Discuss mode, prevent fenced code blocks from ever streaming into the UI.
+                // In Architect mode, prevent fenced code blocks from ever streaming into the UI.
                 // If we detect a code fence, stop streaming and do a single rewrite pass into plan format.
-                if (promptContext.chatMode === 'discuss') {
+                if (promptContext.chatMode === 'architect') {
                   const combined = fullContent + chunk.content
                   const fenceIndex = combined.indexOf('```')
                   if (fenceIndex !== -1) {
@@ -316,9 +398,9 @@ export class AgentRuntime {
         }
 
         // Claude Code-style Plan Mode enforcement:
-        // If the model outputs code in discuss mode, do one automatic rewrite pass into plan format.
+        // If the model outputs code in architect mode, do one automatic rewrite pass into plan format.
         if (
-          promptContext.chatMode === 'discuss' &&
+          promptContext.chatMode === 'architect' &&
           !didPlanModeRewrite &&
           (planRewriteTriggeredDuringStream || shouldRewriteDiscussResponse(fullContent))
         ) {
@@ -350,7 +432,7 @@ export class AgentRuntime {
           const retryOptions: CompletionOptions = {
             ...completionOptions,
             messages: retryMessages,
-            // No tools in discuss mode anyway, but keep explicit.
+            // No tools in architect mode anyway, but keep explicit.
             tools: undefined,
           }
 
@@ -427,7 +509,7 @@ export class AgentRuntime {
           const retryOptions: CompletionOptions = {
             ...completionOptions,
             messages: retryMessages,
-            tools: AGENT_TOOLS,
+            tools: getToolsForMode(promptContext.chatMode),
           }
 
           fullContent = ''
@@ -460,6 +542,27 @@ export class AgentRuntime {
           }
         }
 
+        // Detect and extract inline tool calls (models that output tool calls as text JSON)
+        // This happens when models don't properly support function calling
+        if (
+          pendingToolCalls.length === 0 &&
+          fullContent.includes('"name"') &&
+          fullContent.includes('"arguments"')
+        ) {
+          const extracted = extractInlineToolCalls(fullContent)
+          if (extracted.toolCalls.length > 0) {
+            fullContent = extracted.cleanedContent
+            pendingToolCalls = extracted.toolCalls
+            yield {
+              type: 'status_thinking',
+              content: `Detected ${extracted.toolCalls.length} inline tool call(s) in response`,
+            }
+            for (const tc of extracted.toolCalls) {
+              yield { type: 'tool_call', toolCall: tc }
+            }
+          }
+        }
+
         // Check for empty response - this can happen if the provider doesn't support tools
         // or if there's an API issue that didn't trigger an error event
         if (!fullContent.trim() && pendingToolCalls.length === 0) {
@@ -471,7 +574,7 @@ export class AgentRuntime {
               '1. The provider (Z.ai) does not support tools/function calling\n' +
               '2. The API endpoint is not responding correctly\n' +
               '3. The model configuration is incompatible\n\n' +
-              'Try using Discuss mode (no tools) or switching to a different provider.',
+              'Try using Plan mode (no tools) or switching to a different provider.',
           }
           state.isComplete = true
           break
@@ -516,17 +619,22 @@ export class AgentRuntime {
             pendingToolCalls = uniqueToolCalls
           }
 
-          // Track tool call patterns for loop detection
-          const currentToolPattern = pendingToolCalls.map((tc) => tc.function.name).join(',')
+          // Track tool call patterns for loop detection using full call signatures
+          // (name + arguments), not just tool names.
+          // This avoids false positives for legitimate repeated tools with different targets.
+          const currentToolPattern = buildToolCallPattern(pendingToolCalls)
           state.toolCallHistory.push(currentToolPattern)
 
-          // Detect tool call loops (same pattern repeated)
+          // Detect repeated identical tool call batches across recent iterations.
           if (state.toolCallHistory.length >= toolLoopThreshold) {
             const recentPatterns = state.toolCallHistory.slice(-toolLoopThreshold)
-            if (recentPatterns.every((p) => p === recentPatterns[0]) && recentPatterns[0] !== '') {
+            if (recentPatterns.every((pattern) => pattern === recentPatterns[0])) {
+              const toolSummary = summarizeToolCallNames(pendingToolCalls)
               yield {
                 type: 'error',
-                error: `Detected tool call loop: ${recentPatterns[0]}. Stopping to prevent infinite iteration.`,
+                error:
+                  `Detected repeated identical tool calls: ${toolSummary || 'unknown tools'}. ` +
+                  'Stopping to prevent infinite iteration.',
               }
               state.isComplete = true
               break

@@ -18,9 +18,12 @@ import { LiveRunPanel } from '@/components/chat/LiveRunPanel'
 import { mapLatestRunProgressSteps } from '@/components/chat/live-run-utils'
 import { ArtifactPanel } from '@/components/artifacts/ArtifactPanel'
 import { AgentAutomationDialog } from '@/components/projects/AgentAutomationDialog'
+import { MemoryBankEditor } from '@/components/chat/MemoryBankEditor'
+import { ShareButton } from '@/components/chat/ShareButton'
+import { ChatHistoryActions } from '@/components/chat/ChatHistoryActions'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { PandaLogo } from '@/components/ui/panda-logo'
-import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog,
   DialogContent,
@@ -29,9 +32,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { PanelRight, ChevronLeft, Bot, RotateCcw } from 'lucide-react'
+import { PanelRight, ChevronLeft, Bot, RotateCcw, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+
+// New UX Components
+import { CommandPalette } from '@/components/command-palette/CommandPalette'
+import { ContextWindowIndicator } from '@/components/chat/ContextWindowIndicator'
+import { PlanPanel } from '@/components/plan'
 
 // Hooks
 import { useJobs } from '@/hooks/useJobs'
@@ -40,12 +48,15 @@ import { useAutoApplyArtifacts } from '@/hooks/useAutoApplyArtifacts'
 
 import type { Message } from '@/components/chat/types'
 import { buildMessageWithPlanDraft, deriveNextPlanDraft } from '@/lib/chat/planDraft'
+import { isRateLimitError, getUserFacingAgentError } from '@/lib/chat/error-messages'
 import { resolveChatPanelVisibility } from '@/lib/chat/panelVisibility'
 import { resolveEffectiveAgentPolicy, type AgentPolicy } from '@/lib/agent/automationPolicy'
+import { normalizeChatMode, type ChatMode } from '@/lib/agent/prompt-library'
 
 // LLM Provider
 import { getGlobalRegistry } from '@/lib/llm/registry'
 import type { LLMProvider } from '@/lib/llm/types'
+import { getDefaultProviderCapabilities } from '@/lib/llm/types'
 
 interface File {
   _id: Id<'files'>
@@ -62,7 +73,7 @@ interface Chat {
   _creationTime: number
   projectId: Id<'projects'>
   title?: string
-  mode: 'discuss' | 'build'
+  mode: ChatMode
   planDraft?: string
   planUpdatedAt?: number
   createdAt: number
@@ -165,20 +176,27 @@ export default function ProjectPage() {
     setPlanUpdatedAt(activeChat?.planUpdatedAt ?? null)
   }, [activeChat?._id, activeChat?.planDraft, activeChat?.planUpdatedAt])
 
+  // Keep UI/runtime mode aligned with the active chat metadata.
+  useEffect(() => {
+    if (!activeChat?.mode) return
+    setChatMode(activeChat.mode)
+  }, [activeChat?._id, activeChat?.mode])
+
   // Jobs (Terminal)
   const { isAnyJobRunning } = useJobs(projectId)
 
   // Chat mode state - synchronized with ChatInput's internal mode
-  const [chatMode, setChatMode] = useState<'discuss' | 'build'>('discuss')
-  const [discussBrainstormEnabled, setDiscussBrainstormEnabled] = useState(
-    process.env.NEXT_PUBLIC_ENABLE_DISCUSS_BRAINSTORM === 'true'
+  const [chatMode, setChatMode] = useState<ChatMode>('architect')
+  const [architectBrainstormEnabled, setArchitectBrainstormEnabled] = useState(
+    process.env.NEXT_PUBLIC_ENABLE_ARCHITECT_BRAINSTORM === 'true'
   )
-
+  const [uiSelectedModel, setUiSelectedModel] = useState<string | null>(null)
+  const [reasoningVariant, setReasoningVariant] = useState('none')
   // Pending message for when we need to create chat first
   const [pendingMessage, setPendingMessage] = useState<{
     id: string
     content: string
-    mode: 'discuss' | 'build'
+    mode: ChatMode
   } | null>(null)
   const pendingMessageDispatchRef = useRef<string | null>(null)
 
@@ -201,14 +219,16 @@ export default function ProjectPage() {
     const policy = resolveEffectiveAgentPolicy({
       projectPolicy: projectAgentPolicy,
       userDefaults: userAgentDefaults,
+      mode: chatMode,
     })
     console.log('[ProjectPage] Effective automation policy:', {
       projectPolicy: projectAgentPolicy,
       userDefaults: userAgentDefaults,
+      mode: chatMode,
       effective: policy,
     })
     return policy
-  }, [projectAgentPolicy, userAgentDefaults])
+  }, [projectAgentPolicy, userAgentDefaults, chatMode])
 
   useAutoApplyArtifacts({ projectId, chatId: activeChat?._id, policy: effectiveAutomationPolicy })
 
@@ -223,37 +243,67 @@ export default function ProjectPage() {
     const defaultProviderId = latestSettings.defaultProvider || 'openai'
     const providerConfig = latestSettings.providerConfigs?.[defaultProviderId]
 
-    // Check if we already have this provider
+    if (!providerConfig?.enabled || !providerConfig.apiKey) {
+      registry.removeProvider(defaultProviderId)
+      return null
+    }
+
+    const nextProviderConfig = {
+      provider: (providerConfig?.provider || 'openai') as
+        | 'openai'
+        | 'openrouter'
+        | 'together'
+        | 'anthropic'
+        | 'zai'
+        | 'chutes'
+        | 'custom',
+      auth: {
+        apiKey: providerConfig?.apiKey || '',
+        baseUrl: providerConfig?.baseUrl,
+      },
+      defaultModel: providerConfig?.defaultModel,
+    }
+
+    // Check if we already have this provider and refresh it if settings changed.
     const existingProvider = registry.getProvider(defaultProviderId)
     if (existingProvider) {
+      const existingConfig = registry.getProviderConfig(defaultProviderId)
+      const configChanged =
+        existingConfig?.provider !== nextProviderConfig.provider ||
+        existingConfig?.auth?.apiKey !== nextProviderConfig.auth.apiKey ||
+        existingConfig?.auth?.baseUrl !== nextProviderConfig.auth.baseUrl ||
+        existingConfig?.defaultModel !== nextProviderConfig.defaultModel
+      if (configChanged) {
+        registry.updateProviderConfig(defaultProviderId, nextProviderConfig)
+        return registry.getProvider(defaultProviderId) ?? null
+      }
       return existingProvider
     }
 
-    // Create provider from settings if enabled
-    if (providerConfig?.enabled && providerConfig.apiKey) {
-      try {
-        return registry.createProvider(
-          defaultProviderId,
-          {
-            provider: providerConfig.provider || 'openai',
-            auth: {
-              apiKey: providerConfig.apiKey,
-              baseUrl: providerConfig.baseUrl,
-            },
-            defaultModel: providerConfig.defaultModel,
-          },
-          true
-        )
-      } catch (error) {
-        console.error('Failed to create provider from settings:', error)
-        return null
-      }
+    try {
+      return registry.createProvider(defaultProviderId, nextProviderConfig, true)
+    } catch (error) {
+      console.error('Failed to create provider from settings:', error)
+      return null
     }
-
-    // Fallback: try to create from environment (for client-side, this might not work)
-    // In production, settings should always be configured
-    return null
   }, [settingsProviderVersion])
+
+  const selectedModel = useMemo(() => {
+    const selectedProviderId = settings?.defaultProvider || 'openai'
+    const providerDefaultModel = settings?.providerConfigs?.[selectedProviderId]?.defaultModel
+
+    if (providerDefaultModel) return providerDefaultModel
+    if (settings?.defaultModel) return settings.defaultModel
+    if (provider?.config?.defaultModel) return provider.config.defaultModel
+    return 'gpt-4o'
+  }, [settings?.defaultProvider, settings?.defaultModel, settings?.providerConfigs, provider])
+
+  const supportsReasoning = useMemo(() => {
+    const providerType = (settings?.defaultProvider || 'openai') as Parameters<
+      typeof getDefaultProviderCapabilities
+    >[0]
+    return getDefaultProviderCapabilities(providerType).supportsReasoning
+  }, [settings?.defaultProvider])
 
   // Initialize agent hook when activeChat and provider exist
   // Skip the hook if provider is not available - we'll show an error when user tries to send
@@ -261,10 +311,9 @@ export default function ProjectPage() {
     chatId: activeChat?._id as Id<'chats'>,
     projectId,
     mode: chatMode,
-    discussBrainstormEnabled,
+    architectBrainstormEnabled,
     provider: provider ?? FALLBACK_PROVIDER, // Stable fallback - checked before use
-    model:
-      settings?.providerConfigs?.[settings?.defaultProvider || 'openai']?.defaultModel || 'gpt-4o',
+    model: selectedModel,
   })
   const sendAgentMessage = agent.sendMessage
 
@@ -289,8 +338,8 @@ export default function ProjectPage() {
     agent.setInput('')
     // Clear plan draft
     setPlanDraft('')
-    // Reset mode to discuss
-    setChatMode('discuss')
+    // Reset mode to architect
+    setChatMode('architect')
     // Close artifact panel
     setIsArtifactPanelOpen(false)
     // Show confirmation
@@ -313,9 +362,10 @@ export default function ProjectPage() {
     })
   }, [pendingMessage, activeChat, chatMode, sendAgentMessage])
 
-  // Auto-open artifact panel when there are pending artifacts in build mode
+  // Auto-open artifact panel when there are pending artifacts in build/code mode
   useEffect(() => {
-    if (chatMode === 'build' && pendingArtifactCount > 0 && !isArtifactPanelOpen) {
+    const isWriteMode = chatMode === 'build' || chatMode === 'code'
+    if (isWriteMode && pendingArtifactCount > 0 && !isArtifactPanelOpen) {
       setIsArtifactPanelOpen(true)
     }
   }, [pendingArtifactCount, chatMode, isArtifactPanelOpen])
@@ -347,7 +397,7 @@ export default function ProjectPage() {
           annotations:
             Array.isArray(msg.annotations) && msg.annotations.length > 0
               ? {
-                  mode: msg.annotations[0]?.mode as 'discuss' | 'build' | undefined,
+                  mode: normalizeChatMode(msg.annotations[0]?.mode, chatMode),
                   model: msg.annotations[0]?.model as string | undefined,
                   provider: msg.annotations[0]?.provider as string | undefined,
                   tokenCount: msg.annotations[0]?.tokenCount as number | undefined,
@@ -395,7 +445,7 @@ export default function ProjectPage() {
         },
         createdAt: msg.createdAt,
       }))
-  }, [agent.messages, activeChat, convexMessages])
+  }, [agent.messages, activeChat, chatMode, convexMessages])
 
   const replayProgressSteps = useMemo(
     () => mapLatestRunProgressSteps(runEvents ?? []).slice(-24),
@@ -408,6 +458,10 @@ export default function ProjectPage() {
   const liveRunSteps = useMemo(() => {
     return agent.progressSteps.length > 0 ? agent.progressSteps : replayProgressSteps
   }, [agent.progressSteps, replayProgressSteps])
+  const inlineRateLimitError = useMemo(() => {
+    if (!agent.error || !isRateLimitError(agent.error)) return null
+    return getUserFacingAgentError(agent.error)
+  }, [agent.error])
 
   // File mutations
   const upsertFileMutation = useMutation(api.files.upsert)
@@ -483,13 +537,13 @@ export default function ProjectPage() {
     }
   }, [activeChat?._id, planDraft, persistPlanDraft])
 
-  // Auto-update plan draft after a Discuss completion (Claude Code-like)
+  // Auto-update plan draft after a Plan completion (Claude Code-like)
   useEffect(() => {
     const next = deriveNextPlanDraft({
       mode: chatMode,
       agentStatus: agent.status,
       currentPlanDraft: planDraft,
-      requireValidatedBrainstorm: discussBrainstormEnabled,
+      requireValidatedBrainstorm: architectBrainstormEnabled,
       messages: agent.messages
         .filter(
           (
@@ -506,7 +560,7 @@ export default function ProjectPage() {
     if (planDraft.trim() !== lastSavedPlanDraftRef.current.trim()) return
 
     setPlanDraft(next)
-  }, [agent.messages, agent.status, chatMode, planDraft, discussBrainstormEnabled])
+  }, [agent.messages, agent.status, chatMode, planDraft, architectBrainstormEnabled])
 
   // File operations
   const handleFileSelect = useCallback(
@@ -555,16 +609,14 @@ export default function ProjectPage() {
           return
         }
 
-        // Create new file with same content
+        // Update existing file path in place.
         await upsertFileMutation({
+          id: file._id,
           projectId,
           path: newPath,
           content: file.content,
           isBinary: file.isBinary,
         })
-
-        // Delete old file
-        await deleteFileMutation({ id: file._id })
 
         toast.success(`Renamed to ${newPath}`)
         if (selectedFilePath === oldPath) {
@@ -577,7 +629,7 @@ export default function ProjectPage() {
         })
       }
     },
-    [files, projectId, upsertFileMutation, deleteFileMutation, selectedFilePath]
+    [files, projectId, upsertFileMutation, selectedFilePath]
   )
 
   const handleFileDelete = useCallback(
@@ -628,7 +680,7 @@ export default function ProjectPage() {
 
   // Chat operations
   const handleSendMessage = useCallback(
-    async (content: string, mode: 'discuss' | 'build') => {
+    async (content: string, mode: ChatMode, contextFiles?: string[]) => {
       const trimmed = content.trim()
       if (!trimmed) {
         toast.error('Message is empty')
@@ -640,7 +692,9 @@ export default function ProjectPage() {
       setMobilePrimaryPanel('chat')
 
       const finalContent =
-        mode === 'build' ? buildMessageWithPlanDraft(planDraft, content) : content
+        mode === 'build' || mode === 'code'
+          ? buildMessageWithPlanDraft(planDraft, content)
+          : content
 
       if (!activeChat) {
         // Create new chat if none exists
@@ -660,6 +714,10 @@ export default function ProjectPage() {
         return
       }
 
+      if (activeChat.mode !== mode) {
+        await updateChatMutation({ id: activeChat._id, mode })
+      }
+
       // Check if provider is available
       if (!provider) {
         toast.error('LLM provider not configured', {
@@ -669,16 +727,42 @@ export default function ProjectPage() {
       }
 
       // Send directly for existing chats.
-      await sendAgentMessage(finalContent)
+      await sendAgentMessage(finalContent, contextFiles)
     },
-    [activeChat, projectId, createChatMutation, sendAgentMessage, provider, planDraft, setActiveChatId]
+    [
+      activeChat,
+      projectId,
+      createChatMutation,
+      sendAgentMessage,
+      updateChatMutation,
+      provider,
+      planDraft,
+      setActiveChatId,
+    ]
   )
 
-  const handleResendInBuild = useCallback(
-    async (content: string) => {
-      await handleSendMessage(content, 'build')
+  const handleSuggestedAction = useCallback(
+    async (prompt: string, targetMode?: ChatMode) => {
+      const mode = targetMode ?? chatMode
+      if (targetMode) {
+        if (activeChat && activeChat.mode !== targetMode) {
+          void updateChatMutation({ id: activeChat._id, mode: targetMode })
+        }
+        setChatMode(targetMode)
+      }
+      await handleSendMessage(prompt, mode)
     },
-    [handleSendMessage]
+    [activeChat, chatMode, handleSendMessage, updateChatMutation]
+  )
+
+  const handleModeChange = useCallback(
+    (nextMode: ChatMode) => {
+      setChatMode(nextMode)
+      if (activeChat && activeChat.mode !== nextMode) {
+        void updateChatMutation({ id: activeChat._id, mode: nextMode })
+      }
+    },
+    [activeChat, updateChatMutation]
   )
 
   useEffect(() => {
@@ -767,15 +851,11 @@ export default function ProjectPage() {
         <Bot className="h-3.5 w-3.5 text-primary" />
         <span>Chat</span>
         <div className="ml-2 hidden min-w-0 flex-1 overflow-hidden md:block">
-          <div className="truncate font-mono text-[10px] text-muted-foreground/80">
-            Context {agent.usageMetrics.usedTokens.toLocaleString()}/
-            {agent.usageMetrics.contextWindow.toLocaleString()} ({agent.usageMetrics.usagePct}%)
-          </div>
-          <div className="truncate font-mono text-[10px] text-muted-foreground/60">
-            Remaining {agent.usageMetrics.remainingTokens.toLocaleString()} • Session{' '}
-            {agent.usageMetrics.session.totalTokens.toLocaleString()}
-            {agent.usageMetrics.currentRun?.source === 'estimated' ? ' + live est' : ''}
-          </div>
+          <ContextWindowIndicator
+            usage={agent.usageMetrics}
+            chatHistory={chatMessages}
+            onNewSession={handleResetWorkspace}
+          />
         </div>
         <div className="ml-auto flex items-center gap-2">
           {agent.status !== 'idle' && agent.status !== 'complete' && agent.status !== 'error' && (
@@ -789,43 +869,14 @@ export default function ProjectPage() {
                 Plan
               </Button>
             </DialogTrigger>
-            <DialogContent className="rounded-none border-border sm:max-w-2xl">
-              <DialogHeader>
-                <DialogTitle className="font-mono text-sm uppercase tracking-wide">
-                  Plan Draft
-                </DialogTitle>
-                <DialogDescription>
-                  Discuss mode updates this draft. Build mode automatically uses it.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-[10px] text-muted-foreground/70">
-                    {planUpdatedAt
-                      ? `Saved ${new Date(planUpdatedAt).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}`
-                      : 'Not saved'}
-                  </span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    className="h-7 rounded-none font-mono text-xs"
-                    onClick={savePlanDraftNow}
-                    disabled={!activeChat?._id || isPlanSaving}
-                  >
-                    {isPlanSaving ? 'Saving' : 'Save now'}
-                  </Button>
-                </div>
-                <Textarea
-                  value={planDraft}
-                  onChange={(e) => setPlanDraft(e.target.value)}
-                  placeholder="Discuss mode will auto-update this plan draft. You can edit it anytime."
-                  className="min-h-[320px] rounded-none border-border bg-background font-mono text-xs leading-relaxed"
-                />
-              </div>
+            <DialogContent className="rounded-none border-border p-0 sm:max-w-2xl">
+              <PlanPanel
+                planDraft={planDraft}
+                onChange={setPlanDraft}
+                onSave={savePlanDraftNow}
+                isSaving={isPlanSaving}
+                lastSavedAt={planUpdatedAt}
+              />
             </DialogContent>
           </Dialog>
           <Dialog open={isDebugDialogOpen} onOpenChange={setIsDebugDialogOpen}>
@@ -846,6 +897,10 @@ export default function ProjectPage() {
               <RunTimelinePanel chatId={activeChat?._id} events={runEvents} defaultOpen={true} />
             </DialogContent>
           </Dialog>
+          {activeChat?._id && <ShareButton chatId={activeChat._id} />}
+          {activeChat?._id && (
+            <ChatHistoryActions chatId={activeChat._id} messageCount={chatMessages.length} />
+          )}
         </div>
       </div>
 
@@ -859,24 +914,60 @@ export default function ProjectPage() {
         onOpenArtifacts={() => setIsArtifactPanelOpen(true)}
       />
 
+      {/* Memory Bank Editor */}
+      <MemoryBankEditor memoryBank={agent.memoryBank} onSave={agent.updateMemoryBank} />
+
+      {inlineRateLimitError ? (
+        <div className="px-3 pb-2">
+          <Alert
+            variant="destructive"
+            className="rounded-none border-destructive/70 bg-destructive/5"
+          >
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle className="font-mono text-xs uppercase tracking-wide">
+              {inlineRateLimitError.title}
+            </AlertTitle>
+            <AlertDescription className="space-y-2 font-mono text-xs">
+              <p>{inlineRateLimitError.description}</p>
+              <div className="flex items-center gap-2">
+                <Button
+                  asChild
+                  size="sm"
+                  variant="outline"
+                  className="h-7 rounded-none font-mono text-xs"
+                >
+                  <Link href="/settings">Open LLM Settings</Link>
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        </div>
+      ) : null}
+
       {/* Messages */}
       <div className="flex-1 overflow-hidden">
         <MessageList
           messages={chatMessages}
           isStreaming={agent.isLoading}
-          onResendInBuild={handleResendInBuild}
+          onSuggestedAction={handleSuggestedAction}
         />
       </div>
 
       {/* Input */}
       <ChatInput
         mode={chatMode}
-        onModeChange={setChatMode}
-        discussBrainstormEnabled={discussBrainstormEnabled}
-        onDiscussBrainstormEnabledChange={setDiscussBrainstormEnabled}
+        onModeChange={handleModeChange}
+        architectBrainstormEnabled={architectBrainstormEnabled}
+        onArchitectBrainstormEnabledChange={setArchitectBrainstormEnabled}
         onSendMessage={handleSendMessage}
         isStreaming={agent.isLoading}
         onStopStreaming={agent.stop}
+        filePaths={files?.map((f) => f.path) ?? []}
+        model={uiSelectedModel || selectedModel}
+        onModelChange={setUiSelectedModel}
+        variant={reasoningVariant}
+        onVariantChange={setReasoningVariant}
+        supportsReasoning={supportsReasoning}
       />
     </div>
   )
@@ -903,60 +994,80 @@ export default function ProjectPage() {
       <motion.div
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="surface-1 flex h-12 shrink-0 items-center justify-between border-b border-border px-4"
+        className="surface-1 flex h-14 shrink-0 items-center justify-between border-b border-border px-4"
       >
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <Link href="/projects">
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 rounded-none"
+              aria-label="Back to projects"
+              title="Back to projects"
+            >
               <ChevronLeft className="h-4 w-4" />
             </Button>
           </Link>
 
-          <PandaLogo size="sm" variant="icon" />
+          <div className="h-6 w-px bg-border" />
 
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-sm font-semibold">{project.name}</span>
-            {isAnyJobRunning && <span className="flex h-2 w-2 animate-pulse bg-primary" />}
+          <div className="flex items-center gap-3">
+            <PandaLogo size="sm" variant="icon" />
+            <div className="flex items-center gap-2">
+              <h1 className="font-mono text-sm font-semibold">{project.name}</h1>
+              {isAnyJobRunning && (
+                <span
+                  className="flex h-2 w-2 animate-pulse rounded-full bg-primary"
+                  title="Jobs running"
+                />
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Show pending artifact count badge */}
-          {pendingArtifactCount > 0 && (
+        <div className="flex items-center gap-1">
+          {/* Primary Actions */}
+          <div className="flex items-center gap-1 border-r border-border pr-3">
+            {pendingArtifactCount > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                className="h-8 gap-1.5 rounded-none font-mono text-xs"
+                onClick={() => setIsArtifactPanelOpen(true)}
+              >
+                <span className="flex h-2 w-2 animate-pulse rounded-full bg-white" />
+                {pendingArtifactCount}
+              </Button>
+            )}
+            <AgentAutomationDialog
+              projectId={projectId}
+              projectPolicy={(project as any)?.agentPolicy}
+              userDefaults={(settings as any)?.agentDefaults}
+            />
+          </div>
+
+          {/* Secondary Actions */}
+          <div className="flex items-center gap-1 pl-3">
             <Button
-              variant="destructive"
+              variant={isArtifactPanelOpen ? 'secondary' : 'ghost'}
               size="sm"
-              className="gap-2 rounded-none font-mono text-xs"
-              onClick={() => setIsArtifactPanelOpen(true)}
+              className="h-8 gap-1.5 rounded-none font-mono text-xs"
+              onClick={() => setIsArtifactPanelOpen(!isArtifactPanelOpen)}
             >
-              <span className="flex h-2 w-2 animate-pulse rounded-full bg-white" />
-              {pendingArtifactCount} Pending
+              <PanelRight className="h-4 w-4" />
+              <span className="hidden sm:inline">Artifacts</span>
             </Button>
-          )}
-          <AgentAutomationDialog
-            projectId={projectId}
-            projectPolicy={(project as any)?.agentPolicy}
-            userDefaults={(settings as any)?.agentDefaults}
-          />
-          <Button
-            variant={isArtifactPanelOpen ? 'secondary' : 'ghost'}
-            size="sm"
-            className="gap-2 rounded-none font-mono text-xs"
-            onClick={() => setIsArtifactPanelOpen(!isArtifactPanelOpen)}
-          >
-            <PanelRight className="h-4 w-4" />
-            <span className="hidden sm:inline">Artifacts</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-2 rounded-none font-mono text-xs"
-            onClick={handleResetWorkspace}
-            title="Reset workspace (clear chat, artifacts, and plan)"
-          >
-            <RotateCcw className="h-4 w-4" />
-            <span className="hidden sm:inline">Reset</span>
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 gap-1.5 rounded-none font-mono text-xs"
+              onClick={handleResetWorkspace}
+              title="Reset workspace"
+            >
+              <RotateCcw className="h-4 w-4" />
+              <span className="hidden sm:inline">Reset</span>
+            </Button>
+          </div>
         </div>
       </motion.div>
 
@@ -982,7 +1093,7 @@ export default function ProjectPage() {
               )}
             </div>
             {!isMobileKeyboardOpen && (
-              <div className="surface-1 grid h-12 grid-cols-2 border-t border-border font-mono text-[11px] uppercase tracking-widest">
+              <div className="surface-1 grid h-12 grid-cols-2 border-t border-border font-mono text-xs uppercase tracking-widest">
                 <button
                   type="button"
                   onClick={() => setMobilePrimaryPanel('workspace')}
@@ -1007,7 +1118,7 @@ export default function ProjectPage() {
                 >
                   Chat
                   {mobileUnreadCount > 0 && mobilePrimaryPanel !== 'chat' && (
-                    <span className="absolute right-2 top-1.5 min-w-5 border border-border bg-destructive px-1.5 py-0.5 text-center font-mono text-[10px] text-destructive-foreground">
+                    <span className="absolute right-2 top-1.5 min-w-5 border border-border bg-destructive px-1.5 py-0.5 text-center font-mono text-xs text-destructive-foreground">
                       {mobileUnreadCount}
                     </span>
                   )}
@@ -1056,6 +1167,13 @@ export default function ProjectPage() {
             />
           </motion.div>
         )}
+
+        {/* Command Palette */}
+        <CommandPalette
+          files={files?.map((f) => ({ path: f.path })) ?? []}
+          onModeChange={handleModeChange}
+          currentMode={chatMode}
+        />
       </div>
     </div>
   )

@@ -23,7 +23,7 @@ export function ReasoningPanel({ content, isStreaming = false }: ReasoningPanelP
         <span className="flex items-center gap-2 font-mono text-xs">
           <Brain className="h-3.5 w-3.5" />
           Reasoning
-          {isStreaming && <span className="text-[10px] text-muted-foreground">streaming...</span>}
+          {isStreaming && <span className="text-xs text-muted-foreground">streaming...</span>}
         </span>
         <ChevronDown
           className={cn('h-3.5 w-3.5 transition-transform', open ? 'rotate-180' : 'rotate-0')}

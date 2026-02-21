@@ -2,6 +2,24 @@ import { query, mutation } from './_generated/server'
 import { v } from 'convex/values'
 import { requireAuth, getCurrentUserId } from './lib/auth'
 
+/**
+ * Get admin global settings
+ */
+async function getAdminSettings(ctx: any) {
+  const settings = await ctx.db.query('adminSettings').order('desc').first()
+
+  return (
+    settings || {
+      globalDefaultProvider: null,
+      globalDefaultModel: null,
+      globalProviderConfigs: {},
+      allowUserOverrides: true,
+      allowUserMCP: true,
+      allowUserSubagents: true,
+    }
+  )
+}
+
 // get (query) - get settings for current user
 export const get = query({
   args: {},
@@ -35,6 +53,131 @@ export const get = query({
   },
 })
 
+/**
+ * Get effective settings - merges admin global settings with user overrides
+ * This is the main function that should be used when running the agent
+ */
+export const getEffective = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getCurrentUserId(ctx)
+    if (!userId) return null
+
+    let userIdAsId = ctx.db.normalizeId('users', userId)
+
+    // If normalizeId fails, try to find by dev email
+    if (!userIdAsId) {
+      const devUser = await ctx.db
+        .query('users')
+        .withIndex('email', (q) => q.eq('email', 'dev@example.com'))
+        .first()
+      if (devUser) {
+        userIdAsId = devUser._id
+      }
+    }
+
+    if (!userIdAsId) {
+      return null
+    }
+
+    // Get admin global settings
+    const adminSettings = await getAdminSettings(ctx)
+
+    // Get user settings
+    const userSettings = await ctx.db
+      .query('settings')
+      .withIndex('by_user', (q) => q.eq('userId', userIdAsId))
+      .unique()
+
+    // Check if user is admin (admins always use their own settings)
+    const user = await ctx.db.get(userIdAsId)
+    const isAdmin = user?.isAdmin ?? false
+
+    // If user is admin, return their settings without merging
+    if (isAdmin && userSettings) {
+      return {
+        ...userSettings,
+        isAdmin: true,
+        effectiveProvider: userSettings.defaultProvider,
+        effectiveModel: userSettings.defaultModel,
+        usingGlobalDefaults: false,
+      }
+    }
+
+    // Determine effective provider and model
+    let effectiveProvider = userSettings?.defaultProvider
+    let effectiveModel = userSettings?.defaultModel
+    let usingGlobalDefaults = false
+
+    // Check if overrides are allowed
+    const allowOverrides = adminSettings.allowUserOverrides ?? true
+
+    if (!allowOverrides || !effectiveProvider || !effectiveModel) {
+      // Use admin global settings
+      effectiveProvider = adminSettings.globalDefaultProvider ?? effectiveProvider ?? 'openai'
+      effectiveModel = adminSettings.globalDefaultModel ?? effectiveModel ?? 'gpt-4o-mini'
+      usingGlobalDefaults = true
+    }
+
+    // Merge provider configs
+    let effectiveProviderConfigs = userSettings?.providerConfigs || {}
+    if (!allowOverrides && adminSettings.globalProviderConfigs) {
+      effectiveProviderConfigs = adminSettings.globalProviderConfigs
+    }
+
+    return {
+      // Base settings
+      theme: userSettings?.theme ?? 'system',
+      language: userSettings?.language ?? 'en',
+      permissions: userSettings?.permissions,
+      agentDefaults: userSettings?.agentDefaults,
+
+      // Provider configuration
+      defaultProvider: effectiveProvider,
+      defaultModel: effectiveModel,
+      providerConfigs: effectiveProviderConfigs,
+
+      // Admin settings info
+      allowUserOverrides: adminSettings.allowUserOverrides,
+      allowUserMCP: adminSettings.allowUserMCP,
+      allowUserSubagents: adminSettings.allowUserSubagents,
+
+      // User settings info
+      userOverridesProvider: userSettings?.overrideGlobalProvider ?? false,
+      userOverridesModel: userSettings?.overrideGlobalModel ?? false,
+
+      // Effective settings info
+      isAdmin: false,
+      effectiveProvider,
+      effectiveModel,
+      usingGlobalDefaults,
+
+      // Original settings
+      updatedAt: userSettings?.updatedAt ?? Date.now(),
+    }
+  },
+})
+
+/**
+ * Get admin settings info for the settings page
+ * This tells users what the admin has configured as defaults
+ */
+export const getAdminDefaults = query({
+  args: {},
+  handler: async (ctx) => {
+    const adminSettings = await getAdminSettings(ctx)
+
+    return {
+      globalDefaultProvider: adminSettings.globalDefaultProvider,
+      globalDefaultModel: adminSettings.globalDefaultModel,
+      allowUserOverrides: adminSettings.allowUserOverrides ?? true,
+      allowUserMCP: adminSettings.allowUserMCP ?? true,
+      allowUserSubagents: adminSettings.allowUserSubagents ?? true,
+      updatedAt: adminSettings.updatedAt,
+    }
+  },
+})
+
 // update (mutation) - update or create settings
 export const update = mutation({
   args: {
@@ -53,6 +196,16 @@ export const update = mutation({
         })
       )
     ),
+    permissions: v.optional(
+      v.object({
+        tools: v.optional(v.record(v.string(), v.string())),
+        bash: v.optional(v.record(v.string(), v.string())),
+      })
+    ),
+    // Admin override tracking
+    overrideGlobalProvider: v.optional(v.boolean()),
+    overrideGlobalModel: v.optional(v.boolean()),
+    overrideProviderConfigs: v.optional(v.record(v.string(), v.boolean())),
   },
   handler: async (ctx, args) => {
     const userId = await requireAuth(ctx)
@@ -99,6 +252,13 @@ export const update = mutation({
       if (args.defaultProvider !== undefined) updates.defaultProvider = args.defaultProvider
       if (args.defaultModel !== undefined) updates.defaultModel = args.defaultModel
       if (args.agentDefaults !== undefined) updates.agentDefaults = args.agentDefaults
+      if (args.permissions !== undefined) updates.permissions = args.permissions
+      if (args.overrideGlobalProvider !== undefined)
+        updates.overrideGlobalProvider = args.overrideGlobalProvider
+      if (args.overrideGlobalModel !== undefined)
+        updates.overrideGlobalModel = args.overrideGlobalModel
+      if (args.overrideProviderConfigs !== undefined)
+        updates.overrideProviderConfigs = args.overrideProviderConfigs
 
       await ctx.db.patch(existing._id, updates)
       return existing._id
@@ -112,6 +272,10 @@ export const update = mutation({
         defaultProvider: args.defaultProvider,
         defaultModel: args.defaultModel,
         agentDefaults: args.agentDefaults ?? null,
+        permissions: args.permissions,
+        overrideGlobalProvider: args.overrideGlobalProvider,
+        overrideGlobalModel: args.overrideGlobalModel,
+        overrideProviderConfigs: args.overrideProviderConfigs,
         updatedAt: now,
       })
 

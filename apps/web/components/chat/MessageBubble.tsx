@@ -1,19 +1,19 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { User, Bot } from 'lucide-react'
 import type { Message } from './types'
+import type { ChatMode } from '@/lib/agent/prompt-library'
 import { ReasoningPanel } from './ReasoningPanel'
+import { SuggestedActions } from './SuggestedActions'
 
 interface MessageBubbleProps {
   message: Message
   isStreaming?: boolean
-  resendInBuildContent?: string
-  onResendInBuild?: (content: string) => void
+  onSuggestedAction?: (prompt: string, targetMode?: ChatMode) => void
   disableActions?: boolean
 }
 
@@ -30,15 +30,12 @@ function redactFencedCodeBlocks(content: string): string {
 export function MessageBubble({
   message,
   isStreaming = false,
-  resendInBuildContent,
-  onResendInBuild,
+  onSuggestedAction,
   disableActions = false,
 }: MessageBubbleProps) {
   const isUser = message.role === 'user'
   const isAssistant = message.role === 'assistant'
-  const isDiscuss = message.annotations?.mode === 'discuss'
   const isBuild = message.annotations?.mode === 'build'
-  const hasFencedCode = isAssistant && isDiscuss && message.content.includes('```')
   const shouldRedactBuildCode = isAssistant && isBuild && message.content.includes('```')
   const displayContent = shouldRedactBuildCode
     ? redactFencedCodeBlocks(message.content)
@@ -58,12 +55,9 @@ export function MessageBubble({
               <User className="h-4 w-4" />
             </AvatarFallback>
           ) : (
-            <>
-              <AvatarImage src="/bot-avatar.png" alt="Assistant" />
-              <AvatarFallback className="bg-secondary text-secondary-foreground">
-                <Bot className="h-4 w-4" />
-              </AvatarFallback>
-            </>
+            <AvatarFallback className="bg-secondary text-secondary-foreground">
+              <Bot className="h-4 w-4" />
+            </AvatarFallback>
           )}
         </Avatar>
       </motion.div>
@@ -80,11 +74,11 @@ export function MessageBubble({
             {isUser ? 'You' : 'Assistant'}
           </span>
           {message.annotations?.model && (
-            <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+            <Badge variant="secondary" className="px-1.5 py-0 text-xs">
               {message.annotations.model}
             </Badge>
           )}
-          <span className="text-[10px] text-muted-foreground/60">
+          <span className="text-xs text-muted-foreground/60">
             {formatTimestamp(message.createdAt)}
           </span>
         </div>
@@ -118,72 +112,19 @@ export function MessageBubble({
 
         {isAssistant && isBuild && shouldRedactBuildCode && (
           <div className="flex items-center gap-2 px-1">
-            <span className="font-mono text-[10px] text-muted-foreground/70">Build mode</span>
-            <span className="font-mono text-[10px] text-amber-500/90">
+            <span className="font-mono text-xs text-muted-foreground/70">Build mode</span>
+            <span className="font-mono text-xs text-amber-500/90">
               (code hidden; use artifacts/editor)
             </span>
           </div>
         )}
-
-        {isAssistant && isDiscuss && (
-          <div className="flex items-center gap-2 px-1">
-            <span className="font-mono text-[10px] text-muted-foreground/70">Plan mode</span>
-            {hasFencedCode && (
-              <span className="font-mono text-[10px] text-amber-500/90">
-                (response includes code; expected a plan)
-              </span>
-            )}
-            {onResendInBuild && resendInBuildContent && (
-              <Button
-                size="sm"
-                variant="default"
-                className="h-7 rounded-none font-mono text-xs"
-                disabled={disableActions || isStreaming}
-                onClick={() => onResendInBuild(resendInBuildContent)}
-              >
-                Build this
-              </Button>
-            )}
-          </div>
-        )}
-
-        {/* Token Usage (if available) */}
-        {(message.annotations?.totalTokens || message.annotations?.tokenCount) && (
-          <motion.span
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="px-1 font-mono text-[10px] text-muted-foreground/70"
-          >
-            Tokens:{' '}
-            {message.annotations?.promptTokens !== undefined &&
-            message.annotations?.completionTokens !== undefined
-              ? `${message.annotations.promptTokens} + ${message.annotations.completionTokens} = `
-              : ''}
-            {message.annotations?.totalTokens ?? message.annotations?.tokenCount}
-            {message.annotations?.tokenSource === 'estimated' ? ' (est)' : ''}
-          </motion.span>
-        )}
-
-        {message.annotations?.contextWindow &&
-          message.annotations?.contextUsagePct !== undefined && (
-            <motion.span
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.35 }}
-              className="px-1 font-mono text-[10px] text-muted-foreground/60"
-            >
-              Context: {message.annotations.contextUsedTokens ?? 0}/
-              {message.annotations.contextWindow} ({message.annotations.contextUsagePct}%)
-            </motion.span>
-          )}
 
         {isAssistant && message.toolCalls && message.toolCalls.length > 0 && (
           <div className="w-full space-y-1 px-1 pt-1">
             {message.toolCalls.map((call) => (
               <div
                 key={call.id}
-                className="border border-border bg-background/70 px-2 py-1 font-mono text-[10px]"
+                className="border border-border bg-background/70 px-2 py-1 font-mono text-xs"
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate">{call.name}</span>
@@ -196,6 +137,17 @@ export function MessageBubble({
             ))}
           </div>
         )}
+        {/* Suggested Actions */}
+        {isAssistant &&
+          !isStreaming &&
+          message.suggestedActions &&
+          message.suggestedActions.length > 0 && (
+            <SuggestedActions
+              actions={message.suggestedActions}
+              disabled={disableActions}
+              onAction={(prompt, targetMode) => onSuggestedAction?.(prompt, targetMode)}
+            />
+          )}
       </div>
     </div>
   )

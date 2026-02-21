@@ -111,7 +111,7 @@ const LogEntry: React.FC<{
       )}
     >
       {timestamp && (
-        <span className="shrink-0 pt-0.5 text-[10px] tabular-nums text-zinc-500">
+        <span className="shrink-0 pt-0.5 text-xs tabular-nums text-zinc-500">
           {timestamp.split('T')[1]?.replace('Z', '') || timestamp}
         </span>
       )}

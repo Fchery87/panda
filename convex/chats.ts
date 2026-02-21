@@ -1,6 +1,7 @@
 import { query, mutation } from './_generated/server'
 import { v } from 'convex/values'
 import { requireAuth, getCurrentUserId } from './lib/auth'
+import { ChatMode } from './schema'
 
 // list (query) - list chats by projectId, ordered by updatedAt
 export const list = query({
@@ -27,7 +28,7 @@ export const create = mutation({
   args: {
     projectId: v.id('projects'),
     title: v.optional(v.string()),
-    mode: v.union(v.literal('discuss'), v.literal('build')),
+    mode: ChatMode,
   },
   handler: async (ctx, args) => {
     const now = Date.now()
@@ -51,7 +52,7 @@ export const update = mutation({
   args: {
     id: v.id('chats'),
     title: v.optional(v.string()),
-    mode: v.optional(v.union(v.literal('discuss'), v.literal('build'))),
+    mode: v.optional(ChatMode),
     planDraft: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -118,9 +119,116 @@ export const remove = mutation({
       await ctx.db.delete(artifact._id)
     }
 
+    // Delete all checkpoints associated with this chat
+    const chatCheckpoints = await ctx.db
+      .query('checkpoints')
+      .withIndex('by_chat', (q) => q.eq('chatId', args.id))
+      .collect()
+
+    for (const checkpoint of chatCheckpoints) {
+      await ctx.db.delete(checkpoint._id)
+    }
+
     // Delete the chat
     await ctx.db.delete(args.id)
 
     return args.id
+  },
+})
+
+// fork (mutation) - create a copy of a chat with all messages up to a point
+export const fork = mutation({
+  args: {
+    chatId: v.id('chats'),
+    upToMessageId: v.optional(v.id('messages')),
+  },
+  handler: async (ctx, args) => {
+    const originalChat = await ctx.db.get(args.chatId)
+    if (!originalChat) {
+      throw new Error('Chat not found')
+    }
+
+    const now = Date.now()
+
+    const forkedChatId = await ctx.db.insert('chats', {
+      projectId: originalChat.projectId,
+      title: `${originalChat.title || 'Untitled'} (fork)`,
+      mode: originalChat.mode,
+      planDraft: originalChat.planDraft,
+      planUpdatedAt: originalChat.planUpdatedAt,
+      createdAt: now,
+      updatedAt: now,
+    })
+
+    const messages = await ctx.db
+      .query('messages')
+      .withIndex('by_chat', (q) => q.eq('chatId', args.chatId))
+      .order('asc')
+      .collect()
+
+    const cutoffTime = args.upToMessageId
+      ? (await ctx.db.get(args.upToMessageId))?.createdAt
+      : undefined
+
+    for (const message of messages) {
+      if (cutoffTime && message.createdAt > cutoffTime) {
+        break
+      }
+
+      await ctx.db.insert('messages', {
+        chatId: forkedChatId,
+        role: message.role,
+        content: message.content,
+        annotations: message.annotations,
+        createdAt: message.createdAt,
+      })
+    }
+
+    return forkedChatId
+  },
+})
+
+// revert (mutation) - delete messages after a specific point
+export const revert = mutation({
+  args: {
+    chatId: v.id('chats'),
+    upToMessageId: v.id('messages'),
+  },
+  handler: async (ctx, args) => {
+    const chat = await ctx.db.get(args.chatId)
+    if (!chat) {
+      throw new Error('Chat not found')
+    }
+
+    const cutoffMessage = await ctx.db.get(args.upToMessageId)
+    if (!cutoffMessage || cutoffMessage.chatId !== args.chatId) {
+      throw new Error('Message not found in this chat')
+    }
+
+    const messages = await ctx.db
+      .query('messages')
+      .withIndex('by_chat', (q) => q.eq('chatId', args.chatId))
+      .collect()
+
+    for (const message of messages) {
+      if (message.createdAt > cutoffMessage.createdAt) {
+        const artifacts = await ctx.db
+          .query('artifacts')
+          .withIndex('by_message', (q) => q.eq('messageId', message._id))
+          .collect()
+
+        for (const artifact of artifacts) {
+          await ctx.db.delete(artifact._id)
+        }
+
+        await ctx.db.delete(message._id)
+      }
+    }
+
+    await ctx.db.patch(args.chatId, {
+      updatedAt: Date.now(),
+    })
+
+    return args.chatId
   },
 })

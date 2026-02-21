@@ -21,6 +21,7 @@ function createBaseContext(): ToolContext {
     readFiles: async () => [],
     writeFiles: async () => [],
     runCommand: async () => ({ stdout: '', stderr: '', exitCode: 0, durationMs: 1 }),
+    updateMemoryBank: async () => ({ success: true }),
   }
 }
 

@@ -6,14 +6,19 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { MessageBubble } from './MessageBubble'
 import { cn } from '@/lib/utils'
 import type { Message } from './types'
+import type { ChatMode } from '@/lib/agent/prompt-library'
 
 interface MessageListProps {
   messages: Message[]
   isStreaming?: boolean
-  onResendInBuild?: (content: string) => void
+  onSuggestedAction?: (prompt: string, targetMode?: ChatMode) => void
 }
 
-export function MessageList({ messages, isStreaming = false, onResendInBuild }: MessageListProps) {
+export function MessageList({
+  messages,
+  isStreaming = false,
+  onSuggestedAction,
+}: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -47,20 +52,6 @@ export function MessageList({ messages, isStreaming = false, onResendInBuild }: 
     <ScrollArea className="h-full">
       <div className={cn('flex min-h-full flex-col gap-4 p-4')}>
         {messages.map((message, index) => {
-          let resendInBuildContent: string | undefined
-          if (message.role === 'assistant' && message.annotations?.mode === 'discuss') {
-            for (let i = index - 1; i >= 0; i--) {
-              if (messages[i]?.role === 'user') {
-                // Build mode will automatically include the current Plan Draft panel content in the prompt.
-                // Make the handoff explicit so models that hesitate to use tools will start executing.
-                resendInBuildContent =
-                  'Implement the current Plan Draft now. ' +
-                  'Create/modify files using tools (write_files) and run commands using tools (run_command).'
-                break
-              }
-            }
-          }
-
           return (
             <motion.div
               key={message._id}
@@ -77,8 +68,7 @@ export function MessageList({ messages, isStreaming = false, onResendInBuild }: 
                 isStreaming={
                   isStreaming && index === messages.length - 1 && message.role === 'assistant'
                 }
-                resendInBuildContent={resendInBuildContent}
-                onResendInBuild={onResendInBuild}
+                onSuggestedAction={onSuggestedAction}
                 disableActions={isStreaming}
               />
             </motion.div>

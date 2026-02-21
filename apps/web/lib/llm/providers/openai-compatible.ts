@@ -5,8 +5,9 @@
  * Uses the Vercel AI SDK for streaming completions.
  */
 
-import { streamText, generateText, type CoreMessage, type ToolSet } from 'ai'
+import { streamText, generateText, jsonSchema, type CoreMessage, type ToolSet } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
+import { formatProviderError } from './error-utils'
 import type {
   LLMProvider,
   ModelInfo,
@@ -104,6 +105,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
       messages: this.convertMessages(options.messages),
       temperature: options.temperature ?? 0.7,
       maxTokens: options.maxTokens,
+      maxRetries: this.config.maxRetries ?? 0,
       topP: options.topP,
       frequencyPenalty: options.frequencyPenalty,
       presencePenalty: options.presencePenalty,
@@ -152,6 +154,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
         messages: this.convertMessages(options.messages),
         temperature: options.temperature ?? 0.7,
         maxTokens: options.maxTokens,
+        maxRetries: this.config.maxRetries ?? 0,
         topP: options.topP,
         frequencyPenalty: options.frequencyPenalty,
         presencePenalty: options.presencePenalty,
@@ -191,7 +194,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
           case 'error':
             yield {
               type: 'error',
-              error: part.error?.message ?? String(part.error ?? 'Unknown stream error'),
+              error: formatProviderError(part.error ?? 'Unknown stream error'),
             }
             return
           case 'finish':
@@ -213,10 +216,9 @@ export class OpenAICompatibleProvider implements LLMProvider {
         }
       }
     } catch (outerError) {
-      const errorMsg = outerError instanceof Error ? outerError.message : String(outerError)
       yield {
         type: 'error',
-        error: `Unexpected error: ${errorMsg}`,
+        error: formatProviderError(outerError),
       }
     }
   }
@@ -224,14 +226,18 @@ export class OpenAICompatibleProvider implements LLMProvider {
   /**
    * Convert our message format to AI SDK format
    * Z.ai doesn't support system role, so we filter it out
+   * Chutes doesn't support tool role, so we convert to assistant messages
    */
   private convertMessages(messages: CompletionOptions['messages']): CoreMessage[] {
     const isZai = this.config.auth.baseUrl?.includes('z.ai')
+    const isChutes = this.config.auth.baseUrl?.includes('chutes.ai')
+
+    let filteredMessages = messages
 
     // Filter out system messages for Z.ai
-    const filteredMessages = isZai
-      ? messages.filter((msg: CompletionMessage) => msg.role !== 'system')
-      : messages
+    if (isZai) {
+      filteredMessages = filteredMessages.filter((msg: CompletionMessage) => msg.role !== 'system')
+    }
 
     // Z.ai rejects system messages. If we filtered everything out, surface a clear error
     // instead of letting downstream validation fail with a generic message.
@@ -239,6 +245,11 @@ export class OpenAICompatibleProvider implements LLMProvider {
       throw new Error(
         'Invalid prompt: messages must not be empty (Z.ai does not support system role; ensure a user message is present).'
       )
+    }
+
+    // Chutes doesn't support role: "tool" - convert to assistant messages with tool results
+    if (isChutes) {
+      filteredMessages = this.convertChutesToolMessages(filteredMessages)
     }
 
     return filteredMessages.map((msg: CompletionMessage) => {
@@ -262,6 +273,63 @@ export class OpenAICompatibleProvider implements LLMProvider {
   }
 
   /**
+   * Convert tool role messages for Chutes which doesn't support them
+   * Merges tool results into assistant messages with tool_calls
+   */
+  private convertChutesToolMessages(messages: CompletionMessage[]): CompletionMessage[] {
+    const result: CompletionMessage[] = []
+    const toolResults = new Map<string, { content: string; name?: string }>()
+
+    // Collect all tool results
+    for (const msg of messages) {
+      if (msg.role === 'tool' && msg.tool_call_id) {
+        toolResults.set(msg.tool_call_id, {
+          content: msg.content,
+          name: msg.name,
+        })
+      }
+    }
+
+    // Process messages, merging tool results into assistant messages
+    for (let i = 0; i < messages.length; i++) {
+      const msg = messages[i]
+
+      if (msg.role === 'tool') {
+        // Skip standalone tool messages - they'll be merged
+        continue
+      }
+
+      if (msg.role === 'assistant' && msg.tool_calls && msg.tool_calls.length > 0) {
+        // Check if we have tool results to merge
+        const hasResults = msg.tool_calls.some((tc) => toolResults.has(tc.id))
+
+        if (hasResults) {
+          // Create assistant message with tool results embedded in content
+          const toolResultsContent = msg.tool_calls
+            .filter((tc) => toolResults.has(tc.id))
+            .map((tc) => {
+              const result = toolResults.get(tc.id)!
+              return `[Tool Result: ${tc.function.name}]\n${result.content}`
+            })
+            .join('\n\n')
+
+          result.push({
+            role: 'assistant',
+            content: msg.content ? `${msg.content}\n\n${toolResultsContent}` : toolResultsContent,
+            tool_calls: msg.tool_calls,
+          })
+        } else {
+          result.push(msg)
+        }
+      } else {
+        result.push(msg)
+      }
+    }
+
+    return result
+  }
+
+  /**
    * Convert our tool format to AI SDK format
    */
   private convertTools(tools?: CompletionOptions['tools']): ToolSet | undefined {
@@ -271,7 +339,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
     tools.forEach((tool: ToolDefinition) => {
       toolSet[tool.function.name] = {
         description: tool.function.description,
-        parameters: tool.function.parameters as any,
+        parameters: jsonSchema(tool.function.parameters as any),
       }
     })
     return toolSet

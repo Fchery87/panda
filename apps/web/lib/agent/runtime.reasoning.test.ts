@@ -15,6 +15,7 @@ const TOOL_CONTEXT = {
   readFiles: async () => [],
   writeFiles: async () => [],
   runCommand: async () => ({ stdout: '', stderr: '', exitCode: 0, durationMs: 0 }),
+  updateMemoryBank: async () => ({ success: true }),
 }
 
 function makeProvider(args: {
@@ -79,7 +80,7 @@ describe('AgentRuntime reasoning events', () => {
       projectId: 'p',
       chatId: 'c',
       userId: 'u',
-      chatMode: 'discuss',
+      chatMode: 'architect',
       provider: 'anthropic',
       userMessage: 'Plan this change',
     })) {
@@ -115,7 +116,7 @@ describe('AgentRuntime reasoning events', () => {
       projectId: 'p',
       chatId: 'c',
       userId: 'u',
-      chatMode: 'discuss',
+      chatMode: 'architect',
       provider: 'openai',
       userMessage: 'Hi',
     })) {
@@ -152,7 +153,7 @@ describe('AgentRuntime reasoning events', () => {
       projectId: 'p',
       chatId: 'c',
       userId: 'u',
-      chatMode: 'discuss',
+      chatMode: 'architect',
       provider: 'anthropic',
       userMessage: 'Hi',
     })) {

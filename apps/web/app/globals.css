@@ -1,91 +1,78 @@
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/*
- * SWISS-INDUSTRIAL DESIGN SYSTEM
- * Precision through restraint. One accent. Sharp edges. No gradients.
- */
-
 @layer base {
   :root {
-    /* ═══════════════════════════════════════════════════════════
-       LIGHT THEME - Warm, minimal
-       ═══════════════════════════════════════════════════════════ */
-    --background: 30 6% 97%; /* Warm off-white */
-    --foreground: 20 14% 4%; /* Rich black */
-
-    --card: 30 6% 98%;
-    --card-foreground: 20 14% 4%;
-
-    --popover: 30 6% 98%;
-    --popover-foreground: 20 14% 4%;
-
-    --primary: 43 100% 50%; /* Amber/Gold #FFB800 */
-    --primary-foreground: 20 14% 4%;
-
-    --secondary: 30 6% 94%;
-    --secondary-foreground: 20 14% 20%;
-
-    --muted: 30 6% 92%;
-    --muted-foreground: 20 6% 45%;
-
-    --accent: 43 100% 50%; /* Same as primary - ONE color */
-    --accent-foreground: 20 14% 4%;
-
+    --background: 40 20% 98%;
+    --foreground: 30 10% 10%;
+    --card: 40 20% 98%;
+    --card-foreground: 30 10% 10%;
+    --popover: 40 20% 98%;
+    --popover-foreground: 30 10% 10%;
+    --primary: 38 92% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 40 10% 94%;
+    --secondary-foreground: 30 10% 10%;
+    --muted: 40 10% 94%;
+    --muted-foreground: 30 5% 45%;
+    --accent: 40 10% 94%;
+    --accent-foreground: 30 10% 10%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-
-    --border: 20 6% 85%;
-    --input: 20 6% 85%;
-    --ring: 43 100% 50%;
-
-    --radius: 0.25rem; /* Sharp, minimal radius */
-
-    /* Surface elevation */
-    --surface-0: 30 6% 97%;
-    --surface-1: 30 6% 95%;
-    --surface-2: 30 6% 92%;
+    --border: 30 10% 88%;
+    --input: 30 10% 88%;
+    --ring: 38 92% 50%;
+    --radius: 0px;
+    --chart-1: 38 92% 50%;
+    --chart-2: 30 10% 10%;
+    --chart-3: 40 10% 94%;
+    --chart-4: 30 5% 45%;
+    --chart-5: 0 84% 60%;
+    --sidebar-background: 40 20% 98%;
+    --sidebar-foreground: 30 10% 10%;
+    --sidebar-primary: 38 92% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 40 10% 94%;
+    --sidebar-accent-foreground: 30 10% 10%;
+    --sidebar-border: 30 10% 88%;
+    --sidebar-ring: 38 92% 50%;
   }
 
   .dark {
-    /* ═══════════════════════════════════════════════════════════
-       DARK THEME - True black, precision, amber accent
-       ═══════════════════════════════════════════════════════════ */
-    --background: 20 14% 4%; /* True black #0A0A0A */
-    --foreground: 30 6% 97%; /* Warm off-white */
-
-    --card: 20 10% 6%;
-    --card-foreground: 30 6% 97%;
-
-    --popover: 20 10% 6%;
-    --popover-foreground: 30 6% 97%;
-
-    --primary: 43 100% 50%; /* Amber/Gold */
-    --primary-foreground: 20 14% 4%;
-
-    --secondary: 20 10% 10%;
-    --secondary-foreground: 30 6% 90%;
-
-    --muted: 20 10% 15%;
-    --muted-foreground: 30 4% 55%;
-
-    --accent: 43 100% 50%;
-    --accent-foreground: 20 14% 4%;
-
-    --destructive: 0 72% 50%;
+    --background: 30 10% 8%;
+    --foreground: 40 20% 98%;
+    --card: 30 10% 8%;
+    --card-foreground: 40 20% 98%;
+    --popover: 30 10% 8%;
+    --popover-foreground: 40 20% 98%;
+    --primary: 38 92% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 30 10% 15%;
+    --secondary-foreground: 40 20% 98%;
+    --muted: 30 10% 15%;
+    --muted-foreground: 40 5% 60%;
+    --accent: 30 10% 15%;
+    --accent-foreground: 40 20% 98%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-
-    --border: 20 6% 15%;
-    --input: 20 6% 15%;
-    --ring: 43 100% 50%;
-
-    /* Surface elevation - layered darks */
-    --surface-0: 20 14% 4%; /* Deepest */
-    --surface-1: 20 10% 7%; /* Raised */
-    --surface-2: 20 10% 10%; /* Highest */
+    --border: 30 10% 20%;
+    --input: 30 10% 20%;
+    --ring: 38 92% 50%;
+    --radius: 0px;
+    --chart-1: 38 92% 50%;
+    --chart-2: 40 20% 98%;
+    --chart-3: 30 10% 15%;
+    --chart-4: 40 5% 60%;
+    --chart-5: 0 84% 60%;
+    --sidebar-background: 30 10% 8%;
+    --sidebar-foreground: 40 20% 98%;
+    --sidebar-primary: 38 92% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 30 10% 15%;
+    --sidebar-accent-foreground: 40 20% 98%;
+    --sidebar-border: 30 10% 20%;
+    --sidebar-ring: 38 92% 50%;
   }
 }
 
@@ -96,7 +83,7 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Geist', system-ui, sans-serif;
+    font-family: var(--font-geist-sans), system-ui, sans-serif;
     font-feature-settings:
       'ss01' 1,
       'ss02' 1;
@@ -107,7 +94,15 @@
   code,
   pre,
   .font-mono {
-    font-family: 'Geist Mono', 'SF Mono', 'Consolas', monospace;
+    font-family: var(--font-fira-code), 'SF Mono', 'Consolas', monospace;
+    font-feature-settings:
+      'liga' 1,
+      /* Standard ligatures */ 'calt' 1,
+      /* Contextual alternates */ 'ss01' 1,
+      /* Stylistic set 1: Alternate & */ 'ss02' 1,
+      /* Stylistic set 2: Alternate @ */ 'ss03' 1,
+      /* Stylistic set 3: Alternate $ */ 'ss04' 1,
+      /* Stylistic set 4: Alternate %% */ 'zero' 1; /* Slashed zero */
   }
 
   /* Sharp focus states - no blur, solid outline */
@@ -195,8 +190,7 @@
      PANEL HEADER STYLE
      ═══════════════════════════════════════════════════════════ */
   .panel-header {
-    @apply border-b border-border px-3 py-2 font-mono text-xs uppercase tracking-widest text-muted-foreground;
-    letter-spacing: 0.1em;
+    @apply border-b border-border px-3 py-2 font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground;
   }
 
   .panel-header-numbered::before {
@@ -255,10 +249,10 @@
   }
 
   .text-label {
-    font-family: 'Geist Mono', monospace;
+    font-family: var(--font-fira-code), monospace;
     font-size: 0.75rem;
     font-weight: 500;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
   }
 
@@ -273,5 +267,41 @@
   }
   .hover-accent-border:hover {
     border-color: hsl(var(--primary));
+  }
+}
+
+/* Reduced motion support for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Disable dot grid animation on landing page */
+  .dot-grid {
+    animation: none !important;
+  }
+}
+
+/* Cursor styles for interactive elements */
+@layer components {
+  button:not(:disabled),
+  a,
+  [role='button'],
+  [role='link'],
+  input[type='checkbox'],
+  input[type='radio'],
+  select,
+  .cursor-pointer {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  a[aria-disabled='true'] {
+    cursor: not-allowed;
   }
 }

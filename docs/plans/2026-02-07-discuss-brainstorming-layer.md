@@ -1,14 +1,14 @@
-# Discuss Brainstorming Layer Implementation Plan
+# Plan Brainstorming Layer Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to
 > implement this plan task-by-task.
 
-**Goal:** Add an optional brainstorming protocol in Discuss mode that improves
+**Goal:** Add an optional brainstorming protocol in Plan mode that improves
 prompt intake while preserving existing Plan/Build flow.
 
-**Architecture:** Add a feature-flagged Discuss brainstorming protocol via
+**Architecture:** Add a feature-flagged Plan brainstorming protocol via
 prompt instructions, parse a machine-readable phase marker from assistant
-output, and only persist Discuss output to Plan Draft after the phase reaches
+output, and only persist Plan output to Plan Draft after the phase reaches
 `validated_plan`. Expose a small UI toggle in the chat input to enable/disable
 brainstorming per session.
 
@@ -42,7 +42,7 @@ brainstorming per session.
 
 - Run `bun test apps/web/lib/chat/planDraft.test.ts`.
 
-### Task 2: Discuss prompt protocol wiring
+### Task 2: Plan prompt protocol wiring
 
 **Files:**
 
@@ -51,7 +51,7 @@ brainstorming per session.
 
 **Step 1: Write failing test**
 
-- Add/adjust tests for discuss prompt generation when brainstorming protocol is
+- Add/adjust tests for Plan prompt generation when brainstorming protocol is
   enabled.
 
 **Step 2: Run test to verify failure**
@@ -60,7 +60,7 @@ brainstorming per session.
 
 **Step 3: Implement prompt and context wiring**
 
-- Add brainstorming protocol appendix to Discuss prompt, requiring phase marker
+- Add brainstorming protocol appendix to Plan prompt, requiring phase marker
   and one-question flow.
 - Pass enablement from `useAgent` through `PromptContext.customInstructions`.
 
@@ -78,7 +78,7 @@ brainstorming per session.
 
 **Step 1: Implement UI toggle**
 
-- Add a compact `Brainstorm` toggle in Discuss mode only.
+- Add a compact `Brainstorm` toggle in Plan mode only.
 - Keep brutalist styling conventions.
 
 **Step 2: Wire state to submit flow**

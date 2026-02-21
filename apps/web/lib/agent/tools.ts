@@ -3,6 +3,7 @@
  *
  * Tool definitions for the agent runtime:
  * - read_files: Read file contents
+ * - list_directory: List files/directories under a path
  * - write_files: Write or modify files
  * - run_command: Run CLI commands
  * - search_code: Search code with ripgrep/fallbacks
@@ -10,6 +11,58 @@
  */
 
 import type { ToolDefinition, ToolCall, ToolResult } from '../llm/types'
+import type { ChatMode } from './prompt-library'
+
+/**
+ * Get tools allowed for a specific mode
+ */
+export function getAllowedToolsForMode(mode: ChatMode): string[] {
+  const modeTools: Record<ChatMode, string[]> = {
+    ask: ['search_code', 'search_code_ast', 'read_files', 'list_directory'],
+    architect: [
+      'search_code',
+      'search_code_ast',
+      'read_files',
+      'list_directory',
+      'update_memory_bank',
+    ],
+    code: [
+      'search_code',
+      'search_code_ast',
+      'read_files',
+      'list_directory',
+      'write_files',
+      'run_command',
+      'update_memory_bank',
+    ],
+    build: [
+      'search_code',
+      'search_code_ast',
+      'read_files',
+      'list_directory',
+      'write_files',
+      'run_command',
+      'update_memory_bank',
+    ],
+  }
+  return modeTools[mode]
+}
+
+/**
+ * Filter tools based on mode
+ */
+export function getToolsForMode(mode: ChatMode): ToolDefinition[] {
+  const allowedTools = getAllowedToolsForMode(mode)
+  return AGENT_TOOLS.filter((tool) => allowedTools.includes(tool.function.name))
+}
+
+/**
+ * Check if a tool is allowed for a mode
+ */
+export function isToolAllowedForMode(toolName: string, mode: ChatMode): boolean {
+  const allowedTools = getAllowedToolsForMode(mode)
+  return allowedTools.includes(toolName)
+}
 
 /**
  * Tool definitions for the agent
@@ -34,6 +87,27 @@ export const AGENT_TOOLS: ToolDefinition[] = [
           },
         },
         required: ['paths'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'list_directory',
+      description:
+        'List files and subdirectories under a path. Use this to explore project structure before reading/writing files.',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: {
+            type: 'string',
+            description: 'Directory path relative to project root (default: root)',
+          },
+          recursive: {
+            type: 'boolean',
+            description: 'Whether to recursively include nested entries (default: false)',
+          },
+        },
       },
     },
   },
@@ -192,6 +266,24 @@ export const AGENT_TOOLS: ToolDefinition[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'update_memory_bank',
+      description:
+        'Update the project-level memory bank (MEMORY_BANK.md). Use this to persist project conventions, tech stack details, or important architectural decisions that should be remembered across sessions.',
+      parameters: {
+        type: 'object',
+        properties: {
+          content: {
+            type: 'string',
+            description: 'The updated contents of the memory bank in Markdown format.',
+          },
+        },
+        required: ['content'],
+      },
+    },
+  },
 ]
 
 /**
@@ -224,9 +316,20 @@ export interface ToolContext {
   userId: string
   // File operations
   readFiles: (paths: string[]) => Promise<Array<{ path: string; content: string | null }>>
+  listDirectory?: (
+    path?: string,
+    recursive?: boolean
+  ) => Promise<
+    Array<{
+      path: string
+      type: 'file' | 'directory'
+    }>
+  >
   writeFiles: (
     files: Array<{ path: string; content: string }>
   ) => Promise<Array<{ path: string; success: boolean; error?: string }>>
+  // Memory bank
+  updateMemoryBank: (content: string) => Promise<{ success: boolean; error?: string }>
   // Command execution
   runCommand: (
     command: string,
@@ -302,6 +405,44 @@ export interface ToolContext {
   }>
 }
 
+interface WriteFileSpec {
+  path: string
+  content: string
+}
+
+function normalizeWriteFilesInput(input: unknown): WriteFileSpec[] {
+  if (Array.isArray(input)) {
+    return input
+      .filter(
+        (item): item is { path: unknown; content: unknown } =>
+          Boolean(item) && typeof item === 'object'
+      )
+      .map((item) => ({
+        path: String(item.path ?? '').trim(),
+        content: typeof item.content === 'string' ? item.content : String(item.content ?? ''),
+      }))
+      .filter((item) => item.path.length > 0)
+  }
+
+  if (input && typeof input === 'object') {
+    const record = input as Record<string, unknown>
+
+    if (Array.isArray(record.files)) {
+      return normalizeWriteFilesInput(record.files)
+    }
+
+    if (record.file && typeof record.file === 'object') {
+      return normalizeWriteFilesInput([record.file])
+    }
+
+    if ('path' in record && 'content' in record) {
+      return normalizeWriteFilesInput([record])
+    }
+  }
+
+  return []
+}
+
 /**
  * Convex client tool context factory
  * Creates a ToolContext that uses Convex client for actual operations
@@ -327,6 +468,7 @@ export function createToolContext(
   api: {
     files: {
       batchGet: any
+      list: any
     }
     jobs: {
       create: any
@@ -334,6 +476,9 @@ export function createToolContext(
     }
     artifacts: {
       create: any
+    }
+    memoryBank: {
+      update: any
     }
   }
 ): ToolContext {
@@ -364,10 +509,78 @@ export function createToolContext(
     },
 
     // Write files by queueing artifacts (don't write immediately)
+    listDirectory: async (path?: string, recursive?: boolean) => {
+      try {
+        if (!api.files.list) {
+          return []
+        }
+
+        const normalizedBase = (path || '').trim().replace(/^\/+|\/+$/g, '')
+        const allFiles = (await convexClient.query(api.files.list, {
+          projectId,
+        })) as Array<{ path: string }>
+
+        const filePaths = allFiles
+          .map((file) => file.path)
+          .filter((filePath) => {
+            if (!normalizedBase) return true
+            return filePath === normalizedBase || filePath.startsWith(`${normalizedBase}/`)
+          })
+
+        if (recursive) {
+          return filePaths.map((filePath) => ({
+            path: filePath,
+            type: 'file' as const,
+          }))
+        }
+
+        const entries = new Map<string, 'file' | 'directory'>()
+
+        for (const filePath of filePaths) {
+          const relative = normalizedBase
+            ? filePath === normalizedBase
+              ? ''
+              : filePath.startsWith(`${normalizedBase}/`)
+                ? filePath.slice(normalizedBase.length + 1)
+                : filePath
+            : filePath
+          if (!relative) {
+            entries.set(filePath, 'file')
+            continue
+          }
+
+          const [head] = relative.split('/')
+          if (!head) continue
+
+          if (relative.includes('/')) {
+            entries.set(head, 'directory')
+          } else if (!entries.has(head)) {
+            entries.set(head, 'file')
+          }
+        }
+
+        return Array.from(entries.entries())
+          .map(([entryPath, type]) => ({
+            path: normalizedBase ? `${normalizedBase}/${entryPath}` : entryPath,
+            type,
+          }))
+          .sort((a, b) => a.path.localeCompare(b.path))
+      } catch (error) {
+        console.error('Failed to list directory:', error)
+        return []
+      }
+    },
+
+    // Write files by queueing artifacts (don't write immediately)
     writeFiles: async (files: Array<{ path: string; content: string }>) => {
+      const normalizedFiles = normalizeWriteFilesInput(files)
+      if (normalizedFiles.length === 0) {
+        return [{ path: '', success: false, error: 'Invalid write_files payload (no files).' }]
+      }
+
       try {
         const results: Array<{ path: string; success: boolean; error?: string }> = []
-        const paths = files.map((f) => f.path)
+        const paths = normalizedFiles.map((f) => f.path)
         const existingByPath = new Map<string, string | null>()
 
         try {
@@ -382,7 +595,7 @@ export function createToolContext(
           console.error('Failed to fetch original contents for write_files:', error)
         }
 
-        for (const file of files) {
+        for (const file of normalizedFiles) {
           try {
             const originalContent = existingByPath.get(file.path) ?? null
             if (api.artifacts.create) {
@@ -417,7 +630,7 @@ export function createToolContext(
         return results
       } catch (error) {
         console.error('Failed to queue file artifacts:', error)
-        return files.map((file) => ({
+        return normalizedFiles.map((file) => ({
           path: file.path,
           success: false,
           error: error instanceof Error ? error.message : 'Failed to queue artifacts',
@@ -661,6 +874,25 @@ export function createToolContext(
         }>
       }
     },
+
+    // Update the project-level memory bank via Convex mutation
+    updateMemoryBank: async (content: string) => {
+      try {
+        if (api.memoryBank?.update) {
+          await convexClient.mutation(api.memoryBank.update, {
+            projectId,
+            content,
+          })
+          return { success: true }
+        }
+        return { success: false, error: 'Memory bank API not available' }
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to update memory bank',
+        }
+      }
+    },
   }
 }
 
@@ -687,8 +919,24 @@ export async function executeTool(
         break
       }
 
+      case 'list_directory': {
+        if (!context.listDirectory) {
+          throw new Error('list_directory is not available in this context')
+        }
+        const path = typeof args.path === 'string' ? args.path : ''
+        const recursive = args.recursive === true
+        const results = await context.listDirectory(path, recursive)
+        output = JSON.stringify(results, null, 2)
+        break
+      }
+
       case 'write_files': {
-        const files = args.files as Array<{ path: string; content: string }>
+        const files = normalizeWriteFilesInput((args as Record<string, unknown>).files ?? args)
+        if (files.length === 0) {
+          throw new Error(
+            'Invalid write_files arguments. Expected { files: [{ path, content }] } or { file: { path, content } }.'
+          )
+        }
         const results = await context.writeFiles(files)
         output = JSON.stringify(results, null, 2)
         const failures = results.filter((r) => !r.success)
@@ -764,6 +1012,15 @@ export async function executeTool(
         break
       }
 
+      case 'update_memory_bank': {
+        const content = args.content as string
+        const result = await context.updateMemoryBank(content)
+        output = JSON.stringify(result, null, 2)
+        if (!result.success) {
+          error = result.error
+        }
+        break
+      }
       default:
         error = `Unknown tool: ${toolCall.function.name}`
     }

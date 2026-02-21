@@ -40,6 +40,7 @@ describe('AgentRuntime progress steps', () => {
         readFiles: async () => [],
         writeFiles: async () => [],
         runCommand: async () => ({ stdout: '', stderr: '', exitCode: 0, durationMs: 0 }),
+        updateMemoryBank: async () => ({ success: true }),
       }
     )
 
@@ -48,7 +49,7 @@ describe('AgentRuntime progress steps', () => {
       projectId: 'p',
       chatId: 'c',
       userId: 'u',
-      chatMode: 'discuss',
+      chatMode: 'architect',
       provider: 'openai',
       userMessage: 'help me plan',
     })) {
@@ -101,6 +102,7 @@ describe('AgentRuntime progress steps', () => {
         readFiles: async () => [{ path: 'a.ts', content: 'const a = 1' }],
         writeFiles: async () => [],
         runCommand: async () => ({ stdout: '', stderr: '', exitCode: 0, durationMs: 0 }),
+        updateMemoryBank: async () => ({ success: true }),
       }
     )
 

@@ -3,7 +3,7 @@ import { extractBrainstormPhase } from './brainstorming'
 import {
   buildMessageWithPlanDraft,
   deriveNextPlanDraft,
-  pickLatestDiscussAssistantPlan,
+  pickLatestArchitectAssistantPlan,
 } from './planDraft'
 
 describe('planDraft helpers', () => {
@@ -24,33 +24,33 @@ describe('planDraft helpers', () => {
   it('buildMessageWithPlanDraft does not re-prefix if user content already includes a plan block', () => {
     const plan = '1) Step one\n2) Step two'
     const user =
-      'We are switching from Discuss (Plan Mode) to Build (Execute Mode).\n\nPlan draft:\nfoo\n\nOriginal request:\nbar'
+      'We are switching from Architect (Plan Mode) to Build (Execute Mode).\n\nPlan draft:\nfoo\n\nOriginal request:\nbar'
 
     const result = buildMessageWithPlanDraft(plan, user)
     expect(result).toBe(user)
   })
 
-  it('pickLatestDiscussAssistantPlan returns latest discuss assistant content', () => {
+  it('pickLatestArchitectAssistantPlan returns latest architect assistant content', () => {
     const messages = [
-      { role: 'user' as const, mode: 'discuss' as const, content: 'q1' },
-      { role: 'assistant' as const, mode: 'discuss' as const, content: 'plan v1' },
+      { role: 'user' as const, mode: 'architect' as const, content: 'q1' },
+      { role: 'assistant' as const, mode: 'architect' as const, content: 'plan v1' },
       { role: 'user' as const, mode: 'build' as const, content: 'do it' },
       { role: 'assistant' as const, mode: 'build' as const, content: 'code' },
-      { role: 'assistant' as const, mode: 'discuss' as const, content: 'plan v2' },
+      { role: 'assistant' as const, mode: 'architect' as const, content: 'plan v2' },
     ]
 
-    expect(pickLatestDiscussAssistantPlan(messages)).toBe('plan v2')
+    expect(pickLatestArchitectAssistantPlan(messages)).toBe('plan v2')
   })
 
-  it('deriveNextPlanDraft only updates on discuss completion and non-empty plan', () => {
+  it('deriveNextPlanDraft only updates on architect completion and non-empty plan', () => {
     const messages = [
-      { role: 'user' as const, mode: 'discuss' as const, content: 'q1' },
-      { role: 'assistant' as const, mode: 'discuss' as const, content: 'plan v1' },
+      { role: 'user' as const, mode: 'architect' as const, content: 'q1' },
+      { role: 'assistant' as const, mode: 'architect' as const, content: 'plan v1' },
     ]
 
     expect(
       deriveNextPlanDraft({
-        mode: 'discuss',
+        mode: 'architect',
         agentStatus: 'complete',
         currentPlanDraft: '',
         messages,
@@ -68,7 +68,7 @@ describe('planDraft helpers', () => {
 
     expect(
       deriveNextPlanDraft({
-        mode: 'discuss',
+        mode: 'architect',
         agentStatus: 'streaming',
         currentPlanDraft: '',
         messages,
@@ -77,7 +77,7 @@ describe('planDraft helpers', () => {
 
     expect(
       deriveNextPlanDraft({
-        mode: 'discuss',
+        mode: 'architect',
         agentStatus: 'complete',
         currentPlanDraft: 'plan v1',
         messages,
@@ -97,19 +97,19 @@ describe('planDraft helpers', () => {
     expect(extractBrainstormPhase('No marker here')).toBeNull()
   })
 
-  it('deriveNextPlanDraft gates discuss persistence until validated phase when enabled', () => {
+  it('deriveNextPlanDraft gates architect persistence until validated phase when enabled', () => {
     const unvalidated = [
-      { role: 'user' as const, mode: 'discuss' as const, content: 'help me plan auth' },
+      { role: 'user' as const, mode: 'architect' as const, content: 'help me plan auth' },
       {
         role: 'assistant' as const,
-        mode: 'discuss' as const,
+        mode: 'architect' as const,
         content: 'Brainstorm phase: discovery\n\nQuestion: Which auth provider do you prefer?',
       },
     ]
 
     expect(
       deriveNextPlanDraft({
-        mode: 'discuss',
+        mode: 'architect',
         agentStatus: 'complete',
         currentPlanDraft: '',
         messages: unvalidated,
@@ -119,10 +119,10 @@ describe('planDraft helpers', () => {
 
     const validated = [
       ...unvalidated,
-      { role: 'user' as const, mode: 'discuss' as const, content: 'Use Better Auth.' },
+      { role: 'user' as const, mode: 'architect' as const, content: 'Use Better Auth.' },
       {
         role: 'assistant' as const,
-        mode: 'discuss' as const,
+        mode: 'architect' as const,
         content:
           'Brainstorm phase: validated_plan\n\n1) Clarifying questions\n2) Proposed plan\n3) Risks\n4) Next step',
       },
@@ -130,7 +130,7 @@ describe('planDraft helpers', () => {
 
     expect(
       deriveNextPlanDraft({
-        mode: 'discuss',
+        mode: 'architect',
         agentStatus: 'complete',
         currentPlanDraft: '',
         messages: validated,

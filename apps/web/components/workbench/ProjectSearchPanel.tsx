@@ -60,7 +60,7 @@ export function ProjectSearchPanel({ onSelectFile }: ProjectSearchPanelProps) {
             <button
               type="button"
               onClick={clear}
-              className="h-8 border border-border px-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground"
+              className="h-8 border border-border px-2 font-mono text-xs uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground"
             >
               Clear
             </button>
@@ -77,7 +77,7 @@ export function ProjectSearchPanel({ onSelectFile }: ProjectSearchPanelProps) {
               }
             }}
             className={cn(
-              'h-7 border px-2 font-mono text-[10px] uppercase tracking-widest transition-colors',
+              'h-7 border px-2 font-mono text-xs uppercase tracking-widest transition-colors',
               mode === 'literal'
                 ? 'border-primary bg-primary/10 text-primary'
                 : 'border-border text-muted-foreground hover:text-foreground'
@@ -94,7 +94,7 @@ export function ProjectSearchPanel({ onSelectFile }: ProjectSearchPanelProps) {
               }
             }}
             className={cn(
-              'h-7 border px-2 font-mono text-[10px] uppercase tracking-widest transition-colors',
+              'h-7 border px-2 font-mono text-xs uppercase tracking-widest transition-colors',
               mode === 'regex'
                 ? 'border-primary bg-primary/10 text-primary'
                 : 'border-border text-muted-foreground hover:text-foreground'
@@ -112,7 +112,7 @@ export function ProjectSearchPanel({ onSelectFile }: ProjectSearchPanelProps) {
               }
             }}
             className={cn(
-              'h-7 border px-2 font-mono text-[10px] uppercase tracking-widest transition-colors',
+              'h-7 border px-2 font-mono text-xs uppercase tracking-widest transition-colors',
               caseSensitive
                 ? 'border-primary bg-primary/10 text-primary'
                 : 'border-border text-muted-foreground hover:text-foreground'
@@ -125,13 +125,13 @@ export function ProjectSearchPanel({ onSelectFile }: ProjectSearchPanelProps) {
         {(state.warnings.length > 0 || state.error) && (
           <div className="mt-2 space-y-1">
             {state.error && (
-              <div className="flex items-center gap-1 text-[10px] text-destructive">
+              <div className="flex items-center gap-1 text-xs text-destructive">
                 <AlertCircle className="h-3 w-3" />
                 <span className="font-mono">{state.error}</span>
               </div>
             )}
             {state.warnings.map((warning) => (
-              <div key={warning} className="font-mono text-[10px] text-amber-500">
+              <div key={warning} className="font-mono text-xs text-amber-500">
                 {warning}
               </div>
             ))}
@@ -151,7 +151,7 @@ export function ProjectSearchPanel({ onSelectFile }: ProjectSearchPanelProps) {
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
               {state.stats?.matchesReturned ?? 0} matches in {state.stats?.filesMatched ?? 0} files
               {state.engine ? ` (${state.engine})` : ''}
             </div>
@@ -161,7 +161,7 @@ export function ProjectSearchPanel({ onSelectFile }: ProjectSearchPanelProps) {
                 <button
                   type="button"
                   onClick={() => onSelectFile(file)}
-                  className="bg-surface-2 hover:bg-surface-1 w-full border-b border-border px-2 py-1 text-left font-mono text-[11px] text-foreground"
+                  className="bg-surface-2 hover:bg-surface-1 w-full border-b border-border px-2 py-1 text-left font-mono text-xs text-foreground"
                 >
                   {file}
                 </button>
@@ -171,7 +171,7 @@ export function ProjectSearchPanel({ onSelectFile }: ProjectSearchPanelProps) {
                       key={`${file}:${match.line}:${match.column}:${match.snippet}`}
                       type="button"
                       onClick={() => onSelectFile(file, { line: match.line, column: match.column })}
-                      className="hover:bg-surface-1 block w-full border-b border-border/60 px-2 py-1 text-left font-mono text-[10px] text-muted-foreground hover:text-foreground"
+                      className="hover:bg-surface-1 block w-full border-b border-border/60 px-2 py-1 text-left font-mono text-xs text-muted-foreground hover:text-foreground"
                     >
                       <span className="mr-2 text-primary">{match.line}</span>
                       {match.snippet}

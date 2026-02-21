@@ -4,7 +4,7 @@
 > implement this plan task-by-task.
 
 **Goal:** Build Panda.ai, a browser-based AI coding workbench with streaming
-chat agent (discuss/build modes), code editor, file tree, diff view, terminal,
+chat agent (Ask/Plan/Code/Build modes), code editor, file tree, diff view, terminal,
 and preview in a Next.js + Convex stack.
 
 **Architecture:** Monorepo with `apps/web` (Next.js frontend), `convex/`
@@ -315,7 +315,12 @@ export default defineSchema({
   chats: defineTable({
     projectId: v.id('projects'),
     title: v.string(),
-    mode: v.union(v.literal('discuss'), v.literal('build')),
+    mode: v.union(
+      v.literal('ask'),
+      v.literal('architect'),
+      v.literal('code'),
+      v.literal('build')
+    ),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -1147,7 +1152,7 @@ git commit -m "feat: add GitHub repo import"
 
 - Create project
 - Add/edit files
-- Start chat in discuss mode
+- Start chat in plan mode
 - Switch to build mode
 - Watch agent generate artifacts
 - Apply/reject artifacts

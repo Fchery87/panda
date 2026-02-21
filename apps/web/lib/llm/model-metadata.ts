@@ -29,6 +29,10 @@ const PROVIDER_FALLBACK_CONTEXT_WINDOWS: Record<ProviderType, number> = {
   together: 128000,
   anthropic: 200000,
   zai: 128000,
+  chutes: 128000,
+  deepseek: 64000,
+  groq: 128000,
+  fireworks: 128000,
   custom: 32000,
 }
 
