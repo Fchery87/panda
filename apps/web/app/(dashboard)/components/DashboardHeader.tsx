@@ -1,9 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { FolderGit2, Plus, Settings, User, Keyboard, BookOpen, LogOut, Search } from 'lucide-react'
+import { FolderGit2, Plus, Settings, User, Keyboard, BookOpen, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/settings/ThemeToggle'
 import { PandaLogo } from '@/components/ui/panda-logo'
@@ -15,11 +15,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useCommandPaletteStore } from '@/stores/commandPaletteStore'
 
 const navItems = [{ href: '/projects', label: 'Projects', icon: FolderGit2 }]
 
 export function DashboardHeader() {
   const pathname = usePathname()
+  const router = useRouter()
+  const openCommandPalette = useCommandPaletteStore((state) => state.open)
 
   return (
     <motion.header
@@ -62,9 +65,7 @@ export function DashboardHeader() {
         <button
           type="button"
           className="mx-4 flex flex-1 items-center gap-2 rounded-none border border-border bg-muted/50 px-3 py-1.5 text-left font-mono text-xs text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
-          onClick={() => {
-            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))
-          }}
+          onClick={openCommandPalette}
         >
           <Search className="h-3.5 w-3.5" />
           <span>Search commands...</span>
@@ -97,24 +98,24 @@ export function DashboardHeader() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48 rounded-none border-border">
-              <DropdownMenuItem asChild>
-                <Link href="/settings" className="cursor-pointer rounded-none">
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
-                </Link>
+              <DropdownMenuItem
+                className="cursor-pointer rounded-none"
+                onSelect={() => router.push('/settings')}
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/settings#llm" className="cursor-pointer rounded-none">
-                  <BookOpen className="mr-2 h-4 w-4" />
-                  LLM Providers
-                </Link>
+              <DropdownMenuItem
+                className="cursor-pointer rounded-none"
+                onSelect={() => router.push('/settings#llm')}
+              >
+                <BookOpen className="mr-2 h-4 w-4" />
+                LLM Providers
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="cursor-pointer rounded-none"
-                onClick={() => {
-                  window.dispatchEvent(new KeyboardEvent('keydown', { key: '/', metaKey: true }))
-                }}
+                onSelect={openCommandPalette}
               >
                 <Keyboard className="mr-2 h-4 w-4" />
                 Keyboard Shortcuts

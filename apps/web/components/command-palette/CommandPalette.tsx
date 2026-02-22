@@ -17,6 +17,7 @@ import { useTheme } from 'next-themes'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { useCommandPaletteStore } from '@/stores/commandPaletteStore'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 
 interface CommandItem {
@@ -42,7 +43,7 @@ export function CommandPalette({
   onModeChange,
   currentMode: _currentMode,
 }: CommandPaletteProps) {
-  const [open, setOpen] = useState(false)
+  const { isOpen, close: closePalette } = useCommandPaletteStore()
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const router = useRouter()
@@ -51,11 +52,11 @@ export function CommandPalette({
   // Register Cmd+K / Ctrl+K shortcut
   useHotkeys('mod+k', (e) => {
     e.preventDefault()
-    setOpen(true)
+    useCommandPaletteStore.getState().toggle()
   })
 
   // Close on Escape
-  useHotkeys('esc', () => setOpen(false), { enabled: open })
+  useHotkeys('esc', () => closePalette(), { enabled: isOpen })
 
   // Navigation shortcuts when open
   useHotkeys(
@@ -63,7 +64,7 @@ export function CommandPalette({
     () => {
       setSelectedIndex((prev) => Math.max(0, prev - 1))
     },
-    { enabled: open }
+    { enabled: isOpen }
   )
 
   useHotkeys(
@@ -71,7 +72,7 @@ export function CommandPalette({
     () => {
       setSelectedIndex((prev) => Math.min(filteredCommands.length - 1, prev + 1))
     },
-    { enabled: open }
+    { enabled: isOpen }
   )
 
   useHotkeys(
@@ -80,11 +81,11 @@ export function CommandPalette({
       const command = filteredCommands[selectedIndex]
       if (command) {
         command.action()
-        setOpen(false)
+        closePalette()
         setQuery('')
       }
     },
-    { enabled: open }
+    { enabled: isOpen }
   )
 
   // Build command list
@@ -205,14 +206,17 @@ export function CommandPalette({
     setSelectedIndex(0)
   }, [query])
 
-  const handleSelect = useCallback((command: CommandItem) => {
-    command.action()
-    setOpen(false)
-    setQuery('')
-  }, [])
+  const handleSelect = useCallback(
+    (command: CommandItem) => {
+      command.action()
+      closePalette()
+      setQuery('')
+    },
+    [closePalette]
+  )
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && closePalette()}>
       <DialogContent
         className="max-w-2xl gap-0 rounded-none border-border p-0"
         aria-describedby="command-palette-description"
