@@ -112,25 +112,63 @@ panda-ai/
 │       │   └── page.tsx      # Landing page
 │       ├── components/
 │       │   ├── ui/           # shadcn/ui components (base)
-│       │   ├── chat/         # Chat components
+│       │   ├── chat/          # Chat components
+│       │   │   ├── RunProgressPanel.tsx    # Unified run progress
+│       │   │   ├── AgentSelector.tsx        # Agent dropdown
+│       │   │   ├── MemoryBankEditor.tsx    # Project memory
+│       │   │   └── ReasoningPanel.tsx     # Thinking display
 │       │   ├── workbench/    # Workbench panels
 │       │   ├── editor/       # CodeMirror editor
 │       │   ├── artifacts/    # Artifact system
+│       │   ├── plan/         # Plan panel
 │       │   └── settings/     # Settings components
 │       ├── lib/
 │       │   ├── llm/          # LLM provider registry
 │       │   ├── agent/        # Agent runtime
+│       │   │   ├── harness/   # OpenCode-style agentic harness
+│       │   │   │   ├── types.ts          # Core types
+│       │   │   │   ├── identifier.ts     # Unique IDs
+│       │   │   │   ├── event-bus.ts     # Real-time events
+│       │   │   │   ├── permissions.ts   # Permission system
+│       │   │   │   ├── agents.ts        # Agent registry
+│       │   │   │   ├── plugins.ts      # Plugin system
+│       │   │   │   ├── compaction.ts   # Context compaction
+│       │   │   │   ├── runtime.ts      # Execution engine
+│       │   │   │   ├── task-tool.ts    # Subagent delegation
+│       │   │   │   ├── mcp.ts          # MCP support
+│       │   │   │   └── snapshots.ts    # Git snapshots
+│       │   │   ├── runtime.ts       # Legacy runtime
+│       │   │   ├── tools.ts       # Tool definitions
+│       │   │   └── prompt-library.ts
 │       │   └── diff.ts       # Diff computation
 │       ├── hooks/            # Custom React hooks
 │       ├── stores/           # Zustand stores
-│       ├── e2e/              # Playwright E2E tests
+│       ├── e2e/             # Playwright E2E tests
 │       └── convex/           # Generated types
 ├── convex/                   # Backend
-│   ├── schema.ts            # Database schema (9 tables)
-│   ├── *.ts                 # Queries, mutations, actions
-│   └── _generated/          # Auto-generated
-└── .github/workflows/       # CI/CD
+│   ├── schema.ts            # Database schema (23 tables)
+│   ├── *.ts                # Queries, mutations, actions
+│   └── _generated/         # Auto-generated
+├── docs/
+│   └── AGENTIC_HARNESS.md  # Agentic harness docs
+└── .github/workflows/      # CI/CD
 ```
+
+panda-ai/ ├── apps/ │ └── web/ # Next.js 16 frontend │ ├── app/ # App Router │ │
+├── (dashboard)/ # Route groups with layouts │ │ ├── api/ # API routes │ │ ├──
+settings/ # Settings page │ │ ├── globals.css # Global styles + theme │ │ ├──
+layout.tsx # Root layout │ │ └── page.tsx # Landing page │ ├── components/ │ │
+├── ui/ # shadcn/ui components (base) │ │ ├── chat/ # Chat components │ │ ├──
+workbench/ # Workbench panels │ │ ├── editor/ # CodeMirror editor │ │ ├──
+artifacts/ # Artifact system │ │ └── settings/ # Settings components │ ├── lib/
+│ │ ├── llm/ # LLM provider registry │ │ ├── agent/ # Agent runtime │ │ └──
+diff.ts # Diff computation │ ├── hooks/ # Custom React hooks │ ├── stores/ #
+Zustand stores │ ├── e2e/ # Playwright E2E tests │ └── convex/ # Generated types
+├── convex/ # Backend │ ├── schema.ts # Database schema (9 tables) │ ├── \*.ts #
+Queries, mutations, actions │ └── \_generated/ # Auto-generated └──
+.github/workflows/ # CI/CD
+
+````
 
 ---
 
@@ -180,7 +218,7 @@ const MAX_RETRY_ATTEMPTS = 3
 
 // Files: lowercase-with-dashes
 // my-component.tsx, use-my-hook.ts
-```
+````
 
 ### Import Organization
 
@@ -655,6 +693,46 @@ export default function Error({ error, reset }: {
 3. Use TypeScript for options and return types
 4. Handle cleanup in useEffect return
 5. Add test file for complex logic
+
+---
+
+## Agentic Harness
+
+Panda uses an OpenCode-style agentic harness located in `lib/agent/harness/`.
+
+### Key Components
+
+- **Agent Registry** - Built-in agents (build, plan, ask) + custom subagents
+- **Permission System** - Pattern-based allow/deny/ask for tools
+- **Context Compaction** - Auto-summarization at 90% token limit
+- **Plugin System** - Lifecycle hooks for extensibility
+- **MCP Support** - Connect to external MCP servers
+- **Git Snapshots** - Per-step undo capability
+
+### Chat Panel Components
+
+- **RunProgressPanel** - Unified live/historical run progress
+- **AgentSelector** - Dropdown for agent selection
+- **MemoryBankEditor** - Project memory management
+- **ReasoningPanel** - Model thinking display
+
+### Using the Harness
+
+```typescript
+import { Runtime, agents, permissions } from '@/lib/agent/harness'
+
+// Get agent config
+const agent = agents.get('build')
+
+// Check permission
+const decision = permissions.checkPermission(
+  agent.permission,
+  'write_files',
+  'src/*'
+)
+```
+
+See `docs/AGENTIC_HARNESS.md` for complete documentation.
 
 ---
 

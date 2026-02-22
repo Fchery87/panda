@@ -87,54 +87,82 @@ panda-ai/
 │   └── web/                    # Next.js 16 frontend
 │       ├── app/               # App Router pages
 │       │   ├── (dashboard)/   # Dashboard layout group
-│       │   ├── api/jobs/      # Server route for command execution
-│       │   ├── settings/      # Settings page
-│       │   ├── layout.tsx     # Root layout with providers
-│       │   └── page.tsx       # Landing page
+│       │   ├── api/jobs/    # Server route for command execution
+│       │   ├── settings/     # Settings page
+│       │   ├── layout.tsx   # Root layout with providers
+│       │   └── page.tsx     # Landing page
 │       ├── components/
-│       │   ├── ui/           # shadcn/ui components (30+)
-│       │   ├── chat/         # Chat components
-│       │   ├── workbench/    # Workbench panels
-│       │   ├── editor/       # CodeMirror editor
-│       │   ├── artifacts/    # Artifact panel
-│       │   └── settings/     # Settings components
+│       │   ├── ui/          # shadcn/ui components (30+)
+│       │   ├── chat/        # Chat components (RunProgressPanel, AgentSelector)
+│       │   ├── workbench/   # Workbench panels
+│       │   ├── editor/      # CodeMirror editor
+│       │   ├── artifacts/   # Artifact panel
+│       │   └── plan/        # Plan panel with Mermaid
 │       ├── lib/
-│       │   ├── llm/          # LLM provider registry
-│       │   ├── agent/        # Agent runtime & tools
-│       │   └── diff.ts       # Diff computation
+│       │   ├── llm/         # LLM provider registry (provider-agnostic)
+│       │   ├── agent/       # Agent runtime
+│       │   │   ├── harness/ # OpenCode-style agentic harness
+│       │   │   │   ├── types.ts          # Core types (Message, Part, Agent)
+│       │   │   │   ├── identifier.ts     # Unique IDs
+│       │   │   │   ├── event-bus.ts     # Real-time events
+│       │   │   │   ├── permissions.ts    # Allow/deny/ask permissions
+│       │   │   │   ├── agents.ts        # Agent registry
+│       │   │   │   ├── plugins.ts       # Plugin/hook system
+│       │   │   │   ├── compaction.ts   # Context auto-summarization
+│       │   │   │   ├── runtime.ts       # Execution engine
+│       │   │   │   ├── task-tool.ts     # Subagent delegation
+│       │   │   │   ├── mcp.ts          # MCP support
+│       │   │   │   └── snapshots.ts     # Git snapshots/undo
+│       │   │   ├── runtime.ts      # Legacy runtime
+│       │   │   ├── tools.ts        # Tool definitions
+│       │   │   └── prompt-library.ts
+│       │   └── diff.ts        # Diff computation
 │       ├── hooks/            # Custom React hooks
 │       └── convex/           # Convex generated types
-├── convex/                   # Convex backend
-│   ├── schema.ts            # Database schema (11 tables)
-│   ├── projects.ts          # Project CRUD
-│   ├── files.ts             # File operations
-│   ├── chats.ts             # Chat management
-│   ├── messages.ts          # Message streaming
-│   ├── jobs.ts              # Terminal job execution
-│   ├── artifacts.ts         # Artifact transactions
-│   ├── settings.ts          # User settings
-│   ├── github.ts            # GitHub integration
-│   └── llm.ts               # LLM streaming HTTP actions
-├── package.json             # Root workspace config
-├── turbo.json               # TurboRepo pipeline
-└── README.md               # This file
+├── convex/                  # Convex backend
+│   ├── schema.ts           # Database schema (23 tables)
+│   ├── projects.ts         # Project CRUD
+│   ├── files.ts           # File operations
+│   ├── chats.ts          # Chat management
+│   ├── messages.ts        # Message streaming
+│   ├── jobs.ts           # Terminal job execution
+│   ├── artifacts.ts       # Artifact transactions
+│   ├── settings.ts       # User settings
+│   ├── github.ts         # GitHub integration
+│   ├── llm.ts            # LLM streaming HTTP actions
+│   └── agentRuns.ts      # Agent run tracking
+├── docs/                   # Documentation
+│   └── plans/            # Implementation plans
+└── package.json          # Root workspace config
 ```
 
 ### Database Schema (Convex)
 
-| Table            | Purpose                             |
-| ---------------- | ----------------------------------- |
-| `users`          | User accounts and profiles          |
-| `projects`       | Project metadata and repos          |
-| `files`          | File contents and paths             |
-| `fileSnapshots`  | Version history                     |
-| `chats`          | Chat sessions (Ask/Plan/Code/Build modes) |
-| `messages`       | Chat messages with streaming        |
-| `artifacts`      | AI-generated code changes           |
-| `jobs`           | Terminal command executions         |
-| `settings`       | User preferences                    |
-| `agentRuns`      | Agent run lifecycle metadata        |
-| `agentRunEvents` | Persisted run timeline events       |
+| Table                | Purpose                                   |
+| -------------------- | ----------------------------------------- |
+| `users`              | User accounts and profiles                |
+| `projects`           | Project metadata and repos                |
+| `files`              | File contents and paths                   |
+| `fileSnapshots`      | Version history                           |
+| `chats`              | Chat sessions (Ask/Plan/Code/Build modes) |
+| `messages`           | Chat messages with streaming              |
+| `artifacts`          | AI-generated code changes                 |
+| `jobs`               | Terminal command executions               |
+| `settings`           | User preferences                          |
+| `agentRuns`          | Agent run lifecycle metadata              |
+| `agentRunEvents`     | Persisted run timeline events             |
+| `checkpoints`        | Versioned snapshots for rollback          |
+| `providerTokens`     | OAuth tokens for LLM providers            |
+| `sharedChats`        | Public sharing links                      |
+| `mcpServers`         | User-configured MCP servers               |
+| `subagents`          | User-defined subagents                    |
+| `adminSettings`      | Global system configuration               |
+| `userAnalytics`      | Per-user usage tracking                   |
+| `auditLog`           | Administrative actions                    |
+| `agentSessions`      | Agentic harness sessions                  |
+| `messageParts`       | Structured parts for messages             |
+| `permissionRequests` | Pending permission requests               |
+| `gitSnapshots`       | Git snapshots for undo                    |
 
 ## Setup Instructions
 
@@ -388,10 +416,22 @@ apps/web/
 │   │   ├── registry.ts
 │   │   └── providers/
 │   ├── agent/                              # Agent runtime
-│   │   ├── runtime.ts
-│   │   ├── tools.ts
+│   │   ├── harness/                       # OpenCode-style agentic harness
+│   │   │   ├── types.ts                   # Core types
+│   │   │   ├── identifier.ts              # Unique IDs
+│   │   │   ├── event-bus.ts               # Real-time events
+│   │   │   ├── permissions.ts              # Permission system
+│   │   │   ├── agents.ts                  # Agent registry
+│   │   │   ├── plugins.ts                 # Plugin system
+│   │   │   ├── compaction.ts               # Context compaction
+│   │   │   ├── runtime.ts                 # Execution engine
+│   │   │   ├── task-tool.ts               # Subagent delegation
+│   │   │   ├── mcp.ts                     # MCP support
+│   │   │   └── snapshots.ts                # Git snapshots
+│   │   ├── runtime.ts                     # Legacy runtime
+│   │   ├── tools.ts                       # Tool definitions
 │   │   └── prompt-library.ts
-│   └── diff.ts                             # Diff computation utility
+│   └── diff.ts                            # Diff computation utility
 ├── hooks/
 │   ├── useAgent.ts                         # Agent runtime orchestration
 │   ├── useJobs.ts                          # Terminal jobs and logs
@@ -408,9 +448,14 @@ apps/web/
   toggle
 - **MessageList** - Virtualized message rendering with streaming
 - **MessageBubble** - Styled message with syntax highlighting
-- **ChatInput** - Input for Ask/Plan/Code/Build modes
-- **LiveRunPanel** - Live progress events for the active run
-- **RunTimelinePanel** - Persisted run timeline browser
+- **ChatInput** - Input with AgentSelector for agent switching
+- **RunProgressPanel** - Unified live/historical run progress (replaces
+  LiveRunPanel + RunTimelinePanel)
+- **AgentSelector** - Dropdown for primary/subagent selection (uses harness
+  agent system)
+- **MemoryBankEditor** - Project memory management
+- **ReasoningPanel** - Display model's thinking process
+- **ContextWindowIndicator** - Token usage display
 
 ### Workbench
 
@@ -515,6 +560,8 @@ MIT License - feel free to use for personal or commercial projects.
 
 - **AGENTS.md** - Comprehensive guide for AI agents working on this codebase
   including architecture, patterns, and quality standards
+- **AGENTIC_HARNESS.md** - OpenCode-style agentic harness documentation
+  (lib/agent/harness) with agent system, permissions, plugins, MCP, and more
 - **README.md** - This file - project overview and quick start
 
 ## Support
