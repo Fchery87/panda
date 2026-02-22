@@ -1,11 +1,12 @@
 import { query, mutation } from './_generated/server'
 import { v } from 'convex/values'
-import { requireAuth, getCurrentUserId } from './lib/auth'
+import { requireArtifactOwner, requireChatOwner } from './lib/authz'
 
 // list (query) - list artifacts by chatId
 export const list = query({
   args: { chatId: v.id('chats') },
   handler: async (ctx, args) => {
+    await requireChatOwner(ctx, args.chatId)
     return await ctx.db
       .query('artifacts')
       .withIndex('by_chat', (q) => q.eq('chatId', args.chatId))
@@ -17,6 +18,7 @@ export const list = query({
 export const get = query({
   args: { id: v.id('artifacts') },
   handler: async (ctx, args) => {
+    await requireArtifactOwner(ctx, args.id)
     return await ctx.db.get(args.id)
   },
 })
@@ -36,6 +38,7 @@ export const create = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    await requireChatOwner(ctx, args.chatId)
     const now = Date.now()
 
     const artifactId = await ctx.db.insert('artifacts', {
@@ -64,11 +67,7 @@ export const updateStatus = mutation({
     actions: v.optional(v.array(v.record(v.string(), v.any()))),
   },
   handler: async (ctx, args) => {
-    const artifact = await ctx.db.get(args.id)
-
-    if (!artifact) {
-      throw new Error('Artifact not found')
-    }
+    const { artifact } = await requireArtifactOwner(ctx, args.id)
 
     const updates: Partial<typeof artifact> = {
       status: args.status,

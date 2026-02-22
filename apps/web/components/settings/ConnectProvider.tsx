@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import { Button } from '@/components/ui/button'
@@ -45,6 +45,20 @@ const PROVIDER_CONFIG: Record<
   },
 }
 
+const CHUTES_OAUTH_STATE_COOKIE = 'chutes_oauth_state'
+
+function generateOAuthState(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
+function setCookie(name: string, value: string, maxAgeSeconds: number) {
+  const secure = window.location.protocol === 'https:' ? '; Secure' : ''
+  document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAgeSeconds}; SameSite=Lax${secure}`
+}
+
 export function ConnectProvider({ provider, className }: ConnectProviderProps) {
   const [isConnecting, setIsConnecting] = useState(false)
   const [apiKey, setApiKey] = useState('')
@@ -61,12 +75,15 @@ export function ConnectProvider({ provider, className }: ConnectProviderProps) {
   const handleOAuthConnect = useCallback(() => {
     const clientId = process.env.NEXT_PUBLIC_CHUTES_CLIENT_ID
     const redirectUri = `${window.location.origin}/api/auth/chutes/callback`
+    const state = generateOAuthState()
+    setCookie(CHUTES_OAUTH_STATE_COOKIE, state, 10 * 60)
 
     const params = new URLSearchParams({
       client_id: clientId || '',
       redirect_uri: redirectUri,
       response_type: 'code',
       scope: config.scopes?.join(' ') || '',
+      state,
     })
 
     window.location.href = `${config.oauthUrl}?${params}`

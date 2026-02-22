@@ -10,6 +10,12 @@
 import { query, mutation } from './_generated/server'
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
+import {
+  requireCheckpointOwner,
+  requireChatOwner,
+  requireProjectOwner,
+  requireSnapshotOwner,
+} from './lib/authz'
 
 const MAX_CHECKPOINTS_PER_PROJECT = 50
 
@@ -19,6 +25,7 @@ export const list = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
     const limit = Math.min(args.limit ?? 20, 50)
     return await ctx.db
       .query('checkpoints')
@@ -34,6 +41,7 @@ export const listByChat = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    await requireChatOwner(ctx, args.chatId)
     const limit = Math.min(args.limit ?? 20, 50)
     return await ctx.db
       .query('checkpoints')
@@ -46,6 +54,7 @@ export const listByChat = query({
 export const get = query({
   args: { id: v.id('checkpoints') },
   handler: async (ctx, args) => {
+    await requireCheckpointOwner(ctx, args.id)
     return await ctx.db.get(args.id)
   },
 })
@@ -60,6 +69,11 @@ export const create = mutation({
     snapshotIds: v.array(v.id('fileSnapshots')),
   },
   handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
+    await requireChatOwner(ctx, args.chatId)
+    for (const snapshotId of args.snapshotIds) {
+      await requireSnapshotOwner(ctx, snapshotId)
+    }
     const now = Date.now()
 
     const checkpointId = await ctx.db.insert('checkpoints', {
@@ -96,10 +110,7 @@ export const restore = mutation({
     checkpointId: v.id('checkpoints'),
   },
   handler: async (ctx, args) => {
-    const checkpoint = await ctx.db.get(args.checkpointId)
-    if (!checkpoint) {
-      throw new Error('Checkpoint not found')
-    }
+    const { checkpoint } = await requireCheckpointOwner(ctx, args.checkpointId)
 
     const results: Array<{
       filePath: string
@@ -152,11 +163,7 @@ export const restore = mutation({
 export const remove = mutation({
   args: { id: v.id('checkpoints') },
   handler: async (ctx, args) => {
-    const checkpoint = await ctx.db.get(args.id)
-    if (!checkpoint) {
-      throw new Error('Checkpoint not found')
-    }
-
+    await requireCheckpointOwner(ctx, args.id)
     await ctx.db.delete(args.id)
     return args.id
   },
@@ -167,6 +174,7 @@ export const getLatest = query({
     projectId: v.id('projects'),
   },
   handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
     const checkpoint = await ctx.db
       .query('checkpoints')
       .withIndex('by_project_created', (q) => q.eq('projectId', args.projectId))
@@ -186,6 +194,8 @@ export const createForFileChanges = mutation({
     filePaths: v.array(v.string()),
   },
   handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
+    await requireChatOwner(ctx, args.chatId)
     const snapshotIds: Id<'fileSnapshots'>[] = []
 
     for (const filePath of args.filePaths) {

@@ -1,5 +1,6 @@
 import { query, mutation } from './_generated/server'
 import { v } from 'convex/values'
+import { requireProjectOwner } from './lib/authz'
 
 /** The reserved file path used for the project-level memory bank */
 export const MEMORY_BANK_PATH = 'MEMORY_BANK.md'
@@ -11,6 +12,7 @@ export const MEMORY_BANK_PATH = 'MEMORY_BANK.md'
 export const get = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
     const file = await ctx.db
       .query('files')
       .withIndex('by_path', (q) => q.eq('projectId', args.projectId).eq('path', MEMORY_BANK_PATH))
@@ -30,6 +32,7 @@ export const update = mutation({
     content: v.string(),
   },
   handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
     const now = Date.now()
 
     const existing = await ctx.db

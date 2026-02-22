@@ -1,6 +1,17 @@
-import { describe, expect, it } from 'bun:test'
+import { beforeAll, describe, expect, it, mock } from 'bun:test'
 import type { NextRequest } from 'next/server'
-import { POST } from './route'
+
+let isAuthenticated = true
+
+mock.module('@convex-dev/auth/nextjs/server', () => ({
+  isAuthenticatedNextjs: async () => isAuthenticated,
+}))
+
+let POST: typeof import('./route').POST
+
+beforeAll(async () => {
+  ;({ POST } = await import('./route'))
+})
 
 function makeJsonRequest(body: unknown): NextRequest {
   const request = new Request('http://localhost/api/search', {
@@ -14,6 +25,16 @@ function makeJsonRequest(body: unknown): NextRequest {
 }
 
 describe('/api/search route', () => {
+  it('rejects unauthenticated requests', async () => {
+    isAuthenticated = false
+    const response = await POST(makeJsonRequest({ type: 'text', query: 'hello' }))
+    isAuthenticated = true
+
+    expect(response.status).toBe(401)
+    const payload = (await response.json()) as { error: string }
+    expect(payload.error).toContain('Unauthorized')
+  })
+
   it('rejects invalid JSON', async () => {
     const request = new Request('http://localhost/api/search', {
       method: 'POST',

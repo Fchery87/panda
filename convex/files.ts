@@ -2,12 +2,13 @@ import { query, mutation, action } from './_generated/server'
 import { api } from './_generated/api'
 import { v } from 'convex/values'
 import JSZip from 'jszip'
-import { requireAuth, getCurrentUserId } from './lib/auth'
+import { requireFileOwner, requireProjectOwner } from './lib/authz'
 
 // list (query) - list files by projectId
 export const list = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
     return await ctx.db
       .query('files')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
@@ -19,6 +20,7 @@ export const list = query({
 export const get = query({
   args: { id: v.id('files') },
   handler: async (ctx, args) => {
+    await requireFileOwner(ctx, args.id)
     return await ctx.db.get(args.id)
   },
 })
@@ -30,6 +32,7 @@ export const getByPath = query({
     path: v.string(),
   },
   handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
     return await ctx.db
       .query('files')
       .withIndex('by_path', (q) => q.eq('projectId', args.projectId).eq('path', args.path))
@@ -44,6 +47,7 @@ export const batchGet = query({
     paths: v.array(v.string()),
   },
   handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
     const results: Array<{ path: string; content: string | null; exists: boolean }> = []
 
     for (const path of args.paths) {
@@ -77,9 +81,9 @@ export const upsert = mutation({
 
     if (args.id) {
       // Update existing file
-      const existing = await ctx.db.get(args.id)
-      if (!existing) {
-        throw new Error('File not found')
+      const { file: existing } = await requireFileOwner(ctx, args.id)
+      if (existing.projectId !== args.projectId) {
+        throw new Error('File does not belong to the specified project')
       }
 
       if (args.path !== existing.path) {
@@ -120,6 +124,7 @@ export const upsert = mutation({
 
       return args.id
     } else {
+      await requireProjectOwner(ctx, args.projectId)
       const existingByPath = await ctx.db
         .query('files')
         .withIndex('by_path', (q) => q.eq('projectId', args.projectId).eq('path', args.path))
@@ -144,11 +149,7 @@ export const upsert = mutation({
 export const remove = mutation({
   args: { id: v.id('files') },
   handler: async (ctx, args) => {
-    const file = await ctx.db.get(args.id)
-
-    if (!file) {
-      throw new Error('File not found')
-    }
+    await requireFileOwner(ctx, args.id)
 
     // Delete all snapshots for this file
     const snapshots = await ctx.db
@@ -174,11 +175,7 @@ export const createSnapshot = mutation({
     content: v.string(),
   },
   handler: async (ctx, args) => {
-    const file = await ctx.db.get(args.fileId)
-
-    if (!file) {
-      throw new Error('File not found')
-    }
+    await requireFileOwner(ctx, args.fileId)
 
     const now = Date.now()
 
@@ -206,6 +203,7 @@ export const createSnapshot = mutation({
 export const listSnapshots = query({
   args: { fileId: v.id('files') },
   handler: async (ctx, args) => {
+    await requireFileOwner(ctx, args.fileId)
     return await ctx.db
       .query('fileSnapshots')
       .withIndex('by_file', (q) => q.eq('fileId', args.fileId))

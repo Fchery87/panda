@@ -1,8 +1,13 @@
 import { NextRequest } from 'next/server'
+import { isAuthenticatedNextjs } from '@convex-dev/auth/nextjs/server'
 import { executeSearch } from '@/lib/agent/search/service'
 import type { SearchRequest } from '@/lib/agent/search/types'
 
 export async function POST(req: NextRequest) {
+  if (!(await isAuthenticatedNextjs())) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   let body: SearchRequest & { workingDirectory?: string }
   try {
     body = (await req.json()) as SearchRequest & { workingDirectory?: string }

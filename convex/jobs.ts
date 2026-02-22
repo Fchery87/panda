@@ -1,11 +1,12 @@
 import { query, mutation, action } from './_generated/server'
 import { v } from 'convex/values'
-import { requireAuth, getCurrentUserId } from './lib/auth'
+import { requireJobOwner, requireProjectOwner } from './lib/authz'
 
 // list (query) - list jobs by projectId
 export const list = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
     return await ctx.db
       .query('jobs')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
@@ -18,6 +19,7 @@ export const list = query({
 export const get = query({
   args: { id: v.id('jobs') },
   handler: async (ctx, args) => {
+    await requireJobOwner(ctx, args.id)
     return await ctx.db.get(args.id)
   },
 })
@@ -26,11 +28,7 @@ export const get = query({
 export const streamLogs = query({
   args: { jobId: v.id('jobs') },
   handler: async (ctx, args) => {
-    const job = await ctx.db.get(args.jobId)
-
-    if (!job) {
-      return null
-    }
+    const { job } = await requireJobOwner(ctx, args.jobId)
 
     // Return job data that updates in real-time
     return {
@@ -62,6 +60,7 @@ export const create = mutation({
     command: v.string(),
   },
   handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
     const now = Date.now()
 
     const jobId = await ctx.db.insert('jobs', {
@@ -92,6 +91,7 @@ export const createAndExecute = mutation({
     workingDirectory: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
     const now = Date.now()
 
     const jobId = await ctx.db.insert('jobs', {
@@ -125,11 +125,7 @@ export const updateStatus = mutation({
     completedAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const job = await ctx.db.get(args.id)
-
-    if (!job) {
-      throw new Error('Job not found')
-    }
+    const { job } = await requireJobOwner(ctx, args.id)
 
     const updates: Partial<typeof job> = {
       status: args.status,
@@ -154,11 +150,7 @@ export const appendLog = mutation({
     log: v.string(),
   },
   handler: async (ctx, args) => {
-    const job = await ctx.db.get(args.id)
-
-    if (!job) {
-      throw new Error('Job not found')
-    }
+    const { job } = await requireJobOwner(ctx, args.id)
 
     const currentLogs = job.logs || []
 
@@ -180,11 +172,7 @@ export const appendLog = mutation({
 export const cancel = mutation({
   args: { id: v.id('jobs') },
   handler: async (ctx, args) => {
-    const job = await ctx.db.get(args.id)
-
-    if (!job) {
-      throw new Error('Job not found')
-    }
+    const { job } = await requireJobOwner(ctx, args.id)
 
     if (job.status !== 'queued' && job.status !== 'running') {
       throw new Error('Can only cancel queued or running jobs')
@@ -207,11 +195,7 @@ export const cancel = mutation({
 export const remove = mutation({
   args: { id: v.id('jobs') },
   handler: async (ctx, args) => {
-    const job = await ctx.db.get(args.id)
-
-    if (!job) {
-      throw new Error('Job not found')
-    }
+    await requireJobOwner(ctx, args.id)
 
     await ctx.db.delete(args.id)
 
@@ -226,6 +210,7 @@ export const cleanupOldJobs = mutation({
     olderThanDays: v.number(),
   },
   handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
     const cutoffTime = Date.now() - args.olderThanDays * 24 * 60 * 60 * 1000
 
     const jobs = await ctx.db

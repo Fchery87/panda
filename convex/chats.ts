@@ -1,12 +1,13 @@
 import { query, mutation } from './_generated/server'
 import { v } from 'convex/values'
-import { requireAuth, getCurrentUserId } from './lib/auth'
+import { requireChatOwner, requireProjectOwner } from './lib/authz'
 import { ChatMode } from './schema'
 
 // list (query) - list chats by projectId, ordered by updatedAt
 export const list = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
     return await ctx.db
       .query('chats')
       .withIndex('by_updated', (q) => q.eq('projectId', args.projectId))
@@ -19,6 +20,7 @@ export const list = query({
 export const get = query({
   args: { id: v.id('chats') },
   handler: async (ctx, args) => {
+    await requireChatOwner(ctx, args.id)
     return await ctx.db.get(args.id)
   },
 })
@@ -31,6 +33,7 @@ export const create = mutation({
     mode: ChatMode,
   },
   handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
     const now = Date.now()
 
     const chatId = await ctx.db.insert('chats', {
@@ -56,11 +59,7 @@ export const update = mutation({
     planDraft: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const chat = await ctx.db.get(args.id)
-
-    if (!chat) {
-      throw new Error('Chat not found')
-    }
+    const { chat } = await requireChatOwner(ctx, args.id)
 
     const updates: Partial<typeof chat> = {
       updatedAt: Date.now(),
@@ -83,11 +82,7 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id('chats') },
   handler: async (ctx, args) => {
-    const chat = await ctx.db.get(args.id)
-
-    if (!chat) {
-      throw new Error('Chat not found')
-    }
+    await requireChatOwner(ctx, args.id)
 
     // Delete all messages for this chat
     const messages = await ctx.db
@@ -143,10 +138,7 @@ export const fork = mutation({
     upToMessageId: v.optional(v.id('messages')),
   },
   handler: async (ctx, args) => {
-    const originalChat = await ctx.db.get(args.chatId)
-    if (!originalChat) {
-      throw new Error('Chat not found')
-    }
+    const { chat: originalChat } = await requireChatOwner(ctx, args.chatId)
 
     const now = Date.now()
 
@@ -195,10 +187,7 @@ export const revert = mutation({
     upToMessageId: v.id('messages'),
   },
   handler: async (ctx, args) => {
-    const chat = await ctx.db.get(args.chatId)
-    if (!chat) {
-      throw new Error('Chat not found')
-    }
+    await requireChatOwner(ctx, args.chatId)
 
     const cutoffMessage = await ctx.db.get(args.upToMessageId)
     if (!cutoffMessage || cutoffMessage.chatId !== args.chatId) {

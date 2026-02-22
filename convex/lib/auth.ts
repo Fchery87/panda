@@ -31,7 +31,7 @@ async function getOrCreateE2EBypassUserId(ctx: any): Promise<Id<'users'>> {
 }
 
 function isE2EAuthBypassEnabled(): boolean {
-  return process.env.E2E_AUTH_BYPASS === 'true'
+  return process.env.NODE_ENV !== 'production' && process.env.E2E_AUTH_BYPASS === 'true'
 }
 
 export async function getCurrentUserId(ctx: any): Promise<Id<'users'> | null> {

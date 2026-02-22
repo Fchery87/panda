@@ -1,7 +1,7 @@
 import { query } from './_generated/server'
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
-import { getCurrentUserId } from './lib/auth'
+import { getCurrentUserId, requireAuth } from './lib/auth'
 
 export const getCurrent = query({
   args: {},
@@ -17,6 +17,7 @@ export const listByIds = query({
     userIds: v.array(v.id('users')),
   },
   handler: async (ctx, args) => {
+    await requireAuth(ctx)
     const users = []
     for (const userId of args.userIds) {
       const user = await ctx.db.get(userId)

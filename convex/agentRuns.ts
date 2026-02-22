@@ -1,6 +1,7 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { ChatMode } from './schema'
+import { requireAgentRunOwner, requireChatOwner, requireProjectOwner } from './lib/authz'
 
 export const create = mutation({
   args: {
@@ -13,11 +14,17 @@ export const create = mutation({
     userMessage: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const { userId } = await requireProjectOwner(ctx, args.projectId)
+    const { chat } = await requireChatOwner(ctx, args.chatId)
+    if (chat.projectId !== args.projectId) {
+      throw new Error('Chat does not belong to the specified project')
+    }
+
     const startedAt = Date.now()
     return await ctx.db.insert('agentRuns', {
       projectId: args.projectId,
       chatId: args.chatId,
-      userId: args.userId,
+      userId,
       mode: args.mode,
       provider: args.provider,
       model: args.model,
@@ -52,8 +59,7 @@ export const appendEvents = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const run = await ctx.db.get(args.runId)
-    if (!run) throw new Error('Run not found')
+    const { run } = await requireAgentRunOwner(ctx, args.runId)
 
     const createdAt = Date.now()
     const insertedIds = []
@@ -92,8 +98,7 @@ export const complete = mutation({
     usage: v.optional(v.record(v.string(), v.any())),
   },
   handler: async (ctx, args) => {
-    const run = await ctx.db.get(args.runId)
-    if (!run) throw new Error('Run not found')
+    await requireAgentRunOwner(ctx, args.runId)
 
     const completedAt = Date.now()
     await ctx.db.patch(args.runId, {
@@ -113,8 +118,7 @@ export const fail = mutation({
     error: v.string(),
   },
   handler: async (ctx, args) => {
-    const run = await ctx.db.get(args.runId)
-    if (!run) throw new Error('Run not found')
+    await requireAgentRunOwner(ctx, args.runId)
 
     await ctx.db.patch(args.runId, {
       status: 'failed',
@@ -131,8 +135,7 @@ export const stop = mutation({
     runId: v.id('agentRuns'),
   },
   handler: async (ctx, args) => {
-    const run = await ctx.db.get(args.runId)
-    if (!run) throw new Error('Run not found')
+    const { run } = await requireAgentRunOwner(ctx, args.runId)
     if (run.status !== 'running') return args.runId
 
     await ctx.db.patch(args.runId, {
@@ -150,6 +153,7 @@ export const listByChat = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    await requireChatOwner(ctx, args.chatId)
     const limit = Math.max(1, Math.min(args.limit ?? 20, 200))
     return await ctx.db
       .query('agentRuns')
@@ -165,6 +169,7 @@ export const usageByChatMode = query({
     mode: v.optional(ChatMode),
   },
   handler: async (ctx, args) => {
+    await requireChatOwner(ctx, args.chatId)
     const runs = await ctx.db
       .query('agentRuns')
       .withIndex('by_chat_started', (q) => q.eq('chatId', args.chatId))
@@ -201,6 +206,7 @@ export const listEventsByChat = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    await requireChatOwner(ctx, args.chatId)
     const limit = Math.max(1, Math.min(args.limit ?? 100, 500))
     const events = await ctx.db
       .query('agentRunEvents')

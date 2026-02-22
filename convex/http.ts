@@ -16,11 +16,37 @@ import { auth } from './auth'
 /**
  * CORS headers for cross-origin requests
  */
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  'Access-Control-Max-Age': '86400',
+function getAllowedOrigins(): string[] {
+  const configured = [
+    process.env.NEXT_PUBLIC_APP_URL,
+    'https://panda.ai',
+    'https://www.panda.ai',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+  ]
+
+  return configured.filter((value): value is string => typeof value === 'string' && value.length > 0)
+}
+
+function getCorsHeaders(request: Request): Record<string, string> {
+  const origin = request.headers.get('origin')
+  const allowedOrigins = getAllowedOrigins()
+  const allowOrigin = origin && allowedOrigins.includes(origin) ? origin : allowedOrigins[0] || 'null'
+
+  return {
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Max-Age': '86400',
+    Vary: 'Origin',
+  }
+}
+
+const ALLOWED_PROVIDERS = new Set(['openai', 'openrouter', 'together', 'zai', 'anthropic'])
+
+async function requireHttpAuth(ctx: { auth: { getUserIdentity: () => Promise<unknown> } }) {
+  const identity = await ctx.auth.getUserIdentity()
+  return identity !== null
 }
 
 /**
@@ -96,6 +122,10 @@ function getProviderConfig(provider: string, apiKey?: string) {
     },
   }
 
+  if (!ALLOWED_PROVIDERS.has(provider)) {
+    throw new Error(`Invalid provider: ${provider}`)
+  }
+
   // For Z.ai, determine if using Coding Plan or regular API
   let zaiApiKey = ''
   let baseURL = configs.zai.baseURL
@@ -132,10 +162,10 @@ const http = httpRouter()
 http.route({
   path: '/health',
   method: 'OPTIONS',
-  handler: httpAction(async (_ctx, _request): Promise<Response> => {
+  handler: httpAction(async (_ctx, request): Promise<Response> => {
     return new Response(null, {
       status: 204,
-      headers: corsHeaders,
+      headers: getCorsHeaders(request),
     })
   }),
 })
@@ -147,9 +177,9 @@ http.route({
 http.route({
   path: '/health',
   method: 'GET',
-  handler: httpAction(async (_ctx, _request): Promise<Response> => {
+  handler: httpAction(async (_ctx, request): Promise<Response> => {
     return new Response(JSON.stringify({ status: 'ok', timestamp: Date.now() }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...getCorsHeaders(request), 'Content-Type': 'application/json' },
     })
   }),
 })
@@ -161,10 +191,10 @@ http.route({
 http.route({
   path: '/api/llm/streamChat',
   method: 'OPTIONS',
-  handler: httpAction(async (_ctx, _request): Promise<Response> => {
+  handler: httpAction(async (_ctx, request): Promise<Response> => {
     return new Response(null, {
       status: 204,
-      headers: corsHeaders,
+      headers: getCorsHeaders(request),
     })
   }),
 })
@@ -177,7 +207,16 @@ http.route({
   path: '/api/llm/streamChat',
   method: 'POST',
   handler: httpAction(async (ctx, request): Promise<Response> => {
+    let abortUpstream: (() => void) | undefined
     try {
+      const responseCorsHeaders = getCorsHeaders(request)
+      if (!(await requireHttpAuth(ctx))) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
       // Parse request body
       const body = (await request.json()) as ChatRequest
       const {
@@ -194,7 +233,7 @@ http.route({
       if (!messages || !Array.isArray(messages) || messages.length === 0) {
         return new Response(JSON.stringify({ error: 'Missing or invalid messages array' }), {
           status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' },
         })
       }
 
@@ -205,10 +244,13 @@ http.route({
       if (!config.apiKey) {
         return new Response(
           JSON.stringify({ error: `No API key configured for provider: ${provider}` }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 400, headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' } }
         )
       }
       const selectedModel = model || config.defaultModel
+      const upstreamAbortController = new AbortController()
+      abortUpstream = () => upstreamAbortController.abort()
+      request.signal.addEventListener('abort', abortUpstream)
 
       // Build request and endpoint based on provider.
       let response: Response
@@ -228,6 +270,7 @@ http.route({
             'x-api-key': config.apiKey,
             'anthropic-version': '2023-06-01',
           },
+          signal: upstreamAbortController.signal,
           body: JSON.stringify({
             model: selectedModel,
             max_tokens: maxTokens,
@@ -256,6 +299,7 @@ http.route({
                 }
               : {}),
           },
+          signal: upstreamAbortController.signal,
           body: JSON.stringify({
             model: selectedModel,
             messages: fullMessages,
@@ -268,9 +312,14 @@ http.route({
 
       if (!response.ok) {
         const errorText = await response.text()
+        console.error('LLM API error', {
+          provider,
+          status: response.status,
+          bodyPreview: errorText.slice(0, 500),
+        })
         return new Response(
-          JSON.stringify({ error: `LLM API error (${response.status}): ${errorText}` }),
-          { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ error: 'Failed to process LLM request' }),
+          { status: 502, headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' } }
         )
       }
 
@@ -284,6 +333,21 @@ http.route({
           }
 
           const encoder = new TextEncoder()
+          let controllerClosed = false
+          const safeClose = () => {
+            if (controllerClosed) return
+            controllerClosed = true
+            try {
+              controller.close()
+            } catch {
+              // no-op if already closed/errored
+            }
+          }
+          const abortHandler = () => {
+            void reader.cancel().catch(() => undefined)
+            safeClose()
+          }
+          request.signal.addEventListener('abort', abortHandler)
 
           try {
             while (true) {
@@ -357,27 +421,38 @@ http.route({
                 }
               }
             }
+          } catch (error) {
+            if (!request.signal.aborted) {
+              controller.error(error instanceof Error ? error : new Error('Stream failed'))
+            }
           } finally {
+            request.signal.removeEventListener('abort', abortHandler)
             reader.releaseLock()
-            controller.close()
+            if (abortUpstream) {
+              request.signal.removeEventListener('abort', abortUpstream)
+            }
+            safeClose()
           }
         },
       })
 
       return new Response(stream, {
         headers: {
-          ...corsHeaders,
+          ...responseCorsHeaders,
           'Content-Type': 'text/event-stream',
           'Cache-Control': 'no-cache',
           Connection: 'keep-alive',
         },
       })
     } catch (error) {
+      if (abortUpstream) {
+        request.signal.removeEventListener('abort', abortUpstream)
+      }
       return new Response(
         JSON.stringify({
           error: error instanceof Error ? error.message : 'Unknown error',
         }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...getCorsHeaders(request), 'Content-Type': 'application/json' } }
       )
     }
   }),
@@ -390,10 +465,10 @@ http.route({
 http.route({
   path: '/api/llm/listModels',
   method: 'OPTIONS',
-  handler: httpAction(async (_ctx, _request): Promise<Response> => {
+  handler: httpAction(async (_ctx, request): Promise<Response> => {
     return new Response(null, {
       status: 204,
-      headers: corsHeaders,
+      headers: getCorsHeaders(request),
     })
   }),
 })
@@ -407,9 +482,19 @@ http.route({
   method: 'GET',
   handler: httpAction(async (ctx, request): Promise<Response> => {
     try {
+      const responseCorsHeaders = getCorsHeaders(request)
+      if (!(await requireHttpAuth(ctx))) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
       const url = new URL(request.url)
       const provider = url.searchParams.get('provider') || 'openai'
-      const apiKey = url.searchParams.get('apiKey') || process.env.OPENAI_API_KEY
+      const authHeader = request.headers.get('Authorization')
+      const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : ''
+      const apiKey = bearerToken || process.env.OPENAI_API_KEY
 
       const config = getProviderConfig(provider, apiKey || undefined)
 
@@ -428,20 +513,20 @@ http.route({
         ]
 
         return new Response(JSON.stringify({ models: defaultModels }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' },
         })
       }
 
       const data = await response.json()
       return new Response(JSON.stringify(data), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' },
       })
     } catch (error) {
       return new Response(
         JSON.stringify({
           error: error instanceof Error ? error.message : 'Unknown error',
         }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...getCorsHeaders(request), 'Content-Type': 'application/json' } }
       )
     }
   }),

@@ -8,8 +8,12 @@ import { shouldRedirectToLogin, shouldRedirectToProjects } from '@/lib/auth/rout
 const isProtectedRoute = createRouteMatcher(['/projects(.*)', '/settings(.*)'])
 const isLoginRoute = createRouteMatcher(['/login'])
 
+function isE2EAuthBypassEnabled(): boolean {
+  return process.env.NODE_ENV !== 'production' && process.env.E2E_AUTH_BYPASS === 'true'
+}
+
 export default convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
-  if (process.env.E2E_AUTH_BYPASS === 'true') {
+  if (isE2EAuthBypassEnabled()) {
     return
   }
 

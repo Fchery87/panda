@@ -109,7 +109,7 @@ jobs:
         run: bun install
 
       - name: Build application
-        run: bun run build
+        run: bun run build:ci
         env:
           # Skip Convex during build (we don't need it for static analysis)
           NEXT_PUBLIC_CONVEX_URL: 'https://placeholder.convex.cloud'

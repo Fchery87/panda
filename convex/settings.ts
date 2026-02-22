@@ -2,6 +2,35 @@ import { query, mutation } from './_generated/server'
 import { v } from 'convex/values'
 import { requireAuth, getCurrentUserId } from './lib/auth'
 
+const DISALLOWED_PROVIDER_SECRET_KEYS = new Set([
+  'accessToken',
+  'refreshToken',
+  'idToken',
+  'clientSecret',
+  'sessionToken',
+])
+
+function sanitizeProviderConfigsForStorage(
+  providerConfigs: Record<string, Record<string, any>> | undefined
+): Record<string, Record<string, any>> | undefined {
+  if (!providerConfigs) return providerConfigs
+
+  const sanitized: Record<string, Record<string, any>> = {}
+
+  for (const [providerKey, config] of Object.entries(providerConfigs)) {
+    const nextConfig: Record<string, any> = {}
+    for (const [key, value] of Object.entries(config || {})) {
+      if (DISALLOWED_PROVIDER_SECRET_KEYS.has(key)) {
+        continue
+      }
+      nextConfig[key] = value
+    }
+    sanitized[providerKey] = nextConfig
+  }
+
+  return sanitized
+}
+
 /**
  * Get admin global settings
  */
@@ -209,6 +238,7 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await requireAuth(ctx)
+    const sanitizedProviderConfigs = sanitizeProviderConfigsForStorage(args.providerConfigs as any)
     let userIdAsId = ctx.db.normalizeId('users', userId)
 
     // If normalizeId fails, try to find by dev email
@@ -246,7 +276,7 @@ export const update = mutation({
         updatedAt: now,
       }
 
-      if (args.providerConfigs !== undefined) updates.providerConfigs = args.providerConfigs
+      if (args.providerConfigs !== undefined) updates.providerConfigs = sanitizedProviderConfigs
       if (args.theme !== undefined) updates.theme = args.theme
       if (args.language !== undefined) updates.language = args.language
       if (args.defaultProvider !== undefined) updates.defaultProvider = args.defaultProvider
@@ -266,7 +296,7 @@ export const update = mutation({
       // Create new settings
       const settingsId = await ctx.db.insert('settings', {
         userId: userIdAsId,
-        providerConfigs: args.providerConfigs || {},
+        providerConfigs: sanitizedProviderConfigs || {},
         theme: args.theme || 'system',
         language: args.language,
         defaultProvider: args.defaultProvider,

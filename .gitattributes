@@ -57,3 +57,5 @@
 
 # Convex generated files (should not be diffed)
 convex/_generated/** linguist-generated=true
+
+.github/workflows/*.lock.yml linguist-generated=true merge=ours

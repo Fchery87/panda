@@ -10,10 +10,14 @@
   "scripts": {
     "dev": "concurrently \"bunx convex dev\" \"turbo run dev\"",
     "build": "turbo run build",
+    "build:ci": "(cd packages/sdk && bun run build) && (cd apps/web && bun run build)",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "security:audit": "bun audit --audit-level=moderate",
+    "security:scan": "semgrep --config p/owasp-top-ten .",
+    "security:secrets": "gitleaks detect --source .",
     "convex:dev": "bunx convex dev",
     "convex:deploy": "bunx convex deploy"
   },
@@ -24,7 +28,7 @@
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
-    "turbo": "^2.4.0",
+    "turbo": "2.8.10",
     "typescript": "^5.7.0"
   },
   "dependencies": {

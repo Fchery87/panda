@@ -3,8 +3,12 @@
 import { Authenticated, AuthLoading, Unauthenticated } from 'convex/react'
 import { SignInButton } from './SignInButton'
 
+function isE2EAuthBypassEnabled(): boolean {
+  return process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_E2E_AUTH_BYPASS === 'true'
+}
+
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  if (process.env.NEXT_PUBLIC_E2E_AUTH_BYPASS === 'true') {
+  if (isE2EAuthBypassEnabled()) {
     return <>{children}</>
   }
 

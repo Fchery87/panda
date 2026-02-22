@@ -6,23 +6,44 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { ConvexHttpClient } from 'convex/browser'
+import { convexAuthNextjsToken } from '@convex-dev/auth/nextjs/server'
+import { api } from '@convex/_generated/api'
 
 const CHUTES_TOKEN_URL = 'https://chutes.ai/idp/token'
+const CHUTES_OAUTH_STATE_COOKIE = 'chutes_oauth_state'
+
+function redirectWithClearedStateCookie(request: NextRequest, path: string): NextResponse {
+  const response = NextResponse.redirect(new URL(path, request.url))
+  response.cookies.set(CHUTES_OAUTH_STATE_COOKIE, '', {
+    path: '/',
+    maxAge: 0,
+    sameSite: 'lax',
+  })
+  return response
+}
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const code = searchParams.get('code')
   const error = searchParams.get('error')
+  const state = searchParams.get('state')
+  const expectedState = request.cookies.get(CHUTES_OAUTH_STATE_COOKIE)?.value
 
   if (error) {
     const errorDescription = searchParams.get('error_description') || error
-    return NextResponse.redirect(
-      new URL(`/settings?error=${encodeURIComponent(errorDescription)}`, request.url)
+    return redirectWithClearedStateCookie(
+      request,
+      `/settings?error=${encodeURIComponent(errorDescription)}`
     )
   }
 
   if (!code) {
-    return NextResponse.redirect(new URL('/settings?error=missing_authorization_code', request.url))
+    return redirectWithClearedStateCookie(request, '/settings?error=missing_authorization_code')
+  }
+
+  if (!state || !expectedState || state !== expectedState) {
+    return redirectWithClearedStateCookie(request, '/settings?error=oauth_state_mismatch')
   }
 
   try {
@@ -32,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     if (!clientId || !clientSecret) {
       console.error('Chutes OAuth credentials not configured')
-      return NextResponse.redirect(new URL('/settings?error=oauth_not_configured', request.url))
+      return redirectWithClearedStateCookie(request, '/settings?error=oauth_not_configured')
     }
 
     // Exchange code for tokens
@@ -53,30 +74,43 @@ export async function GET(request: NextRequest) {
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text()
       console.error('Chutes token exchange failed:', errorText)
-      return NextResponse.redirect(new URL('/settings?error=token_exchange_failed', request.url))
+      return redirectWithClearedStateCookie(request, '/settings?error=token_exchange_failed')
     }
 
     const tokens = await tokenResponse.json()
+    if (typeof tokens.access_token !== 'string' || tokens.access_token.length === 0) {
+      console.error('Chutes token exchange returned no access token')
+      return redirectWithClearedStateCookie(request, '/settings?error=token_exchange_failed')
+    }
 
     // Calculate expiration time
     const expiresAt = tokens.expires_in ? Date.now() + tokens.expires_in * 1000 : undefined
 
-    // Store tokens via Convex mutation (client will handle this)
-    // For now, redirect with tokens in URL fragment (more secure than query params)
-    const tokenData = {
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
-      expiresAt,
-      scope: tokens.scope,
+    const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL
+    const convexToken = await convexAuthNextjsToken()
+    if (!convexUrl || !convexToken) {
+      return redirectWithClearedStateCookie(request, '/settings?error=oauth_session_required')
     }
 
-    const encodedTokens = encodeURIComponent(JSON.stringify(tokenData))
+    const convex = new ConvexHttpClient(convexUrl)
+    convex.setAuth(convexToken)
+    await convex.mutation(api.providers.storeProviderTokens, {
+      provider: 'chutes',
+      accessToken: tokens.access_token,
+      refreshToken: typeof tokens.refresh_token === 'string' ? tokens.refresh_token : undefined,
+      expiresAt,
+      scope: typeof tokens.scope === 'string' ? tokens.scope : undefined,
+    })
 
-    return NextResponse.redirect(
-      new URL(`/settings?connected=chutes&tokens=${encodedTokens}`, request.url)
-    )
+    const response = NextResponse.redirect(new URL('/settings?connected=chutes', request.url))
+    response.cookies.set(CHUTES_OAUTH_STATE_COOKIE, '', {
+      path: '/',
+      maxAge: 0,
+      sameSite: 'lax',
+    })
+    return response
   } catch (error) {
     console.error('Chutes OAuth callback error:', error)
-    return NextResponse.redirect(new URL('/settings?error=oauth_callback_failed', request.url))
+    return redirectWithClearedStateCookie(request, '/settings?error=oauth_callback_failed')
   }
 }

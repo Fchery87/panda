@@ -1,11 +1,12 @@
 import { query, mutation } from './_generated/server'
 import { v } from 'convex/values'
-import { requireAuth, getCurrentUserId } from './lib/auth'
+import { requireChatOwner, requireMessageOwner } from './lib/authz'
 
 // list (query) - list messages by chatId, ordered by createdAt
 export const list = query({
   args: { chatId: v.id('chats') },
   handler: async (ctx, args) => {
+    await requireChatOwner(ctx, args.chatId)
     return await ctx.db
       .query('messages')
       .withIndex('by_created', (q) => q.eq('chatId', args.chatId))
@@ -18,6 +19,7 @@ export const list = query({
 export const get = query({
   args: { id: v.id('messages') },
   handler: async (ctx, args) => {
+    await requireMessageOwner(ctx, args.id)
     return await ctx.db.get(args.id)
   },
 })
@@ -31,11 +33,7 @@ export const add = mutation({
     annotations: v.optional(v.array(v.record(v.string(), v.any()))),
   },
   handler: async (ctx, args) => {
-    const chat = await ctx.db.get(args.chatId)
-
-    if (!chat) {
-      throw new Error('Chat not found')
-    }
+    await requireChatOwner(ctx, args.chatId)
 
     const now = Date.now()
 
@@ -64,11 +62,7 @@ export const update = mutation({
     annotations: v.optional(v.array(v.record(v.string(), v.any()))),
   },
   handler: async (ctx, args) => {
-    const message = await ctx.db.get(args.id)
-
-    if (!message) {
-      throw new Error('Message not found')
-    }
+    const { message } = await requireMessageOwner(ctx, args.id)
 
     const updates: Partial<typeof message> = {}
 
@@ -85,11 +79,7 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id('messages') },
   handler: async (ctx, args) => {
-    const message = await ctx.db.get(args.id)
-
-    if (!message) {
-      throw new Error('Message not found')
-    }
+    await requireMessageOwner(ctx, args.id)
 
     // Delete artifacts associated with this message
     const artifacts = await ctx.db

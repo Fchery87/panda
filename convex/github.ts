@@ -1,6 +1,7 @@
 import { action, mutation, query } from './_generated/server'
 import { api } from './_generated/api'
 import { v } from 'convex/values'
+import { requireProjectOwner } from './lib/authz'
 
 // Maximum file size in bytes (1MB)
 const MAX_FILE_SIZE = 1024 * 1024
@@ -297,6 +298,7 @@ export const getImportProgress = query({
     projectId: v.id('projects'),
   },
   handler: async (ctx, { projectId }) => {
+    await requireProjectOwner(ctx, projectId)
     // In a real implementation, you'd store progress in a separate table
     // For now, return a placeholder
     return null
@@ -321,6 +323,11 @@ export const importRepo = action({
     }
 
     try {
+      const project = await ctx.runQuery(api.projects.get, { id: projectId })
+      if (!project) {
+        throw new Error('Project not found or access denied')
+      }
+
       // Parse the GitHub URL
       const parsed = parseGitHubUrl(repoUrl)
       if (!parsed) {
@@ -412,6 +419,7 @@ export const updateProjectRepoUrl = mutation({
     repoUrl: v.string(),
   },
   handler: async (ctx, { projectId, repoUrl }) => {
+    await requireProjectOwner(ctx, projectId)
     await ctx.db.patch(projectId, {
       repoUrl,
     })
@@ -426,6 +434,7 @@ export const createFile = mutation({
     content: v.string(),
   },
   handler: async (ctx, { projectId, path, content }) => {
+    await requireProjectOwner(ctx, projectId)
     const now = Date.now()
 
     // Check if file already exists

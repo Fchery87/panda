@@ -48,11 +48,16 @@ export const getProviderTokens = query({
     }
 
     return {
-      accessToken: tokenRecord.accessToken,
-      refreshToken: tokenRecord.refreshToken,
+      connected: true,
+      hasAccessToken: Boolean(tokenRecord.accessToken),
+      hasRefreshToken: Boolean(tokenRecord.refreshToken),
       expiresAt: tokenRecord.expiresAt,
       scope: tokenRecord.scope,
       provider: tokenRecord.provider,
+      expiresSoon:
+        typeof tokenRecord.expiresAt === 'number'
+          ? tokenRecord.expiresAt - Date.now() < 5 * 60 * 1000
+          : false,
     }
   },
 })

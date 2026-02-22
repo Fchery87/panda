@@ -8,11 +8,16 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { Id } from './_generated/dataModel'
+import { requireChatOwner } from './lib/authz'
 
 function generateShareId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID().replace(/-/g, '')
+  }
+
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
   let result = ''
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 16; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length))
   }
   return result
@@ -56,17 +61,27 @@ export const shareChat = mutation({
       return existingShare.shareId
     }
 
-    const shareId = generateShareId()
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const shareId = generateShareId()
+      const collision = await ctx.db
+        .query('sharedChats')
+        .withIndex('by_shareId', (q) => q.eq('shareId', shareId))
+        .first()
 
-    await ctx.db.insert('sharedChats', {
-      chatId: args.chatId,
-      shareId,
-      createdBy: user._id,
-      createdAt: Date.now(),
-      isPublic: true,
-    })
+      if (collision) continue
 
-    return shareId
+      await ctx.db.insert('sharedChats', {
+        chatId: args.chatId,
+        shareId,
+        createdBy: user._id,
+        createdAt: Date.now(),
+        isPublic: true,
+      })
+
+      return shareId
+    }
+
+    throw new Error('Failed to generate unique share link')
   },
 })
 
@@ -153,6 +168,7 @@ export const getChatShareStatus = query({
     chatId: v.id('chats'),
   },
   handler: async (ctx, args) => {
+    await requireChatOwner(ctx, args.chatId)
     const sharedChat = await ctx.db
       .query('sharedChats')
       .withIndex('by_chat', (q) => q.eq('chatId', args.chatId))

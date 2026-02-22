@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server'
+import { isAuthenticatedNextjs } from '@convex-dev/auth/nextjs/server'
 
 function normalizeBaseUrl(baseUrl?: string): string {
   return (baseUrl || 'https://llm.chutes.ai/v1').replace(/\/+$/, '')
 }
 
 type TestMode = 'models' | 'completion' | 'both'
+const ALLOWED_CHUTES_HOSTS = new Set(['llm.chutes.ai'])
 
 function buildHeaders(apiKey: string): Record<string, string> {
   return {
@@ -15,6 +17,10 @@ function buildHeaders(apiKey: string): Record<string, string> {
 
 export async function POST(request: Request) {
   try {
+    if (!(await isAuthenticatedNextjs())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = (await request.json()) as {
       apiKey?: string
       baseUrl?: string
@@ -29,6 +35,17 @@ export async function POST(request: Request) {
 
     const mode: TestMode = body.mode || 'both'
     const baseUrl = normalizeBaseUrl(body.baseUrl)
+    let parsedBaseUrl: URL
+    try {
+      parsedBaseUrl = new URL(baseUrl)
+    } catch {
+      return NextResponse.json({ error: 'Invalid base URL' }, { status: 400 })
+    }
+
+    if (parsedBaseUrl.protocol !== 'https:' || !ALLOWED_CHUTES_HOSTS.has(parsedBaseUrl.hostname)) {
+      return NextResponse.json({ error: 'Unsupported base URL' }, { status: 400 })
+    }
+
     const headers = buildHeaders(apiKey)
 
     let models: string[] = []

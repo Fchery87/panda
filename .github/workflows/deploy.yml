@@ -55,7 +55,7 @@ jobs:
         run: bun install
 
       - name: Build for production
-        run: bun run build
+        run: bun run build:ci
         env:
           NEXT_PUBLIC_CONVEX_URL: ${{ secrets.CONVEX_PROD_URL }}
 

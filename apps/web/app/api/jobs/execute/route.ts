@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { spawn } from 'node:child_process'
 import path from 'node:path'
+import { isAuthenticatedNextjs } from '@convex-dev/auth/nextjs/server'
 
 interface ExecuteRequest {
   command: string
@@ -18,6 +19,19 @@ interface ExecuteResponse {
 
 const DEFAULT_TIMEOUT_MS = 60_000
 const MAX_OUTPUT_BYTES = 1024 * 1024 // 1MB safety cap
+const ALLOWED_COMMANDS = new Set([
+  'bun',
+  'bunx',
+  'npm',
+  'npx',
+  'git',
+  'node',
+  'ls',
+  'cat',
+  'pwd',
+  'echo',
+])
+const SHELL_META_CHARS = /[|&;<>`]/u
 
 function clampTimeout(value: number | undefined): number {
   if (!value || !Number.isFinite(value)) return DEFAULT_TIMEOUT_MS
@@ -35,7 +49,44 @@ function resolveWorkingDirectory(workingDirectory?: string): string {
   return resolved
 }
 
+function tokenizeCommand(command: string): string[] {
+  if (SHELL_META_CHARS.test(command) || command.includes('\n') || command.includes('\r')) {
+    throw new Error('Shell operators are not allowed')
+  }
+
+  const tokens = command.match(/"[^"]*"|'[^']*'|\S+/g) ?? []
+  if (tokens.length === 0) {
+    throw new Error('command is required')
+  }
+
+  return tokens.map((token) => {
+    if (
+      (token.startsWith('"') && token.endsWith('"')) ||
+      (token.startsWith("'") && token.endsWith("'"))
+    ) {
+      return token.slice(1, -1)
+    }
+    return token
+  })
+}
+
+function buildSafeChildEnv(): NodeJS.ProcessEnv {
+  return {
+    NODE_ENV: process.env.NODE_ENV,
+    PATH: process.env.PATH,
+    HOME: process.env.HOME,
+    TMPDIR: process.env.TMPDIR,
+    TEMP: process.env.TEMP,
+    TMP: process.env.TMP,
+    CI: process.env.CI,
+  }
+}
+
 export async function POST(req: NextRequest) {
+  if (!(await isAuthenticatedNextjs())) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   let body: ExecuteRequest
   try {
     body = (await req.json()) as ExecuteRequest
@@ -60,12 +111,26 @@ export async function POST(req: NextRequest) {
   }
 
   const startedAt = Date.now()
+  let commandTokens: string[]
+  try {
+    commandTokens = tokenizeCommand(command)
+  } catch (error) {
+    return Response.json(
+      { error: error instanceof Error ? error.message : 'Invalid command' },
+      { status: 400 }
+    )
+  }
+
+  const [bin, ...args] = commandTokens
+  if (!ALLOWED_COMMANDS.has(bin)) {
+    return Response.json({ error: `Command not allowed: ${bin}` }, { status: 403 })
+  }
 
   const result = await new Promise<ExecuteResponse>((resolve) => {
-    const child = spawn(command, {
+    const child = spawn(bin, args, {
       cwd,
-      shell: true,
-      env: process.env,
+      shell: false,
+      env: buildSafeChildEnv(),
     })
 
     let stdout = ''
