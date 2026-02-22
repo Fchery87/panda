@@ -58,7 +58,6 @@ import { useAutoApplyArtifacts } from '@/hooks/useAutoApplyArtifacts'
 import type { Message } from '@/components/chat/types'
 import { buildMessageWithPlanDraft, deriveNextPlanDraft } from '@/lib/chat/planDraft'
 import { isRateLimitError, getUserFacingAgentError } from '@/lib/chat/error-messages'
-import { resolveChatPanelVisibility } from '@/lib/chat/panelVisibility'
 import { resolveEffectiveAgentPolicy, type AgentPolicy } from '@/lib/agent/automationPolicy'
 import { normalizeChatMode, type ChatMode } from '@/lib/agent/prompt-library'
 
@@ -480,10 +479,6 @@ export default function ProjectPage() {
   const replayProgressSteps = useMemo(
     () => mapLatestRunProgressSteps(runEvents ?? []).slice(-24),
     [runEvents]
-  )
-  const panelVisibility = useMemo(
-    () => resolveChatPanelVisibility({ showAdvancedDebugInChat: false }),
-    []
   )
   const liveRunSteps = useMemo(() => {
     return agent.progressSteps.length > 0 ? agent.progressSteps : replayProgressSteps

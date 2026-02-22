@@ -15,7 +15,6 @@ import type {
   HookContext,
   ToolDefinition,
   AgentConfig,
-  Identifier,
 } from './types'
 
 type HookEntry = {

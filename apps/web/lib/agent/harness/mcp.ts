@@ -5,8 +5,7 @@
  * Allows connecting to local or remote MCP servers to extend capabilities.
  */
 
-import type { ToolDefinition, ToolCall } from '../../llm/types'
-import type { Identifier } from './types'
+import type { ToolDefinition } from '../../llm/types'
 
 /**
  * MCP server configuration

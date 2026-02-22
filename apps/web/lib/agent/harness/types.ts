@@ -10,7 +10,7 @@
  * - Plugin hooks
  */
 
-import type { ToolCall, ToolResult, ToolDefinition } from '../../llm/types'
+import type { ToolDefinition } from '../../llm/types'
 
 export type { ToolDefinition } from '../../llm/types'
 

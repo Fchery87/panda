@@ -70,6 +70,7 @@ export function RunProgressPanel({
       if (persisted === '1') setIsOpen(true)
       if (persisted === '0') setIsOpen(false)
     } catch {
+      // localStorage not available (SSR or privacy mode)
     } finally {
       setHasLoadedPreference(true)
     }
@@ -79,7 +80,9 @@ export function RunProgressPanel({
     if (!hasLoadedPreference) return
     try {
       window.localStorage.setItem(STORAGE_KEY, isOpen ? '1' : '0')
-    } catch {}
+    } catch {
+      // localStorage not available (SSR or privacy mode)
+    }
   }, [isOpen, hasLoadedPreference])
 
   const historicalSteps = useMemo(() => {

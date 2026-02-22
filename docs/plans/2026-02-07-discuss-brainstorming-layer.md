@@ -6,11 +6,11 @@
 **Goal:** Add an optional brainstorming protocol in Plan mode that improves
 prompt intake while preserving existing Plan/Build flow.
 
-**Architecture:** Add a feature-flagged Plan brainstorming protocol via
-prompt instructions, parse a machine-readable phase marker from assistant
-output, and only persist Plan output to Plan Draft after the phase reaches
-`validated_plan`. Expose a small UI toggle in the chat input to enable/disable
-brainstorming per session.
+**Architecture:** Add a feature-flagged Plan brainstorming protocol via prompt
+instructions, parse a machine-readable phase marker from assistant output, and
+only persist Plan output to Plan Draft after the phase reaches `validated_plan`.
+Expose a small UI toggle in the chat input to enable/disable brainstorming per
+session.
 
 **Tech Stack:** Next.js/React, TypeScript, Bun tests, Convex-backed chat flow.
 
@@ -60,8 +60,8 @@ brainstorming per session.
 
 **Step 3: Implement prompt and context wiring**
 
-- Add brainstorming protocol appendix to Plan prompt, requiring phase marker
-  and one-question flow.
+- Add brainstorming protocol appendix to Plan prompt, requiring phase marker and
+  one-question flow.
 - Pass enablement from `useAgent` through `PromptContext.customInstructions`.
 
 **Step 4: Re-run tests**

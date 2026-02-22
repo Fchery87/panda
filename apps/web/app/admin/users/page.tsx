@@ -17,16 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Search,
   Shield,
@@ -34,11 +26,9 @@ import {
   Trash2,
   UserCheck,
   Loader2,
-  MoreHorizontal,
   ArrowLeft,
   Users,
   Mail,
-  Calendar,
   FolderGit,
   Bot,
   Activity,

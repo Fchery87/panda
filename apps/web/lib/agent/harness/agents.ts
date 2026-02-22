@@ -8,9 +8,8 @@
  * - Per-agent tool permissions
  */
 
-import type { AgentConfig, AgentMode, Permission, Identifier } from './types'
+import type { AgentConfig, AgentMode, Permission } from './types'
 import { DEFAULT_PERMISSIONS } from './permissions'
-import { ascending } from './identifier'
 
 /**
  * Parse YAML frontmatter from markdown
@@ -30,7 +29,6 @@ function parseFrontmatter(content: string): {
   const frontmatter: Record<string, unknown> = {}
 
   const lines = frontmatterStr.split('\n')
-  let currentKey = ''
   let currentArray: unknown[] | null = null
   let indent = 0
 
@@ -56,7 +54,6 @@ function parseFrontmatter(content: string): {
     const value = trimmed.slice(colonIndex + 1).trim()
 
     if (value === '' || value === '|') {
-      currentKey = key
       indent = lineIndent
       if (value === '' && lines[lines.indexOf(line) + 1]?.includes(':')) {
         frontmatter[key] = {}

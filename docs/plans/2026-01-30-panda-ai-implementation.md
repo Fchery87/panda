@@ -4,8 +4,8 @@
 > implement this plan task-by-task.
 
 **Goal:** Build Panda.ai, a browser-based AI coding workbench with streaming
-chat agent (Ask/Plan/Code/Build modes), code editor, file tree, diff view, terminal,
-and preview in a Next.js + Convex stack.
+chat agent (Ask/Plan/Code/Build modes), code editor, file tree, diff view,
+terminal, and preview in a Next.js + Convex stack.
 
 **Architecture:** Monorepo with `apps/web` (Next.js frontend), `convex/`
 (backend/storage). Agent runtime and LLM providers live in `apps/web/lib/` for

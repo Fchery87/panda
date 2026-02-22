@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu'
-import { agents, type AgentConfig } from '@/lib/agent/harness'
+import { agents } from '@/lib/agent/harness'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 
 interface AgentSelectorProps {
@@ -62,7 +62,6 @@ export function AgentSelector({ mode, onModeChange, disabled, className }: Agent
   const currentAgentName = mapModeToAgent(mode)
   const currentAgent = primaryAgents.find((a) => a.name === currentAgentName) ?? primaryAgents[0]
   const currentIcon = AGENT_ICONS[currentAgent.name] ?? <Bot className="h-3.5 w-3.5" />
-  const currentDescription = MODE_DESCRIPTIONS[mode] ?? currentAgent.description ?? ''
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {

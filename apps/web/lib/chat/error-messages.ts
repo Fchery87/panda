@@ -33,9 +33,7 @@ export function getUserFacingAgentError(rawError: string | null | undefined): {
 
   if (isRateLimited) {
     const retryAfterSeconds = parseRetryAfterSeconds(message)
-    const retryHint = retryAfterSeconds
-      ? ` Retry after about ${retryAfterSeconds} seconds.`
-      : ''
+    const retryHint = retryAfterSeconds ? ` Retry after about ${retryAfterSeconds} seconds.` : ''
     return {
       title: 'Provider rate limited (429)',
       description:

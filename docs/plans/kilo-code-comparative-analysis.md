@@ -8,18 +8,18 @@
 
 ## Executive Summary
 
-| Aspect                 | Panda.ai                        | Kilo Code (Commit 0f46585)                                   |
-| ---------------------- | ------------------------------- | ------------------------------------------------------------ |
-| **Architecture**       | Web-based (Next.js 16 + Convex) | VS Code Extension + CLI + Cloud                              |
-| **Deployment**         | Browser + Cloud backend         | Multi-platform (VS Code, JetBrains, CLI, Cloud)              |
+| Aspect                 | Panda.ai                         | Kilo Code (Commit 0f46585)                                   |
+| ---------------------- | -------------------------------- | ------------------------------------------------------------ |
+| **Architecture**       | Web-based (Next.js 16 + Convex)  | VS Code Extension + CLI + Cloud                              |
+| **Deployment**         | Browser + Cloud backend          | Multi-platform (VS Code, JetBrains, CLI, Cloud)              |
 | **Modes**              | 4 modes (Ask, Plan, Code, Build) | 6+ modes (Architect, Code, Debug, Ask, Orchestrator, Review) |
-| **Extensibility**      | Fixed tool set                  | MCP marketplace for unlimited tools                          |
-| **State Management**   | Convex real-time DB             | Shadow Git checkpoints + sessions                            |
-| **Multi-Agent**        | Single agent per chat           | Parallel agents with worktree isolation                      |
-| **Browser Automation** | Not implemented                 | Puppeteer-based browser control                              |
-| **Code Indexing**      | Text + AST search               | Semantic vector search (LanceDB/Qdrant)                      |
-| **CLI**                | Not implemented                 | Full-featured TUI + headless server                          |
-| **Community**          | Private project                 | 1.5M+ users, Apache 2.0                                      |
+| **Extensibility**      | Fixed tool set                   | MCP marketplace for unlimited tools                          |
+| **State Management**   | Convex real-time DB              | Shadow Git checkpoints + sessions                            |
+| **Multi-Agent**        | Single agent per chat            | Parallel agents with worktree isolation                      |
+| **Browser Automation** | Not implemented                  | Puppeteer-based browser control                              |
+| **Code Indexing**      | Text + AST search                | Semantic vector search (LanceDB/Qdrant)                      |
+| **CLI**                | Not implemented                  | Full-featured TUI + headless server                          |
+| **Community**          | Private project                  | 1.5M+ users, Apache 2.0                                      |
 
 ---
 
@@ -232,11 +232,7 @@ PANDA.AI ARCHITECTURE
 
 ```typescript
 // New modes to add to prompt-library.ts
-export type AgentMode =
-  | 'ask'
-  | 'architect'
-  | 'code'
-  | 'build'
+export type AgentMode = 'ask' | 'architect' | 'code' | 'build'
 
 interface ModeConfig {
   slug: AgentMode

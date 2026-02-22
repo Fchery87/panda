@@ -9,7 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   ArrowLeft,
@@ -45,9 +44,6 @@ export default function AdminSecurityPage() {
   const router = useRouter()
   const auditLog = useQuery(api.admin.getAuditLog, { limit: 100 })
   const systemOverview = useQuery(api.admin.getSystemOverview)
-
-  const recentLogins =
-    auditLog?.filter((log) => log.action === 'SIGN_IN' || log.action === 'OAUTH_CALLBACK') || []
 
   const adminActions =
     auditLog?.filter((log) =>

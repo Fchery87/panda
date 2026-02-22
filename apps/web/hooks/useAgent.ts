@@ -1110,9 +1110,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               }
               break
 
-            case 'error':
-              {
-                const userFacing = getUserFacingAgentError(event.error)
+            case 'error': {
+              const userFacing = getUserFacingAgentError(event.error)
               setStatus('error')
               setError(userFacing.description)
               isRunningRef.current = false
@@ -1126,7 +1125,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                 description: userFacing.description,
               })
               break
-              }
+            }
           }
         }
 

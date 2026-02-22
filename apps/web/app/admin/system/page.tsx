@@ -15,17 +15,7 @@ import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import {
-  ArrowLeft,
-  Settings,
-  Save,
-  AlertCircle,
-  Users,
-  Bot,
-  Shield,
-  Server,
-  Lock,
-} from 'lucide-react'
+import { ArrowLeft, Settings, Save, AlertCircle, Bot, Server, Lock } from 'lucide-react'
 
 export default function AdminSystemPage() {
   const router = useRouter()

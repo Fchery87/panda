@@ -12,7 +12,6 @@ import type {
   Message,
   Part,
   UserMessage,
-  AssistantMessage,
   CompactionPart,
   CompactionResult,
   Identifier,

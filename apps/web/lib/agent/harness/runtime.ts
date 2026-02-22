@@ -16,29 +16,23 @@ import type {
   Message,
   UserMessage,
   AssistantMessage,
-  Part,
   TextPart,
   ReasoningPart,
   ToolPart,
   SubtaskPart,
-  StepStartPart,
-  StepFinishPart,
   AgentConfig,
   RuntimeConfig,
   FinishReason,
   Identifier,
-  SubagentResult,
 } from './types'
 import type {
   LLMProvider,
   CompletionOptions,
-  StreamChunk,
   ToolDefinition,
   ToolCall,
   CompletionMessage,
 } from '../../llm/types'
 import { ascending } from './identifier'
-import { bus } from './event-bus'
 import { agents } from './agents'
 import { permissions, checkPermission } from './permissions'
 import { plugins } from './plugins'
@@ -176,7 +170,7 @@ export class Runtime {
       tokens: { input: 0, output: 0, reasoning: 0 },
     }
 
-    yield* this.executeHook('session.start', { sessionID, step: 0, agent, messageID: '' }, {})
+    await this.executeHook('session.start', { sessionID, step: 0, agent, messageID: '' }, {})
 
     try {
       while (!this.state.isComplete && this.state.step < maxSteps) {
@@ -187,7 +181,7 @@ export class Runtime {
 
         yield { type: 'step_start', step: this.state.step }
 
-        yield* this.executeHook(
+        await this.executeHook(
           'step.start',
           { sessionID, step: this.state.step, agent, messageID: '' },
           { isLastStep }
@@ -224,7 +218,7 @@ export class Runtime {
           cost: this.state.cost,
         }
 
-        yield* this.executeHook(
+        await this.executeHook(
           'step.end',
           { sessionID, step: this.state.step, agent, messageID: '' },
           { finishReason: result.finishReason }
@@ -244,7 +238,7 @@ export class Runtime {
         cost: this.state.cost,
       }
 
-      yield* this.executeHook(
+      await this.executeHook(
         'session.end',
         { sessionID, step: this.state.step, agent, messageID: '' },
         {}
@@ -284,7 +278,7 @@ export class Runtime {
       stream: true,
     }
 
-    yield* this.executeHook(
+    await this.executeHook(
       'llm.request',
       { sessionID: this.state.sessionID, step: this.state.step, agent, messageID },
       completionOptions
@@ -305,7 +299,7 @@ export class Runtime {
 
     let fullContent = ''
     let reasoningContent = ''
-    let pendingToolCalls: ToolCall[] = []
+    const pendingToolCalls: ToolCall[] = []
     let finishReason: FinishReason = 'unknown'
     let usage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 }
 
@@ -417,7 +411,7 @@ export class Runtime {
 
     this.state.messages.push(assistantMessage)
 
-    yield* this.executeHook(
+    await this.executeHook(
       'llm.response',
       { sessionID: this.state.sessionID, step: this.state.step, agent, messageID },
       { usage, finishReason, modelID: completionOptions.model }
@@ -447,7 +441,7 @@ export class Runtime {
       messageID,
     }
 
-    yield* this.executeHook('tool.execute.before', hookContext, { toolName, args })
+    await this.executeHook('tool.execute.before', hookContext, { toolName, args })
 
     const decision = checkPermission(agent.permission, toolName, pattern)
 
@@ -506,7 +500,7 @@ export class Runtime {
         },
       }
 
-      yield* this.executeHook('tool.execute.after', hookContext, {
+      await this.executeHook('tool.execute.after', hookContext, {
         toolName,
         args,
         result,
@@ -523,7 +517,7 @@ export class Runtime {
   /**
    * Process pending subtasks
    */
-  private async *processSubtasks(agent: AgentConfig): AsyncGenerator<RuntimeEvent> {
+  private async *processSubtasks(_agent: AgentConfig): AsyncGenerator<RuntimeEvent> {
     if (!this.state) return
 
     while (this.state.pendingSubtasks.length > 0) {
@@ -553,7 +547,7 @@ export class Runtime {
   /**
    * Perform context compaction
    */
-  private async *performCompaction(agent: AgentConfig): AsyncGenerator<RuntimeEvent> {
+  private async *performCompaction(_agent: AgentConfig): AsyncGenerator<RuntimeEvent> {
     if (!this.state) return
 
     yield { type: 'compaction', content: 'Compacting context...' }
@@ -725,11 +719,11 @@ export class Runtime {
   /**
    * Execute a plugin hook
    */
-  private async *executeHook<T>(
+  private async executeHook<T>(
     hookType: string,
     context: { sessionID: Identifier; step: number; agent: AgentConfig; messageID: Identifier },
     data: T
-  ): AsyncGenerator<RuntimeEvent> {
+  ): Promise<void> {
     await plugins.executeHooks(hookType as any, context, data)
   }
 

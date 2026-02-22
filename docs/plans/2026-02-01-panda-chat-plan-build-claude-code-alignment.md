@@ -7,8 +7,8 @@
 
 Panda’s chat UX was not behaving like “Claude Code”-style workflows:
 
-1. **Plan mode produced code** (sometimes streaming large code
-   blocks into the chat panel).
+1. **Plan mode produced code** (sometimes streaming large code blocks into the
+   chat panel).
 2. **Build mode didn’t reliably execute** (often produced another plan instead
    of writing files / running commands).
 3. **Streaming looked “chunky” / unstable** (content could “vanish then
@@ -21,9 +21,9 @@ Panda’s chat UX was not behaving like “Claude Code”-style workflows:
    - `The result of getServerSnapshot should be cached to avoid an infinite loop`
    - `Maximum update depth exceeded`
 
-The goal of the changes was to make Plan/Build behave predictably, prevent
-code from appearing in the chat panel, and ensure Build actions actually
-materialize as files/jobs in the Workbench.
+The goal of the changes was to make Plan/Build behave predictably, prevent code
+from appearing in the chat panel, and ensure Build actions actually materialize
+as files/jobs in the Workbench.
 
 ## High-level target behavior (what “good” looks like)
 
@@ -263,8 +263,8 @@ wasn’t copied.
 
 ## What this enables (end-to-end flow)
 
-1. **Plan:** user asks → assistant streams clarifying questions + plan (no
-   large code).
+1. **Plan:** user asks → assistant streams clarifying questions + plan (no large
+   code).
 2. **Plan Draft:** plan is captured and editable.
 3. **Build:** user clicks “Build this” → assistant uses tools →
    artifacts/files/jobs appear.

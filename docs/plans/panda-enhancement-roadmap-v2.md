@@ -63,12 +63,12 @@ mode: v.union(
 
 **Mode Definitions:**
 
-| Mode        | Tools Allowed                                  | File Access     | Description                 |
-| ----------- | ---------------------------------------------- | --------------- | --------------------------- |
-| `ask`       | `search_code`, `search_code_ast`, `read_files` | Read-only       | Q&A without modifications   |
-| `architect` | All read tools                                 | Read-only       | System design, planning     |
-| `code`      | All tools                                      | Full access     | Default implementation mode |
-| `build`     | All tools                                      | Full access     | Full implementation         |
+| Mode        | Tools Allowed                                  | File Access | Description                 |
+| ----------- | ---------------------------------------------- | ----------- | --------------------------- |
+| `ask`       | `search_code`, `search_code_ast`, `read_files` | Read-only   | Q&A without modifications   |
+| `architect` | All read tools                                 | Read-only   | System design, planning     |
+| `code`      | All tools                                      | Full access | Default implementation mode |
+| `build`     | All tools                                      | Full access | Full implementation         |
 
 **Complexity:** Low  
 **Estimated Effort:** 3-4 days

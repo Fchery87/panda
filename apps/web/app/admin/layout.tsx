@@ -82,7 +82,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     )
   }
 
-  const { isAdmin, adminRole } = result
+  const { adminRole } = result
 
   return (
     <div className="flex min-h-screen">

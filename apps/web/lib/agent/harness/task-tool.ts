@@ -11,7 +11,7 @@
  */
 
 import type { AgentConfig, Identifier, SubagentResult, SubtaskPart } from './types'
-import type { ToolDefinition, ToolCall } from '../../llm/types'
+import type { ToolDefinition } from '../../llm/types'
 import { agents } from './agents'
 import { ascending } from './identifier'
 import { bus } from './event-bus'
