@@ -13,7 +13,10 @@ export const ChatMode = v.union(
   v.literal('ask'),
   v.literal('architect'),
   v.literal('code'),
-  v.literal('build')
+  v.literal('build'),
+  v.literal('discuss'),
+  v.literal('debug'),
+  v.literal('review')
 )
 
 export type ChatModeType = 'ask' | 'architect' | 'code' | 'build'
