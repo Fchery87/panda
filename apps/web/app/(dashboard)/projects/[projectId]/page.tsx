@@ -6,6 +6,7 @@ import { useQuery, useMutation } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { motion } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 
@@ -40,6 +41,7 @@ import {
   Bot,
   RotateCcw,
   AlertTriangle,
+  Layers,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -174,6 +176,10 @@ export default function ProjectPage() {
       if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
         e.preventDefault()
         setIsChatPanelOpen((prev) => !prev)
+      }
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'a') {
+        e.preventDefault()
+        setIsArtifactPanelOpen((prev) => !prev)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -1076,17 +1082,6 @@ export default function ProjectPage() {
         <div className="flex items-center gap-1">
           {/* Primary Actions */}
           <div className="flex items-center gap-1 border-r border-border pr-3">
-            {pendingArtifactCount > 0 && (
-              <Button
-                variant="destructive"
-                size="sm"
-                className="h-8 gap-1.5 rounded-none font-mono text-xs"
-                onClick={() => setIsArtifactPanelOpen(true)}
-              >
-                <span className="flex h-2 w-2 animate-pulse rounded-full bg-white" />
-                {pendingArtifactCount}
-              </Button>
-            )}
             <AgentAutomationDialog
               projectId={projectId}
               projectPolicy={(project as any)?.agentPolicy}
@@ -1113,11 +1108,31 @@ export default function ProjectPage() {
             <Button
               variant={isArtifactPanelOpen ? 'secondary' : 'ghost'}
               size="sm"
-              className="h-8 gap-1.5 rounded-none font-mono text-xs"
+              className={cn(
+                'h-8 gap-1.5 rounded-none font-mono text-xs',
+                pendingArtifactCount > 0 && !isArtifactPanelOpen && 'text-primary'
+              )}
               onClick={() => setIsArtifactPanelOpen(!isArtifactPanelOpen)}
+              title="Toggle artifacts panel (Ctrl+Shift+A)"
             >
-              <PanelRight className="h-4 w-4" />
-              <span className="hidden sm:inline">Artifacts</span>
+              {isArtifactPanelOpen ? (
+                <PanelRightClose className="h-4 w-4" />
+              ) : (
+                <Layers className="h-4 w-4" />
+              )}
+              <span className="hidden lg:inline">Artifacts</span>
+              {pendingArtifactCount > 0 && (
+                <span
+                  className={cn(
+                    'ml-0.5 flex h-4 min-w-4 items-center justify-center px-1 text-[10px]',
+                    isArtifactPanelOpen
+                      ? 'rounded-none bg-primary/20 text-primary'
+                      : 'rounded-none bg-primary text-primary-foreground'
+                  )}
+                >
+                  {pendingArtifactCount}
+                </span>
+              )}
             </Button>
             <Button
               variant="ghost"
@@ -1225,23 +1240,26 @@ export default function ProjectPage() {
             </PanelGroup>
           )}
 
-          {/* Floating Artifact Panel */}
-          {isArtifactPanelOpen && (
-            <motion.div
-              initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 50 }}
-              className="absolute bottom-12 right-4 top-4 z-40"
-            >
-              <ArtifactPanel
-                projectId={projectId}
-                chatId={activeChat?._id}
-                isOpen={true}
-                onClose={() => setIsArtifactPanelOpen(false)}
-                position="floating"
-              />
-            </motion.div>
-          )}
+          {/* Artifact Panel - Side drawer */}
+          <AnimatePresence>
+            {isArtifactPanelOpen && (
+              <motion.div
+                initial={{ opacity: 0, x: 300 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 300 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                className="shadow-sharp-lg absolute bottom-0 right-0 top-0 z-40 w-80 border-l border-border bg-background"
+              >
+                <ArtifactPanel
+                  projectId={projectId}
+                  chatId={activeChat?._id}
+                  isOpen={true}
+                  onClose={() => setIsArtifactPanelOpen(false)}
+                  position="right"
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Command Palette */}
           <CommandPalette

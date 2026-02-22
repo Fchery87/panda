@@ -3,16 +3,20 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { FolderGit2, Settings, User } from 'lucide-react'
+import { FolderGit2, Plus, Settings, User, Keyboard, BookOpen, LogOut, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/settings/ThemeToggle'
 import { PandaLogo } from '@/components/ui/panda-logo'
 import { cn } from '@/lib/utils'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
-const navItems = [
-  { href: '/projects', label: 'Projects', icon: FolderGit2 },
-  { href: '/settings', label: 'Settings', icon: Settings },
-]
+const navItems = [{ href: '/projects', label: 'Projects', icon: FolderGit2 }]
 
 export function DashboardHeader() {
   const pathname = usePathname()
@@ -24,14 +28,14 @@ export function DashboardHeader() {
       transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
       className="surface-1 sticky top-0 z-50 w-full border-b border-border"
     >
-      <div className="container flex h-14 items-center">
+      <div className="container flex h-14 items-center gap-4">
         {/* Logo */}
-        <Link href="/" className="mr-8 flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2">
           <PandaLogo size="md" />
         </Link>
 
         {/* Navigation */}
-        <nav className="flex flex-1 items-center gap-1">
+        <nav className="flex items-center gap-1">
           {navItems.map((item) => {
             const isActive = pathname.startsWith(item.href)
             const Icon = item.icon
@@ -47,28 +51,76 @@ export function DashboardHeader() {
                   )}
                 >
                   <Icon className="h-4 w-4" />
-                  <span className="hidden sm:inline">{item.label}</span>
+                  <span>{item.label}</span>
                 </Button>
               </Link>
             )
           })}
         </nav>
 
-        {/* Right side */}
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
+        {/* Command Palette Trigger */}
+        <button
+          type="button"
+          className="mx-4 flex flex-1 items-center gap-2 rounded-none border border-border bg-muted/50 px-3 py-1.5 text-left font-mono text-xs text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+          onClick={() => {
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))
+          }}
+        >
+          <Search className="h-3.5 w-3.5" />
+          <span>Search commands...</span>
+          <kbd className="ml-auto rounded-none bg-background px-1.5 py-0.5 text-[10px]">Ctrl</kbd>
+          <kbd className="rounded-none bg-background px-1.5 py-0.5 text-[10px]">K</kbd>
+        </button>
 
-          <Link href="/settings">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-11 w-11 rounded-none"
-              aria-label="Settings"
-              title="Settings"
-            >
-              <User className="h-4 w-4" />
+        {/* Right side */}
+        <div className="flex items-center gap-1">
+          {/* New Project CTA */}
+          <Link href="/projects">
+            <Button size="sm" className="gap-1.5 rounded-none font-mono text-xs">
+              <Plus className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">New Project</span>
             </Button>
           </Link>
+
+          <ThemeToggle />
+
+          {/* User Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-none"
+                aria-label="User menu"
+              >
+                <User className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48 rounded-none border-border">
+              <DropdownMenuItem asChild>
+                <Link href="/settings" className="cursor-pointer rounded-none">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/settings#llm" className="cursor-pointer rounded-none">
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  LLM Providers
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="cursor-pointer rounded-none"
+                onClick={() => {
+                  window.dispatchEvent(new KeyboardEvent('keydown', { key: '/', metaKey: true }))
+                }}
+              >
+                <Keyboard className="mr-2 h-4 w-4" />
+                Keyboard Shortcuts
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </motion.header>

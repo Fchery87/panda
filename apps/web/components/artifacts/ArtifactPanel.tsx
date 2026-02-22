@@ -271,49 +271,47 @@ export function ArtifactPanel({
 
   const panelContent = (
     <motion.div
-      initial={{ opacity: 0, x: 100 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 100 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
       className={cn(
-        'surface-1 flex flex-col border-l',
-        position === 'right' && 'h-full w-96',
+        'surface-1 flex h-full flex-col border-l',
+        position === 'right' && 'h-full w-full',
         position === 'floating' &&
           'fixed bottom-4 right-4 top-14 z-50 max-h-[calc(100vh-4.5rem)] w-96 border'
       )}
     >
       <motion.div
-        initial={{ opacity: 0, y: -20 }}
+        initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
         className="panel-header shrink-0 border-b"
       >
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="rounded-none border bg-muted p-2">
-              <Layers className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold tracking-tight">Artifact Queue</h2>
-              <div className="mt-0.5 flex items-center gap-2">
-                <Badge variant="outline" className="text-xs font-medium">
-                  {pendingCount} pending
-                </Badge>
-                <span className="text-xs text-muted-foreground">{totalCount} total</span>
-              </div>
-            </div>
+          <div className="flex items-center gap-2">
+            <Layers className="h-4 w-4 text-primary" />
+            <span className="font-mono text-xs font-medium uppercase tracking-wide">Artifacts</span>
+            {pendingCount > 0 && (
+              <Badge
+                variant="outline"
+                className="rounded-none border-primary px-1.5 text-[10px] text-primary"
+              >
+                {pendingCount}
+              </Badge>
+            )}
           </div>
 
           {onClose && (
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon"
               onClick={onClose}
-              className="rounded-none border hover:border-destructive hover:bg-destructive/10 hover:text-destructive"
+              className="h-7 w-7 rounded-none"
               aria-label="Close panel"
               title="Close panel (Esc)"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
             </Button>
           )}
         </div>
