@@ -16,8 +16,7 @@ import { Breadcrumb, buildBreadcrumbItems } from '@/components/workbench/Breadcr
 import { StatusBar } from '@/components/workbench/StatusBar'
 import { ChatInput } from '@/components/chat/ChatInput'
 import { MessageList } from '@/components/chat/MessageList'
-import { RunTimelinePanel } from '@/components/chat/RunTimelinePanel'
-import { LiveRunPanel } from '@/components/chat/LiveRunPanel'
+import { RunProgressPanel } from '@/components/chat/RunProgressPanel'
 import { mapLatestRunProgressSteps } from '@/components/chat/live-run-utils'
 import { ArtifactPanel } from '@/components/artifacts/ArtifactPanel'
 import { AgentAutomationDialog } from '@/components/projects/AgentAutomationDialog'
@@ -924,6 +923,9 @@ export default function ProjectPage() {
               </Button>
             </DialogTrigger>
             <DialogContent className="rounded-none border-border p-0 sm:max-w-2xl">
+              <DialogHeader className="sr-only">
+                <DialogTitle>Plan Draft</DialogTitle>
+              </DialogHeader>
               <PlanPanel
                 planDraft={planDraft}
                 onChange={setPlanDraft}
@@ -942,13 +944,13 @@ export default function ProjectPage() {
             <DialogContent className="rounded-none border-border sm:max-w-2xl">
               <DialogHeader>
                 <DialogTitle className="font-mono text-sm uppercase tracking-wide">
-                  Run Timeline
+                  Run Progress
                 </DialogTitle>
                 <DialogDescription>
                   Detailed run events for troubleshooting and tool-level inspection.
                 </DialogDescription>
               </DialogHeader>
-              <RunTimelinePanel chatId={activeChat?._id} events={runEvents} defaultOpen={true} />
+              <RunProgressPanel chatId={activeChat?._id} defaultOpen={true} />
             </DialogContent>
           </Dialog>
           {activeChat?._id && <ShareButton chatId={activeChat._id} />}
@@ -958,11 +960,9 @@ export default function ProjectPage() {
         </div>
       </div>
 
-      {panelVisibility.showInlineRunTimeline ? (
-        <RunTimelinePanel chatId={activeChat?._id} events={runEvents} />
-      ) : null}
-      <LiveRunPanel
-        steps={liveRunSteps}
+      <RunProgressPanel
+        chatId={activeChat?._id}
+        liveSteps={liveRunSteps}
         isStreaming={agent.isLoading}
         onOpenFile={handleFileSelect}
         onOpenArtifacts={() => setIsArtifactPanelOpen(true)}

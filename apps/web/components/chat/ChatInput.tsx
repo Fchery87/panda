@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { Send, Square, Lightbulb } from 'lucide-react'
-import { ModeSelector, MODE_OPTIONS } from './ModeSelector'
+import { AgentSelector, MODE_OPTIONS } from './AgentSelector'
 import { MentionPicker } from './MentionPicker'
 import { ModelSelector } from './ModelSelector'
 import { VariantSelector } from './VariantSelector'
@@ -250,7 +250,7 @@ export function ChatInput({
 
       {/* Bottom toolbar: mode selector + model selector + brainstorm toggle + hint */}
       <div className="mt-2 flex flex-wrap items-center gap-2">
-        <ModeSelector mode={mode} onModeChange={setMode} disabled={isStreaming} />
+        <AgentSelector mode={mode} onModeChange={setMode} disabled={isStreaming} />
 
         {onModelChange && (
           <ModelSelector

@@ -1,33 +1,49 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { CheckCircle2, ChevronDown, ChevronRight, Loader2, XCircle } from 'lucide-react'
+import { useQuery } from 'convex/react'
+import type { Id } from '@convex/_generated/dataModel'
+import { api } from '@convex/_generated/api'
+import {
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Loader2,
+  XCircle,
+  History,
+  Zap,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   describeStepMeta,
   formatElapsed,
   groupProgressSteps,
   reconcileProgressSteps,
+  mapRunEventsToProgressSteps,
   type LiveProgressStep,
 } from './live-run-utils'
 
-interface LiveRunPanelProps {
-  steps: LiveProgressStep[]
-  isStreaming: boolean
+interface RunProgressPanelProps {
+  chatId?: Id<'chats'> | null
+  liveSteps?: LiveProgressStep[]
+  isStreaming?: boolean
   onOpenFile?: (path: string) => void
   onOpenArtifacts?: () => void
+  defaultOpen?: boolean
 }
 
-const LIVE_RUN_OPEN_STORAGE_KEY = 'panda.liveRun.isOpen'
+const STORAGE_KEY = 'panda.runProgress.isOpen'
 
-export function LiveRunPanel({
-  steps,
-  isStreaming,
+export function RunProgressPanel({
+  chatId,
+  liveSteps: externalLiveSteps,
+  isStreaming = false,
   onOpenFile,
   onOpenArtifacts,
-}: LiveRunPanelProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [hasLoadedOpenPreference, setHasLoadedOpenPreference] = useState(false)
+  defaultOpen = false,
+}: RunProgressPanelProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen)
+  const [hasLoadedPreference, setHasLoadedPreference] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     analysis: true,
     rewrite: true,
@@ -37,6 +53,11 @@ export function LiveRunPanel({
   })
   const [nowMs, setNowMs] = useState(() => Date.now())
 
+  const queriedEvents = useQuery(
+    api.agentRuns.listEventsByChat,
+    chatId ? { chatId, limit: 60 } : 'skip'
+  )
+
   useEffect(() => {
     if (!isStreaming) return
     const timer = window.setInterval(() => setNowMs(Date.now()), 1000)
@@ -45,35 +66,46 @@ export function LiveRunPanel({
 
   useEffect(() => {
     try {
-      const persisted = window.localStorage.getItem(LIVE_RUN_OPEN_STORAGE_KEY)
+      const persisted = window.localStorage.getItem(STORAGE_KEY)
       if (persisted === '1') setIsOpen(true)
       if (persisted === '0') setIsOpen(false)
     } catch {
-      // Ignore storage access failures; keep default closed behavior.
     } finally {
-      setHasLoadedOpenPreference(true)
+      setHasLoadedPreference(true)
     }
   }, [])
 
   useEffect(() => {
-    if (!hasLoadedOpenPreference) return
+    if (!hasLoadedPreference) return
     try {
-      window.localStorage.setItem(LIVE_RUN_OPEN_STORAGE_KEY, isOpen ? '1' : '0')
-    } catch {
-      // Ignore storage access failures.
+      window.localStorage.setItem(STORAGE_KEY, isOpen ? '1' : '0')
+    } catch {}
+  }, [isOpen, hasLoadedPreference])
+
+  const historicalSteps = useMemo(() => {
+    if (!queriedEvents) return []
+    return mapRunEventsToProgressSteps(queriedEvents)
+  }, [queriedEvents])
+
+  const steps = useMemo(() => {
+    if (isStreaming && externalLiveSteps && externalLiveSteps.length > 0) {
+      return externalLiveSteps.slice(-24)
     }
-  }, [isOpen, hasLoadedOpenPreference])
+    return historicalSteps.slice(-24)
+  }, [isStreaming, externalLiveSteps, historicalSteps])
 
-  const visibleSteps = useMemo(() => steps.slice(-24), [steps])
   const reconciledSteps = useMemo(
-    () => reconcileProgressSteps(visibleSteps, { isStreaming }),
-    [visibleSteps, isStreaming]
+    () => reconcileProgressSteps(steps, { isStreaming }),
+    [steps, isStreaming]
   )
-  const groups = useMemo(() => groupProgressSteps(reconciledSteps), [reconciledSteps])
-  const startedAt = visibleSteps[0]?.createdAt ?? null
-  const elapsedMs = startedAt ? Math.max(0, nowMs - startedAt) : 0
 
-  if (!isStreaming && visibleSteps.length === 0) {
+  const groups = useMemo(() => groupProgressSteps(reconciledSteps), [reconciledSteps])
+
+  const startedAt = steps[0]?.createdAt ?? null
+  const elapsedMs = startedAt ? Math.max(0, nowMs - startedAt) : 0
+  const toolCount = steps.filter((s) => s.category === 'tool').length
+
+  if (!isStreaming && steps.length === 0) {
     return null
   }
 
@@ -82,27 +114,41 @@ export function LiveRunPanel({
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="mb-2 flex w-full items-center gap-2 text-left"
+        className="flex w-full items-center gap-2 text-left"
       >
         {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-          Live Run
+        <span className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-muted-foreground">
+          {isStreaming ? (
+            <>
+              <Zap className="h-3 w-3 animate-pulse text-primary" />
+              <span>Running</span>
+            </>
+          ) : (
+            <>
+              <History className="h-3 w-3" />
+              <span>Run Progress</span>
+            </>
+          )}
         </span>
         <span className="ml-auto font-mono text-xs text-muted-foreground/70">
           {startedAt ? formatElapsed(elapsedMs) : '0s'}
-          {isStreaming ? ' • streaming' : ' • latest'}
+          {isStreaming ? ' • live' : ` • ${steps.length} events`}
+          {toolCount > 0 && ` • ${toolCount} tools`}
         </span>
       </button>
 
       {!isOpen ? null : groups.length === 0 ? (
-        <div className="font-mono text-xs text-muted-foreground">Preparing run...</div>
+        <div className="font-mono text-xs text-muted-foreground">
+          {isStreaming ? 'Preparing run...' : 'No run events yet'}
+        </div>
       ) : (
-        <div className="space-y-1">
+        <div className="mt-2 space-y-1">
           {groups.map((group) => {
             const expanded = expandedGroups[group.key] ?? true
             const hasError = group.steps.some((step) => step.status === 'error')
             const hasRunning = group.steps.some((step) => step.status === 'running')
             const latestStatus = hasError ? 'error' : hasRunning ? 'running' : 'completed'
+
             return (
               <div key={group.key} className="border border-border bg-background/70">
                 <button
@@ -121,11 +167,13 @@ export function LiveRunPanel({
                     <ChevronRight className="h-3 w-3" />
                   )}
                   <span>{group.label}</span>
+                  <span className="ml-1 text-muted-foreground">({group.steps.length})</span>
                   <span className="ml-auto uppercase text-muted-foreground">{latestStatus}</span>
                 </button>
+
                 {expanded && (
                   <div className="space-y-1 border-t border-border px-2 py-1">
-                    {group.steps.slice(-6).map((step) => (
+                    {group.steps.slice(-8).map((step) => (
                       <div
                         key={step.id}
                         className={cn(
@@ -138,9 +186,9 @@ export function LiveRunPanel({
                         ) : step.status === 'error' ? (
                           <XCircle className="mt-0.5 h-3 w-3 shrink-0" />
                         ) : (
-                          <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0" />
+                          <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
                         )}
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <div className="leading-relaxed">{step.content}</div>
                           {(() => {
                             const meta = describeStepMeta(step)
@@ -199,3 +247,5 @@ export function LiveRunPanel({
     </div>
   )
 }
+
+export type { LiveProgressStep }

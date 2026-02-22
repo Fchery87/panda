@@ -1,23 +1,10 @@
-'use client'
-
-import { HelpCircle, Lightbulb, Code, Hammer, ChevronDown } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuShortcut,
-} from '@/components/ui/dropdown-menu'
-import type { ChatMode } from '@/lib/agent/prompt-library'
-
-interface ModeSelectorProps {
-  mode: ChatMode
-  onModeChange: (mode: ChatMode) => void
-  disabled?: boolean
-  className?: string
-}
+/**
+ * ModeSelector - Backward compatible re-export from AgentSelector
+ *
+ * This file re-exports AgentSelector for backward compatibility.
+ * New code should import from AgentSelector directly.
+ */
+export { AgentSelector as ModeSelector, MODE_OPTIONS, AgentSelector } from './AgentSelector'
 
 interface ModeOption {
   value: ChatMode
