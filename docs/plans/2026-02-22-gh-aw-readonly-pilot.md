@@ -2,7 +2,8 @@
 
 ## Goal
 
-Add a low-risk GitHub Agentic Workflow pilot that helps triage failed CI runs without writing to the repository.
+Add a low-risk GitHub Agentic Workflow pilot that helps triage failed CI runs
+without writing to the repository.
 
 ## Implemented
 
@@ -29,7 +30,10 @@ Add a low-risk GitHub Agentic Workflow pilot that helps triage failed CI runs wi
 
 ## Rollout Guardrails
 
-- Keep read-only until the pilot consistently produces useful, low-noise triage summaries.
-- Start with `ci-failure-doctor`, then enable `pr-reviewer` after validating noise level and usefulness.
-- If write actions are later enabled, start with tightly-scoped `safe-outputs` (for example, comment on the triggering PR only).
+- Keep read-only until the pilot consistently produces useful, low-noise triage
+  summaries.
+- Start with `ci-failure-doctor`, then enable `pr-reviewer` after validating
+  noise level and usefulness.
+- If write actions are later enabled, start with tightly-scoped `safe-outputs`
+  (for example, comment on the triggering PR only).
 - Require human review for any workflow that proposes code changes.

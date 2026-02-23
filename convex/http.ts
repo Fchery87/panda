@@ -25,13 +25,16 @@ function getAllowedOrigins(): string[] {
     'http://127.0.0.1:3000',
   ]
 
-  return configured.filter((value): value is string => typeof value === 'string' && value.length > 0)
+  return configured.filter(
+    (value): value is string => typeof value === 'string' && value.length > 0
+  )
 }
 
 function getCorsHeaders(request: Request): Record<string, string> {
   const origin = request.headers.get('origin')
   const allowedOrigins = getAllowedOrigins()
-  const allowOrigin = origin && allowedOrigins.includes(origin) ? origin : allowedOrigins[0] || 'null'
+  const allowOrigin =
+    origin && allowedOrigins.includes(origin) ? origin : allowedOrigins[0] || 'null'
 
   return {
     'Access-Control-Allow-Origin': allowOrigin,
@@ -317,10 +320,10 @@ http.route({
           status: response.status,
           bodyPreview: errorText.slice(0, 500),
         })
-        return new Response(
-          JSON.stringify({ error: 'Failed to process LLM request' }),
-          { status: 502, headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' } }
-        )
+        return new Response(JSON.stringify({ error: 'Failed to process LLM request' }), {
+          status: 502,
+          headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' },
+        })
       }
 
       // Create SSE response

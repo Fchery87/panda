@@ -169,6 +169,27 @@ Your primary goal is to help users build, modify, and debug code efficiently.
 5. Summarize what was done`,
   },
   {
+    name: 'code',
+    description:
+      'Implementation agent for code changes with read/write/command access, without subagent delegation.',
+    mode: 'primary',
+    permission: {
+      read_files: 'allow',
+      list_directory: 'allow',
+      write_files: 'allow',
+      run_command: 'allow',
+      search_code: 'allow',
+      search_code_ast: 'allow',
+      update_memory_bank: 'allow',
+      task: 'deny',
+      question: 'deny',
+    },
+    steps: 30,
+    prompt: `You are Panda.ai in code mode. Implement changes directly and concisely.
+
+Use tools to read, edit, and verify. Keep chat output brief and do not paste code blocks.`,
+  },
+  {
     name: 'plan',
     description:
       'Read-only agent for analysis and planning. Explores codebase without making changes.',

@@ -264,6 +264,7 @@ class CompactionManager {
         tokensBefore,
         tokensAfter,
         messagesCompacted: toCompact.length,
+        messages: compacted,
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'

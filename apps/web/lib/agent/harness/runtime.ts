@@ -20,6 +20,7 @@ import type {
   ReasoningPart,
   ToolPart,
   SubtaskPart,
+  SubagentResult,
   AgentConfig,
   RuntimeConfig,
   FinishReason,
@@ -32,11 +33,13 @@ import type {
   ToolCall,
   CompletionMessage,
 } from '../../llm/types'
+import { AGENT_TOOLS } from '../tools'
 import { ascending } from './identifier'
 import { agents } from './agents'
 import { permissions, checkPermission } from './permissions'
 import { plugins } from './plugins'
 import { compaction, needsCompaction } from './compaction'
+import { executeTaskTool, getTaskToolDefinitions } from './task-tool'
 
 /**
  * Runtime state
@@ -48,13 +51,19 @@ interface RuntimeState {
   isComplete: boolean
   isLastStep: boolean
   abortController: AbortController
-  pendingSubtasks: SubtaskPart[]
+  pendingSubtasks: PendingSubtask[]
   cost: number
   tokens: {
     input: number
     output: number
     reasoning: number
   }
+}
+
+interface PendingSubtask {
+  part: SubtaskPart
+  parentAgent: AgentConfig
+  description: string
 }
 
 /**
@@ -105,7 +114,7 @@ export interface RuntimeEvent {
   reasoningContent?: string
   toolCall?: ToolCall
   toolResult?: { toolName: string; output: string; error?: string }
-  subagent?: { agent: string; sessionID: Identifier }
+  subagent?: { agent: string; sessionID: Identifier; success?: boolean; error?: string }
   step?: number
   finishReason?: FinishReason
   usage?: { input: number; output: number; reasoning: number }
@@ -125,6 +134,8 @@ const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = {
   contextCompactionThreshold: 0.9,
   enableSnapshots: false,
   enableReasoning: true,
+  maxSubagentDepth: 2,
+  subagentDepth: 0,
 }
 
 /**
@@ -269,7 +280,7 @@ export class Runtime {
       throw new Error('No user message found')
     }
 
-    const completionOptions: CompletionOptions = {
+    const baseCompletionOptions: CompletionOptions = {
       model: agent.model ?? this.provider.config.defaultModel ?? 'gpt-4o',
       messages: this.buildCompletionMessages(isLastStep),
       temperature: agent.temperature ?? 0.7,
@@ -278,10 +289,10 @@ export class Runtime {
       stream: true,
     }
 
-    await this.executeHook(
+    const completionOptions = await this.executeHook(
       'llm.request',
       { sessionID: this.state.sessionID, step: this.state.step, agent, messageID },
-      completionOptions
+      baseCompletionOptions
     )
 
     const assistantMessage: AssistantMessage = {
@@ -374,6 +385,29 @@ export class Runtime {
       finishReason = 'tool-calls'
 
       for (const toolCall of pendingToolCalls) {
+        if (toolCall.function.name === 'task') {
+          const rawArgs = JSON.parse(toolCall.function.arguments) as {
+            subagent_type?: string
+            prompt?: string
+            description?: string
+          }
+          const subtaskPart: SubtaskPart = {
+            id: ascending('part_'),
+            messageID,
+            sessionID: this.state.sessionID,
+            type: 'subtask',
+            agent: String(rawArgs.subagent_type ?? ''),
+            prompt: String(rawArgs.prompt ?? ''),
+          }
+          this.state.pendingSubtasks.push({
+            part: subtaskPart,
+            parentAgent: agent,
+            description: String(rawArgs.description ?? 'subtask'),
+          })
+          assistantMessage.parts.push(subtaskPart)
+          continue
+        }
+
         const toolResult = yield* this.executeToolCall(toolCall, agent, messageID)
 
         const toolPart: ToolPart = {
@@ -432,7 +466,7 @@ export class Runtime {
 
     const toolName = toolCall.function.name
     const args = JSON.parse(toolCall.function.arguments)
-    const pattern = this.extractPattern(toolName, args)
+    const patterns = this.extractPatterns(toolName, args)
 
     const hookContext = {
       sessionID: this.state.sessionID,
@@ -443,34 +477,48 @@ export class Runtime {
 
     await this.executeHook('tool.execute.before', hookContext, { toolName, args })
 
-    const decision = checkPermission(agent.permission, toolName, pattern)
-
-    if (decision === 'deny') {
-      yield {
-        type: 'tool_result',
-        toolResult: {
-          toolName,
-          output: '',
-          error: `Permission denied for tool: ${toolName}`,
-        },
+    for (const pattern of patterns) {
+      const decision = checkPermission(agent.permission, toolName, pattern || undefined)
+      if (decision === 'deny') {
+        yield {
+          type: 'tool_result',
+          toolResult: {
+            toolName,
+            output: '',
+            error: `Permission denied for tool: ${toolName}${pattern ? ` (${pattern})` : ''}`,
+          },
+        }
+        return { output: '', error: `Permission denied for tool: ${toolName}` }
       }
-      return { output: '', error: `Permission denied for tool: ${toolName}` }
     }
 
-    if (decision === 'ask') {
-      yield { type: 'permission_request', content: `Permission requested for: ${toolName}` }
+    const askPatterns = patterns.filter(
+      (pattern) => checkPermission(agent.permission, toolName, pattern || undefined) === 'ask'
+    )
 
-      const result = await permissions.request(this.state.sessionID, messageID, toolName, pattern, {
-        args,
-      })
-
+    if (askPatterns.length > 0) {
       yield {
-        type: 'permission_decision',
-        content: result.granted ? 'Granted' : 'Denied',
+        type: 'permission_request',
+        content: `Permission requested for: ${toolName} (${askPatterns.length} target${askPatterns.length === 1 ? '' : 's'})`,
       }
 
-      if (!result.granted) {
-        return { output: '', error: `Permission denied: ${result.reason}` }
+      for (const pattern of askPatterns) {
+        const result = await permissions.request(
+          this.state.sessionID,
+          messageID,
+          toolName,
+          pattern,
+          { args, target: pattern }
+        )
+
+        yield {
+          type: 'permission_decision',
+          content: `${pattern || toolName}: ${result.granted ? 'Granted' : 'Denied'}`,
+        }
+
+        if (!result.granted) {
+          return { output: '', error: `Permission denied: ${result.reason}` }
+        }
       }
     }
 
@@ -521,7 +569,8 @@ export class Runtime {
     if (!this.state) return
 
     while (this.state.pendingSubtasks.length > 0) {
-      const subtask = this.state.pendingSubtasks.shift()!
+      const pending = this.state.pendingSubtasks.shift()!
+      const subtask = pending.part
 
       yield {
         type: 'subagent_start',
@@ -530,17 +579,212 @@ export class Runtime {
 
       const subagentConfig = agents.get(subtask.agent)
       if (!subagentConfig) {
+        const errorMessage = `Unknown subagent type: ${subtask.agent}`
         subtask.result = {
           output: '',
           parts: [],
         }
+        this.replaceSubtaskWithToolPart(subtask, {
+          toolName: 'task',
+          output: '',
+          error: errorMessage,
+          input: {
+            subagent_type: subtask.agent,
+            prompt: subtask.prompt,
+            description: pending.description,
+          },
+        })
+        yield {
+          type: 'tool_result',
+          toolResult: {
+            toolName: 'task',
+            output: '',
+            error: errorMessage,
+          },
+        }
+        yield {
+          type: 'subagent_complete',
+          subagent: {
+            agent: subtask.agent,
+            sessionID: this.state.sessionID,
+            success: false,
+            error: errorMessage,
+          },
+        }
         continue
+      }
+
+      const taskResult = await executeTaskTool(
+        {
+          subagent_type: subtask.agent,
+          prompt: subtask.prompt,
+          description: pending.description,
+        },
+        {
+          sessionID: this.state.sessionID,
+          messageID: subtask.messageID,
+          parentAgent: pending.parentAgent,
+          runSubagent: async (childAgent, prompt, childSessionID) =>
+            this.runSubagent(childAgent, prompt, childSessionID),
+        }
+      )
+
+      subtask.result = {
+        output: taskResult.output,
+        parts: [],
+      }
+
+      this.replaceSubtaskWithToolPart(subtask, {
+        toolName: 'task',
+        output: taskResult.output,
+        error: taskResult.error,
+        input: {
+          subagent_type: subtask.agent,
+          prompt: subtask.prompt,
+          description: pending.description,
+        },
+      })
+
+      yield {
+        type: 'tool_result',
+        toolResult: {
+          toolName: 'task',
+          output: taskResult.output,
+          ...(taskResult.error ? { error: taskResult.error } : {}),
+        },
       }
 
       yield {
         type: 'subagent_complete',
-        subagent: { agent: subtask.agent, sessionID: this.state.sessionID },
+        subagent: {
+          agent: subtask.agent,
+          sessionID: this.state.sessionID,
+          success: !taskResult.error,
+          ...(taskResult.error ? { error: taskResult.error } : {}),
+        },
       }
+    }
+  }
+
+  private replaceSubtaskWithToolPart(
+    subtask: SubtaskPart,
+    args: {
+      toolName: string
+      output: string
+      error?: string
+      input: Record<string, unknown>
+    }
+  ): void {
+    if (!this.state) return
+    const parentMessage = this.state.messages.find(
+      (message): message is AssistantMessage =>
+        message.role === 'assistant' && message.id === subtask.messageID
+    )
+    if (!parentMessage) return
+
+    const partIndex = parentMessage.parts.findIndex(
+      (part) => part.type === 'subtask' && part.id === subtask.id
+    )
+    if (partIndex === -1) return
+
+    parentMessage.parts[partIndex] = {
+      id: ascending('part_'),
+      messageID: subtask.messageID,
+      sessionID: subtask.sessionID,
+      type: 'tool',
+      tool: args.toolName,
+      state: args.error
+        ? {
+            status: 'error',
+            input: args.input,
+            error: args.error,
+            time: { start: Date.now(), end: Date.now() },
+          }
+        : {
+            status: 'completed',
+            input: args.input,
+            output: args.output,
+            time: { start: Date.now(), end: Date.now() },
+          },
+    }
+  }
+
+  private async runSubagent(
+    agent: AgentConfig,
+    prompt: string,
+    childSessionID: Identifier
+  ): Promise<SubagentResult> {
+    if (this.config.runSubagent) {
+      return this.config.runSubagent(agent, prompt, childSessionID)
+    }
+
+    const currentDepth = this.config.subagentDepth ?? 0
+    const maxDepth = this.config.maxSubagentDepth ?? 2
+    if (currentDepth >= maxDepth) {
+      return {
+        sessionID: childSessionID,
+        output: '',
+        parts: [],
+        error: 'Maximum subagent depth reached',
+      }
+    }
+
+    const childRuntime = new Runtime(this.provider, this.toolExecutors, {
+      ...this.config,
+      subagentDepth: currentDepth + 1,
+    })
+    const parentAbortSignal = this.state?.abortController.signal
+    const abortChild = () => childRuntime.abort()
+    parentAbortSignal?.addEventListener('abort', abortChild, { once: true })
+    const childMessageID = ascending('msg_')
+    const childUserMessage: UserMessage = {
+      id: childMessageID,
+      sessionID: childSessionID,
+      role: 'user',
+      time: { created: Date.now() },
+      parts: [
+        {
+          id: ascending('part_'),
+          messageID: childMessageID,
+          sessionID: childSessionID,
+          type: 'text',
+          text: prompt,
+        },
+      ],
+      agent: agent.name,
+      ...(agent.prompt ? { system: agent.prompt } : {}),
+    }
+
+    let output = ''
+    let usage: { promptTokens: number; completionTokens: number; totalTokens: number } | undefined
+    let error: string | undefined
+
+    try {
+      for await (const event of childRuntime.run(childSessionID, childUserMessage)) {
+        if (event.type === 'text' && event.content) {
+          output += event.content
+        }
+        if (event.type === 'complete' && event.usage) {
+          usage = {
+            promptTokens: event.usage.input,
+            completionTokens: event.usage.output,
+            totalTokens: event.usage.input + event.usage.output + (event.usage.reasoning ?? 0),
+          }
+        }
+        if (event.type === 'error' && event.error) {
+          error = event.error
+        }
+      }
+    } finally {
+      parentAbortSignal?.removeEventListener('abort', abortChild)
+    }
+
+    return {
+      sessionID: childSessionID,
+      output,
+      parts: [],
+      usage,
+      error,
     }
   }
 
@@ -573,6 +817,9 @@ export class Runtime {
     )
 
     if (!result.error) {
+      if (result.messages) {
+        this.state.messages = result.messages
+      }
       yield {
         type: 'compaction',
         content: `Compacted ${result.messagesCompacted} messages (${result.tokensBefore} → ${result.tokensAfter} tokens)`,
@@ -587,6 +834,13 @@ export class Runtime {
     if (!this.state) return []
 
     const messages: CompletionMessage[] = []
+    const latestUserWithSystem = [...this.state.messages]
+      .reverse()
+      .find((msg): msg is UserMessage => msg.role === 'user' && typeof msg.system === 'string')
+
+    if (latestUserWithSystem?.system) {
+      messages.push({ role: 'system', content: latestUserWithSystem.system })
+    }
 
     for (const msg of this.state.messages) {
       if (msg.role === 'user') {
@@ -671,9 +925,13 @@ export class Runtime {
    * Get tools available for an agent
    */
   private getToolsForAgent(agent: AgentConfig): ToolDefinition[] {
-    const allTools = [...plugins.getTools()]
+    const allTools = [...AGENT_TOOLS, ...getTaskToolDefinitions(), ...plugins.getTools()]
+    const byName = new Map<string, ToolDefinition>()
+    for (const tool of allTools) {
+      byName.set(tool.function.name, tool)
+    }
 
-    return allTools.filter((tool) => {
+    return Array.from(byName.values()).filter((tool) => {
       const decision = checkPermission(agent.permission, tool.function.name)
       return decision !== 'deny'
     })
@@ -682,17 +940,22 @@ export class Runtime {
   /**
    * Extract pattern for permission checking
    */
-  private extractPattern(toolName: string, args: Record<string, unknown>): string {
+  private extractPatterns(toolName: string, args: Record<string, unknown>): string[] {
     if (toolName === 'read_files' || toolName === 'write_files') {
-      if (Array.isArray(args.paths)) return args.paths.join(',')
+      if (Array.isArray(args.paths)) {
+        return args.paths.map((value) => String(value)).filter(Boolean)
+      }
       if (Array.isArray(args.files)) {
-        return args.files.map((f: { path?: string }) => f.path).join(',')
+        return args.files.map((f: { path?: string }) => String(f.path ?? '')).filter(Boolean)
       }
     }
-    if (toolName === 'run_command') {
-      return args.command as string
+    if (toolName === 'list_directory' && typeof args.path === 'string') {
+      return [args.path]
     }
-    return ''
+    if (toolName === 'run_command') {
+      return [String(args.command ?? '')]
+    }
+    return ['']
   }
 
   /**
@@ -723,8 +986,8 @@ export class Runtime {
     hookType: string,
     context: { sessionID: Identifier; step: number; agent: AgentConfig; messageID: Identifier },
     data: T
-  ): Promise<void> {
-    await plugins.executeHooks(hookType as any, context, data)
+  ): Promise<T> {
+    return plugins.executeHooks(hookType as any, context, data)
   }
 
   /**

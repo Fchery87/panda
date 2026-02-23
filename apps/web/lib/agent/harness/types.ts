@@ -351,6 +351,13 @@ export interface RuntimeConfig {
   contextCompactionThreshold?: number
   enableSnapshots?: boolean
   enableReasoning?: boolean
+  maxSubagentDepth?: number
+  subagentDepth?: number
+  runSubagent?: (
+    agent: AgentConfig,
+    prompt: string,
+    sessionID: Identifier
+  ) => Promise<SubagentResult>
 }
 
 /**
@@ -473,6 +480,7 @@ export interface CompactionResult {
   tokensBefore: number
   tokensAfter: number
   messagesCompacted: number
+  messages?: Message[]
   error?: string
 }
 

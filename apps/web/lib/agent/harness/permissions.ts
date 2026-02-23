@@ -43,6 +43,11 @@ export function checkPermission(
   pattern?: string
 ): PermissionDecision {
   const patterns = Object.keys(permissions).sort((a, b) => {
+    const aHasPath = a.includes(':')
+    const bHasPath = b.includes(':')
+    if (aHasPath !== bHasPath) {
+      return aHasPath ? -1 : 1
+    }
     const aSpecificity = (a.match(/\*/g) || []).length
     const bSpecificity = (b.match(/\*/g) || []).length
     return aSpecificity - bSpecificity
@@ -89,7 +94,7 @@ export const DEFAULT_PERMISSIONS: Record<string, Permission> = {
     search_code_ast: 'allow',
     update_memory_bank: 'allow',
     task: 'allow',
-    question: 'allow',
+    question: 'deny',
   },
   plan: {
     read_files: 'allow',
@@ -114,9 +119,16 @@ export const DEFAULT_PERMISSIONS: Record<string, Permission> = {
  * Permission manager class
  */
 export class PermissionManager {
+  private timeoutMs: number
+  private pollIntervalMs: number
   private pendingRequests: Map<Identifier, PermissionRequest> = new Map()
   private sessionPermissions: Map<Identifier, Permission> = new Map()
   private userDecisions: Map<string, PermissionDecision> = new Map()
+
+  constructor(options?: { timeoutMs?: number; pollIntervalMs?: number }) {
+    this.timeoutMs = options?.timeoutMs ?? 60000
+    this.pollIntervalMs = options?.pollIntervalMs ?? 100
+  }
 
   /**
    * Request permission for a tool execution
@@ -138,7 +150,7 @@ export class PermissionManager {
       metadata,
     }
 
-    const decisionKey = `${tool}:${pattern}`
+    const decisionKey = `${sessionID}:${tool}:${pattern}`
 
     const cachedDecision = this.userDecisions.get(decisionKey)
     if (cachedDecision) {
@@ -167,41 +179,52 @@ export class PermissionManager {
     })
 
     return new Promise((resolve) => {
+      let resolved = false
+
       const checkInterval = setInterval(() => {
         const req = this.pendingRequests.get(id)
-        if (req?.decision) {
-          clearInterval(checkInterval)
-          this.pendingRequests.delete(id)
-
-          const granted = req.decision === 'allow'
-
-          if (req.reason === 'always') {
-            this.userDecisions.set(decisionKey, req.decision)
-          }
-
-          bus.emitPermission(sessionID, 'decided', {
-            id,
-            decision: req.decision,
-            reason: req.reason,
-          })
-
-          resolve({
-            granted,
-            decision: req.decision,
-            reason: req.reason,
-          })
+        if (resolved || !req?.decision) {
+          return
         }
-      }, 100)
-
-      setTimeout(() => {
+        resolved = true
         clearInterval(checkInterval)
         this.pendingRequests.delete(id)
+
+        const granted = req.decision === 'allow'
+
+        if (req.reason === 'always') {
+          this.userDecisions.set(decisionKey, req.decision)
+        }
+
+        bus.emitPermission(sessionID, 'decided', {
+          id,
+          decision: req.decision,
+          reason: req.reason,
+        })
+
+        resolve({
+          granted,
+          decision: req.decision,
+          reason: req.reason,
+        })
+      }, this.pollIntervalMs)
+
+      setTimeout(() => {
+        if (resolved) return
+        resolved = true
+        clearInterval(checkInterval)
+        this.pendingRequests.delete(id)
+        bus.emitPermission(sessionID, 'decided', {
+          id,
+          decision: 'deny',
+          reason: 'Timeout',
+        })
         resolve({
           granted: false,
           decision: 'deny',
           reason: 'Timeout',
         })
-      }, 60000)
+      }, this.timeoutMs)
     })
   }
 
