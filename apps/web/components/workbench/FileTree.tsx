@@ -211,7 +211,11 @@ function TreeItem({
   }
 
   return (
-    <div>
+    <div
+      role="treeitem"
+      aria-expanded={isDirectory ? isExpanded : undefined}
+      aria-selected={isSelected}
+    >
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <motion.div
@@ -220,7 +224,7 @@ function TreeItem({
             transition={{ duration: 0.15, delay: depth * 0.02 }}
             className={cn(
               'group relative flex cursor-pointer select-none items-center gap-1.5 px-2 py-1.5',
-              'mx-1 rounded-md transition-all duration-150',
+              'mx-1 rounded-none transition-all duration-150',
               isSelected
                 ? 'bg-primary/10 text-foreground'
                 : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground'
@@ -283,7 +287,7 @@ function TreeItem({
             ) : (
               <span
                 className={cn(
-                  'flex-1 truncate font-mono text-[13px]',
+                  'flex-1 truncate font-mono text-code-base',
                   isSelected && 'font-medium text-foreground'
                 )}
               >
@@ -463,7 +467,7 @@ export function FileTree({
   }
 
   return (
-    <div className="py-2">
+    <div className="py-2" role="tree" aria-label="File tree">
       {tree.map((node) => (
         <div key={node.path}>
           <TreeItem

@@ -55,7 +55,7 @@ export function ContextWindowIndicator({
                 <div
                   className={cn(
                     'absolute inset-y-0 left-0 transition-all duration-300',
-                    isCritical ? 'bg-destructive' : isWarning ? 'bg-amber-500' : 'bg-primary'
+                    isCritical ? 'bg-destructive' : isWarning ? 'bg-status-warning' : 'bg-primary'
                   )}
                   style={{ width: `${Math.min(usage.usagePct, 100)}%` }}
                 />
@@ -65,7 +65,7 @@ export function ContextWindowIndicator({
                 className={cn(
                   'font-mono text-xs',
                   isCritical && 'font-bold text-destructive',
-                  isWarning && !isCritical && 'text-amber-500'
+                  isWarning && !isCritical && 'text-status-warning'
                 )}
               >
                 {usage.usagePct}%
@@ -84,7 +84,7 @@ export function ContextWindowIndicator({
                 <p
                   className={cn(
                     'mt-2 font-medium',
-                    isCritical ? 'text-destructive' : 'text-amber-500'
+                    isCritical ? 'text-destructive' : 'text-status-warning'
                   )}
                 >
                   {isCritical
@@ -101,7 +101,7 @@ export function ContextWindowIndicator({
           <Tooltip>
             <TooltipTrigger asChild>
               <AlertTriangle
-                className={cn('h-4 w-4', isCritical ? 'text-destructive' : 'text-amber-500')}
+                className={cn('h-4 w-4', isCritical ? 'text-destructive' : 'text-status-warning')}
               />
             </TooltipTrigger>
             <TooltipContent>
@@ -135,7 +135,7 @@ export function ContextWindowIndicator({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle
-                className={cn('h-5 w-5', isCritical ? 'text-destructive' : 'text-amber-500')}
+                className={cn('h-5 w-5', isCritical ? 'text-destructive' : 'text-status-warning')}
               />
               Start New Session?
             </DialogTitle>

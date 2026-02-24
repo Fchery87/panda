@@ -52,28 +52,28 @@ export function SystemOverview({ data }: SystemOverviewProps) {
       value: data.users.total,
       description: `${data.users.active} active, ${data.users.admins} admins`,
       icon: Users,
-      color: 'text-blue-500',
+      color: 'text-status-info',
     },
     {
       title: 'Total Projects',
       value: data.projects.total,
       description: 'Across all users',
       icon: FolderGit,
-      color: 'text-green-500',
+      color: 'text-status-success',
     },
     {
       title: 'Total Chats',
       value: data.chats.total,
       description: `${data.messages.total} messages total`,
       icon: MessageSquare,
-      color: 'text-purple-500',
+      color: 'text-primary',
     },
     {
       title: 'Active Today',
       value: data.users.recentlyActive,
       description: `${data.users.recentRegistrations} new registrations`,
       icon: Activity,
-      color: 'text-amber-500',
+      color: 'text-status-warning',
     },
   ]
 

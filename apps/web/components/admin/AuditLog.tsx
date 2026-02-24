@@ -21,12 +21,12 @@ interface AuditLogProps {
 }
 
 const actionColors: Record<string, string> = {
-  GRANT_ADMIN: 'bg-green-500/10 text-green-500 border-green-500/20',
-  REVOKE_ADMIN: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
-  BAN_USER: 'bg-red-500/10 text-red-500 border-red-500/20',
-  UNBAN_USER: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-  DELETE_USER: 'bg-red-500/10 text-red-500 border-red-500/20',
-  UPDATE_SETTINGS: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
+  GRANT_ADMIN: 'bg-status-success/10 text-status-success border-status-success/20',
+  REVOKE_ADMIN: 'bg-status-warning/10 text-status-warning border-status-warning/20',
+  BAN_USER: 'bg-status-error/10 text-status-error border-status-error/20',
+  UNBAN_USER: 'bg-status-info/10 text-status-info border-status-info/20',
+  DELETE_USER: 'bg-status-error/10 text-status-error border-status-error/20',
+  UPDATE_SETTINGS: 'bg-primary/10 text-primary border-primary/20',
 }
 
 export function AuditLog({ logs }: AuditLogProps) {

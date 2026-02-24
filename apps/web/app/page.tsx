@@ -43,6 +43,14 @@ const features = [
 export default function Home() {
   return (
     <div className="dot-grid min-h-screen bg-background">
+      {/* Skip to main content link */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-background focus:p-4 focus:text-foreground"
+      >
+        Skip to main content
+      </a>
+
       {/* Navigation - Minimal, sharp */}
       <nav className="surface-1 fixed left-0 right-0 top-0 z-50 border-b border-border">
         <div className="container flex h-14 items-center justify-between">
@@ -63,7 +71,7 @@ export default function Home() {
       </nav>
 
       {/* Hero - Asymmetric split */}
-      <section className="pb-24 pt-32 lg:pb-32 lg:pt-40">
+      <section id="main-content" className="pb-24 pt-32 lg:pb-32 lg:pt-40">
         <div className="container">
           <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-8">
             {/* Left: Typography */}

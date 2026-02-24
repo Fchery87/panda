@@ -50,7 +50,7 @@ export function StatusBar({
     <footer
       className={cn(
         'bg-surface-1 flex h-6 items-center justify-between border-t border-border',
-        'px-3 font-mono text-[11px] text-muted-foreground',
+        'px-3 font-mono text-code-xs text-muted-foreground',
         className
       )}
     >
@@ -89,6 +89,7 @@ export function StatusBar({
             'flex items-center gap-1',
             isConnected ? 'text-primary' : 'text-destructive'
           )}
+          aria-live="polite"
         >
           {isConnected ? (
             <>

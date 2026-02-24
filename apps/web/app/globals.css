@@ -40,6 +40,28 @@
     --sidebar-accent-foreground: 30 10% 10%;
     --sidebar-border: 30 10% 88%;
     --sidebar-ring: 38 92% 50%;
+
+    /* Status colors */
+    --status-success: 142 71% 45%;
+    --status-error: 0 84% 60%;
+    --status-warning: 38 92% 50%;
+    --status-info: 217 91% 60%;
+    --status-online: 142 71% 45%;
+
+    /* Terminal semantic colors */
+    --terminal-success: 142 71% 35%;
+    --terminal-error: 0 76% 50%;
+    --terminal-warning: 38 92% 45%;
+
+    /* Diff semantic colors */
+    --diff-added-bg: 142 71% 45%;
+    --diff-added-fg: 142 71% 45%;
+    --diff-removed-bg: 0 84% 60%;
+    --diff-removed-fg: 0 84% 60%;
+
+    /* Interactive states */
+    --interactive-hover: 38 92% 50%;
+    --interactive-selected: 38 92% 50%;
   }
 
   .dark {
@@ -79,6 +101,28 @@
     --sidebar-accent-foreground: 40 20% 98%;
     --sidebar-border: 30 10% 20%;
     --sidebar-ring: 38 92% 50%;
+
+    /* Status colors */
+    --status-success: 142 71% 45%;
+    --status-error: 0 84% 60%;
+    --status-warning: 38 92% 50%;
+    --status-info: 217 91% 60%;
+    --status-online: 142 71% 45%;
+
+    /* Terminal semantic colors */
+    --terminal-success: 142 71% 65%;
+    --terminal-error: 0 76% 72%;
+    --terminal-warning: 38 92% 65%;
+
+    /* Diff semantic colors */
+    --diff-added-bg: 142 71% 45%;
+    --diff-added-fg: 142 71% 45%;
+    --diff-removed-bg: 0 84% 60%;
+    --diff-removed-fg: 0 84% 60%;
+
+    /* Interactive states */
+    --interactive-hover: 38 92% 50%;
+    --interactive-selected: 38 92% 50%;
   }
 }
 
@@ -243,6 +287,40 @@
   }
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     SEMANTIC COLOR UTILITIES
+     ═══════════════════════════════════════════════════════════ */
+  .text-terminal-success {
+    color: hsl(var(--terminal-success));
+  }
+  .text-terminal-error {
+    color: hsl(var(--terminal-error));
+  }
+  .text-terminal-warning {
+    color: hsl(var(--terminal-warning));
+  }
+  .bg-terminal-success {
+    background-color: hsl(var(--terminal-success) / 0.05);
+  }
+  .bg-terminal-error {
+    background-color: hsl(var(--terminal-error) / 0.05);
+  }
+  .text-diff-added {
+    color: hsl(var(--diff-added-fg));
+  }
+  .text-diff-removed {
+    color: hsl(var(--diff-removed-fg));
+  }
+  .bg-diff-added {
+    background-color: hsl(var(--diff-added-bg) / 0.1);
+  }
+  .bg-diff-removed {
+    background-color: hsl(var(--diff-removed-bg) / 0.1);
+  }
+  .bg-status-online {
+    background-color: hsl(var(--status-online));
   }
 }
 

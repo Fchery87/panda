@@ -706,21 +706,18 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         }
 
         const toolContext =
-          toolContextRef.current ||
+          toolContextRef.current ??
           createToolContext(
             projectId,
             chatId,
             userId,
-            {
-              query: async () => [],
-              mutation: async () => '',
-            },
+            convex,
             artifactQueue.current,
             {
-              files: { batchGet: null, list: null },
-              jobs: { create: null, updateStatus: null },
-              artifacts: { create: null },
-              memoryBank: { update: null },
+              files: { batchGet: api.files.batchGet, list: api.files.list },
+              jobs: { create: api.jobs.create, updateStatus: api.jobs.updateStatus },
+              artifacts: { create: api.artifacts.create },
+              memoryBank: { update: (api as any).memoryBank.update },
             }
           )
 

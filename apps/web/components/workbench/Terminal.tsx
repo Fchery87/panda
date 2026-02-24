@@ -104,14 +104,14 @@ const LogEntry: React.FC<{
       className={cn(
         'flex items-start gap-2 px-3 py-1 font-mono text-xs leading-relaxed',
         'transition-colors hover:bg-white/5',
-        isError && 'text-rose-300',
-        isSuccess && 'text-emerald-300',
-        isWarning && 'text-amber-300',
-        !isError && !isSuccess && !isWarning && 'text-zinc-300'
+        isError && 'text-terminal-error',
+        isSuccess && 'text-terminal-success',
+        isWarning && 'text-terminal-warning',
+        !isError && !isSuccess && !isWarning && 'text-muted-foreground'
       )}
     >
       {timestamp && (
-        <span className="shrink-0 pt-0.5 text-xs tabular-nums text-zinc-500">
+        <span className="shrink-0 pt-0.5 text-xs tabular-nums text-muted-foreground/60">
           {timestamp.split('T')[1]?.replace('Z', '') || timestamp}
         </span>
       )}
@@ -136,15 +136,22 @@ const JobCard: React.FC<{
       layout
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="surface-2 overflow-hidden rounded-lg border border-border/50"
+      className="surface-2 overflow-hidden rounded-none border border-border/50"
     >
       {/* Job Header */}
       <div
         className="flex cursor-pointer items-center justify-between px-4 py-3 transition-colors hover:bg-primary/5"
         onClick={onToggle}
+        role="button"
+        aria-expanded={isExpanded}
+        aria-label={`${isExpanded ? 'Collapse' : 'Expand'} job: ${job.command}`}
       >
         <div className="flex items-center gap-3">
-          <button className="text-muted-foreground hover:text-foreground">
+          <button
+            className="text-muted-foreground hover:text-foreground"
+            aria-hidden="true"
+            tabIndex={-1}
+          >
             {isExpanded ? (
               <ChevronDown className="h-4 w-4" />
             ) : (
@@ -170,6 +177,7 @@ const JobCard: React.FC<{
                 e.stopPropagation()
                 onCancel()
               }}
+              aria-label="Cancel job"
             >
               <Square className="h-3.5 w-3.5" />
             </Button>
@@ -183,6 +191,7 @@ const JobCard: React.FC<{
                 e.stopPropagation()
                 onDelete()
               }}
+              aria-label="Delete job"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
@@ -199,7 +208,7 @@ const JobCard: React.FC<{
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
           >
-            <div className="border-t border-zinc-800">
+            <div className="border-t border-border">
               {job.logs && job.logs.length > 0 ? (
                 <div className="max-h-64 overflow-y-auto bg-black/30 py-2">
                   {job.logs.map((log, index) => (
@@ -212,23 +221,25 @@ const JobCard: React.FC<{
                   ))}
                 </div>
               ) : (
-                <div className="py-8 text-center text-sm text-zinc-500">No logs available</div>
+                <div className="py-8 text-center text-sm text-muted-foreground">
+                  No logs available
+                </div>
               )}
 
               {/* Output/Error Display */}
               {job.output && (
-                <div className="border-t border-zinc-800 bg-emerald-500/5 px-4 py-3">
-                  <div className="mb-1 text-xs font-medium text-emerald-400">Output:</div>
-                  <pre className="whitespace-pre-wrap break-all font-mono text-xs text-emerald-300">
+                <div className="bg-terminal-success border-t border-border px-4 py-3">
+                  <div className="text-terminal-success mb-1 text-xs font-medium">Output:</div>
+                  <pre className="text-terminal-success whitespace-pre-wrap break-all font-mono text-xs">
                     {job.output}
                   </pre>
                 </div>
               )}
 
               {job.error && (
-                <div className="border-t border-zinc-800 bg-rose-500/5 px-4 py-3">
-                  <div className="mb-1 text-xs font-medium text-rose-400">Error:</div>
-                  <pre className="whitespace-pre-wrap break-all font-mono text-xs text-rose-300">
+                <div className="bg-terminal-error border-t border-border px-4 py-3">
+                  <div className="text-terminal-error mb-1 text-xs font-medium">Error:</div>
+                  <pre className="text-terminal-error whitespace-pre-wrap break-all font-mono text-xs">
                     {job.error}
                   </pre>
                 </div>

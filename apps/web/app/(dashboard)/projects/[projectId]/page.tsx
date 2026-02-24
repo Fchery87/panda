@@ -15,6 +15,7 @@ import { Workbench } from '@/components/workbench/Workbench'
 import { Breadcrumb, buildBreadcrumbItems } from '@/components/workbench/Breadcrumb'
 import { StatusBar } from '@/components/workbench/StatusBar'
 import { ChatInput } from '@/components/chat/ChatInput'
+import type { AvailableModel } from '@/components/chat/ModelSelector'
 import { MessageList } from '@/components/chat/MessageList'
 import { RunProgressPanel } from '@/components/chat/RunProgressPanel'
 import { mapLatestRunProgressSteps } from '@/components/chat/live-run-utils'
@@ -208,7 +209,7 @@ export default function ProjectPage() {
   // Keep UI/runtime mode aligned with the active chat metadata.
   useEffect(() => {
     if (!activeChat?.mode) return
-    setChatMode(activeChat.mode)
+    setChatMode(normalizeChatMode(activeChat.mode, 'architect'))
   }, [activeChat?._id, activeChat?.mode])
 
   // Jobs (Terminal)
@@ -238,6 +239,7 @@ export default function ProjectPage() {
 
   // Fetch settings to get provider configuration
   const settings = useQuery(api.settings.get)
+  const effectiveSettings = useQuery(api.settings.getEffective)
   const settingsRef = useRef(settings)
   settingsRef.current = settings
   const settingsProviderVersion = settings?.updatedAt ?? null
@@ -318,14 +320,48 @@ export default function ProjectPage() {
   }, [settingsProviderVersion])
 
   const selectedModel = useMemo(() => {
+    // Prefer the admin-effective model so the selector shows the right value on refresh
+    if (effectiveSettings?.effectiveModel) return effectiveSettings.effectiveModel
+    // Fall back to user's configured model
     const selectedProviderId = settings?.defaultProvider || 'openai'
-    const providerDefaultModel = settings?.providerConfigs?.[selectedProviderId]?.defaultModel
-
+    const providerDefaultModel = (
+      settings?.providerConfigs?.[selectedProviderId] as Record<string, unknown> | undefined
+    )?.defaultModel as string | undefined
     if (providerDefaultModel) return providerDefaultModel
     if (settings?.defaultModel) return settings.defaultModel
     if (provider?.config?.defaultModel) return provider.config.defaultModel
     return 'gpt-4o'
-  }, [settings?.defaultProvider, settings?.defaultModel, settings?.providerConfigs, provider])
+  }, [
+    effectiveSettings?.effectiveModel,
+    settings?.defaultProvider,
+    settings?.defaultModel,
+    settings?.providerConfigs,
+    provider,
+  ])
+
+  // Build the list of selectable models from enabled providers in effective settings
+  const availableModels = useMemo<AvailableModel[]>(() => {
+    const providerConfigs = effectiveSettings?.providerConfigs
+    if (!providerConfigs) return []
+
+    const models: AvailableModel[] = []
+    for (const [key, rawConfig] of Object.entries(providerConfigs)) {
+      const config = rawConfig as {
+        enabled?: boolean
+        name?: string
+        availableModels?: string[]
+      }
+      if (!config?.enabled) continue
+      const providerName = config.name || key
+      for (const modelId of config.availableModels ?? []) {
+        // Strip org prefix ("org/model:variant" → "model") for the display name
+        const withoutOrg = modelId.includes('/') ? modelId.split('/').slice(1).join('/') : modelId
+        const displayName = withoutOrg.split(':')[0]
+        models.push({ id: modelId, name: displayName, provider: providerName, providerKey: key })
+      }
+    }
+    return models
+  }, [effectiveSettings?.providerConfigs])
 
   const supportsReasoning = useMemo(() => {
     const providerType = (settings?.defaultProvider || 'openai') as Parameters<
@@ -1014,6 +1050,7 @@ export default function ProjectPage() {
         filePaths={files?.map((f) => f.path) ?? []}
         model={uiSelectedModel || selectedModel}
         onModelChange={setUiSelectedModel}
+        availableModels={availableModels}
         variant={reasoningVariant}
         onVariantChange={setReasoningVariant}
         supportsReasoning={supportsReasoning}

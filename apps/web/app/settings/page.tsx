@@ -556,211 +556,224 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-4xl px-4 py-8">
-      <div className="mb-8">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="-ml-2 mb-4 text-muted-foreground hover:text-foreground"
-          onClick={() => router.push('/')}
-        >
-          <ArrowLeft className="mr-1 h-4 w-4" />
-          Back to Projects
-        </Button>
-        <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="mt-1 text-muted-foreground">Manage your preferences and API configurations</p>
-      </div>
+    <>
+      {/* Skip to main content link */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-background focus:p-4 focus:text-foreground"
+      >
+        Skip to main content
+      </a>
+      <div id="main-content" className="container mx-auto max-w-4xl px-4 py-8">
+        <div className="mb-8">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="-ml-2 mb-4 text-muted-foreground hover:text-foreground"
+            onClick={() => router.push('/')}
+          >
+            <ArrowLeft className="mr-1 h-4 w-4" />
+            Back to Projects
+          </Button>
+          <h1 className="text-3xl font-bold">Settings</h1>
+          <p className="mt-1 text-muted-foreground">
+            Manage your preferences and API configurations
+          </p>
+        </div>
 
-      <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 lg:w-[520px]">
-          <TabsTrigger value="general" className="flex items-center gap-2">
-            <User className="h-4 w-4" />
-            General
-          </TabsTrigger>
-          <TabsTrigger value="providers" className="flex items-center gap-2">
-            <Bot className="h-4 w-4" />
-            LLM Providers
-          </TabsTrigger>
-          <TabsTrigger value="advanced" className="flex items-center gap-2">
-            <Settings2 className="h-4 w-4" />
-            Advanced
-          </TabsTrigger>
-          <TabsTrigger value="appearance" className="flex items-center gap-2">
-            <Palette className="h-4 w-4" />
-            Appearance
-          </TabsTrigger>
-        </TabsList>
+        <Tabs defaultValue="general" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4 lg:w-[520px]">
+            <TabsTrigger value="general" className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              General
+            </TabsTrigger>
+            <TabsTrigger value="providers" className="flex items-center gap-2">
+              <Bot className="h-4 w-4" />
+              LLM Providers
+            </TabsTrigger>
+            <TabsTrigger value="advanced" className="flex items-center gap-2">
+              <Settings2 className="h-4 w-4" />
+              Advanced
+            </TabsTrigger>
+            <TabsTrigger value="appearance" className="flex items-center gap-2">
+              <Palette className="h-4 w-4" />
+              Appearance
+            </TabsTrigger>
+          </TabsList>
 
-        {/* General Tab */}
-        <TabsContent value="general" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>General Settings</CardTitle>
-              <CardDescription>Configure your basic preferences</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Language Selection */}
-              <div className="space-y-2">
-                <Label htmlFor="language">Language</Label>
-                <Select
-                  value={formState.language}
-                  onValueChange={(value) => setFormState((prev) => ({ ...prev, language: value }))}
-                >
-                  <SelectTrigger id="language" className="w-full max-w-sm">
-                    <SelectValue placeholder="Select language" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {languages.map((lang) => (
-                      <SelectItem key={lang.value} value={lang.value}>
-                        {lang.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+          {/* General Tab */}
+          <TabsContent value="general" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>General Settings</CardTitle>
+                <CardDescription>Configure your basic preferences</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Language Selection */}
+                <div className="space-y-2">
+                  <Label htmlFor="language">Language</Label>
+                  <Select
+                    value={formState.language}
+                    onValueChange={(value) =>
+                      setFormState((prev) => ({ ...prev, language: value }))
+                    }
+                  >
+                    <SelectTrigger id="language" className="w-full max-w-sm">
+                      <SelectValue placeholder="Select language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {languages.map((lang) => (
+                        <SelectItem key={lang.value} value={lang.value}>
+                          {lang.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <Separator />
+                <Separator />
 
-              {/* User LLM Configuration with Admin Override Support */}
-              <UserLLMConfig
-                adminDefaults={adminDefaults}
-                userSettings={{
-                  defaultProvider: formState.defaultProvider,
-                  defaultModel: formState.defaultModel,
-                  overrideGlobalProvider: formState.overrideGlobalProvider,
-                  overrideGlobalModel: formState.overrideGlobalModel,
-                  providers: formState.providers,
-                }}
-                onUpdate={(config) => {
-                  setFormState((prev) => ({
-                    ...prev,
-                    ...config,
-                  }))
-                }}
-                availableProviders={Object.fromEntries(
-                  Object.entries(formState.providers).map(([key, p]) => [
-                    key,
-                    { name: p.name, availableModels: p.availableModels, enabled: p.enabled },
-                  ])
-                )}
-              />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Permissions</CardTitle>
-              <CardDescription>
-                Configure fine-grained permissions for tools and commands.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <PermissionsEditor value={permissions} onChange={setPermissions} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* LLM Providers Tab */}
-        <TabsContent value="providers" className="space-y-6">
-          <div className="grid gap-6">
-            {Object.entries(formState.providers).map(([key, provider]) => {
-              // Capability-gated controls: only render reasoning controls where supported.
-              // This keeps settings consistent regardless of provider selection.
-              const providerType = (provider.provider || key) as ProviderType
-              const supportsReasoning =
-                getDefaultProviderCapabilities(providerType).supportsReasoning
-              return (
-                <ProviderCard
-                  key={key}
-                  provider={provider}
-                  supportsReasoning={supportsReasoning}
-                  onChange={(updates) => updateProvider(key, updates)}
-                  onTest={() => testProvider(key)}
-                  onTestCompletion={
-                    key === 'chutes' ? () => testProviderCompletion(key) : undefined
-                  }
+                {/* User LLM Configuration with Admin Override Support */}
+                <UserLLMConfig
+                  adminDefaults={adminDefaults}
+                  userSettings={{
+                    defaultProvider: formState.defaultProvider,
+                    defaultModel: formState.defaultModel,
+                    overrideGlobalProvider: formState.overrideGlobalProvider,
+                    overrideGlobalModel: formState.overrideGlobalModel,
+                    providers: formState.providers,
+                  }}
+                  onUpdate={(config) => {
+                    setFormState((prev) => ({
+                      ...prev,
+                      ...config,
+                    }))
+                  }}
+                  availableProviders={Object.fromEntries(
+                    Object.entries(formState.providers).map(([key, p]) => [
+                      key,
+                      { name: p.name, availableModels: p.availableModels, enabled: p.enabled },
+                    ])
+                  )}
                 />
-              )
-            })}
-          </div>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>OAuth Connections</CardTitle>
-              <CardDescription>
-                Connect providers using OAuth for seamless authentication (no API key needed)
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <ConnectProvider provider="chutes" />
-            </CardContent>
-          </Card>
-        </TabsContent>
+            <Card>
+              <CardHeader>
+                <CardTitle>Permissions</CardTitle>
+                <CardDescription>
+                  Configure fine-grained permissions for tools and commands.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PermissionsEditor value={permissions} onChange={setPermissions} />
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        {/* Advanced Tab */}
-        <TabsContent value="advanced" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>MCP Servers</CardTitle>
-              <CardDescription>
-                Configure Model Context Protocol servers for extended capabilities
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <MCPServerEditor />
-            </CardContent>
-          </Card>
+          {/* LLM Providers Tab */}
+          <TabsContent value="providers" className="space-y-6">
+            <div className="grid gap-6">
+              {Object.entries(formState.providers).map(([key, provider]) => {
+                // Capability-gated controls: only render reasoning controls where supported.
+                // This keeps settings consistent regardless of provider selection.
+                const providerType = (provider.provider || key) as ProviderType
+                const supportsReasoning =
+                  getDefaultProviderCapabilities(providerType).supportsReasoning
+                return (
+                  <ProviderCard
+                    key={key}
+                    provider={provider}
+                    supportsReasoning={supportsReasoning}
+                    onChange={(updates) => updateProvider(key, updates)}
+                    onTest={() => testProvider(key)}
+                    onTestCompletion={
+                      key === 'chutes' ? () => testProviderCompletion(key) : undefined
+                    }
+                  />
+                )
+              })}
+            </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Custom Subagents</CardTitle>
-              <CardDescription>Create specialized agents for specific tasks</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <SubagentEditor />
-            </CardContent>
-          </Card>
-        </TabsContent>
+            <Card>
+              <CardHeader>
+                <CardTitle>OAuth Connections</CardTitle>
+                <CardDescription>
+                  Connect providers using OAuth for seamless authentication (no API key needed)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <ConnectProvider provider="chutes" />
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        {/* Appearance Tab */}
-        <TabsContent value="appearance" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Appearance</CardTitle>
-              <CardDescription>Customize how Panda.ai looks for you</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-3">
-                <Label>Theme</Label>
-                <ThemeToggleFull
-                  value={formState.theme}
-                  onChange={(theme) => setFormState((prev) => ({ ...prev, theme }))}
-                />
-                <p className="text-sm text-muted-foreground">
-                  Choose your preferred color scheme. System will follow your OS preference.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+          {/* Advanced Tab */}
+          <TabsContent value="advanced" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>MCP Servers</CardTitle>
+                <CardDescription>
+                  Configure Model Context Protocol servers for extended capabilities
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <MCPServerEditor />
+              </CardContent>
+            </Card>
 
-      {/* Save Button */}
-      <div className="mt-8 flex justify-end">
-        <Button onClick={handleSave} disabled={isSaving} size="lg" className="min-w-[140px]">
-          {isSaving ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              <Save className="mr-2 h-4 w-4" />
-              Save Changes
-            </>
-          )}
-        </Button>
+            <Card>
+              <CardHeader>
+                <CardTitle>Custom Subagents</CardTitle>
+                <CardDescription>Create specialized agents for specific tasks</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <SubagentEditor />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Appearance Tab */}
+          <TabsContent value="appearance" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Appearance</CardTitle>
+                <CardDescription>Customize how Panda.ai looks for you</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-3">
+                  <Label>Theme</Label>
+                  <ThemeToggleFull
+                    value={formState.theme}
+                    onChange={(theme) => setFormState((prev) => ({ ...prev, theme }))}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Choose your preferred color scheme. System will follow your OS preference.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {/* Save Button */}
+        <div className="mt-8 flex justify-end">
+          <Button onClick={handleSave} disabled={isSaving} size="lg" className="min-w-[140px]">
+            {isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Save Changes
+              </>
+            )}
+          </Button>
+        </div>
       </div>
-    </div>
+    </>
   )
 }

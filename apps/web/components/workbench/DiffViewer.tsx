@@ -47,13 +47,13 @@ export function DiffViewer({
       <div className="flex border-b border-border bg-muted/50">
         <div className="flex-1 border-r border-border px-4 py-2">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-            <Minus className="h-4 w-4 text-red-500" />
+            <Minus className="text-diff-removed h-4 w-4" />
             <span>{oldLabel}</span>
           </div>
         </div>
         <div className="flex-1 px-4 py-2">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-            <Plus className="h-4 w-4 text-emerald-500" />
+            <Plus className="text-diff-added h-4 w-4" />
             <span>{newLabel}</span>
           </div>
         </div>
@@ -96,16 +96,16 @@ function DiffLineRow({ line, side }: { line: DiffLine; side: 'left' | 'right' })
 
   // Background colors based on change type
   const bgColorClass = isRemoved
-    ? 'bg-red-500/10 hover:bg-red-500/20'
+    ? 'bg-diff-removed hover:bg-diff-removed'
     : isAdded
-      ? 'bg-emerald-500/10 hover:bg-emerald-500/20'
+      ? 'bg-diff-added hover:bg-diff-added'
       : 'hover:bg-muted/50'
 
   // Border indicators
   const borderClass = isRemoved
-    ? 'border-l-2 border-l-red-500'
+    ? 'border-l-2 border-l-[hsl(var(--diff-removed-fg))]'
     : isAdded
-      ? 'border-l-2 border-l-emerald-500'
+      ? 'border-l-2 border-l-[hsl(var(--diff-added-fg))]'
       : 'border-l-2 border-l-transparent'
 
   // Line number to display
@@ -150,11 +150,11 @@ function DiffStats({ left, right }: { left: DiffLine[]; right: DiffLine[] }) {
   return (
     <div className="flex items-center gap-4 border-t border-border bg-muted/50 px-4 py-2 text-xs text-muted-foreground">
       <span className="flex items-center gap-1">
-        <span className="h-2 w-2 rounded-full bg-emerald-500" />
+        <span className="bg-diff-added h-2 w-2 rounded-full" />
         {addedCount} additions
       </span>
       <span className="flex items-center gap-1">
-        <span className="h-2 w-2 rounded-full bg-red-500" />
+        <span className="bg-diff-removed h-2 w-2 rounded-full" />
         {removedCount} deletions
       </span>
       <span className="flex items-center gap-1">

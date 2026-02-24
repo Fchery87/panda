@@ -259,9 +259,9 @@ export function GitHubImportDialog({
 
           {/* Success State */}
           {status === 'success' && progress && (
-            <Alert className="border-green-500/50 bg-green-500/10">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-700">
+            <Alert className="border-status-success/50 bg-status-success/10">
+              <CheckCircle2 className="h-4 w-4 text-status-success" />
+              <AlertDescription className="text-status-success">
                 Successfully imported {progress.importedFiles} files!
                 {progress.skippedFiles > 0 && ` (${progress.skippedFiles} skipped)`}
               </AlertDescription>

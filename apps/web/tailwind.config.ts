@@ -53,6 +53,19 @@ const config: Config = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        status: {
+          success: 'hsl(var(--status-success))',
+          error: 'hsl(var(--status-error))',
+          warning: 'hsl(var(--status-warning))',
+          info: 'hsl(var(--status-info))',
+          online: 'hsl(var(--status-online))',
+        },
+      },
+      fontSize: {
+        'code-xs': ['11px', { lineHeight: '16px' }],
+        'code-sm': ['12px', { lineHeight: '18px' }],
+        'code-base': ['13px', { lineHeight: '20px' }],
+        'code-lg': ['14px', { lineHeight: '22px' }],
       },
       borderRadius: {
         lg: 'var(--radius)',

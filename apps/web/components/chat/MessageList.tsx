@@ -50,7 +50,12 @@ export function MessageList({
 
   return (
     <ScrollArea className="h-full">
-      <div className={cn('flex min-h-full flex-col gap-4 p-4')}>
+      <div
+        className={cn('flex min-h-full flex-col gap-4 p-4')}
+        role="log"
+        aria-live="polite"
+        aria-label="Chat messages"
+      >
         {messages.map((message, index) => {
           return (
             <motion.div

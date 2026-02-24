@@ -89,10 +89,8 @@ export function MessageBubble({
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.2, delay: 0.05 }}
           className={cn(
-            'relative rounded-2xl px-4 py-2.5 text-sm leading-relaxed',
-            isUser
-              ? 'rounded-tr-sm bg-primary text-primary-foreground'
-              : 'rounded-tl-sm bg-muted text-foreground'
+            'relative rounded-none px-4 py-2.5 text-sm leading-relaxed',
+            isUser ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
           )}
         >
           <div className="whitespace-pre-wrap break-words">
@@ -113,7 +111,7 @@ export function MessageBubble({
         {isAssistant && isBuild && shouldRedactBuildCode && (
           <div className="flex items-center gap-2 px-1">
             <span className="font-mono text-xs text-muted-foreground/70">Build mode</span>
-            <span className="font-mono text-xs text-amber-500/90">
+            <span className="font-mono text-xs text-primary/90">
               (code hidden; use artifacts/editor)
             </span>
           </div>

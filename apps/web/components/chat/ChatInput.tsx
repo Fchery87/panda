@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import { Send, Square, Lightbulb } from 'lucide-react'
 import { AgentSelector, MODE_OPTIONS } from './AgentSelector'
 import { MentionPicker } from './MentionPicker'
-import { ModelSelector } from './ModelSelector'
+import { ModelSelector, type AvailableModel } from './ModelSelector'
 import { VariantSelector } from './VariantSelector'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 
@@ -41,6 +41,8 @@ interface ChatInputProps {
   /** Selected AI model */
   model?: string
   onModelChange?: (model: string) => void
+  /** Models derived from enabled providers in settings */
+  availableModels?: AvailableModel[]
   /** Reasoning variant (effort level) */
   variant?: string
   onVariantChange?: (variant: string) => void
@@ -59,6 +61,7 @@ export function ChatInput({
   filePaths = [],
   model,
   onModelChange,
+  availableModels,
   variant = 'none',
   onVariantChange,
   supportsReasoning = false,
@@ -216,6 +219,7 @@ export function ChatInput({
                 size="icon"
                 variant="outline"
                 onClick={handleStop}
+                aria-label="Stop generation"
                 className="h-7 w-7 rounded-none border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
               >
                 <Square className="h-3 w-3 fill-current" />
@@ -234,6 +238,7 @@ export function ChatInput({
                 size="icon"
                 onClick={handleSend}
                 disabled={!input.trim()}
+                aria-label="Send message"
                 className={cn(
                   'transition-sharp h-7 w-7 rounded-none',
                   input.trim()
@@ -257,6 +262,7 @@ export function ChatInput({
             value={model || 'claude-sonnet-4-5'}
             onChange={onModelChange}
             disabled={isStreaming}
+            availableModels={availableModels}
           />
         )}
 

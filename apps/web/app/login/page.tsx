@@ -28,7 +28,17 @@ export default function LoginPage() {
         <AuthenticatedRedirect />
       </Authenticated>
       <Unauthenticated>
-        <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-4">
+        {/* Skip to main content link */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-background focus:p-4 focus:text-foreground"
+        >
+          Skip to main content
+        </a>
+        <div
+          id="main-content"
+          className="flex min-h-screen flex-col items-center justify-center gap-8 p-4"
+        >
           <div className="flex flex-col items-center gap-4">
             <PandaLogo size="lg" />
             <h1 className="text-display text-2xl">Welcome to Panda.ai</h1>

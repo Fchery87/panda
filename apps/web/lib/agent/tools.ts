@@ -45,7 +45,7 @@ export function getAllowedToolsForMode(mode: ChatMode): string[] {
       'update_memory_bank',
     ],
   }
-  return modeTools[mode]
+  return modeTools[mode] ?? []
 }
 
 /**
@@ -510,65 +510,60 @@ export function createToolContext(
 
     // Write files by queueing artifacts (don't write immediately)
     listDirectory: async (path?: string, recursive?: boolean) => {
-      try {
-        if (!api.files.list) {
-          return []
-        }
-
-        const normalizedBase = (path || '').trim().replace(/^\/+|\/+$/g, '')
-        const allFiles = (await convexClient.query(api.files.list, {
-          projectId,
-        })) as Array<{ path: string }>
-
-        const filePaths = allFiles
-          .map((file) => file.path)
-          .filter((filePath) => {
-            if (!normalizedBase) return true
-            return filePath === normalizedBase || filePath.startsWith(`${normalizedBase}/`)
-          })
-
-        if (recursive) {
-          return filePaths.map((filePath) => ({
-            path: filePath,
-            type: 'file' as const,
-          }))
-        }
-
-        const entries = new Map<string, 'file' | 'directory'>()
-
-        for (const filePath of filePaths) {
-          const relative = normalizedBase
-            ? filePath === normalizedBase
-              ? ''
-              : filePath.startsWith(`${normalizedBase}/`)
-                ? filePath.slice(normalizedBase.length + 1)
-                : filePath
-            : filePath
-          if (!relative) {
-            entries.set(filePath, 'file')
-            continue
-          }
-
-          const [head] = relative.split('/')
-          if (!head) continue
-
-          if (relative.includes('/')) {
-            entries.set(head, 'directory')
-          } else if (!entries.has(head)) {
-            entries.set(head, 'file')
-          }
-        }
-
-        return Array.from(entries.entries())
-          .map(([entryPath, type]) => ({
-            path: normalizedBase ? `${normalizedBase}/${entryPath}` : entryPath,
-            type,
-          }))
-          .sort((a, b) => a.path.localeCompare(b.path))
-      } catch (error) {
-        console.error('Failed to list directory:', error)
-        return []
+      if (!api.files.list) {
+        throw new Error('list_directory: file listing API is not configured')
       }
+
+      const normalizedBase = (path || '').trim().replace(/^\/+|\/+$/g, '')
+      const allFiles = (await convexClient.query(api.files.list, {
+        projectId,
+      })) as Array<{ path: string }>
+
+      const filePaths = allFiles
+        .map((file) => file.path)
+        .filter((filePath) => {
+          if (!normalizedBase) return true
+          return filePath === normalizedBase || filePath.startsWith(`${normalizedBase}/`)
+        })
+
+      if (recursive) {
+        return filePaths.map((filePath) => ({
+          path: filePath,
+          type: 'file' as const,
+        }))
+      }
+
+      const entries = new Map<string, 'file' | 'directory'>()
+
+      for (const filePath of filePaths) {
+        const relative = normalizedBase
+          ? filePath === normalizedBase
+            ? ''
+            : filePath.startsWith(`${normalizedBase}/`)
+              ? filePath.slice(normalizedBase.length + 1)
+              : filePath
+          : filePath
+        if (!relative) {
+          entries.set(filePath, 'file')
+          continue
+        }
+
+        const [head] = relative.split('/')
+        if (!head) continue
+
+        if (relative.includes('/')) {
+          entries.set(head, 'directory')
+        } else if (!entries.has(head)) {
+          entries.set(head, 'file')
+        }
+      }
+
+      return Array.from(entries.entries())
+        .map(([entryPath, type]) => ({
+          path: normalizedBase ? `${normalizedBase}/${entryPath}` : entryPath,
+          type,
+        }))
+        .sort((a, b) => a.path.localeCompare(b.path))
     },
 
     // Write files by queueing artifacts (don't write immediately)

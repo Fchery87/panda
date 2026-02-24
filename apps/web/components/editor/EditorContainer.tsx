@@ -57,11 +57,11 @@ export function EditorContainer({
 
   return (
     <div className="flex h-full w-full flex-col">
-      <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-900 px-4 py-2">
+      <div className="surface-2 flex items-center justify-between border-b border-border px-4 py-2">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-sm text-zinc-400">{filePath}</span>
+          <span className="font-mono text-sm text-muted-foreground">{filePath}</span>
           {isDirty && (
-            <span className="font-mono text-xs font-medium text-amber-500">Unsaved changes</span>
+            <span className="font-mono text-xs font-medium text-primary">Unsaved changes</span>
           )}
         </div>
       </div>

@@ -5,7 +5,7 @@ import { EditorSelection, StateEffect, StateField } from '@codemirror/state'
 import { Decoration, EditorView } from '@codemirror/view'
 import CodeMirror from '@uiw/react-codemirror'
 import { javascript } from '@codemirror/lang-javascript'
-import { oneDark } from '@codemirror/theme-one-dark'
+import { pandaTheme } from './panda-theme'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { InlineChat } from './InlineChat'
 
@@ -178,7 +178,7 @@ export function CodeMirrorEditor({
       <CodeMirror
         value={content}
         height="100%"
-        theme={oneDark}
+        theme={pandaTheme}
         extensions={[
           jumpHighlightField,
           jumpHighlightTheme,

@@ -60,6 +60,8 @@ export function FileTabs({ tabs, activePath, onSelect, onClose, className }: Fil
   return (
     <div
       ref={scrollRef}
+      role="tablist"
+      aria-label="Open files"
       className={cn(
         'bg-surface-1 flex items-end gap-0 overflow-x-auto border-b border-border',
         'scrollbar-thin scrollbar-h-1',
