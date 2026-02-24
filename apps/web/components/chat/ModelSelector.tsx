@@ -19,11 +19,31 @@ interface RenderModel {
 }
 
 const FALLBACK_MODELS: RenderModel[] = [
-  { id: 'claude-sonnet-4-5', name: 'Claude 4.5 Sonnet', provider: 'Anthropic', icon: <Brain className="h-3.5 w-3.5" /> },
-  { id: 'claude-opus-4-6', name: 'Claude 4.6 Opus', provider: 'Anthropic', icon: <Brain className="h-3.5 w-3.5" /> },
+  {
+    id: 'claude-sonnet-4-5',
+    name: 'Claude 4.5 Sonnet',
+    provider: 'Anthropic',
+    icon: <Brain className="h-3.5 w-3.5" />,
+  },
+  {
+    id: 'claude-opus-4-6',
+    name: 'Claude 4.6 Opus',
+    provider: 'Anthropic',
+    icon: <Brain className="h-3.5 w-3.5" />,
+  },
   { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI', icon: <Sparkles className="h-3.5 w-3.5" /> },
-  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'Google', icon: <Zap className="h-3.5 w-3.5" /> },
-  { id: 'qwen/qwen3-coder:free', name: 'Qwen3 Coder', provider: 'OpenRouter', icon: <Bot className="h-3.5 w-3.5" /> },
+  {
+    id: 'gemini-1.5-pro',
+    name: 'Gemini 1.5 Pro',
+    provider: 'Google',
+    icon: <Zap className="h-3.5 w-3.5" />,
+  },
+  {
+    id: 'qwen/qwen3-coder:free',
+    name: 'Qwen3 Coder',
+    provider: 'OpenRouter',
+    icon: <Bot className="h-3.5 w-3.5" />,
+  },
 ]
 
 const PROVIDER_ICONS: Record<string, React.ReactNode> = {

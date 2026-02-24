@@ -707,19 +707,12 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
 
         const toolContext =
           toolContextRef.current ??
-          createToolContext(
-            projectId,
-            chatId,
-            userId,
-            convex,
-            artifactQueue.current,
-            {
-              files: { batchGet: api.files.batchGet, list: api.files.list },
-              jobs: { create: api.jobs.create, updateStatus: api.jobs.updateStatus },
-              artifacts: { create: api.artifacts.create },
-              memoryBank: { update: (api as any).memoryBank.update },
-            }
-          )
+          createToolContext(projectId, chatId, userId, convex, artifactQueue.current, {
+            files: { batchGet: api.files.batchGet, list: api.files.list },
+            jobs: { create: api.jobs.create, updateStatus: api.jobs.updateStatus },
+            artifacts: { create: api.artifacts.create },
+            memoryBank: { update: (api as any).memoryBank.update },
+          })
 
         // Create agent runtime
         const runtimeSettings = getReasoningRuntimeSettings()
