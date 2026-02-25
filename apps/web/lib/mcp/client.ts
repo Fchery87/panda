@@ -43,6 +43,14 @@ export interface MCPToolCallResult {
   isError?: boolean
 }
 
+type MCPToolsListResponse = {
+  tools?: Array<{
+    name?: unknown
+    description?: unknown
+    inputSchema?: unknown
+  }>
+}
+
 export class MCPClient {
   private name: string
   private config: MCPServerConfig
@@ -95,11 +103,16 @@ export class MCPClient {
         throw new Error(`Failed to connect: ${response.statusText}`)
       }
 
-      const data = await response.json()
-      this.tools = (data.tools || []).map((t: any) => ({
-        name: t.name,
-        description: t.description || '',
-        inputSchema: t.inputSchema || { type: 'object', properties: {} },
+      const data = (await response.json()) as MCPToolsListResponse
+      this.tools = (data.tools || []).map((tool) => ({
+        name: typeof tool.name === 'string' ? tool.name : '',
+        description: typeof tool.description === 'string' ? tool.description : '',
+        inputSchema:
+          tool.inputSchema &&
+          typeof tool.inputSchema === 'object' &&
+          !Array.isArray(tool.inputSchema)
+            ? (tool.inputSchema as MCPTool['inputSchema'])
+            : { type: 'object', properties: {} },
       }))
 
       this.connected = true

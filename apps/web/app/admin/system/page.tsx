@@ -1,5 +1,6 @@
 'use client'
 
+import { appLog } from '@/lib/logger'
 import * as React from 'react'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '@convex/_generated/api'
@@ -62,7 +63,7 @@ export default function AdminSystemPage() {
       toast.success('System settings saved successfully')
     } catch (error) {
       toast.error('Failed to save settings')
-      console.error(error)
+      appLog.error(error)
     } finally {
       setIsSaving(false)
     }

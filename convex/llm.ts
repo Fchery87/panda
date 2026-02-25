@@ -185,7 +185,8 @@ export const streamChat = httpAction(async (ctx, request): Promise<Response> => 
                   if (content) {
                     controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`))
                   }
-                } catch {
+                } catch (error) {
+                  void error
                   // Skip malformed JSON
                 }
               }

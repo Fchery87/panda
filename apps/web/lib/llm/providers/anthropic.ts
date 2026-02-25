@@ -19,6 +19,42 @@ import type {
   ToolDefinition,
 } from '../types'
 
+type FinishReason = NonNullable<StreamChunk['finishReason']>
+type JsonSchemaInput = Parameters<typeof jsonSchema>[0]
+type StreamTextArgs = Parameters<typeof streamText>[0]
+type AiStreamPart = {
+  type: string
+  textDelta?: string
+  text?: string
+  toolCallId?: string
+  toolName?: string
+  input?: unknown
+  args?: unknown
+  error?: unknown
+  finishReason?: string
+  totalUsage?: {
+    inputTokens?: number
+    outputTokens?: number
+  }
+}
+type CoreMessageWithExtras = CoreMessage & {
+  name?: string
+  tool_calls?: ToolCall[]
+  tool_call_id?: string
+}
+
+function normalizeFinishReason(value: unknown): FinishReason {
+  switch (value) {
+    case 'stop':
+    case 'length':
+    case 'tool_calls':
+    case 'error':
+      return value
+    default:
+      return 'stop'
+  }
+}
+
 export class AnthropicProvider implements LLMProvider {
   name = 'anthropic'
   config: ProviderConfig
@@ -92,7 +128,7 @@ export class AnthropicProvider implements LLMProvider {
         role: 'assistant',
         content: result.text,
       },
-      finishReason: result.finishReason as any,
+      finishReason: normalizeFinishReason(result.finishReason),
       usage: {
         promptTokens: result.usage.promptTokens,
         completionTokens: result.usage.completionTokens,
@@ -125,10 +161,10 @@ export class AnthropicProvider implements LLMProvider {
       providerOptions: {
         anthropic: anthropicOptions,
       },
-    } as any)
+    } as StreamTextArgs)
 
     try {
-      for await (const part of result.fullStream as AsyncIterable<any>) {
+      for await (const part of result.fullStream as AsyncIterable<AiStreamPart>) {
         switch (part.type) {
           case 'text-delta':
             if (part.textDelta || part.text) {
@@ -144,6 +180,7 @@ export class AnthropicProvider implements LLMProvider {
             }
             break
           case 'tool-call': {
+            if (!part.toolCallId || !part.toolName) break
             const toolCall: ToolCall = {
               id: part.toolCallId,
               type: 'function',
@@ -164,7 +201,7 @@ export class AnthropicProvider implements LLMProvider {
           case 'finish':
             yield {
               type: 'finish',
-              finishReason: (part.finishReason ?? 'stop') as any,
+              finishReason: normalizeFinishReason(part.finishReason),
               usage: part.totalUsage
                 ? {
                     promptTokens: part.totalUsage.inputTokens ?? 0,
@@ -192,16 +229,16 @@ export class AnthropicProvider implements LLMProvider {
       const baseMessage = {
         role: msg.role,
         content: msg.content,
-      } as CoreMessage
+      } as CoreMessageWithExtras
 
       if (msg.name) {
-        ;(baseMessage as any).name = msg.name
+        baseMessage.name = msg.name
       }
       if (msg.tool_calls) {
-        ;(baseMessage as any).tool_calls = msg.tool_calls
+        baseMessage.tool_calls = msg.tool_calls
       }
       if (msg.tool_call_id) {
-        ;(baseMessage as any).tool_call_id = msg.tool_call_id
+        baseMessage.tool_call_id = msg.tool_call_id
       }
       return baseMessage
     })
@@ -214,7 +251,7 @@ export class AnthropicProvider implements LLMProvider {
     tools.forEach((tool) => {
       toolSet[tool.function.name] = {
         description: tool.function.description,
-        parameters: jsonSchema(tool.function.parameters as any),
+        parameters: jsonSchema(tool.function.parameters as JsonSchemaInput),
       }
     })
     return toolSet

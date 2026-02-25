@@ -38,7 +38,8 @@ export async function POST(request: Request) {
     let parsedBaseUrl: URL
     try {
       parsedBaseUrl = new URL(baseUrl)
-    } catch {
+    } catch (error) {
+      void error
       return NextResponse.json({ error: 'Invalid base URL' }, { status: 400 })
     }
 
@@ -67,8 +68,8 @@ export async function POST(request: Request) {
       const modelsPayload = await modelsRes.json()
       const modelEntries = modelsPayload?.data || modelsPayload || []
       models = Array.isArray(modelEntries)
-        ? modelEntries
-            .map((entry: any) => entry?.id || entry?.name)
+        ? (modelEntries as Array<Record<string, unknown>>)
+            .map((entry) => entry?.id || entry?.name)
             .filter((id: unknown): id is string => typeof id === 'string' && id.trim().length > 0)
         : []
 

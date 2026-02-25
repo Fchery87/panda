@@ -251,7 +251,25 @@ export default defineSchema({
     .index('by_run_sequence', ['runId', 'sequence'])
     .index('by_chat_created', ['chatId', 'createdAt']),
 
-  // 12. Checkpoints table - versioned snapshots for rollback
+  // 12. Harness runtime checkpoints table - durable runtime resume snapshots
+  harnessRuntimeCheckpoints: defineTable({
+    projectId: v.id('projects'),
+    chatId: v.id('chats'),
+    runId: v.optional(v.id('agentRuns')),
+    sessionID: v.string(),
+    version: v.number(),
+    agentName: v.string(),
+    reason: v.union(v.literal('step'), v.literal('complete'), v.literal('error')),
+    savedAt: v.number(),
+    checkpoint: v.any(),
+  })
+    .index('by_chat_session_saved', ['chatId', 'sessionID', 'savedAt'])
+    .index('by_project_session_saved', ['projectId', 'sessionID', 'savedAt'])
+    .index('by_run_session_saved', ['runId', 'sessionID', 'savedAt'])
+    .index('by_chat_saved', ['chatId', 'savedAt'])
+    .index('by_run_saved', ['runId', 'savedAt']),
+
+  // 13. Checkpoints table - versioned snapshots for rollback
   checkpoints: defineTable({
     projectId: v.id('projects'),
     chatId: v.id('chats'),
@@ -265,7 +283,7 @@ export default defineSchema({
     .index('by_chat', ['chatId'])
     .index('by_project_created', ['projectId', 'createdAt']),
 
-  // 13. Provider tokens table - OAuth tokens for LLM providers
+  // 14. Provider tokens table - OAuth tokens for LLM providers
   providerTokens: defineTable({
     userId: v.id('users'),
     provider: v.string(),
@@ -279,7 +297,7 @@ export default defineSchema({
     .index('by_user', ['userId'])
     .index('by_user_provider', ['userId', 'provider']),
 
-  // 14. Shared chats table - public sharing links for chat sessions
+  // 15. Shared chats table - public sharing links for chat sessions
   sharedChats: defineTable({
     chatId: v.id('chats'),
     shareId: v.string(),
@@ -291,7 +309,7 @@ export default defineSchema({
     .index('by_shareId', ['shareId'])
     .index('by_creator', ['createdBy']),
 
-  // 15. MCP Servers table - user-configured MCP servers
+  // 16. MCP Servers table - user-configured MCP servers
   mcpServers: defineTable({
     userId: v.id('users'),
     name: v.string(),
@@ -306,7 +324,7 @@ export default defineSchema({
     .index('by_user', ['userId'])
     .index('by_user_name', ['userId', 'name']),
 
-  // 16. Custom Subagents table - user-defined subagents
+  // 17. Custom Subagents table - user-defined subagents
   subagents: defineTable({
     userId: v.id('users'),
     name: v.string(),
@@ -327,7 +345,7 @@ export default defineSchema({
     .index('by_user', ['userId'])
     .index('by_user_name', ['userId', 'name']),
 
-  // 17. Admin Settings table - global system configuration
+  // 18. Admin Settings table - global system configuration
   adminSettings: defineTable({
     // Global LLM Configuration
     globalDefaultProvider: v.optional(v.string()),
@@ -458,4 +476,71 @@ export default defineSchema({
     .index('by_session', ['sessionId'])
     .index('by_hash', ['hash'])
     .index('by_session_step', ['sessionId', 'step']),
+
+  // 24. Eval Suites table - reusable agent eval scenario collections
+  evalSuites: defineTable({
+    projectId: v.id('projects'),
+    userId: v.id('users'),
+    chatId: v.optional(v.id('chats')),
+    name: v.string(),
+    description: v.optional(v.string()),
+    status: v.union(v.literal('draft'), v.literal('active'), v.literal('archived')),
+    scenarios: v.array(v.any()),
+    tags: v.optional(v.array(v.string())),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    lastRunAt: v.optional(v.number()),
+  })
+    .index('by_project_updated', ['projectId', 'updatedAt'])
+    .index('by_project_status', ['projectId', 'status'])
+    .index('by_chat_updated', ['chatId', 'updatedAt']),
+
+  // 25. Eval Runs table - execution attempts for a suite
+  evalRuns: defineTable({
+    projectId: v.id('projects'),
+    suiteId: v.id('evalSuites'),
+    userId: v.id('users'),
+    chatId: v.optional(v.id('chats')),
+    status: v.union(
+      v.literal('running'),
+      v.literal('completed'),
+      v.literal('failed'),
+      v.literal('cancelled')
+    ),
+    runner: v.string(),
+    mode: v.optional(v.union(v.literal('read_only'), v.literal('full'))),
+    policy: v.optional(v.any()),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+    error: v.optional(v.string()),
+    summary: v.optional(v.string()),
+    scorecard: v.optional(v.any()),
+  })
+    .index('by_suite_started', ['suiteId', 'startedAt'])
+    .index('by_project_started', ['projectId', 'startedAt'])
+    .index('by_project_status', ['projectId', 'status']),
+
+  // 26. Eval Run Results table - per-scenario results for an eval run
+  evalRunResults: defineTable({
+    runId: v.id('evalRuns'),
+    suiteId: v.id('evalSuites'),
+    projectId: v.id('projects'),
+    scenarioId: v.string(),
+    scenarioName: v.string(),
+    sequence: v.number(),
+    status: v.union(v.literal('passed'), v.literal('failed'), v.literal('error')),
+    score: v.number(),
+    input: v.any(),
+    expected: v.optional(v.any()),
+    output: v.optional(v.any()),
+    reason: v.optional(v.string()),
+    error: v.optional(v.string()),
+    tags: v.array(v.string()),
+    durationMs: v.number(),
+    metadata: v.optional(v.record(v.string(), v.any())),
+    createdAt: v.number(),
+  })
+    .index('by_run_sequence', ['runId', 'sequence'])
+    .index('by_suite_created', ['suiteId', 'createdAt'])
+    .index('by_project_created', ['projectId', 'createdAt']),
 })

@@ -69,7 +69,8 @@ function parseAstGrepOutput(
         if (matches.length >= maxResults) break
       }
       return { matches, files }
-    } catch {
+    } catch (error) {
+      void error
       return { matches, files }
     }
   }
@@ -83,7 +84,8 @@ function parseAstGrepOutput(
       files.add(match.file)
       matches.push(match)
       if (matches.length >= maxResults) break
-    } catch {
+    } catch (error) {
+      void error
       // ignore parse errors line-by-line
     }
   }

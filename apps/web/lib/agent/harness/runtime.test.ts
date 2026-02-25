@@ -2,7 +2,10 @@ import { describe, expect, test } from 'bun:test'
 import type { CompletionOptions, CompletionResponse, LLMProvider, ModelInfo } from '../../llm/types'
 import { bus } from './event-bus'
 import { createPlugin, plugins } from './plugins'
+import { InMemoryCheckpointStore } from './checkpoint-store'
+import { compaction } from './compaction'
 import { Runtime } from './runtime'
+import { snapshots } from './snapshots'
 import type { Message, UserMessage } from './types'
 import { agents } from './agents'
 
@@ -148,6 +151,404 @@ describe('harness Runtime', () => {
     ).toBe(false)
   })
 
+  test('skips compaction when compaction time budget is exceeded and still proceeds', async () => {
+    resetHarnessTestState()
+    let sawCompactionSummary = false
+    let streamCalls = 0
+    const originalCompact = compaction.compact.bind(compaction)
+
+    ;(compaction as unknown as { compact: typeof compaction.compact }).compact = async (
+      sessionID,
+      messages
+    ) => {
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      return {
+        summary: 'budgeted summary',
+        tokensBefore: 200000,
+        tokensAfter: 1000,
+        messagesCompacted: 1,
+        messages: [
+          {
+            ...(messages[0] as UserMessage),
+            parts: [
+              {
+                id: 'part-compacted',
+                messageID: (messages[0] as UserMessage).id,
+                sessionID,
+                type: 'compaction',
+                auto: true,
+                summary: 'budgeted summary',
+              },
+            ],
+          },
+          ...messages.slice(1),
+        ],
+      }
+    }
+
+    try {
+      const provider = createProvider((options) => {
+        streamCalls++
+        sawCompactionSummary = options.messages.some(
+          (msg) =>
+            msg.role === 'user' &&
+            typeof msg.content === 'string' &&
+            msg.content.includes('[Previous conversation summary]')
+        )
+      })
+
+      const runtime = new Runtime(provider, new Map(), {
+        maxSteps: 3,
+        contextCompactionThreshold: 0.9,
+        compactionTimeBudgetMs: 1,
+      })
+      const sessionID = 'session-compaction-budget'
+      const initialMessages: Message[] = Array.from({ length: 8 }, (_, index) =>
+        createUserMessage({
+          id: `msg-budget-old-${index}`,
+          sessionID,
+          text: index < 4 ? 'x'.repeat(180_000) : `small-${index}`,
+          agent: 'build',
+        })
+      )
+      const userMessage = createUserMessage({
+        id: 'msg-budget-new',
+        sessionID,
+        text: 'Proceed without waiting for compaction',
+        agent: 'ask',
+      })
+
+      const events = []
+      for await (const event of runtime.run(sessionID, userMessage, initialMessages)) {
+        events.push(event)
+      }
+
+      expect(streamCalls).toBeGreaterThan(0)
+      expect(sawCompactionSummary).toBe(false)
+      expect(
+        events.some(
+          (event) =>
+            event.type === 'compaction' &&
+            typeof event.content === 'string' &&
+            event.content.includes('budget')
+        )
+      ).toBe(true)
+    } finally {
+      ;(compaction as unknown as { compact: typeof compaction.compact }).compact = originalCompact
+    }
+  })
+
+  test('snapshot failure and timeout warn without aborting the agent step', async () => {
+    resetHarnessTestState()
+    const originalTrack = snapshots.track.bind(snapshots)
+
+    try {
+      const runWithPatchedTrack = async (
+        patch: typeof snapshots.track,
+        runtimeConfig: Record<string, unknown>
+      ) => {
+        let streamCalls = 0
+        ;(snapshots as unknown as { track: typeof snapshots.track }).track = patch
+
+        const provider = createProvider(() => {
+          streamCalls++
+        })
+        const runtime = new Runtime(provider, new Map(), {
+          enableSnapshots: true,
+          maxSteps: 3,
+          ...(runtimeConfig as {
+            snapshotTimeoutMs?: number
+            snapshotFailureMode?: 'warn' | 'error'
+          }),
+        })
+        const userMessage = createUserMessage({
+          id: `msg-snapshot-${Math.random()}`,
+          sessionID: `session-snapshot-${Math.random()}`,
+          text: 'hello',
+          agent: 'ask',
+        })
+
+        const events = []
+        for await (const event of runtime.run(userMessage.sessionID, userMessage)) {
+          events.push(event)
+        }
+
+        return { events, streamCalls }
+      }
+
+      const failureRun = await runWithPatchedTrack(
+        async () => {
+          throw new Error('snapshot exploded')
+        },
+        { snapshotFailureMode: 'warn' }
+      )
+
+      expect(failureRun.streamCalls).toBeGreaterThan(0)
+      expect(failureRun.events.some((event) => event.type === 'complete')).toBe(true)
+      expect(
+        failureRun.events.some(
+          (event) =>
+            event.type === 'status' &&
+            typeof event.content === 'string' &&
+            event.content.toLowerCase().includes('snapshot') &&
+            event.content.toLowerCase().includes('warning')
+        )
+      ).toBe(true)
+
+      const timeoutRun = await runWithPatchedTrack(
+        async () => {
+          await new Promise((resolve) => setTimeout(resolve, 20))
+          return null
+        },
+        { snapshotTimeoutMs: 1, snapshotFailureMode: 'warn' }
+      )
+
+      expect(timeoutRun.streamCalls).toBeGreaterThan(0)
+      expect(timeoutRun.events.some((event) => event.type === 'complete')).toBe(true)
+      expect(
+        timeoutRun.events.some(
+          (event) =>
+            event.type === 'status' &&
+            typeof event.content === 'string' &&
+            event.content.toLowerCase().includes('snapshot') &&
+            event.content.toLowerCase().includes('timeout')
+        )
+      ).toBe(true)
+    } finally {
+      ;(snapshots as unknown as { track: typeof snapshots.track }).track = originalTrack
+    }
+  })
+
+  test('risk-tier interrupt can edit tool args before execution', async () => {
+    resetHarnessTestState()
+    let executedArgs: Record<string, unknown> | null = null
+
+    const provider: LLMProvider = {
+      ...createProvider(() => {}, 'tool_calls'),
+      async *completionStream() {
+        yield {
+          type: 'tool_call',
+          toolCall: {
+            id: 'tc-write-interrupt',
+            type: 'function',
+            function: {
+              name: 'write_files',
+              arguments: JSON.stringify({
+                files: [{ path: 'unsafe.txt', content: 'hello' }],
+              }),
+            },
+          },
+        }
+        yield {
+          type: 'finish',
+          finishReason: 'tool_calls',
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        }
+        yield { type: 'text', content: 'done' }
+        yield {
+          type: 'finish',
+          finishReason: 'stop',
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        }
+      },
+    }
+
+    const runtime = new Runtime(
+      provider,
+      new Map([
+        [
+          'write_files',
+          async (args) => {
+            executedArgs = args
+            return { output: 'written' }
+          },
+        ],
+      ]),
+      {
+        maxSteps: 4,
+        onToolInterrupt: async () => ({
+          decision: 'edit',
+          args: { files: [{ path: 'safe.txt', content: 'hello' }] },
+          reason: 'redirect write target',
+        }),
+      }
+    )
+
+    const userMessage = createUserMessage({
+      id: 'msg-interrupt-edit',
+      sessionID: 'session-interrupt-edit',
+      text: 'write file',
+      agent: 'build',
+    })
+
+    const events = []
+    for await (const event of runtime.run(userMessage.sessionID, userMessage)) {
+      events.push(event)
+    }
+
+    expect(
+      events.some(
+        (event) => event.type === 'interrupt_request' && event.interrupt?.toolName === 'write_files'
+      )
+    ).toBe(true)
+    expect(
+      events.some(
+        (event) => event.type === 'interrupt_decision' && event.interrupt?.decision === 'edit'
+      )
+    ).toBe(true)
+    expect(executedArgs).toEqual({ files: [{ path: 'safe.txt', content: 'hello' }] })
+  })
+
+  test('retries transient tool failures and succeeds within retry budget', async () => {
+    resetHarnessTestState()
+    let executorCalls = 0
+
+    const provider: LLMProvider = {
+      ...createProvider(() => {}, 'tool_calls'),
+      async *completionStream() {
+        if (executorCalls === 0) {
+          yield {
+            type: 'tool_call',
+            toolCall: {
+              id: 'tc-retry-read',
+              type: 'function',
+              function: {
+                name: 'read_files',
+                arguments: JSON.stringify({ paths: ['a.ts'] }),
+              },
+            },
+          }
+          yield {
+            type: 'finish',
+            finishReason: 'tool_calls',
+            usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+          }
+          return
+        }
+        yield { type: 'text', content: 'done' }
+        yield {
+          type: 'finish',
+          finishReason: 'stop',
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        }
+      },
+    }
+
+    const runtime = new Runtime(
+      provider,
+      new Map([
+        [
+          'read_files',
+          async () => {
+            executorCalls++
+            if (executorCalls === 1) {
+              throw new Error('ECONNRESET while reading')
+            }
+            return { output: 'contents' }
+          },
+        ],
+      ]),
+      { maxSteps: 4, maxToolExecutionRetries: 1, toolRetryBackoffMs: 0 }
+    )
+
+    const userMessage = createUserMessage({
+      id: 'msg-retry',
+      sessionID: 'session-retry',
+      text: 'retry read',
+      agent: 'build',
+    })
+
+    const events = []
+    for await (const event of runtime.run(userMessage.sessionID, userMessage)) {
+      events.push(event)
+    }
+
+    expect(executorCalls).toBe(2)
+    expect(
+      events.some(
+        (event) =>
+          event.type === 'status' &&
+          typeof event.content === 'string' &&
+          event.content.includes('Retrying read_files')
+      )
+    ).toBe(true)
+    expect(events.some((event) => event.type === 'complete')).toBe(true)
+  })
+
+  test('reuses cached tool result across steps when idempotency cache is enabled', async () => {
+    resetHarnessTestState()
+    let streamCalls = 0
+    let executorCalls = 0
+
+    const provider: LLMProvider = {
+      ...createProvider(() => {}, 'tool_calls'),
+      async *completionStream() {
+        streamCalls++
+        if (streamCalls <= 2) {
+          yield {
+            type: 'tool_call',
+            toolCall: {
+              id: `tc-cache-${streamCalls}`,
+              type: 'function',
+              function: {
+                name: 'read_files',
+                arguments: JSON.stringify({ paths: ['same.ts'] }),
+              },
+            },
+          }
+          yield {
+            type: 'finish',
+            finishReason: 'tool_calls',
+            usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+          }
+          return
+        }
+        yield { type: 'text', content: 'done' }
+        yield {
+          type: 'finish',
+          finishReason: 'stop',
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        }
+      },
+    }
+
+    const runtime = new Runtime(
+      provider,
+      new Map([
+        [
+          'read_files',
+          async () => {
+            executorCalls++
+            return { output: 'cached-content' }
+          },
+        ],
+      ]),
+      { maxSteps: 5, enableToolCallIdempotencyCache: true }
+    )
+
+    const userMessage = createUserMessage({
+      id: 'msg-cache',
+      sessionID: 'session-cache',
+      text: 'repeat tool',
+      agent: 'build',
+    })
+
+    const events = []
+    for await (const event of runtime.run(userMessage.sessionID, userMessage)) {
+      events.push(event)
+    }
+
+    expect(executorCalls).toBe(1)
+    expect(
+      events.some(
+        (event) =>
+          event.type === 'status' &&
+          typeof event.content === 'string' &&
+          event.content.includes('Idempotency cache hit')
+      )
+    ).toBe(true)
+  })
+
   test('checks write_files permissions per target path', async () => {
     resetHarnessTestState()
     const agentName = 'runtime-per-target-perms'
@@ -233,6 +634,243 @@ describe('harness Runtime', () => {
     ).toBe(true)
 
     agents.unregister(agentName)
+  })
+
+  test('stops executing additional tool calls after maxToolCallsPerStep within a step', async () => {
+    resetHarnessTestState()
+    let streamCalls = 0
+    let readFilesExecutorCalls = 0
+
+    const provider: LLMProvider = {
+      ...createProvider(() => {}, 'tool_calls'),
+      async *completionStream(_options: CompletionOptions) {
+        streamCalls++
+        if (streamCalls === 1) {
+          for (const toolCallId of ['tc-cap-1', 'tc-cap-2', 'tc-cap-3']) {
+            yield {
+              type: 'tool_call',
+              toolCall: {
+                id: toolCallId,
+                type: 'function',
+                function: {
+                  name: 'read_files',
+                  arguments: JSON.stringify({
+                    paths: [`${toolCallId}.ts`],
+                  }),
+                },
+              },
+            }
+          }
+
+          yield {
+            type: 'finish',
+            finishReason: 'tool_calls',
+            usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+          }
+          return
+        }
+
+        yield {
+          type: 'finish',
+          finishReason: 'stop',
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        }
+      },
+    }
+
+    const runtime = new Runtime(
+      provider,
+      new Map([
+        [
+          'read_files',
+          async () => {
+            readFilesExecutorCalls++
+            return { output: `read-${readFilesExecutorCalls}` }
+          },
+        ],
+      ]),
+      { maxSteps: 4, maxToolCallsPerStep: 1 }
+    )
+
+    const userMessage = createUserMessage({
+      id: 'msg-user-tool-cap',
+      sessionID: 'session-tool-cap',
+      text: 'Call tools repeatedly',
+      agent: 'build',
+    })
+
+    const events = []
+    for await (const event of runtime.run('session-tool-cap', userMessage)) {
+      events.push(event)
+    }
+
+    expect(readFilesExecutorCalls).toBe(1)
+
+    const capErrors = events.filter(
+      (event) =>
+        event.type === 'tool_result' &&
+        event.toolResult?.toolName === 'read_files' &&
+        typeof event.toolResult.error === 'string' &&
+        event.toolResult.error.includes('maximum tool calls per step')
+    )
+    expect(capErrors).toHaveLength(2)
+  })
+
+  test('deduplicates repeated tool calls with identical name and normalized args within a step', async () => {
+    resetHarnessTestState()
+    let streamCalls = 0
+    let readFilesExecutorCalls = 0
+
+    const provider: LLMProvider = {
+      ...createProvider(() => {}, 'tool_calls'),
+      async *completionStream(_options: CompletionOptions) {
+        streamCalls++
+        if (streamCalls === 1) {
+          yield {
+            type: 'tool_call',
+            toolCall: {
+              id: 'tc-dedup-1',
+              type: 'function',
+              function: {
+                name: 'read_files',
+                arguments: JSON.stringify({ recursive: false, paths: ['a.ts'] }),
+              },
+            },
+          }
+          yield {
+            type: 'tool_call',
+            toolCall: {
+              id: 'tc-dedup-2',
+              type: 'function',
+              function: {
+                name: 'read_files',
+                arguments: JSON.stringify({ paths: ['a.ts'], recursive: false }),
+              },
+            },
+          }
+          yield {
+            type: 'finish',
+            finishReason: 'tool_calls',
+            usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+          }
+          return
+        }
+
+        yield {
+          type: 'finish',
+          finishReason: 'stop',
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        }
+      },
+    }
+
+    const runtime = new Runtime(
+      provider,
+      new Map([
+        [
+          'read_files',
+          async () => {
+            readFilesExecutorCalls++
+            return { output: `read-${readFilesExecutorCalls}` }
+          },
+        ],
+      ]),
+      { maxSteps: 4, enableToolDeduplication: true }
+    )
+
+    const userMessage = createUserMessage({
+      id: 'msg-user-dedup',
+      sessionID: 'session-dedup',
+      text: 'Run duplicate tools',
+      agent: 'build',
+    })
+
+    const events = []
+    for await (const event of runtime.run('session-dedup', userMessage)) {
+      events.push(event)
+    }
+
+    expect(readFilesExecutorCalls).toBe(1)
+    expect(
+      events.some(
+        (event) =>
+          event.type === 'tool_result' &&
+          event.toolResult?.toolName === 'read_files' &&
+          typeof event.toolResult.error === 'string' &&
+          event.toolResult.error.includes('duplicate tool call')
+      )
+    ).toBe(true)
+  })
+
+  test('halts repeated tool loops across steps after toolLoopThreshold', async () => {
+    resetHarnessTestState()
+    let readFilesLoopExecutorCalls = 0
+
+    const provider: LLMProvider = {
+      ...createProvider(() => {}, 'tool_calls'),
+      async *completionStream(_options: CompletionOptions) {
+        yield {
+          type: 'tool_call',
+          toolCall: {
+            id: `tc-loop-${Date.now()}`,
+            type: 'function',
+            function: {
+              name: 'read_files',
+              arguments: JSON.stringify({ paths: ['src/repeat.ts'] }),
+            },
+          },
+        }
+        yield {
+          type: 'finish',
+          finishReason: 'tool_calls',
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        }
+      },
+    }
+
+    const runtime = new Runtime(
+      provider,
+      new Map([
+        [
+          'read_files',
+          async () => {
+            readFilesLoopExecutorCalls++
+            return { output: `loop-${readFilesLoopExecutorCalls}` }
+          },
+        ],
+      ]),
+      { maxSteps: 8, toolLoopThreshold: 2 }
+    )
+
+    const userMessage = createUserMessage({
+      id: 'msg-user-loop',
+      sessionID: 'session-loop',
+      text: 'Keep calling the same tool',
+      agent: 'build',
+    })
+
+    const events = []
+    for await (const event of runtime.run('session-loop', userMessage)) {
+      events.push(event)
+    }
+
+    expect(readFilesLoopExecutorCalls).toBe(2)
+    expect(
+      events.some(
+        (event) =>
+          event.type === 'error' &&
+          typeof event.error === 'string' &&
+          event.error.includes('tool loop')
+      )
+    ).toBe(true)
+    expect(
+      events.some(
+        (event) =>
+          event.type === 'error' &&
+          typeof event.error === 'string' &&
+          event.error.includes('maximum steps')
+      )
+    ).toBe(false)
   })
 
   test('executes task tool via core subtask queue and replays result into next step', async () => {
@@ -499,5 +1137,149 @@ describe('harness Runtime', () => {
 
     expect(childToolAbortObserved).toBe(true)
     expect(events.some((event) => event.type === 'subagent_start')).toBe(true)
+  })
+
+  test('writes checkpoints during a run when checkpoint store is configured', async () => {
+    resetHarnessTestState()
+    const checkpointStore = new InMemoryCheckpointStore()
+    const runtime = new Runtime(
+      createProvider(() => {}),
+      new Map(),
+      {
+        checkpointStore,
+      }
+    )
+    const sessionID = 'session-checkpoints'
+    const userMessage = createUserMessage({
+      id: 'msg-user-checkpoints',
+      sessionID,
+      text: 'hello',
+      agent: 'ask',
+    })
+
+    const events = []
+    for await (const event of runtime.run(sessionID, userMessage)) {
+      events.push(event)
+    }
+
+    expect(events.some((event) => event.type === 'complete')).toBe(true)
+
+    const checkpoints = checkpointStore.list(sessionID)
+    expect(checkpoints.length).toBeGreaterThanOrEqual(2)
+    expect(checkpoints.some((checkpoint) => checkpoint.reason === 'step')).toBe(true)
+
+    const latestCheckpoint = await checkpointStore.load(sessionID)
+    expect(latestCheckpoint).not.toBeNull()
+    expect(latestCheckpoint?.state.step).toBeGreaterThanOrEqual(1)
+  })
+
+  test('resumes from a checkpoint and completes execution', async () => {
+    resetHarnessTestState()
+    const checkpointStore = new InMemoryCheckpointStore()
+    let providerCalls = 0
+    let readFilesCalls = 0
+
+    const provider: LLMProvider = {
+      ...createProvider(() => {}, 'tool_calls'),
+      async *completionStream(options: CompletionOptions) {
+        providerCalls++
+
+        const alreadyHasToolResult = options.messages.some(
+          (message) => message.role === 'tool' && message.content === 'file-content'
+        )
+
+        if (!alreadyHasToolResult) {
+          yield {
+            type: 'tool_call',
+            toolCall: {
+              id: 'tc-resume-read',
+              type: 'function',
+              function: {
+                name: 'read_files',
+                arguments: JSON.stringify({ paths: ['apps/web/lib/agent/harness/runtime.ts'] }),
+              },
+            },
+          }
+          yield {
+            type: 'finish',
+            finishReason: 'tool_calls',
+            usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+          }
+          return
+        }
+
+        yield { type: 'text', content: 'resumed-complete' }
+        yield {
+          type: 'finish',
+          finishReason: 'stop',
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        }
+      },
+    }
+
+    const sessionID = 'session-resume'
+    const userMessage = createUserMessage({
+      id: 'msg-user-resume',
+      sessionID,
+      text: 'Read then finish',
+      agent: 'build',
+    })
+
+    const runtime1 = new Runtime(
+      provider,
+      new Map([
+        [
+          'read_files',
+          async () => {
+            readFilesCalls++
+            return { output: 'file-content' }
+          },
+        ],
+      ]),
+      { checkpointStore, maxSteps: 5 }
+    )
+
+    const firstRunEvents = []
+    for await (const event of runtime1.run(sessionID, userMessage)) {
+      firstRunEvents.push(event)
+      if (event.type === 'step_finish') {
+        break
+      }
+    }
+
+    expect(firstRunEvents.some((event) => event.type === 'step_finish')).toBe(true)
+
+    const checkpointAfterFirstRun = await checkpointStore.load(sessionID)
+    expect(checkpointAfterFirstRun?.state.step).toBe(1)
+    expect(checkpointAfterFirstRun?.state.isComplete).toBe(false)
+
+    const runtime2 = new Runtime(
+      provider,
+      new Map([
+        [
+          'read_files',
+          async () => {
+            readFilesCalls++
+            return { output: 'file-content' }
+          },
+        ],
+      ]),
+      { checkpointStore, maxSteps: 5 }
+    )
+
+    const resumedEvents = []
+    for await (const event of runtime2.resume(sessionID)) {
+      resumedEvents.push(event)
+    }
+
+    expect(providerCalls).toBe(2)
+    expect(readFilesCalls).toBe(1)
+    expect(resumedEvents.some((event) => event.type === 'step_start' && event.step === 2)).toBe(
+      true
+    )
+    expect(
+      resumedEvents.some((event) => event.type === 'text' && event.content === 'resumed-complete')
+    ).toBe(true)
+    expect(resumedEvents.some((event) => event.type === 'complete')).toBe(true)
   })
 })

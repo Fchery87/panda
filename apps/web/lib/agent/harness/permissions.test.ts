@@ -1,8 +1,32 @@
 import { describe, expect, test } from 'bun:test'
 import { bus } from './event-bus'
-import { PermissionManager } from './permissions'
+import {
+  DEFAULT_PERMISSIONS,
+  PermissionManager,
+  intersectPermissions,
+  checkPermission,
+} from './permissions'
 
 describe('PermissionManager', () => {
+  test('defaults ask mode task delegation to deny', () => {
+    expect(DEFAULT_PERMISSIONS.ask.task).toBe('deny')
+  })
+
+  test('intersectPermissions respects parent tool-level deny over child path-specific allow', () => {
+    const parent = {
+      write_files: 'deny',
+    } as const
+    const child = {
+      write_files: 'allow',
+      'write_files:src/allowed.ts': 'allow',
+    } as const
+
+    const delegated = intersectPermissions(parent, child)
+
+    expect(checkPermission(delegated, 'write_files')).toBe('deny')
+    expect(checkPermission(delegated, 'write_files', 'src/allowed.ts')).toBe('deny')
+  })
+
   test('scopes cached always decisions to a session and emits timeout decisions', async () => {
     const manager = new PermissionManager({ timeoutMs: 100, pollIntervalMs: 1 })
     bus.clearHistory()

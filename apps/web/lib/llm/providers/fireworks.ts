@@ -24,6 +24,7 @@ import type {
 import { OpenAICompatibleProvider } from './openai-compatible'
 
 const FIREWORKS_BASE_URL = 'https://api.fireworks.ai/inference/v1'
+type FireworksApiModel = Record<string, unknown>
 
 export class FireworksProvider implements LLMProvider {
   name = 'fireworks'
@@ -70,16 +71,17 @@ export class FireworksProvider implements LLMProvider {
         return this.getDefaultModels()
       }
 
-      return models
-        .filter((model: any) => model.type === 'text')
-        .map((model: any) => this.transformModel(model))
-    } catch {
+      return (models as FireworksApiModel[])
+        .filter((model) => model.type === 'text')
+        .map((model) => this.transformModel(model))
+    } catch (error) {
+      void error
       return this.getDefaultModels()
     }
   }
 
-  private transformModel(model: any): ModelInfo {
-    const id = model.id
+  private transformModel(model: FireworksApiModel): ModelInfo {
+    const id = String(model.id ?? '')
     const hasTools =
       id.includes('llama') || id.includes('mixtral') || id.includes('qwen') || id.includes('phi')
 
@@ -87,9 +89,12 @@ export class FireworksProvider implements LLMProvider {
       id,
       name: this.formatModelName(id),
       provider: 'fireworks',
-      description: model.description || `Fireworks ${id}`,
-      maxTokens: model.max_output_tokens || 4096,
-      contextWindow: model.context_length || 32768,
+      description:
+        typeof model.description === 'string' && model.description.length > 0
+          ? model.description
+          : `Fireworks ${id}`,
+      maxTokens: typeof model.max_output_tokens === 'number' ? model.max_output_tokens : 4096,
+      contextWindow: typeof model.context_length === 'number' ? model.context_length : 32768,
       capabilities: {
         streaming: true,
         functionCalling: hasTools,

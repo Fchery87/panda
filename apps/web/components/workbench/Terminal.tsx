@@ -1,5 +1,6 @@
 'use client'
 
+import { appLog } from '@/lib/logger'
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -350,7 +351,7 @@ export function Terminal({ projectId }: TerminalProps) {
 
       setCommand('')
     } catch (error) {
-      console.error('Failed to submit command:', error)
+      appLog.error('Failed to submit command:', error)
       toast.error('Failed to submit command')
     } finally {
       setIsExecuting(false)
@@ -362,7 +363,7 @@ export function Terminal({ projectId }: TerminalProps) {
     try {
       await cancelJob(jobId)
     } catch (error) {
-      console.error('Failed to cancel job:', error)
+      appLog.error('Failed to cancel job:', error)
     }
   }
 
@@ -377,7 +378,7 @@ export function Terminal({ projectId }: TerminalProps) {
         return next
       })
     } catch (error) {
-      console.error('Failed to delete job:', error)
+      appLog.error('Failed to delete job:', error)
     }
   }
 

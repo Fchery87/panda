@@ -27,6 +27,7 @@ interface RunProgressPanelProps {
   chatId?: Id<'chats'> | null
   liveSteps?: LiveProgressStep[]
   isStreaming?: boolean
+  tracePersistenceStatus?: 'live' | 'degraded'
   onOpenFile?: (path: string) => void
   onOpenArtifacts?: () => void
   defaultOpen?: boolean
@@ -38,6 +39,7 @@ export function RunProgressPanel({
   chatId,
   liveSteps: externalLiveSteps,
   isStreaming = false,
+  tracePersistenceStatus = 'live',
   onOpenFile,
   onOpenArtifacts,
   defaultOpen = false,
@@ -57,6 +59,17 @@ export function RunProgressPanel({
     api.agentRuns.listEventsByChat,
     chatId ? { chatId, limit: 60 } : 'skip'
   )
+  const runtimeCheckpoints = useQuery(
+    api.agentRuns.listRuntimeCheckpoints,
+    chatId ? { chatId, limit: 6 } : 'skip'
+  ) as
+    | Array<{
+        _id: string
+        reason?: 'step' | 'complete' | 'error'
+        savedAt?: number
+        sessionID?: string
+      }>
+    | undefined
 
   useEffect(() => {
     if (!isStreaming) return
@@ -69,7 +82,8 @@ export function RunProgressPanel({
       const persisted = window.localStorage.getItem(STORAGE_KEY)
       if (persisted === '1') setIsOpen(true)
       if (persisted === '0') setIsOpen(false)
-    } catch {
+    } catch (error) {
+      void error
       // localStorage not available (SSR or privacy mode)
     } finally {
       setHasLoadedPreference(true)
@@ -80,7 +94,8 @@ export function RunProgressPanel({
     if (!hasLoadedPreference) return
     try {
       window.localStorage.setItem(STORAGE_KEY, isOpen ? '1' : '0')
-    } catch {
+    } catch (error) {
+      void error
       // localStorage not available (SSR or privacy mode)
     }
   }, [isOpen, hasLoadedPreference])
@@ -107,6 +122,12 @@ export function RunProgressPanel({
   const startedAt = steps[0]?.createdAt ?? null
   const elapsedMs = startedAt ? Math.max(0, nowMs - startedAt) : 0
   const toolCount = steps.filter((s) => s.category === 'tool').length
+  const interruptCount = steps.filter((s) => /interrupt|permission/i.test(s.content)).length
+  const latestRuntimeCheckpoint = runtimeCheckpoints?.[0]
+  const hasRecoverableCheckpoint =
+    !!latestRuntimeCheckpoint &&
+    latestRuntimeCheckpoint.reason !== 'complete' &&
+    typeof latestRuntimeCheckpoint.sessionID === 'string'
 
   if (!isStreaming && steps.length === 0) {
     return null
@@ -137,8 +158,46 @@ export function RunProgressPanel({
           {startedAt ? formatElapsed(elapsedMs) : '0s'}
           {isStreaming ? ' • live' : ` • ${steps.length} events`}
           {toolCount > 0 && ` • ${toolCount} tools`}
+          {interruptCount > 0 && ` • ${interruptCount} approvals`}
         </span>
       </button>
+
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <span
+          className={cn(
+            'border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide',
+            tracePersistenceStatus === 'degraded'
+              ? 'border-destructive/60 bg-destructive/5 text-destructive'
+              : 'border-border text-muted-foreground'
+          )}
+        >
+          Trace {tracePersistenceStatus}
+        </span>
+        {tracePersistenceStatus === 'degraded' ? (
+          <span className="font-mono text-[10px] text-muted-foreground">
+            Live UI still works, but durable run timeline may be incomplete.
+          </span>
+        ) : null}
+        {runtimeCheckpoints ? (
+          <span
+            className={cn(
+              'border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide',
+              hasRecoverableCheckpoint
+                ? 'border-primary/50 bg-primary/5 text-primary'
+                : 'border-border text-muted-foreground'
+            )}
+            title={
+              latestRuntimeCheckpoint?.savedAt
+                ? `Latest runtime checkpoint: ${new Date(latestRuntimeCheckpoint.savedAt).toLocaleString()}`
+                : undefined
+            }
+          >
+            {hasRecoverableCheckpoint
+              ? `Resume Ready (${runtimeCheckpoints.length})`
+              : `Checkpoints ${runtimeCheckpoints.length}`}
+          </span>
+        ) : null}
+      </div>
 
       {!isOpen ? null : groups.length === 0 ? (
         <div className="font-mono text-xs text-muted-foreground">

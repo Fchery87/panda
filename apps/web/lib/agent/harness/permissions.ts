@@ -29,7 +29,8 @@ function matchPattern(pattern: string, value: string): boolean {
 
   try {
     return new RegExp(`^${regexPattern}$`, 'i').test(value)
-  } catch {
+  } catch (error) {
+    void error
     return false
   }
 }
@@ -82,6 +83,38 @@ export function mergePermissions(base: Permission, override: Permission): Permis
 }
 
 /**
+ * Intersect two permission decisions using least privilege
+ */
+export function intersectPermissionDecisions(
+  parent: PermissionDecision,
+  child: PermissionDecision
+): PermissionDecision {
+  if (parent === 'deny' || child === 'deny') return 'deny'
+  if (parent === 'allow' && child === 'allow') return 'allow'
+  return 'ask'
+}
+
+/**
+ * Intersect parent and child permission sets using least privilege.
+ *
+ * Any tool not explicitly present remains implicit and falls back to `ask`
+ * via `checkPermission`.
+ */
+export function intersectPermissions(parent: Permission, child: Permission): Permission {
+  const merged: Permission = {}
+  const keys = new Set([...Object.keys(parent), ...Object.keys(child)])
+
+  for (const key of keys) {
+    const [tool, pattern] = key.split(':', 2)
+    const parentDecision = checkPermission(parent, tool, pattern || undefined)
+    const childDecision = checkPermission(child, tool, pattern || undefined)
+    merged[key] = intersectPermissionDecisions(parentDecision, childDecision)
+  }
+
+  return merged
+}
+
+/**
  * Default permissions for built-in agents
  */
 export const DEFAULT_PERMISSIONS: Record<string, Permission> = {
@@ -90,6 +123,7 @@ export const DEFAULT_PERMISSIONS: Record<string, Permission> = {
     list_directory: 'allow',
     write_files: 'allow',
     run_command: 'allow',
+    search_codebase: 'allow',
     search_code: 'allow',
     search_code_ast: 'allow',
     update_memory_bank: 'allow',
@@ -99,19 +133,23 @@ export const DEFAULT_PERMISSIONS: Record<string, Permission> = {
   plan: {
     read_files: 'allow',
     list_directory: 'allow',
+    search_codebase: 'allow',
     search_code: 'allow',
     search_code_ast: 'allow',
     write_files: 'deny',
     run_command: 'ask',
     update_memory_bank: 'allow',
+    task: 'allow',
   },
   ask: {
     read_files: 'allow',
     list_directory: 'allow',
+    search_codebase: 'allow',
     search_code: 'allow',
     search_code_ast: 'allow',
     write_files: 'deny',
     run_command: 'deny',
+    task: 'deny',
   },
 }
 

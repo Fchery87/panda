@@ -27,10 +27,13 @@ import {
   createToolContext,
   type AgentEvent,
   type RuntimeConfig,
+  type ConvexClient as AgentConvexClient,
 } from '../lib/agent'
+import { ConvexCheckpointStore } from '../lib/agent/harness/convex-checkpoint-store'
 import { getUserFacingAgentError } from '../lib/chat/error-messages'
 import { extractTargetFilePaths } from '../components/chat/live-run-utils'
 import { normalizeChatMode, type PromptContext, type ChatMode } from '../lib/agent/prompt-library'
+import { appLog } from '@/lib/logger'
 import { toast } from 'sonner'
 
 /**
@@ -60,6 +63,7 @@ interface ProgressStep {
   category?: 'analysis' | 'rewrite' | 'tool' | 'complete' | 'other'
   details?: {
     toolName?: string
+    toolCallId?: string
     argsSummary?: string
     durationMs?: number
     errorExcerpt?: string
@@ -113,6 +117,7 @@ interface RunEventInput {
 }
 
 type TokenSource = 'exact' | 'estimated'
+type TracePersistenceStatus = 'live' | 'degraded'
 
 interface UsageTotals {
   promptTokens: number
@@ -131,6 +136,11 @@ interface UsageMetrics {
   contextSource: ContextWindowSource
 }
 
+interface BufferedRunEvent {
+  runId: Id<'agentRuns'>
+  event: RunEventInput & { sequence: number }
+}
+
 function summarizeArgs(args: Record<string, unknown> | undefined): string | undefined {
   if (!args) return undefined
   const serialized = JSON.stringify(args)
@@ -146,6 +156,10 @@ function toFiniteNumber(value: unknown, fallback = 0): number {
 function toOptionalFiniteNumber(value: unknown): number | undefined {
   const num = Number(value)
   return Number.isFinite(num) ? num : undefined
+}
+
+function logUseAgentError(message: string, error: unknown): void {
+  appLog.error(`[useAgent] ${message}`, error)
 }
 
 /**
@@ -204,6 +218,7 @@ interface UseAgentReturn {
   toolCalls: ToolCallInfo[]
   progressSteps: ProgressStep[]
   usageMetrics: UsageMetrics
+  tracePersistenceStatus: TracePersistenceStatus
 
   // Artifacts
   pendingArtifacts: Array<{ _id: string }>
@@ -214,6 +229,17 @@ interface UseAgentReturn {
 
   // Actions
   sendMessage: (content: string, contextFiles?: string[]) => Promise<void>
+  runEvalScenario: (scenario: {
+    input?: unknown
+    prompt?: string
+    expected?: unknown
+    mode?: string
+    evalMode?: 'read_only' | 'full'
+  }) => Promise<{
+    output: string
+    error?: string
+    usage?: { promptTokens: number; completionTokens: number; totalTokens: number }
+  }>
   handleSubmit: (e?: React.FormEvent) => Promise<void>
   handleInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
   stop: () => void
@@ -244,6 +270,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   } = options
 
   const convex = useConvex()
+  const convexClient = convex as unknown as AgentConvexClient
 
   // Convex queries & mutations
   const currentUser = useQuery(api.users.getCurrent)
@@ -262,10 +289,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
 
   // Memory bank
   const memoryBankContent = useQuery(
-    (api as any).memoryBank.get,
+    api.memoryBank.get,
     projectId ? { projectId: projectId as Id<'projects'> } : 'skip'
   )
-  const updateMemoryBankMutation = useMutation((api as any).memoryBank.update)
+  const updateMemoryBankMutation = useMutation(api.memoryBank.update)
 
   // Artifact store
   const pendingArtifactRecords = useQuery(api.artifacts.list, chatId ? { chatId } : 'skip')
@@ -287,6 +314,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const [error, setError] = useState<string | null>(null)
   const [providerModels, setProviderModels] = useState<ModelInfo[]>([])
   const [currentRunUsage, setCurrentRunUsage] = useState<UsageTotals & { source: TokenSource }>()
+  const [tracePersistenceStatus, setTracePersistenceStatus] =
+    useState<TracePersistenceStatus>('live')
 
   // Refs for controlling the agent
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -295,6 +324,12 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const rafFlushRef = useRef<number | null>(null)
   const runIdRef = useRef<Id<'agentRuns'> | null>(null)
   const runSequenceRef = useRef(0)
+  const runEventBufferRef = useRef<BufferedRunEvent[]>([])
+  const runEventFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const runEventFlushPromiseRef = useRef<Promise<void> | null>(null)
+  const runEventFlushAgainRef = useRef(false)
+  const runEventFlushAgainForceRef = useRef(false)
+  const tracePersistenceStatusRef = useRef<TracePersistenceStatus>('live')
 
   // Create artifact queue helpers
   const artifactQueue = useRef({
@@ -323,16 +358,16 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       projectId,
       chatId,
       userId,
-      convex,
+      convexClient,
       artifactQueue.current,
       {
         files: { batchGet: api.files.batchGet, list: api.files.list },
         jobs: { create: api.jobs.create, updateStatus: api.jobs.updateStatus },
         artifacts: { create: api.artifacts.create },
-        memoryBank: { update: (api as any).memoryBank.update },
+        memoryBank: { update: api.memoryBank.update },
       }
     )
-  }, [projectId, chatId, convex, userId])
+  }, [projectId, chatId, convexClient, userId])
 
   // Stop the agent
   const getReasoningRuntimeSettings = useCallback(() => {
@@ -381,7 +416,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         if (!cancelled) {
           setProviderModels(Array.isArray(models) ? models : [])
         }
-      } catch {
+      } catch (error) {
+        void error
         if (!cancelled) {
           setProviderModels([])
         }
@@ -433,40 +469,143 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     }
   }, [mode, sessionUsage, currentRunUsage, contextWindowResolution])
 
-  const appendRunEvent = useCallback(
-    async (event: RunEventInput) => {
-      if (!runIdRef.current) return
-      runSequenceRef.current += 1
-      try {
-        await appendRunEvents({
-          runId: runIdRef.current,
-          events: [{ sequence: runSequenceRef.current, ...event }],
-        })
-      } catch (err) {
-        console.error('Failed to append run event:', err)
+  const setTraceStatus = useCallback((next: TracePersistenceStatus) => {
+    if (tracePersistenceStatusRef.current === next) return
+    tracePersistenceStatusRef.current = next
+    setTracePersistenceStatus(next)
+  }, [])
+
+  const flushRunEventBuffer = useCallback(
+    async (options?: { force?: boolean; reason?: string }) => {
+      if (runEventFlushTimerRef.current !== null) {
+        clearTimeout(runEventFlushTimerRef.current)
+        runEventFlushTimerRef.current = null
+      }
+
+      if (runEventFlushPromiseRef.current) {
+        runEventFlushAgainRef.current = true
+        if (options?.force) {
+          runEventFlushAgainForceRef.current = true
+        }
+        if (options?.force) {
+          await runEventFlushPromiseRef.current
+          // Force flush callers must wait for any trailing flush queued while an
+          // earlier flush was in flight.
+          await flushRunEventBuffer({ ...options, force: true })
+        }
+        return
+      }
+
+      if (runEventBufferRef.current.length === 0) return
+
+      const doFlush = async () => {
+        const pending = runEventBufferRef.current.splice(0, runEventBufferRef.current.length)
+        if (pending.length === 0) return
+
+        const grouped = new Map<Id<'agentRuns'>, Array<BufferedRunEvent['event']>>()
+        for (const entry of pending) {
+          const events = grouped.get(entry.runId)
+          if (events) {
+            events.push(entry.event)
+          } else {
+            grouped.set(entry.runId, [entry.event])
+          }
+        }
+
+        try {
+          for (const [runId, events] of grouped) {
+            await appendRunEvents({ runId, events })
+          }
+          setTraceStatus('live')
+        } catch (err) {
+          runEventBufferRef.current = [...pending, ...runEventBufferRef.current]
+          setTraceStatus('degraded')
+          logUseAgentError(
+            `Failed to flush run event buffer${options?.reason ? ` (${options.reason})` : ''}`,
+            err
+          )
+          // Best-effort retry path for transient failures; avoids throwing into UI flow.
+          if (runEventFlushTimerRef.current === null) {
+            runEventFlushTimerRef.current = setTimeout(() => {
+              runEventFlushTimerRef.current = null
+              void flushRunEventBuffer({ reason: 'retry' })
+            }, 1000)
+          }
+        }
+      }
+
+      runEventFlushPromiseRef.current = doFlush().finally(() => {
+        runEventFlushPromiseRef.current = null
+      })
+      await runEventFlushPromiseRef.current
+
+      if (runEventFlushAgainRef.current) {
+        const pendingForce = runEventFlushAgainForceRef.current
+        runEventFlushAgainRef.current = false
+        runEventFlushAgainForceRef.current = false
+        if (runEventBufferRef.current.length > 0) {
+          await flushRunEventBuffer({
+            ...options,
+            force: Boolean(options?.force) || pendingForce,
+          })
+        }
       }
     },
-    [appendRunEvents]
+    [appendRunEvents, setTraceStatus]
+  )
+
+  const scheduleRunEventFlush = useCallback(() => {
+    if (runEventFlushTimerRef.current !== null) return
+    runEventFlushTimerRef.current = setTimeout(() => {
+      runEventFlushTimerRef.current = null
+      void flushRunEventBuffer({ reason: 'timer' })
+    }, 400)
+  }, [flushRunEventBuffer])
+
+  const appendRunEvent = useCallback(
+    async (event: RunEventInput, options?: { forceFlush?: boolean }) => {
+      const runId = runIdRef.current
+      if (!runId) return
+      runSequenceRef.current += 1
+      runEventBufferRef.current.push({
+        runId,
+        event: { sequence: runSequenceRef.current, ...event },
+      })
+
+      if (runEventBufferRef.current.length >= 10 || options?.forceFlush) {
+        await flushRunEventBuffer({
+          force: Boolean(options?.forceFlush),
+          reason: options?.forceFlush ? 'force' : 'threshold',
+        })
+        return
+      }
+
+      scheduleRunEventFlush()
+    },
+    [flushRunEventBuffer, scheduleRunEventFlush]
   )
 
   // Stop the agent
   const stop = useCallback(() => {
+    const runId = runIdRef.current
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
-      abortControllerRef.current = null
     }
     if (rafFlushRef.current !== null) {
       cancelAnimationFrame(rafFlushRef.current)
       rafFlushRef.current = null
     }
-    if (runIdRef.current) {
-      void stopRun({ runId: runIdRef.current })
-      runIdRef.current = null
-      runSequenceRef.current = 0
+    if (runEventFlushTimerRef.current !== null) {
+      clearTimeout(runEventFlushTimerRef.current)
+      runEventFlushTimerRef.current = null
     }
-    isRunningRef.current = false
+    if (runId) {
+      // Keep runId/sequence until sendMessage finalizes the stopped run so
+      // trailing abort-unwind events can still be buffered and persisted.
+      void flushRunEventBuffer({ force: true, reason: 'stop' })
+    }
     setStatus('idle')
-  }, [stopRun])
+  }, [flushRunEventBuffer])
 
   // Clear messages
   const clear = useCallback(() => {
@@ -610,7 +749,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           ],
         })
       } catch (err) {
-        console.error('Failed to persist user message:', err)
+        logUseAgentError('Failed to persist user message', err)
       }
 
       try {
@@ -635,6 +774,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         const finalizeRunCompleted = async (summary?: string, usage?: Record<string, unknown>) => {
           if (!runIdRef.current || runFinalized) return
           runFinalized = true
+          await flushRunEventBuffer({ force: true, reason: 'complete' })
           await completeRun({
             runId: runIdRef.current,
             summary,
@@ -647,6 +787,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         const finalizeRunFailed = async (message: string) => {
           if (!runIdRef.current || runFinalized) return
           runFinalized = true
+          await flushRunEventBuffer({ force: true, reason: 'fail' })
           await failRun({
             runId: runIdRef.current,
             error: message,
@@ -658,6 +799,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         const finalizeRunStopped = async () => {
           if (!runIdRef.current || runFinalized) return
           runFinalized = true
+          await flushRunEventBuffer({ force: true, reason: 'stop' })
           await stopRun({
             runId: runIdRef.current,
           })
@@ -698,6 +840,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           maxToolCallsPerIteration: 50,
           enableToolDeduplication: true,
           toolLoopThreshold: 3,
+          harnessSessionID: `harness_run_${runId}`,
+          harnessAutoResume: true,
         }
 
         // Get tool context
@@ -707,11 +851,11 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
 
         const toolContext =
           toolContextRef.current ??
-          createToolContext(projectId, chatId, userId, convex, artifactQueue.current, {
+          createToolContext(projectId, chatId, userId, convexClient, artifactQueue.current, {
             files: { batchGet: api.files.batchGet, list: api.files.list },
             jobs: { create: api.jobs.create, updateStatus: api.jobs.updateStatus },
             artifacts: { create: api.artifacts.create },
-            memoryBank: { update: (api as any).memoryBank.update },
+            memoryBank: { update: api.memoryBank.update },
           })
 
         // Create agent runtime
@@ -721,6 +865,17 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             provider,
             model,
             maxIterations: runtimeConfig.maxIterations,
+            harnessCheckpointStore: new ConvexCheckpointStore(
+              convex as unknown as {
+                query: (func: unknown, args: Record<string, unknown>) => Promise<unknown>
+                mutation: (func: unknown, args: Record<string, unknown>) => Promise<unknown>
+              },
+              {
+                runId,
+                chatId,
+                projectId,
+              }
+            ),
             ...(runtimeSettings.reasoning ? { reasoning: runtimeSettings.reasoning } : {}),
           },
           toolContext
@@ -897,11 +1052,13 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                   category: event.progressCategory ?? 'other',
                   details:
                     event.progressToolName ||
+                    event.progressToolCallId ||
                     event.progressArgs ||
                     event.progressDurationMs ||
                     event.progressError
                       ? {
                           toolName: event.progressToolName,
+                          toolCallId: event.progressToolCallId,
                           argsSummary: summarizeArgs(event.progressArgs),
                           durationMs: event.progressDurationMs,
                           errorExcerpt: event.progressError?.slice(0, 160),
@@ -921,6 +1078,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                   status: step.status,
                   progressCategory: step.category,
                   progressToolName: step.details?.toolName,
+                  toolCallId: step.details?.toolCallId,
                   progressHasArtifactTarget: step.details?.hasArtifactTarget,
                   targetFilePaths: step.details?.targetFilePaths,
                   toolName: step.details?.toolName,
@@ -1085,18 +1243,21 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                   content: assistantContent,
                   annotations: [annotations],
                 })
-                void appendRunEvent({
-                  type: 'assistant_message',
-                  content: assistantContent,
-                  usage: event.usage as Record<string, unknown> | undefined,
-                  status: 'completed',
-                })
+                await appendRunEvent(
+                  {
+                    type: 'assistant_message',
+                    content: assistantContent,
+                    usage: event.usage as Record<string, unknown> | undefined,
+                    status: 'completed',
+                  },
+                  { forceFlush: true }
+                )
                 await finalizeRunCompleted(
                   assistantContent,
                   event.usage as Record<string, unknown> | undefined
                 )
               } catch (err) {
-                console.error('Failed to persist assistant message:', err)
+                logUseAgentError('Failed to persist assistant message', err)
               }
               break
 
@@ -1105,11 +1266,14 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               setStatus('error')
               setError(userFacing.description)
               isRunningRef.current = false
-              void appendRunEvent({
-                type: 'error',
-                error: event.error || 'Unknown error',
-                status: 'failed',
-              })
+              await appendRunEvent(
+                {
+                  type: 'error',
+                  error: event.error || 'Unknown error',
+                  status: 'failed',
+                },
+                { forceFlush: true }
+              )
               await finalizeRunFailed(event.error || 'Unknown error')
               toast.error(userFacing.title, {
                 description: userFacing.description,
@@ -1131,16 +1295,20 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         setStatus('error')
         setError(userFacing.description)
         isRunningRef.current = false
-        void appendRunEvent({
-          type: 'error',
-          error: message,
-          status: 'failed',
-        })
+        await appendRunEvent(
+          {
+            type: 'error',
+            error: message,
+            status: 'failed',
+          },
+          { forceFlush: true }
+        )
         if (runIdRef.current) {
           try {
+            await flushRunEventBuffer({ force: true, reason: 'fail' })
             await failRun({ runId: runIdRef.current, error: message })
           } catch (runErr) {
-            console.error('Failed to finalize run failure:', runErr)
+            logUseAgentError('Failed to finalize run failure', runErr)
           } finally {
             runIdRef.current = null
             runSequenceRef.current = 0
@@ -1164,7 +1332,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       createRun,
       appendRunEvent,
       completeRun,
+      convex,
+      convexClient,
       failRun,
+      flushRunEventBuffer,
       stopRun,
       userId,
       getReasoningRuntimeSettings,
@@ -1181,6 +1352,82 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       await sendMessage(input)
     },
     [input, sendMessage]
+  )
+
+  const runEvalScenario = useCallback<UseAgentReturn['runEvalScenario']>(
+    async (scenario) => {
+      if (!userId) {
+        throw new Error('User not authenticated')
+      }
+      if (!provider) {
+        throw new Error('Provider unavailable')
+      }
+
+      const toolContext =
+        toolContextRef.current ??
+        createToolContext(projectId, chatId, userId, convexClient, artifactQueue.current, {
+          files: { batchGet: api.files.batchGet, list: api.files.list },
+          jobs: { create: api.jobs.create, updateStatus: api.jobs.updateStatus },
+          artifacts: { create: api.artifacts.create },
+          memoryBank: { update: api.memoryBank.update },
+        })
+
+      const runtimeSettings = getReasoningRuntimeSettings()
+      const runtime = createAgentRuntime(
+        {
+          provider,
+          model,
+          maxIterations: 10,
+          harnessEvalMode: scenario.evalMode ?? 'read_only',
+          ...(runtimeSettings.reasoning ? { reasoning: runtimeSettings.reasoning } : {}),
+        },
+        toolContext
+      )
+
+      const scenarioMode = normalizeChatMode(
+        typeof scenario.mode === 'string' ? scenario.mode : mode,
+        mode
+      )
+      const textInput =
+        typeof scenario.prompt === 'string'
+          ? scenario.prompt
+          : typeof scenario.input === 'string'
+            ? scenario.input
+            : JSON.stringify(scenario.input ?? '', null, 2)
+
+      const promptContext: PromptContext = {
+        projectId,
+        chatId,
+        userId,
+        chatMode: scenarioMode,
+        provider: provider.config?.provider || 'openai',
+        previousMessages: [],
+        memoryBank: memoryBankContent ?? undefined,
+        userMessage: textInput,
+        customInstructions: architectBrainstormEnabled
+          ? 'Architect brainstorming protocol: enabled'
+          : undefined,
+      }
+
+      const result = await runtime.runSync(promptContext)
+      return {
+        output: result.content,
+        error: result.error,
+        usage: result.usage,
+      }
+    },
+    [
+      userId,
+      provider,
+      projectId,
+      chatId,
+      convexClient,
+      getReasoningRuntimeSettings,
+      model,
+      mode,
+      memoryBankContent,
+      architectBrainstormEnabled,
+    ]
   )
 
   // Cleanup on unmount
@@ -1207,11 +1454,13 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       await updateMemoryBankMutation({ projectId: projectId as Id<'projects'>, content })
     },
     sendMessage,
+    runEvalScenario,
     handleSubmit,
     handleInputChange,
     stop,
     clear,
     error,
+    tracePersistenceStatus,
   }
 }
 

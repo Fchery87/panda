@@ -5,6 +5,7 @@
  * Uses the Vercel AI SDK for streaming completions.
  */
 
+import { appLog } from '@/lib/logger'
 import { streamText, generateText, jsonSchema, type CoreMessage, type ToolSet } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
 import { formatProviderError } from './error-utils'
@@ -20,6 +21,60 @@ import type {
   ToolDefinition,
 } from '../types'
 import { zaiCompletionStream } from './zai-stream'
+
+type FinishReason = NonNullable<StreamChunk['finishReason']>
+type JsonSchemaInput = Parameters<typeof jsonSchema>[0]
+type StreamTextArgs = Parameters<typeof streamText>[0]
+type AiStreamPart = {
+  type: string
+  textDelta?: string
+  text?: string
+  toolCallId?: string
+  toolName?: string
+  input?: unknown
+  args?: unknown
+  error?: unknown
+  finishReason?: string
+  totalUsage?: {
+    inputTokens?: number
+    outputTokens?: number
+  }
+}
+type CoreMessageWithExtras = CoreMessage & {
+  name?: string
+  tool_calls?: ToolCall[]
+  tool_call_id?: string
+}
+type OpenRouterModel = {
+  id?: string
+  name?: string
+  description?: string
+  top_provider?: { max_completion_tokens?: number }
+  context_length?: number
+  features?: string[]
+  pricing?: { prompt?: number; completion?: number }
+}
+type TogetherModel = {
+  id?: string
+  display_name?: string
+  description?: string
+  context_length?: number
+  supports_tools?: boolean
+  supports_vision?: boolean
+}
+type OpenRouterModelsResponse = { data?: OpenRouterModel[] }
+
+function normalizeFinishReason(value: unknown): FinishReason {
+  switch (value) {
+    case 'stop':
+    case 'length':
+    case 'tool_calls':
+    case 'error':
+      return value
+    default:
+      return 'stop'
+  }
+}
 
 function splitForPerceivedStreaming(text: string, maxChunkChars = 12): string[] {
   if (!text) return []
@@ -117,7 +172,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
         role: 'assistant',
         content: result.text,
       },
-      finishReason: result.finishReason as any,
+      finishReason: normalizeFinishReason(result.finishReason),
       usage: {
         promptTokens: result.usage.promptTokens,
         completionTokens: result.usage.completionTokens,
@@ -149,7 +204,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
       const tools =
         options.tools && options.tools.length > 0 ? this.convertTools(options.tools) : undefined
 
-      const streamOptions: any = {
+      const streamOptions: StreamTextArgs = {
         model: this.client(options.model),
         messages: this.convertMessages(options.messages),
         temperature: options.temperature ?? 0.7,
@@ -162,7 +217,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
       }
 
       const result = streamText(streamOptions)
-      for await (const part of result.fullStream as AsyncIterable<any>) {
+      for await (const part of result.fullStream as AsyncIterable<AiStreamPart>) {
         switch (part.type) {
           case 'text-delta': {
             const delta = part.textDelta ?? part.text
@@ -180,6 +235,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
             break
           }
           case 'tool-call': {
+            if (!part.toolCallId || !part.toolName) break
             const toolCall: ToolCall = {
               id: part.toolCallId,
               type: 'function',
@@ -200,7 +256,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
           case 'finish':
             yield {
               type: 'finish',
-              finishReason: (part.finishReason ?? 'stop') as any,
+              finishReason: normalizeFinishReason(part.finishReason),
               usage: part.totalUsage
                 ? {
                     promptTokens: part.totalUsage.inputTokens ?? 0,
@@ -256,16 +312,16 @@ export class OpenAICompatibleProvider implements LLMProvider {
       const baseMessage = {
         role: msg.role,
         content: msg.content,
-      } as CoreMessage
+      } as CoreMessageWithExtras
 
       if (msg.name) {
-        ;(baseMessage as any).name = msg.name
+        baseMessage.name = msg.name
       }
       if (msg.tool_calls) {
-        ;(baseMessage as any).tool_calls = msg.tool_calls
+        baseMessage.tool_calls = msg.tool_calls
       }
       if (msg.tool_call_id) {
-        ;(baseMessage as any).tool_call_id = msg.tool_call_id
+        baseMessage.tool_call_id = msg.tool_call_id
       }
 
       return baseMessage
@@ -339,7 +395,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
     tools.forEach((tool: ToolDefinition) => {
       toolSet[tool.function.name] = {
         description: tool.function.description,
-        parameters: jsonSchema(tool.function.parameters as any),
+        parameters: jsonSchema(tool.function.parameters as JsonSchemaInput),
       }
     })
     return toolSet
@@ -360,32 +416,33 @@ export class OpenAICompatibleProvider implements LLMProvider {
         throw new Error(`Failed to fetch OpenRouter models: ${response.statusText}`)
       }
 
-      const data = await response.json()
+      const data = (await response.json()) as OpenRouterModelsResponse
 
-      return data.data.map((model: any) => ({
-        id: model.id,
-        name: model.name || model.id,
-        provider: 'openrouter' as const,
-        description: model.description,
-        maxTokens: model.top_provider?.max_completion_tokens || 4096,
-        contextWindow: model.context_length || 8192,
-        capabilities: {
-          streaming: true,
-          functionCalling: model.features?.includes('tools') || false,
-          vision:
-            model.features?.includes('vision') ||
-            model.id.includes('vision') ||
-            model.id.includes('claude-3'),
-          jsonMode: true,
-          toolUse: model.features?.includes('tools') || false,
-        },
-        pricing: {
-          inputPerToken: model.pricing?.prompt || 0,
-          outputPerToken: model.pricing?.completion || 0,
-        },
-      }))
+      return (data.data ?? []).map((model) => {
+        const id = model.id ?? ''
+        const features = model.features ?? []
+        return {
+          id,
+          name: model.name || id,
+          provider: 'openrouter' as const,
+          description: model.description,
+          maxTokens: model.top_provider?.max_completion_tokens || 4096,
+          contextWindow: model.context_length || 8192,
+          capabilities: {
+            streaming: true,
+            functionCalling: features.includes('tools'),
+            vision: features.includes('vision') || id.includes('vision') || id.includes('claude-3'),
+            jsonMode: true,
+            toolUse: features.includes('tools'),
+          },
+          pricing: {
+            inputPerToken: model.pricing?.prompt || 0,
+            outputPerToken: model.pricing?.completion || 0,
+          },
+        }
+      })
     } catch (error) {
-      console.error('Error fetching OpenRouter models:', error)
+      appLog.error('Error fetching OpenRouter models:', error)
       return this.getFallbackModels('openrouter')
     }
   }
@@ -405,25 +462,28 @@ export class OpenAICompatibleProvider implements LLMProvider {
         throw new Error(`Failed to fetch Together models: ${response.statusText}`)
       }
 
-      const data = await response.json()
+      const data = (await response.json()) as TogetherModel[]
 
-      return data.map((model: any) => ({
-        id: model.id,
-        name: model.display_name || model.id,
-        provider: 'together' as const,
-        description: model.description,
-        maxTokens: model.context_length || 4096,
-        contextWindow: model.context_length || 8192,
-        capabilities: {
-          streaming: true,
-          functionCalling: model.supports_tools || false,
-          vision: model.supports_vision || model.id.includes('llava') || false,
-          jsonMode: true,
-          toolUse: model.supports_tools || false,
-        },
-      }))
+      return data.map((model) => {
+        const id = model.id ?? ''
+        return {
+          id,
+          name: model.display_name || id,
+          provider: 'together' as const,
+          description: model.description,
+          maxTokens: model.context_length || 4096,
+          contextWindow: model.context_length || 8192,
+          capabilities: {
+            streaming: true,
+            functionCalling: model.supports_tools || false,
+            vision: model.supports_vision || id.includes('llava') || false,
+            jsonMode: true,
+            toolUse: model.supports_tools || false,
+          },
+        }
+      })
     } catch (error) {
-      console.error('Error fetching Together models:', error)
+      appLog.error('Error fetching Together models:', error)
       return this.getFallbackModels('together')
     }
   }

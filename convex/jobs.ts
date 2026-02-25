@@ -216,7 +216,7 @@ export const cleanupOldJobs = mutation({
     const jobs = await ctx.db
       .query('jobs')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
-      .filter((q) => q.lt(q.field('createdAt'), cutoffTime as any))
+      .filter((q) => q.lt(q.field('createdAt'), cutoffTime))
       .filter((q) =>
         q.or(q.eq('status', 'completed'), q.eq('status', 'failed'), q.eq('status', 'cancelled'))
       )

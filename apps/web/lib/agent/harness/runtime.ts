@@ -25,6 +25,10 @@ import type {
   RuntimeConfig,
   FinishReason,
   Identifier,
+  HookType,
+  ToolInterruptRequest,
+  ToolInterruptResult,
+  ToolRiskTier,
 } from './types'
 import type {
   LLMProvider,
@@ -39,7 +43,14 @@ import { agents } from './agents'
 import { permissions, checkPermission } from './permissions'
 import { plugins } from './plugins'
 import { compaction, needsCompaction } from './compaction'
+import { snapshots } from './snapshots'
 import { executeTaskTool, getTaskToolDefinitions } from './task-tool'
+import type {
+  RuntimeCheckpoint,
+  RuntimeCheckpointPendingSubtask,
+  RuntimeCheckpointReason,
+  RuntimeCheckpointState,
+} from './checkpoint-store'
 
 /**
  * Runtime state
@@ -58,13 +69,11 @@ interface RuntimeState {
     output: number
     reasoning: number
   }
+  lastToolLoopSignature: string | null
+  toolLoopStreak: number
 }
 
-interface PendingSubtask {
-  part: SubtaskPart
-  parentAgent: AgentConfig
-  description: string
-}
+type PendingSubtask = RuntimeCheckpointPendingSubtask
 
 /**
  * Tool execution context
@@ -102,6 +111,8 @@ export type RuntimeEventType =
   | 'compaction'
   | 'permission_request'
   | 'permission_decision'
+  | 'interrupt_request'
+  | 'interrupt_decision'
   | 'error'
   | 'complete'
 
@@ -114,7 +125,19 @@ export interface RuntimeEvent {
   reasoningContent?: string
   toolCall?: ToolCall
   toolResult?: { toolName: string; output: string; error?: string }
-  subagent?: { agent: string; sessionID: Identifier; success?: boolean; error?: string }
+  interrupt?: {
+    toolName: string
+    riskTier: ToolRiskTier
+    decision?: 'approve' | 'reject' | 'edit'
+    reason?: string
+  }
+  subagent?: {
+    agent: string
+    sessionID: Identifier
+    id?: string
+    success?: boolean
+    error?: string
+  }
   step?: number
   finishReason?: FinishReason
   usage?: { input: number; output: number; reasoning: number }
@@ -133,9 +156,13 @@ const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = {
   toolLoopThreshold: 3,
   contextCompactionThreshold: 0.9,
   enableSnapshots: false,
+  snapshotFailureMode: 'warn',
   enableReasoning: true,
   maxSubagentDepth: 2,
   subagentDepth: 0,
+  maxToolExecutionRetries: 0,
+  toolRetryBackoffMs: 200,
+  enableToolCallIdempotencyCache: false,
 }
 
 /**
@@ -146,6 +173,15 @@ export class Runtime {
   private toolExecutors: Map<string, ToolExecutor>
   private config: RuntimeConfig
   private state: RuntimeState | null = null
+  private toolCallResultCache = new Map<
+    string,
+    {
+      output: string
+      error?: string
+      metadata?: Record<string, unknown>
+      argsUsed?: Record<string, unknown>
+    }
+  >()
 
   constructor(
     provider: LLMProvider,
@@ -165,13 +201,41 @@ export class Runtime {
     userMessage: UserMessage,
     initialMessages: Message[] = []
   ): AsyncGenerator<RuntimeEvent> {
+    this.toolCallResultCache.clear()
     const agent = agents.get(userMessage.agent) ?? agents.get('build')!
     const maxSteps = agent.steps ?? this.config.maxSteps ?? 50
-    const contextLimit = this.provider.config.auth.baseUrl?.includes('anthropic') ? 200000 : 128000
+    this.state = this.createInitialState(sessionID, [...initialMessages, userMessage])
 
-    this.state = {
+    yield* this.runLoop(agent, maxSteps, { emitSessionStart: true })
+  }
+
+  /**
+   * Resume a session from a stored checkpoint
+   */
+  async *resume(sessionID: Identifier): AsyncGenerator<RuntimeEvent> {
+    this.toolCallResultCache.clear()
+    const checkpointStore = this.config.checkpointStore
+    if (!checkpointStore) {
+      throw new Error('Checkpoint store is not configured')
+    }
+
+    const checkpoint = await checkpointStore.load(sessionID)
+    if (!checkpoint) {
+      throw new Error(`No checkpoint found for session: ${sessionID}`)
+    }
+
+    const agent = agents.get(checkpoint.agentName) ?? agents.get('build')!
+    const maxSteps = agent.steps ?? this.config.maxSteps ?? 50
+
+    this.state = this.restoreStateFromCheckpoint(checkpoint.state)
+
+    yield* this.runLoop(agent, maxSteps, { emitSessionStart: false })
+  }
+
+  private createInitialState(sessionID: Identifier, messages: Message[]): RuntimeState {
+    return {
       sessionID,
-      messages: [...initialMessages, userMessage],
+      messages,
       step: 0,
       isComplete: false,
       isLastStep: false,
@@ -179,9 +243,30 @@ export class Runtime {
       pendingSubtasks: [],
       cost: 0,
       tokens: { input: 0, output: 0, reasoning: 0 },
+      lastToolLoopSignature: null,
+      toolLoopStreak: 0,
+    }
+  }
+
+  private async *runLoop(
+    agent: AgentConfig,
+    maxSteps: number,
+    options: { emitSessionStart: boolean }
+  ): AsyncGenerator<RuntimeEvent> {
+    if (!this.state) {
+      throw new Error('Runtime not initialized')
     }
 
-    await this.executeHook('session.start', { sessionID, step: 0, agent, messageID: '' }, {})
+    const sessionID = this.state.sessionID
+    const contextLimit = this.provider.config.auth.baseUrl?.includes('anthropic') ? 200000 : 128000
+
+    if (options.emitSessionStart) {
+      await this.executeHook(
+        'session.start',
+        { sessionID, step: this.state.step, agent, messageID: '' },
+        {}
+      )
+    }
 
     try {
       while (!this.state.isComplete && this.state.step < maxSteps) {
@@ -200,6 +285,7 @@ export class Runtime {
 
         if (this.state.pendingSubtasks.length > 0) {
           yield* this.processSubtasks(agent)
+          await this.saveCheckpoint(agent.name, 'step')
           continue
         }
 
@@ -211,15 +297,24 @@ export class Runtime {
             maxToolOutputLength: 10000,
           })
         ) {
-          yield* this.performCompaction(agent)
-          continue
+          const compacted = yield* this.performCompaction(agent)
+          if (compacted) {
+            await this.saveCheckpoint(agent.name, 'step')
+            continue
+          }
         }
 
         const result = yield* this.executeStep(agent, isLastStep)
 
+        if (result.messageID) {
+          yield* this.captureStepSnapshot(agent, result.messageID)
+        }
+
         if (result.finishReason === 'stop' || result.finishReason === 'length') {
           this.state.isComplete = true
         }
+
+        await this.saveCheckpoint(agent.name, 'step')
 
         yield {
           type: 'step_finish',
@@ -236,11 +331,19 @@ export class Runtime {
         )
       }
 
+      let completedSuccessfully = this.state.isComplete
       if (!this.state.isComplete) {
+        await this.saveCheckpoint(agent.name, 'error')
         yield {
           type: 'error',
           error: `Agent reached maximum steps (${maxSteps}) without completing`,
         }
+      } else {
+        completedSuccessfully = true
+      }
+
+      if (completedSuccessfully) {
+        await this.saveCheckpoint(agent.name, 'complete')
       }
 
       yield {
@@ -255,6 +358,7 @@ export class Runtime {
         {}
       )
     } catch (error) {
+      await this.saveCheckpoint(agent.name, 'error')
       yield {
         type: 'error',
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -268,7 +372,7 @@ export class Runtime {
   private async *executeStep(
     agent: AgentConfig,
     isLastStep: boolean
-  ): AsyncGenerator<RuntimeEvent> {
+  ): AsyncGenerator<RuntimeEvent, { finishReason: FinishReason; messageID?: Identifier }> {
     if (!this.state) throw new Error('Runtime not initialized')
 
     const messageID = ascending('msg_')
@@ -351,12 +455,12 @@ export class Runtime {
 
           case 'error':
             yield { type: 'error', error: chunk.error }
-            return { finishReason: 'error' as FinishReason }
+            return { finishReason: 'error' as FinishReason, messageID }
         }
       }
     } catch (error) {
       yield { type: 'error', error: error instanceof Error ? error.message : 'Stream error' }
-      return { finishReason: 'error' }
+      return { finishReason: 'error', messageID }
     }
 
     if (reasoningContent) {
@@ -383,56 +487,184 @@ export class Runtime {
 
     if (pendingToolCalls.length > 0) {
       finishReason = 'tool-calls'
-
-      for (const toolCall of pendingToolCalls) {
-        if (toolCall.function.name === 'task') {
-          const rawArgs = JSON.parse(toolCall.function.arguments) as {
-            subagent_type?: string
-            prompt?: string
-            description?: string
+      const preparedToolCalls = pendingToolCalls.map((toolCall) => {
+        const parsedArgs = (() => {
+          try {
+            return JSON.parse(toolCall.function.arguments) as Record<string, unknown>
+          } catch {
+            return {} as Record<string, unknown>
           }
-          const subtaskPart: SubtaskPart = {
+        })()
+
+        return {
+          toolCall,
+          parsedArgs,
+          dedupKey: this.createToolCallDedupKey(toolCall.function.name, parsedArgs),
+        }
+      })
+
+      let processedToolCallsThisStep = 0
+      const maxToolCallsPerStep = this.config.maxToolCallsPerStep
+      const dedupEnabled = this.config.enableToolDeduplication === true
+      const seenDedupKeysThisStep = new Set<string>()
+
+      const executableToolKeysForLoop = [] as string[]
+      {
+        let previewProcessedToolCallsThisStep = 0
+        const previewSeenDedupKeysThisStep = new Set<string>()
+
+        for (const prepared of preparedToolCalls) {
+          if (dedupEnabled && previewSeenDedupKeysThisStep.has(prepared.dedupKey)) {
+            continue
+          }
+          if (dedupEnabled) {
+            previewSeenDedupKeysThisStep.add(prepared.dedupKey)
+          }
+          if (
+            typeof maxToolCallsPerStep === 'number' &&
+            previewProcessedToolCallsThisStep >= maxToolCallsPerStep
+          ) {
+            continue
+          }
+          previewProcessedToolCallsThisStep++
+          executableToolKeysForLoop.push(prepared.dedupKey)
+        }
+      }
+
+      const toolLoopGuardTriggered = this.applyToolLoopGuard(executableToolKeysForLoop)
+      if (toolLoopGuardTriggered) {
+        const threshold = this.config.toolLoopThreshold
+        yield {
+          type: 'error',
+          error:
+            `Detected repeated tool loop across steps (threshold: ${threshold}); ` +
+            'halting before executing tool calls',
+        }
+        this.state.isComplete = true
+      } else {
+        for (const { toolCall, parsedArgs, dedupKey } of preparedToolCalls) {
+          const toolName = toolCall.function.name
+
+          if (dedupEnabled && seenDedupKeysThisStep.has(dedupKey)) {
+            const error =
+              `Skipped duplicate tool call within step: ${toolName} ` + '(duplicate tool call)'
+
+            yield {
+              type: 'tool_result',
+              toolResult: {
+                toolName,
+                output: '',
+                error,
+              },
+            }
+
+            assistantMessage.parts.push({
+              id: ascending('part_'),
+              messageID,
+              sessionID: this.state.sessionID,
+              type: 'tool',
+              tool: toolName,
+              state: {
+                status: 'error',
+                input: parsedArgs,
+                error,
+                time: { start: Date.now(), end: Date.now() },
+              },
+            })
+            continue
+          }
+          if (dedupEnabled) {
+            seenDedupKeysThisStep.add(dedupKey)
+          }
+
+          if (
+            typeof maxToolCallsPerStep === 'number' &&
+            processedToolCallsThisStep >= maxToolCallsPerStep
+          ) {
+            const error =
+              `Reached maximum tool calls per step (${maxToolCallsPerStep}); ` +
+              `skipping additional tool call: ${toolName}`
+
+            yield {
+              type: 'tool_result',
+              toolResult: {
+                toolName,
+                output: '',
+                error,
+              },
+            }
+
+            assistantMessage.parts.push({
+              id: ascending('part_'),
+              messageID,
+              sessionID: this.state.sessionID,
+              type: 'tool',
+              tool: toolName,
+              state: {
+                status: 'error',
+                input: parsedArgs,
+                error,
+                time: { start: Date.now(), end: Date.now() },
+              },
+            })
+            continue
+          }
+
+          processedToolCallsThisStep++
+
+          if (toolCall.function.name === 'task') {
+            const rawArgs = JSON.parse(toolCall.function.arguments) as {
+              subagent_type?: string
+              prompt?: string
+              description?: string
+            }
+            const subtaskPart: SubtaskPart = {
+              id: ascending('part_'),
+              messageID,
+              sessionID: this.state.sessionID,
+              type: 'subtask',
+              agent: String(rawArgs.subagent_type ?? ''),
+              prompt: String(rawArgs.prompt ?? ''),
+            }
+            this.state.pendingSubtasks.push({
+              part: subtaskPart,
+              parentAgent: agent,
+              description: String(rawArgs.description ?? 'subtask'),
+            })
+            assistantMessage.parts.push(subtaskPart)
+            continue
+          }
+
+          const toolResult = yield* this.executeToolCall(toolCall, agent, messageID)
+          const toolInput = toolResult.argsUsed ?? parsedArgs
+
+          const toolPart: ToolPart = {
             id: ascending('part_'),
             messageID,
             sessionID: this.state.sessionID,
-            type: 'subtask',
-            agent: String(rawArgs.subagent_type ?? ''),
-            prompt: String(rawArgs.prompt ?? ''),
+            type: 'tool',
+            tool: toolCall.function.name,
+            state: toolResult.error
+              ? {
+                  status: 'error',
+                  input: toolInput,
+                  error: toolResult.error,
+                  time: { start: Date.now(), end: Date.now() },
+                }
+              : {
+                  status: 'completed',
+                  input: toolInput,
+                  output: toolResult.output,
+                  time: { start: Date.now(), end: Date.now() },
+                },
           }
-          this.state.pendingSubtasks.push({
-            part: subtaskPart,
-            parentAgent: agent,
-            description: String(rawArgs.description ?? 'subtask'),
-          })
-          assistantMessage.parts.push(subtaskPart)
-          continue
+
+          assistantMessage.parts.push(toolPart)
         }
-
-        const toolResult = yield* this.executeToolCall(toolCall, agent, messageID)
-
-        const toolPart: ToolPart = {
-          id: ascending('part_'),
-          messageID,
-          sessionID: this.state.sessionID,
-          type: 'tool',
-          tool: toolCall.function.name,
-          state: toolResult.error
-            ? {
-                status: 'error',
-                input: JSON.parse(toolCall.function.arguments),
-                error: toolResult.error,
-                time: { start: Date.now(), end: Date.now() },
-              }
-            : {
-                status: 'completed',
-                input: JSON.parse(toolCall.function.arguments),
-                output: toolResult.output,
-                time: { start: Date.now(), end: Date.now() },
-              },
-        }
-
-        assistantMessage.parts.push(toolPart)
       }
+    } else {
+      this.state.lastToolLoopSignature = null
+      this.state.toolLoopStreak = 0
     }
 
     assistantMessage.time.completed = Date.now()
@@ -451,7 +683,7 @@ export class Runtime {
       { usage, finishReason, modelID: completionOptions.model }
     )
 
-    return { finishReason }
+    return { finishReason, messageID }
   }
 
   /**
@@ -465,8 +697,17 @@ export class Runtime {
     if (!this.state) throw new Error('Runtime not initialized')
 
     const toolName = toolCall.function.name
-    const args = JSON.parse(toolCall.function.arguments)
+    let args: Record<string, unknown>
+    try {
+      args = JSON.parse(toolCall.function.arguments) as Record<string, unknown>
+    } catch {
+      const error = `Invalid tool arguments for ${toolName}`
+      yield { type: 'tool_result', toolResult: { toolName, output: '', error } }
+      return { output: '', error }
+    }
     const patterns = this.extractPatterns(toolName, args)
+    const riskTier = this.classifyToolRisk(toolName, args)
+    const riskPolicyDecision = this.resolveRiskPolicyDecision(toolName, riskTier)
 
     const hookContext = {
       sessionID: this.state.sessionID,
@@ -476,6 +717,37 @@ export class Runtime {
     }
 
     await this.executeHook('tool.execute.before', hookContext, { toolName, args })
+
+    if (riskPolicyDecision === 'deny') {
+      const error =
+        this.config.toolRiskPolicy &&
+        ['write_files', 'run_command', 'update_memory_bank', 'task'].includes(toolName)
+          ? `Eval mode denied tool: ${toolName}`
+          : `Risk policy denied tool: ${toolName} (${riskTier})`
+      yield {
+        type: 'interrupt_decision',
+        content: error,
+        interrupt: { toolName, riskTier, decision: 'reject', reason: 'Risk policy deny' },
+      }
+      yield { type: 'tool_result', toolResult: { toolName, output: '', error } }
+      return { output: '', error, argsUsed: args }
+    }
+
+    if (riskPolicyDecision === 'ask') {
+      const interruptResult = yield* this.requestToolInterrupt({
+        sessionID: this.state.sessionID,
+        messageID,
+        toolName,
+        args,
+        patterns,
+        riskTier,
+        reason: `Risk-tier policy requires approval for ${toolName}`,
+      })
+      if (!interruptResult.approved) {
+        return { output: '', error: interruptResult.error ?? 'Tool interrupted', argsUsed: args }
+      }
+      args = interruptResult.args
+    }
 
     for (const pattern of patterns) {
       const decision = checkPermission(agent.permission, toolName, pattern || undefined)
@@ -488,7 +760,7 @@ export class Runtime {
             error: `Permission denied for tool: ${toolName}${pattern ? ` (${pattern})` : ''}`,
           },
         }
-        return { output: '', error: `Permission denied for tool: ${toolName}` }
+        return { output: '', error: `Permission denied for tool: ${toolName}`, argsUsed: args }
       }
     }
 
@@ -517,73 +789,166 @@ export class Runtime {
         }
 
         if (!result.granted) {
-          return { output: '', error: `Permission denied: ${result.reason}` }
+          return { output: '', error: `Permission denied: ${result.reason}`, argsUsed: args }
         }
       }
     }
 
     const executor = this.toolExecutors.get(toolName)
     if (!executor) {
-      return { output: '', error: `Unknown tool: ${toolName}` }
+      return { output: '', error: `Unknown tool: ${toolName}`, argsUsed: args }
     }
 
-    try {
-      const result = await executor(args, {
-        sessionID: this.state.sessionID,
-        messageID,
-        agent,
-        abortSignal: this.state.abortController.signal,
-        metadata: () => {},
-        ask: async (question: string) => {
-          return `User response: ${question}`
-        },
-      })
-
-      yield {
-        type: 'tool_result',
-        toolResult: {
-          toolName,
-          output: result.output,
-          error: result.error,
-        },
+    const cacheKey = this.createToolCallDedupKey(toolName, args)
+    if (
+      this.config.enableToolCallIdempotencyCache &&
+      this.isToolIdempotencyCacheAllowed(toolName)
+    ) {
+      const cached = this.toolCallResultCache.get(cacheKey)
+      if (cached) {
+        yield {
+          type: 'status',
+          content: `Idempotency cache hit for ${toolName}; reusing prior result`,
+        }
+        yield {
+          type: 'tool_result',
+          toolResult: {
+            toolName,
+            output: cached.output,
+            error: cached.error,
+          },
+        }
+        return cached
       }
-
-      await this.executeHook('tool.execute.after', hookContext, {
-        toolName,
-        args,
-        result,
-      })
-
-      return result
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Tool execution failed'
-      yield { type: 'tool_result', toolResult: { toolName, output: '', error: errorMessage } }
-      return { output: '', error: errorMessage }
     }
+
+    let lastError: string | undefined
+    const maxRetries = Math.max(0, this.config.maxToolExecutionRetries ?? 0)
+    const retryableTool = this.isToolRetryAllowed(toolName)
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const result = await executor(args, {
+          sessionID: this.state.sessionID,
+          messageID,
+          agent,
+          abortSignal: this.state.abortController.signal,
+          metadata: () => {},
+          ask: async (question: string) => {
+            return `User response: ${question}`
+          },
+        })
+
+        if (
+          this.config.enableToolCallIdempotencyCache &&
+          !result.error &&
+          this.isToolIdempotencyCacheAllowed(toolName)
+        ) {
+          this.toolCallResultCache.set(cacheKey, { ...result, argsUsed: args })
+        }
+
+        yield {
+          type: 'tool_result',
+          toolResult: {
+            toolName,
+            output: result.output,
+            error: result.error,
+          },
+        }
+
+        await this.executeHook('tool.execute.after', hookContext, {
+          toolName,
+          args,
+          result,
+        })
+
+        return { ...result, argsUsed: args }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Tool execution failed'
+        lastError = errorMessage
+        const canRetry =
+          retryableTool && attempt < maxRetries && this.isRetryableToolError(errorMessage)
+
+        if (canRetry) {
+          yield {
+            type: 'status',
+            content: `Retrying ${toolName} after transient failure (${attempt + 1}/${maxRetries})`,
+          }
+          await this.sleep(this.config.toolRetryBackoffMs ?? 200)
+          continue
+        }
+
+        yield { type: 'tool_result', toolResult: { toolName, output: '', error: errorMessage } }
+        return { output: '', error: errorMessage, argsUsed: args }
+      }
+    }
+
+    return { output: '', error: lastError ?? 'Tool execution failed', argsUsed: args }
   }
 
   /**
    * Process pending subtasks
    */
   private async *processSubtasks(_agent: AgentConfig): AsyncGenerator<RuntimeEvent> {
-    if (!this.state) return
+    if (!this.state || this.state.pendingSubtasks.length === 0) return
 
-    while (this.state.pendingSubtasks.length > 0) {
-      const pending = this.state.pendingSubtasks.shift()!
-      const subtask = pending.part
+    const subtasksToProcess = [...this.state.pendingSubtasks]
+    this.state.pendingSubtasks = []
 
+    // 1. Yield start events for all subagents first (so the UI shows them running in parallel)
+    for (const pending of subtasksToProcess) {
       yield {
         type: 'subagent_start',
-        subagent: { agent: subtask.agent, sessionID: this.state.sessionID },
+        subagent: {
+          agent: pending.part.agent,
+          sessionID: this.state.sessionID,
+          id: pending.part.id,
+        },
       }
+    }
 
-      const subagentConfig = agents.get(subtask.agent)
-      if (!subagentConfig) {
-        const errorMessage = `Unknown subagent type: ${subtask.agent}`
-        subtask.result = {
-          output: '',
-          parts: [],
+    // 2. Execute all subagents concurrently
+    const results = await Promise.all(
+      subtasksToProcess.map(async (pending) => {
+        const subtask = pending.part
+        const subagentConfig = agents.get(subtask.agent)
+
+        if (!subagentConfig) {
+          const errorMessage = `Unknown subagent type: ${subtask.agent}`
+          return { pending, success: false, errorMessage, taskResult: null }
         }
+
+        try {
+          const taskResult = await executeTaskTool(
+            {
+              subagent_type: subtask.agent,
+              prompt: subtask.prompt,
+              description: pending.description,
+            },
+            {
+              sessionID: this.state!.sessionID,
+              messageID: subtask.messageID,
+              parentAgent: pending.parentAgent,
+              runSubagent: async (childAgent, prompt, childSessionID) =>
+                this.runSubagent(childAgent, prompt, childSessionID),
+            }
+          )
+          return { pending, success: true, errorMessage: taskResult.error, taskResult }
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : 'Unknown subagent execution error'
+          return { pending, success: false, errorMessage, taskResult: null }
+        }
+      })
+    )
+
+    // 3. Yield completion events for all subagents
+    for (const res of results) {
+      const { pending, success, errorMessage, taskResult } = res
+      const subtask = pending.part
+
+      if (!success || !taskResult) {
+        subtask.result = { output: '', parts: [] }
         this.replaceSubtaskWithToolPart(subtask, {
           toolName: 'task',
           output: '',
@@ -594,74 +959,54 @@ export class Runtime {
             description: pending.description,
           },
         })
+
         yield {
           type: 'tool_result',
-          toolResult: {
-            toolName: 'task',
-            output: '',
-            error: errorMessage,
-          },
+          toolResult: { toolName: 'task', output: '', error: errorMessage },
         }
+
         yield {
           type: 'subagent_complete',
           subagent: {
             agent: subtask.agent,
             sessionID: this.state.sessionID,
+            id: subtask.id,
             success: false,
             error: errorMessage,
           },
         }
-        continue
-      }
-
-      const taskResult = await executeTaskTool(
-        {
-          subagent_type: subtask.agent,
-          prompt: subtask.prompt,
-          description: pending.description,
-        },
-        {
-          sessionID: this.state.sessionID,
-          messageID: subtask.messageID,
-          parentAgent: pending.parentAgent,
-          runSubagent: async (childAgent, prompt, childSessionID) =>
-            this.runSubagent(childAgent, prompt, childSessionID),
-        }
-      )
-
-      subtask.result = {
-        output: taskResult.output,
-        parts: [],
-      }
-
-      this.replaceSubtaskWithToolPart(subtask, {
-        toolName: 'task',
-        output: taskResult.output,
-        error: taskResult.error,
-        input: {
-          subagent_type: subtask.agent,
-          prompt: subtask.prompt,
-          description: pending.description,
-        },
-      })
-
-      yield {
-        type: 'tool_result',
-        toolResult: {
+      } else {
+        subtask.result = { output: taskResult.output, parts: [] }
+        this.replaceSubtaskWithToolPart(subtask, {
           toolName: 'task',
           output: taskResult.output,
-          ...(taskResult.error ? { error: taskResult.error } : {}),
-        },
-      }
+          error: taskResult.error,
+          input: {
+            subagent_type: subtask.agent,
+            prompt: subtask.prompt,
+            description: pending.description,
+          },
+        })
 
-      yield {
-        type: 'subagent_complete',
-        subagent: {
-          agent: subtask.agent,
-          sessionID: this.state.sessionID,
-          success: !taskResult.error,
-          ...(taskResult.error ? { error: taskResult.error } : {}),
-        },
+        yield {
+          type: 'tool_result',
+          toolResult: {
+            toolName: 'task',
+            output: taskResult.output,
+            ...(taskResult.error ? { error: taskResult.error } : {}),
+          },
+        }
+
+        yield {
+          type: 'subagent_complete',
+          subagent: {
+            agent: subtask.agent,
+            sessionID: this.state.sessionID,
+            id: subtask.id,
+            success: !taskResult.error,
+            ...(taskResult.error ? { error: taskResult.error } : {}),
+          },
+        }
       }
     }
   }
@@ -791,12 +1136,12 @@ export class Runtime {
   /**
    * Perform context compaction
    */
-  private async *performCompaction(_agent: AgentConfig): AsyncGenerator<RuntimeEvent> {
-    if (!this.state) return
+  private async *performCompaction(_agent: AgentConfig): AsyncGenerator<RuntimeEvent, boolean> {
+    if (!this.state) return false
 
     yield { type: 'compaction', content: 'Compacting context...' }
 
-    const result = await compaction.compact(
+    const compactionPromise = compaction.compact(
       this.state.sessionID,
       this.state.messages,
       128000,
@@ -815,6 +1160,20 @@ export class Runtime {
         return `Summary of conversation:\n\n${content.slice(0, 4000)}`
       }
     )
+    const compactionBudgetMs = this.config.compactionTimeBudgetMs
+    const compactionOutcome = await this.raceWithTimeout(compactionPromise, compactionBudgetMs)
+
+    if (compactionOutcome.timedOut) {
+      yield {
+        type: 'compaction',
+        content:
+          `Compaction budget exceeded (${compactionBudgetMs}ms); ` +
+          'deferring compaction and continuing step',
+      }
+      return false
+    }
+
+    const result = compactionOutcome.value
 
     if (!result.error) {
       if (result.messages) {
@@ -824,6 +1183,73 @@ export class Runtime {
         type: 'compaction',
         content: `Compacted ${result.messagesCompacted} messages (${result.tokensBefore} → ${result.tokensAfter} tokens)`,
       }
+    }
+
+    return true
+  }
+
+  private async *captureStepSnapshot(
+    _agent: AgentConfig,
+    messageID: Identifier
+  ): AsyncGenerator<RuntimeEvent> {
+    if (!this.state || !this.config.enableSnapshots) return
+
+    const timeoutMs = this.config.snapshotTimeoutMs
+    const failureMode = this.config.snapshotFailureMode ?? 'warn'
+
+    try {
+      const outcome = await this.raceWithTimeout(
+        snapshots.track(this.state.sessionID, messageID, this.state.step),
+        timeoutMs
+      )
+
+      if (outcome.timedOut) {
+        const timeoutError = new Error(`Snapshot timeout after ${timeoutMs}ms`)
+        if (failureMode === 'error') {
+          throw timeoutError
+        }
+        yield {
+          type: 'status',
+          content: `Snapshot warning: ${timeoutError.message}; continuing without snapshot`,
+        }
+        return
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Snapshot failed'
+      if (failureMode === 'error') {
+        throw error
+      }
+      yield {
+        type: 'status',
+        content: `Snapshot warning: ${errorMessage}; continuing without snapshot`,
+      }
+    }
+  }
+
+  private async raceWithTimeout<T>(
+    promise: Promise<T>,
+    timeoutMs?: number
+  ): Promise<{ timedOut: false; value: T } | { timedOut: true }> {
+    if (typeof timeoutMs !== 'number') {
+      return { timedOut: false, value: await promise }
+    }
+
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const timeoutPromise = new Promise<{ timedOut: true }>((resolve) => {
+      timer = setTimeout(() => resolve({ timedOut: true }), timeoutMs)
+    })
+
+    // Prevent late rejections from timed-out work from becoming unhandled.
+    void promise.catch(() => undefined)
+
+    try {
+      const result = await Promise.race([
+        promise.then((value) => ({ timedOut: false as const, value })),
+        timeoutPromise,
+      ])
+      return result
+    } finally {
+      if (timer) clearTimeout(timer)
     }
   }
 
@@ -958,6 +1384,256 @@ export class Runtime {
     return ['']
   }
 
+  private classifyToolRisk(toolName: string, _args: Record<string, unknown>): ToolRiskTier {
+    const override = this.config.toolRiskOverrides?.[toolName]
+    if (override) return override
+
+    if (toolName === 'run_command') return 'critical'
+    if (toolName === 'write_files') return 'high'
+    if (toolName === 'update_memory_bank') return 'medium'
+    if (toolName === 'task') return 'high'
+    if (
+      toolName.startsWith('search_') ||
+      toolName === 'read_files' ||
+      toolName === 'list_directory'
+    ) {
+      return 'low'
+    }
+
+    return 'medium'
+  }
+
+  private resolveRiskPolicyDecision(
+    toolName: string,
+    riskTier: ToolRiskTier
+  ): 'allow' | 'deny' | 'ask' {
+    const explicit = this.config.toolRiskPolicy?.[riskTier]
+    if (explicit) return explicit
+
+    // Conservative defaults only for highest-risk operations, preserving current behavior elsewhere.
+    if (toolName === 'run_command') return 'ask'
+    if (toolName === 'write_files') return 'ask'
+    return 'allow'
+  }
+
+  private async *requestToolInterrupt(
+    request: ToolInterruptRequest
+  ): AsyncGenerator<
+    RuntimeEvent,
+    { approved: boolean; args: Record<string, unknown>; error?: string }
+  > {
+    yield {
+      type: 'interrupt_request',
+      content: request.reason,
+      interrupt: {
+        toolName: request.toolName,
+        riskTier: request.riskTier,
+        reason: request.reason,
+      },
+    }
+
+    const handler = this.config.onToolInterrupt
+    if (!handler) {
+      yield {
+        type: 'interrupt_decision',
+        content: `No interrupt handler configured for ${request.toolName}; proceeding to standard permissions`,
+        interrupt: {
+          toolName: request.toolName,
+          riskTier: request.riskTier,
+          decision: 'approve',
+          reason: 'No interrupt handler configured',
+        },
+      }
+      return { approved: true, args: request.args }
+    }
+
+    let result: ToolInterruptResult
+    try {
+      result = await handler(request)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Interrupt handler failed'
+      yield {
+        type: 'interrupt_decision',
+        content: `Interrupt rejected ${request.toolName}: ${errorMessage}`,
+        interrupt: {
+          toolName: request.toolName,
+          riskTier: request.riskTier,
+          decision: 'reject',
+          reason: errorMessage,
+        },
+      }
+      yield {
+        type: 'tool_result',
+        toolResult: {
+          toolName: request.toolName,
+          output: '',
+          error: `Interrupted: ${errorMessage}`,
+        },
+      }
+      return { approved: false, args: request.args, error: `Interrupted: ${errorMessage}` }
+    }
+
+    const decision = result.decision
+    if (decision === 'reject') {
+      const error = `Interrupted: ${result.reason ?? 'Rejected by user'}`
+      yield {
+        type: 'interrupt_decision',
+        content: error,
+        interrupt: {
+          toolName: request.toolName,
+          riskTier: request.riskTier,
+          decision,
+          reason: result.reason,
+        },
+      }
+      yield { type: 'tool_result', toolResult: { toolName: request.toolName, output: '', error } }
+      return { approved: false, args: request.args, error }
+    }
+
+    const nextArgs = decision === 'edit' && result.args ? result.args : request.args
+    yield {
+      type: 'interrupt_decision',
+      content:
+        decision === 'edit'
+          ? `Interrupt edited arguments for ${request.toolName}`
+          : `Interrupt approved ${request.toolName}`,
+      interrupt: {
+        toolName: request.toolName,
+        riskTier: request.riskTier,
+        decision,
+        reason: result.reason,
+      },
+    }
+    return { approved: true, args: nextArgs }
+  }
+
+  private isToolRetryAllowed(toolName: string): boolean {
+    return !['write_files', 'run_command', 'task', 'update_memory_bank'].includes(toolName)
+  }
+
+  private isToolIdempotencyCacheAllowed(toolName: string): boolean {
+    return !['write_files', 'run_command', 'task', 'update_memory_bank'].includes(toolName)
+  }
+
+  private isRetryableToolError(errorMessage: string): boolean {
+    const message = errorMessage.toLowerCase()
+    return (
+      message.includes('timeout') ||
+      message.includes('timed out') ||
+      message.includes('econnreset') ||
+      message.includes('eai_again') ||
+      message.includes('temporar') ||
+      message.includes('429') ||
+      message.includes('rate limit')
+    )
+  }
+
+  private async sleep(ms: number): Promise<void> {
+    if (ms <= 0) return
+    await new Promise((resolve) => setTimeout(resolve, ms))
+  }
+
+  private createToolCallDedupKey(toolName: string, args: Record<string, unknown>): string {
+    return `${toolName}:${this.normalizeToolArgs(args)}`
+  }
+
+  private normalizeToolArgs(value: unknown): string {
+    if (value === null || typeof value !== 'object') {
+      return JSON.stringify(value)
+    }
+
+    if (Array.isArray(value)) {
+      return `[${value.map((item) => this.normalizeToolArgs(item)).join(',')}]`
+    }
+
+    const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
+      a.localeCompare(b)
+    )
+    return `{${entries
+      .map(([key, entryValue]) => `${JSON.stringify(key)}:${this.normalizeToolArgs(entryValue)}`)
+      .join(',')}}`
+  }
+
+  private applyToolLoopGuard(toolKeysForStep: string[]): boolean {
+    if (!this.state) return false
+
+    const threshold = this.config.toolLoopThreshold
+    if (typeof threshold !== 'number' || threshold <= 0) return false
+
+    if (toolKeysForStep.length === 0) {
+      this.state.lastToolLoopSignature = null
+      this.state.toolLoopStreak = 0
+      return false
+    }
+
+    const signature = toolKeysForStep.join('\u001f')
+    if (this.state.lastToolLoopSignature === signature) {
+      const nextStreak = this.state.toolLoopStreak + 1
+      if (nextStreak > threshold) {
+        this.state.toolLoopStreak = nextStreak
+        return true
+      }
+      this.state.toolLoopStreak = nextStreak
+      return false
+    }
+
+    this.state.lastToolLoopSignature = signature
+    this.state.toolLoopStreak = 1
+    return false
+  }
+
+  private serializeStateForCheckpoint(): RuntimeCheckpointState | null {
+    if (!this.state) return null
+
+    return {
+      sessionID: this.state.sessionID,
+      messages: structuredClone(this.state.messages),
+      step: this.state.step,
+      isComplete: this.state.isComplete,
+      isLastStep: this.state.isLastStep,
+      pendingSubtasks: structuredClone(this.state.pendingSubtasks),
+      cost: this.state.cost,
+      tokens: { ...this.state.tokens },
+      lastToolLoopSignature: this.state.lastToolLoopSignature,
+      toolLoopStreak: this.state.toolLoopStreak,
+    }
+  }
+
+  private restoreStateFromCheckpoint(checkpointState: RuntimeCheckpointState): RuntimeState {
+    return {
+      sessionID: checkpointState.sessionID,
+      messages: structuredClone(checkpointState.messages),
+      step: checkpointState.step,
+      isComplete: checkpointState.isComplete,
+      isLastStep: checkpointState.isLastStep,
+      abortController: new AbortController(),
+      pendingSubtasks: structuredClone(checkpointState.pendingSubtasks) as PendingSubtask[],
+      cost: checkpointState.cost,
+      tokens: { ...checkpointState.tokens },
+      lastToolLoopSignature: checkpointState.lastToolLoopSignature,
+      toolLoopStreak: checkpointState.toolLoopStreak,
+    }
+  }
+
+  private async saveCheckpoint(agentName: string, reason: RuntimeCheckpointReason): Promise<void> {
+    const checkpointStore = this.config.checkpointStore
+    if (!checkpointStore) return
+
+    const state = this.serializeStateForCheckpoint()
+    if (!state) return
+
+    const checkpoint: RuntimeCheckpoint = {
+      version: 1,
+      sessionID: state.sessionID,
+      agentName,
+      reason,
+      savedAt: Date.now(),
+      state,
+    }
+
+    await checkpointStore.save(checkpoint)
+  }
+
   /**
    * Map provider finish reason to our finish reason
    */
@@ -983,11 +1659,11 @@ export class Runtime {
    * Execute a plugin hook
    */
   private async executeHook<T>(
-    hookType: string,
+    hookType: HookType,
     context: { sessionID: Identifier; step: number; agent: AgentConfig; messageID: Identifier },
     data: T
   ): Promise<T> {
-    return plugins.executeHooks(hookType as any, context, data)
+    return plugins.executeHooks(hookType, context, data)
   }
 
   /**

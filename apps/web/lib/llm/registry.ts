@@ -5,6 +5,7 @@
  * Supports multiple providers with different configurations.
  */
 
+import { appLog } from '@/lib/logger'
 import type { LLMProvider, ProviderConfig, ModelInfo, ProviderType } from './types'
 import { OpenAICompatibleProvider } from './providers/openai-compatible'
 import { AnthropicProvider } from './providers/anthropic'
@@ -175,7 +176,7 @@ export class ProviderRegistry {
         const models = await entry.provider.listModels()
         allModels.push(...models.map((m) => ({ ...m, providerId: id })))
       } catch (error) {
-        console.error(`Failed to list models for provider '${id}':`, error)
+        appLog.error(`Failed to list models for provider '${id}':`, error)
       }
     }
 
@@ -189,7 +190,7 @@ export class ProviderRegistry {
     try {
       this.modelsDevCache = await fetchModelsDevMetadata()
     } catch (error) {
-      console.error('Failed to fetch Models.dev metadata:', error)
+      appLog.error('Failed to fetch Models.dev metadata:', error)
     }
   }
 

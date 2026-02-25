@@ -30,7 +30,8 @@ export function formatProviderError(error: unknown): string {
               details.push(nestedMessage)
             }
           }
-        } catch {
+        } catch (error) {
+          void error
           details.push(body.slice(0, 400))
         }
       }

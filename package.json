@@ -15,6 +15,7 @@
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "coverage": "turbo run test:coverage",
     "security:audit": "bun audit --audit-level=moderate",
     "security:scan": "semgrep --config p/owasp-top-ten .",
     "security:secrets": "gitleaks detect --source .",
@@ -24,15 +25,15 @@
   "devDependencies": {
     "@types/node": "25.2.0",
     "concurrently": "^9.2.1",
-    "convex": "^1.19.0",
+    "convex": "^1.32.0",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "turbo": "2.8.10",
-    "typescript": "^5.7.0"
+    "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@auth/core": "^0.37.0",
+    "@auth/core": "^0.37.4",
     "@convex-dev/auth": "^0.0.90",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-context-menu": "^2.2.16",
@@ -50,5 +51,10 @@
     "jszip": "^3.10.1",
     "next-themes": "^0.4.6",
     "sonner": "^2.0.7"
+  },
+  "overrides": {
+    "ajv": "^6.14.0",
+    "jsondiffpatch": "^0.7.2",
+    "minimatch": "^3.1.3"
   }
 }

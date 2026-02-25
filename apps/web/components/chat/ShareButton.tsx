@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
+import type { Id } from '@convex/_generated/dataModel'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { Copy, Share2, X } from 'lucide-react'
@@ -13,29 +14,30 @@ interface ShareButtonProps {
 }
 
 export function ShareButton({ chatId, className }: ShareButtonProps) {
-  const shareStatus = useQuery(api.sharing.getChatShareStatus, { chatId: chatId as any })
+  const typedChatId = chatId as Id<'chats'>
+  const shareStatus = useQuery(api.sharing.getChatShareStatus, { chatId: typedChatId })
   const shareChat = useMutation(api.sharing.shareChat)
   const unshareChat = useMutation(api.sharing.unshareChat)
 
   const handleShare = async () => {
     try {
-      const shareId = await shareChat({ chatId: chatId as any })
+      const shareId = await shareChat({ chatId: typedChatId })
       const shareUrl = `${window.location.origin}/s/${shareId}`
       await navigator.clipboard.writeText(shareUrl)
       toast.success('Link copied to clipboard!')
     } catch (error) {
+      void error
       toast.error('Failed to share chat')
-      console.error(error)
     }
   }
 
   const handleUnshare = async () => {
     try {
-      await unshareChat({ chatId: chatId as any })
+      await unshareChat({ chatId: typedChatId })
       toast.success('Chat unshared')
     } catch (error) {
+      void error
       toast.error('Failed to unshare chat')
-      console.error(error)
     }
   }
 

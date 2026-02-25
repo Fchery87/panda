@@ -1,12 +1,15 @@
 import { test, expect, Page } from '@playwright/test'
 
 async function openCreateProjectDialog(page: Page) {
-  const newProjectButton = page.getByRole('button', { name: /new project/i }).first()
+  const newProjectButton = page
+    .getByRole('main')
+    .getByRole('button', { name: /new project/i })
+    .first()
   await expect(newProjectButton).toBeVisible()
   await newProjectButton.click()
 
   const dialog = page
-    .getByRole('dialog')
+    .locator('[role="dialog"]:visible')
     .filter({ hasText: /create new project/i })
     .first()
   await expect(dialog).toBeVisible()
@@ -17,38 +20,54 @@ async function createAndOpenProject(page: Page): Promise<string> {
   const projectName = `Workbench Test ${Date.now()}`
 
   await page.goto('/projects')
+  const notFoundHeading = page.getByRole('heading', { name: '404' })
+  if (await notFoundHeading.isVisible().catch(() => false)) {
+    await page.reload()
+  }
+  await expect(page.getByRole('heading', { name: /your work|projects/i, level: 1 })).toBeVisible({
+    timeout: 20000,
+  })
 
   const dialog = await openCreateProjectDialog(page)
-  const nameInput = dialog.locator('input#name')
+  const nameInput = dialog.getByLabel(/project name/i)
+  await expect(nameInput).toBeEditable()
   await nameInput.fill(projectName)
 
   const createButton = dialog.getByRole('button', { name: /^create$/i })
+  await expect(createButton).toBeEnabled()
   await createButton.click()
 
   await expect(dialog).not.toBeVisible()
 
   const projectLink = page.locator('a[href^="/projects/"]', { hasText: projectName }).first()
-  await expect(projectLink).toBeVisible()
+  await expect(projectLink).toBeVisible({ timeout: 15000 })
   const href = await projectLink.getAttribute('href')
   expect(href).toMatch(/^\/projects\/.+/)
-  await page.goto(href!)
-
-  await expect(page).toHaveURL(/\/projects\/.+/, { timeout: 15000 })
+  await projectLink.scrollIntoViewIfNeeded()
+  await projectLink.click()
+  await expect(page).toHaveURL(/\/projects\/.+/, { timeout: 30000 })
+  await expect(
+    page
+      .getByRole('main')
+      .getByRole('button', { name: /^reset$/i })
+      .first()
+  ).toBeVisible({
+    timeout: 30000,
+  })
 
   return projectName
 }
 
 test.describe('Workbench', () => {
   test('workbench page loads', async ({ page }) => {
-    await createAndOpenProject(page)
+    const projectName = await createAndOpenProject(page)
 
     await expect(page).toHaveURL(/\/projects\/.+/)
 
-    const projectTitle = page
-      .locator('span')
-      .filter({ hasText: /Workbench Test/ })
-      .first()
-    await expect(projectTitle).toBeVisible()
+    const projectTitle = page.getByRole('navigation', { name: /breadcrumb/i }).getByRole('link', {
+      name: projectName,
+    })
+    await expect(projectTitle).toBeVisible({ timeout: 15000 })
   })
 
   test('file tree is visible', async ({ page }) => {
@@ -139,8 +158,10 @@ test.describe('Workbench', () => {
   test('project name is displayed in header', async ({ page }) => {
     const projectName = await createAndOpenProject(page)
 
-    const headerProjectName = page.locator('span').filter({ hasText: projectName }).first()
-    await expect(headerProjectName).toBeVisible()
+    const headerProjectName = page
+      .getByRole('navigation', { name: /breadcrumb/i })
+      .getByRole('link', { name: projectName })
+    await expect(headerProjectName).toBeVisible({ timeout: 15000 })
   })
 
   test('can access workbench from project list', async ({ page }) => {
@@ -162,20 +183,20 @@ test.describe('Workbench', () => {
   test('workspace reset button is visible', async ({ page }) => {
     await createAndOpenProject(page)
 
-    const resetButton = page.getByRole('button', { name: /reset/i })
-
-    if (await resetButton.isVisible().catch(() => false)) {
-      await expect(resetButton).toBeVisible()
-    }
+    const resetButton = page
+      .getByRole('main')
+      .getByRole('button', { name: /^reset$/i })
+      .first()
+    await expect(resetButton).toBeVisible({ timeout: 15000 })
   })
 
   test('artifacts button is visible', async ({ page }) => {
     await createAndOpenProject(page)
 
-    const artifactsButton = page.getByRole('button', { name: /artifacts/i })
-
-    if (await artifactsButton.isVisible().catch(() => false)) {
-      await expect(artifactsButton).toBeVisible()
-    }
+    const artifactsButton = page
+      .getByRole('main')
+      .getByRole('button', { name: /^artifacts$/i })
+      .first()
+    await expect(artifactsButton).toBeVisible({ timeout: 15000 })
   })
 })

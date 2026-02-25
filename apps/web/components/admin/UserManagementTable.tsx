@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '@convex/_generated/api'
+import type { Id } from '@convex/_generated/dataModel'
 import { toast } from 'sonner'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -35,14 +36,17 @@ const filterOptions = [
   { value: 'active', label: 'Active' },
 ]
 
+type AdminUserFilter = 'all' | 'admins' | 'banned' | 'active'
+type AdminUserId = Id<'users'>
+
 export function UserManagementTable() {
   const [search, setSearch] = React.useState('')
-  const [filter, setFilter] = React.useState<string>('all')
+  const [filter, setFilter] = React.useState<AdminUserFilter>('all')
   const [isLoading, setIsLoading] = React.useState(false)
 
   const users = useQuery(api.admin.listUsers, {
     search: search || undefined,
-    filter: filter as any,
+    filter,
     limit: 50,
   })
 
@@ -50,52 +54,52 @@ export function UserManagementTable() {
   const updateUserBan = useMutation(api.admin.updateUserBan)
   const deleteUser = useMutation(api.admin.deleteUser)
 
-  const handleToggleAdmin = async (userId: string, isAdmin: boolean) => {
+  const handleToggleAdmin = async (userId: AdminUserId, isAdmin: boolean) => {
     setIsLoading(true)
     try {
       await updateUserAdmin({
-        userId: userId as any,
+        userId,
         isAdmin,
         adminRole: isAdmin ? 'admin' : undefined,
       })
       toast.success(isAdmin ? 'Admin privileges granted' : 'Admin privileges revoked')
     } catch (error) {
+      void error
       toast.error('Failed to update user')
-      console.error(error)
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleToggleBan = async (userId: string, isBanned: boolean) => {
+  const handleToggleBan = async (userId: AdminUserId, isBanned: boolean) => {
     setIsLoading(true)
     try {
       await updateUserBan({
-        userId: userId as any,
+        userId,
         isBanned,
         reason: isBanned ? 'Administrative action' : undefined,
       })
       toast.success(isBanned ? 'User banned' : 'User unbanned')
     } catch (error) {
+      void error
       toast.error('Failed to update user')
-      console.error(error)
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleDeleteUser = async (userId: string) => {
+  const handleDeleteUser = async (userId: AdminUserId) => {
     if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
       return
     }
 
     setIsLoading(true)
     try {
-      await deleteUser({ userId: userId as any })
+      await deleteUser({ userId })
       toast.success('User deleted successfully')
     } catch (error) {
+      void error
       toast.error('Failed to delete user')
-      console.error(error)
     } finally {
       setIsLoading(false)
     }
@@ -119,7 +123,7 @@ export function UserManagementTable() {
                 className="w-[250px] rounded-none pl-10"
               />
             </div>
-            <Select value={filter} onValueChange={setFilter}>
+            <Select value={filter} onValueChange={(value) => setFilter(value as AdminUserFilter)}>
               <SelectTrigger className="w-[150px] rounded-none">
                 <SelectValue />
               </SelectTrigger>
@@ -137,7 +141,7 @@ export function UserManagementTable() {
       <CardContent>
         <ScrollArea className="h-[500px]">
           <div className="space-y-2">
-            {users?.users.map((user: any) => (
+            {users?.users.map((user) => (
               <div
                 key={user._id}
                 className="flex items-center justify-between rounded-none border border-border p-4 transition-colors hover:bg-muted/50"

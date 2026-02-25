@@ -1,14 +1,22 @@
-import { query, mutation } from '../_generated/server'
+import { query, mutation, type MutationCtx, type QueryCtx } from '../_generated/server'
 import { v } from 'convex/values'
 import type { Id } from '../_generated/dataModel'
 import { getAuthUserId } from '@convex-dev/auth/server'
 
 const E2E_BYPASS_USER_EMAIL = 'e2e@example.com'
 
-async function getE2EBypassUserId(ctx: any): Promise<Id<'users'> | null> {
+type AuthReadCtx = QueryCtx
+type AuthWriteCtx = MutationCtx
+type AuthCtx = AuthReadCtx | AuthWriteCtx
+
+function isMutationAuthCtx(ctx: AuthCtx): ctx is AuthWriteCtx {
+  return 'insert' in ctx.db
+}
+
+async function getE2EBypassUserId(ctx: AuthCtx): Promise<Id<'users'> | null> {
   const existing = await ctx.db
     .query('users')
-    .withIndex('email', (q: any) => q.eq('email', E2E_BYPASS_USER_EMAIL))
+    .withIndex('email', (q) => q.eq('email', E2E_BYPASS_USER_EMAIL))
     .first()
 
   if (existing) {
@@ -18,7 +26,7 @@ async function getE2EBypassUserId(ctx: any): Promise<Id<'users'> | null> {
   return null
 }
 
-async function getOrCreateE2EBypassUserId(ctx: any): Promise<Id<'users'>> {
+async function getOrCreateE2EBypassUserId(ctx: AuthWriteCtx): Promise<Id<'users'>> {
   const existing = await getE2EBypassUserId(ctx)
   if (existing) return existing
 
@@ -31,10 +39,12 @@ async function getOrCreateE2EBypassUserId(ctx: any): Promise<Id<'users'>> {
 }
 
 function isE2EAuthBypassEnabled(): boolean {
-  return process.env.NODE_ENV !== 'production' && process.env.E2E_AUTH_BYPASS === 'true'
+  // Convex cloud dev deployments may run with NODE_ENV="production", so the
+  // bypass must key off the explicit deployment env var instead.
+  return process.env.E2E_AUTH_BYPASS === 'true'
 }
 
-export async function getCurrentUserId(ctx: any): Promise<Id<'users'> | null> {
+export async function getCurrentUserId(ctx: AuthCtx): Promise<Id<'users'> | null> {
   const userId = await getAuthUserId(ctx)
   if (userId) {
     return userId as Id<'users'>
@@ -47,14 +57,18 @@ export async function getCurrentUserId(ctx: any): Promise<Id<'users'> | null> {
   return null
 }
 
-export async function requireAuth(ctx: any): Promise<Id<'users'>> {
+export async function requireAuth(ctx: AuthCtx): Promise<Id<'users'>> {
   const userId = await getAuthUserId(ctx)
   if (userId) {
     return userId as Id<'users'>
   }
 
   if (isE2EAuthBypassEnabled()) {
-    return await getOrCreateE2EBypassUserId(ctx)
+    if (isMutationAuthCtx(ctx)) {
+      return await getOrCreateE2EBypassUserId(ctx)
+    }
+    const bypassUserId = await getE2EBypassUserId(ctx)
+    if (bypassUserId) return bypassUserId
   }
 
   throw new Error('Unauthorized: Authentication required')

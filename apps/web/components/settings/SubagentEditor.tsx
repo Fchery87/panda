@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
+import type { Id } from '@convex/_generated/dataModel'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -11,6 +12,8 @@ import { Plus, Trash2, Bot } from 'lucide-react'
 interface SubagentEditorProps {
   className?: string
 }
+
+type SubagentId = Id<'subagents'>
 
 const PRESET_PERMISSIONS = {
   readOnly: {
@@ -68,8 +71,8 @@ export function SubagentEditor({ className }: SubagentEditorProps) {
     setShowAddForm(false)
   }
 
-  const handleRemove = async (id: string) => {
-    await removeSubagent({ id: id as any })
+  const handleRemove = async (id: SubagentId) => {
+    await removeSubagent({ id })
   }
 
   return (

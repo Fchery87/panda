@@ -9,6 +9,7 @@
  * - Error handling
  */
 
+import { appLog } from '@/lib/logger'
 import type { Event, EventType, EventHandler, Identifier } from './types'
 
 type Subscription = {
@@ -94,7 +95,7 @@ class EventBus {
           subscription.handler(event)
         }
       } catch (error) {
-        console.error('[EventBus] Handler error:', error)
+        appLog.error('[EventBus] Handler error:', error)
       }
     }
   }

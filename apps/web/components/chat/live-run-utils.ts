@@ -2,6 +2,7 @@ export type LiveProgressCategory = 'analysis' | 'rewrite' | 'tool' | 'complete' 
 
 export interface LiveProgressDetails {
   toolName?: string
+  toolCallId?: string
   argsSummary?: string
   durationMs?: number
   errorExcerpt?: string
@@ -28,6 +29,7 @@ interface PersistedRunEvent {
   progressToolName?: string
   progressHasArtifactTarget?: boolean
   targetFilePaths?: string[]
+  toolCallId?: string
   args?: Record<string, unknown>
   durationMs?: number
   error?: string
@@ -177,6 +179,7 @@ export function mapRunEventsToProgressSteps(events: PersistedRunEvent[]): LivePr
           : 'other',
       details:
         event.progressToolName ||
+        event.toolCallId ||
         event.args ||
         event.durationMs !== undefined ||
         event.error ||
@@ -184,6 +187,7 @@ export function mapRunEventsToProgressSteps(events: PersistedRunEvent[]): LivePr
         event.progressHasArtifactTarget !== undefined
           ? {
               toolName: event.progressToolName,
+              toolCallId: event.toolCallId,
               argsSummary: summarizeArgs(event.args),
               durationMs: event.durationMs,
               errorExcerpt: event.error,
@@ -210,13 +214,25 @@ export function reconcileProgressSteps(
   steps: LiveProgressStep[],
   options: { isStreaming: boolean }
 ): LiveProgressStep[] {
+  const completedToolCallIds = new Set(
+    steps
+      .filter(
+        (step) =>
+          step.category === 'tool' &&
+          (step.status === 'completed' || step.status === 'error') &&
+          typeof step.details?.toolCallId === 'string'
+      )
+      .map((step) => step.details!.toolCallId as string)
+  )
+
   const completedToolNames = new Set(
     steps
       .filter(
         (step) =>
           step.category === 'tool' &&
           (step.status === 'completed' || step.status === 'error') &&
-          typeof step.details?.toolName === 'string'
+          typeof step.details?.toolName === 'string' &&
+          !step.details?.toolCallId // Only fallback to names if no call ID
       )
       .map((step) => step.details!.toolName as string)
   )
@@ -228,8 +244,14 @@ export function reconcileProgressSteps(
     if (step.status !== 'running') return step
 
     if (step.category === 'tool') {
+      const toolCallId = step.details?.toolCallId
       const toolName = step.details?.toolName
-      if (toolName && completedToolNames.has(toolName)) {
+
+      if (toolCallId && completedToolCallIds.has(toolCallId)) {
+        return { ...step, status: 'completed' }
+      }
+
+      if (!toolCallId && toolName && completedToolNames.has(toolName)) {
         return { ...step, status: 'completed' }
       }
       return step

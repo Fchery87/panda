@@ -1,4 +1,4 @@
-import { query, mutation } from './_generated/server'
+import { query, mutation, type MutationCtx, type QueryCtx } from './_generated/server'
 import { v } from 'convex/values'
 import { requireAuth, getCurrentUserId } from './lib/auth'
 
@@ -10,15 +10,18 @@ const DISALLOWED_PROVIDER_SECRET_KEYS = new Set([
   'sessionToken',
 ])
 
+type ProviderConfigMap = Record<string, Record<string, unknown>>
+type SettingsCtx = QueryCtx | MutationCtx
+
 function sanitizeProviderConfigsForStorage(
-  providerConfigs: Record<string, Record<string, any>> | undefined
-): Record<string, Record<string, any>> | undefined {
+  providerConfigs: ProviderConfigMap | undefined
+): ProviderConfigMap | undefined {
   if (!providerConfigs) return providerConfigs
 
-  const sanitized: Record<string, Record<string, any>> = {}
+  const sanitized: ProviderConfigMap = {}
 
   for (const [providerKey, config] of Object.entries(providerConfigs)) {
-    const nextConfig: Record<string, any> = {}
+    const nextConfig: Record<string, unknown> = {}
     for (const [key, value] of Object.entries(config || {})) {
       if (DISALLOWED_PROVIDER_SECRET_KEYS.has(key)) {
         continue
@@ -34,7 +37,7 @@ function sanitizeProviderConfigsForStorage(
 /**
  * Get admin global settings
  */
-async function getAdminSettings(ctx: any) {
+async function getAdminSettings(ctx: SettingsCtx) {
   const settings = await ctx.db.query('adminSettings').order('desc').first()
 
   return (
@@ -45,6 +48,7 @@ async function getAdminSettings(ctx: any) {
       allowUserOverrides: true,
       allowUserMCP: true,
       allowUserSubagents: true,
+      updatedAt: 0,
     }
   )
 }
@@ -238,7 +242,9 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await requireAuth(ctx)
-    const sanitizedProviderConfigs = sanitizeProviderConfigsForStorage(args.providerConfigs as any)
+    const sanitizedProviderConfigs = sanitizeProviderConfigsForStorage(
+      args.providerConfigs as ProviderConfigMap | undefined
+    )
     let userIdAsId = ctx.db.normalizeId('users', userId)
 
     // If normalizeId fails, try to find by dev email

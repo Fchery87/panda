@@ -1,5 +1,6 @@
 'use client'
 
+import { appLog } from '@/lib/logger'
 import * as React from 'react'
 import { useAction } from 'convex/react'
 import { api } from '@convex/_generated/api'
@@ -90,7 +91,7 @@ export function GitHubImportDialog({
           setBranch(defaultBranch)
         }
       } catch (err) {
-        console.error('Failed to fetch branches:', err)
+        appLog.error('Failed to fetch branches:', err)
         // Don't show error for branch fetching, just use default
         setBranches(['main', 'master'])
         setBranch('main')

@@ -24,6 +24,7 @@ import type {
 import { OpenAICompatibleProvider } from './openai-compatible'
 
 const DEEPSEEK_BASE_URL = 'https://api.deepseek.com/v1'
+type DeepSeekApiModel = Record<string, unknown>
 
 export class DeepSeekProvider implements LLMProvider {
   name = 'deepseek'
@@ -70,14 +71,15 @@ export class DeepSeekProvider implements LLMProvider {
         return this.getDefaultModels()
       }
 
-      return models.map((model: any) => this.transformModel(model))
-    } catch {
+      return (models as DeepSeekApiModel[]).map((model) => this.transformModel(model))
+    } catch (error) {
+      void error
       return this.getDefaultModels()
     }
   }
 
-  private transformModel(model: any): ModelInfo {
-    const id = model.id
+  private transformModel(model: DeepSeekApiModel): ModelInfo {
+    const id = String(model.id ?? '')
     const isReasoning = id.includes('reasoner') || id.includes('r1')
     const hasVision = id.includes('vision')
 
@@ -85,9 +87,12 @@ export class DeepSeekProvider implements LLMProvider {
       id,
       name: this.formatModelName(id),
       provider: 'deepseek',
-      description: model.description || `DeepSeek ${id}`,
-      maxTokens: model.max_output_tokens || 8192,
-      contextWindow: model.context_length || 64000,
+      description:
+        typeof model.description === 'string' && model.description.length > 0
+          ? model.description
+          : `DeepSeek ${id}`,
+      maxTokens: typeof model.max_output_tokens === 'number' ? model.max_output_tokens : 8192,
+      contextWindow: typeof model.context_length === 'number' ? model.context_length : 64000,
       capabilities: {
         streaming: true,
         functionCalling: !isReasoning,

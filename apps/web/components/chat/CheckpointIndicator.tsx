@@ -1,5 +1,6 @@
 'use client'
 
+import { appLog } from '@/lib/logger'
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery, useMutation } from 'convex/react'
@@ -66,7 +67,7 @@ export function CheckpointIndicator({
       await restoreCheckpoint({ checkpointId })
       onRestore?.(checkpointId)
     } catch (error) {
-      console.error('Failed to restore checkpoint:', error)
+      appLog.error('Failed to restore checkpoint:', error)
     } finally {
       setIsRestoring(false)
     }

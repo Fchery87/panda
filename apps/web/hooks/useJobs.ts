@@ -1,5 +1,6 @@
 'use client'
 
+import { appLog } from '@/lib/logger'
 import { useCallback } from 'react'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '@convex/_generated/api'
@@ -138,7 +139,7 @@ export function useJobs(projectId: Id<'projects'>) {
 
         return jobId
       } catch (error) {
-        console.error('Failed to update job status:', error)
+        appLog.error('Failed to update job status:', error)
         throw error
       }
     },
@@ -158,7 +159,7 @@ export function useJobs(projectId: Id<'projects'>) {
 
         return jobId
       } catch (error) {
-        console.error('Failed to append log:', error)
+        appLog.error('Failed to append log:', error)
         throw error
       }
     },

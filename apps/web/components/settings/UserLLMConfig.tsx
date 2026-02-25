@@ -32,7 +32,7 @@ interface UserLLMConfigProps {
     defaultModel?: string
     overrideGlobalProvider?: boolean
     overrideGlobalModel?: boolean
-    providers?: Record<string, any>
+    providers?: Record<string, unknown>
   }
 
   // Callbacks

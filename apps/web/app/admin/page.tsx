@@ -1,5 +1,6 @@
 'use client'
 
+import { appLog } from '@/lib/logger'
 import * as React from 'react'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '@convex/_generated/api'
@@ -35,7 +36,7 @@ export default function AdminDashboardPage() {
       toast.success('Global LLM configuration saved')
     } catch (error) {
       toast.error('Failed to save configuration')
-      console.error(error)
+      appLog.error(error)
     }
   }
 
@@ -53,7 +54,7 @@ export default function AdminDashboardPage() {
       toast.success('System controls saved')
     } catch (error) {
       toast.error('Failed to save system controls')
-      console.error(error)
+      appLog.error(error)
     }
   }
 

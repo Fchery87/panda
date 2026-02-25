@@ -180,7 +180,7 @@ export function CommandPalette({
         icon: <FileIcon className="h-4 w-4" />,
         action: () => {
           // Would need to integrate with file selection
-          console.log('Select file:', file.path)
+          void file.path
         },
       })),
     ]

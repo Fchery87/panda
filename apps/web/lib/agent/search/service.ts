@@ -39,7 +39,8 @@ export async function executeSearch(
     try {
       const rel = toWorkspaceRelativePath(m.file)
       return !isDeniedPath(rel)
-    } catch {
+    } catch (error) {
+      void error
       return false
     }
   })

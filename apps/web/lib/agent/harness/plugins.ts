@@ -8,6 +8,7 @@
  * - Hook priority and ordering
  */
 
+import { appLog } from '@/lib/logger'
 import type {
   Plugin,
   HookType,
@@ -23,6 +24,13 @@ type HookEntry = {
   handler: HookHandler<unknown>
 }
 
+function debugHarnessLog(...args: unknown[]): void {
+  if (process.env.NEXT_PUBLIC_PANDA_AGENT_HARNESS_DEBUG_LOGS !== '1') {
+    return
+  }
+  console.log(...args)
+}
+
 class PluginManager {
   private plugins: Map<string, Plugin> = new Map()
   private hooks: Map<HookType, HookEntry[]> = new Map()
@@ -34,7 +42,7 @@ class PluginManager {
    */
   register(plugin: Plugin): void {
     if (this.plugins.has(plugin.name)) {
-      console.warn(`[PluginManager] Plugin "${plugin.name}" already registered, replacing`)
+      appLog.warn(`[PluginManager] Plugin "${plugin.name}" already registered, replacing`)
       this.unregister(plugin.name)
     }
 
@@ -117,7 +125,7 @@ class PluginManager {
           result = hookResult as T
         }
       } catch (error) {
-        console.error(`[PluginManager] Hook error in ${entry.plugin}:`, error)
+        appLog.error(`[PluginManager] Hook error in ${entry.plugin}:`, error)
       }
     }
 
@@ -195,19 +203,19 @@ export function createPlugin(
 export const loggingPlugin = createPlugin('logging', {
   hooks: {
     'tool.execute.before': async (ctx, data) => {
-      console.log(`[Tool] ${ctx.agent.name} executing:`, data)
+      debugHarnessLog(`[Tool] ${ctx.agent.name} executing:`, data)
       return data
     },
     'tool.execute.after': async (ctx, data) => {
-      console.log(`[Tool] ${ctx.agent.name} completed:`, data)
+      debugHarnessLog(`[Tool] ${ctx.agent.name} completed:`, data)
       return data
     },
     'session.start': async (ctx, data) => {
-      console.log(`[Session] Started:`, ctx.sessionID)
+      debugHarnessLog(`[Session] Started:`, ctx.sessionID)
       return data
     },
     'session.end': async (ctx, data) => {
-      console.log(`[Session] Ended:`, ctx.sessionID)
+      debugHarnessLog(`[Session] Ended:`, ctx.sessionID)
       return data
     },
   },
@@ -222,7 +230,7 @@ export const costTrackingPlugin = createPlugin('cost-tracking', {
       const typedData = data as { usage?: { totalTokens: number }; modelID: string }
       if (typedData.usage) {
         const cost = calculateCost(typedData.modelID, typedData.usage.totalTokens)
-        console.log(
+        debugHarnessLog(
           `[Cost] ${ctx.sessionID}: $${cost.toFixed(6)} (${typedData.usage.totalTokens} tokens)`
         )
       }

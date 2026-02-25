@@ -14,6 +14,7 @@ import type { AgentConfig, Identifier, SubagentResult, SubtaskPart } from './typ
 import type { ToolDefinition } from '../../llm/types'
 import { agents } from './agents'
 import { ascending } from './identifier'
+import { intersectPermissions } from './permissions'
 import { bus } from './event-bus'
 
 /**
@@ -31,6 +32,8 @@ Available subagent types:
 - performance-analyzer: Analyze code for performance bottlenecks
 - test-generator: Generate comprehensive test suites
 - code-reviewer: Review code for quality and best practices
+- debugger: Dedicated debugger for tracking down runtime exceptions
+- tech-writer: Tech writer for generating or updating documentation
 
 Use this tool when:
 - You need specialized expertise for a specific task
@@ -38,7 +41,9 @@ Use this tool when:
 - You need to explore large codebases efficiently
 - You want a fresh perspective on code quality or security
 
-The subagent will work autonomously and return its findings.`,
+The subagent will work autonomously and return its findings.
+
+CRITICAL: You can spawn multiple subagents in parallel! To do this, simply output multiple \`task\` tool calls in a single response. They will all execute concurrently (Panda Swarm) and return their results together.`,
     parameters: {
       type: 'object',
       properties: {
@@ -51,6 +56,8 @@ The subagent will work autonomously and return its findings.`,
             'performance-analyzer',
             'test-generator',
             'code-reviewer',
+            'debugger',
+            'tech-writer',
           ],
         },
         prompt: {
@@ -113,21 +120,25 @@ export async function executeTaskTool(
   }
 
   const childSessionID = ascending('session_')
+  const delegatedAgent: AgentConfig = {
+    ...agentConfig,
+    permission: intersectPermissions(ctx.parentAgent.permission, agentConfig.permission),
+  }
 
   bus.emit('subagent.started', ctx.sessionID, {
     parentSessionID: ctx.sessionID,
     childSessionID,
-    agent: agentConfig.name,
+    agent: delegatedAgent.name,
     description: args.description,
   })
 
   try {
-    const result = await ctx.runSubagent(agentConfig, args.prompt, childSessionID)
+    const result = await ctx.runSubagent(delegatedAgent, args.prompt, childSessionID)
 
     bus.emit('subagent.completed', ctx.sessionID, {
       parentSessionID: ctx.sessionID,
       childSessionID,
-      agent: agentConfig.name,
+      agent: delegatedAgent.name,
       success: !result.error,
     })
 
@@ -136,7 +147,7 @@ export async function executeTaskTool(
       error: result.error,
       metadata: {
         childSessionID,
-        agent: agentConfig.name,
+        agent: delegatedAgent.name,
         usage: result.usage,
         cost: result.cost,
       },
@@ -147,7 +158,7 @@ export async function executeTaskTool(
     bus.emit('subagent.completed', ctx.sessionID, {
       parentSessionID: ctx.sessionID,
       childSessionID,
-      agent: agentConfig.name,
+      agent: delegatedAgent.name,
       success: false,
       error: errorMessage,
     })

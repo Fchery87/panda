@@ -36,6 +36,7 @@ export const MODE_CONFIGS: Record<ChatMode, ModeConfig> = {
       'read_files',
       'list_directory',
       'update_memory_bank',
+      'task',
     ],
     fileAccess: 'read-only',
   },
@@ -49,6 +50,7 @@ export const MODE_CONFIGS: Record<ChatMode, ModeConfig> = {
       'write_files',
       'run_command',
       'update_memory_bank',
+      'task',
     ],
     fileAccess: 'read-write',
   },
@@ -62,6 +64,7 @@ export const MODE_CONFIGS: Record<ChatMode, ModeConfig> = {
       'write_files',
       'run_command',
       'update_memory_bank',
+      'task',
     ],
     fileAccess: 'read-write',
   },
@@ -149,6 +152,7 @@ Tool usage:
 4. **search_code_ast** — AST-aware search for TypeScript/TSX structural matching.
 5. **write_files** — Write or modify files. Always provide complete file content. Generate ALL changed files in one iteration.
 6. **run_command** — Validate work with tests, typecheck, or linting after changes.
+7. **task** — Spawn specialized subagents (like debugger, tech-writer, etc.) to handle complex tasks in parallel.
 
 Workflow: read → explain approach briefly → write → verify.
 
@@ -171,6 +175,7 @@ Tools:
 4. **search_code_ast** — AST-aware structural search for TypeScript/TSX.
 5. **write_files** — Write or modify files with COMPLETE content. Generate ALL changed files in one iteration.
 6. **run_command** — Run tests, typecheck, and linting to verify work.
+7. **task** — Spawn specialized subagents (like debugger, tech-writer, explore) to handle complex tasks in parallel.
 
 Workflow: understand → build incrementally → verify each step → report results.
 

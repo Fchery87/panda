@@ -117,7 +117,7 @@ export default function AdminSecurityPage() {
                       <p>No audit log entries yet</p>
                     </div>
                   ) : (
-                    auditLog?.map((log: any) => (
+                    auditLog?.map((log) => (
                       <div
                         key={log._id}
                         className="flex items-start gap-4 rounded-none border border-border p-4 transition-colors hover:bg-muted/50"
@@ -186,7 +186,7 @@ export default function AdminSecurityPage() {
                       <p>No admin actions recorded yet</p>
                     </div>
                   ) : (
-                    adminActions.map((log: any) => (
+                    adminActions.map((log) => (
                       <div
                         key={log._id}
                         className="flex items-center justify-between rounded-none border border-border p-4"
@@ -240,7 +240,7 @@ export default function AdminSecurityPage() {
                       <p>No settings changes recorded yet</p>
                     </div>
                   ) : (
-                    settingsChanges.map((log: any) => (
+                    settingsChanges.map((log) => (
                       <div key={log._id} className="rounded-none border border-border p-4">
                         <div className="mb-2 flex items-center justify-between">
                           <Badge
@@ -319,7 +319,7 @@ export default function AdminSecurityPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {auditLog?.slice(0, 5).map((log: any) => (
+                  {auditLog?.slice(0, 5).map((log) => (
                     <div
                       key={log._id}
                       className="flex items-center justify-between rounded-none border border-border p-3"

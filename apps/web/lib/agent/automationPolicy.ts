@@ -57,7 +57,7 @@ export function shouldAutoApplyArtifact(
   policy: AgentPolicy,
   artifact: {
     type: 'file_write' | 'command_run'
-    payload: any
+    payload: Record<string, unknown>
   }
 ): boolean {
   if (artifact.type === 'file_write') return policy.autoApplyFiles

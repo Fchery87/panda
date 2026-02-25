@@ -34,6 +34,9 @@ interface ArtifactPanelProps {
   position?: 'right' | 'floating'
 }
 
+type ArtifactCardData = React.ComponentProps<typeof ArtifactCard>['artifact']
+type MappedArtifact = ArtifactCardData & { rawStatus: ArtifactRecord['status'] }
+
 function inferJobType(command: string) {
   const cmdLower = command.toLowerCase()
   if (cmdLower.includes('build') || cmdLower.includes('compile')) return 'build' as const
@@ -42,6 +45,10 @@ function inferJobType(command: string) {
   if (cmdLower.includes('lint')) return 'lint' as const
   if (cmdLower.includes('format')) return 'format' as const
   return 'cli' as const
+}
+
+function asArtifactId(id: string): Id<'artifacts'> {
+  return id as Id<'artifacts'>
 }
 
 function getPrimaryAction(record: ArtifactRecord): ArtifactAction | null {
@@ -86,22 +93,14 @@ export function ArtifactPanel({
         return {
           id: record._id,
           type: action.type,
-          payload: action.payload as any,
+          payload: action.payload as unknown,
           createdAt: record.createdAt,
           description: action.type === 'file_write' ? 'File change queued' : 'Command queued',
           status: mapStatusToCardStatus(record.status),
           rawStatus: record.status,
         }
       })
-      .filter(Boolean) as Array<{
-      id: Id<'artifacts'>
-      type: 'file_write' | 'command_run'
-      payload: any
-      createdAt: number
-      description: string
-      status: 'pending' | 'applied' | 'rejected'
-      rawStatus: ArtifactRecord['status']
-    }>
+      .filter(Boolean) as MappedArtifact[]
   }, [records])
 
   const pendingArtifacts = useMemo(
@@ -206,14 +205,14 @@ export function ArtifactPanel({
 
       setIsApplying(true)
       try {
-        await updateArtifactStatus({ id: artifact.id, status: 'in_progress' })
+        await updateArtifactStatus({ id: asArtifactId(artifact.id), status: 'in_progress' })
         const result = await applyOneArtifact(artifact)
-        await updateArtifactStatus({ id: artifact.id, status: 'completed' })
+        await updateArtifactStatus({ id: asArtifactId(artifact.id), status: 'completed' })
         toast.success(result.kind === 'file' ? 'Applied file change' : 'Executed command', {
           description: result.description,
         })
       } catch (error) {
-        await updateArtifactStatus({ id: artifact.id, status: 'failed' })
+        await updateArtifactStatus({ id: asArtifactId(artifact.id), status: 'failed' })
         toast.error('Failed to apply artifact', {
           description: error instanceof Error ? error.message : String(error),
         })
@@ -228,7 +227,7 @@ export function ArtifactPanel({
     async (id: string) => {
       const artifact = pendingArtifacts.find((a) => a.id === id)
       if (!artifact) return
-      await updateArtifactStatus({ id: artifact.id, status: 'rejected' })
+      await updateArtifactStatus({ id: asArtifactId(artifact.id), status: 'rejected' })
     },
     [pendingArtifacts, updateArtifactStatus]
   )
@@ -239,11 +238,11 @@ export function ArtifactPanel({
     try {
       for (const artifact of pendingArtifacts) {
         try {
-          await updateArtifactStatus({ id: artifact.id, status: 'in_progress' })
+          await updateArtifactStatus({ id: asArtifactId(artifact.id), status: 'in_progress' })
           await applyOneArtifact(artifact)
-          await updateArtifactStatus({ id: artifact.id, status: 'completed' })
+          await updateArtifactStatus({ id: asArtifactId(artifact.id), status: 'completed' })
         } catch (error) {
-          await updateArtifactStatus({ id: artifact.id, status: 'failed' })
+          await updateArtifactStatus({ id: asArtifactId(artifact.id), status: 'failed' })
           toast.error('Failed to apply artifact', {
             description: error instanceof Error ? error.message : String(error),
           })
@@ -257,13 +256,13 @@ export function ArtifactPanel({
 
   const handleRejectAll = useCallback(async () => {
     for (const artifact of pendingArtifacts) {
-      await updateArtifactStatus({ id: artifact.id, status: 'rejected' })
+      await updateArtifactStatus({ id: asArtifactId(artifact.id), status: 'rejected' })
     }
   }, [pendingArtifacts, updateArtifactStatus])
 
   const handleClearAll = useCallback(async () => {
     for (const artifact of pendingArtifacts) {
-      await updateArtifactStatus({ id: artifact.id, status: 'rejected' })
+      await updateArtifactStatus({ id: asArtifactId(artifact.id), status: 'rejected' })
     }
   }, [pendingArtifacts, updateArtifactStatus])
 
@@ -395,7 +394,7 @@ export function ArtifactPanel({
                         transition={{ delay: index * 0.05 }}
                       >
                         <ArtifactCard
-                          artifact={artifact as any}
+                          artifact={artifact}
                           onApply={handleApply}
                           onReject={handleReject}
                         />
@@ -425,7 +424,7 @@ export function ArtifactPanel({
                         transition={{ delay: index * 0.05 }}
                       >
                         <ArtifactCard
-                          artifact={artifact as any}
+                          artifact={artifact}
                           onApply={handleApply}
                           onReject={handleReject}
                         />
@@ -455,7 +454,7 @@ export function ArtifactPanel({
                         transition={{ delay: index * 0.05 }}
                       >
                         <ArtifactCard
-                          artifact={artifact as any}
+                          artifact={artifact}
                           onApply={handleApply}
                           onReject={handleReject}
                         />

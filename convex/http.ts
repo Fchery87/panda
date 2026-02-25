@@ -12,6 +12,7 @@
 import { httpRouter } from 'convex/server'
 import { httpAction } from './_generated/server'
 import { auth } from './auth'
+import { serverLog } from './lib/logger'
 
 /**
  * CORS headers for cross-origin requests
@@ -315,7 +316,7 @@ http.route({
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.error('LLM API error', {
+        serverLog.error('LLM API error', {
           provider,
           status: response.status,
           bodyPreview: errorText.slice(0, 500),
@@ -342,7 +343,8 @@ http.route({
             controllerClosed = true
             try {
               controller.close()
-            } catch {
+            } catch (error) {
+              void error
               // no-op if already closed/errored
             }
           }
@@ -418,7 +420,8 @@ http.route({
                         encoder.encode(`data: ${JSON.stringify({ type: 'text', content })}\n\n`)
                       )
                     }
-                  } catch {
+                  } catch (error) {
+                    void error
                     // Skip malformed JSON
                   }
                 }

@@ -1,5 +1,6 @@
 'use client'
 
+import { appLog } from '@/lib/logger'
 import * as React from 'react'
 import { useMutation } from 'convex/react'
 import { api } from '@convex/_generated/api'
@@ -31,7 +32,7 @@ export function ChatHistoryActions({ chatId, messageCount, className }: ChatHist
       setShowMenu(false)
     } catch (error) {
       toast.error('Failed to fork chat')
-      console.error(error)
+      appLog.error(error)
     } finally {
       setIsLoading(false)
     }

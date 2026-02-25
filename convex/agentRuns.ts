@@ -1,7 +1,52 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { ChatMode } from './schema'
+import type { Id } from './_generated/dataModel'
 import { requireAgentRunOwner, requireChatOwner, requireProjectOwner } from './lib/authz'
+
+type RuntimeCheckpointEnvelope = {
+  version: number
+  sessionID: string
+  agentName: string
+  reason: 'step' | 'complete' | 'error'
+  savedAt: number
+}
+
+function parseRuntimeCheckpointEnvelope(checkpoint: unknown): RuntimeCheckpointEnvelope {
+  if (!checkpoint || typeof checkpoint !== 'object') {
+    throw new Error('Invalid runtime checkpoint payload')
+  }
+
+  const record = checkpoint as Record<string, unknown>
+  const { version, sessionID, agentName, reason, savedAt } = record
+
+  if (version !== 1) {
+    throw new Error('Unsupported runtime checkpoint version')
+  }
+  if (typeof sessionID !== 'string' || sessionID.length === 0) {
+    throw new Error('Runtime checkpoint sessionID is required')
+  }
+  if (typeof agentName !== 'string' || agentName.length === 0) {
+    throw new Error('Runtime checkpoint agentName is required')
+  }
+  if (reason !== 'step' && reason !== 'complete' && reason !== 'error') {
+    throw new Error('Invalid runtime checkpoint reason')
+  }
+  if (typeof savedAt !== 'number' || !Number.isFinite(savedAt)) {
+    throw new Error('Runtime checkpoint savedAt must be a finite number')
+  }
+
+  const state = record.state
+  if (!state || typeof state !== 'object') {
+    throw new Error('Runtime checkpoint state is required')
+  }
+  const stateSessionID = (state as Record<string, unknown>).sessionID
+  if (typeof stateSessionID !== 'string' || stateSessionID !== sessionID) {
+    throw new Error('Runtime checkpoint state.sessionID must match sessionID')
+  }
+
+  return { version, sessionID, agentName, reason, savedAt }
+}
 
 export const create = mutation({
   args: {
@@ -215,5 +260,131 @@ export const listEventsByChat = query({
       .take(limit)
 
     return events.reverse()
+  },
+})
+
+export const saveRuntimeCheckpoint = mutation({
+  args: {
+    runId: v.optional(v.id('agentRuns')),
+    chatId: v.optional(v.id('chats')),
+    checkpoint: v.any(),
+  },
+  handler: async (ctx, args) => {
+    let projectId: Id<'projects'>
+    let chatId: Id<'chats'>
+
+    if (args.runId) {
+      const { run } = await requireAgentRunOwner(ctx, args.runId)
+      projectId = run.projectId
+      chatId = run.chatId
+      if (args.chatId && args.chatId !== run.chatId) {
+        throw new Error('chatId does not match runId')
+      }
+    } else if (args.chatId) {
+      const { chat } = await requireChatOwner(ctx, args.chatId)
+      projectId = chat.projectId
+      chatId = chat._id
+    } else {
+      throw new Error('runId or chatId is required to save a runtime checkpoint')
+    }
+
+    const envelope = parseRuntimeCheckpointEnvelope(args.checkpoint)
+
+    return await ctx.db.insert('harnessRuntimeCheckpoints', {
+      projectId,
+      chatId,
+      runId: args.runId,
+      sessionID: envelope.sessionID,
+      version: envelope.version,
+      agentName: envelope.agentName,
+      reason: envelope.reason,
+      savedAt: envelope.savedAt,
+      checkpoint: args.checkpoint,
+    })
+  },
+})
+
+export const getLatestRuntimeCheckpoint = query({
+  args: {
+    sessionID: v.string(),
+    runId: v.optional(v.id('agentRuns')),
+    chatId: v.optional(v.id('chats')),
+    projectId: v.optional(v.id('projects')),
+  },
+  handler: async (ctx, args) => {
+    if (args.runId) {
+      await requireAgentRunOwner(ctx, args.runId)
+      const rows = await ctx.db
+        .query('harnessRuntimeCheckpoints')
+        .withIndex('by_run_session_saved', (q) =>
+          q.eq('runId', args.runId).eq('sessionID', args.sessionID)
+        )
+        .order('desc')
+        .take(1)
+
+      return (rows[0]?.checkpoint as unknown) ?? null
+    }
+
+    if (args.chatId) {
+      const chatId = args.chatId
+      await requireChatOwner(ctx, args.chatId)
+      const rows = await ctx.db
+        .query('harnessRuntimeCheckpoints')
+        .withIndex('by_chat_session_saved', (q) =>
+          q.eq('chatId', chatId).eq('sessionID', args.sessionID)
+        )
+        .order('desc')
+        .take(1)
+
+      return (rows[0]?.checkpoint as unknown) ?? null
+    }
+
+    if (args.projectId) {
+      const projectId = args.projectId
+      await requireProjectOwner(ctx, args.projectId)
+      const rows = await ctx.db
+        .query('harnessRuntimeCheckpoints')
+        .withIndex('by_project_session_saved', (q) =>
+          q.eq('projectId', projectId).eq('sessionID', args.sessionID)
+        )
+        .order('desc')
+        .take(1)
+
+      return (rows[0]?.checkpoint as unknown) ?? null
+    }
+
+    throw new Error('runId, chatId, or projectId is required to load a runtime checkpoint')
+  },
+})
+
+export const listRuntimeCheckpoints = query({
+  args: {
+    runId: v.optional(v.id('agentRuns')),
+    chatId: v.optional(v.id('chats')),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = Math.max(1, Math.min(args.limit ?? 20, 200))
+
+    if (args.runId) {
+      await requireAgentRunOwner(ctx, args.runId)
+      return await ctx.db
+        .query('harnessRuntimeCheckpoints')
+        .withIndex('by_run_saved', (q) => q.eq('runId', args.runId))
+        .order('desc')
+        .take(limit)
+    }
+
+    if (args.chatId) {
+      const chatId = args.chatId
+      await requireChatOwner(ctx, args.chatId)
+      return await ctx.db
+        .query('harnessRuntimeCheckpoints')
+        .withIndex('by_chat_saved', (q) => q.eq('chatId', chatId))
+        .order('desc')
+        .take(limit)
+    }
+
+    throw new Error('runId or chatId is required to list runtime checkpoints')
   },
 })

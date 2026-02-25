@@ -17,6 +17,9 @@ export type {
   AgentMode,
   PermissionDecision,
   Permission,
+  ToolRiskTier,
+  ToolInterruptRequest,
+  ToolInterruptResult,
   FinishReason,
   AgentConfig,
   ToolState,
@@ -87,3 +90,23 @@ export { mcp } from './mcp'
 export type { MCPServerConfig, MCPToolDefinition, MCPResource, MCPClient } from './mcp'
 export { snapshots, diffSnapshots, createPatch } from './snapshots'
 export type { Snapshot } from './snapshots'
+export {
+  runEvalSuite,
+  buildEvalScorecard,
+  exactMatchScorer,
+  containsTextScorer,
+  regexTextScorer,
+  normalizedTextExactScorer,
+} from './evals'
+export type {
+  EvalScenario,
+  EvalRunnerOutput,
+  EvalScore,
+  EvalResult,
+  EvalReport,
+  EvalScorecard,
+  EvalTagScorecard,
+  RunEvalSuiteOptions,
+} from './evals'
+export { createEvalTemplateScenarios } from './eval-templates'
+export type { EvalTemplate } from './eval-templates'

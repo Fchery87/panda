@@ -11,6 +11,7 @@
  */
 
 import type { ToolDefinition } from '../../llm/types'
+import type { CheckpointStore } from './checkpoint-store'
 
 export type { ToolDefinition } from '../../llm/types'
 
@@ -33,6 +34,25 @@ export type PermissionDecision = 'allow' | 'deny' | 'ask'
  * Permission configuration - maps tool patterns to decisions
  */
 export type Permission = Record<string, PermissionDecision>
+
+export type ToolRiskTier = 'low' | 'medium' | 'high' | 'critical'
+export type ToolInterruptDecision = 'approve' | 'reject' | 'edit'
+
+export interface ToolInterruptRequest {
+  sessionID: Identifier
+  messageID: Identifier
+  toolName: string
+  args: Record<string, unknown>
+  patterns: string[]
+  riskTier: ToolRiskTier
+  reason: string
+}
+
+export interface ToolInterruptResult {
+  decision: ToolInterruptDecision
+  args?: Record<string, unknown>
+  reason?: string
+}
 
 /**
  * Finish reason for assistant messages
@@ -349,10 +369,20 @@ export interface RuntimeConfig {
   enableToolDeduplication?: boolean
   toolLoopThreshold?: number
   contextCompactionThreshold?: number
+  compactionTimeBudgetMs?: number
   enableSnapshots?: boolean
+  snapshotTimeoutMs?: number
+  snapshotFailureMode?: 'warn' | 'error'
   enableReasoning?: boolean
   maxSubagentDepth?: number
   subagentDepth?: number
+  checkpointStore?: CheckpointStore
+  toolRiskPolicy?: Partial<Record<ToolRiskTier, PermissionDecision>>
+  toolRiskOverrides?: Record<string, ToolRiskTier>
+  onToolInterrupt?: (request: ToolInterruptRequest) => Promise<ToolInterruptResult>
+  maxToolExecutionRetries?: number
+  toolRetryBackoffMs?: number
+  enableToolCallIdempotencyCache?: boolean
   runSubagent?: (
     agent: AgentConfig,
     prompt: string,

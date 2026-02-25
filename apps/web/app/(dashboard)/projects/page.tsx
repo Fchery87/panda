@@ -138,7 +138,8 @@ function ProjectRow({
     try {
       await onDelete(project._id)
       toast.success('Project deleted')
-    } catch {
+    } catch (error) {
+      void error
       toast.error('Failed to delete project')
     } finally {
       setIsDeleting(false)

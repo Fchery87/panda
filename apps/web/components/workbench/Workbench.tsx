@@ -9,9 +9,10 @@ import { Terminal } from './Terminal'
 import { EditorContainer } from '../editor/EditorContainer'
 import { Preview } from './Preview'
 import { cn } from '@/lib/utils'
-import { Code2, Eye, FileCode, Plus, Search } from 'lucide-react'
+import { Code2, Eye, FileCode, Plus, Search, History } from 'lucide-react'
 import type { Id } from '@convex/_generated/dataModel'
 import { Button } from '@/components/ui/button'
+import { Timeline } from './Timeline'
 
 interface OpenFileTab {
   path: string
@@ -20,6 +21,7 @@ interface OpenFileTab {
 
 interface WorkbenchProps {
   projectId: Id<'projects'>
+  currentChatId?: Id<'chats'>
   files: Array<{
     _id: Id<'files'>
     path: string
@@ -114,11 +116,12 @@ function EmptyState({ onCreateFile, onOpenSearch, variant = 'desktop' }: EmptySt
   )
 }
 
-type EditorTab = 'code' | 'preview'
+type EditorTab = 'code' | 'preview' | 'timeline'
 type SidebarTab = 'explorer' | 'search'
 
 export function Workbench({
   projectId,
+  currentChatId,
   files,
   selectedFilePath,
   selectedLocation,
@@ -272,6 +275,18 @@ export function Workbench({
                   <Eye className="h-3.5 w-3.5" />
                   Preview
                 </button>
+                <button
+                  onClick={() => setActiveTab('timeline')}
+                  className={cn(
+                    'flex min-h-11 items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-widest',
+                    activeTab === 'timeline'
+                      ? 'border-b-2 border-primary bg-background text-primary'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <History className="h-3.5 w-3.5" />
+                  Timeline
+                </button>
               </div>
 
               <div className="flex-1 overflow-hidden">
@@ -290,8 +305,10 @@ export function Workbench({
                       variant="mobile"
                     />
                   )
-                ) : (
+                ) : activeTab === 'preview' ? (
                   <Preview />
+                ) : (
+                  <Timeline chatId={currentChatId} />
                 )}
               </div>
             </div>
@@ -424,6 +441,18 @@ export function Workbench({
                     <Eye className="h-3.5 w-3.5" />
                     Preview
                   </button>
+                  <button
+                    onClick={() => setActiveTab('timeline')}
+                    className={cn(
+                      'transition-sharp flex items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-widest',
+                      activeTab === 'timeline'
+                        ? 'border-b-2 border-primary bg-background text-primary'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    <History className="h-3.5 w-3.5" />
+                    Timeline
+                  </button>
                 </div>
 
                 {/* Tab Content */}
@@ -443,8 +472,10 @@ export function Workbench({
                         variant="desktop"
                       />
                     )
-                  ) : (
+                  ) : activeTab === 'preview' ? (
                     <Preview />
+                  ) : (
+                    <Timeline chatId={currentChatId} />
                   )}
                 </div>
               </div>

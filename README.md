@@ -17,558 +17,169 @@ agents, code editing, file management, terminal integration, and real-time
 collaboration in a unified interface. It enables developers to ask questions,
 plan changes, write code, and build projects with AI assistance.
 
-## Project Health
+### Key Features
 
-**Validation Status:** ✅ Perfect (100/100)
-
-| Check          | Status               | Details                      |
-| -------------- | -------------------- | ---------------------------- |
-| **TypeScript** | ✅ Pass              | Strict type checking enabled |
-| **Lint**       | ✅ Pass              | ESLint 9, no warnings        |
-| **Tests**      | ✅ Unit + E2E suites | Bun test runner + Playwright |
-| **Build**      | ✅ Pass              | Next.js + Turbo pipeline     |
-
-_Last validated: 2026-02-07_
-
-All validation checks are passing. The codebase is in excellent health.
+- **AI-Powered Chat** - Streaming chat across Ask, Plan, Code, and Build modes
+- **Smart File Management** - Tree view with Framer Motion animations
+- **Code Editor** - SSR-safe CodeMirror 6 with syntax highlighting
+- **Diff Viewer** - Side-by-side code comparison
+- **Integrated Terminal** - Real-time job execution with live streaming
+- **Artifact System** - Queue-based apply/reject workflow for AI changes
+- **Resizable Layout** - Customizable workbench panels
+- **GitHub Integration** - Import public repositories directly
+- **Settings Management** - LLM provider configuration & theme toggle
+- **Panda Swarm** - Parallel sub-agent orchestration
+- **Panda Oracle** - Semantic codebase search
 
 ## Tech Stack
 
-| Layer                | Technology                                   |
-| -------------------- | -------------------------------------------- |
-| **Framework**        | Next.js 16+ (App Router, TypeScript)         |
-| **Runtime**          | React 19                                     |
-| **Database**         | Convex (real-time backend with HTTP actions) |
-| **Streaming**        | Convex HTTP actions + provider adapters      |
-| **UI Components**    | shadcn/ui (30+ components)                   |
-| **Styling**          | Tailwind CSS 3.4                             |
-| **Animations**       | Framer Motion                                |
-| **Layout**           | react-resizable-panels                       |
-| **Editor**           | CodeMirror 6 (SSR-safe dynamic import)       |
-| **State Management** | Convex real-time queries + React state/hooks |
-| **Package Manager**  | Bun 1.2.0                                    |
-| **Monorepo**         | TurboRepo 2.4                                |
-| **Testing**          | Bun native test runner + Playwright E2E      |
-| **Linting**          | ESLint 9 + TypeScript ESLint                 |
-| **Formatting**       | Prettier 3 + Tailwind plugin                 |
+| Layer           | Technology                                |
+| --------------- | ----------------------------------------- |
+| Framework       | Next.js 16 (App Router, TypeScript)       |
+| Runtime         | React 19                                  |
+| Database        | Convex (real-time backend + HTTP actions) |
+| Authentication  | Convex Auth with Google OAuth             |
+| UI Components   | shadcn/ui (30+ components)                |
+| Styling         | Tailwind CSS 3.4 + brutalist theme        |
+| Animations      | Framer Motion                             |
+| Editor          | CodeMirror 6 (SSR-safe)                   |
+| State           | Zustand (client) + Convex (server)        |
+| Package Manager | Bun 1.2.0                                 |
+| Monorepo        | TurboRepo 2.4                             |
+| Testing         | Bun test runner + Playwright E2E          |
 
-## Features
-
-### Core Features
-
-- **AI-Powered Chat** - Streaming chat across Ask, Plan, Code, and Build modes
-  with run timeline and progress events
-- **Smart File Management** - Tree view with Framer Motion animations for file
-  operations
-- **Code Editor** - SSR-safe CodeMirror 6 with TypeScript and JavaScript support
-- **Diff Viewer** - Side-by-side code comparison with syntax highlighting
-- **Integrated Terminal** - Real-time job execution with live log streaming
-- **Artifact System** - Queue-based apply/reject workflow for AI-generated
-  changes
-- **Resizable Layout** - Customizable workbench panels with persistent sizing
-- **GitHub Integration** - Import public repositories directly into projects
-- **Settings Management** - LLM provider configuration, theme toggle, model
-  selection
-
-### UI Features
-
-- 30+ shadcn/ui components (Button, Card, Dialog, Tabs, Tooltip, Sonner, etc.)
-- Dark/light theme support with next-themes
-- Toast notifications with Sonner
-- Responsive design with Tailwind CSS
-- Smooth animations with Framer Motion
-- Context menus, toggle groups, and scroll areas
-
-## Architecture
-
-```
-panda-ai/
-├── apps/
-│   └── web/                    # Next.js 16 frontend
-│       ├── app/               # App Router pages
-│       │   ├── (dashboard)/   # Dashboard layout group
-│       │   ├── api/jobs/    # Server route for command execution
-│       │   ├── settings/     # Settings page
-│       │   ├── layout.tsx   # Root layout with providers
-│       │   └── page.tsx     # Landing page
-│       ├── components/
-│       │   ├── ui/          # shadcn/ui components (30+)
-│       │   ├── chat/        # Chat components (RunProgressPanel, AgentSelector)
-│       │   ├── workbench/   # Workbench panels
-│       │   ├── editor/      # CodeMirror editor
-│       │   ├── artifacts/   # Artifact panel
-│       │   └── plan/        # Plan panel with Mermaid
-│       ├── lib/
-│       │   ├── llm/         # LLM provider registry (provider-agnostic)
-│       │   ├── agent/       # Agent runtime
-│       │   │   ├── harness/ # OpenCode-style agentic harness
-│       │   │   │   ├── types.ts          # Core types (Message, Part, Agent)
-│       │   │   │   ├── identifier.ts     # Unique IDs
-│       │   │   │   ├── event-bus.ts     # Real-time events
-│       │   │   │   ├── permissions.ts    # Allow/deny/ask permissions
-│       │   │   │   ├── agents.ts        # Agent registry
-│       │   │   │   ├── plugins.ts       # Plugin/hook system
-│       │   │   │   ├── compaction.ts   # Context auto-summarization
-│       │   │   │   ├── runtime.ts       # Execution engine
-│       │   │   │   ├── task-tool.ts     # Subagent delegation
-│       │   │   │   ├── mcp.ts          # MCP support
-│       │   │   │   └── snapshots.ts     # Git snapshots/undo
-│       │   │   ├── runtime.ts      # Legacy runtime
-│       │   │   ├── tools.ts        # Tool definitions
-│       │   │   └── prompt-library.ts
-│       │   └── diff.ts        # Diff computation
-│       ├── hooks/            # Custom React hooks
-│       └── convex/           # Convex generated types
-├── convex/                  # Convex backend
-│   ├── schema.ts           # Database schema (23 tables)
-│   ├── projects.ts         # Project CRUD
-│   ├── files.ts           # File operations
-│   ├── chats.ts          # Chat management
-│   ├── messages.ts        # Message streaming
-│   ├── jobs.ts           # Terminal job execution
-│   ├── artifacts.ts       # Artifact transactions
-│   ├── settings.ts       # User settings
-│   ├── github.ts         # GitHub integration
-│   ├── llm.ts            # LLM streaming HTTP actions
-│   └── agentRuns.ts      # Agent run tracking
-├── docs/                   # Documentation
-│   └── plans/            # Implementation plans
-└── package.json          # Root workspace config
-```
-
-### Database Schema (Convex)
-
-| Table                | Purpose                                   |
-| -------------------- | ----------------------------------------- |
-| `users`              | User accounts and profiles                |
-| `projects`           | Project metadata and repos                |
-| `files`              | File contents and paths                   |
-| `fileSnapshots`      | Version history                           |
-| `chats`              | Chat sessions (Ask/Plan/Code/Build modes) |
-| `messages`           | Chat messages with streaming              |
-| `artifacts`          | AI-generated code changes                 |
-| `jobs`               | Terminal command executions               |
-| `settings`           | User preferences                          |
-| `agentRuns`          | Agent run lifecycle metadata              |
-| `agentRunEvents`     | Persisted run timeline events             |
-| `checkpoints`        | Versioned snapshots for rollback          |
-| `providerTokens`     | OAuth tokens for LLM providers            |
-| `sharedChats`        | Public sharing links                      |
-| `mcpServers`         | User-configured MCP servers               |
-| `subagents`          | User-defined subagents                    |
-| `adminSettings`      | Global system configuration               |
-| `userAnalytics`      | Per-user usage tracking                   |
-| `auditLog`           | Administrative actions                    |
-| `agentSessions`      | Agentic harness sessions                  |
-| `messageParts`       | Structured parts for messages             |
-| `permissionRequests` | Pending permission requests               |
-| `gitSnapshots`       | Git snapshots for undo                    |
-
-## Setup Instructions
+## Quick Start
 
 ### Prerequisites
 
-- [Bun](https://bun.sh) 1.2.0 or later
-- Node.js 20+ (for Convex CLI compatibility)
+- [Bun](https://bun.sh) 1.2.0+
+- Node.js 20+
 - Git
 
 ### Installation
 
-1. **Clone the repository**
+```bash
+# Clone the repository
+git clone <repository-url>
+cd panda
 
-   ```bash
-   git clone <repository-url>
-   cd panda-ai
-   ```
+# Install dependencies
+bun install
 
-2. **Install dependencies**
+# Initialize Convex backend
+bunx convex dev --init
 
-   ```bash
-   bun install
-   ```
-
-3. **Initialize Convex backend**
-
-   ```bash
-   bunx convex dev --init
-   ```
-
-   This will:
-   - Create a Convex project
-   - Generate `.env.local` with `NEXT_PUBLIC_CONVEX_URL`
-   - Deploy the schema
-
-4. **Set up environment variables**
-
-   The `.env.local` file is auto-generated in the root directory after Convex
-   init:
-
-   ```env
-   # Convex (auto-generated after init)
-   CONVEX_DEPLOYMENT=dev:...
-   NEXT_PUBLIC_CONVEX_URL=https://<your-project>.convex.cloud
-   CONVEX_SITE_URL=https://<your-project>.convex.site
-
-   # LLM Providers (at least one required for AI features)
-   OPENAI_API_KEY=sk-...
-   # or
-   OPENROUTER_API_KEY=sk-...
-   # or
-   TOGETHER_API_KEY=...
-
-    # Optional: provider-specific keys
-    ANTHROPIC_API_KEY=...
-    ZAI_API_KEY=...
-   ```
-
-## Authentication
-
-Panda.ai uses Convex Auth with Google OAuth for authentication.
-
-### Setup
-
-1.  Create a project in
-    [Google Cloud Console](https://console.cloud.google.com/)
-2.  Configure OAuth 2.0 credentials
-3.  Add authorized redirect URI:
-    `https://your-deployment.convex.site/api/auth/callback/google`
-4.  Copy client ID and secret to `.env.local`
+# Start development server
+bun run dev
+```
 
 ### Environment Variables
 
+Create or update `.env.local`:
+
 ```env
+# Convex (auto-generated after init)
+NEXT_PUBLIC_CONVEX_URL=https://<your-project>.convex.cloud
+
+# LLM Providers (at least one required)
+OPENAI_API_KEY=sk-...
+# or
+OPENROUTER_API_KEY=sk-...
+
+# Google OAuth (optional, for authentication)
 AUTH_GOOGLE_ID=your-client-id.apps.googleusercontent.com
 AUTH_GOOGLE_SECRET=your-client-secret
 CONVEX_AUTH_SECRET=your-random-secret
 ```
 
-## Development Workflow
-
-### Start Development Server
+## Development Commands
 
 ```bash
+# Run all development (Convex + Next.js)
 bun run dev
-```
 
-This runs both:
+# Type checking
+bun run typecheck
 
-- Convex dev server (`bunx convex dev`)
-- Next.js dev server (`turbo run dev`)
+# Linting
+bun run lint
 
-### Build for Production
+# Formatting
+bun run format:check
 
-```bash
+# Run unit tests
+bun test
+
+# Run E2E tests
+cd apps/web && bun run test:e2e
+
+# Build for production
 bun run build
 ```
 
-### Type Checking
-
-```bash
-bun run typecheck
-```
-
-### Linting
-
-Check for ESLint issues:
-
-```bash
-bun run lint
-```
-
-Auto-fix ESLint issues:
-
-```bash
-bun run lint:fix
-```
-
-### Formatting
-
-Check Prettier formatting:
-
-```bash
-bun run format:check
-```
-
-Auto-format all files:
-
-```bash
-bun run format
-```
-
-Format specific file or directory:
-
-```bash
-bunx prettier --write apps/web/components/chat/ChatContainer.tsx
-```
-
-The project uses:
-
-- **Prettier 3** for code formatting
-- **Tailwind CSS Prettier plugin** for class sorting
-- **Integration with ESLint** for consistent style
-
-### Testing
-
-#### Unit Tests (Bun)
-
-Run all unit tests:
-
-```bash
-bun test
-```
-
-Run tests with coverage:
-
-```bash
-bun test --coverage
-```
-
-Run specific test file:
-
-```bash
-bun test apps/web/lib/agent/runtime.test.ts
-```
-
-Run tests in watch mode:
-
-```bash
-bun test --watch
-```
-
-#### E2E Tests (Playwright)
-
-Run all E2E tests:
-
-```bash
-cd apps/web && bun run test:e2e
-```
-
-Run E2E tests with UI mode:
-
-```bash
-cd apps/web && bun run test:e2e:ui
-```
-
-Run E2E tests in debug mode:
-
-```bash
-cd apps/web && bun run test:e2e:debug
-```
-
-Run specific E2E test file:
-
-```bash
-cd apps/web && bunx playwright test e2e/homepage.e2e-spec.ts
-```
-
-Generate Playwright report:
-
-```bash
-cd apps/web && bunx playwright show-report
-```
-
-### Convex Commands
-
-```bash
-# Start Convex dev server only
-bun run convex:dev
-
-# Deploy to production
-bun run convex:deploy
-```
-
-## TurboRepo Pipeline
-
-The monorepo uses TurboRepo for task orchestration:
-
-```json
-{
-  "tasks": {
-    "build": { "dependsOn": ["^build"] },
-    "dev": { "cache": false, "persistent": true },
-    "lint": {},
-    "typecheck": {}
-  }
-}
-```
-
-## Project Structure
-
-### Key Directories
+## Architecture
 
 ```
-apps/web/
-├── app/
-│   ├── (dashboard)/projects/[projectId]/   # Project workbench
-│   ├── settings/                           # Settings page
-│   ├── api/jobs/execute/route.ts           # Command execution API
-│   ├── layout.tsx                          # Root layout
-│   └── page.tsx                            # Landing page
-├── components/
-│   ├── ui/                                 # 30+ shadcn components
-│   ├── chat/                               # ChatContainer, MessageList, etc.
-│   ├── workbench/                          # FileTree, Terminal, Preview
-│   ├── editor/                             # CodeMirrorEditor, EditorContainer
-│   └── artifacts/                          # ArtifactPanel, ArtifactCard
-├── lib/
-│   ├── llm/                                # Provider registry & types
-│   │   ├── types.ts
-│   │   ├── registry.ts
-│   │   └── providers/
-│   ├── agent/                              # Agent runtime
-│   │   ├── harness/                       # OpenCode-style agentic harness
-│   │   │   ├── types.ts                   # Core types
-│   │   │   ├── identifier.ts              # Unique IDs
-│   │   │   ├── event-bus.ts               # Real-time events
-│   │   │   ├── permissions.ts              # Permission system
-│   │   │   ├── agents.ts                  # Agent registry
-│   │   │   ├── plugins.ts                 # Plugin system
-│   │   │   ├── compaction.ts               # Context compaction
-│   │   │   ├── runtime.ts                 # Execution engine
-│   │   │   ├── task-tool.ts               # Subagent delegation
-│   │   │   ├── mcp.ts                     # MCP support
-│   │   │   └── snapshots.ts                # Git snapshots
-│   │   ├── runtime.ts                     # Legacy runtime
-│   │   ├── tools.ts                       # Tool definitions
-│   │   └── prompt-library.ts
-│   └── diff.ts                            # Diff computation utility
-├── hooks/
-│   ├── useAgent.ts                         # Agent runtime orchestration
-│   ├── useJobs.ts                          # Terminal jobs and logs
-│   └── useAutoApplyArtifacts.ts            # Policy-based artifact auto-apply
-└── e2e/
-    └── *.e2e-spec.ts                       # Playwright E2E tests
+panda/
+├── apps/web/                    # Next.js 16 frontend
+│   ├── app/                     # App Router pages
+│   │   ├── (dashboard)/         # Dashboard layouts
+│   │   ├── settings/           # Settings page
+│   │   └── page.tsx            # Landing page
+│   ├── components/
+│   │   ├── ui/                 # shadcn/ui components
+│   │   ├── chat/               # Chat components
+│   │   ├── workbench/          # Workbench panels
+│   │   └── editor/             # CodeMirror editor
+│   └── lib/
+│       ├── llm/                # LLM provider registry
+│       └── agent/              # Agent runtime
+│           └── harness/        # OpenCode-style harness
+├── convex/                      # Convex backend
+│   ├── schema.ts               # 23-table schema
+│   └── *.ts                    # Queries, mutations, actions
+└── docs/                        # Documentation
 ```
 
-## Key Components
+## Database Schema (23 Tables)
 
-### Chat System
-
-- **ProjectPage chat shell** - Main chat + workbench orchestration with mode
-  toggle
-- **MessageList** - Virtualized message rendering with streaming
-- **MessageBubble** - Styled message with syntax highlighting
-- **ChatInput** - Input with AgentSelector for agent switching
-- **RunProgressPanel** - Unified live/historical run progress (replaces
-  LiveRunPanel + RunTimelinePanel)
-- **AgentSelector** - Dropdown for primary/subagent selection (uses harness
-  agent system)
-- **MemoryBankEditor** - Project memory management
-- **ReasoningPanel** - Display model's thinking process
-- **ContextWindowIndicator** - Token usage display
-
-### Workbench
-
-- **Workbench** - Resizable panel layout (FileTree | Editor+Terminal | Preview)
-- **FileTree** - Animated tree view with context menus
-- **EditorContainer** - SSR-safe CodeMirror wrapper
-- **CodeMirrorEditor** - Full-featured code editor
-- **Terminal** - Real-time job output with Convex subscriptions
-- **Preview** - Live preview panel
-- **DiffViewer** - Code comparison with line-by-line diff
-
-### Artifacts
-
-- **ArtifactPanel** - Queue management UI
-- **ArtifactCard** - Individual artifact with apply/reject
-
-### Settings
-
-- **SettingsPage** - Provider, theme, and model configuration
-- **ProviderCard** - Individual provider configuration
-- **ThemeToggle** - Dark/light/system toggle
-- **GitHubImportDialog** - Repository import interface
-
-## Development Phases
-
-This project was built in phases following a structured implementation plan:
-
-| Phase | Description                                                       | Status      |
-| ----- | ----------------------------------------------------------------- | ----------- |
-| 1     | Monorepo setup, Next.js 16, shadcn/ui, Framer Motion, Convex init | ✅ Complete |
-| 2     | Convex schema (11 tables), CRUD operations and agent run tracking | ✅ Complete |
-| 3     | FileTree, CodeMirror editor, Resizable Workbench, DiffViewer      | ✅ Complete |
-| 4     | Chat UI components, streaming chat with multi-provider adapters   | ✅ Complete |
-| 5     | Artifact transaction system, agent tools                          | ✅ Complete |
-| 6     | Terminal with real-time job streaming                             | ✅ Complete |
-| 7     | Settings page, GitHub import                                      | ✅ Complete |
-| 8     | Final integration, all components connected                       | ✅ Complete |
-
-## CI/CD
-
-GitHub Actions workflows are configured in `.github/workflows/`:
-
-### Continuous Integration (`ci.yml`)
-
-Automatically runs on every PR:
-
-| Job           | Description           |
-| ------------- | --------------------- |
-| **lint**      | ESLint checks         |
-| **typecheck** | TypeScript validation |
-| **format**    | Prettier format check |
-| **test**      | Bun unit tests        |
-| **build**     | Next.js/Turbo build   |
-| **e2e**       | Playwright E2E tests  |
-
-Quality checks include:
-
-- TypeScript strict checking
-- ESLint with zero warnings
-- Prettier format validation
-- Bun unit tests
-
-### Workflow Commands
-
-The CI pipeline runs these commands:
-
-```bash
-bun run typecheck    # TypeScript validation
-bun run lint         # ESLint check
-bun run format:check # Prettier validation
-bun test             # Unit tests
-bun run test:e2e     # E2E tests
-```
-
-### Deployment
-
-Deployment workflow is defined in `.github/workflows/deploy.yml`.
-
-- **Frontend**: Vercel (Next.js 16)
-- **Backend**: Convex (real-time database)
-- **Triggers**: Auto-deploy on merge to main
-
-## Contributing
-
-1. Ensure all checks pass before committing:
-
-   ```bash
-   bun run typecheck && bun run lint && bun test
-   ```
-
-2. Follow the existing code style and brutalist design system (see AGENTS.md)
-
-3. Write tests for new functionality
-
-4. Update documentation as needed
-
-## License
-
-MIT License - feel free to use for personal or commercial projects.
+| Table                | Purpose                        |
+| -------------------- | ------------------------------ |
+| `users`              | User accounts with admin roles |
+| `projects`           | Code projects                  |
+| `files`              | Project file contents          |
+| `fileSnapshots`      | Version history                |
+| `chats`              | Chat sessions (7 modes)        |
+| `messages`           | Chat messages                  |
+| `artifacts`          | AI-generated changes           |
+| `jobs`               | Terminal command execution     |
+| `agentRuns`          | Agent run tracking             |
+| `agentRunEvents`     | Timeline events                |
+| `checkpoints`        | Version snapshots              |
+| `providerTokens`     | LLM OAuth tokens               |
+| `sharedChats`        | Public sharing links           |
+| `mcpServers`         | MCP server configs             |
+| `subagents`          | Custom subagents               |
+| `adminSettings`      | System configuration           |
+| `userAnalytics`      | Usage tracking                 |
+| `auditLog`           | Admin actions                  |
+| `agentSessions`      | Harness sessions               |
+| `messageParts`       | Structured messages            |
+| `permissionRequests` | Pending permissions            |
+| `gitSnapshots`       | Git undo snapshots             |
 
 ## Documentation
 
-- **AGENTS.md** - Comprehensive guide for AI agents working on this codebase
-  including architecture, patterns, and quality standards
-- **AGENTIC_HARNESS.md** - OpenCode-style agentic harness documentation
-  (lib/agent/harness) with agent system, permissions, plugins, MCP, and more
-- **README.md** - This file - project overview and quick start
+- [AGENTS.md](./AGENTS.md) - AI agent instructions
+- [docs/AGENTIC_HARNESS.md](./docs/AGENTIC_HARNESS.md) - Agent harness docs
+- [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) - Deployment guide
+- [docs/GOOGLE_OAUTH_SETUP.md](./docs/GOOGLE_OAUTH_SETUP.md) - OAuth setup
+- [convex/README.md](./convex/README.md) - Backend documentation
+- [DESIGN_SYSTEM_IMPLEMENTATION.md](./DESIGN_SYSTEM_IMPLEMENTATION.md) - Design
+  system
+- [PANDA_SWARM_DEVELOPMENT_LOG.md](./PANDA_SWARM_DEVELOPMENT_LOG.md) - Feature
+  log
 
-## Support
+## License
 
-For issues or questions, please open a GitHub issue or reach out to the
-development team.
-
----
-
-**Built with ❤️ using Next.js, Convex, shadcn/ui, and Framer Motion**
+MIT License

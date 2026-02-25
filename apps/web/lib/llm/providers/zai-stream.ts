@@ -8,6 +8,7 @@
  * so we implement our own streaming parser for Z.ai specifically.
  */
 
+import { appLog } from '@/lib/logger'
 import type { StreamChunk, CompletionOptions, ToolCall } from '../types'
 
 /**
@@ -64,7 +65,7 @@ export async function* zaiCompletionStream(
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('[zaiCompletionStream] HTTP error:', response.status, errorText)
+      appLog.error('[zaiCompletionStream] HTTP error:', response.status, errorText)
       yield {
         type: 'error',
         error: `Z.ai API error (${response.status}): ${errorText}`,
@@ -164,7 +165,8 @@ export async function* zaiCompletionStream(
                 // We'll yield all tool calls at the end of the stream
               }
             }
-          } catch {
+          } catch (error) {
+            void error
             // Skip malformed SSE chunks
           }
         }
@@ -179,7 +181,8 @@ export async function* zaiCompletionStream(
         // Validate the arguments are complete JSON
         try {
           JSON.parse(toolCall.function.arguments)
-        } catch {
+        } catch (error) {
+          void error
           // Skip validation failures here; downstream tool execution can still surface errors.
         }
 
@@ -197,7 +200,7 @@ export async function* zaiCompletionStream(
     }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error)
-    console.error('[zaiCompletionStream] Error:', error)
+    appLog.error('[zaiCompletionStream] Error:', error)
     yield {
       type: 'error',
       error: `Z.ai streaming error: ${errorMsg}`,

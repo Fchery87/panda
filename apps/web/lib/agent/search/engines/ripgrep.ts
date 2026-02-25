@@ -20,7 +20,8 @@ function decodeField(value: unknown): string {
   if (typeof bytes === 'string') {
     try {
       return Buffer.from(bytes, 'base64').toString('utf8')
-    } catch {
+    } catch (error) {
+      void error
       return ''
     }
   }
@@ -75,7 +76,8 @@ function parseRipgrepJsonLines(
     let parsed: RipgrepJsonEnvelope
     try {
       parsed = JSON.parse(line) as RipgrepJsonEnvelope
-    } catch {
+    } catch (error) {
+      void error
       continue
     }
 

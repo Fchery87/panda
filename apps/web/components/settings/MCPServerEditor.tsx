@@ -3,14 +3,19 @@
 import * as React from 'react'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
+import type { Id } from '@convex/_generated/dataModel'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { mcp } from '@/lib/agent/harness'
 import { Plus, Trash2, Server } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface MCPServerEditorProps {
   className?: string
 }
+
+type MCPServerId = Id<'mcpServers'>
 
 export function MCPServerEditor({ className }: MCPServerEditorProps) {
   const servers = useQuery(api.mcpServers.list)
@@ -19,6 +24,10 @@ export function MCPServerEditor({ className }: MCPServerEditorProps) {
   const removeServer = useMutation(api.mcpServers.remove)
 
   const [showAddForm, setShowAddForm] = React.useState(false)
+  const [testingServerId, setTestingServerId] = React.useState<MCPServerId | null>(null)
+  const [testStatusByServer, setTestStatusByServer] = React.useState<
+    Record<string, { ok: boolean; message: string }>
+  >({})
   const [newServer, setNewServer] = React.useState({
     name: '',
     transport: 'stdio' as 'stdio' | 'sse',
@@ -51,12 +60,45 @@ export function MCPServerEditor({ className }: MCPServerEditorProps) {
     setShowAddForm(false)
   }
 
-  const handleRemove = async (id: string) => {
-    await removeServer({ id: id as any })
+  const handleRemove = async (id: MCPServerId) => {
+    await removeServer({ id })
   }
 
-  const handleToggle = async (id: string, enabled: boolean) => {
-    await updateServer({ id: id as any, enabled: !enabled })
+  const handleToggle = async (id: MCPServerId, enabled: boolean) => {
+    await updateServer({ id, enabled: !enabled })
+  }
+
+  const handleTest = async (server: NonNullable<typeof servers>[number]) => {
+    setTestingServerId(server._id)
+    try {
+      mcp.registerServer({
+        id: String(server._id),
+        name: server.name,
+        transport: server.transport as 'stdio' | 'sse',
+        command: server.command ?? undefined,
+        args: server.args ?? undefined,
+        url: server.url ?? undefined,
+      })
+      const result = await mcp.testConnection(String(server._id))
+      const message = result.ok
+        ? `Connected (${result.transport}) • ${result.toolCount ?? 0} tools • ${result.resourceCount ?? 0} resources`
+        : `${result.transport}: ${result.error ?? 'connection failed'}`
+      setTestStatusByServer((prev) => ({
+        ...prev,
+        [String(server._id)]: { ok: result.ok, message },
+      }))
+      if (result.ok) toast.success(message)
+      else toast.error(message)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'MCP test failed'
+      setTestStatusByServer((prev) => ({
+        ...prev,
+        [String(server._id)]: { ok: false, message },
+      }))
+      toast.error(message)
+    } finally {
+      setTestingServerId(null)
+    }
   }
 
   return (
@@ -199,8 +241,29 @@ export function MCPServerEditor({ className }: MCPServerEditorProps) {
                 <div className="truncate font-mono text-xs text-muted-foreground">
                   {server.transport === 'stdio' ? server.command : server.url}
                 </div>
+                {testStatusByServer[String(server._id)] ? (
+                  <div
+                    className={cn(
+                      'mt-1 truncate font-mono text-[10px]',
+                      testStatusByServer[String(server._id)]!.ok
+                        ? 'text-green-700'
+                        : 'text-destructive'
+                    )}
+                  >
+                    {testStatusByServer[String(server._id)]!.message}
+                  </div>
+                ) : null}
               </div>
               <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleTest(server)}
+                  className="h-7 rounded-none font-mono text-xs"
+                  disabled={testingServerId === server._id}
+                >
+                  {testingServerId === server._id ? 'Testing…' : 'Test'}
+                </Button>
                 <button
                   onClick={() => handleToggle(server._id, server.enabled)}
                   className={cn(

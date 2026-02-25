@@ -10,16 +10,27 @@
  * - search_code_ast: Structural AST-aware search
  */
 
+import { appLog } from '@/lib/logger'
 import type { ToolDefinition, ToolCall, ToolResult } from '../llm/types'
 import type { ChatMode } from './prompt-library'
+import { executeOracleSearch } from './harness/oracle'
+
+type ConvexFunctionRef = unknown
+type ConvexArgs = Record<string, unknown>
+type ToolApiRef = unknown
+
+function logToolError(message: string, error: unknown): void {
+  appLog.error(`[agent-tools] ${message}`, error)
+}
 
 /**
  * Get tools allowed for a specific mode
  */
 export function getAllowedToolsForMode(mode: ChatMode): string[] {
   const modeTools: Record<ChatMode, string[]> = {
-    ask: ['search_code', 'search_code_ast', 'read_files', 'list_directory'],
+    ask: ['search_codebase', 'search_code', 'search_code_ast', 'read_files', 'list_directory'],
     architect: [
+      'search_codebase',
       'search_code',
       'search_code_ast',
       'read_files',
@@ -27,6 +38,7 @@ export function getAllowedToolsForMode(mode: ChatMode): string[] {
       'update_memory_bank',
     ],
     code: [
+      'search_codebase',
       'search_code',
       'search_code_ast',
       'read_files',
@@ -36,6 +48,7 @@ export function getAllowedToolsForMode(mode: ChatMode): string[] {
       'update_memory_bank',
     ],
     build: [
+      'search_codebase',
       'search_code',
       'search_code_ast',
       'read_files',
@@ -154,7 +167,8 @@ export const AGENT_TOOLS: ToolDefinition[] = [
         properties: {
           command: {
             type: 'string',
-            description: 'Command to run (e.g., "npm test", "npm run lint")',
+            description:
+              'Command to run (e.g., "npm test", "npm run lint"). NOTE: Shell operators (|, &&, >, etc.) are strictly forbidden for security reasons. Run commands individually.',
           },
           timeout: {
             type: 'number',
@@ -166,6 +180,25 @@ export const AGENT_TOOLS: ToolDefinition[] = [
           },
         },
         required: ['command'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'search_codebase',
+      description:
+        'Intelligent multi-level search over the codebase. Preferred over search_code for answering high-level questions, finding architectural patterns, or locating features. Combines filename matching, symbol detection, and keyword routing.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description:
+              'Natural language query or specific code concept to find (e.g. "Where is authentication handled", "Timeline component")',
+          },
+        },
+        required: ['query'],
       },
     },
   },
@@ -448,8 +481,8 @@ function normalizeWriteFilesInput(input: unknown): WriteFileSpec[] {
  * Creates a ToolContext that uses Convex client for actual operations
  */
 export interface ConvexClient {
-  query: (query: any, args: any) => Promise<any>
-  mutation: (mutation: any, args: any) => Promise<any>
+  query: <TResult = unknown>(query: ConvexFunctionRef, args: ConvexArgs) => Promise<TResult>
+  mutation: <TResult = unknown>(mutation: ConvexFunctionRef, args: ConvexArgs) => Promise<TResult>
 }
 
 /**
@@ -467,18 +500,18 @@ export function createToolContext(
   },
   api: {
     files: {
-      batchGet: any
-      list: any
+      batchGet: ToolApiRef
+      list: ToolApiRef
     }
     jobs: {
-      create: any
-      updateStatus: any
+      create: ToolApiRef
+      updateStatus: ToolApiRef
     }
     artifacts: {
-      create: any
+      create: ToolApiRef
     }
     memoryBank: {
-      update: any
+      update: ToolApiRef
     }
   }
 ): ToolContext {
@@ -490,7 +523,9 @@ export function createToolContext(
     // Read files using Convex batchGet query
     readFiles: async (paths: string[]) => {
       try {
-        const results = await convexClient.query(api.files.batchGet, {
+        const results = await convexClient.query<
+          Array<{ path: string; content: string | null; exists: boolean }>
+        >(api.files.batchGet, {
           projectId,
           paths,
         })
@@ -500,7 +535,7 @@ export function createToolContext(
           content: result.content,
         }))
       } catch (error) {
-        console.error('Failed to read files:', error)
+        logToolError('Failed to read files', error)
         return paths.map((path) => ({
           path,
           content: null,
@@ -579,15 +614,17 @@ export function createToolContext(
         const existingByPath = new Map<string, string | null>()
 
         try {
-          const existing = await convexClient.query(api.files.batchGet, {
+          const existing = await convexClient.query<
+            Array<{ path: string; content: string | null }>
+          >(api.files.batchGet, {
             projectId,
             paths,
           })
-          for (const row of existing as Array<{ path: string; content: string | null }>) {
+          for (const row of existing) {
             existingByPath.set(row.path, row.content ?? null)
           }
         } catch (error) {
-          console.error('Failed to fetch original contents for write_files:', error)
+          logToolError('Failed to fetch original contents for write_files', error)
         }
 
         for (const file of normalizedFiles) {
@@ -624,7 +661,7 @@ export function createToolContext(
 
         return results
       } catch (error) {
-        console.error('Failed to queue file artifacts:', error)
+        logToolError('Failed to queue file artifacts', error)
         return normalizedFiles.map((file) => ({
           path: file.path,
           success: false,
@@ -764,7 +801,7 @@ export function createToolContext(
           durationMs: payload.durationMs,
         }
       } catch (error) {
-        console.error('Failed to create job:', error)
+        logToolError('Failed to create job', error)
         return {
           stdout: '',
           stderr: error instanceof Error ? error.message : 'Failed to create job',
@@ -985,6 +1022,14 @@ export async function executeTool(
         break
       }
 
+      case 'search_codebase': {
+        const result = await executeOracleSearch(String(args.query ?? ''), context)
+        output = JSON.stringify(result, null, 2)
+        break
+      }
+
+      case 'search_codeAst': // Just marking position
+        break
       case 'search_code_ast': {
         if (!context.searchCodeAst) {
           throw new Error('search_code_ast is not available in this context')
@@ -1053,7 +1098,8 @@ export function parseToolCall(toolCall: ToolCall): ParsedToolCall {
       ...toolCall,
       parsedArgs: JSON.parse(toolCall.function.arguments),
     }
-  } catch {
+  } catch (parseError) {
+    void parseError
     return {
       ...toolCall,
       parsedArgs: {},

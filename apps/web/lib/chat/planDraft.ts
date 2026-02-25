@@ -11,7 +11,8 @@ export type AgentStatus =
 
 export function buildMessageWithPlanDraft(
   planDraft: string | null | undefined,
-  userContent: string
+  userContent: string,
+  previousMessages?: Array<{ role: string; content: string }>
 ): string {
   const plan = planDraft?.trim()
   if (!plan) return userContent
@@ -20,6 +21,16 @@ export function buildMessageWithPlanDraft(
   if (userContent.startsWith('Plan draft:\n')) return userContent
   if (userContent.includes('\nPlan draft:\n') || userContent.startsWith('Plan draft:'))
     return userContent
+
+  // Avoid appending if the exact same plan draft was already sent in history
+  if (previousMessages && previousMessages.length > 0) {
+    const planTextSnippet = `Plan draft:\n${plan}`
+    for (const msg of previousMessages) {
+      if (msg.role === 'user' && msg.content.includes(planTextSnippet)) {
+        return userContent
+      }
+    }
+  }
 
   return `Plan draft:\n${plan}\n\nUser request:\n${userContent}`
 }

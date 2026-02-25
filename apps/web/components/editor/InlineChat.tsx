@@ -1,5 +1,6 @@
 'use client'
 
+import { appLog } from '@/lib/logger'
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Send, X, Sparkles, Loader2 } from 'lucide-react'
@@ -42,7 +43,7 @@ export function InlineChat({ selectedText, position, onClose, onSubmit }: Inline
       await onSubmit(prompt.trim(), selectedText)
       onClose()
     } catch (error) {
-      console.error('Inline chat error:', error)
+      appLog.error('Inline chat error:', error)
     } finally {
       setIsLoading(false)
     }

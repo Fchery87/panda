@@ -1,5 +1,6 @@
 'use client'
 
+import { appLog } from '@/lib/logger'
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { useQuery, useMutation } from 'convex/react'
@@ -18,6 +19,7 @@ import { ChatInput } from '@/components/chat/ChatInput'
 import type { AvailableModel } from '@/components/chat/ModelSelector'
 import { MessageList } from '@/components/chat/MessageList'
 import { RunProgressPanel } from '@/components/chat/RunProgressPanel'
+import { EvalPanel } from '@/components/chat/EvalPanel'
 import { mapLatestRunProgressSteps } from '@/components/chat/live-run-utils'
 import { ArtifactPanel } from '@/components/artifacts/ArtifactPanel'
 import { AgentAutomationDialog } from '@/components/projects/AgentAutomationDialog'
@@ -120,6 +122,14 @@ interface AgentRunEvent {
   durationMs?: number
   usage?: Record<string, unknown>
   createdAt: number
+}
+
+function readAgentPolicyField(
+  source: unknown,
+  key: 'agentPolicy' | 'agentDefaults'
+): AgentPolicy | null | undefined {
+  if (!source || typeof source !== 'object') return undefined
+  return (source as Record<string, unknown>)[key] as AgentPolicy | null | undefined
 }
 
 const FALLBACK_PROVIDER = {} as LLMProvider
@@ -244,19 +254,13 @@ export default function ProjectPage() {
   settingsRef.current = settings
   const settingsProviderVersion = settings?.updatedAt ?? null
 
-  const projectAgentPolicy = (project as any)?.agentPolicy as AgentPolicy | null | undefined
-  const userAgentDefaults = (settings as any)?.agentDefaults as AgentPolicy | null | undefined
+  const projectAgentPolicy = readAgentPolicyField(project, 'agentPolicy')
+  const userAgentDefaults = readAgentPolicyField(settings, 'agentDefaults')
   const effectiveAutomationPolicy = useMemo<AgentPolicy>(() => {
     const policy = resolveEffectiveAgentPolicy({
       projectPolicy: projectAgentPolicy,
       userDefaults: userAgentDefaults,
       mode: chatMode,
-    })
-    console.log('[ProjectPage] Effective automation policy:', {
-      projectPolicy: projectAgentPolicy,
-      userDefaults: userAgentDefaults,
-      mode: chatMode,
-      effective: policy,
     })
     return policy
   }, [projectAgentPolicy, userAgentDefaults, chatMode])
@@ -314,7 +318,7 @@ export default function ProjectPage() {
     try {
       return registry.createProvider(defaultProviderId, nextProviderConfig, true)
     } catch (error) {
-      console.error('Failed to create provider from settings:', error)
+      appLog.error('Failed to create provider from settings:', error)
       return null
     }
   }, [settingsProviderVersion])
@@ -519,6 +523,23 @@ export default function ProjectPage() {
   const liveRunSteps = useMemo(() => {
     return agent.progressSteps.length > 0 ? agent.progressSteps : replayProgressSteps
   }, [agent.progressSteps, replayProgressSteps])
+  const latestUserPrompt = useMemo(
+    () =>
+      [...chatMessages]
+        .reverse()
+        .find((msg) => msg.role === 'user' && typeof msg.content === 'string' && msg.content.trim())
+        ?.content ?? null,
+    [chatMessages]
+  )
+  const latestAssistantReply = useMemo(
+    () =>
+      [...chatMessages]
+        .reverse()
+        .find(
+          (msg) => msg.role === 'assistant' && typeof msg.content === 'string' && msg.content.trim()
+        )?.content ?? null,
+    [chatMessages]
+  )
   const inlineRateLimitError = useMemo(() => {
     if (!agent.error || !isRateLimitError(agent.error)) return null
     return getUserFacingAgentError(agent.error)
@@ -541,7 +562,9 @@ export default function ProjectPage() {
       updateProjectMutation({
         id: projectId,
         lastOpenedAt: Date.now(),
-      }).catch(console.error)
+      }).catch((error) => {
+        void error
+      })
     }
   }, [projectId, updateProjectMutation])
 
@@ -777,7 +800,7 @@ export default function ProjectPage() {
 
       const finalContent =
         mode === 'build' || mode === 'code'
-          ? buildMessageWithPlanDraft(planDraft, content)
+          ? buildMessageWithPlanDraft(planDraft, content, agent.messages)
           : content
 
       if (!activeChat) {
@@ -792,7 +815,8 @@ export default function ProjectPage() {
           setActiveChatId(newChatId)
           // Store pending message - will be sent once chat is active and hook is ready
           setPendingMessage({ id: `pending-${Date.now()}`, content: finalContent, mode })
-        } catch {
+        } catch (error) {
+          void error
           toast.error('Failed to create chat')
         }
         return
@@ -822,6 +846,7 @@ export default function ProjectPage() {
       provider,
       planDraft,
       setActiveChatId,
+      agent.messages,
     ]
   )
 
@@ -981,7 +1006,11 @@ export default function ProjectPage() {
                   Detailed run events for troubleshooting and tool-level inspection.
                 </DialogDescription>
               </DialogHeader>
-              <RunProgressPanel chatId={activeChat?._id} defaultOpen={true} />
+              <RunProgressPanel
+                chatId={activeChat?._id}
+                defaultOpen={true}
+                tracePersistenceStatus={agent.tracePersistenceStatus}
+              />
             </DialogContent>
           </Dialog>
           {activeChat?._id && <ShareButton chatId={activeChat._id} />}
@@ -995,8 +1024,17 @@ export default function ProjectPage() {
         chatId={activeChat?._id}
         liveSteps={liveRunSteps}
         isStreaming={agent.isLoading}
+        tracePersistenceStatus={agent.tracePersistenceStatus}
         onOpenFile={handleFileSelect}
         onOpenArtifacts={() => setIsArtifactPanelOpen(true)}
+      />
+
+      <EvalPanel
+        projectId={projectId}
+        chatId={activeChat?._id}
+        lastUserPrompt={latestUserPrompt}
+        lastAssistantReply={latestAssistantReply}
+        onRunScenario={agent.runEvalScenario}
       />
 
       {/* Memory Bank Editor */}
@@ -1116,8 +1154,8 @@ export default function ProjectPage() {
           <div className="flex items-center gap-1 border-r border-border pr-3">
             <AgentAutomationDialog
               projectId={projectId}
-              projectPolicy={(project as any)?.agentPolicy}
-              userDefaults={(settings as any)?.agentDefaults}
+              projectPolicy={readAgentPolicyField(project, 'agentPolicy')}
+              userDefaults={readAgentPolicyField(settings, 'agentDefaults')}
             />
           </div>
 
@@ -1189,6 +1227,7 @@ export default function ProjectPage() {
                 {mobilePrimaryPanel === 'workspace' ? (
                   <Workbench
                     projectId={projectId}
+                    currentChatId={activeChat?._id}
                     files={files}
                     selectedFilePath={selectedFilePath}
                     selectedLocation={selectedFileLocation}

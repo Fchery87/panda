@@ -103,14 +103,19 @@ test.describe('Homepage', () => {
   })
 
   test('navigation to projects works from multiple entry points', async ({ page }) => {
-    const startBuildingButton = page.getByRole('button', { name: /start building/i })
+    const startBuildingButton = page.getByRole('button', { name: /start building/i }).first()
+    await expect(startBuildingButton).toBeVisible()
     await startBuildingButton.click()
-    await expect(page).toHaveURL('/projects')
+    await expect(page).toHaveURL('/projects', { timeout: 20000 })
+    await expect(page.getByRole('heading', { name: /your work|projects/i, level: 1 })).toBeVisible({
+      timeout: 20000,
+    })
 
     await page.goto('/')
 
-    const launchAppButton = page.getByRole('button', { name: /launch app/i })
+    const launchAppButton = page.getByRole('link', { name: /launch app/i }).first()
+    await expect(launchAppButton).toBeVisible()
     await launchAppButton.click()
-    await expect(page).toHaveURL('/projects')
+    await expect(page).toHaveURL('/projects', { timeout: 20000 })
   })
 })

@@ -39,7 +39,8 @@ export function parseTimestamp(id: Identifier): number | null {
   try {
     const timestampPart = id.slice(0, 9)
     return parseInt(timestampPart, 36)
-  } catch {
+  } catch (error) {
+    void error
     return null
   }
 }

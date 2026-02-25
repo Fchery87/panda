@@ -5,6 +5,7 @@
  * state without altering history, allowing safe rollback on errors.
  */
 
+import { appLog } from '@/lib/logger'
 import type { Identifier } from './types'
 
 /**
@@ -56,7 +57,7 @@ class SnapshotManager {
       const result = await this.executeGitCommand(`git add -A && git write-tree`)
 
       if (!result.success) {
-        console.error('[Snapshot] Failed to create snapshot:', result.error)
+        appLog.error('[Snapshot] Failed to create snapshot:', result.error)
         return null
       }
 
@@ -78,7 +79,7 @@ class SnapshotManager {
 
       return snapshot
     } catch (error) {
-      console.error('[Snapshot] Error creating snapshot:', error)
+      appLog.error('[Snapshot] Error creating snapshot:', error)
       return null
     }
   }
@@ -97,13 +98,13 @@ class SnapshotManager {
       )
 
       if (!result.success) {
-        console.error('[Snapshot] Failed to restore:', result.error)
+        appLog.error('[Snapshot] Failed to restore:', result.error)
         return false
       }
 
       return true
     } catch (error) {
-      console.error('[Snapshot] Error restoring snapshot:', error)
+      appLog.error('[Snapshot] Error restoring snapshot:', error)
       return false
     }
   }
@@ -166,7 +167,8 @@ class SnapshotManager {
       }
 
       return result.output.trim().split('\n').filter(Boolean)
-    } catch {
+    } catch (error) {
+      void error
       return []
     }
   }

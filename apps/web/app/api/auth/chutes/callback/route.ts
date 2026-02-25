@@ -5,6 +5,7 @@
  * Exchanges authorization code for access tokens
  */
 
+import { appLog } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { ConvexHttpClient } from 'convex/browser'
 import { convexAuthNextjsToken } from '@convex-dev/auth/nextjs/server'
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
     const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin}/api/auth/chutes/callback`
 
     if (!clientId || !clientSecret) {
-      console.error('Chutes OAuth credentials not configured')
+      appLog.error('Chutes OAuth credentials not configured')
       return redirectWithClearedStateCookie(request, '/settings?error=oauth_not_configured')
     }
 
@@ -73,13 +74,13 @@ export async function GET(request: NextRequest) {
 
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text()
-      console.error('Chutes token exchange failed:', errorText)
+      appLog.error('Chutes token exchange failed:', errorText)
       return redirectWithClearedStateCookie(request, '/settings?error=token_exchange_failed')
     }
 
     const tokens = await tokenResponse.json()
     if (typeof tokens.access_token !== 'string' || tokens.access_token.length === 0) {
-      console.error('Chutes token exchange returned no access token')
+      appLog.error('Chutes token exchange returned no access token')
       return redirectWithClearedStateCookie(request, '/settings?error=token_exchange_failed')
     }
 
@@ -110,7 +111,7 @@ export async function GET(request: NextRequest) {
     })
     return response
   } catch (error) {
-    console.error('Chutes OAuth callback error:', error)
+    appLog.error('Chutes OAuth callback error:', error)
     return redirectWithClearedStateCookie(request, '/settings?error=oauth_callback_failed')
   }
 }

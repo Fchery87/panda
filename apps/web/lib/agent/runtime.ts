@@ -5,6 +5,7 @@
  * Manages the conversation loop, tool execution, and response streaming.
  */
 
+import { appLog } from '@/lib/logger'
 import type {
   LLMProvider,
   CompletionMessage,
@@ -23,10 +24,14 @@ import {
   type RuntimeEvent as HarnessRuntimeEvent,
   type UserMessage as HarnessUserMessage,
   type Message as HarnessMessage,
+  type RuntimeConfig as HarnessRuntimeConfig,
+  type ToolInterruptRequest as HarnessToolInterruptRequest,
+  permissions as harnessPermissions,
   agents as harnessAgents,
   ascending as harnessAscending,
   bus as harnessBus,
 } from './harness'
+import type { CheckpointStore as HarnessCheckpointStore } from './harness/checkpoint-store'
 
 /**
  * Runtime options for agent execution
@@ -38,6 +43,9 @@ export interface RuntimeOptions {
   temperature?: number
   maxTokens?: number
   reasoning?: ReasoningOptions
+  harnessCheckpointStore?: HarnessCheckpointStore
+  harnessEnableRiskInterrupts?: boolean
+  harnessEvalMode?: 'read_only' | 'full'
 }
 
 /**
@@ -65,6 +73,7 @@ export interface AgentEvent {
   progressStatus?: 'running' | 'completed' | 'error'
   progressCategory?: 'analysis' | 'rewrite' | 'tool' | 'complete'
   progressToolName?: string
+  progressToolCallId?: string
   progressArgs?: Record<string, unknown>
   progressDurationMs?: number
   progressError?: string
@@ -113,6 +122,11 @@ export interface RuntimeConfig {
   maxToolCallsPerIteration?: number
   enableToolDeduplication?: boolean
   toolLoopThreshold?: number
+  harnessSessionID?: string
+  harnessAutoResume?: boolean
+  harnessCheckpointStore?: HarnessCheckpointStore
+  harnessEnableRiskInterrupts?: boolean
+  harnessEvalMode?: 'read_only' | 'full'
 }
 
 /**
@@ -129,6 +143,10 @@ function buildToolCallPattern(toolCalls: ToolCall[]): string {
 function summarizeToolCallNames(toolCalls: ToolCall[]): string {
   const names = Array.from(new Set(toolCalls.map((toolCall) => toolCall.function.name)))
   return names.join(', ')
+}
+
+function logRuntimeError(message: string, error?: unknown): void {
+  appLog.error(`[agent-runtime] ${message}`, error)
 }
 
 export function shouldRewriteDiscussResponse(content: string): boolean {
@@ -209,7 +227,8 @@ function extractInlineToolCalls(content: string): {
       }
       toolCalls.push(toolCall)
       return true
-    } catch {
+    } catch (parseError) {
+      void parseError
       return false
     }
   }
@@ -586,7 +605,7 @@ export class AgentRuntime {
         // Check for empty response - this can happen if the provider doesn't support tools
         // or if there's an API issue that didn't trigger an error event
         if (!fullContent.trim() && pendingToolCalls.length === 0) {
-          console.error('[runtime] Empty response detected - no content and no tool calls')
+          logRuntimeError('Empty response detected - no content and no tool calls')
           yield {
             type: 'error',
             error:
@@ -679,7 +698,8 @@ export class AgentRuntime {
               progressArgs: (() => {
                 try {
                   return JSON.parse(toolCall.function.arguments) as Record<string, unknown>
-                } catch {
+                } catch (parseError) {
+                  void parseError
                   return undefined
                 }
               })(),
@@ -932,9 +952,11 @@ function createHarnessToolExecutors(toolContext: ToolContext): Map<string, Harne
     'list_directory',
     'write_files',
     'run_command',
+    'search_codebase',
     'search_code',
     'search_code_ast',
     'update_memory_bank',
+    'task',
   ]
 
   const executors = new Map<string, HarnessToolExecutor>()
@@ -960,20 +982,83 @@ function createHarnessToolExecutors(toolContext: ToolContext): Map<string, Harne
 }
 
 class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
-  private harnessRuntime: HarnessRuntime
-
   constructor(
     private options: RuntimeOptions,
     private toolContext: ToolContext
-  ) {
-    this.harnessRuntime = new HarnessRuntime(
-      options.provider,
-      createHarnessToolExecutors(toolContext)
-    )
-  }
+  ) {}
 
   async *run(promptContext: PromptContext, config?: RuntimeConfig): AsyncGenerator<AgentEvent> {
-    const sessionID = `harness_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    const sessionID =
+      config?.harnessSessionID ?? `harness_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    const riskInterruptsEnabled =
+      config?.harnessEnableRiskInterrupts ?? this.options.harnessEnableRiskInterrupts ?? true
+    const harnessEvalMode = config?.harnessEvalMode ?? this.options.harnessEvalMode
+
+    const harnessRuntimeConfig: Partial<HarnessRuntimeConfig> = {
+      ...(typeof config?.maxIterations === 'number' ? { maxSteps: config.maxIterations } : {}),
+      ...(typeof config?.maxToolCallsPerIteration === 'number'
+        ? { maxToolCallsPerStep: config.maxToolCallsPerIteration }
+        : {}),
+      ...(typeof config?.enableToolDeduplication === 'boolean'
+        ? { enableToolDeduplication: config.enableToolDeduplication }
+        : {}),
+      ...(typeof config?.toolLoopThreshold === 'number'
+        ? { toolLoopThreshold: config.toolLoopThreshold }
+        : {}),
+      ...((config?.harnessCheckpointStore ?? this.options.harnessCheckpointStore)
+        ? {
+            checkpointStore: (config?.harnessCheckpointStore ??
+              this.options.harnessCheckpointStore) as HarnessCheckpointStore,
+          }
+        : {}),
+      ...(riskInterruptsEnabled
+        ? {
+            toolRiskPolicy: { high: 'ask', critical: 'ask' as const },
+            onToolInterrupt: async (request: HarnessToolInterruptRequest) => {
+              const target = request.patterns[0] || request.toolName
+              const permissionResult = await harnessPermissions.request(
+                request.sessionID,
+                request.messageID,
+                request.toolName,
+                target,
+                {
+                  interrupt: true,
+                  riskTier: request.riskTier,
+                  reason: request.reason,
+                  args: request.args,
+                }
+              )
+
+              return permissionResult.granted
+                ? { decision: 'approve' as const, reason: permissionResult.reason }
+                : { decision: 'reject' as const, reason: permissionResult.reason ?? 'Denied' }
+            },
+          }
+        : {}),
+      ...(harnessEvalMode === 'read_only'
+        ? {
+            toolRiskOverrides: {
+              write_files: 'critical' as const,
+              run_command: 'critical' as const,
+              update_memory_bank: 'critical' as const,
+              task: 'critical' as const,
+            },
+            toolRiskPolicy: {
+              low: 'allow' as const,
+              medium: 'allow' as const,
+              high: 'deny' as const,
+              critical: 'deny' as const,
+            },
+          }
+        : {}),
+      maxToolExecutionRetries: 1,
+      toolRetryBackoffMs: 200,
+    }
+    const harnessRuntime = new HarnessRuntime(
+      this.options.provider,
+      createHarnessToolExecutors(this.toolContext),
+      harnessRuntimeConfig
+    )
     const completionMessages = getPromptForMode(promptContext)
     const { initialMessages, userMessage } = completionMessagesToHarnessMessages({
       sessionID,
@@ -1020,7 +1105,27 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
     })
 
     try {
-      for await (const event of this.harnessRuntime.run(sessionID, userMessage, initialMessages)) {
+      let shouldResume = false
+      if (
+        config?.harnessAutoResume === true &&
+        (config.harnessCheckpointStore ?? this.options.harnessCheckpointStore)
+      ) {
+        try {
+          const checkpointStore =
+            config.harnessCheckpointStore ?? this.options.harnessCheckpointStore!
+          const checkpoint = await checkpointStore.load(sessionID)
+          shouldResume = checkpoint !== null && checkpoint.reason !== 'complete'
+        } catch (error) {
+          logRuntimeError('Failed to load harness checkpoint, falling back to fresh run', error)
+          shouldResume = false
+        }
+      }
+
+      const source = shouldResume
+        ? harnessRuntime.resume(sessionID)
+        : harnessRuntime.run(sessionID, userMessage, initialMessages)
+
+      for await (const event of source) {
         const mapped = mapHarnessEventToAgentEvent(event, pendingToolCalls)
 
         while (busQueue.length > 0) {
@@ -1037,6 +1142,7 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
             progressStatus: 'running',
             progressCategory: 'tool',
             progressToolName: mapped.toolCall?.function.name,
+            progressToolCallId: mapped.toolCall?.id,
             progressArgs: mapped.toolCall
               ? JSON.parse(mapped.toolCall.function.arguments)
               : undefined,
@@ -1054,6 +1160,7 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
             progressStatus: mapped.toolResult?.error ? 'error' : 'completed',
             progressCategory: 'tool',
             progressToolName: mapped.toolResult?.toolName,
+            progressToolCallId: mapped.toolResult?.toolCallId,
             progressArgs: mapped.toolResult?.args,
             progressDurationMs: mapped.toolResult?.durationMs,
             progressError: mapped.toolResult?.error,
@@ -1227,6 +1334,26 @@ function mapHarnessEventToAgentEvent(
         toolResult,
       }
     }
+    case 'permission_request':
+    case 'permission_decision':
+    case 'interrupt_request':
+    case 'interrupt_decision':
+      return {
+        type: 'progress_step',
+        content: event.content ?? event.type,
+        progressStatus:
+          event.type === 'permission_decision' || event.type === 'interrupt_decision'
+            ? event.interrupt?.decision === 'reject'
+              ? 'error'
+              : 'completed'
+            : 'running',
+        progressCategory: 'tool',
+        progressToolName: event.interrupt?.toolName,
+        progressError:
+          event.type === 'interrupt_decision' && event.interrupt?.decision === 'reject'
+            ? event.interrupt.reason
+            : undefined,
+      }
     case 'subagent_start':
       return {
         type: 'progress_step',
@@ -1234,6 +1361,7 @@ function mapHarnessEventToAgentEvent(
         progressStatus: 'running',
         progressCategory: 'analysis',
         progressToolName: 'task',
+        progressToolCallId: event.subagent?.id,
       }
     case 'subagent_complete':
       return {
@@ -1242,6 +1370,7 @@ function mapHarnessEventToAgentEvent(
         progressStatus: event.subagent?.success === false ? 'error' : 'completed',
         progressCategory: 'analysis',
         progressToolName: 'task',
+        progressToolCallId: event.subagent?.id,
         progressError: event.subagent?.error,
       }
     case 'error':

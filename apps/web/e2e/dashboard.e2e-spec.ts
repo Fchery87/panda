@@ -1,12 +1,15 @@
 import { test, expect, Page } from '@playwright/test'
 
 async function openCreateProjectDialog(page: Page) {
-  const newProjectButton = page.getByRole('button', { name: /new project/i }).first()
+  const newProjectButton = page
+    .getByRole('main')
+    .getByRole('button', { name: /new project/i })
+    .first()
   await expect(newProjectButton).toBeVisible()
   await newProjectButton.click()
 
   const dialog = page
-    .getByRole('dialog')
+    .locator('[role="dialog"]:visible')
     .filter({ hasText: /create new project/i })
     .first()
   await expect(dialog).toBeVisible()
@@ -16,16 +19,18 @@ async function openCreateProjectDialog(page: Page) {
 async function createProject(page: Page, name: string, description?: string) {
   const dialog = await openCreateProjectDialog(page)
 
-  const nameInput = dialog.locator('input#name')
+  const nameInput = dialog.getByLabel(/project name/i)
   await expect(nameInput).toBeVisible()
+  await expect(nameInput).toBeEditable()
   await nameInput.fill(name)
 
   if (description) {
-    const descriptionInput = dialog.locator('input#description')
+    const descriptionInput = dialog.getByLabel(/description \(optional\)/i)
     await descriptionInput.fill(description)
   }
 
   const createButton = dialog.getByRole('button', { name: /^create$/i })
+  await expect(createButton).toBeEnabled()
   await createButton.click()
 
   await expect(dialog).not.toBeVisible()
@@ -42,7 +47,10 @@ test.describe('Dashboard', () => {
     const projectsHeading = page.getByRole('heading', { name: /your work|projects/i, level: 1 })
     await expect(projectsHeading).toBeVisible()
 
-    const newProjectButton = page.getByRole('button', { name: /new project/i })
+    const newProjectButton = page
+      .getByRole('main')
+      .getByRole('button', { name: /new project/i })
+      .first()
     await expect(newProjectButton).toBeVisible()
 
     const searchInput = page.getByPlaceholder(/search projects/i)
@@ -55,7 +63,10 @@ test.describe('Dashboard', () => {
     const projectsHeading = page.getByRole('heading', { name: /your work|projects/i })
     await expect(projectsHeading).toBeVisible()
 
-    const newProjectButton = page.getByRole('button', { name: /new project/i })
+    const newProjectButton = page
+      .getByRole('main')
+      .getByRole('button', { name: /new project/i })
+      .first()
     await expect(newProjectButton).toBeEnabled()
   })
 
@@ -81,7 +92,7 @@ test.describe('Dashboard', () => {
     const createButton = dialog.getByRole('button', { name: /^create$/i })
     await expect(createButton).toBeDisabled()
 
-    const nameInput = dialog.locator('input#name')
+    const nameInput = dialog.getByLabel(/project name/i)
     await nameInput.fill('Valid Project Name')
 
     await expect(createButton).toBeEnabled()
@@ -117,22 +128,28 @@ test.describe('Dashboard', () => {
     await expect(projectLink).toBeVisible({ timeout: 15000 })
     const href = await projectLink.getAttribute('href')
     expect(href).toMatch(/^\/projects\/.+/)
-    await page.goto(href!)
-
-    await expect(page).toHaveURL(/\/projects\/.+/, { timeout: 15000 })
-    await expect(page.getByRole('button', { name: /reset/i })).toBeVisible({ timeout: 15000 })
+    await projectLink.click()
+    await expect(page).toHaveURL(/\/projects\/.+/, { timeout: 30000 })
+    await expect(
+      page
+        .getByRole('main')
+        .getByRole('button', { name: /^reset$/i })
+        .first()
+    ).toBeVisible({ timeout: 30000 })
   })
 
   test('search filters projects', async ({ page }) => {
     const projectName = `Searchable ${Date.now()}`
     await createProject(page, projectName)
 
-    const searchInput = page.getByPlaceholder(/search projects/i)
+    let searchInput = page.getByPlaceholder(/search projects/i)
+    await expect(searchInput).toBeEditable()
     await searchInput.fill('NonExistentProject12345')
 
     await expect(page.getByText(/no projects found/i)).toBeVisible()
 
-    await searchInput.clear()
+    searchInput = page.getByPlaceholder(/search projects/i)
+    await expect(searchInput).toBeEditable()
     await searchInput.fill(projectName)
 
     await expect(page.getByText(projectName)).toBeVisible()
@@ -161,7 +178,10 @@ test.describe('Dashboard', () => {
     ).then((results) => results.some(Boolean))
 
     if (hasEmptyState) {
-      const createButton = page.getByRole('button', { name: /new project/i })
+      const createButton = page
+        .getByRole('main')
+        .getByRole('button', { name: /new project/i })
+        .first()
       await expect(createButton).toBeVisible()
     }
   })

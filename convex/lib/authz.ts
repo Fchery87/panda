@@ -1,8 +1,11 @@
+import type { MutationCtx, QueryCtx } from '../_generated/server'
 import type { Doc, Id } from '../_generated/dataModel'
 import { requireAuth } from './auth'
 
+type AuthzCtx = QueryCtx | MutationCtx
+
 export async function requireProjectOwner(
-  ctx: any,
+  ctx: AuthzCtx,
   projectId: Id<'projects'>
 ): Promise<{ userId: Id<'users'>; project: Doc<'projects'> }> {
   const userId = await requireAuth(ctx)
@@ -16,7 +19,7 @@ export async function requireProjectOwner(
 }
 
 export async function requireChatOwner(
-  ctx: any,
+  ctx: AuthzCtx,
   chatId: Id<'chats'>
 ): Promise<{ userId: Id<'users'>; project: Doc<'projects'>; chat: Doc<'chats'> }> {
   const chat = await ctx.db.get(chatId)
@@ -29,7 +32,7 @@ export async function requireChatOwner(
 }
 
 export async function requireMessageOwner(
-  ctx: any,
+  ctx: AuthzCtx,
   messageId: Id<'messages'>
 ): Promise<{
   userId: Id<'users'>
@@ -47,7 +50,7 @@ export async function requireMessageOwner(
 }
 
 export async function requireArtifactOwner(
-  ctx: any,
+  ctx: AuthzCtx,
   artifactId: Id<'artifacts'>
 ): Promise<{
   userId: Id<'users'>
@@ -65,7 +68,7 @@ export async function requireArtifactOwner(
 }
 
 export async function requireFileOwner(
-  ctx: any,
+  ctx: AuthzCtx,
   fileId: Id<'files'>
 ): Promise<{ userId: Id<'users'>; project: Doc<'projects'>; file: Doc<'files'> }> {
   const file = await ctx.db.get(fileId)
@@ -78,7 +81,7 @@ export async function requireFileOwner(
 }
 
 export async function requireJobOwner(
-  ctx: any,
+  ctx: AuthzCtx,
   jobId: Id<'jobs'>
 ): Promise<{ userId: Id<'users'>; project: Doc<'projects'>; job: Doc<'jobs'> }> {
   const job = await ctx.db.get(jobId)
@@ -91,7 +94,7 @@ export async function requireJobOwner(
 }
 
 export async function requireCheckpointOwner(
-  ctx: any,
+  ctx: AuthzCtx,
   checkpointId: Id<'checkpoints'>
 ): Promise<{
   userId: Id<'users'>
@@ -108,7 +111,7 @@ export async function requireCheckpointOwner(
 }
 
 export async function requireSnapshotOwner(
-  ctx: any,
+  ctx: AuthzCtx,
   snapshotId: Id<'fileSnapshots'>
 ): Promise<{
   userId: Id<'users'>
@@ -126,7 +129,7 @@ export async function requireSnapshotOwner(
 }
 
 export async function requireAgentRunOwner(
-  ctx: any,
+  ctx: AuthzCtx,
   runId: Id<'agentRuns'>
 ): Promise<{ userId: Id<'users'>; project: Doc<'projects'>; run: Doc<'agentRuns'> }> {
   const run = await ctx.db.get(runId)

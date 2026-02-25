@@ -1,11 +1,13 @@
-import { query, mutation } from './_generated/server'
+import { query, mutation, type MutationCtx, type QueryCtx } from './_generated/server'
 import { v } from 'convex/values'
 import { getAuthUserId } from '@convex-dev/auth/server'
 
 /**
  * Check if the current user is an admin
  */
-async function requireAdmin(ctx: any) {
+type AdminCtx = QueryCtx | MutationCtx
+
+async function requireAdmin(ctx: AdminCtx) {
   const userId = await getAuthUserId(ctx)
   if (!userId) {
     throw new Error('Unauthorized: Not authenticated')

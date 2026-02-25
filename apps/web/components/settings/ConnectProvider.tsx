@@ -1,5 +1,6 @@
 'use client'
 
+import { appLog } from '@/lib/logger'
 import { useCallback, useState } from 'react'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
@@ -101,7 +102,7 @@ export function ConnectProvider({ provider, className }: ConnectProviderProps) {
       setApiKey('')
       setShowApiKeyInput(false)
     } catch (error) {
-      console.error('Failed to store API key:', error)
+      appLog.error('Failed to store API key:', error)
     } finally {
       setIsConnecting(false)
     }
@@ -111,7 +112,7 @@ export function ConnectProvider({ provider, className }: ConnectProviderProps) {
     try {
       await deleteTokens({ provider })
     } catch (error) {
-      console.error('Failed to disconnect:', error)
+      appLog.error('Failed to disconnect:', error)
     }
   }, [provider, deleteTokens])
 

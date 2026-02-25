@@ -39,6 +39,7 @@ export function AgentAutomationDialog({
   userDefaults: AgentPolicy | null | undefined
 }) {
   const updateProject = useMutation(api.projects.update)
+  type UpdateProjectArgs = Parameters<typeof updateProject>[0]
 
   const [open, setOpen] = React.useState(false)
   const [inheritDefaults, setInheritDefaults] = React.useState(!projectPolicy)
@@ -65,16 +66,18 @@ export function AgentAutomationDialog({
   const handleSave = async () => {
     try {
       if (inheritDefaults) {
-        await updateProject({ id: projectId, agentPolicy: null } as any)
+        const payload: UpdateProjectArgs = { id: projectId, agentPolicy: null }
+        await updateProject(payload)
       } else {
-        await updateProject({
+        const payload: UpdateProjectArgs = {
           id: projectId,
           agentPolicy: {
             autoApplyFiles,
             autoRunCommands,
             allowedCommandPrefixes: textToPrefixes(allowedPrefixesText),
           },
-        } as any)
+        }
+        await updateProject(payload)
       }
       toast.success('Automation settings saved')
       setOpen(false)

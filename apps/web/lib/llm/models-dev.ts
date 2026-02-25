@@ -7,6 +7,7 @@
  * @see https://models.dev
  */
 
+import { appLog } from '@/lib/logger'
 import type { ModelInfo, ProviderType } from './types'
 
 const MODELS_DEV_URL = 'https://models.dev/api/models.json'
@@ -72,7 +73,7 @@ export async function fetchModelsDevMetadata(): Promise<ModelsDevResponse> {
     cacheTimestamp = now
     return cachedMetadata!
   } catch (error) {
-    console.error('Error fetching models.dev metadata:', error)
+    appLog.error('Error fetching models.dev metadata:', error)
     return cachedMetadata || {}
   }
 }

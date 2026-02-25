@@ -18,8 +18,8 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
 
-  /* Opt out of parallel tests on CI for stability */
-  workers: process.env.CI ? 1 : undefined,
+  /* Default to serial locally to avoid shared-state/dev-server flake; override with PW_WORKERS */
+  workers: process.env.PW_WORKERS ? Number(process.env.PW_WORKERS) : 1,
 
   /* Reporter to use */
   reporter: [['html', { outputFolder: 'playwright-report' }], ['list']],
@@ -70,7 +70,8 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'E2E_AUTH_BYPASS=true NEXT_PUBLIC_E2E_AUTH_BYPASS=true bun run dev',
+    command:
+      'cd ../.. && bunx concurrently "E2E_AUTH_BYPASS=true bunx convex dev" "cd apps/web && E2E_AUTH_BYPASS=true NEXT_PUBLIC_E2E_AUTH_BYPASS=true bun run dev"',
     url: 'http://localhost:3000',
     reuseExistingServer: false,
     timeout: 120 * 1000,

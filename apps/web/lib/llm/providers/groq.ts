@@ -24,6 +24,7 @@ import type {
 import { OpenAICompatibleProvider } from './openai-compatible'
 
 const GROQ_BASE_URL = 'https://api.groq.com/openai/v1'
+type GroqApiModel = Record<string, unknown>
 
 export class GroqProvider implements LLMProvider {
   name = 'groq'
@@ -70,23 +71,27 @@ export class GroqProvider implements LLMProvider {
         return this.getDefaultModels()
       }
 
-      return models.map((model: any) => this.transformModel(model))
-    } catch {
+      return (models as GroqApiModel[]).map((model) => this.transformModel(model))
+    } catch (error) {
+      void error
       return this.getDefaultModels()
     }
   }
 
-  private transformModel(model: any): ModelInfo {
-    const id = model.id
+  private transformModel(model: GroqApiModel): ModelInfo {
+    const id = String(model.id ?? '')
     const hasTools = id.includes('llama') || id.includes('mixtral') || id.includes('gemma2')
 
     return {
       id,
       name: this.formatModelName(id),
       provider: 'groq',
-      description: model.description || `Groq ${id}`,
+      description:
+        typeof model.description === 'string' && model.description.length > 0
+          ? model.description
+          : `Groq ${id}`,
       maxTokens: 8192,
-      contextWindow: model.context_window || 131072,
+      contextWindow: typeof model.context_window === 'number' ? model.context_window : 131072,
       capabilities: {
         streaming: true,
         functionCalling: hasTools,

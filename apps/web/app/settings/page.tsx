@@ -1,5 +1,6 @@
 'use client'
 
+import { appLog } from '@/lib/logger'
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
 import { useQuery, useMutation } from 'convex/react'
@@ -336,7 +337,7 @@ export default function SettingsPage() {
           }
         })
       } catch (error) {
-        console.error('[SettingsPage] Failed to load OpenRouter free models:', error)
+        appLog.error('[SettingsPage] Failed to load OpenRouter free models:', error)
       }
     }
 
@@ -549,7 +550,7 @@ export default function SettingsPage() {
       toast.success('Settings saved successfully!')
     } catch (error) {
       toast.error('Failed to save settings')
-      console.error('[SettingsPage] Failed to save settings:', error)
+      appLog.error('[SettingsPage] Failed to save settings:', error)
     } finally {
       setIsSaving(false)
     }

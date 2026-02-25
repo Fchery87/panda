@@ -11,7 +11,8 @@ export async function POST(req: NextRequest) {
   let body: SearchRequest & { workingDirectory?: string }
   try {
     body = (await req.json()) as SearchRequest & { workingDirectory?: string }
-  } catch {
+  } catch (error) {
+    void error
     return Response.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 

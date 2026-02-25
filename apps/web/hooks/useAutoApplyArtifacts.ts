@@ -18,6 +18,12 @@ type ArtifactRecord = {
   status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'rejected'
 }
 
+type PendingArtifact = {
+  id: Id<'artifacts'>
+  type: 'file_write' | 'command_run'
+  payload: Record<string, unknown>
+}
+
 function inferJobType(command: string) {
   const cmdLower = command.toLowerCase()
   if (cmdLower.includes('build') || cmdLower.includes('compile')) return 'build' as const
@@ -56,11 +62,7 @@ export function useAutoApplyArtifacts(args: {
           payload: action.payload,
         }
       })
-      .filter(Boolean) as Array<{
-      id: Id<'artifacts'>
-      type: 'file_write' | 'command_run'
-      payload: any
-    }>
+      .filter(Boolean) as PendingArtifact[]
   }, [artifactRecords])
 
   const convex = useConvex()

@@ -11,6 +11,7 @@
  * @see https://chutes.ai/docs/sign-in-with-chutes
  */
 
+import { appLog } from '@/lib/logger'
 import type {
   LLMProvider,
   ModelInfo,
@@ -22,6 +23,7 @@ import type {
 import { OpenAICompatibleProvider } from './openai-compatible'
 
 const CHUTES_LLM_BASE_URL = 'https://llm.chutes.ai/v1'
+type ChutesApiModel = Record<string, unknown>
 
 export interface ChutesTokens {
   accessToken: string
@@ -104,7 +106,7 @@ export class ChutesProvider implements LLMProvider {
         await this.updateAccessToken(tokens.accessToken)
       }
     } catch (error) {
-      console.error('Failed to refresh Chutes token:', error)
+      appLog.error('Failed to refresh Chutes token:', error)
     }
   }
 
@@ -122,7 +124,7 @@ export class ChutesProvider implements LLMProvider {
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.error('Chutes API error:', response.status, errorText)
+        appLog.error('Chutes API error:', response.status, errorText)
         throw new Error(`Failed to fetch Chutes models: ${response.statusText}`)
       }
 
@@ -131,15 +133,17 @@ export class ChutesProvider implements LLMProvider {
       const models = data.data || data || []
 
       if (models.length === 0) {
-        console.warn('No models returned from Chutes API, using fallback')
+        appLog.warn('No models returned from Chutes API, using fallback')
         return this.getFallbackModels()
       }
 
-      const modelInfos = models.map((model: any) => this.transformModelToModelInfo(model))
+      const modelInfos = (models as ChutesApiModel[]).map((model) =>
+        this.transformModelToModelInfo(model)
+      )
 
       return modelInfos.sort((a: ModelInfo, b: ModelInfo) => a.name.localeCompare(b.name))
     } catch (error) {
-      console.error('Error fetching Chutes models:', error)
+      appLog.error('Error fetching Chutes models:', error)
       return this.getFallbackModels()
     }
   }
@@ -147,8 +151,8 @@ export class ChutesProvider implements LLMProvider {
   /**
    * Transform OpenAI model format to ModelInfo
    */
-  private transformModelToModelInfo(model: any): ModelInfo {
-    const modelId = model.id || model.name
+  private transformModelToModelInfo(model: ChutesApiModel): ModelInfo {
+    const modelId = String(model.id ?? model.name ?? '')
     const displayName = this.formatModelName(modelId)
 
     // Get context window from model id patterns
@@ -170,7 +174,10 @@ export class ChutesProvider implements LLMProvider {
       id: modelId,
       name: displayName,
       provider: 'chutes',
-      description: model.description || `Chutes model: ${displayName}`,
+      description:
+        typeof model.description === 'string' && model.description.length > 0
+          ? model.description
+          : `Chutes model: ${displayName}`,
       maxTokens: maxTokens,
       contextWindow: contextWindow,
       capabilities: {
@@ -342,7 +349,8 @@ export class ChutesProvider implements LLMProvider {
       })
 
       return response.ok
-    } catch {
+    } catch (error) {
+      void error
       return false
     }
   }
