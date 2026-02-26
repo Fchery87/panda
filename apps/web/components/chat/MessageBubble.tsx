@@ -1,5 +1,6 @@
 'use client'
 
+import { Fragment } from 'react'
 import { motion } from 'framer-motion'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -9,6 +10,7 @@ import type { Message } from './types'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import { ReasoningPanel } from './ReasoningPanel'
 import { SuggestedActions } from './SuggestedActions'
+import { extractBrainstormPhase, stripBrainstormPhaseMarker } from '@/lib/chat/brainstorming'
 
 interface MessageBubbleProps {
   message: Message
@@ -27,6 +29,176 @@ function redactFencedCodeBlocks(content: string): string {
   return content.replace(/```[\s\S]*?```/g, '[code omitted in Build mode — see artifacts]')
 }
 
+function renderInlineFormatting(text: string) {
+  const parts = text.split(/(\*\*.*?\*\*)/g)
+  return parts.map((part, index) => {
+    const boldMatch = part.match(/^\*\*(.*?)\*\*$/)
+    if (!boldMatch) return <Fragment key={index}>{part}</Fragment>
+    return (
+      <strong key={index} className="font-semibold text-foreground">
+        {boldMatch[1]}
+      </strong>
+    )
+  })
+}
+
+type ArchitectSection = {
+  key: string
+  title?: string
+  bodyLines: string[]
+  kind: 'section' | 'text'
+}
+
+function parseArchitectSections(content: string): ArchitectSection[] {
+  const lines = content.split('\n')
+  const sections: ArchitectSection[] = []
+  let current: ArchitectSection | null = null
+
+  const pushCurrent = () => {
+    if (!current) return
+    sections.push(current)
+    current = null
+  }
+
+  for (const rawLine of lines) {
+    const line = rawLine.trimEnd()
+    const sectionMatch = line.match(/^\s*(?:\d+[.)]\s+)?\*\*(.+?)\*\*\s*(.*)$/)
+    if (sectionMatch) {
+      pushCurrent()
+      current = {
+        key: `section-${sections.length}`,
+        title: sectionMatch[1],
+        bodyLines: sectionMatch[2] ? [sectionMatch[2]] : [],
+        kind: 'section',
+      }
+      continue
+    }
+
+    if (!current) {
+      current = {
+        key: `text-${sections.length}`,
+        bodyLines: [line],
+        kind: 'text',
+      }
+    } else {
+      current.bodyLines.push(line)
+    }
+  }
+
+  pushCurrent()
+
+  return sections
+}
+
+function renderArchitectBody(lines: string[]) {
+  const blocks: Array<
+    | { type: 'p'; lines: string[] }
+    | { type: 'ul'; lines: string[] }
+    | { type: 'ol'; lines: string[] }
+  > = []
+
+  const flushParagraph = (bucket: string[]) => {
+    if (bucket.length === 0) return
+    blocks.push({ type: 'p', lines: [...bucket] })
+    bucket.length = 0
+  }
+
+  const paragraphBucket: string[] = []
+
+  for (const raw of lines) {
+    const line = raw.trim()
+    if (line.length === 0) {
+      flushParagraph(paragraphBucket)
+      continue
+    }
+
+    if (/^[-*]\s+/.test(line)) {
+      flushParagraph(paragraphBucket)
+      const text = line.replace(/^[-*]\s+/, '')
+      const prev = blocks[blocks.length - 1]
+      if (prev?.type === 'ul') {
+        prev.lines.push(text)
+      } else {
+        blocks.push({ type: 'ul', lines: [text] })
+      }
+      continue
+    }
+
+    if (/^\d+[.)]\s+/.test(line)) {
+      flushParagraph(paragraphBucket)
+      const text = line.replace(/^\d+[.)]\s+/, '')
+      const prev = blocks[blocks.length - 1]
+      if (prev?.type === 'ol') {
+        prev.lines.push(text)
+      } else {
+        blocks.push({ type: 'ol', lines: [text] })
+      }
+      continue
+    }
+
+    paragraphBucket.push(line)
+  }
+
+  flushParagraph(paragraphBucket)
+
+  return (
+    <div className="space-y-2">
+      {blocks.map((block, blockIndex) => {
+        if (block.type === 'ul') {
+          return (
+            <ul
+              key={`ul-${blockIndex}`}
+              className="space-y-1 pl-4 text-[13px] leading-6 xl:text-sm"
+            >
+              {block.lines.map((line, i) => (
+                <li key={i} className="list-disc marker:text-primary/70">
+                  {renderInlineFormatting(line)}
+                </li>
+              ))}
+            </ul>
+          )
+        }
+
+        if (block.type === 'ol') {
+          return (
+            <ol
+              key={`ol-${blockIndex}`}
+              className="space-y-1 pl-4 text-[13px] leading-6 xl:text-sm"
+            >
+              {block.lines.map((line, i) => (
+                <li key={i} className="list-decimal marker:font-mono marker:text-muted-foreground">
+                  {renderInlineFormatting(line)}
+                </li>
+              ))}
+            </ol>
+          )
+        }
+
+        return (
+          <p key={`p-${blockIndex}`} className="whitespace-pre-wrap break-words leading-6 tracking-[0.01em]">
+            {block.lines.map((line, i) => (
+              <Fragment key={i}>
+                {i > 0 ? <br /> : null}
+                {renderInlineFormatting(line)}
+              </Fragment>
+            ))}
+          </p>
+        )
+      })}
+    </div>
+  )
+}
+
+function formatBrainstormPhaseLabel(
+  phase: ReturnType<typeof extractBrainstormPhase>
+): string | null {
+  if (!phase) return null
+  if (phase === 'validated_plan') return 'Validated Plan'
+  if (phase === 'discovery') return 'Discovery'
+  if (phase === 'options') return 'Options'
+  return null
+}
+
 export function MessageBubble({
   message,
   isStreaming = false,
@@ -40,6 +212,18 @@ export function MessageBubble({
   const displayContent = shouldRedactBuildCode
     ? redactFencedCodeBlocks(message.content)
     : message.content
+  const isArchitect = message.annotations?.mode === 'architect'
+  const brainstormPhase = isAssistant && isArchitect ? extractBrainstormPhase(displayContent) : null
+  const architectContent = brainstormPhase ? stripBrainstormPhaseMarker(displayContent).trim() : displayContent
+  const architectSections =
+    isAssistant && isArchitect && architectContent
+      ? parseArchitectSections(architectContent)
+      : []
+  const hasStructuredArchitectContent =
+    !!brainstormPhase || /\*\*.+?\*\*|^\s*(?:[-*]|\d+[.)])\s+/m.test(architectContent)
+  const shouldUseArchitectRenderer =
+    isAssistant && isArchitect && hasStructuredArchitectContent && architectSections.length > 0
+  const brainstormPhaseLabel = formatBrainstormPhaseLabel(brainstormPhase)
 
   return (
     <div className={cn('flex gap-2.5 xl:gap-3', isUser ? 'flex-row-reverse' : 'flex-row')}>
@@ -71,6 +255,14 @@ export function MessageBubble({
       >
         {isAssistant && message.reasoningContent && (
           <ReasoningPanel content={message.reasoningContent} isStreaming={isStreaming} />
+        )}
+
+        {brainstormPhaseLabel && (
+          <div className="flex w-full items-center">
+            <span className="border border-primary/30 bg-primary/5 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-primary">
+              Brainstorm · {brainstormPhaseLabel}
+            </span>
+          </div>
         )}
 
         {/* Header */}
@@ -110,12 +302,39 @@ export function MessageBubble({
         >
           <div
             className={cn(
-              'whitespace-pre-wrap break-words leading-6 tracking-[0.01em]',
+              'leading-6 tracking-[0.01em]',
               'selection:bg-primary/20 selection:text-foreground',
               isUser && 'selection:bg-primary-foreground/20 selection:text-primary-foreground'
             )}
           >
-            {displayContent}
+            {shouldUseArchitectRenderer ? (
+              <div className="space-y-2.5">
+                {architectSections.map((section, sectionIndex) => {
+                  if (section.kind === 'section') {
+                    return (
+                      <div
+                        key={section.key}
+                        className={cn(
+                          'border border-border/70 bg-background/40 px-2.5 py-2',
+                          sectionIndex === 0 && 'border-primary/25'
+                        )}
+                      >
+                        <div className="mb-1.5 font-mono text-[11px] uppercase tracking-wide text-foreground/90">
+                          {section.title}
+                        </div>
+                        {renderArchitectBody(section.bodyLines)}
+                      </div>
+                    )
+                  }
+
+                  return <div key={section.key}>{renderArchitectBody(section.bodyLines)}</div>
+                })}
+              </div>
+            ) : (
+              <div className="whitespace-pre-wrap break-words">
+                {displayContent}
+              </div>
+            )}
             {isStreaming && (
               <motion.span
                 className={cn(
