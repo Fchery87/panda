@@ -86,13 +86,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <>
-      {/* Skip to main content link */}
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-background focus:p-4 focus:text-foreground"
-      >
-        Skip to main content
-      </a>
       <div className="flex min-h-screen">
         {/* Sidebar */}
         <aside className="fixed left-0 top-0 z-30 h-screen w-64 border-r border-border bg-background">

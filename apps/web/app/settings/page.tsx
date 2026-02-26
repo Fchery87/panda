@@ -558,13 +558,6 @@ export default function SettingsPage() {
 
   return (
     <>
-      {/* Skip to main content link */}
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-background focus:p-4 focus:text-foreground"
-      >
-        Skip to main content
-      </a>
       <div id="main-content" className="container mx-auto max-w-4xl px-4 py-8">
         <div className="mb-8">
           <Button

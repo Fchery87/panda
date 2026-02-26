@@ -46,14 +46,6 @@ const features = [
 export default function Home() {
   return (
     <div className="dot-grid min-h-screen bg-background">
-      {/* Skip to main content link */}
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-background focus:p-4 focus:text-foreground"
-      >
-        Skip to main content
-      </a>
-
       {/* Navigation - Minimal, sharp */}
       <nav className="surface-1 fixed left-0 right-0 top-0 z-50 border-b border-border">
         <div className="container flex h-14 items-center justify-between">

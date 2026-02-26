@@ -28,13 +28,6 @@ export default function LoginPage() {
         <AuthenticatedRedirect />
       </Authenticated>
       <Unauthenticated>
-        {/* Skip to main content link */}
-        <a
-          href="#main-content"
-          className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-background focus:p-4 focus:text-foreground"
-        >
-          Skip to main content
-        </a>
         <div
           id="main-content"
           className="flex min-h-screen flex-col items-center justify-center gap-8 p-4"
