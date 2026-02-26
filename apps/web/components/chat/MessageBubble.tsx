@@ -2,10 +2,11 @@
 
 import { Fragment } from 'react'
 import { motion } from 'framer-motion'
+import { toast } from 'sonner'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { User, Bot } from 'lucide-react'
+import { Copy, User, Bot } from 'lucide-react'
 import type { Message } from './types'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import { ReasoningPanel } from './ReasoningPanel'
@@ -224,6 +225,18 @@ export function MessageBubble({
   const shouldUseArchitectRenderer =
     isAssistant && isArchitect && hasStructuredArchitectContent && architectSections.length > 0
   const brainstormPhaseLabel = formatBrainstormPhaseLabel(brainstormPhase)
+  const canCopyValidatedPlan =
+    isAssistant && isArchitect && brainstormPhase === 'validated_plan' && architectContent.length > 0
+
+  const handleCopyPlan = async () => {
+    if (!canCopyValidatedPlan) return
+    try {
+      await navigator.clipboard.writeText(architectContent)
+      toast.success('Plan copied')
+    } catch {
+      toast.error('Failed to copy plan')
+    }
+  }
 
   return (
     <div className={cn('flex gap-2.5 xl:gap-3', isUser ? 'flex-row-reverse' : 'flex-row')}>
@@ -258,10 +271,21 @@ export function MessageBubble({
         )}
 
         {brainstormPhaseLabel && (
-          <div className="flex w-full items-center">
+          <div className="flex w-full items-center gap-2">
             <span className="border border-primary/30 bg-primary/5 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-primary">
               Brainstorm · {brainstormPhaseLabel}
             </span>
+            {canCopyValidatedPlan && (
+              <button
+                type="button"
+                onClick={handleCopyPlan}
+                className="inline-flex items-center gap-1 border border-border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
+                title="Copy validated plan"
+              >
+                <Copy className="h-3 w-3" />
+                Copy Plan
+              </button>
+            )}
           </div>
         )}
 
