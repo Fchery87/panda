@@ -20,7 +20,6 @@ import {
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { UserMenu } from '@/components/auth/UserMenu'
 
 interface Project {
   _id: Id<'projects'>
@@ -289,10 +288,7 @@ export default function ProjectsPage() {
 
         <div className="flex items-center justify-between">
           <h1 className="text-display text-4xl">Your Work</h1>
-          <div className="flex items-center gap-4">
-            <CreateProjectDialog onCreate={handleCreateProject} />
-            <UserMenu />
-          </div>
+          <CreateProjectDialog onCreate={handleCreateProject} />
         </div>
       </div>
 
