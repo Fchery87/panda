@@ -38,15 +38,19 @@ export function DashboardHeader() {
           {navItems.map((item) => {
             const isActive = pathname.startsWith(item.href)
             const Icon = item.icon
+            const isEducation = item.href === '/education'
 
             return (
               <Link key={item.href} href={item.href}>
                 <Button
-                  variant={isActive ? 'secondary' : 'ghost'}
+                  variant={isActive ? 'secondary' : isEducation ? 'default' : 'ghost'}
                   size="sm"
                   className={cn(
                     'h-8 gap-1 rounded-none px-2 font-mono text-xs sm:h-9 sm:gap-2 sm:px-3',
-                    isActive && 'border-b-2 border-primary bg-secondary'
+                    isActive && 'border-b-2 border-primary bg-secondary',
+                    isEducation &&
+                      !isActive &&
+                      'shadow-sharp-sm hover:shadow-sharp-md border border-primary text-primary-foreground'
                   )}
                 >
                   <Icon className="h-4 w-4" />
