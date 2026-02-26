@@ -1,27 +1,20 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { FolderGit2, Plus, Settings, User, Keyboard, BookOpen, Search } from 'lucide-react'
+import { FolderGit2, Plus, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/settings/ThemeToggle'
 import { PandaLogo } from '@/components/ui/panda-logo'
 import { cn } from '@/lib/utils'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { UserMenu } from '@/components/auth/UserMenu'
 import { useCommandPaletteStore } from '@/stores/commandPaletteStore'
 
 const navItems = [{ href: '/projects', label: 'Projects', icon: FolderGit2 }]
 
 export function DashboardHeader() {
   const pathname = usePathname()
-  const router = useRouter()
   const openCommandPalette = useCommandPaletteStore((state) => state.open)
 
   return (
@@ -89,43 +82,8 @@ export function DashboardHeader() {
 
           <ThemeToggle />
 
-          {/* User Menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 rounded-none"
-                aria-label="User menu"
-              >
-                <User className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 rounded-none border-border">
-              <DropdownMenuItem
-                className="cursor-pointer rounded-none"
-                onSelect={() => router.push('/settings')}
-              >
-                <Settings className="mr-2 h-4 w-4" />
-                Settings
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="cursor-pointer rounded-none"
-                onSelect={() => router.push('/settings#llm')}
-              >
-                <BookOpen className="mr-2 h-4 w-4" />
-                LLM Providers
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="cursor-pointer rounded-none"
-                onSelect={openCommandPalette}
-              >
-                <Keyboard className="mr-2 h-4 w-4" />
-                Keyboard Shortcuts
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* User Menu (profile + admin + sign out) */}
+          <UserMenu compact />
         </div>
       </div>
     </motion.header>
