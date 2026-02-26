@@ -29,6 +29,13 @@ import { ChatHistoryActions } from '@/components/chat/ChatHistoryActions'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -40,10 +47,17 @@ import {
   PanelRight,
   PanelRightClose,
   ChevronLeft,
+  ChevronDown,
   Bot,
   RotateCcw,
   AlertTriangle,
   Layers,
+  MoreHorizontal,
+  Activity,
+  Brain,
+  FlaskConical,
+  Settings2,
+  X,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -154,10 +168,14 @@ export default function ProjectPage() {
   const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false)
   const [isDebugDialogOpen, setIsDebugDialogOpen] = useState(false)
   const [isMobileLayout, setIsMobileLayout] = useState(false)
+  const [isCompactDesktopLayout, setIsCompactDesktopLayout] = useState(false)
   const [mobilePrimaryPanel, setMobilePrimaryPanel] = useState<'workspace' | 'chat'>('workspace')
   const [mobileUnreadCount, setMobileUnreadCount] = useState(0)
   const [isMobileKeyboardOpen, setIsMobileKeyboardOpen] = useState(false)
+  const [isChatInspectorOpen, setIsChatInspectorOpen] = useState(false)
+  const [chatInspectorTab, setChatInspectorTab] = useState<'run' | 'memory' | 'evals'>('run')
   const lastAssistantMessageIdRef = useRef<string | null>(null)
+  const previousAgentLoadingRef = useRef(false)
 
   // Fetch project data
   const project = useQuery(api.projects.get, { id: projectId })
@@ -172,11 +190,19 @@ export default function ProjectPage() {
   const [activeChatId, setActiveChatId] = useState<Id<'chats'> | null>(null)
 
   useEffect(() => {
-    const media = window.matchMedia('(max-width: 1023px)')
-    const update = () => setIsMobileLayout(media.matches)
+    const mobileMedia = window.matchMedia('(max-width: 1023px)')
+    const compactDesktopMedia = window.matchMedia('(min-width: 1024px) and (max-width: 1279px)')
+    const update = () => {
+      setIsMobileLayout(mobileMedia.matches)
+      setIsCompactDesktopLayout(compactDesktopMedia.matches)
+    }
     update()
-    media.addEventListener('change', update)
-    return () => media.removeEventListener('change', update)
+    mobileMedia.addEventListener('change', update)
+    compactDesktopMedia.addEventListener('change', update)
+    return () => {
+      mobileMedia.removeEventListener('change', update)
+      compactDesktopMedia.removeEventListener('change', update)
+    }
   }, [])
 
   // Keyboard shortcuts
@@ -544,6 +570,14 @@ export default function ProjectPage() {
     if (!agent.error || !isRateLimitError(agent.error)) return null
     return getUserFacingAgentError(agent.error)
   }, [agent.error])
+
+  useEffect(() => {
+    if (agent.isLoading && !previousAgentLoadingRef.current) {
+      setIsChatInspectorOpen(true)
+      setChatInspectorTab('run')
+    }
+    previousAgentLoadingRef.current = agent.isLoading
+  }, [agent.isLoading])
 
   // File mutations
   const upsertFileMutation = useMutation(api.files.upsert)
@@ -948,15 +982,75 @@ export default function ProjectPage() {
     }
   }, [isMobileLayout])
 
+  const shouldShowInspectorStrip = !isMobileLayout && (isChatInspectorOpen || agent.isLoading)
+
+  const chatInspectorTabs = (
+    <Tabs
+      value={chatInspectorTab}
+      onValueChange={(value) => setChatInspectorTab(value as 'run' | 'memory' | 'evals')}
+      className="gap-2"
+    >
+      <TabsList className="h-8 w-full justify-start rounded-none border border-border bg-background p-0 font-mono text-xs">
+        <TabsTrigger
+          value="run"
+          className="h-full rounded-none border-r border-border px-3 font-mono text-xs uppercase tracking-wide data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+        >
+          Run
+        </TabsTrigger>
+        <TabsTrigger
+          value="memory"
+          className="h-full rounded-none border-r border-border px-3 font-mono text-xs uppercase tracking-wide data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+        >
+          Memory
+        </TabsTrigger>
+        <TabsTrigger
+          value="evals"
+          className="h-full rounded-none px-3 font-mono text-xs uppercase tracking-wide data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+        >
+          Evals
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="run" className="m-0">
+        <RunProgressPanel
+          chatId={activeChat?._id}
+          liveSteps={liveRunSteps}
+          isStreaming={agent.isLoading}
+          tracePersistenceStatus={agent.tracePersistenceStatus}
+          onOpenFile={handleFileSelect}
+          onOpenArtifacts={() => setIsArtifactPanelOpen(true)}
+        />
+      </TabsContent>
+
+      <TabsContent value="memory" className="m-0">
+        <div className="border border-border bg-background">
+          <MemoryBankEditor memoryBank={agent.memoryBank} onSave={agent.updateMemoryBank} />
+        </div>
+      </TabsContent>
+
+      <TabsContent value="evals" className="m-0">
+        <div className="border border-border bg-background">
+          <EvalPanel
+            projectId={projectId}
+            chatId={activeChat?._id}
+            lastUserPrompt={latestUserPrompt}
+            lastAssistantReply={latestAssistantReply}
+            onRunScenario={agent.runEvalScenario}
+          />
+        </div>
+      </TabsContent>
+    </Tabs>
+  )
+
   const chatPanelContent = (
     <div
       className={cn(
-        'surface-1 flex h-full flex-col border-border',
+        'surface-1 relative flex h-full flex-col border-border',
         isMobileLayout ? 'border-t' : 'border-l'
       )}
     >
       {/* Chat Header */}
-      <div className="panel-header flex items-center gap-2" data-number="04">
+      <div className="panel-header flex items-center gap-2 max-sm:flex-wrap" data-number="04">
         <Bot className="h-3.5 w-3.5 text-primary" />
         <span>Chat</span>
         <div className="ml-2 hidden min-w-0 flex-1 overflow-hidden md:block">
@@ -966,11 +1060,28 @@ export default function ProjectPage() {
             onNewSession={handleResetWorkspace}
           />
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-1.5 max-sm:ml-0 max-sm:w-full max-sm:flex-nowrap max-sm:justify-end max-sm:overflow-x-auto max-sm:border-t max-sm:border-border max-sm:pt-2 scrollbar-thin">
           {agent.status !== 'idle' && agent.status !== 'complete' && agent.status !== 'error' && (
             <span className="text-xs capitalize text-muted-foreground">
               {agent.status.replace('_', ' ')}
             </span>
+          )}
+          {agent.isLoading && (
+            <button
+              type="button"
+              onClick={() => {
+                setChatInspectorTab('run')
+                setIsChatInspectorOpen(true)
+              }}
+              className="flex h-7 shrink-0 items-center gap-1.5 border border-primary/40 bg-primary/10 px-2 font-mono text-[11px] uppercase tracking-wide text-primary"
+              title="Open run inspector"
+            >
+              <Activity className="h-3 w-3 animate-pulse" />
+              <span className="hidden sm:inline">
+                {liveRunSteps.length > 0 ? `Running • ${liveRunSteps.length}` : 'Running'}
+              </span>
+              <span className="sm:hidden">Run</span>
+            </button>
           )}
           <Dialog open={isPlanDialogOpen} onOpenChange={setIsPlanDialogOpen}>
             <DialogTrigger asChild>
@@ -1013,6 +1124,16 @@ export default function ProjectPage() {
               />
             </DialogContent>
           </Dialog>
+          <Button
+            variant={isChatInspectorOpen ? 'secondary' : 'ghost'}
+            size="sm"
+            className="h-7 shrink-0 gap-1 rounded-none font-mono text-xs"
+            onClick={() => setIsChatInspectorOpen((prev) => !prev)}
+            title="Toggle inspector"
+          >
+            <Settings2 className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Inspector</span>
+          </Button>
           {activeChat?._id && <ShareButton chatId={activeChat._id} />}
           {activeChat?._id && (
             <ChatHistoryActions chatId={activeChat._id} messageCount={chatMessages.length} />
@@ -1020,25 +1141,97 @@ export default function ProjectPage() {
         </div>
       </div>
 
-      <RunProgressPanel
-        chatId={activeChat?._id}
-        liveSteps={liveRunSteps}
-        isStreaming={agent.isLoading}
-        tracePersistenceStatus={agent.tracePersistenceStatus}
-        onOpenFile={handleFileSelect}
-        onOpenArtifacts={() => setIsArtifactPanelOpen(true)}
-      />
+      {shouldShowInspectorStrip ? (
+        <div className="surface-2 border-b border-border px-3 py-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+            type="button"
+            variant={isChatInspectorOpen ? 'secondary' : 'outline'}
+            size="sm"
+            onClick={() => setIsChatInspectorOpen((prev) => !prev)}
+            className="h-7 gap-1.5 rounded-none font-mono text-xs uppercase tracking-wide"
+            >
+            <Settings2 className="h-3.5 w-3.5" />
+            Inspector
+            <ChevronDown
+              className={cn(
+                'h-3.5 w-3.5 transition-transform',
+                isChatInspectorOpen && 'rotate-180'
+              )}
+            />
+            </Button>
 
-      <EvalPanel
-        projectId={projectId}
-        chatId={activeChat?._id}
-        lastUserPrompt={latestUserPrompt}
-        lastAssistantReply={latestAssistantReply}
-        onRunScenario={agent.runEvalScenario}
-      />
+            <button
+            type="button"
+            onClick={() => {
+              setChatInspectorTab('run')
+              setIsChatInspectorOpen(true)
+            }}
+            className={cn(
+              'flex items-center gap-1.5 border px-2 py-1 font-mono text-[11px] uppercase tracking-wide',
+              chatInspectorTab === 'run' && isChatInspectorOpen
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-border text-muted-foreground hover:text-foreground'
+            )}
+            >
+            <Activity className={cn('h-3 w-3', agent.isLoading && 'animate-pulse text-primary')} />
+            Run
+            {agent.isLoading ? (
+              <span className="text-primary">
+                {liveRunSteps.length > 0 ? `(${liveRunSteps.length})` : '(live)'}
+              </span>
+            ) : null}
+            </button>
 
-      {/* Memory Bank Editor */}
-      <MemoryBankEditor memoryBank={agent.memoryBank} onSave={agent.updateMemoryBank} />
+            <button
+            type="button"
+            onClick={() => {
+              setChatInspectorTab('memory')
+              setIsChatInspectorOpen(true)
+            }}
+            className={cn(
+              'flex items-center gap-1.5 border px-2 py-1 font-mono text-[11px] uppercase tracking-wide',
+              chatInspectorTab === 'memory' && isChatInspectorOpen
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-border text-muted-foreground hover:text-foreground'
+            )}
+            >
+            <Brain className="h-3 w-3" />
+            Memory
+            {agent.memoryBank?.trim() ? <span className="text-primary">(active)</span> : null}
+            </button>
+
+            <button
+            type="button"
+            onClick={() => {
+              setChatInspectorTab('evals')
+              setIsChatInspectorOpen(true)
+            }}
+            className={cn(
+              'flex items-center gap-1.5 border px-2 py-1 font-mono text-[11px] uppercase tracking-wide',
+              chatInspectorTab === 'evals' && isChatInspectorOpen
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-border text-muted-foreground hover:text-foreground'
+            )}
+            >
+            <FlaskConical className="h-3 w-3" />
+            Evals
+            </button>
+
+            <span className="ml-auto hidden font-mono text-[11px] text-muted-foreground xl:inline">
+              {agent.isLoading
+                ? `Running • ${liveRunSteps.length} live events`
+                : 'Conversation focus'}
+            </span>
+          </div>
+        </div>
+      ) : null}
+
+      {isChatInspectorOpen && !isMobileLayout ? (
+        <div className="surface-2 border-b border-border px-3 py-2">
+          {chatInspectorTabs}
+        </div>
+      ) : null}
 
       {inlineRateLimitError ? (
         <div className="px-3 pb-2">
@@ -1092,7 +1285,54 @@ export default function ProjectPage() {
         variant={reasoningVariant}
         onVariantChange={setReasoningVariant}
         supportsReasoning={supportsReasoning}
+        compactToolbar={true}
       />
+
+      <AnimatePresence>
+        {isMobileLayout && isChatInspectorOpen ? (
+          <>
+            <motion.button
+              type="button"
+              aria-label="Close inspector"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsChatInspectorOpen(false)}
+              className="absolute inset-0 z-20 bg-background/55 backdrop-blur-[1px]"
+            />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+              className="shadow-sharp-lg absolute inset-x-0 bottom-0 z-30 max-h-[85vh] border-t border-border bg-background sm:inset-x-3 sm:bottom-3 sm:max-h-[75vh] sm:border"
+            >
+              <div className="flex items-center justify-between border-b border-border px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-1 w-8 bg-border sm:hidden" />
+                  <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-wide">
+                    <Settings2 className="h-3.5 w-3.5 text-primary" />
+                    Inspector
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 rounded-none"
+                  onClick={() => setIsChatInspectorOpen(false)}
+                  aria-label="Close inspector"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="max-h-[calc(85vh-44px)] overflow-y-auto p-2 pb-[env(safe-area-inset-bottom)] sm:max-h-[calc(75vh-44px)] sm:p-3">
+                {chatInspectorTabs}
+              </div>
+            </motion.div>
+          </>
+        ) : null}
+      </AnimatePresence>
     </div>
   )
 
@@ -1204,16 +1444,29 @@ export default function ProjectPage() {
                 </span>
               )}
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 gap-1.5 rounded-none font-mono text-xs"
-              onClick={handleResetWorkspace}
-              title="Reset workspace"
-            >
-              <RotateCcw className="h-4 w-4" />
-              <span className="hidden sm:inline">Reset</span>
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 gap-1 rounded-none font-mono text-xs"
+                  title="More actions"
+                  aria-label="More actions"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                  <span className="hidden xl:inline">More</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="rounded-none border-border font-mono">
+                <DropdownMenuItem
+                  onClick={handleResetWorkspace}
+                  className="rounded-none text-xs uppercase tracking-wide"
+                >
+                  <RotateCcw className="mr-2 h-3.5 w-3.5" />
+                  Reset Workspace
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </motion.div>
@@ -1244,7 +1497,7 @@ export default function ProjectPage() {
                 )}
               </div>
               {!isMobileKeyboardOpen && (
-                <div className="surface-1 grid h-12 grid-cols-2 border-t border-border font-mono text-xs uppercase tracking-widest">
+                <div className="surface-1 grid min-h-12 grid-cols-2 border-t border-border pb-[env(safe-area-inset-bottom)] font-mono text-xs uppercase tracking-widest">
                   <button
                     type="button"
                     onClick={() => setMobilePrimaryPanel('workspace')}
@@ -1280,7 +1533,7 @@ export default function ProjectPage() {
           ) : (
             <PanelGroup direction="horizontal" className="h-full">
               <Panel
-                defaultSize={isChatPanelOpen ? 70 : 100}
+                defaultSize={isChatPanelOpen ? (isCompactDesktopLayout ? 64 : 70) : 100}
                 minSize={40}
                 className="flex flex-col"
               >
@@ -1303,7 +1556,12 @@ export default function ProjectPage() {
                 <>
                   <PanelResizeHandle className="h-full w-px bg-border transition-colors hover:bg-primary" />
 
-                  <Panel defaultSize={30} minSize={25} maxSize={50} className="flex flex-col">
+                  <Panel
+                    defaultSize={isCompactDesktopLayout ? 36 : 30}
+                    minSize={isCompactDesktopLayout ? 30 : 25}
+                    maxSize={isCompactDesktopLayout ? 45 : 50}
+                    className="flex flex-col"
+                  >
                     {chatPanelContent}
                   </Panel>
                 </>
@@ -1319,7 +1577,7 @@ export default function ProjectPage() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 300 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                className="shadow-sharp-lg absolute bottom-0 right-0 top-0 z-40 w-80 border-l border-border bg-background"
+                className="shadow-sharp-lg absolute bottom-0 right-0 top-0 z-40 w-72 border-l border-border bg-background xl:w-80"
               >
                 <ArtifactPanel
                   projectId={projectId}

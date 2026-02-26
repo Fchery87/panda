@@ -34,7 +34,7 @@ export function SuggestedActions({ actions, disabled = false, onAction }: Sugges
             className={cn(
               'group flex items-center gap-1.5',
               'rounded-none border border-border bg-background',
-              'px-2.5 py-1 font-mono text-xs text-muted-foreground',
+              'px-2 py-1 font-mono text-[11px] text-muted-foreground xl:px-2.5 xl:text-xs',
               'transition-all duration-150',
               'hover:border-primary/50 hover:bg-primary/5 hover:text-foreground',
               'disabled:cursor-not-allowed disabled:opacity-40',
@@ -43,7 +43,7 @@ export function SuggestedActions({ actions, disabled = false, onAction }: Sugges
                 'border-primary/20 text-primary/80 hover:border-primary hover:bg-primary/10 hover:text-primary'
             )}
           >
-            <span>{action.label}</span>
+            <span className="max-w-[26ch] truncate">{action.label}</span>
             <ArrowRight className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
           </motion.button>
         ))}

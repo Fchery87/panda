@@ -36,12 +36,14 @@ export function MessageList({
           transition={{ delay: 0.3 }}
           className={cn(
             'flex h-full min-h-[300px] flex-col items-center justify-center',
-            'px-8 text-center'
+            'px-6 text-center sm:px-8'
           )}
         >
           <div className="text-sm text-muted-foreground">
             <p className="mb-2 font-medium">No messages yet</p>
-            <p className="text-xs">Start a conversation to begin chatting with the AI assistant.</p>
+            <p className="max-w-[28ch] text-xs leading-relaxed">
+              Start a conversation to begin chatting with the AI assistant.
+            </p>
           </div>
         </motion.div>
       </ScrollArea>
@@ -51,7 +53,7 @@ export function MessageList({
   return (
     <ScrollArea className="h-full">
       <div
-        className={cn('flex min-h-full flex-col gap-4 p-4')}
+        className={cn('flex min-h-full flex-col gap-4 p-3 xl:gap-5 xl:p-4')}
         role="log"
         aria-live="polite"
         aria-label="Chat messages"

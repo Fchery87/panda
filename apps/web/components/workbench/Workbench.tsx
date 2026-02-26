@@ -137,14 +137,23 @@ export function Workbench({
   const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>('explorer')
   const [mobilePanel, setMobilePanel] = useState<'files' | 'editor' | 'terminal'>('editor')
   const [isMobile, setIsMobile] = useState(false)
+  const [isCompactDesktop, setIsCompactDesktop] = useState(false)
   const selectedFile = selectedFilePath ? files.find((f) => f.path === selectedFilePath) : undefined
 
   useEffect(() => {
-    const media = window.matchMedia('(max-width: 1023px)')
-    const update = () => setIsMobile(media.matches)
+    const mobileMedia = window.matchMedia('(max-width: 1023px)')
+    const compactDesktopMedia = window.matchMedia('(min-width: 1024px) and (max-width: 1279px)')
+    const update = () => {
+      setIsMobile(mobileMedia.matches)
+      setIsCompactDesktop(compactDesktopMedia.matches)
+    }
     update()
-    media.addEventListener('change', update)
-    return () => media.removeEventListener('change', update)
+    mobileMedia.addEventListener('change', update)
+    compactDesktopMedia.addEventListener('change', update)
+    return () => {
+      mobileMedia.removeEventListener('change', update)
+      compactDesktopMedia.removeEventListener('change', update)
+    }
   }, [])
 
   useEffect(() => {
@@ -334,7 +343,7 @@ export function Workbench({
       <PanelGroup direction="horizontal" className="h-full">
         {/* Left sidebar - File Explorer */}
         <Panel
-          defaultSize={18}
+          defaultSize={isCompactDesktop ? 16 : 18}
           minSize={15}
           maxSize={30}
           className="surface-1 border-r border-border"
@@ -394,10 +403,10 @@ export function Workbench({
         <VerticalResizeHandle />
 
         {/* Main content area - Editor with tabs */}
-        <Panel defaultSize={82}>
+        <Panel defaultSize={isCompactDesktop ? 84 : 82}>
           <PanelGroup direction="vertical" className="h-full">
             {/* Editor + Preview (tabbed) */}
-            <Panel defaultSize={70}>
+            <Panel defaultSize={isCompactDesktop ? 76 : 70}>
               <div className="surface-0 flex h-full flex-col">
                 {/* File Tabs */}
                 {openTabs.length > 0 && (
@@ -484,7 +493,11 @@ export function Workbench({
             <HorizontalResizeHandle />
 
             {/* Terminal */}
-            <Panel defaultSize={30} minSize={15} className="border-t border-border">
+            <Panel
+              defaultSize={isCompactDesktop ? 24 : 30}
+              minSize={isCompactDesktop ? 12 : 15}
+              className="border-t border-border"
+            >
               <Terminal projectId={projectId} />
             </Panel>
           </PanelGroup>

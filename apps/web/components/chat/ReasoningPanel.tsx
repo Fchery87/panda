@@ -14,16 +14,16 @@ export function ReasoningPanel({ content, isStreaming = false }: ReasoningPanelP
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="shadow-sharp-md w-full border border-border bg-muted/50">
+    <div className="shadow-sharp-md w-full border border-border bg-muted/40">
       <button
         type="button"
-        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left"
+        className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left"
         onClick={() => setOpen((prev) => !prev)}
       >
-        <span className="flex items-center gap-2 font-mono text-xs">
+        <span className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
           <Brain className="h-3.5 w-3.5" />
           Reasoning
-          {isStreaming && <span className="text-xs text-muted-foreground">streaming...</span>}
+          {isStreaming && <span className="text-[10px] text-muted-foreground/80">streaming…</span>}
         </span>
         <ChevronDown
           className={cn('h-3.5 w-3.5 transition-transform', open ? 'rotate-180' : 'rotate-0')}
@@ -39,7 +39,7 @@ export function ReasoningPanel({ content, isStreaming = false }: ReasoningPanelP
             transition={{ duration: 0.2 }}
             className="overflow-hidden border-t border-border"
           >
-            <div className="whitespace-pre-wrap px-3 py-2 font-mono text-xs leading-relaxed text-muted-foreground">
+            <div className="whitespace-pre-wrap break-words px-3 py-2 font-mono text-[11px] leading-5 text-muted-foreground/90">
               {content}
             </div>
           </motion.div>

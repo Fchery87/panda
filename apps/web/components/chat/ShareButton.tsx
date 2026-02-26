@@ -56,19 +56,23 @@ export function ShareButton({ chatId, className }: ShareButtonProps) {
           onClick={handleCopyLink}
           variant="outline"
           size="sm"
-          className="rounded-none font-mono"
+          className="h-7 gap-1 rounded-none px-2 font-mono text-xs"
+          title="Copy shared link"
+          aria-label="Copy shared link"
         >
-          <Copy className="mr-1 h-4 w-4" />
-          Copy Link
+          <Copy className="h-3.5 w-3.5" />
+          <span className="hidden 2xl:inline">Copy Link</span>
         </Button>
         <Button
           onClick={handleUnshare}
           variant="outline"
           size="sm"
-          className="rounded-none font-mono"
+          className="h-7 gap-1 rounded-none px-2 font-mono text-xs"
+          title="Unshare chat"
+          aria-label="Unshare chat"
         >
-          <X className="mr-1 h-4 w-4" />
-          Unshare
+          <X className="h-3.5 w-3.5" />
+          <span className="hidden 2xl:inline">Unshare</span>
         </Button>
       </div>
     )
@@ -79,10 +83,12 @@ export function ShareButton({ chatId, className }: ShareButtonProps) {
       onClick={handleShare}
       variant="outline"
       size="sm"
-      className={cn('rounded-none font-mono', className)}
+      className={cn('h-7 gap-1 rounded-none px-2 font-mono text-xs', className)}
+      title="Share chat"
+      aria-label="Share chat"
     >
-      <Share2 className="mr-1 h-4 w-4" />
-      Share
+      <Share2 className="h-3.5 w-3.5" />
+      <span className="hidden 2xl:inline">Share</span>
     </Button>
   )
 }
