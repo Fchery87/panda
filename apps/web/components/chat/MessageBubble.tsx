@@ -176,7 +176,10 @@ function renderArchitectBody(lines: string[]) {
         }
 
         return (
-          <p key={`p-${blockIndex}`} className="whitespace-pre-wrap break-words leading-6 tracking-[0.01em]">
+          <p
+            key={`p-${blockIndex}`}
+            className="whitespace-pre-wrap break-words leading-6 tracking-[0.01em]"
+          >
             {block.lines.map((line, i) => (
               <Fragment key={i}>
                 {i > 0 ? <br /> : null}
@@ -215,18 +218,21 @@ export function MessageBubble({
     : message.content
   const isArchitect = message.annotations?.mode === 'architect'
   const brainstormPhase = isAssistant && isArchitect ? extractBrainstormPhase(displayContent) : null
-  const architectContent = brainstormPhase ? stripBrainstormPhaseMarker(displayContent).trim() : displayContent
+  const architectContent = brainstormPhase
+    ? stripBrainstormPhaseMarker(displayContent).trim()
+    : displayContent
   const architectSections =
-    isAssistant && isArchitect && architectContent
-      ? parseArchitectSections(architectContent)
-      : []
+    isAssistant && isArchitect && architectContent ? parseArchitectSections(architectContent) : []
   const hasStructuredArchitectContent =
     !!brainstormPhase || /\*\*.+?\*\*|^\s*(?:[-*]|\d+[.)])\s+/m.test(architectContent)
   const shouldUseArchitectRenderer =
     isAssistant && isArchitect && hasStructuredArchitectContent && architectSections.length > 0
   const brainstormPhaseLabel = formatBrainstormPhaseLabel(brainstormPhase)
   const canCopyValidatedPlan =
-    isAssistant && isArchitect && brainstormPhase === 'validated_plan' && architectContent.length > 0
+    isAssistant &&
+    isArchitect &&
+    brainstormPhase === 'validated_plan' &&
+    architectContent.length > 0
 
   const handleCopyPlan = async () => {
     if (!canCopyValidatedPlan) return
@@ -355,9 +361,7 @@ export function MessageBubble({
                 })}
               </div>
             ) : (
-              <div className="whitespace-pre-wrap break-words">
-                {displayContent}
-              </div>
+              <div className="whitespace-pre-wrap break-words">{displayContent}</div>
             )}
             {isStreaming && (
               <motion.span

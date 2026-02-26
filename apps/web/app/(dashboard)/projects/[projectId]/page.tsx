@@ -1060,7 +1060,7 @@ export default function ProjectPage() {
             onNewSession={handleResetWorkspace}
           />
         </div>
-        <div className="ml-auto flex items-center gap-1.5 max-sm:ml-0 max-sm:w-full max-sm:flex-nowrap max-sm:justify-end max-sm:overflow-x-auto max-sm:border-t max-sm:border-border max-sm:pt-2 scrollbar-thin">
+        <div className="scrollbar-thin ml-auto flex items-center gap-1.5 max-sm:ml-0 max-sm:w-full max-sm:flex-nowrap max-sm:justify-end max-sm:overflow-x-auto max-sm:border-t max-sm:border-border max-sm:pt-2">
           {agent.status !== 'idle' && agent.status !== 'complete' && agent.status !== 'error' && (
             <span className="text-xs capitalize text-muted-foreground">
               {agent.status.replace('_', ' ')}
@@ -1145,77 +1145,79 @@ export default function ProjectPage() {
         <div className="surface-2 border-b border-border px-3 py-2">
           <div className="flex flex-wrap items-center gap-2">
             <Button
-            type="button"
-            variant={isChatInspectorOpen ? 'secondary' : 'outline'}
-            size="sm"
-            onClick={() => setIsChatInspectorOpen((prev) => !prev)}
-            className="h-7 gap-1.5 rounded-none font-mono text-xs uppercase tracking-wide"
+              type="button"
+              variant={isChatInspectorOpen ? 'secondary' : 'outline'}
+              size="sm"
+              onClick={() => setIsChatInspectorOpen((prev) => !prev)}
+              className="h-7 gap-1.5 rounded-none font-mono text-xs uppercase tracking-wide"
             >
-            <Settings2 className="h-3.5 w-3.5" />
-            Inspector
-            <ChevronDown
-              className={cn(
-                'h-3.5 w-3.5 transition-transform',
-                isChatInspectorOpen && 'rotate-180'
-              )}
-            />
+              <Settings2 className="h-3.5 w-3.5" />
+              Inspector
+              <ChevronDown
+                className={cn(
+                  'h-3.5 w-3.5 transition-transform',
+                  isChatInspectorOpen && 'rotate-180'
+                )}
+              />
             </Button>
 
             <button
-            type="button"
-            onClick={() => {
-              setChatInspectorTab('run')
-              setIsChatInspectorOpen(true)
-            }}
-            className={cn(
-              'flex items-center gap-1.5 border px-2 py-1 font-mono text-[11px] uppercase tracking-wide',
-              chatInspectorTab === 'run' && isChatInspectorOpen
-                ? 'border-primary bg-primary/10 text-primary'
-                : 'border-border text-muted-foreground hover:text-foreground'
-            )}
+              type="button"
+              onClick={() => {
+                setChatInspectorTab('run')
+                setIsChatInspectorOpen(true)
+              }}
+              className={cn(
+                'flex items-center gap-1.5 border px-2 py-1 font-mono text-[11px] uppercase tracking-wide',
+                chatInspectorTab === 'run' && isChatInspectorOpen
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border text-muted-foreground hover:text-foreground'
+              )}
             >
-            <Activity className={cn('h-3 w-3', agent.isLoading && 'animate-pulse text-primary')} />
-            Run
-            {agent.isLoading ? (
-              <span className="text-primary">
-                {liveRunSteps.length > 0 ? `(${liveRunSteps.length})` : '(live)'}
-              </span>
-            ) : null}
+              <Activity
+                className={cn('h-3 w-3', agent.isLoading && 'animate-pulse text-primary')}
+              />
+              Run
+              {agent.isLoading ? (
+                <span className="text-primary">
+                  {liveRunSteps.length > 0 ? `(${liveRunSteps.length})` : '(live)'}
+                </span>
+              ) : null}
             </button>
 
             <button
-            type="button"
-            onClick={() => {
-              setChatInspectorTab('memory')
-              setIsChatInspectorOpen(true)
-            }}
-            className={cn(
-              'flex items-center gap-1.5 border px-2 py-1 font-mono text-[11px] uppercase tracking-wide',
-              chatInspectorTab === 'memory' && isChatInspectorOpen
-                ? 'border-primary bg-primary/10 text-primary'
-                : 'border-border text-muted-foreground hover:text-foreground'
-            )}
+              type="button"
+              onClick={() => {
+                setChatInspectorTab('memory')
+                setIsChatInspectorOpen(true)
+              }}
+              className={cn(
+                'flex items-center gap-1.5 border px-2 py-1 font-mono text-[11px] uppercase tracking-wide',
+                chatInspectorTab === 'memory' && isChatInspectorOpen
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border text-muted-foreground hover:text-foreground'
+              )}
             >
-            <Brain className="h-3 w-3" />
-            Memory
-            {agent.memoryBank?.trim() ? <span className="text-primary">(active)</span> : null}
+              <Brain className="h-3 w-3" />
+              Memory
+              {agent.memoryBank?.trim() ? <span className="text-primary">(active)</span> : null}
             </button>
 
             <button
-            type="button"
-            onClick={() => {
-              setChatInspectorTab('evals')
-              setIsChatInspectorOpen(true)
-            }}
-            className={cn(
-              'flex items-center gap-1.5 border px-2 py-1 font-mono text-[11px] uppercase tracking-wide',
-              chatInspectorTab === 'evals' && isChatInspectorOpen
-                ? 'border-primary bg-primary/10 text-primary'
-                : 'border-border text-muted-foreground hover:text-foreground'
-            )}
+              type="button"
+              onClick={() => {
+                setChatInspectorTab('evals')
+                setIsChatInspectorOpen(true)
+              }}
+              className={cn(
+                'flex items-center gap-1.5 border px-2 py-1 font-mono text-[11px] uppercase tracking-wide',
+                chatInspectorTab === 'evals' && isChatInspectorOpen
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border text-muted-foreground hover:text-foreground'
+              )}
             >
-            <FlaskConical className="h-3 w-3" />
-            Evals
+              <FlaskConical className="h-3 w-3" />
+              Evals
             </button>
 
             <span className="ml-auto hidden font-mono text-[11px] text-muted-foreground xl:inline">
@@ -1228,9 +1230,7 @@ export default function ProjectPage() {
       ) : null}
 
       {isChatInspectorOpen && !isMobileLayout ? (
-        <div className="surface-2 border-b border-border px-3 py-2">
-          {chatInspectorTabs}
-        </div>
+        <div className="surface-2 border-b border-border px-3 py-2">{chatInspectorTabs}</div>
       ) : null}
 
       {inlineRateLimitError ? (

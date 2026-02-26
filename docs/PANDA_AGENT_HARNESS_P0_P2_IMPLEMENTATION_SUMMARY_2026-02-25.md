@@ -19,11 +19,14 @@
 
 - Tool-call caps enforcement (`maxToolCallsPerStep` / iteration cap path)
 - Tool deduplication + loop guards
-- Durable run-event buffering/flush in `useAgent` (Convex-backed trace persistence path)
+- Durable run-event buffering/flush in `useAgent` (Convex-backed trace
+  persistence path)
 - Runtime checkpoint serialization + `resume()` API
 - Convex-backed runtime checkpoint persistence
-- Runtime checkpoint wiring into real harness runtime creation path + auto-resume fallback
-- Compaction/snapshot latency budgets with degrade/warn behavior (non-blocking runtime)
+- Runtime checkpoint wiring into real harness runtime creation path +
+  auto-resume fallback
+- Compaction/snapshot latency budgets with degrade/warn behavior (non-blocking
+  runtime)
 
 ### P1 (Control / Safety)
 
@@ -40,7 +43,8 @@
 - Transport-capable MCP manager (remote transport support)
 - MCP connection test/status APIs
 - MCP settings UI “Test” action + status feedback
-- `stdio` bridge integration hook added (backend bridge implementation remains optional follow-up)
+- `stdio` bridge integration hook added (backend bridge implementation remains
+  optional follow-up)
 
 ### P2 Task 2: Eval Hardening
 
@@ -73,17 +77,26 @@
 
 ## Additional Cleanup Completed During Verification
 
-- Resolved repo typecheck failures reported during validation (including pre-existing issues in admin/artifacts/provider typing)
-- Fixed lint warning in `apps/web/hooks/useAgent.ts` (`react-hooks/exhaustive-deps`)
+- Resolved repo typecheck failures reported during validation (including
+  pre-existing issues in admin/artifacts/provider typing)
+- Fixed lint warning in `apps/web/hooks/useAgent.ts`
+  (`react-hooks/exhaustive-deps`)
 - Formatted changed files until `prettier --check` passed
 
 ## Remaining Gaps / Follow-Ups (Recommended)
 
-1. Implement backend `stdio` MCP bridge (process-spawn bridge) to fully enable local stdio MCP servers.
-2. Add dedicated interrupt UI for `approve/reject/edit` with richer context and recovery actions.
-3. Expand eval analytics (regression compare, scorer/tool breakdowns, richer trend visualization).
-4. Add isolated execution mode (branch/worktree/sandbox) for mutation-based full-harness evals.
+1. Implement backend `stdio` MCP bridge (process-spawn bridge) to fully enable
+   local stdio MCP servers.
+2. Add dedicated interrupt UI for `approve/reject/edit` with richer context and
+   recovery actions.
+3. Expand eval analytics (regression compare, scorer/tool breakdowns, richer
+   trend visualization).
+4. Add isolated execution mode (branch/worktree/sandbox) for mutation-based
+   full-harness evals.
 
 ## Bottom Line
 
-Panda’s harness now has materially stronger reliability, safety, and evaluation capability. The highest-value remaining work is platform polish and operational maturity (MCP backend bridge, dedicated interrupt UX, deeper eval analytics), not core harness capability.
+Panda’s harness now has materially stronger reliability, safety, and evaluation
+capability. The highest-value remaining work is platform polish and operational
+maturity (MCP backend bridge, dedicated interrupt UX, deeper eval analytics),
+not core harness capability.

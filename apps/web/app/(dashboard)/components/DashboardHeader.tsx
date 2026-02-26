@@ -47,7 +47,7 @@ export function DashboardHeader() {
                   )}
                 >
                   <Icon className="h-4 w-4" />
-                  <span className="hidden xs:inline sm:inline">{item.label}</span>
+                  <span className="xs:inline hidden sm:inline">{item.label}</span>
                 </Button>
               </Link>
             )
@@ -74,7 +74,10 @@ export function DashboardHeader() {
         <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
           {/* New Project CTA */}
           <Link href="/projects">
-            <Button size="sm" className="h-8 gap-1 rounded-none px-2 font-mono text-xs sm:h-9 sm:gap-1.5 sm:px-3">
+            <Button
+              size="sm"
+              className="h-8 gap-1 rounded-none px-2 font-mono text-xs sm:h-9 sm:gap-1.5 sm:px-3"
+            >
               <Plus className="h-3.5 w-3.5" />
               <span className="hidden md:inline">New Project</span>
             </Button>

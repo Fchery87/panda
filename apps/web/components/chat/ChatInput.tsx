@@ -180,7 +180,9 @@ export function ChatInput({
 
   const showBrainstormToggle = mode === 'architect'
   const hasAdvancedControls =
-    Boolean(onModelChange) || (supportsReasoning && Boolean(onVariantChange)) || showBrainstormToggle
+    Boolean(onModelChange) ||
+    (supportsReasoning && Boolean(onVariantChange)) ||
+    showBrainstormToggle
 
   useEffect(() => {
     if (!compactToolbar) {
