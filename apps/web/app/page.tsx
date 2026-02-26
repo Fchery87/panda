@@ -11,30 +11,33 @@ import { cn } from '@/lib/utils'
 const features = [
   {
     number: '01',
-    title: 'AI-Powered Coding',
-    description: 'Stream conversations with AI that understands context. Ask, plan, code, build.',
+    title: 'Context-Aware AI Chat',
+    description:
+      'Switch between ask, plan, code, and build flows without losing context across your project.',
     icon: Bot,
     size: 'small',
   },
   {
     number: '02',
-    title: 'Smart File Management',
+    title: 'Files, Diffs, and Artifacts',
     description:
-      'Navigate and organize with an intuitive tree. Create, edit, rename with seamless context menus.',
+      'Browse your project, review generated changes, and apply updates with a clear edit workflow.',
     icon: FileCode,
     size: 'large',
   },
   {
     number: '03',
-    title: 'Integrated Terminal',
-    description: 'Execute commands with real-time output. Track jobs, cancel tasks, view history.',
+    title: 'Terminal Built Into the Loop',
+    description:
+      'Run commands with live output, track jobs, and keep execution history next to code and chat.',
     icon: Terminal,
     size: 'large',
   },
   {
     number: '04',
-    title: 'Real-time Sync',
-    description: 'Powered by Convex. Everything syncs live.',
+    title: 'Real-Time Project State',
+    description:
+      'Convex-powered sync keeps project data, sessions, and UI state responsive as you work.',
     icon: Zap,
     size: 'small',
   },
@@ -85,20 +88,20 @@ export default function Home() {
                 {/* Label */}
                 <div className="inline-flex items-center gap-3">
                   <span className="h-px w-8 bg-primary" />
-                  <span className="text-label text-muted-foreground">AI Workbench</span>
+                  <span className="text-label text-muted-foreground">AI coding workbench</span>
                 </div>
 
                 {/* Headline */}
                 <h1 className="text-display text-5xl sm:text-6xl lg:text-7xl">
-                  <span className="block">Code</span>
+                  <span className="block">Build</span>
                   <span className="block">with</span>
-                  <span className="block text-primary">precision.</span>
+                  <span className="block text-primary">full context.</span>
                 </h1>
 
                 {/* Body */}
                 <p className="max-w-md text-lg leading-relaxed text-muted-foreground">
-                  A browser-based workspace for developers. Stream AI conversations, manage files,
-                  run commands—unified.
+                  Panda brings AI chat, project files, terminal output, and change review into one
+                  browser workspace so you can move from idea to running code without tab switching.
                 </p>
 
                 {/* CTA */}
@@ -108,7 +111,7 @@ export default function Home() {
                       size="lg"
                       className="shadow-sharp-md hover:shadow-sharp-lg transition-sharp rounded-none font-mono tracking-wide"
                     >
-                      Start Building
+                      Create Your Project
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </Link>
@@ -118,7 +121,7 @@ export default function Home() {
                       variant="outline"
                       className="rounded-none font-mono tracking-wide"
                     >
-                      View Source
+                      View on GitHub
                     </Button>
                   </a>
                 </div>
@@ -205,12 +208,13 @@ export default function Home() {
               <span className="text-label text-muted-foreground">Features</span>
             </div>
             <h2 className="text-display max-w-2xl text-4xl sm:text-5xl">
-              Everything you need. <span className="text-muted-foreground">Nothing you don't.</span>
+              One workspace for the whole dev loop.{' '}
+              <span className="text-muted-foreground">No scattered tools.</span>
             </h2>
           </motion.div>
 
           {/* Feature grid - offset layout */}
-          <div className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-6">
             {features.map((feature, index) => {
               const Icon = feature.icon
               const isLarge = feature.size === 'large'
@@ -224,7 +228,7 @@ export default function Home() {
                   transition={{ delay: index * 0.1 }}
                   className={cn(
                     'transition-sharp hover-accent-border border border-transparent bg-background p-8',
-                    isLarge && 'lg:col-span-2'
+                    isLarge ? 'lg:col-span-4' : 'lg:col-span-2'
                   )}
                 >
                   <div className="space-y-4">
@@ -256,17 +260,20 @@ export default function Home() {
             viewport={{ once: true }}
             className="mx-auto max-w-2xl text-center"
           >
-            <PandaLogo size="xl" variant="icon" className="mx-auto mb-8" />
+            <div className="mb-8 flex justify-center">
+              <PandaLogo size="xl" variant="icon" />
+            </div>
 
-            <h2 className="text-display mb-6 text-4xl sm:text-5xl">Ready to start?</h2>
+            <h2 className="text-display mb-6 text-4xl sm:text-5xl">Ready to build with Panda?</h2>
 
             <p className="mb-10 text-lg text-muted-foreground">
-              Create your first project and experience AI-assisted development.
+              Start a project, open the workbench, and ship faster with AI that can plan, code, and
+              help you run the work.
             </p>
 
             <Link href="/projects">
               <Button size="lg" className="shadow-sharp-md rounded-none font-mono tracking-wide">
-                Create Project
+                Launch the Workbench
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
