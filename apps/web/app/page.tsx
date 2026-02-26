@@ -54,6 +54,12 @@ export default function Home() {
           </Link>
 
           <div className="flex items-center gap-4">
+            <Link
+              href="/education"
+              className="transition-sharp hidden font-mono text-xs uppercase tracking-wide text-muted-foreground hover:text-foreground sm:inline-flex"
+            >
+              How Panda Works
+            </Link>
             <ThemeToggle />
             <Link href="/projects">
               <Button className="rounded-none font-mono text-sm tracking-wide">
@@ -105,6 +111,15 @@ export default function Home() {
                     >
                       Create Your Project
                       <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </Link>
+                  <Link href="/education">
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="rounded-none font-mono tracking-wide"
+                    >
+                      Learn How Panda Works
                     </Button>
                   </Link>
                   <a href="https://github.com" target="_blank" rel="noopener noreferrer">

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { FolderGit2, Plus, Search } from 'lucide-react'
+import { BookOpen, FolderGit2, Plus, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/settings/ThemeToggle'
 import { PandaLogo } from '@/components/ui/panda-logo'
@@ -11,7 +11,10 @@ import { cn } from '@/lib/utils'
 import { UserMenu } from '@/components/auth/UserMenu'
 import { useCommandPaletteStore } from '@/stores/commandPaletteStore'
 
-const navItems = [{ href: '/projects', label: 'Projects', icon: FolderGit2 }]
+const navItems = [
+  { href: '/projects', label: 'Projects', icon: FolderGit2 },
+  { href: '/education', label: 'Education', icon: BookOpen },
+]
 
 export function DashboardHeader() {
   const pathname = usePathname()

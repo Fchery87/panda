@@ -1,7 +1,8 @@
 'use client'
 
 import * as SelectPrimitive from '@radix-ui/react-select'
-import { Brain, Sparkles, Zap, Bot, Check, ChevronDown } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Brain, Sparkles, Zap, Bot, Check, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface AvailableModel {
@@ -66,6 +67,11 @@ interface ModelSelectorProps {
 }
 
 export function ModelSelector({ value, onChange, disabled, availableModels }: ModelSelectorProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [showTopFade, setShowTopFade] = useState(false)
+  const [showBottomFade, setShowBottomFade] = useState(false)
+  const viewportRef = useRef<HTMLDivElement | null>(null)
+
   const renderModels: RenderModel[] =
     availableModels && availableModels.length > 0
       ? availableModels.map((m) => ({
@@ -76,8 +82,44 @@ export function ModelSelector({ value, onChange, disabled, availableModels }: Mo
         }))
       : FALLBACK_MODELS
 
+  const updateFadeVisibility = useCallback(() => {
+    const viewport = viewportRef.current
+    if (!viewport) return
+
+    const hasOverflow = viewport.scrollHeight - viewport.clientHeight > 1
+    if (!hasOverflow) {
+      setShowTopFade(false)
+      setShowBottomFade(false)
+      return
+    }
+
+    setShowTopFade(viewport.scrollTop > 1)
+    setShowBottomFade(viewport.scrollTop + viewport.clientHeight < viewport.scrollHeight - 1)
+  }, [])
+
+  useEffect(() => {
+    if (!isOpen) {
+      setShowTopFade(false)
+      setShowBottomFade(false)
+      return
+    }
+
+    const frame = window.requestAnimationFrame(updateFadeVisibility)
+    window.addEventListener('resize', updateFadeVisibility)
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.removeEventListener('resize', updateFadeVisibility)
+    }
+  }, [isOpen, renderModels.length, updateFadeVisibility])
+
   return (
-    <SelectPrimitive.Root value={value} onValueChange={onChange} disabled={disabled}>
+    <SelectPrimitive.Root
+      value={value}
+      onValueChange={onChange}
+      onOpenChange={setIsOpen}
+      disabled={disabled}
+    >
       <SelectPrimitive.Trigger
         className={cn(
           'flex h-8 w-[160px] items-center justify-between gap-1.5',
@@ -98,8 +140,11 @@ export function ModelSelector({ value, onChange, disabled, availableModels }: Mo
       <SelectPrimitive.Portal>
         <SelectPrimitive.Content
           position="popper"
+          align="end"
+          sideOffset={4}
+          collisionPadding={8}
           className={cn(
-            'relative z-50 min-w-[220px] overflow-hidden',
+            'relative z-50 min-w-[220px] max-w-[calc(100vw-1rem)] overflow-hidden',
             'rounded-none border border-border bg-popover text-popover-foreground shadow-md',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
             'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
@@ -108,36 +153,56 @@ export function ModelSelector({ value, onChange, disabled, availableModels }: Mo
             'data-[side=bottom]:translate-y-1 data-[side=top]:-translate-y-1'
           )}
         >
-          <SelectPrimitive.Viewport className="p-1">
-            {renderModels.map((model) => (
-              <SelectPrimitive.Item
-                key={model.id}
-                value={model.id}
-                className={cn(
-                  'relative flex w-full cursor-default select-none items-center',
-                  'rounded-none py-2 pl-7 pr-3 text-sm outline-none',
-                  'focus:bg-accent focus:text-accent-foreground',
-                  'data-[disabled]:pointer-events-none data-[disabled]:opacity-50'
-                )}
-              >
-                {/* Check mark for selected item */}
-                <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-                  <SelectPrimitive.ItemIndicator>
-                    <Check className="h-3.5 w-3.5" />
-                  </SelectPrimitive.ItemIndicator>
-                </span>
+          <SelectPrimitive.ScrollUpButton className="flex h-5 items-center justify-center border-b border-border bg-popover text-muted-foreground">
+            <ChevronUp className="h-3.5 w-3.5" />
+          </SelectPrimitive.ScrollUpButton>
+          <div className="relative">
+            <SelectPrimitive.Viewport
+              ref={viewportRef}
+              onScroll={updateFadeVisibility}
+              className="max-h-[min(18rem,50vh)] p-1"
+            >
+              {renderModels.map((model) => (
+                <SelectPrimitive.Item
+                  key={model.id}
+                  value={model.id}
+                  className={cn(
+                    'relative flex w-full min-w-0 cursor-default select-none items-center gap-2',
+                    'rounded-none py-2 pl-7 pr-3 text-sm outline-none',
+                    'focus:bg-accent focus:text-accent-foreground',
+                    'data-[disabled]:pointer-events-none data-[disabled]:opacity-50'
+                  )}
+                >
+                  {/* Check mark for selected item */}
+                  <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                    <SelectPrimitive.ItemIndicator>
+                      <Check className="h-3.5 w-3.5" />
+                    </SelectPrimitive.ItemIndicator>
+                  </span>
 
-                {/* ItemText: ONLY this is shown in the trigger via SelectValue */}
-                <SelectPrimitive.ItemText>{model.name}</SelectPrimitive.ItemText>
+                  {/* ItemText: ONLY this is shown in the trigger via SelectValue */}
+                  <span className="min-w-0 flex-1 truncate">
+                    <SelectPrimitive.ItemText>{model.name}</SelectPrimitive.ItemText>
+                  </span>
 
-                {/* Visual-only: icon + provider — visible in dropdown only */}
-                <span className="ml-auto flex items-center gap-1.5 text-muted-foreground">
-                  {model.icon}
-                  <span className="text-xs">{model.provider}</span>
-                </span>
-              </SelectPrimitive.Item>
-            ))}
-          </SelectPrimitive.Viewport>
+                  {/* Visual-only: icon + provider — visible in dropdown only */}
+                  <span className="ml-auto hidden shrink-0 items-center gap-1.5 text-muted-foreground sm:flex">
+                    {model.icon}
+                    <span className="text-xs">{model.provider}</span>
+                  </span>
+                </SelectPrimitive.Item>
+              ))}
+            </SelectPrimitive.Viewport>
+            {showTopFade && (
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-3 bg-gradient-to-b from-popover to-transparent" />
+            )}
+            {showBottomFade && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-3 bg-gradient-to-t from-popover to-transparent" />
+            )}
+          </div>
+          <SelectPrimitive.ScrollDownButton className="flex h-5 items-center justify-center border-t border-border bg-popover text-muted-foreground">
+            <ChevronDown className="h-3.5 w-3.5" />
+          </SelectPrimitive.ScrollDownButton>
         </SelectPrimitive.Content>
       </SelectPrimitive.Portal>
     </SelectPrimitive.Root>

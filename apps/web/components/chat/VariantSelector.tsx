@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
+import * as SelectPrimitive from '@radix-ui/react-select'
+import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ModelVariant } from '@/lib/llm/types'
 
@@ -26,14 +26,7 @@ export function VariantSelector({
   onVariantChange,
   className,
 }: VariantSelectorProps) {
-  const [isOpen, setIsOpen] = useState(false)
-
   const currentVariantName = variants.find((v) => v.id === currentVariant)?.name || 'None'
-
-  const handleSelect = (variantId: string) => {
-    onVariantChange(variantId)
-    setIsOpen(false)
-  }
 
   const cycleVariant = () => {
     const currentIndex = variants.findIndex((v) => v.id === currentVariant)
@@ -42,33 +35,58 @@ export function VariantSelector({
   }
 
   return (
-    <div className={cn('relative', className)}>
-      <Button
-        onClick={() => setIsOpen(!isOpen)}
+    <SelectPrimitive.Root value={currentVariant} onValueChange={onVariantChange}>
+      <SelectPrimitive.Trigger
         onDoubleClick={cycleVariant}
-        variant="outline"
-        size="sm"
-        className="rounded-none font-mono text-xs"
+        className={cn(
+          'flex h-8 items-center justify-between gap-1.5 border border-border bg-background px-2 py-1',
+          'rounded-none font-mono text-xs text-foreground',
+          'hover:bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring',
+          'min-w-[120px]',
+          '[&>span]:line-clamp-1',
+          className
+        )}
       >
-        {currentVariantName}
-      </Button>
+        <SelectPrimitive.Value>{currentVariantName}</SelectPrimitive.Value>
+        <SelectPrimitive.Icon asChild>
+          <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
+        </SelectPrimitive.Icon>
+      </SelectPrimitive.Trigger>
 
-      {isOpen && (
-        <div className="shadow-sharp-md absolute left-0 top-full z-50 mt-1 min-w-[120px] border border-border bg-background">
+      <SelectPrimitive.Portal>
+        <SelectPrimitive.Content
+          position="popper"
+          align="end"
+          sideOffset={4}
+          collisionPadding={8}
+          className={cn(
+            'relative z-50 min-w-[120px] max-w-[calc(100vw-1rem)] overflow-hidden',
+            'rounded-none border border-border bg-popover text-popover-foreground shadow-md',
+            'data-[state=open]:animate-in data-[state=closed]:animate-out',
+            'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+            'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
+            'data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2',
+            'data-[side=bottom]:translate-y-1 data-[side=top]:-translate-y-1'
+          )}
+        >
+          <SelectPrimitive.Viewport className="max-h-[min(14rem,45vh)] p-1">
           {variants.map((variant) => (
-            <button
+            <SelectPrimitive.Item
               key={variant.id}
-              onClick={() => handleSelect(variant.id)}
+              value={variant.id}
               className={cn(
-                'w-full px-3 py-2 text-left font-mono text-xs transition-colors hover:bg-muted',
+                'relative flex w-full cursor-default select-none items-center rounded-none px-3 py-2',
+                'font-mono text-xs outline-none focus:bg-accent focus:text-accent-foreground',
+                'truncate',
                 currentVariant === variant.id && 'bg-muted'
               )}
             >
-              {variant.name}
-            </button>
+              <SelectPrimitive.ItemText>{variant.name}</SelectPrimitive.ItemText>
+            </SelectPrimitive.Item>
           ))}
-        </div>
-      )}
-    </div>
+          </SelectPrimitive.Viewport>
+        </SelectPrimitive.Content>
+      </SelectPrimitive.Portal>
+    </SelectPrimitive.Root>
   )
 }
