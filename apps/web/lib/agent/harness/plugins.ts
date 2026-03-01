@@ -251,4 +251,108 @@ function calculateCost(modelID: string, tokens: number): number {
   return tokens * ((price.input + price.output) / 2)
 }
 
+/**
+ * Spec Tracking Plugin - Tracks execution against specifications
+ *
+ * Hooks into tool execution to:
+ * - Mark completed spec steps
+ * - Track constraint satisfaction
+ * - Check for drift between spec and execution
+ */
+export const specTrackingPlugin = createPlugin('spec-tracking', {
+  hooks: {
+    'tool.execute.after': async (ctx, data) => {
+      const typedData = data as {
+        toolName: string
+        args: Record<string, unknown>
+        result: { output?: string; error?: string }
+      }
+
+      // Log spec-related tool execution
+      if (process.env.NEXT_PUBLIC_PANDA_SPEC_DEBUG === '1') {
+        debugHarnessLog(`[SpecTracking] Tool executed: ${typedData.toolName}`, {
+          sessionID: ctx.sessionID,
+          step: ctx.step,
+          hasError: !!typedData.result.error,
+        })
+      }
+
+      // Check for drift detection if enabled
+      if (typedData.toolName === 'write_files' || typedData.toolName === 'edit_file') {
+        // Extract file paths from args
+        const filePaths: string[] = []
+        if (Array.isArray(typedData.args.paths)) {
+          filePaths.push(...typedData.args.paths.map((p) => String(p)))
+        }
+        if (Array.isArray(typedData.args.files)) {
+          filePaths.push(
+            ...typedData.args.files.map((f: { path?: string }) => f.path || '').filter(Boolean)
+          )
+        }
+        if (typeof typedData.args.path === 'string') {
+          filePaths.push(typedData.args.path)
+        }
+
+        // Drift detection would check if these files are covered by an active spec
+        // and if the changes align with the spec constraints
+        if (filePaths.length > 0) {
+          // This is a placeholder for drift detection logic
+          // In a full implementation, this would:
+          // 1. Check if there's an active spec
+          // 2. Verify the modified files are in the spec's dependencies
+          // 3. Check if the changes align with spec constraints
+          // 4. Emit drift detection event if misaligned
+        }
+      }
+
+      return data
+    },
+
+    'spec.execute.before': async (ctx, data) => {
+      const typedData = data as { spec?: { id: string; intent: { goal: string } } }
+
+      if (process.env.NEXT_PUBLIC_PANDA_SPEC_DEBUG === '1') {
+        debugHarnessLog(`[SpecTracking] Spec execution starting:`, {
+          sessionID: ctx.sessionID,
+          specId: typedData.spec?.id,
+          goal: typedData.spec?.intent.goal.slice(0, 50),
+        })
+      }
+
+      return data
+    },
+
+    'spec.verify': async (ctx, data) => {
+      const typedData = data as {
+        passed: boolean
+        criterionResults: Array<{ criterionId: string; passed: boolean }>
+      }
+
+      if (process.env.NEXT_PUBLIC_PANDA_SPEC_DEBUG === '1') {
+        const passedCount = typedData.criterionResults.filter((r) => r.passed).length
+        debugHarnessLog(`[SpecTracking] Spec verification complete:`, {
+          sessionID: ctx.sessionID,
+          passed: typedData.passed,
+          criteriaPassed: `${passedCount}/${typedData.criterionResults.length}`,
+        })
+      }
+
+      return data
+    },
+
+    'spec.drift.detected': async (ctx, data) => {
+      const typedData = data as { specId: string; filePath: string; reason: string }
+
+      appLog.warn(`[SpecTracking] Drift detected:`, {
+        sessionID: ctx.sessionID,
+        specId: typedData.specId,
+        filePath: typedData.filePath,
+        reason: typedData.reason,
+      })
+
+      return data
+    },
+  },
+})
+
 export type { Plugin, HookType, HookHandler, HookContext }

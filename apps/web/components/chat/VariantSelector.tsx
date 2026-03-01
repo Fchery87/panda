@@ -70,20 +70,20 @@ export function VariantSelector({
           )}
         >
           <SelectPrimitive.Viewport className="max-h-[min(14rem,45vh)] p-1">
-          {variants.map((variant) => (
-            <SelectPrimitive.Item
-              key={variant.id}
-              value={variant.id}
-              className={cn(
-                'relative flex w-full cursor-default select-none items-center rounded-none px-3 py-2',
-                'font-mono text-xs outline-none focus:bg-accent focus:text-accent-foreground',
-                'truncate',
-                currentVariant === variant.id && 'bg-muted'
-              )}
-            >
-              <SelectPrimitive.ItemText>{variant.name}</SelectPrimitive.ItemText>
-            </SelectPrimitive.Item>
-          ))}
+            {variants.map((variant) => (
+              <SelectPrimitive.Item
+                key={variant.id}
+                value={variant.id}
+                className={cn(
+                  'relative flex w-full cursor-default select-none items-center rounded-none px-3 py-2',
+                  'font-mono text-xs outline-none focus:bg-accent focus:text-accent-foreground',
+                  'truncate',
+                  currentVariant === variant.id && 'bg-muted'
+                )}
+              >
+                <SelectPrimitive.ItemText>{variant.name}</SelectPrimitive.ItemText>
+              </SelectPrimitive.Item>
+            ))}
           </SelectPrimitive.Viewport>
         </SelectPrimitive.Content>
       </SelectPrimitive.Portal>

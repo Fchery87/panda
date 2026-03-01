@@ -13,6 +13,7 @@ import { Code2, Eye, FileCode, Plus, Search, History } from 'lucide-react'
 import type { Id } from '@convex/_generated/dataModel'
 import { Button } from '@/components/ui/button'
 import { Timeline } from './Timeline'
+import { SpecHistory } from './SpecHistory'
 
 interface OpenFileTab {
   path: string
@@ -117,7 +118,7 @@ function EmptyState({ onCreateFile, onOpenSearch, variant = 'desktop' }: EmptySt
 }
 
 type EditorTab = 'code' | 'preview' | 'timeline'
-type SidebarTab = 'explorer' | 'search'
+type SidebarTab = 'explorer' | 'search' | 'specs'
 
 export function Workbench({
   projectId,
@@ -224,13 +225,25 @@ export function Workbench({
                   type="button"
                   onClick={() => setActiveSidebarTab('search')}
                   className={cn(
-                    'min-h-11 flex-1 px-2 py-2 font-mono text-xs uppercase tracking-widest',
+                    'min-h-11 flex-1 border-r border-border px-2 py-2 font-mono text-xs uppercase tracking-widest',
                     activeSidebarTab === 'search'
                       ? 'bg-surface-2 text-foreground'
                       : 'text-muted-foreground hover:text-foreground'
                   )}
                 >
                   Search
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveSidebarTab('specs')}
+                  className={cn(
+                    'min-h-11 flex-1 px-2 py-2 font-mono text-xs uppercase tracking-widest',
+                    activeSidebarTab === 'specs'
+                      ? 'bg-surface-2 text-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  Specs
                 </button>
               </div>
 
@@ -250,8 +263,10 @@ export function Workbench({
                     onRename={onRenameFile}
                     onDelete={onDeleteFile}
                   />
-                ) : (
+                ) : activeSidebarTab === 'search' ? (
                   <ProjectSearchPanel onSelectFile={onSelectFile} />
+                ) : (
+                  <SpecHistory projectId={projectId} />
                 )}
               </div>
             </div>
@@ -366,13 +381,25 @@ export function Workbench({
                 type="button"
                 onClick={() => setActiveSidebarTab('search')}
                 className={cn(
-                  'transition-sharp flex-1 px-2 py-1.5 font-mono text-xs uppercase tracking-widest',
+                  'transition-sharp flex-1 border-r border-border px-2 py-1.5 font-mono text-xs uppercase tracking-widest',
                   activeSidebarTab === 'search'
                     ? 'bg-surface-2 text-foreground'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
                 Search
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveSidebarTab('specs')}
+                className={cn(
+                  'transition-sharp flex-1 px-2 py-1.5 font-mono text-xs uppercase tracking-widest',
+                  activeSidebarTab === 'specs'
+                    ? 'bg-surface-2 text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                Specs
               </button>
             </div>
 
@@ -393,8 +420,10 @@ export function Workbench({
                   onRename={onRenameFile}
                   onDelete={onDeleteFile}
                 />
-              ) : (
+              ) : activeSidebarTab === 'search' ? (
                 <ProjectSearchPanel onSelectFile={onSelectFile} />
+              ) : (
+                <SpecHistory projectId={projectId} />
               )}
             </div>
           </div>

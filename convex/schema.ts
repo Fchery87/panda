@@ -543,4 +543,54 @@ export default defineSchema({
     .index('by_run_sequence', ['runId', 'sequence'])
     .index('by_suite_created', ['suiteId', 'createdAt'])
     .index('by_project_created', ['projectId', 'createdAt']),
+
+  // 27. Specifications table - SpecNative formal specifications
+  specifications: defineTable({
+    projectId: v.id('projects'),
+    chatId: v.id('chats'),
+    runId: v.optional(v.id('agentRuns')),
+    version: v.number(),
+    tier: v.union(v.literal('instant'), v.literal('ambient'), v.literal('explicit')),
+    status: v.union(
+      v.literal('draft'),
+      v.literal('validated'),
+      v.literal('approved'),
+      v.literal('executing'),
+      v.literal('verified'),
+      v.literal('drifted'),
+      v.literal('failed'),
+      v.literal('archived')
+    ),
+    intent: v.object({
+      goal: v.string(),
+      rawMessage: v.string(),
+      constraints: v.array(v.any()),
+      acceptanceCriteria: v.array(v.any()),
+    }),
+    plan: v.object({
+      steps: v.array(v.any()),
+      dependencies: v.array(v.any()),
+      risks: v.array(v.any()),
+      estimatedTools: v.array(v.string()),
+    }),
+    validation: v.object({
+      preConditions: v.array(v.any()),
+      postConditions: v.array(v.any()),
+      invariants: v.array(v.any()),
+    }),
+    provenance: v.object({
+      model: v.string(),
+      promptHash: v.string(),
+      timestamp: v.number(),
+      parentSpecId: v.optional(v.string()),
+    }),
+    verificationResults: v.optional(v.array(v.any())),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_project', ['projectId'])
+    .index('by_chat', ['chatId'])
+    .index('by_run', ['runId'])
+    .index('by_status', ['projectId', 'status'])
+    .index('by_tier', ['projectId', 'tier']),
 })

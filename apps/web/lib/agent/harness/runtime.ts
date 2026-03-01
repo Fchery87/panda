@@ -30,6 +30,7 @@ import type {
   ToolInterruptResult,
   ToolRiskTier,
 } from './types'
+import type { FormalSpecification, SpecTier } from '../spec/types'
 import type {
   LLMProvider,
   CompletionOptions,
@@ -51,6 +52,7 @@ import type {
   RuntimeCheckpointReason,
   RuntimeCheckpointState,
 } from './checkpoint-store'
+import { SpecEngine, createSpecEngine, type SpecGenerationContext } from '../spec/engine'
 
 /**
  * Runtime state
@@ -71,6 +73,8 @@ interface RuntimeState {
   }
   lastToolLoopSignature: string | null
   toolLoopStreak: number
+  /** Active specification being executed against */
+  activeSpec?: FormalSpecification
 }
 
 type PendingSubtask = RuntimeCheckpointPendingSubtask
@@ -115,6 +119,10 @@ export type RuntimeEventType =
   | 'interrupt_decision'
   | 'error'
   | 'complete'
+  // SpecNative events
+  | 'spec_pending_approval'
+  | 'spec_generated'
+  | 'spec_verification'
 
 /**
  * Runtime event
@@ -143,6 +151,17 @@ export interface RuntimeEvent {
   usage?: { input: number; output: number; reasoning: number }
   cost?: number
   error?: string
+  // SpecNative event fields
+  spec?: FormalSpecification
+  tier?: SpecTier
+  verification?: {
+    passed: boolean
+    results: Array<{
+      criterionId: string
+      passed: boolean
+      message?: string
+    }>
+  }
 }
 
 /**
@@ -163,6 +182,12 @@ const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = {
   maxToolExecutionRetries: 0,
   toolRetryBackoffMs: 200,
   enableToolCallIdempotencyCache: false,
+  specEngine: {
+    enabled: false,
+    autoApproveAmbient: true,
+    maxSpecsPerProject: 100,
+    enableDriftDetection: false,
+  },
 }
 
 /**
@@ -182,6 +207,7 @@ export class Runtime {
       argsUsed?: Record<string, unknown>
     }
   >()
+  private specEngine: SpecEngine
 
   constructor(
     provider: LLMProvider,
@@ -191,6 +217,7 @@ export class Runtime {
     this.provider = provider
     this.toolExecutors = toolExecutors
     this.config = { ...DEFAULT_RUNTIME_CONFIG, ...config }
+    this.specEngine = createSpecEngine(this.config.specEngine)
   }
 
   /**
@@ -206,7 +233,127 @@ export class Runtime {
     const maxSteps = agent.steps ?? this.config.maxSteps ?? 50
     this.state = this.createInitialState(sessionID, [...initialMessages, userMessage])
 
+    // SpecNative: Generate spec before execution if enabled
+    if (this.specEngine.isEnabled()) {
+      const userText = this.extractUserText(userMessage)
+      if (userText) {
+        yield* this.generateAndHandleSpec(userText, agent, sessionID)
+      }
+    }
+
     yield* this.runLoop(agent, maxSteps, { emitSessionStart: true })
+  }
+
+  /**
+   * Extract text content from user message
+   */
+  private extractUserText(userMessage: UserMessage): string | null {
+    const textParts = userMessage.parts.filter((p) => p.type === 'text')
+    if (textParts.length === 0) return null
+    return textParts.map((p) => ('text' in p ? p.text : '')).join('\n')
+  }
+
+  /**
+   * Generate and handle specification
+   */
+  private async *generateAndHandleSpec(
+    userMessage: string,
+    agent: AgentConfig,
+    sessionID: Identifier
+  ): AsyncGenerator<RuntimeEvent> {
+    if (!this.state) return
+
+    // Classify intent
+    const classification = await this.specEngine.classify(userMessage, {
+      mode: agent.name,
+    })
+
+    // Execute spec.classify hook
+    await this.executeHook(
+      'spec.classify',
+      { sessionID, step: this.state.step, agent, messageID: '' },
+      classification
+    )
+
+    const tier = classification.tier
+
+    // Skip spec generation for instant tier
+    if (tier === 'instant') {
+      return
+    }
+
+    // Generate spec
+    await this.executeHook(
+      'spec.generate.before',
+      { sessionID, step: this.state.step, agent, messageID: '' },
+      { userMessage, tier }
+    )
+
+    const specContext: SpecGenerationContext = {
+      mode: agent.name,
+    }
+
+    const { spec } = await this.specEngine.generate(userMessage, specContext, tier)
+
+    await this.executeHook(
+      'spec.generate.after',
+      { sessionID, step: this.state.step, agent, messageID: '' },
+      { spec }
+    )
+
+    // Validate spec
+    const validation = await this.specEngine.validate(spec)
+
+    await this.executeHook(
+      'spec.validate',
+      { sessionID, step: this.state.step, agent, messageID: '' },
+      validation
+    )
+
+    let finalSpec = spec
+
+    if (!validation.isValid) {
+      finalSpec = await this.specEngine.refine(spec, validation.errors)
+
+      await this.executeHook(
+        'spec.refine',
+        { sessionID, step: this.state.step, agent, messageID: '' },
+        { original: spec, refined: finalSpec, errors: validation.errors }
+      )
+    }
+
+    // Handle tier-specific behavior
+    if (tier === 'explicit') {
+      // Yield spec for UI approval
+      yield { type: 'spec_pending_approval', spec: finalSpec, tier }
+
+      // Note: In a real implementation, we would wait for user approval here
+      // For now, we proceed with auto-approval for testing
+      finalSpec = this.specEngine.approve(finalSpec)
+
+      await this.executeHook(
+        'spec.approve',
+        { sessionID, step: this.state.step, agent, messageID: '' },
+        { spec: finalSpec }
+      )
+    } else if (tier === 'ambient') {
+      // Auto-approve ambient specs based on config
+      if (this.config.specEngine?.autoApproveAmbient !== false) {
+        finalSpec = this.specEngine.markExecuting(finalSpec)
+      }
+    }
+
+    // Store active spec
+    this.state.activeSpec = finalSpec
+
+    // Yield spec generated event
+    yield { type: 'spec_generated', spec: finalSpec, tier }
+
+    await this.executeHook(
+      'spec.execute.before',
+      { sessionID, step: this.state.step, agent, messageID: '' },
+      { spec: finalSpec }
+    )
   }
 
   /**
@@ -344,6 +491,11 @@ export class Runtime {
 
       if (completedSuccessfully) {
         await this.saveCheckpoint(agent.name, 'complete')
+      }
+
+      // SpecNative: Post-execution verification
+      if (this.state.activeSpec) {
+        yield* this.verifyAndFinalizeSpec(sessionID, agent)
       }
 
       yield {
@@ -1664,6 +1816,168 @@ export class Runtime {
     data: T
   ): Promise<T> {
     return plugins.executeHooks(hookType, context, data)
+  }
+
+  /**
+   * Verify and finalize the active specification
+   */
+  private async *verifyAndFinalizeSpec(
+    sessionID: Identifier,
+    agent: AgentConfig
+  ): AsyncGenerator<RuntimeEvent> {
+    if (!this.state?.activeSpec) return
+
+    const spec = this.state.activeSpec
+
+    // Gather execution results
+    const executionResults = {
+      filesModified: this.gatherModifiedFiles(),
+      commandsRun: this.gatherCommandsRun(),
+      errors: this.gatherErrors(),
+      output: this.gatherOutput(),
+    }
+
+    // Execute verification
+    const verification = await this.specEngine.verify(spec, executionResults)
+
+    await this.executeHook(
+      'spec.verify',
+      { sessionID, step: this.state.step, agent, messageID: '' },
+      verification
+    )
+
+    // Update spec status based on verification
+    if (verification.passed) {
+      this.state.activeSpec = this.specEngine.markVerified(spec, verification.criterionResults)
+    } else {
+      this.state.activeSpec = this.specEngine.markFailed(spec, verification.summary)
+    }
+
+    await this.executeHook(
+      'spec.execute.after',
+      { sessionID, step: this.state.step, agent, messageID: '' },
+      { spec: this.state.activeSpec, verification }
+    )
+
+    // Yield verification event
+    yield {
+      type: 'spec_verification',
+      verification: {
+        passed: verification.passed,
+        results: verification.criterionResults.map((r) => ({
+          criterionId: r.criterionId,
+          passed: r.passed,
+          message: r.message,
+        })),
+      },
+    }
+  }
+
+  /**
+   * Gather modified files from tool calls
+   */
+  private gatherModifiedFiles(): string[] {
+    if (!this.state) return []
+
+    const modifiedFiles: string[] = []
+
+    for (const message of this.state.messages) {
+      if (message.role === 'assistant') {
+        for (const part of message.parts) {
+          if (part.type === 'tool' && part.state.status === 'completed') {
+            // Extract file paths from tool calls
+            const input = part.state.input as Record<string, unknown> | undefined
+            if (input) {
+              if (Array.isArray(input.paths)) {
+                modifiedFiles.push(...input.paths.map((p) => String(p)))
+              }
+              if (Array.isArray(input.files)) {
+                modifiedFiles.push(
+                  ...input.files.map((f: { path?: string }) => f.path || '').filter(Boolean)
+                )
+              }
+              if (typeof input.path === 'string') {
+                modifiedFiles.push(input.path)
+              }
+              if (typeof input.file_path === 'string') {
+                modifiedFiles.push(input.file_path)
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return [...new Set(modifiedFiles)]
+  }
+
+  /**
+   * Gather commands run from tool calls
+   */
+  private gatherCommandsRun(): string[] {
+    if (!this.state) return []
+
+    const commands: string[] = []
+
+    for (const message of this.state.messages) {
+      if (message.role === 'assistant') {
+        for (const part of message.parts) {
+          if (part.type === 'tool' && part.tool === 'run_command') {
+            const input = part.state.input as { command?: string } | undefined
+            if (input?.command) {
+              commands.push(input.command)
+            }
+          }
+        }
+      }
+    }
+
+    return commands
+  }
+
+  /**
+   * Gather errors from execution
+   */
+  private gatherErrors(): string[] {
+    if (!this.state) return []
+
+    const errors: string[] = []
+
+    for (const message of this.state.messages) {
+      if (message.role === 'assistant') {
+        for (const part of message.parts) {
+          if (part.type === 'tool' && part.state.status === 'error') {
+            const errorState = part.state as { error?: string }
+            if (errorState.error) {
+              errors.push(errorState.error)
+            }
+          }
+        }
+      }
+    }
+
+    return errors
+  }
+
+  /**
+   * Gather output from assistant messages
+   */
+  private gatherOutput(): string {
+    if (!this.state) return ''
+
+    const outputs: string[] = []
+
+    for (const message of this.state.messages) {
+      if (message.role === 'assistant') {
+        for (const part of message.parts) {
+          if (part.type === 'text') {
+            outputs.push(part.text)
+          }
+        }
+      }
+    }
+
+    return outputs.join('\n')
   }
 
   /**

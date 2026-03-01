@@ -12,6 +12,7 @@
 
 import type { ToolDefinition } from '../../llm/types'
 import type { CheckpointStore } from './checkpoint-store'
+import type { SpecEngineConfig } from '../spec/types'
 
 export type { ToolDefinition } from '../../llm/types'
 
@@ -388,6 +389,8 @@ export interface RuntimeConfig {
     prompt: string,
     sessionID: Identifier
   ) => Promise<SubagentResult>
+  /** SpecNative engine configuration */
+  specEngine?: SpecEngineConfig
 }
 
 /**
@@ -416,6 +419,18 @@ export type HookType =
   | 'compaction.after'
   | 'permission.ask'
   | 'permission.decision'
+  // SpecNative hooks
+  | 'spec.classify' // After intent classification
+  | 'spec.generate.before' // Before spec generation
+  | 'spec.generate.after' // After spec generation
+  | 'spec.validate' // During spec validation
+  | 'spec.refine' // During spec refinement
+  | 'spec.approve' // When user approves explicit spec
+  | 'spec.execute.before' // Before executing against spec
+  | 'spec.execute.after' // After execution completes
+  | 'spec.verify' // During post-execution verification
+  | 'spec.drift.detected' // When code changes affect a spec
+  | 'spec.reconcile' // During bidirectional sync
 
 /**
  * Plugin hook handler

@@ -2,6 +2,8 @@
 
 import { Wifi, WifiOff, GitBranch, FileCode, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { SpecBadge } from './SpecBadge'
+import type { SpecStatus } from '@/lib/agent/spec/types'
 
 interface StatusBarProps {
   filePath?: string | null
@@ -11,6 +13,16 @@ interface StatusBarProps {
   isConnected?: boolean
   isStreaming?: boolean
   className?: string
+  /** Spec engine enabled - shows spec badge when true */
+  specEngineEnabled?: boolean
+  /** Current spec status */
+  specStatus?: SpecStatus | null
+  /** Number of constraints met */
+  specConstraintsMet?: number
+  /** Total number of constraints */
+  specConstraintsTotal?: number
+  /** Callback when spec badge is clicked */
+  onSpecClick?: () => void
 }
 
 function getLanguageFromPath(path: string | null | undefined): string {
@@ -42,6 +54,11 @@ export function StatusBar({
   isConnected = true,
   isStreaming = false,
   className,
+  specEngineEnabled = false,
+  specStatus = null,
+  specConstraintsMet,
+  specConstraintsTotal,
+  onSpecClick,
 }: StatusBarProps) {
   const displayLanguage = language || getLanguageFromPath(filePath)
   const filename = filePath?.split('/').pop() || 'No file'
@@ -77,6 +94,15 @@ export function StatusBar({
       </div>
 
       <div className="flex items-center gap-3">
+        {specEngineEnabled && specStatus && (
+          <SpecBadge
+            status={specStatus}
+            constraintsMet={specConstraintsMet}
+            constraintsTotal={specConstraintsTotal}
+            onClick={onSpecClick}
+          />
+        )}
+
         {branch && (
           <span className="flex items-center gap-1">
             <GitBranch className="h-3 w-3" />

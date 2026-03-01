@@ -22,6 +22,8 @@ import {
   mapRunEventsToProgressSteps,
   type LiveProgressStep,
 } from './live-run-utils'
+import type { FormalSpecification } from '@/lib/agent/spec/types'
+import { SpecBadgeMini } from '../workbench/SpecBadge'
 
 interface RunProgressPanelProps {
   chatId?: Id<'chats'> | null
@@ -31,6 +33,10 @@ interface RunProgressPanelProps {
   onOpenFile?: (path: string) => void
   onOpenArtifacts?: () => void
   defaultOpen?: boolean
+  /** Current spec for this run */
+  currentSpec?: FormalSpecification | null
+  /** Callback when spec badge is clicked */
+  onSpecClick?: () => void
 }
 
 const STORAGE_KEY = 'panda.runProgress.isOpen'
@@ -43,6 +49,8 @@ export function RunProgressPanel({
   onOpenFile,
   onOpenArtifacts,
   defaultOpen = false,
+  currentSpec,
+  onSpecClick,
 }: RunProgressPanelProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen)
   const [hasLoadedPreference, setHasLoadedPreference] = useState(false)
@@ -197,6 +205,31 @@ export function RunProgressPanel({
               : `Checkpoints ${runtimeCheckpoints.length}`}
           </span>
         ) : null}
+        {currentSpec && (
+          <button
+            type="button"
+            onClick={onSpecClick}
+            className={cn(
+              'flex items-center gap-1.5 border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide transition-colors hover:bg-muted/50',
+              currentSpec.status === 'verified' && 'border-success/50 bg-success/5 text-success',
+              currentSpec.status === 'failed' &&
+                'border-destructive/50 bg-destructive/5 text-destructive',
+              currentSpec.status === 'drifted' && 'border-warning/50 bg-warning/5 text-warning',
+              (currentSpec.status === 'executing' || currentSpec.status === 'approved') &&
+                'border-primary/50 bg-primary/5 text-primary',
+              (currentSpec.status === 'draft' || currentSpec.status === 'validated') &&
+                'border-border bg-muted/50 text-muted-foreground'
+            )}
+          >
+            <SpecBadgeMini status={currentSpec.status} />
+            <span>Spec {currentSpec.status}</span>
+            {currentSpec.intent.constraints.length > 0 && (
+              <span className="text-muted-foreground">
+                • {currentSpec.intent.constraints.length} constraints
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
       {!isOpen ? null : groups.length === 0 ? (

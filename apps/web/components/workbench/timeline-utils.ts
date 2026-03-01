@@ -1,4 +1,11 @@
-type TimelineEventType = 'progress_step' | 'tool_call' | 'tool_result' | 'error' | 'snapshot'
+type TimelineEventType =
+  | 'progress_step'
+  | 'tool_call'
+  | 'tool_result'
+  | 'error'
+  | 'snapshot'
+  | 'spec_generated'
+  | 'spec_verification'
 
 export interface TimelineEventRecord {
   _id: string
@@ -13,12 +20,16 @@ export interface TimelineEventRecord {
   createdAt: number
 }
 
+export type SpecTimelineStatus = 'generated' | 'verified' | 'failed'
+
 export interface TimelineItem {
   event: TimelineEventRecord
   label: string
   fileCount: number
   isSnapshot: boolean
   isError: boolean
+  isSpec: boolean
+  specStatus?: SpecTimelineStatus
 }
 
 export interface TimelineSelection {
@@ -33,6 +44,8 @@ const TIMELINE_EVENT_TYPES = new Set<TimelineEventType>([
   'tool_result',
   'error',
   'snapshot',
+  'spec_generated',
+  'spec_verification',
 ])
 
 function toTitleCase(value: string): string {
@@ -47,6 +60,10 @@ function getTimelineLabel(event: TimelineEventRecord): string {
   switch (event.type) {
     case 'snapshot':
       return 'Checkpoint Created'
+    case 'spec_generated':
+      return 'Spec Generated'
+    case 'spec_verification':
+      return 'Spec Verification'
     case 'progress_step': {
       const category = event.progressCategory ? toTitleCase(event.progressCategory) : 'Progress'
       if (event.progressCategory === 'tool' && event.progressToolName) {
@@ -70,16 +87,29 @@ export function selectTimelineEvents(events: TimelineEventRecord[]): TimelineSel
     .filter((event): event is TimelineEventRecord & { type: TimelineEventType } =>
       TIMELINE_EVENT_TYPES.has(event.type as TimelineEventType)
     )
-    .map((event) => ({
-      event,
-      label: getTimelineLabel(event),
-      fileCount: event.targetFilePaths?.length ?? 0,
-      isSnapshot: event.type === 'snapshot',
-      isError:
-        event.type === 'error' ||
-        event.status === 'error' ||
-        Boolean(event.error && event.error.length > 0),
-    }))
+    .map((event) => {
+      const isSpec = event.type === 'spec_generated' || event.type === 'spec_verification'
+      const specStatus: import('./timeline-utils').SpecTimelineStatus | undefined = isSpec
+        ? event.type === 'spec_generated'
+          ? 'generated'
+          : event.status === 'error'
+            ? 'failed'
+            : 'verified'
+        : undefined
+
+      return {
+        event,
+        label: getTimelineLabel(event),
+        fileCount: event.targetFilePaths?.length ?? 0,
+        isSnapshot: event.type === 'snapshot',
+        isError:
+          event.type === 'error' ||
+          event.status === 'error' ||
+          Boolean(event.error && event.error.length > 0),
+        isSpec,
+        specStatus,
+      }
+    })
 
   const hasSnapshots = items.some((item) => item.isSnapshot)
 

@@ -5,12 +5,22 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
-import { Send, Square, Lightbulb, SlidersHorizontal, ChevronDown } from 'lucide-react'
+import {
+  Send,
+  Square,
+  Lightbulb,
+  SlidersHorizontal,
+  ChevronDown,
+  Target,
+  Zap,
+  Eye,
+} from 'lucide-react'
 import { AgentSelector, MODE_OPTIONS } from './AgentSelector'
 import { MentionPicker } from './MentionPicker'
 import { ModelSelector, type AvailableModel } from './ModelSelector'
 import { VariantSelector } from './VariantSelector'
 import type { ChatMode } from '@/lib/agent/prompt-library'
+import type { SpecTier, FormalSpecification } from '@/lib/agent/spec/types'
 
 /**
  * Parse @-mention tokens from the message text.
@@ -50,6 +60,18 @@ interface ChatInputProps {
   supportsReasoning?: boolean
   /** Collapse advanced controls (model/variant/brainstorm) behind an options toggle */
   compactToolbar?: boolean
+  /** SpecNative: Current spec tier override (auto-detect if not set) */
+  specTier?: SpecTier | 'auto'
+  /** SpecNative: Callback when user changes spec tier override */
+  onSpecTierChange?: (tier: SpecTier | 'auto') => void
+  /** SpecNative: Pending spec awaiting approval */
+  pendingSpec?: FormalSpecification | null
+  /** SpecNative: Callback when user approves pending spec */
+  onSpecApprove?: (spec: FormalSpecification) => void
+  /** SpecNative: Callback when user edits pending spec */
+  onSpecEdit?: (spec: FormalSpecification) => void
+  /** SpecNative: Callback when user cancels pending spec */
+  onSpecCancel?: () => void
 }
 
 export function ChatInput({
@@ -68,6 +90,12 @@ export function ChatInput({
   onVariantChange,
   supportsReasoning = false,
   compactToolbar = false,
+  specTier = 'auto',
+  onSpecTierChange,
+  pendingSpec,
+  onSpecApprove,
+  onSpecEdit,
+  onSpecCancel,
 }: ChatInputProps) {
   const [input, setInput] = useState('')
   const [uncontrolledMode, setUncontrolledMode] = useState<ChatMode>('code')
@@ -182,7 +210,8 @@ export function ChatInput({
   const hasAdvancedControls =
     Boolean(onModelChange) ||
     (supportsReasoning && Boolean(onVariantChange)) ||
-    showBrainstormToggle
+    showBrainstormToggle ||
+    Boolean(onSpecTierChange)
 
   useEffect(() => {
     if (!compactToolbar) {
@@ -193,6 +222,42 @@ export function ChatInput({
       setShowAdvancedControls(true)
     }
   }, [architectBrainstormEnabled, compactToolbar, showBrainstormToggle])
+
+  // Spec tier configuration
+  const tierOptions: {
+    value: SpecTier | 'auto'
+    label: string
+    icon: React.ReactNode
+    description: string
+  }[] = [
+    {
+      value: 'auto',
+      label: 'Auto',
+      icon: <Zap className="h-3 w-3" />,
+      description: 'Auto-detect tier',
+    },
+    {
+      value: 'instant',
+      label: 'Instant',
+      icon: <Target className="h-3 w-3" />,
+      description: 'Direct response',
+    },
+    {
+      value: 'ambient',
+      label: 'Ambient',
+      icon: <Eye className="h-3 w-3" />,
+      description: 'Silent spec',
+    },
+    {
+      value: 'explicit',
+      label: 'Explicit',
+      icon: <Target className="h-3 w-3" />,
+      description: 'Full spec review',
+    },
+  ]
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _currentTierOption = tierOptions.find((t) => t.value === specTier) || tierOptions[0]
 
   return (
     <div className="surface-2 border-t border-border p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:p-3 sm:pb-3">
@@ -334,8 +399,101 @@ export function ChatInput({
               Brainstorm
             </button>
           ) : null}
+
+          {/* Spec Tier Override Toggle */}
+          {onSpecTierChange && (
+            <div className="flex items-center gap-1 border border-border px-2 py-1">
+              <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+                Spec:
+              </span>
+              {tierOptions.map((tier) => (
+                <button
+                  key={tier.value}
+                  type="button"
+                  disabled={isStreaming}
+                  onClick={() => onSpecTierChange(tier.value)}
+                  title={tier.description}
+                  className={cn(
+                    'transition-sharp flex items-center gap-1 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide',
+                    specTier === tier.value
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {tier.icon}
+                  {tier.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       ) : null}
+
+      {/* Spec Approval UI */}
+      <AnimatePresence>
+        {pendingSpec && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="mt-2 border border-primary/50 bg-primary/5 p-3"
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-2">
+                <Target className="h-4 w-4 text-primary" />
+                <div>
+                  <p className="font-mono text-sm font-medium">Specification Ready for Review</p>
+                  <p className="font-mono text-xs text-muted-foreground">
+                    {pendingSpec.intent.goal}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onSpecCancel}
+                  className="h-7 rounded-none border-border font-mono text-xs"
+                >
+                  Cancel
+                </Button>
+                {onSpecEdit && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onSpecEdit(pendingSpec)}
+                    className="h-7 rounded-none border-primary/50 font-mono text-xs"
+                  >
+                    Edit
+                  </Button>
+                )}
+                {onSpecApprove && (
+                  <Button
+                    size="sm"
+                    onClick={() => onSpecApprove(pendingSpec)}
+                    className="h-7 rounded-none font-mono text-xs"
+                  >
+                    Approve & Execute
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div className="mt-2 flex items-center gap-2 text-xs">
+              <span className="font-mono text-[10px] uppercase text-muted-foreground">
+                {pendingSpec.intent.acceptanceCriteria.length} requirements
+              </span>
+              <span className="text-muted-foreground">•</span>
+              <span className="font-mono text-[10px] uppercase text-muted-foreground">
+                {pendingSpec.intent.constraints.length} constraints
+              </span>
+              <span className="text-muted-foreground">•</span>
+              <span className="font-mono text-[10px] uppercase text-muted-foreground">
+                {pendingSpec.plan.steps.length} steps
+              </span>
+            </div>{' '}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
