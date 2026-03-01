@@ -12,10 +12,14 @@ import {
   Monitor,
   PanelLeft,
   PanelRight,
-  Search,
   Terminal,
   Workflow,
   Wrench,
+  Shield,
+  Target,
+  GitBranch,
+  Search,
+  CheckCircle2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/settings/ThemeToggle'
@@ -60,6 +64,19 @@ const interfaceMap = [
       'Message history + streaming input',
       'Run / Memory / Evals inspector',
       'Plan and debug dialogs',
+    ],
+  },
+  {
+    id: 'specs',
+    label: '04',
+    title: 'Spec System',
+    icon: Shield,
+    summary:
+      'Formalize intent through specifications that drive agent behavior, validate outputs, and evolve with your code.',
+    bullets: [
+      'Three-tier intent classification',
+      'Editable requirements and constraints',
+      'Living specs with drift detection',
     ],
   },
 ]
@@ -135,7 +152,30 @@ const chatDetails = [
   {
     name: 'EvalPanel',
     role: 'Run evaluation scenarios against recent prompt/reply context.',
-    userValue: 'Validate behavior and quality without leaving the chat surface.',
+    userValue:      'Validate behavior and quality without leaving the chat surface.',
+  },
+]
+
+const specDetails = [
+  {
+    name: 'Intent Classifier',
+    role: 'Automatically detects task complexity to set the Spec Tier (Instant, Ambient, or Explicit).',
+    userValue: 'Simple tasks stay fast, while complex architecture changes get the rigor they need.',
+  },
+  {
+    name: 'SpecPanel',
+    role: 'Dedicated surface for reviewing EARS-style requirements and typed constraints.',
+    userValue: 'You can align with the agent on the "what" and "how" before any code is written.',
+  },
+  {
+    name: 'SpecBadge / Drawer',
+    role: 'Ambient status indicators in the StatusBar and quick-view drawer for Tier 2 tasks.',
+    userValue: 'Monitor spec-verification progress without losing focus on your code.',
+  },
+  {
+    name: 'Drift Detection',
+    role: 'Plugin-based monitoring that detects when manual code changes diverge from the spec.',
+    userValue: 'Keeps your documentation and implementation in sync automatically.',
   },
 ]
 
@@ -153,7 +193,12 @@ const workflowSteps = [
   {
     title: 'Ask Panda to plan/code/debug',
     description:
-      'Use the chat input mode selector and send a request. Add `@file/path` mentions to direct the agent toward exact files.',
+      'Use the chat input mode selector and send a request. Panda classifies your intent into a Spec Tier (v1.5+).',
+  },
+  {
+    title: 'Review and Refine Specs',
+    description:
+      'For complex tasks, use the SpecPanel to edit requirements and constraints. Approve the spec to trigger execution.',
   },
   {
     title: 'Inspect the run',
@@ -326,7 +371,7 @@ export default function EducationPage() {
                 <h2 className="text-display text-3xl sm:text-4xl">The 3 panels that drive Panda</h2>
               </div>
               <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                Explorer → Workspace → Chat → Verify
+                Explorer → Workspace → Chat → Spec → Verify
               </div>
             </div>
 
@@ -379,7 +424,7 @@ export default function EducationPage() {
                 <span className="text-label text-muted-foreground">Workflow</span>
               </div>
               <h2 className="text-display max-w-3xl text-3xl sm:text-4xl">
-                How a typical task moves through Panda
+                The Panda Spec-Code Loop
               </h2>
             </div>
 
@@ -573,6 +618,101 @@ export default function EducationPage() {
               {chatDetails.map((item, index) => (
                 <DetailCard key={item.name} item={item} index={index} />
               ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="specs" className="py-16 lg:py-20">
+          <div className="container">
+            <div className="mb-8 grid gap-6 lg:grid-cols-12">
+              <div className="lg:col-span-4">
+                <div className="mb-4 flex items-center gap-3">
+                  <Shield className="h-4 w-4 text-primary" />
+                  <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+                    Specification System
+                  </span>
+                </div>
+                <h2 className="text-display text-3xl">Specification-Native Development</h2>
+              </div>
+              <div className="lg:col-span-8">
+                <p className="text-base leading-relaxed text-muted-foreground">
+                  Panda transforms from a reactive IDE into a spec-native system where formal
+                  specifications are first-class primitives. This ensures that every change is
+                  tied to a validated intent, reducing drift and increasing architectural integrity.
+                </p>
+                <div className="mt-6 grid gap-4 sm:grid-cols-3">
+                  <div className="border border-border bg-background p-4">
+                    <div className="mb-2 font-mono text-xs font-bold text-primary">TIER 1: INSTANT</div>
+                    <p className="text-sm text-muted-foreground">
+                      Direct AI response for simple edits. No spec overhead.
+                    </p>
+                  </div>
+                  <div className="border border-border bg-background p-4">
+                    <div className="mb-2 font-mono text-xs font-bold text-primary">TIER 2: AMBIENT</div>
+                    <p className="text-sm text-muted-foreground">
+                      Spec generated silently. Verified via the StatusBar badge.
+                    </p>
+                  </div>
+                  <div className="border border-border bg-background p-4">
+                    <div className="mb-2 font-mono text-xs font-bold text-primary">TIER 3: EXPLICIT</div>
+                    <p className="text-sm text-muted-foreground">
+                      Full SpecPanel review. User approves before execution.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {specDetails.map((item, index) => (
+                <DetailCard key={item.name} item={item} index={index} />
+              ))}
+            </div>
+
+            <div className="mt-12 bg-surface-1 border border-border p-6 lg:p-8">
+              <div className="grid gap-8 lg:grid-cols-2">
+                <div>
+                  <h3 className="mb-4 text-xl font-semibold">Living Specs & Drift Detection</h3>
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    Unlike traditional waterfall specs, Panda&apos;s specs are <strong>living documents</strong>. 
+                    If you manually edit code that is covered by an active specification, the 
+                    <span className="font-mono text-foreground mx-1">Drift Detection</span> plugin
+                    identifies the divergence and offers to reconcile the spec with the new implementation.
+                  </p>
+                  <div className="mt-6 flex items-center gap-4">
+                    <div className="flex -space-x-2">
+                       <Shield className="h-8 w-8 rounded-full bg-primary/10 p-1.5 text-primary border border-background" />
+                       <GitBranch className="h-8 w-8 rounded-full bg-primary/10 p-1.5 text-primary border border-background" />
+                    </div>
+                    <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest">
+                       Continuous Bidirectional Sync
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3">
+                    <Target className="mt-1 h-4 w-4 text-primary" />
+                    <div>
+                      <h4 className="text-sm font-semibold">EARS Requirements</h4>
+                      <p className="text-xs text-muted-foreground">Easy Approach to Requirements Syntax for clear, verifiable behavior.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Shield className="mt-1 h-4 w-4 text-primary" />
+                    <div>
+                      <h4 className="text-sm font-semibold">Typed Constraints</h4>
+                      <p className="text-xs text-muted-foreground">Enforce structural, behavioral, or security rules across the run.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2 className="mt-1 h-4 w-4 text-primary" />
+                    <div>
+                      <h4 className="text-sm font-semibold">Automated Verification</h4>
+                      <p className="text-xs text-muted-foreground">Every spec step is verified post-execution to ensure intent matches output.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>

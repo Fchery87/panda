@@ -876,6 +876,9 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                 projectId,
               }
             ),
+            // Risk interrupt UI is not yet implemented — agent permission layer handles
+            // write_files/run_command authorization (build agent allows both by default)
+            harnessEnableRiskInterrupts: false,
             ...(runtimeSettings.reasoning ? { reasoning: runtimeSettings.reasoning } : {}),
           },
           toolContext
