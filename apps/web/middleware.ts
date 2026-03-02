@@ -18,12 +18,22 @@ export default convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
   }
 
   const authenticated = await convexAuth.isAuthenticated()
-  if (isProtectedRoute(request) && shouldRedirectToLogin(request.nextUrl.pathname, authenticated)) {
-    return nextjsMiddlewareRedirect(request, '/login')
-  }
-  if (isLoginRoute(request) && shouldRedirectToProjects(request.nextUrl.pathname, authenticated)) {
-    return nextjsMiddlewareRedirect(request, '/projects')
-  }
+  const response =
+    isProtectedRoute(request) && shouldRedirectToLogin(request.nextUrl.pathname, authenticated)
+      ? nextjsMiddlewareRedirect(request, '/login')
+      : isLoginRoute(request) && shouldRedirectToProjects(request.nextUrl.pathname, authenticated)
+        ? nextjsMiddlewareRedirect(request, '/projects')
+        : import('next/server').then(({ NextResponse }) => NextResponse.next())
+
+  return Promise.resolve(response).then((res) => {
+    if (res) {
+      res.headers.set('X-Content-Type-Options', 'nosniff')
+      res.headers.set('X-Frame-Options', 'DENY')
+      res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+      res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+    }
+    return res
+  })
 })
 
 export const config = {

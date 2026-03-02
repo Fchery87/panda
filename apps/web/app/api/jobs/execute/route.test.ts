@@ -48,4 +48,28 @@ describe('/api/jobs/execute route', () => {
     const payload = (await response.json()) as { error: string }
     expect(payload.error).toContain('Command not allowed')
   })
+
+  it('blocks SSRF-like arguments (localhost)', async () => {
+    const response = await POST(makeJsonRequest({ command: 'node fetch.js http://localhost:3000' }))
+
+    expect(response.status).toBe(403)
+    const payload = (await response.json()) as { error: string }
+    expect(payload.error).toContain('restricted network address')
+  })
+
+  it('blocks SSRF-like arguments (metadata IP)', async () => {
+    const response = await POST(makeJsonRequest({ command: 'node fetch.js 169.254.169.254' }))
+
+    expect(response.status).toBe(403)
+    const payload = (await response.json()) as { error: string }
+    expect(payload.error).toContain('restricted network address')
+  })
+
+  it('allows normal arguments', async () => {
+    // Note: The actual execution will fail but the check should pass
+    const response = await POST(makeJsonRequest({ command: 'ls -la src' }))
+
+    // status 200 means it passed the whitelist and SSRF checks
+    expect(response.status).toBe(200)
+  })
 })

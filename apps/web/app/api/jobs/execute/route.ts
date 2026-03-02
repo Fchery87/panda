@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { spawn } from 'node:child_process'
 import path from 'node:path'
 import { isAuthenticatedNextjs } from '@convex-dev/auth/nextjs/server'
+import { redactError } from '@/lib/security/redact'
 
 interface ExecuteRequest {
   command: string
@@ -32,6 +33,17 @@ const ALLOWED_COMMANDS = new Set([
   'echo',
 ])
 const SHELL_META_CHARS = /[|&;<>`]/u
+
+const SSRF_PATTERNS = [
+  /169\.254\.\d+\.\d+/, // AWS/GCP metadata
+  /127\.\d+\.\d+\.\d+/, // Loopback
+  /0\.0\.0\.0/, // Wildcard bind
+  /localhost/i, // localhost
+  /\[::1\]/, // IPv6 loopback
+  /10\.\d+\.\d+\.\d+/, // Private Class A
+  /172\.(1[6-9]|2\d|3[01])\.\d+\.\d+/, // Private Class B
+  /192\.168\.\d+\.\d+/, // Private Class C
+]
 
 function clampTimeout(value: number | undefined): number {
   if (!value || !Number.isFinite(value)) return DEFAULT_TIMEOUT_MS
@@ -127,6 +139,16 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: `Command not allowed: ${bin}` }, { status: 403 })
   }
 
+  // SSRF Protection: Block args targeting internal/metadata endpoints
+  for (const arg of args) {
+    if (SSRF_PATTERNS.some((p) => p.test(arg))) {
+      return Response.json(
+        { error: 'Blocked: argument targets a restricted network address' },
+        { status: 403 }
+      )
+    }
+  }
+
   const result = await new Promise<ExecuteResponse>((resolve) => {
     const child = spawn(bin, args, {
       cwd,
@@ -189,5 +211,8 @@ export async function POST(req: NextRequest) {
     })
   })
 
-  return Response.json(result)
+  return Response.json({
+    ...result,
+    stderr: redactError(result.stderr),
+  })
 }
