@@ -33,6 +33,7 @@ import { ConvexCheckpointStore } from '../lib/agent/harness/convex-checkpoint-st
 import { getUserFacingAgentError } from '../lib/chat/error-messages'
 import { extractTargetFilePaths } from '../components/chat/live-run-utils'
 import { normalizeChatMode, type PromptContext, type ChatMode } from '../lib/agent/prompt-library'
+import { plugins, specTrackingPlugin } from '../lib/agent/harness/plugins'
 import { appLog } from '@/lib/logger'
 import { toast } from 'sonner'
 
@@ -353,6 +354,11 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   // Initialize tool context (will be populated when Convex client is available)
   useEffect(() => {
     if (!userId) return
+
+    // Ensure specTracking plugin is registered to track drift
+    if (!plugins.has('spec-tracking')) {
+      plugins.register(specTrackingPlugin)
+    }
 
     toolContextRef.current = createToolContext(
       projectId,

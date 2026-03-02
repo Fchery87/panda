@@ -152,7 +152,7 @@ const chatDetails = [
   {
     name: 'EvalPanel',
     role: 'Run evaluation scenarios against recent prompt/reply context.',
-    userValue:      'Validate behavior and quality without leaving the chat surface.',
+    userValue: 'Validate behavior and quality without leaving the chat surface.',
   },
 ]
 
@@ -160,7 +160,8 @@ const specDetails = [
   {
     name: 'Intent Classifier',
     role: 'Automatically detects task complexity to set the Spec Tier (Instant, Ambient, or Explicit).',
-    userValue: 'Simple tasks stay fast, while complex architecture changes get the rigor they need.',
+    userValue:
+      'Simple tasks stay fast, while complex architecture changes get the rigor they need.',
   },
   {
     name: 'SpecPanel',
@@ -637,24 +638,30 @@ export default function EducationPage() {
               <div className="lg:col-span-8">
                 <p className="text-base leading-relaxed text-muted-foreground">
                   Panda transforms from a reactive IDE into a spec-native system where formal
-                  specifications are first-class primitives. This ensures that every change is
-                  tied to a validated intent, reducing drift and increasing architectural integrity.
+                  specifications are first-class primitives. This ensures that every change is tied
+                  to a validated intent, reducing drift and increasing architectural integrity.
                 </p>
                 <div className="mt-6 grid gap-4 sm:grid-cols-3">
                   <div className="border border-border bg-background p-4">
-                    <div className="mb-2 font-mono text-xs font-bold text-primary">TIER 1: INSTANT</div>
+                    <div className="mb-2 font-mono text-xs font-bold text-primary">
+                      TIER 1: INSTANT
+                    </div>
                     <p className="text-sm text-muted-foreground">
                       Direct AI response for simple edits. No spec overhead.
                     </p>
                   </div>
                   <div className="border border-border bg-background p-4">
-                    <div className="mb-2 font-mono text-xs font-bold text-primary">TIER 2: AMBIENT</div>
+                    <div className="mb-2 font-mono text-xs font-bold text-primary">
+                      TIER 2: AMBIENT
+                    </div>
                     <p className="text-sm text-muted-foreground">
                       Spec generated silently. Verified via the StatusBar badge.
                     </p>
                   </div>
                   <div className="border border-border bg-background p-4">
-                    <div className="mb-2 font-mono text-xs font-bold text-primary">TIER 3: EXPLICIT</div>
+                    <div className="mb-2 font-mono text-xs font-bold text-primary">
+                      TIER 3: EXPLICIT
+                    </div>
                     <p className="text-sm text-muted-foreground">
                       Full SpecPanel review. User approves before execution.
                     </p>
@@ -669,23 +676,25 @@ export default function EducationPage() {
               ))}
             </div>
 
-            <div className="mt-12 bg-surface-1 border border-border p-6 lg:p-8">
+            <div className="bg-surface-1 mt-12 border border-border p-6 lg:p-8">
               <div className="grid gap-8 lg:grid-cols-2">
                 <div>
                   <h3 className="mb-4 text-xl font-semibold">Living Specs & Drift Detection</h3>
                   <p className="text-sm leading-relaxed text-muted-foreground">
-                    Unlike traditional waterfall specs, Panda&apos;s specs are <strong>living documents</strong>. 
-                    If you manually edit code that is covered by an active specification, the 
-                    <span className="font-mono text-foreground mx-1">Drift Detection</span> plugin
-                    identifies the divergence and offers to reconcile the spec with the new implementation.
+                    Unlike traditional waterfall specs, Panda&apos;s specs are{' '}
+                    <strong>living documents</strong>. If you manually edit code that is covered by
+                    an active specification, the
+                    <span className="mx-1 font-mono text-foreground">Drift Detection</span> plugin
+                    identifies the divergence and offers to reconcile the spec with the new
+                    implementation.
                   </p>
                   <div className="mt-6 flex items-center gap-4">
                     <div className="flex -space-x-2">
-                       <Shield className="h-8 w-8 rounded-full bg-primary/10 p-1.5 text-primary border border-background" />
-                       <GitBranch className="h-8 w-8 rounded-full bg-primary/10 p-1.5 text-primary border border-background" />
+                      <Shield className="h-8 w-8 rounded-full border border-background bg-primary/10 p-1.5 text-primary" />
+                      <GitBranch className="h-8 w-8 rounded-full border border-background bg-primary/10 p-1.5 text-primary" />
                     </div>
-                    <p className="text-xs font-mono text-muted-foreground uppercase tracking-widest">
-                       Continuous Bidirectional Sync
+                    <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+                      Continuous Bidirectional Sync
                     </p>
                   </div>
                 </div>
@@ -694,21 +703,27 @@ export default function EducationPage() {
                     <Target className="mt-1 h-4 w-4 text-primary" />
                     <div>
                       <h4 className="text-sm font-semibold">EARS Requirements</h4>
-                      <p className="text-xs text-muted-foreground">Easy Approach to Requirements Syntax for clear, verifiable behavior.</p>
+                      <p className="text-xs text-muted-foreground">
+                        Easy Approach to Requirements Syntax for clear, verifiable behavior.
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <Shield className="mt-1 h-4 w-4 text-primary" />
                     <div>
                       <h4 className="text-sm font-semibold">Typed Constraints</h4>
-                      <p className="text-xs text-muted-foreground">Enforce structural, behavioral, or security rules across the run.</p>
+                      <p className="text-xs text-muted-foreground">
+                        Enforce structural, behavioral, or security rules across the run.
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <CheckCircle2 className="mt-1 h-4 w-4 text-primary" />
                     <div>
                       <h4 className="text-sm font-semibold">Automated Verification</h4>
-                      <p className="text-xs text-muted-foreground">Every spec step is verified post-execution to ensure intent matches output.</p>
+                      <p className="text-xs text-muted-foreground">
+                        Every spec step is verified post-execution to ensure intent matches output.
+                      </p>
                     </div>
                   </div>
                 </div>

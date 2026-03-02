@@ -609,7 +609,7 @@ function PlanDiff({
   specB,
   stepDiffs,
   dependencyDiffs,
-  viewMode,
+  viewMode: _viewMode,
 }: {
   specA: FormalSpecification
   specB: FormalSpecification

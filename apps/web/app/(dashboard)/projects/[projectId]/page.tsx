@@ -71,6 +71,7 @@ import { PlanPanel } from '@/components/plan'
 import { useJobs } from '@/hooks/useJobs'
 import { useAgent } from '@/hooks/useAgent'
 import { useAutoApplyArtifacts } from '@/hooks/useAutoApplyArtifacts'
+import { useSpecDriftDetection } from '@/hooks/useSpecDriftDetection'
 
 import type { Message } from '@/components/chat/types'
 import { buildMessageWithPlanDraft, deriveNextPlanDraft } from '@/lib/chat/planDraft'
@@ -179,6 +180,10 @@ export default function ProjectPage() {
 
   // Fetch project data
   const project = useQuery(api.projects.get, { id: projectId })
+
+  // Spec Drift Hook
+  // The hook internally manages showing toasts via showSpecSyncToast
+  useSpecDriftDetection({ projectId })
 
   // Fetch files
   const files = useQuery(api.files.list, { projectId }) as File[] | undefined
