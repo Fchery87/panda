@@ -52,21 +52,19 @@ export function redactError(message: string | undefined): string {
 /**
  * Redacts an entire response object body
  */
-export function redactResponse<T extends Record<string, any>>(body: T): T {
+export function redactResponse(body: Record<string, any>): Record<string, any> {
   const result = { ...body }
 
   if (typeof result.stderr === 'string') {
-    result.stderr = redactError(result.stderr) as any
+    result.stderr = redactError(result.stderr)
   }
 
   if (typeof result.stdout === 'string') {
-    // We typically don't redact stdout as it contains the expected output,
-    // but we might want to check for leaked keys here too.
-    result.stdout = redactError(result.stdout) as any
+    result.stderr = redactError(result.stdout)
   }
 
   if (typeof result.error === 'string') {
-    result.error = redactError(result.error) as any
+    result.error = redactError(result.error)
   }
 
   return result
