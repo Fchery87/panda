@@ -12,7 +12,7 @@
 
 import type { ToolDefinition } from '../../llm/types'
 import type { CheckpointStore } from './checkpoint-store'
-import type { SpecEngineConfig } from '../spec/types'
+import type { FormalSpecification, SpecEngineConfig, SpecTier } from '../spec/types'
 
 export type { ToolDefinition } from '../../llm/types'
 
@@ -389,6 +389,14 @@ export interface RuntimeConfig {
     prompt: string,
     sessionID: Identifier
   ) => Promise<SubagentResult>
+  onSpecApproval?: (request: {
+    sessionID: Identifier
+    spec: FormalSpecification
+    tier: SpecTier
+  }) => Promise<{
+    decision: 'approve' | 'edit' | 'cancel'
+    spec?: FormalSpecification
+  }>
   /** SpecNative engine configuration */
   specEngine?: SpecEngineConfig
 }

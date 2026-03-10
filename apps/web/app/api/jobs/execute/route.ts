@@ -3,8 +3,10 @@ import { spawn } from 'node:child_process'
 import path from 'node:path'
 import { isAuthenticatedNextjs } from '@convex-dev/auth/nextjs/server'
 import { redactError } from '@/lib/security/redact'
+import { cleanupJobProcess, registerJobProcess } from '@/lib/jobs/processRegistry'
 
 interface ExecuteRequest {
+  jobId?: string
   command: string
   workingDirectory?: string
   timeoutMs?: number
@@ -170,6 +172,10 @@ export async function POST(req: NextRequest) {
       }, 2_000)
     }, timeoutMs)
 
+    if (body.jobId) {
+      registerJobProcess(body.jobId, child, timeout)
+    }
+
     child.stdout?.on('data', (chunk: Buffer) => {
       if (stdoutBytes >= MAX_OUTPUT_BYTES) return
       const text = chunk.toString('utf8')
@@ -189,7 +195,11 @@ export async function POST(req: NextRequest) {
     })
 
     child.on('close', (code) => {
-      clearTimeout(timeout)
+      if (body.jobId) {
+        cleanupJobProcess(body.jobId)
+      } else {
+        clearTimeout(timeout)
+      }
       resolve({
         stdout,
         stderr: timedOut ? `${stderr}\nProcess timed out after ${timeoutMs}ms`.trim() : stderr,
@@ -200,7 +210,11 @@ export async function POST(req: NextRequest) {
     })
 
     child.on('error', (error) => {
-      clearTimeout(timeout)
+      if (body.jobId) {
+        cleanupJobProcess(body.jobId)
+      } else {
+        clearTimeout(timeout)
+      }
       resolve({
         stdout,
         stderr: `${stderr}\n${error.message}`.trim(),

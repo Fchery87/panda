@@ -5,6 +5,17 @@
 const PATH_REGEX = /(\/|[a-zA-Z]:\\)(?:[\w.-]+[/\\]?)+/g
 const STACK_FRAME_REGEX = /^\s*at\s+.*$/m
 
+function getSensitiveEnvValues(): string[] {
+  const sensitiveNamePattern =
+    /(secret|token|password|passwd|api[_-]?key|auth|credential|private[_-]?key)/i
+
+  return Object.entries(process.env)
+    .filter(([name, value]) => sensitiveNamePattern.test(name) && typeof value === 'string')
+    .map(([, value]) => value as string)
+    .filter((value) => value.length > 5)
+    .sort((a, b) => b.length - a.length)
+}
+
 /**
  * Strips sensitive patterns from error strings
  */
@@ -34,16 +45,8 @@ export function redactError(message: string | undefined): string {
   }
 
   // 3. Redact known environment variables if they appear (placeholder for more complex logic)
-  const SENSITIVE_STRINGS = [
-    process.env.CONVEX_DEPLOYMENT_KEY,
-    process.env.OPENAI_API_KEY,
-    process.env.ANTHROPIC_API_KEY,
-  ].filter((s): s is string => !!s)
-
-  for (const secret of SENSITIVE_STRINGS) {
-    if (secret.length > 5) {
-      redacted = redacted.split(secret).join('[REDACTED]')
-    }
+  for (const secret of getSensitiveEnvValues()) {
+    redacted = redacted.split(secret).join('[REDACTED]')
   }
 
   return redacted
@@ -60,7 +63,7 @@ export function redactResponse(body: Record<string, any>): Record<string, any> {
   }
 
   if (typeof result.stdout === 'string') {
-    result.stderr = redactError(result.stdout)
+    result.stdout = redactError(result.stdout)
   }
 
   if (typeof result.error === 'string') {

@@ -13,11 +13,7 @@ import { useConvex, useMutation, useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { toast } from 'sonner'
-
-type ArtifactAction = {
-  type: 'file_write' | 'command_run'
-  payload: Record<string, unknown>
-}
+import { applyArtifact, getPrimaryArtifactAction } from '@/lib/artifacts/executeArtifact'
 
 type ArtifactRecord = {
   _id: Id<'artifacts'>
@@ -37,24 +33,8 @@ interface ArtifactPanelProps {
 type ArtifactCardData = React.ComponentProps<typeof ArtifactCard>['artifact']
 type MappedArtifact = ArtifactCardData & { rawStatus: ArtifactRecord['status'] }
 
-function inferJobType(command: string) {
-  const cmdLower = command.toLowerCase()
-  if (cmdLower.includes('build') || cmdLower.includes('compile')) return 'build' as const
-  if (cmdLower.includes('test')) return 'test' as const
-  if (cmdLower.includes('deploy')) return 'deploy' as const
-  if (cmdLower.includes('lint')) return 'lint' as const
-  if (cmdLower.includes('format')) return 'format' as const
-  return 'cli' as const
-}
-
 function asArtifactId(id: string): Id<'artifacts'> {
   return id as Id<'artifacts'>
-}
-
-function getPrimaryAction(record: ArtifactRecord): ArtifactAction | null {
-  const action = record.actions?.[0] as ArtifactAction | undefined
-  if (!action || (action.type !== 'file_write' && action.type !== 'command_run')) return null
-  return action
 }
 
 function mapStatusToCardStatus(
@@ -87,7 +67,7 @@ export function ArtifactPanel({
   const mappedArtifacts = useMemo(() => {
     return (records || [])
       .map((record) => {
-        const action = getPrimaryAction(record)
+        const action = getPrimaryArtifactAction(record)
         if (!action) return null
 
         return {
@@ -119,85 +99,6 @@ export function ArtifactPanel({
   const pendingCount = pendingArtifacts.length
   const totalCount = mappedArtifacts.length
 
-  const applyOneArtifact = useCallback(
-    async (artifact: (typeof pendingArtifacts)[number]) => {
-      if (artifact.type === 'file_write') {
-        const payload = artifact.payload as { filePath: string; content: string }
-        const existing = await convex.query(api.files.getByPath, {
-          projectId,
-          path: payload.filePath,
-        })
-
-        await upsertFile({
-          id: existing?._id,
-          projectId,
-          path: payload.filePath,
-          content: payload.content,
-          isBinary: false,
-        })
-
-        return { kind: 'file' as const, description: payload.filePath }
-      }
-
-      const payload = artifact.payload as { command: string; workingDirectory?: string }
-      const type = inferJobType(payload.command)
-      const { jobId } = await createAndExecuteJob({
-        projectId,
-        type,
-        command: payload.command,
-        workingDirectory: payload.workingDirectory,
-      })
-
-      const startedAt = Date.now()
-      await updateJobStatus({
-        id: jobId,
-        status: 'running',
-        startedAt,
-        logs: [`[${new Date(startedAt).toISOString()}] Running: ${payload.command}`],
-      })
-
-      const executeResponse = await fetch('/api/jobs/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          command: payload.command,
-          workingDirectory: payload.workingDirectory,
-        }),
-      })
-
-      if (!executeResponse.ok) {
-        const errorText = await executeResponse.text()
-        await updateJobStatus({
-          id: jobId,
-          status: 'failed',
-          completedAt: Date.now(),
-          error: errorText,
-        })
-        throw new Error(errorText)
-      }
-
-      const result = (await executeResponse.json()) as {
-        stdout: string
-        stderr: string
-        exitCode: number
-      }
-      await updateJobStatus({
-        id: jobId,
-        status: result.exitCode === 0 ? 'completed' : 'failed',
-        completedAt: Date.now(),
-        output: result.stdout || undefined,
-        error: result.stderr || undefined,
-        logs: [
-          `[${new Date(startedAt).toISOString()}] Running: ${payload.command}`,
-          `[${new Date().toISOString()}] Exit code: ${result.exitCode}`,
-        ],
-      })
-
-      return { kind: 'command' as const, description: payload.command }
-    },
-    [convex, createAndExecuteJob, projectId, updateJobStatus, upsertFile]
-  )
-
   const handleApply = useCallback(
     async (id: string) => {
       const artifact = pendingArtifacts.find((a) => a.id === id)
@@ -205,14 +106,28 @@ export function ArtifactPanel({
 
       setIsApplying(true)
       try {
-        await updateArtifactStatus({ id: asArtifactId(artifact.id), status: 'in_progress' })
-        const result = await applyOneArtifact(artifact)
-        await updateArtifactStatus({ id: asArtifactId(artifact.id), status: 'completed' })
+        const result = await applyArtifact({
+          artifactId: asArtifactId(artifact.id),
+          action: {
+            type: artifact.type,
+            payload: artifact.payload as unknown as Record<string, unknown>,
+          },
+          projectId,
+          convex,
+          upsertFile,
+          createAndExecuteJob,
+          updateJobStatus: (jobId, status, updates) =>
+            updateJobStatus({
+              id: jobId,
+              status,
+              ...updates,
+            }),
+          updateArtifactStatus,
+        })
         toast.success(result.kind === 'file' ? 'Applied file change' : 'Executed command', {
           description: result.description,
         })
       } catch (error) {
-        await updateArtifactStatus({ id: asArtifactId(artifact.id), status: 'failed' })
         toast.error('Failed to apply artifact', {
           description: error instanceof Error ? error.message : String(error),
         })
@@ -220,7 +135,15 @@ export function ArtifactPanel({
         setIsApplying(false)
       }
     },
-    [applyOneArtifact, pendingArtifacts, updateArtifactStatus]
+    [
+      pendingArtifacts,
+      projectId,
+      convex,
+      upsertFile,
+      createAndExecuteJob,
+      updateJobStatus,
+      updateArtifactStatus,
+    ]
   )
 
   const handleReject = useCallback(
@@ -238,11 +161,25 @@ export function ArtifactPanel({
     try {
       for (const artifact of pendingArtifacts) {
         try {
-          await updateArtifactStatus({ id: asArtifactId(artifact.id), status: 'in_progress' })
-          await applyOneArtifact(artifact)
-          await updateArtifactStatus({ id: asArtifactId(artifact.id), status: 'completed' })
+          await applyArtifact({
+            artifactId: asArtifactId(artifact.id),
+            action: {
+              type: artifact.type,
+              payload: artifact.payload as unknown as Record<string, unknown>,
+            },
+            projectId,
+            convex,
+            upsertFile,
+            createAndExecuteJob,
+            updateJobStatus: (jobId, status, updates) =>
+              updateJobStatus({
+                id: jobId,
+                status,
+                ...updates,
+              }),
+            updateArtifactStatus,
+          })
         } catch (error) {
-          await updateArtifactStatus({ id: asArtifactId(artifact.id), status: 'failed' })
           toast.error('Failed to apply artifact', {
             description: error instanceof Error ? error.message : String(error),
           })
@@ -252,7 +189,15 @@ export function ArtifactPanel({
     } finally {
       setIsApplying(false)
     }
-  }, [applyOneArtifact, pendingArtifacts, updateArtifactStatus])
+  }, [
+    pendingArtifacts,
+    projectId,
+    convex,
+    upsertFile,
+    createAndExecuteJob,
+    updateJobStatus,
+    updateArtifactStatus,
+  ])
 
   const handleRejectAll = useCallback(async () => {
     for (const artifact of pendingArtifacts) {

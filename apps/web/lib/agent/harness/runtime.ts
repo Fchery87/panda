@@ -237,7 +237,14 @@ export class Runtime {
     if (this.specEngine.isEnabled()) {
       const userText = this.extractUserText(userMessage)
       if (userText) {
-        yield* this.generateAndHandleSpec(userText, agent, sessionID)
+        const shouldProceed = yield* this.generateAndHandleSpec(userText, agent, sessionID)
+        if (shouldProceed === false) {
+          yield {
+            type: 'error',
+            error: 'Specification approval cancelled',
+          }
+          return
+        }
       }
     }
 
@@ -260,8 +267,8 @@ export class Runtime {
     userMessage: string,
     agent: AgentConfig,
     sessionID: Identifier
-  ): AsyncGenerator<RuntimeEvent> {
-    if (!this.state) return
+  ): AsyncGenerator<RuntimeEvent, boolean> {
+    if (!this.state) return true
 
     // Classify intent
     const classification = await this.specEngine.classify(userMessage, {
@@ -279,7 +286,7 @@ export class Runtime {
 
     // Skip spec generation for instant tier
     if (tier === 'instant') {
-      return
+      return true
     }
 
     // Generate spec
@@ -327,8 +334,20 @@ export class Runtime {
       // Yield spec for UI approval
       yield { type: 'spec_pending_approval', spec: finalSpec, tier }
 
-      // Note: In a real implementation, we would wait for user approval here
-      // For now, we proceed with auto-approval for testing
+      const approval = this.config.onSpecApproval
+        ? await this.config.onSpecApproval({
+            sessionID,
+            spec: finalSpec,
+            tier,
+          })
+        : { decision: 'approve' as const, spec: finalSpec }
+
+      if (approval.decision === 'cancel') {
+        this.state.activeSpec = undefined
+        return false
+      }
+
+      finalSpec = approval.spec ?? finalSpec
       finalSpec = this.specEngine.approve(finalSpec)
 
       await this.executeHook(
@@ -354,6 +373,8 @@ export class Runtime {
       { sessionID, step: this.state.step, agent, messageID: '' },
       { spec: finalSpec }
     )
+
+    return true
   }
 
   /**
@@ -1862,6 +1883,7 @@ export class Runtime {
     // Yield verification event
     yield {
       type: 'spec_verification',
+      spec: this.state.activeSpec,
       verification: {
         passed: verification.passed,
         results: verification.criterionResults.map((r) => ({

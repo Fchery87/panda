@@ -26,10 +26,12 @@ import {
   createAgentRuntime,
   createToolContext,
   type AgentEvent,
+  type AgentRuntimeLike,
   type RuntimeConfig,
   type ConvexClient as AgentConvexClient,
 } from '../lib/agent'
 import { ConvexCheckpointStore } from '../lib/agent/harness/convex-checkpoint-store'
+import type { FormalSpecification } from '../lib/agent/spec/types'
 import { getUserFacingAgentError } from '../lib/chat/error-messages'
 import { extractTargetFilePaths } from '../components/chat/live-run-utils'
 import { normalizeChatMode, type PromptContext, type ChatMode } from '../lib/agent/prompt-library'
@@ -227,6 +229,8 @@ interface UseAgentReturn {
   progressSteps: ProgressStep[]
   usageMetrics: UsageMetrics
   tracePersistenceStatus: TracePersistenceStatus
+  currentSpec: FormalSpecification | null
+  pendingSpec: FormalSpecification | null
 
   // Artifacts
   pendingArtifacts: Array<{ _id: string }>
@@ -255,6 +259,9 @@ interface UseAgentReturn {
   handleInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
   stop: () => void
   clear: () => void
+  approvePendingSpec: (spec?: FormalSpecification) => void
+  updatePendingSpecDraft: (spec: FormalSpecification) => void
+  cancelPendingSpec: () => void
 
   // Error
   error: string | null
@@ -308,10 +315,6 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const updateMemoryBankMutation = useMutation(api.memoryBank.update)
 
   // Session summaries for context handoffs
-  const latestSessionSummary = useQuery(
-    api.sessionSummaries.getLatest,
-    projectId ? { projectId: projectId as Id<'projects'> } : 'skip'
-  )
   const saveSessionSummaryMutation = useMutation(api.sessionSummaries.save)
 
   // Project files for overview generation
@@ -361,6 +364,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const [error, setError] = useState<string | null>(null)
   const [providerModels, setProviderModels] = useState<ModelInfo[]>([])
   const [currentRunUsage, setCurrentRunUsage] = useState<UsageTotals & { source: TokenSource }>()
+  const [currentSpec, setCurrentSpec] = useState<FormalSpecification | null>(null)
+  const [pendingSpec, setPendingSpec] = useState<FormalSpecification | null>(null)
   const [tracePersistenceStatus, setTracePersistenceStatus] =
     useState<TracePersistenceStatus>('live')
 
@@ -374,6 +379,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const runEventBufferRef = useRef<BufferedRunEvent[]>([])
   const runEventFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const runEventFlushPromiseRef = useRef<Promise<void> | null>(null)
+  const runtimeRef = useRef<AgentRuntimeLike | null>(null)
   const runEventFlushAgainRef = useRef(false)
   const runEventFlushAgainForceRef = useRef(false)
   const tracePersistenceStatusRef = useRef<TracePersistenceStatus>('live')
@@ -639,6 +645,11 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
 
   // Stop the agent
   const stop = useCallback(() => {
+    if (pendingSpec) {
+      runtimeRef.current?.resolveSpecApproval?.('cancel')
+      setPendingSpec(null)
+      setCurrentSpec(null)
+    }
     const runId = runIdRef.current
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
@@ -657,7 +668,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       void flushRunEventBuffer({ force: true, reason: 'stop' })
     }
     setStatus('idle')
-  }, [flushRunEventBuffer])
+  }, [flushRunEventBuffer, pendingSpec])
 
   // Clear messages
   const clear = useCallback(async () => {
@@ -692,7 +703,33 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     setError(null)
     setCurrentIteration(0)
     setCurrentRunUsage(undefined)
+    setCurrentSpec(null)
+    setPendingSpec(null)
   }, [projectId, chatId, messages, saveSessionSummaryMutation])
+
+  const approvePendingSpec = useCallback(
+    (spec?: FormalSpecification) => {
+      const nextSpec = spec ?? pendingSpec
+      if (!nextSpec) return
+      setPendingSpec(null)
+      setCurrentSpec(nextSpec)
+      setStatus('thinking')
+      runtimeRef.current?.resolveSpecApproval?.('approve', nextSpec)
+    },
+    [pendingSpec]
+  )
+
+  const updatePendingSpecDraft = useCallback((spec: FormalSpecification) => {
+    setPendingSpec(spec)
+    setCurrentSpec(spec)
+  }, [])
+
+  const cancelPendingSpec = useCallback(() => {
+    setPendingSpec(null)
+    setCurrentSpec(null)
+    runtimeRef.current?.resolveSpecApproval?.('cancel')
+    setStatus('idle')
+  }, [])
 
   // Handle input change
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -834,6 +871,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         if (!userId) {
           throw new Error('User not authenticated')
         }
+        setCurrentSpec(null)
 
         const runId = await createRun({
           projectId,
@@ -922,6 +960,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           toolLoopThreshold: 3,
           harnessSessionID: `harness_run_${runId}`,
           harnessAutoResume: true,
+          harnessSpecApprovalMode: 'interactive',
         }
 
         // Get tool context
@@ -963,6 +1002,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           },
           toolContext
         )
+        runtimeRef.current = runtime
 
         // Run the agent
         let assistantContent = ''
@@ -1172,6 +1212,44 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               }
               break
             }
+            case 'spec_pending_approval':
+              if (event.spec) {
+                setPendingSpec(event.spec)
+                setCurrentSpec(event.spec)
+                setStatus('idle')
+                void appendRunEvent({
+                  type: event.type,
+                  content: event.spec.intent.goal,
+                  status: event.spec.status,
+                })
+              }
+              break
+            case 'spec_generated': {
+              if (event.spec) {
+                setPendingSpec(null)
+                setCurrentSpec(event.spec)
+                void appendRunEvent({
+                  type: event.type,
+                  content: event.spec.intent.goal,
+                  status: event.spec.status,
+                })
+              }
+              break
+            }
+            case 'spec_verification': {
+              setPendingSpec(null)
+              if (event.spec) {
+                setCurrentSpec(event.spec)
+              }
+              void appendRunEvent({
+                type: 'spec_verification',
+                content: event.verification?.passed
+                  ? 'Specification verified'
+                  : 'Specification failed',
+                status: event.verification?.passed ? 'verified' : 'failed',
+              })
+              break
+            }
             case 'reasoning':
               if (runtimeSettings.showReasoningPanel && event.reasoningContent) {
                 assistantReasoning += event.reasoningContent
@@ -1275,6 +1353,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               break
 
             case 'complete':
+              setPendingSpec(null)
               setStatus('complete')
               isRunningRef.current = false
               if (event.usage) {
@@ -1345,6 +1424,23 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               break
 
             case 'error': {
+              if (event.error === 'Specification approval cancelled') {
+                setStatus('idle')
+                setError(null)
+                setPendingSpec(null)
+                setCurrentSpec(null)
+                isRunningRef.current = false
+                await appendRunEvent(
+                  {
+                    type: 'spec_cancelled',
+                    content: 'Specification approval cancelled',
+                    status: 'stopped',
+                  },
+                  { forceFlush: true }
+                )
+                await finalizeRunStopped()
+                break
+              }
               const userFacing = getUserFacingAgentError(event.error)
               setStatus('error')
               setError(userFacing.description)
@@ -1374,6 +1470,30 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
+        if (message === 'Specification approval cancelled') {
+          setStatus('idle')
+          setError(null)
+          setPendingSpec(null)
+          setCurrentSpec(null)
+          isRunningRef.current = false
+          await appendRunEvent(
+            {
+              type: 'spec_cancelled',
+              content: 'Specification approval cancelled',
+              status: 'stopped',
+            },
+            { forceFlush: true }
+          )
+          if (runIdRef.current) {
+            await flushRunEventBuffer({ force: true, reason: 'spec-cancel' })
+            await stopRun({
+              runId: runIdRef.current,
+            })
+            runIdRef.current = null
+            runSequenceRef.current = 0
+          }
+          return
+        }
         const userFacing = getUserFacingAgentError(message)
         setStatus('error')
         setError(userFacing.description)
@@ -1539,6 +1659,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     toolCalls,
     progressSteps,
     usageMetrics,
+    currentSpec,
+    pendingSpec,
     pendingArtifacts,
     memoryBank: memoryBankContent,
     updateMemoryBank: async (content: string) => {
@@ -1552,6 +1674,9 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     handleInputChange,
     stop,
     clear,
+    approvePendingSpec,
+    updatePendingSpecDraft,
+    cancelPendingSpec,
     error,
     tracePersistenceStatus,
   }

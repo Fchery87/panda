@@ -7,10 +7,11 @@
  * @module convex/specifications
  */
 
-import { query, mutation } from './_generated/server'
+import { query, mutation, type MutationCtx, type QueryCtx } from './_generated/server'
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
 import type { Doc } from './_generated/dataModel'
+import { requireAgentRunOwner, requireChatOwner, requireProjectOwner } from './lib/authz'
 
 /**
  * SpecTier validator
@@ -147,6 +148,19 @@ const VerificationResultValidator = v.object({
   details: v.optional(v.record(v.string(), v.any())),
 })
 
+async function requireSpecificationOwner(
+  ctx: QueryCtx | MutationCtx,
+  specId: Id<'specifications'>
+): Promise<Doc<'specifications'>> {
+  const spec = await ctx.db.get(specId)
+  if (!spec) {
+    throw new Error(`Specification not found: ${specId}`)
+  }
+
+  await requireProjectOwner(ctx, spec.projectId)
+  return spec
+}
+
 /**
  * Create a new specification
  */
@@ -184,6 +198,18 @@ export const create = mutation({
     verificationResults: v.optional(v.array(VerificationResultValidator)),
   },
   handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
+    const { chat } = await requireChatOwner(ctx, args.chatId)
+    if (chat.projectId !== args.projectId) {
+      throw new Error('Chat does not belong to the specified project')
+    }
+    if (args.runId) {
+      const { run } = await requireAgentRunOwner(ctx, args.runId)
+      if (run.projectId !== args.projectId || run.chatId !== args.chatId) {
+        throw new Error('Run does not belong to the specified project and chat')
+      }
+    }
+
     const now = Date.now()
 
     const specId = await ctx.db.insert('specifications', {
@@ -204,7 +230,7 @@ export const get = query({
     specId: v.id('specifications'),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.specId)
+    return await requireSpecificationOwner(ctx, args.specId)
   },
 })
 
@@ -253,9 +279,9 @@ export const update = mutation({
     }),
   },
   handler: async (ctx, args) => {
-    const existing = await ctx.db.get(args.specId)
-    if (!existing) {
-      throw new Error(`Specification not found: ${args.specId}`)
+    await requireSpecificationOwner(ctx, args.specId)
+    if (args.updates.runId) {
+      await requireAgentRunOwner(ctx, args.updates.runId)
     }
 
     await ctx.db.patch(args.specId, {
@@ -272,13 +298,17 @@ export const update = mutation({
  */
 export const list = query({
   args: {
+    projectId: v.id('projects'),
     limit: v.optional(v.number()),
     cursor: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
     const limit = args.limit ?? 100
 
-    const specs = await ctx.db.query('specifications').order('desc').take(limit)
+    const specs = (await ctx.db.query('specifications').order('desc').take(limit)).filter(
+      (spec) => spec.projectId === args.projectId
+    )
 
     return {
       specs,
@@ -297,6 +327,7 @@ export const listByProject = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
     const limit = args.limit ?? 100
 
     return await ctx.db
@@ -316,6 +347,7 @@ export const listByChat = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    await requireChatOwner(ctx, args.chatId)
     const limit = args.limit ?? 100
 
     return await ctx.db
@@ -336,6 +368,7 @@ export const listByStatus = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
     const limit = args.limit ?? 100
 
     return await ctx.db
@@ -356,6 +389,7 @@ export const listByTier = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
     const limit = args.limit ?? 100
 
     return await ctx.db
@@ -374,6 +408,7 @@ export const remove = mutation({
     specId: v.id('specifications'),
   },
   handler: async (ctx, args) => {
+    await requireSpecificationOwner(ctx, args.specId)
     await ctx.db.delete(args.specId)
     return { success: true }
   },
@@ -387,6 +422,7 @@ export const archive = mutation({
     specId: v.id('specifications'),
   },
   handler: async (ctx, args) => {
+    await requireSpecificationOwner(ctx, args.specId)
     await ctx.db.patch(args.specId, {
       status: 'archived',
       updatedAt: Date.now(),
@@ -403,6 +439,7 @@ export const getLatestByChat = query({
     chatId: v.id('chats'),
   },
   handler: async (ctx, args) => {
+    await requireChatOwner(ctx, args.chatId)
     const specs = await ctx.db
       .query('specifications')
       .withIndex('by_chat', (q) => q.eq('chatId', args.chatId))
@@ -449,10 +486,7 @@ export const createVersion = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const parentSpec = await ctx.db.get(args.parentSpecId)
-    if (!parentSpec) {
-      throw new Error(`Parent specification not found: ${args.parentSpecId}`)
-    }
+    const parentSpec = await requireSpecificationOwner(ctx, args.parentSpecId)
 
     const now = Date.now()
 
@@ -501,6 +535,7 @@ export const getVersionChain = query({
     specId: v.id('specifications'),
   },
   handler: async (ctx, args) => {
+    await requireSpecificationOwner(ctx, args.specId)
     const chain: Array<{
       _id: string
       version: number
@@ -559,10 +594,7 @@ export const listVersions = query({
   },
   handler: async (ctx, args) => {
     // First get the root spec to find its chatId
-    const rootSpec = await ctx.db.get(args.rootSpecId)
-    if (!rootSpec) {
-      return []
-    }
+    const rootSpec = await requireSpecificationOwner(ctx, args.rootSpecId)
 
     // Get all specs for this chat
     const chain = await ctx.db
@@ -648,10 +680,7 @@ export const markDrifted = mutation({
     driftDetails: v.optional(v.record(v.string(), v.any())),
   },
   handler: async (ctx, args) => {
-    const existing = await ctx.db.get(args.specId)
-    if (!existing) {
-      throw new Error(`Specification not found: ${args.specId}`)
-    }
+    await requireSpecificationOwner(ctx, args.specId)
 
     await ctx.db.patch(args.specId, {
       status: 'drifted',
@@ -671,6 +700,7 @@ export const listByRun = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    await requireAgentRunOwner(ctx, args.runId)
     const limit = args.limit ?? 100
 
     return await ctx.db

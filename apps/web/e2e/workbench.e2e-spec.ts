@@ -112,12 +112,12 @@ test.describe('Workbench', () => {
     await createAndOpenProject(page)
 
     const codeTab = page.getByRole('button', { name: /code/i }).first()
-    const previewTab = page.getByRole('button', { name: /preview/i }).first()
+    const timelineTab = page.getByRole('button', { name: /timeline/i }).first()
 
     await expect(codeTab).toBeVisible()
-    await expect(previewTab).toBeVisible()
+    await expect(timelineTab).toBeVisible()
 
-    await previewTab.click()
+    await timelineTab.click()
     await codeTab.click()
     await expect(codeTab).toBeVisible()
   })

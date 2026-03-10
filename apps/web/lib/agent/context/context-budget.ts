@@ -376,6 +376,9 @@ function truncateToTokens(
   providerType: ProviderType,
   model: string
 ): string {
+  void providerType
+  void model
+
   // Rough estimate: 1 token ≈ 4 chars
   const charsPerToken = 4
   const maxChars = maxTokens * charsPerToken

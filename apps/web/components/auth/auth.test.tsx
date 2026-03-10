@@ -1,4 +1,7 @@
 import { describe, it, expect } from 'bun:test'
+import path from 'node:path'
+
+const signInButtonPath = path.join(import.meta.dir, 'SignInButton.tsx')
 
 describe('SignInButton', () => {
   it('has correct button text', () => {
@@ -7,13 +10,13 @@ describe('SignInButton', () => {
 
   it('is a client component', async () => {
     const fs = await import('fs')
-    const content = fs.readFileSync('./apps/web/components/auth/SignInButton.tsx', 'utf-8')
+    const content = fs.readFileSync(signInButtonPath, 'utf-8')
     expect(content).toContain("'use client'")
   })
 
   it('exports SignInButton function', async () => {
     const fs = await import('fs')
-    const content = fs.readFileSync('./apps/web/components/auth/SignInButton.tsx', 'utf-8')
+    const content = fs.readFileSync(signInButtonPath, 'utf-8')
     expect(content).toContain('export function SignInButton')
   })
 })

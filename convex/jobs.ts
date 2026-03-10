@@ -126,6 +126,9 @@ export const updateStatus = mutation({
   },
   handler: async (ctx, args) => {
     const { job } = await requireJobOwner(ctx, args.id)
+    if (job.status === 'cancelled' && args.status !== 'cancelled') {
+      return args.id
+    }
 
     const updates: Partial<typeof job> = {
       status: args.status,

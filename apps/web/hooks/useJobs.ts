@@ -173,6 +173,11 @@ export function useJobs(projectId: Id<'projects'>) {
     async (jobId: Id<'jobs'>) => {
       try {
         await cancelJobMutation({ id: jobId })
+        await fetch('/api/jobs/cancel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jobId }),
+        })
 
         toast.info('Job cancelled')
 

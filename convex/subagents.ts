@@ -1,16 +1,42 @@
-import { query, mutation } from './_generated/server'
+import { query, mutation, type MutationCtx, type QueryCtx } from './_generated/server'
 import { v } from 'convex/values'
 import { requireAuth } from './lib/auth'
+
+async function resolveUserId(ctx: QueryCtx | MutationCtx) {
+  const userId = await requireAuth(ctx)
+  let userIdAsId = ctx.db.normalizeId('users', userId)
+
+  if (!userIdAsId) {
+    const devUser = await ctx.db
+      .query('users')
+      .withIndex('email', (q) => q.eq('email', 'dev@example.com'))
+      .first()
+    if (devUser) {
+      userIdAsId = devUser._id
+    }
+  }
+
+  if (!userIdAsId) {
+    throw new Error('User not found')
+  }
+
+  return userIdAsId
+}
+
+async function assertSubagentsEnabled(ctx: QueryCtx | MutationCtx) {
+  const adminSettings = await ctx.db.query('adminSettings').order('desc').first()
+  if (adminSettings?.allowUserSubagents === false) {
+    throw new Error('Custom subagents are disabled by admin policy')
+  }
+}
 
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const userId = await requireAuth(ctx)
-    let userIdAsId = ctx.db.normalizeId('users', userId)
-
-    if (!userIdAsId) {
+    if ((await ctx.db.query('adminSettings').order('desc').first())?.allowUserSubagents === false) {
       return []
     }
+    const userIdAsId = await resolveUserId(ctx)
 
     return await ctx.db
       .query('subagents')
@@ -22,7 +48,28 @@ export const list = query({
 export const get = query({
   args: { id: v.id('subagents') },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id)
+    await assertSubagentsEnabled(ctx)
+    const userId = await requireAuth(ctx)
+    const subagent = await ctx.db.get(args.id)
+
+    if (!subagent) {
+      throw new Error('Subagent not found')
+    }
+
+    let userIdAsId = ctx.db.normalizeId('users', userId)
+    if (!userIdAsId) {
+      const devUser = await ctx.db
+        .query('users')
+        .withIndex('email', (q) => q.eq('email', 'dev@example.com'))
+        .first()
+      if (devUser) userIdAsId = devUser._id
+    }
+
+    if (subagent.userId !== userIdAsId) {
+      throw new Error('Unauthorized')
+    }
+
+    return subagent
   },
 })
 
@@ -42,22 +89,8 @@ export const add = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const userId = await requireAuth(ctx)
-    let userIdAsId = ctx.db.normalizeId('users', userId)
-
-    if (!userIdAsId) {
-      const devUser = await ctx.db
-        .query('users')
-        .withIndex('email', (q) => q.eq('email', 'dev@example.com'))
-        .first()
-      if (devUser) {
-        userIdAsId = devUser._id
-      }
-    }
-
-    if (!userIdAsId) {
-      throw new Error('User not found')
-    }
+    await assertSubagentsEnabled(ctx)
+    const userIdAsId = await resolveUserId(ctx)
 
     const now = Date.now()
 
@@ -107,20 +140,12 @@ export const update = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const userId = await requireAuth(ctx)
+    await assertSubagentsEnabled(ctx)
+    const userIdAsId = await resolveUserId(ctx)
     const subagent = await ctx.db.get(args.id)
 
     if (!subagent) {
       throw new Error('Subagent not found')
-    }
-
-    let userIdAsId = ctx.db.normalizeId('users', userId)
-    if (!userIdAsId) {
-      const devUser = await ctx.db
-        .query('users')
-        .withIndex('email', (q) => q.eq('email', 'dev@example.com'))
-        .first()
-      if (devUser) userIdAsId = devUser._id
     }
 
     if (subagent.userId !== userIdAsId) {
@@ -144,20 +169,12 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id('subagents') },
   handler: async (ctx, args) => {
-    const userId = await requireAuth(ctx)
+    await assertSubagentsEnabled(ctx)
+    const userIdAsId = await resolveUserId(ctx)
     const subagent = await ctx.db.get(args.id)
 
     if (!subagent) {
       throw new Error('Subagent not found')
-    }
-
-    let userIdAsId = ctx.db.normalizeId('users', userId)
-    if (!userIdAsId) {
-      const devUser = await ctx.db
-        .query('users')
-        .withIndex('email', (q) => q.eq('email', 'dev@example.com'))
-        .first()
-      if (devUser) userIdAsId = devUser._id
     }
 
     if (subagent.userId !== userIdAsId) {

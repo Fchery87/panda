@@ -32,6 +32,7 @@ import {
   bus as harnessBus,
 } from './harness'
 import type { CheckpointStore as HarnessCheckpointStore } from './harness/checkpoint-store'
+import type { FormalSpecification, SpecTier } from './spec/types'
 
 /**
  * Runtime options for agent execution
@@ -62,6 +63,9 @@ export type AgentEventType =
   | 'tool_result'
   | 'reset'
   | 'error'
+  | 'spec_pending_approval'
+  | 'spec_generated'
+  | 'spec_verification'
   | 'complete'
 
 /**
@@ -81,6 +85,16 @@ export interface AgentEvent {
   reasoningContent?: string
   toolCall?: ToolCall
   toolResult?: ToolExecutionResult
+  spec?: FormalSpecification
+  specTier?: SpecTier
+  verification?: {
+    passed: boolean
+    results: Array<{
+      criterionId: string
+      passed: boolean
+      message?: string
+    }>
+  }
   resetReason?: 'plan_mode_rewrite' | 'build_mode_rewrite'
   error?: string
   usage?: {
@@ -98,6 +112,10 @@ export interface AgentRuntimeLike {
     usage?: { promptTokens: number; completionTokens: number; totalTokens: number }
     error?: string
   }>
+  resolveSpecApproval?: (
+    decision: 'approve' | 'edit' | 'cancel',
+    spec?: FormalSpecification
+  ) => void
 }
 
 /**
@@ -127,6 +145,7 @@ export interface RuntimeConfig {
   harnessCheckpointStore?: HarnessCheckpointStore
   harnessEnableRiskInterrupts?: boolean
   harnessEvalMode?: 'read_only' | 'full'
+  harnessSpecApprovalMode?: 'interactive' | 'auto_approve'
 }
 
 /**
@@ -982,10 +1001,20 @@ function createHarnessToolExecutors(toolContext: ToolContext): Map<string, Harne
 }
 
 class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
+  private pendingSpecApprovalResolver:
+    | ((value: { decision: 'approve' | 'edit' | 'cancel'; spec?: FormalSpecification }) => void)
+    | null = null
+
   constructor(
     private options: RuntimeOptions,
     private toolContext: ToolContext
   ) {}
+
+  resolveSpecApproval(decision: 'approve' | 'edit' | 'cancel', spec?: FormalSpecification) {
+    if (!this.pendingSpecApprovalResolver) return
+    this.pendingSpecApprovalResolver({ decision, spec })
+    this.pendingSpecApprovalResolver = null
+  }
 
   async *run(promptContext: PromptContext, config?: RuntimeConfig): AsyncGenerator<AgentEvent> {
     const sessionID =
@@ -993,6 +1022,8 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
     const riskInterruptsEnabled =
       config?.harnessEnableRiskInterrupts ?? this.options.harnessEnableRiskInterrupts ?? true
     const harnessEvalMode = config?.harnessEvalMode ?? this.options.harnessEvalMode
+    const specApprovalMode = config?.harnessSpecApprovalMode ?? 'auto_approve'
+    this.pendingSpecApprovalResolver = null
 
     const harnessRuntimeConfig: Partial<HarnessRuntimeConfig> = {
       ...(typeof config?.maxIterations === 'number' ? { maxSteps: config.maxIterations } : {}),
@@ -1053,6 +1084,22 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
         : {}),
       maxToolExecutionRetries: 1,
       toolRetryBackoffMs: 200,
+      specEngine: {
+        enabled: true,
+        autoApproveAmbient: true,
+      },
+      onSpecApproval: async ({ spec }) => {
+        if (specApprovalMode !== 'interactive') {
+          return { decision: 'approve' as const, spec }
+        }
+
+        return await new Promise<{
+          decision: 'approve' | 'edit' | 'cancel'
+          spec?: FormalSpecification
+        }>((resolve) => {
+          this.pendingSpecApprovalResolver = resolve
+        })
+      },
     }
     const harnessRuntime = new HarnessRuntime(
       this.options.provider,
@@ -1334,6 +1381,24 @@ function mapHarnessEventToAgentEvent(
         toolResult,
       }
     }
+    case 'spec_pending_approval':
+      return {
+        type: 'spec_pending_approval',
+        spec: event.spec,
+        specTier: event.tier,
+      }
+    case 'spec_generated':
+      return {
+        type: 'spec_generated',
+        spec: event.spec,
+        specTier: event.tier,
+      }
+    case 'spec_verification':
+      return {
+        type: 'spec_verification',
+        spec: event.spec,
+        verification: event.verification,
+      }
     case 'permission_request':
     case 'permission_decision':
     case 'interrupt_request':

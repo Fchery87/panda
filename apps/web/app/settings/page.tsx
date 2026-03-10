@@ -228,6 +228,8 @@ export default function SettingsPage() {
   settingsRef.current = settings
 
   const [permissions, setPermissions] = React.useState<PermissionsConfig>(DEFAULT_PERMISSIONS)
+  const allowUserMcp = adminDefaults?.allowUserMCP !== false
+  const allowUserSubagents = adminDefaults?.allowUserSubagents !== false
 
   // Local state for form
   const [formState, setFormState] = React.useState<SettingsState>({
@@ -713,7 +715,13 @@ export default function SettingsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <MCPServerEditor />
+                {allowUserMcp ? (
+                  <MCPServerEditor />
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    MCP access is disabled by your admin.
+                  </p>
+                )}
               </CardContent>
             </Card>
 
@@ -723,7 +731,13 @@ export default function SettingsPage() {
                 <CardDescription>Create specialized agents for specific tasks</CardDescription>
               </CardHeader>
               <CardContent>
-                <SubagentEditor />
+                {allowUserSubagents ? (
+                  <SubagentEditor />
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Custom subagents are disabled by your admin.
+                  </p>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

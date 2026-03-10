@@ -10,6 +10,8 @@ import { streamAgent } from './runtime'
 import type { ToolContext } from './tools'
 import type { CheckpointStore, RuntimeCheckpoint } from './harness/checkpoint-store'
 import type { Message as HarnessMessage, UserMessage as HarnessUserMessage } from './harness'
+import { Runtime as HarnessRuntime } from './harness/runtime'
+import type { FormalSpecification } from './spec/types'
 
 function makeFinish(): StreamChunk {
   return {
@@ -694,5 +696,76 @@ describe('Harness adapter guardrail parity', () => {
     )
     expect(writeResult?.toolResult?.error).toContain('Eval mode denied tool')
     delete process.env.NEXT_PUBLIC_PANDA_AGENT_HARNESS
+  })
+
+  it('pauses explicit specs until approval and resumes after approval', async () => {
+    let callCount = 0
+    const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }
+    const provider: LLMProvider = {
+      name: 'fake',
+      config,
+      async listModels() {
+        return []
+      },
+      async complete() {
+        throw new Error('not used')
+      },
+      async *completionStream(_options: CompletionOptions): AsyncGenerator<StreamChunk> {
+        callCount += 1
+        yield { type: 'text', content: 'Approved spec executed.' }
+        yield makeFinish()
+      },
+    }
+
+    let resolveApproval:
+      | ((value: { decision: 'approve'; spec?: FormalSpecification }) => void)
+      | undefined
+
+    const runtime = new HarnessRuntime(provider, new Map(), {
+      specEngine: {
+        enabled: true,
+        defaultTier: 'explicit',
+      },
+      onSpecApproval: async ({ spec }) =>
+        await new Promise<{ decision: 'approve'; spec?: FormalSpecification }>((resolve) => {
+          resolveApproval = resolve
+          void spec
+        }),
+    })
+
+    const iterator = runtime.run(
+      'session-1',
+      makeHarnessUserMessage(
+        'session-1',
+        'Build a complete authentication system with Google OAuth, route protection, sessions, audit logging, and an admin dashboard.'
+      )
+    )
+
+    const first = await iterator.next()
+    expect(first.value?.type).toBe('spec_pending_approval')
+    expect(first.value?.spec?.tier).toBe('explicit')
+    expect(callCount).toBe(0)
+
+    const approvalResume = iterator.next()
+    await Promise.resolve()
+    resolveApproval?.({ decision: 'approve', spec: first.value?.spec })
+
+    const events: any[] = []
+    const resumed = await approvalResume
+    if (!resumed.done) {
+      events.push(resumed.value)
+    }
+    for await (const event of iterator) {
+      events.push(event)
+    }
+
+    expect(callCount).toBeGreaterThan(0)
+    expect(events.some((event) => event.type === 'spec_generated')).toBe(true)
+    expect(events.some((event) => event.type === 'complete')).toBe(true)
+    const text = events
+      .filter((event) => event.type === 'text')
+      .map((event) => event.content ?? '')
+      .join('')
+    expect(text).toContain('Approved spec executed.')
   })
 })

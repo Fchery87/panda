@@ -7,11 +7,9 @@ import { FileTabs } from './FileTabs'
 import { ProjectSearchPanel } from './ProjectSearchPanel'
 import { Terminal } from './Terminal'
 import { EditorContainer } from '../editor/EditorContainer'
-import { Preview } from './Preview'
 import { cn } from '@/lib/utils'
 import {
   Code2,
-  Eye,
   FileCode,
   Plus,
   Search,
@@ -128,7 +126,7 @@ function EmptyState({ onCreateFile, onOpenSearch, variant = 'desktop' }: EmptySt
   )
 }
 
-type EditorTab = 'code' | 'preview' | 'timeline'
+type EditorTab = 'code' | 'timeline'
 
 const TERMINAL_STORAGE_KEY = 'panda:terminal-expanded'
 
@@ -324,18 +322,6 @@ export function Workbench({
                   Code
                 </button>
                 <button
-                  onClick={() => setActiveTab('preview')}
-                  className={cn(
-                    'flex min-h-11 items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-widest',
-                    activeTab === 'preview'
-                      ? 'border-b-2 border-primary bg-background text-primary'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  <Eye className="h-3.5 w-3.5" />
-                  Preview
-                </button>
-                <button
                   onClick={() => setActiveTab('timeline')}
                   className={cn(
                     'flex min-h-11 items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-widest',
@@ -365,8 +351,6 @@ export function Workbench({
                       variant="mobile"
                     />
                   )
-                ) : activeTab === 'preview' ? (
-                  <Preview />
                 ) : (
                   <Timeline chatId={currentChatId} />
                 )}
@@ -440,7 +424,7 @@ export function Workbench({
         {/* Main content area - Editor with tabs */}
         <Panel defaultSize={isCompactDesktop ? 84 : 82}>
           <PanelGroup direction="vertical" className="h-full">
-            {/* Editor + Preview (tabbed) */}
+            {/* Editor + Timeline (tabbed) */}
             <Panel defaultSize={isCompactDesktop ? 76 : isTerminalExpanded ? 70 : 100}>
               <div className="surface-0 flex h-full flex-col">
                 {/* File Tabs */}
@@ -474,18 +458,6 @@ export function Workbench({
                     Code
                   </button>
                   <button
-                    onClick={() => setActiveTab('preview')}
-                    className={cn(
-                      'transition-sharp flex items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-widest',
-                      activeTab === 'preview'
-                        ? 'border-b-2 border-primary bg-background text-primary'
-                        : 'text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    <Eye className="h-3.5 w-3.5" />
-                    Preview
-                  </button>
-                  <button
                     onClick={() => setActiveTab('timeline')}
                     className={cn(
                       'transition-sharp flex items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-widest',
@@ -516,8 +488,6 @@ export function Workbench({
                         variant="desktop"
                       />
                     )
-                  ) : activeTab === 'preview' ? (
-                    <Preview />
                   ) : (
                     <Timeline chatId={currentChatId} />
                   )}

@@ -1,0 +1,121 @@
+'use client'
+
+import type { Id } from '@convex/_generated/dataModel'
+import { api } from '@convex/_generated/api'
+import type { ConvexReactClient } from 'convex/react'
+import { executeQueuedJob } from '@/lib/jobs/executeJob'
+
+export type ArtifactAction = {
+  type: 'file_write' | 'command_run'
+  payload: Record<string, unknown>
+}
+
+export type ArtifactRecordStatus = 'pending' | 'in_progress' | 'completed' | 'failed' | 'rejected'
+
+export function inferArtifactJobType(command: string) {
+  const cmdLower = command.toLowerCase()
+  if (cmdLower.includes('build') || cmdLower.includes('compile')) return 'build' as const
+  if (cmdLower.includes('test')) return 'test' as const
+  if (cmdLower.includes('deploy')) return 'deploy' as const
+  if (cmdLower.includes('lint')) return 'lint' as const
+  if (cmdLower.includes('format')) return 'format' as const
+  return 'cli' as const
+}
+
+export function getPrimaryArtifactAction(record: {
+  actions: Array<Record<string, unknown>>
+}): ArtifactAction | null {
+  const action = record.actions?.[0] as ArtifactAction | undefined
+  if (!action || (action.type !== 'file_write' && action.type !== 'command_run')) return null
+  return action
+}
+
+interface ApplyArtifactOptions {
+  artifactId: Id<'artifacts'>
+  action: ArtifactAction
+  projectId: Id<'projects'>
+  convex: ConvexReactClient
+  upsertFile: (args: {
+    id?: Id<'files'>
+    projectId: Id<'projects'>
+    path: string
+    content: string
+    isBinary: boolean
+  }) => Promise<unknown>
+  createAndExecuteJob: (args: {
+    projectId: Id<'projects'>
+    type: 'cli' | 'build' | 'test' | 'deploy' | 'lint' | 'format'
+    command: string
+    workingDirectory?: string
+  }) => Promise<{ jobId: Id<'jobs'> }>
+  updateJobStatus: (
+    jobId: Id<'jobs'>,
+    status: 'running' | 'completed' | 'failed',
+    updates?: {
+      logs?: string[]
+      output?: string
+      error?: string
+      startedAt?: number
+      completedAt?: number
+    }
+  ) => Promise<unknown>
+  updateArtifactStatus: (args: {
+    id: Id<'artifacts'>
+    status: ArtifactRecordStatus
+  }) => Promise<unknown>
+}
+
+export async function applyArtifact({
+  artifactId,
+  action,
+  projectId,
+  convex,
+  upsertFile,
+  createAndExecuteJob,
+  updateJobStatus,
+  updateArtifactStatus,
+}: ApplyArtifactOptions): Promise<{ kind: 'file' | 'command'; description: string }> {
+  await updateArtifactStatus({ id: artifactId, status: 'in_progress' })
+
+  try {
+    if (action.type === 'file_write') {
+      const payload = action.payload as { filePath: string; content: string }
+      const existing = await convex.query(api.files.getByPath, {
+        projectId,
+        path: payload.filePath,
+      })
+
+      await upsertFile({
+        id: existing?._id,
+        projectId,
+        path: payload.filePath,
+        content: payload.content,
+        isBinary: false,
+      })
+
+      await updateArtifactStatus({ id: artifactId, status: 'completed' })
+      return { kind: 'file', description: payload.filePath }
+    }
+
+    const payload = action.payload as { command: string; workingDirectory?: string }
+    const { jobId } = await createAndExecuteJob({
+      projectId,
+      type: inferArtifactJobType(payload.command),
+      command: payload.command,
+      workingDirectory: payload.workingDirectory,
+    })
+
+    await executeQueuedJob({
+      jobId,
+      command: payload.command,
+      workingDirectory: payload.workingDirectory,
+      updateJobStatus,
+    })
+
+    await updateArtifactStatus({ id: artifactId, status: 'completed' })
+    return { kind: 'command', description: payload.command }
+  } catch (error) {
+    await updateArtifactStatus({ id: artifactId, status: 'failed' })
+    throw error
+  }
+}

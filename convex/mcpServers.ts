@@ -1,16 +1,42 @@
-import { query, mutation } from './_generated/server'
+import { query, mutation, type MutationCtx, type QueryCtx } from './_generated/server'
 import { v } from 'convex/values'
 import { requireAuth } from './lib/auth'
+
+async function resolveUserId(ctx: QueryCtx | MutationCtx) {
+  const userId = await requireAuth(ctx)
+  let userIdAsId = ctx.db.normalizeId('users', userId)
+
+  if (!userIdAsId) {
+    const devUser = await ctx.db
+      .query('users')
+      .withIndex('email', (q) => q.eq('email', 'dev@example.com'))
+      .first()
+    if (devUser) {
+      userIdAsId = devUser._id
+    }
+  }
+
+  if (!userIdAsId) {
+    throw new Error('User not found')
+  }
+
+  return userIdAsId
+}
+
+async function assertMcpEnabled(ctx: QueryCtx | MutationCtx) {
+  const adminSettings = await ctx.db.query('adminSettings').order('desc').first()
+  if (adminSettings?.allowUserMCP === false) {
+    throw new Error('MCP servers are disabled by admin policy')
+  }
+}
 
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const userId = await requireAuth(ctx)
-    let userIdAsId = ctx.db.normalizeId('users', userId)
-
-    if (!userIdAsId) {
+    if ((await ctx.db.query('adminSettings').order('desc').first())?.allowUserMCP === false) {
       return []
     }
+    const userIdAsId = await resolveUserId(ctx)
 
     return await ctx.db
       .query('mcpServers')
@@ -29,22 +55,8 @@ export const add = mutation({
     enabled: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const userId = await requireAuth(ctx)
-    let userIdAsId = ctx.db.normalizeId('users', userId)
-
-    if (!userIdAsId) {
-      const devUser = await ctx.db
-        .query('users')
-        .withIndex('email', (q) => q.eq('email', 'dev@example.com'))
-        .first()
-      if (devUser) {
-        userIdAsId = devUser._id
-      }
-    }
-
-    if (!userIdAsId) {
-      throw new Error('User not found')
-    }
+    await assertMcpEnabled(ctx)
+    const userIdAsId = await resolveUserId(ctx)
 
     const now = Date.now()
 
@@ -82,20 +94,12 @@ export const update = mutation({
     enabled: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const userId = await requireAuth(ctx)
+    await assertMcpEnabled(ctx)
+    const userIdAsId = await resolveUserId(ctx)
     const server = await ctx.db.get(args.id)
 
     if (!server) {
       throw new Error('Server not found')
-    }
-
-    let userIdAsId = ctx.db.normalizeId('users', userId)
-    if (!userIdAsId) {
-      const devUser = await ctx.db
-        .query('users')
-        .withIndex('email', (q) => q.eq('email', 'dev@example.com'))
-        .first()
-      if (devUser) userIdAsId = devUser._id
     }
 
     if (server.userId !== userIdAsId) {
@@ -118,20 +122,12 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id('mcpServers') },
   handler: async (ctx, args) => {
-    const userId = await requireAuth(ctx)
+    await assertMcpEnabled(ctx)
+    const userIdAsId = await resolveUserId(ctx)
     const server = await ctx.db.get(args.id)
 
     if (!server) {
       throw new Error('Server not found')
-    }
-
-    let userIdAsId = ctx.db.normalizeId('users', userId)
-    if (!userIdAsId) {
-      const devUser = await ctx.db
-        .query('users')
-        .withIndex('email', (q) => q.eq('email', 'dev@example.com'))
-        .first()
-      if (devUser) userIdAsId = devUser._id
     }
 
     if (server.userId !== userIdAsId) {

@@ -24,6 +24,8 @@ import { mapLatestRunProgressSteps } from '@/components/chat/live-run-utils'
 import { ArtifactPanel } from '@/components/artifacts/ArtifactPanel'
 import { AgentAutomationDialog } from '@/components/projects/AgentAutomationDialog'
 import { MemoryBankEditor } from '@/components/chat/MemoryBankEditor'
+import { SpecDrawer } from '@/components/chat/SpecDrawer'
+import { SpecPanel } from '@/components/plan/SpecPanel'
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -158,8 +160,6 @@ export default function ProjectPage() {
   const [cursorPosition, setCursorPosition] = useState<{ line: number; column: number } | null>(
     null
   )
-  const [isPlanDialogOpen, setIsPlanDialogOpen] = useState(false)
-  const [isDebugDialogOpen, setIsDebugDialogOpen] = useState(false)
   const [isMobileLayout, setIsMobileLayout] = useState(false)
   const [isCompactDesktopLayout, setIsCompactDesktopLayout] = useState(false)
   const [mobilePrimaryPanel, setMobilePrimaryPanel] = useState<'workspace' | 'chat'>('workspace')
@@ -167,6 +167,8 @@ export default function ProjectPage() {
   const [isMobileKeyboardOpen, setIsMobileKeyboardOpen] = useState(false)
   const [isChatInspectorOpen, setIsChatInspectorOpen] = useState(false)
   const [chatInspectorTab, setChatInspectorTab] = useState<'run' | 'memory' | 'evals'>('run')
+  const [isSpecDrawerOpen, setIsSpecDrawerOpen] = useState(false)
+  const [isSpecPanelOpen, setIsSpecPanelOpen] = useState(false)
   const lastAssistantMessageIdRef = useRef<string | null>(null)
   const previousAgentLoadingRef = useRef(false)
 
@@ -252,8 +254,7 @@ export default function ProjectPage() {
     const nextPlanDraft = activeChat?.planDraft ?? ''
     setPlanDraft(nextPlanDraft)
     lastSavedPlanDraftRef.current = nextPlanDraft
-    setPlanUpdatedAt(activeChat?.planUpdatedAt ?? null)
-  }, [activeChat?._id, activeChat?.planDraft, activeChat?.planUpdatedAt])
+  }, [activeChat?._id, activeChat?.planDraft])
 
   // Keep UI/runtime mode aligned with the active chat metadata.
   useEffect(() => {
@@ -281,8 +282,6 @@ export default function ProjectPage() {
 
   // Plan Draft (Claude Code-like plan panel)
   const [planDraft, setPlanDraft] = useState('')
-  const [planUpdatedAt, setPlanUpdatedAt] = useState<number | null>(null)
-  const [isPlanSaving, setIsPlanSaving] = useState(false)
   const lastSavedPlanDraftRef = useRef<string>('')
   const planSaveTimerRef = useRef<number | null>(null)
 
@@ -626,25 +625,17 @@ export default function ProjectPage() {
       const lastSaved = lastSavedPlanDraftRef.current.trim()
       if (trimmed === lastSaved) return
 
-      setIsPlanSaving(true)
       try {
         await updateChatMutation({ id: chatId, planDraft: nextPlanDraft })
         lastSavedPlanDraftRef.current = nextPlanDraft
-        setPlanUpdatedAt(Date.now())
       } catch (error) {
         toast.error('Failed to save plan draft', {
           description: error instanceof Error ? error.message : 'Unknown error',
         })
-      } finally {
-        setIsPlanSaving(false)
       }
     },
     [activeChat?._id, updateChatMutation]
   )
-
-  const savePlanDraftNow = useCallback(() => {
-    void persistPlanDraft(planDraft)
-  }, [persistPlanDraft, planDraft])
 
   // Debounced auto-save for plan draft edits
   useEffect(() => {
@@ -997,8 +988,6 @@ export default function ProjectPage() {
     }
   }, [isMobileLayout])
 
-  const shouldShowInspectorStrip = !isMobileLayout && (isChatInspectorOpen || agent.isLoading)
-
   const chatInspectorTabs = (
     <Tabs
       value={chatInspectorTab}
@@ -1034,6 +1023,8 @@ export default function ProjectPage() {
           tracePersistenceStatus={agent.tracePersistenceStatus}
           onOpenFile={handleFileSelect}
           onOpenArtifacts={() => setIsArtifactPanelOpen(true)}
+          currentSpec={agent.currentSpec}
+          onSpecClick={() => setIsSpecDrawerOpen(true)}
         />
       </TabsContent>
 
@@ -1102,18 +1093,6 @@ export default function ProjectPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="rounded-none border-border font-mono">
-              <DropdownMenuItem
-                onClick={() => setIsPlanDialogOpen(true)}
-                className="rounded-none text-xs uppercase tracking-wide"
-              >
-                Plan
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setIsDebugDialogOpen(true)}
-                className="rounded-none text-xs uppercase tracking-wide"
-              >
-                Debug
-              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => setIsChatInspectorOpen((prev) => !prev)}
                 className="rounded-none text-xs uppercase tracking-wide"
@@ -1204,9 +1183,44 @@ export default function ProjectPage() {
         onVariantChange={setReasoningVariant}
         supportsReasoning={supportsReasoning}
         compactToolbar={true}
+        pendingSpec={agent.pendingSpec}
+        onSpecApprove={agent.approvePendingSpec}
+        onSpecEdit={() => setIsSpecPanelOpen(true)}
+        onSpecCancel={agent.cancelPendingSpec}
       />
 
       <AnimatePresence>
+        {agent.pendingSpec && isSpecPanelOpen ? (
+          <>
+            <motion.button
+              type="button"
+              aria-label="Close spec editor"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsSpecPanelOpen(false)}
+              className="absolute inset-0 z-20 bg-background/55 backdrop-blur-[1px]"
+            />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+              className="shadow-sharp-lg absolute inset-x-0 bottom-0 z-30 max-h-[90vh] border-t border-border bg-background sm:inset-x-3 sm:bottom-3 sm:border"
+            >
+              <SpecPanel
+                spec={agent.pendingSpec}
+                onEdit={agent.updatePendingSpecDraft}
+                onExecute={(spec) => {
+                  agent.approvePendingSpec(spec)
+                  setIsSpecPanelOpen(false)
+                }}
+                onCancel={agent.cancelPendingSpec}
+                onClose={() => setIsSpecPanelOpen(false)}
+              />
+            </motion.div>
+          </>
+        ) : null}
         {isMobileLayout && isChatInspectorOpen ? (
           <>
             <motion.button
@@ -1469,6 +1483,7 @@ export default function ProjectPage() {
               >
                 <Workbench
                   projectId={projectId}
+                  currentChatId={activeChat?._id}
                   files={files}
                   selectedFilePath={selectedFilePath}
                   selectedLocation={selectedFileLocation}
@@ -1534,6 +1549,18 @@ export default function ProjectPage() {
           cursorPosition={cursorPosition}
           isConnected={true}
           isStreaming={agent.isLoading}
+          specEngineEnabled={true}
+          specStatus={agent.currentSpec?.status ?? null}
+          specConstraintsMet={
+            agent.currentSpec?.verificationResults?.filter((result) => result.passed).length
+          }
+          specConstraintsTotal={agent.currentSpec?.intent.acceptanceCriteria.length}
+          onSpecClick={agent.currentSpec ? () => setIsSpecDrawerOpen(true) : undefined}
+        />
+        <SpecDrawer
+          spec={agent.currentSpec}
+          isOpen={isSpecDrawerOpen}
+          onClose={() => setIsSpecDrawerOpen(false)}
         />
       </div>
     </div>

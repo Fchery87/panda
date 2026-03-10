@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useJobs, type Job, type JobStatus } from '@/hooks/useJobs'
 import { toast } from 'sonner'
+import { executeQueuedJob } from '@/lib/jobs/executeJob'
 import type { Id } from '../../../../convex/_generated/dataModel'
 import {
   TerminalSquare,
@@ -309,43 +310,10 @@ export function Terminal({ projectId }: TerminalProps) {
       if (result?.jobId) {
         // Auto-expand the new job
         setExpandedJobs((prev) => new Set(prev).add(result.jobId))
-        const startedAt = Date.now()
-        await updateJobStatus(result.jobId, 'running', {
-          startedAt,
-          logs: [`[${new Date(startedAt).toISOString()}] Running: ${command.trim()}`],
-        })
-
-        const executeResponse = await fetch('/api/jobs/execute', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ command: command.trim() }),
-        })
-
-        if (!executeResponse.ok) {
-          const errorText = await executeResponse.text()
-          await updateJobStatus(result.jobId, 'failed', {
-            completedAt: Date.now(),
-            error: errorText,
-          })
-          throw new Error(errorText)
-        }
-
-        const payload = (await executeResponse.json()) as {
-          stdout: string
-          stderr: string
-          exitCode: number
-          durationMs: number
-          timedOut: boolean
-        }
-
-        await updateJobStatus(result.jobId, payload.exitCode === 0 ? 'completed' : 'failed', {
-          completedAt: Date.now(),
-          output: payload.stdout || undefined,
-          error: payload.stderr || undefined,
-          logs: [
-            `[${new Date(startedAt).toISOString()}] Running: ${command.trim()}`,
-            `[${new Date().toISOString()}] Exit code: ${payload.exitCode}`,
-          ],
+        await executeQueuedJob({
+          jobId: result.jobId,
+          command: command.trim(),
+          updateJobStatus,
         })
       }
 
