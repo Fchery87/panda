@@ -120,3 +120,68 @@ describe('prompt-library — architect brainstorming protocol', () => {
     expect(systemText).toContain('answer directly in plain language')
   })
 })
+
+describe('prompt-library — project overview integration', () => {
+  it('includes project overview when provided', () => {
+    const projectOverview = '## Project Overview\nStack: React, TypeScript\nTotal Files: 42'
+    const messages = getPromptForMode({
+      projectId: 'p',
+      chatId: 'c',
+      userId: 'u',
+      chatMode: 'code',
+      provider: 'openai',
+      userMessage: 'help me',
+      projectOverview,
+    })
+
+    const contextMessages = messages.filter(
+      (m) => m.role === 'system' && m.content.includes('Project Overview')
+    )
+    expect(contextMessages.length).toBeGreaterThan(0)
+    expect(contextMessages[0].content).toContain('## Project Overview')
+    expect(contextMessages[0].content).toContain('Stack: React, TypeScript')
+  })
+
+  it('places overview before memory bank in output order', () => {
+    const projectOverview = 'Project Overview Content'
+    const memoryBank = 'Memory Bank Content'
+
+    const messages = getPromptForMode({
+      projectId: 'p',
+      chatId: 'c',
+      userId: 'u',
+      chatMode: 'code',
+      provider: 'openai',
+      userMessage: 'help me',
+      projectOverview,
+      memoryBank,
+    })
+
+    const contextMessages = messages.filter(
+      (m) => m.role === 'system' && m.content.includes('## Project')
+    )
+    expect(contextMessages.length).toBeGreaterThan(0)
+
+    const content = contextMessages[0].content
+    const overviewIndex = content.indexOf('## Project Overview')
+    const memoryBankIndex = content.indexOf('## Project Memory Bank')
+
+    expect(overviewIndex).toBeGreaterThan(-1)
+    expect(memoryBankIndex).toBeGreaterThan(-1)
+    expect(overviewIndex).toBeLessThan(memoryBankIndex)
+  })
+
+  it('omits overview section when not provided', () => {
+    const messages = getPromptForMode({
+      projectId: 'p',
+      chatId: 'c',
+      userId: 'u',
+      chatMode: 'code',
+      provider: 'openai',
+      userMessage: 'help me',
+    })
+
+    const allContent = messages.map((m) => m.content).join('\n')
+    expect(allContent).not.toContain('## Project Overview')
+  })
+})

@@ -251,6 +251,19 @@ export default defineSchema({
     .index('by_run_sequence', ['runId', 'sequence'])
     .index('by_chat_created', ['chatId', 'createdAt']),
 
+  // 11a. SessionSummaries table - structured session handoff summaries
+  sessionSummaries: defineTable({
+    projectId: v.id('projects'),
+    chatId: v.id('chats'),
+    summary: v.string(),
+    structured: v.optional(v.record(v.string(), v.any())),
+    tokenCount: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index('by_project', ['projectId'])
+    .index('by_chat', ['chatId'])
+    .index('by_project_created', ['projectId', 'createdAt']),
+
   // 12. Harness runtime checkpoints table - durable runtime resume snapshots
   harnessRuntimeCheckpoints: defineTable({
     projectId: v.id('projects'),

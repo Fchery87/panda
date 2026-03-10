@@ -9,11 +9,22 @@ import { Terminal } from './Terminal'
 import { EditorContainer } from '../editor/EditorContainer'
 import { Preview } from './Preview'
 import { cn } from '@/lib/utils'
-import { Code2, Eye, FileCode, Plus, Search, History } from 'lucide-react'
+import {
+  Code2,
+  Eye,
+  FileCode,
+  Plus,
+  Search,
+  History,
+  Terminal as TerminalIcon,
+  ChevronUp,
+  Minimize2,
+} from 'lucide-react'
 import type { Id } from '@convex/_generated/dataModel'
 import { Button } from '@/components/ui/button'
 import { Timeline } from './Timeline'
 import { SpecHistory } from './SpecHistory'
+import { ActivityBar, useActivityBarState } from './ActivityBar'
 
 interface OpenFileTab {
   path: string
@@ -118,7 +129,8 @@ function EmptyState({ onCreateFile, onOpenSearch, variant = 'desktop' }: EmptySt
 }
 
 type EditorTab = 'code' | 'preview' | 'timeline'
-type SidebarTab = 'explorer' | 'search' | 'specs'
+
+const TERMINAL_STORAGE_KEY = 'panda:terminal-expanded'
 
 export function Workbench({
   projectId,
@@ -135,11 +147,35 @@ export function Workbench({
   onSaveFile,
 }: WorkbenchProps) {
   const [activeTab, setActiveTab] = useState<EditorTab>('code')
-  const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>('explorer')
+  const {
+    activeTab: activeSidebarTab,
+    isExpanded: isSidebarExpanded,
+    handleTabChange: handleSidebarTabChange,
+    handleToggleExpand: handleToggleSidebar,
+  } = useActivityBarState()
   const [mobilePanel, setMobilePanel] = useState<'files' | 'editor' | 'terminal'>('editor')
   const [isMobile, setIsMobile] = useState(false)
   const [isCompactDesktop, setIsCompactDesktop] = useState(false)
+  const [isTerminalExpanded, setIsTerminalExpanded] = useState(() => {
+    if (typeof window === 'undefined') return false
+    const stored = localStorage.getItem(TERMINAL_STORAGE_KEY)
+    return stored === 'true'
+  })
   const selectedFile = selectedFilePath ? files.find((f) => f.path === selectedFilePath) : undefined
+
+  // Persist terminal state to localStorage
+  useEffect(() => {
+    localStorage.setItem(TERMINAL_STORAGE_KEY, String(isTerminalExpanded))
+  }, [isTerminalExpanded])
+
+  // Listen for terminal toggle event from page.tsx
+  useEffect(() => {
+    const handleToggleTerminal = () => {
+      setIsTerminalExpanded((prev) => !prev)
+    }
+    window.addEventListener('panda:toggle-terminal', handleToggleTerminal)
+    return () => window.removeEventListener('panda:toggle-terminal', handleToggleTerminal)
+  }, [])
 
   useEffect(() => {
     const mobileMedia = window.matchMedia('(max-width: 1023px)')
@@ -211,7 +247,7 @@ export function Workbench({
               <div className="flex border-b border-border">
                 <button
                   type="button"
-                  onClick={() => setActiveSidebarTab('explorer')}
+                  onClick={() => handleSidebarTabChange('explorer')}
                   className={cn(
                     'min-h-11 flex-1 border-r border-border px-2 py-2 font-mono text-xs uppercase tracking-widest',
                     activeSidebarTab === 'explorer'
@@ -223,7 +259,7 @@ export function Workbench({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setActiveSidebarTab('search')}
+                  onClick={() => handleSidebarTabChange('search')}
                   className={cn(
                     'min-h-11 flex-1 border-r border-border px-2 py-2 font-mono text-xs uppercase tracking-widest',
                     activeSidebarTab === 'search'
@@ -235,7 +271,7 @@ export function Workbench({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setActiveSidebarTab('specs')}
+                  onClick={() => handleSidebarTabChange('specs')}
                   className={cn(
                     'min-h-11 flex-1 px-2 py-2 font-mono text-xs uppercase tracking-widest',
                     activeSidebarTab === 'specs'
@@ -325,7 +361,7 @@ export function Workbench({
                   ) : (
                     <EmptyState
                       onCreateFile={onCreateFile}
-                      onOpenSearch={() => setActiveSidebarTab('search')}
+                      onOpenSearch={() => handleSidebarTabChange('search')}
                       variant="mobile"
                     />
                   )
@@ -355,87 +391,57 @@ export function Workbench({
 
   return (
     <div className="surface-0 h-full w-full">
-      <PanelGroup direction="horizontal" className="h-full">
-        {/* Left sidebar - File Explorer */}
-        <Panel
-          defaultSize={isCompactDesktop ? 16 : 18}
-          minSize={15}
-          maxSize={30}
-          className="surface-1 border-r border-border"
-        >
-          <div className="flex h-full flex-col">
-            <div className="flex border-b border-border">
-              <button
-                type="button"
-                onClick={() => setActiveSidebarTab('explorer')}
-                className={cn(
-                  'transition-sharp flex-1 border-r border-border px-2 py-1.5 font-mono text-xs uppercase tracking-widest',
-                  activeSidebarTab === 'explorer'
-                    ? 'bg-surface-2 text-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                Explorer
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveSidebarTab('search')}
-                className={cn(
-                  'transition-sharp flex-1 border-r border-border px-2 py-1.5 font-mono text-xs uppercase tracking-widest',
-                  activeSidebarTab === 'search'
-                    ? 'bg-surface-2 text-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                Search
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveSidebarTab('specs')}
-                className={cn(
-                  'transition-sharp flex-1 px-2 py-1.5 font-mono text-xs uppercase tracking-widest',
-                  activeSidebarTab === 'specs'
-                    ? 'bg-surface-2 text-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                Specs
-              </button>
-            </div>
+      <PanelGroup direction="horizontal" className="h-full" autoSaveId="panda-workbench-inner">
+        {/* Activity Bar + Sidebar */}
+        <div className="flex h-full">
+          <ActivityBar
+            activeTab={activeSidebarTab}
+            isExpanded={isSidebarExpanded}
+            onTabChange={handleSidebarTabChange}
+            onToggleExpand={handleToggleSidebar}
+          />
 
-            {/* Content */}
-            <div className="scrollbar-thin flex-1 overflow-auto">
-              {activeSidebarTab === 'explorer' ? (
-                <FileTree
-                  files={files.map((f) => ({
-                    _id: f._id,
-                    path: f.path,
-                    content: f.content ?? '',
-                    isBinary: f.isBinary,
-                    updatedAt: f.updatedAt,
-                  }))}
-                  selectedPath={selectedFilePath}
-                  onSelect={onSelectFile}
-                  onCreate={onCreateFile}
-                  onRename={onRenameFile}
-                  onDelete={onDeleteFile}
-                />
-              ) : activeSidebarTab === 'search' ? (
-                <ProjectSearchPanel onSelectFile={onSelectFile} />
-              ) : (
-                <SpecHistory projectId={projectId} />
-              )}
-            </div>
-          </div>
-        </Panel>
-
-        <VerticalResizeHandle />
+          {isSidebarExpanded && (
+            <>
+              <Panel
+                defaultSize={isCompactDesktop ? 16 : 18}
+                minSize={15}
+                maxSize={30}
+                className="surface-1 border-r border-border"
+              >
+                <div className="h-full overflow-auto">
+                  {activeSidebarTab === 'explorer' ? (
+                    <FileTree
+                      files={files.map((f) => ({
+                        _id: f._id,
+                        path: f.path,
+                        content: f.content ?? '',
+                        isBinary: f.isBinary,
+                        updatedAt: f.updatedAt,
+                      }))}
+                      selectedPath={selectedFilePath}
+                      onSelect={onSelectFile}
+                      onCreate={onCreateFile}
+                      onRename={onRenameFile}
+                      onDelete={onDeleteFile}
+                    />
+                  ) : activeSidebarTab === 'search' ? (
+                    <ProjectSearchPanel onSelectFile={onSelectFile} />
+                  ) : (
+                    <SpecHistory projectId={projectId} />
+                  )}
+                </div>
+              </Panel>
+              <VerticalResizeHandle />
+            </>
+          )}
+        </div>
 
         {/* Main content area - Editor with tabs */}
         <Panel defaultSize={isCompactDesktop ? 84 : 82}>
           <PanelGroup direction="vertical" className="h-full">
             {/* Editor + Preview (tabbed) */}
-            <Panel defaultSize={isCompactDesktop ? 76 : 70}>
+            <Panel defaultSize={isCompactDesktop ? 76 : isTerminalExpanded ? 70 : 100}>
               <div className="surface-0 flex h-full flex-col">
                 {/* File Tabs */}
                 {openTabs.length > 0 && (
@@ -506,7 +512,7 @@ export function Workbench({
                     ) : (
                       <EmptyState
                         onCreateFile={onCreateFile}
-                        onOpenSearch={() => setActiveSidebarTab('search')}
+                        onOpenSearch={() => handleSidebarTabChange('search')}
                         variant="desktop"
                       />
                     )
@@ -519,16 +525,55 @@ export function Workbench({
               </div>
             </Panel>
 
-            <HorizontalResizeHandle />
-
-            {/* Terminal */}
-            <Panel
-              defaultSize={isCompactDesktop ? 24 : 30}
-              minSize={isCompactDesktop ? 12 : 15}
-              className="border-t border-border"
-            >
-              <Terminal projectId={projectId} />
-            </Panel>
+            {/* Terminal - Collapsible */}
+            {isTerminalExpanded ? (
+              <>
+                <HorizontalResizeHandle />
+                <Panel
+                  defaultSize={isCompactDesktop ? 24 : 30}
+                  minSize={isCompactDesktop ? 12 : 15}
+                  className="border-t border-border"
+                >
+                  <div className="flex h-full flex-col">
+                    {/* Terminal Header with Minimize Button */}
+                    <div className="surface-1 flex h-8 shrink-0 items-center justify-between border-b border-border px-3">
+                      <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
+                        <TerminalIcon className="h-3.5 w-3.5" />
+                        <span>Terminal</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsTerminalExpanded(false)}
+                        className="flex h-6 w-6 items-center justify-center rounded-none text-muted-foreground hover:text-foreground"
+                        title="Minimize terminal"
+                        aria-label="Minimize terminal"
+                      >
+                        <Minimize2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      <Terminal projectId={projectId} />
+                    </div>
+                  </div>
+                </Panel>
+              </>
+            ) : (
+              <div className="surface-1 flex h-8 shrink-0 items-center justify-between border-t border-border px-3">
+                <button
+                  type="button"
+                  onClick={() => setIsTerminalExpanded(true)}
+                  className="flex items-center gap-2 font-mono text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <ChevronUp className="h-3.5 w-3.5" />
+                  <TerminalIcon className="h-3.5 w-3.5" />
+                  <span>Terminal</span>
+                </button>
+                <span className="font-mono text-[10px] text-muted-foreground/50">
+                  <kbd className="rounded-none bg-muted px-1">Ctrl</kbd>+
+                  <kbd className="rounded-none bg-muted px-1">`</kbd>
+                </span>
+              </div>
+            )}
           </PanelGroup>
         </Panel>
       </PanelGroup>

@@ -81,6 +81,8 @@ export interface PromptContext {
   projectDescription?: string
   /** Persistent project-level memory bank content (MEMORY_BANK.md) */
   memoryBank?: string
+  /** Auto-generated project overview for context injection */
+  projectOverview?: string
   files?: Array<{
     path: string
     content?: string
@@ -256,6 +258,9 @@ export function getPromptForMode(context: PromptContext): CompletionMessage[] {
   }
   if (context.projectDescription) {
     contextContent += `Description: ${context.projectDescription}\n`
+  }
+  if (context.projectOverview) {
+    contextContent += `\n## Project Overview\n${context.projectOverview}\n`
   }
   if (context.memoryBank) {
     contextContent += `\n## Project Memory Bank\n${context.memoryBank}\n`

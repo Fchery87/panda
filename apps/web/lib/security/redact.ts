@@ -2,7 +2,7 @@
  * Redaction Utility - Prevents leaking sensitive info in logs and responses
  */
 
-const PATH_REGEX = /(\/|[a-zA-Z]:\\)(?:[\w.-]+[\/\\]?)+/g
+const PATH_REGEX = /(\/|[a-zA-Z]:\\)(?:[\w.-]+[/\\]?)+/g
 const STACK_FRAME_REGEX = /^\s*at\s+.*$/m
 
 /**
@@ -16,7 +16,7 @@ export function redactError(message: string | undefined): string {
   // 1. Redact absolute file paths (common in stack traces and build errors)
   // We keep the last part of the path if it looks like a filename for debugging
   redacted = redacted.replace(PATH_REGEX, (match) => {
-    const parts = match.split(/[\/\\]/)
+    const parts = match.split(/[/\\]/)
     const lastPart = parts[parts.length - 1]
     if (lastPart && (lastPart.includes('.') || lastPart.length > 3)) {
       return `.../${lastPart}`

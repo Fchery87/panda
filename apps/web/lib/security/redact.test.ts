@@ -39,6 +39,7 @@ describe('Security Redaction Utility', () => {
       const result = redactError(input)
       // Note: redact.ts needs to be aware of the secret.
       // In the implementation I added some common keys.
+      expect(result).not.toContain('SUPER_SECRET_KEY_123')
     })
   })
 

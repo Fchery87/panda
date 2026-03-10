@@ -6,6 +6,11 @@ import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
+  generateStructuredSummary,
+  formatSummaryForHandoff,
+  type ChatMessage,
+} from '@/lib/agent/context/session-summary'
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -189,20 +194,22 @@ export function ContextWindowIndicator({
   )
 }
 
-function generateSummary(history: { role: string; content: string }[]): string {
+function generateSummary(
+  history: {
+    role: string
+    content: string
+    toolCalls?: Array<{ name: string; args: Record<string, unknown>; output?: string }>
+  }[]
+): string {
   if (history.length === 0) return 'No conversation history'
 
-  // Extract last 3 assistant messages for summary
-  const assistantMessages = history.filter((msg) => msg.role === 'assistant').slice(-3)
+  // Convert to ChatMessage format
+  const messages: ChatMessage[] = history.map((msg) => ({
+    role: msg.role as 'user' | 'assistant' | 'tool',
+    content: msg.content,
+    toolCalls: msg.toolCalls,
+  }))
 
-  if (assistantMessages.length === 0) return 'No assistant messages'
-
-  const keyPoints = assistantMessages
-    .map(
-      (msg, i) =>
-        `--- Message ${i + 1} ---\n${msg.content.slice(0, 300)}${msg.content.length > 300 ? '...' : ''}`
-    )
-    .join('\n\n')
-
-  return `Previous session context:\n\n${keyPoints}`
+  const summary = generateStructuredSummary({ messages })
+  return formatSummaryForHandoff(summary)
 }

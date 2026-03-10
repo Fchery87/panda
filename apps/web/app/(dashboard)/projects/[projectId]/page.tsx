@@ -24,8 +24,7 @@ import { mapLatestRunProgressSteps } from '@/components/chat/live-run-utils'
 import { ArtifactPanel } from '@/components/artifacts/ArtifactPanel'
 import { AgentAutomationDialog } from '@/components/projects/AgentAutomationDialog'
 import { MemoryBankEditor } from '@/components/chat/MemoryBankEditor'
-import { ShareButton } from '@/components/chat/ShareButton'
-import { ChatHistoryActions } from '@/components/chat/ChatHistoryActions'
+
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -35,43 +34,36 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
+
 import {
   PanelRight,
   PanelRightClose,
   ChevronLeft,
-  ChevronDown,
   Bot,
   RotateCcw,
   AlertTriangle,
   Layers,
   MoreHorizontal,
   Activity,
-  Brain,
-  FlaskConical,
   Settings2,
   X,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
+// UI Components
+import { PandaLogo } from '@/components/ui/panda-logo'
+
 // New UX Components
 import { CommandPalette } from '@/components/command-palette/CommandPalette'
 import { ContextWindowIndicator } from '@/components/chat/ContextWindowIndicator'
-import { PlanPanel } from '@/components/plan'
 
 // Hooks
 import { useJobs } from '@/hooks/useJobs'
 import { useAgent } from '@/hooks/useAgent'
 import { useAutoApplyArtifacts } from '@/hooks/useAutoApplyArtifacts'
 import { useSpecDriftDetection } from '@/hooks/useSpecDriftDetection'
+import { useLayoutPersistence } from '@/hooks/useLayoutPersistence'
 
 import type { Message } from '@/components/chat/types'
 import { buildMessageWithPlanDraft, deriveNextPlanDraft } from '@/lib/chat/planDraft'
@@ -155,7 +147,7 @@ export default function ProjectPage() {
 
   // UI State
   const [isArtifactPanelOpen, setIsArtifactPanelOpen] = useState(false)
-  const [isChatPanelOpen, setIsChatPanelOpen] = useState(true)
+  const { isChatPanelOpen, setIsChatPanelOpen } = useLayoutPersistence()
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
   const [selectedFileLocation, setSelectedFileLocation] = useState<{
     line: number
@@ -221,9 +213,25 @@ export default function ProjectPage() {
         e.preventDefault()
         setIsArtifactPanelOpen((prev) => !prev)
       }
+      // Terminal toggle: Ctrl+`
+      if ((e.metaKey || e.ctrlKey) && e.key === '`') {
+        e.preventDefault()
+        // Dispatch custom event for Workbench to handle
+        window.dispatchEvent(new CustomEvent('panda:toggle-terminal'))
+      }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [setIsChatPanelOpen])
+
+  // Listen for share dialog open event
+  useEffect(() => {
+    const handleOpenShare = () => {
+      // TODO: Implement share dialog
+      toast.info('Share feature coming soon')
+    }
+    window.addEventListener('panda:open-share', handleOpenShare)
+    return () => window.removeEventListener('panda:open-share', handleOpenShare)
   }, [])
 
   useEffect(() => {
@@ -410,6 +418,8 @@ export default function ProjectPage() {
   const agent = useAgent({
     chatId: activeChat?._id as Id<'chats'>,
     projectId,
+    projectName: project?.name,
+    projectDescription: project?.description,
     mode: chatMode,
     architectBrainstormEnabled,
     provider: provider ?? FALLBACK_PROVIDER, // Stable fallback - checked before use
@@ -1054,7 +1064,7 @@ export default function ProjectPage() {
         isMobileLayout ? 'border-t' : 'border-l'
       )}
     >
-      {/* Chat Header */}
+      {/* Chat Header - Decluttered */}
       <div className="panel-header flex items-center gap-2 max-sm:flex-wrap" data-number="04">
         <Bot className="h-3.5 w-3.5 text-primary" />
         <span>Chat</span>
@@ -1066,11 +1076,6 @@ export default function ProjectPage() {
           />
         </div>
         <div className="scrollbar-thin ml-auto flex items-center gap-1.5 max-sm:ml-0 max-sm:w-full max-sm:flex-nowrap max-sm:justify-end max-sm:overflow-x-auto max-sm:border-t max-sm:border-border max-sm:pt-2">
-          {agent.status !== 'idle' && agent.status !== 'complete' && agent.status !== 'error' && (
-            <span className="text-xs capitalize text-muted-foreground">
-              {agent.status.replace('_', ' ')}
-            </span>
-          )}
           {agent.isLoading && (
             <button
               type="button"
@@ -1088,155 +1093,50 @@ export default function ProjectPage() {
               <span className="sm:hidden">Run</span>
             </button>
           )}
-          <Dialog open={isPlanDialogOpen} onOpenChange={setIsPlanDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 rounded-none font-mono text-xs">
+
+          {/* Overflow Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-7 w-7 rounded-none p-0">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="rounded-none border-border font-mono">
+              <DropdownMenuItem
+                onClick={() => setIsPlanDialogOpen(true)}
+                className="rounded-none text-xs uppercase tracking-wide"
+              >
                 Plan
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="rounded-none border-border p-0 sm:max-w-2xl">
-              <DialogHeader className="sr-only">
-                <DialogTitle>Plan Draft</DialogTitle>
-              </DialogHeader>
-              <PlanPanel
-                planDraft={planDraft}
-                onChange={setPlanDraft}
-                onSave={savePlanDraftNow}
-                isSaving={isPlanSaving}
-                lastSavedAt={planUpdatedAt}
-              />
-            </DialogContent>
-          </Dialog>
-          <Dialog open={isDebugDialogOpen} onOpenChange={setIsDebugDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 rounded-none font-mono text-xs">
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setIsDebugDialogOpen(true)}
+                className="rounded-none text-xs uppercase tracking-wide"
+              >
                 Debug
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="rounded-none border-border sm:max-w-2xl">
-              <DialogHeader>
-                <DialogTitle className="font-mono text-sm uppercase tracking-wide">
-                  Run Progress
-                </DialogTitle>
-                <DialogDescription>
-                  Detailed run events for troubleshooting and tool-level inspection.
-                </DialogDescription>
-              </DialogHeader>
-              <RunProgressPanel
-                chatId={activeChat?._id}
-                defaultOpen={true}
-                tracePersistenceStatus={agent.tracePersistenceStatus}
-              />
-            </DialogContent>
-          </Dialog>
-          <Button
-            variant={isChatInspectorOpen ? 'secondary' : 'ghost'}
-            size="sm"
-            className="h-7 shrink-0 gap-1 rounded-none font-mono text-xs"
-            onClick={() => setIsChatInspectorOpen((prev) => !prev)}
-            title="Toggle inspector"
-          >
-            <Settings2 className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Inspector</span>
-          </Button>
-          {activeChat?._id && <ShareButton chatId={activeChat._id} />}
-          {activeChat?._id && (
-            <ChatHistoryActions chatId={activeChat._id} messageCount={chatMessages.length} />
-          )}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setIsChatInspectorOpen((prev) => !prev)}
+                className="rounded-none text-xs uppercase tracking-wide"
+              >
+                Inspector
+              </DropdownMenuItem>
+              {activeChat?._id && (
+                <DropdownMenuItem
+                  className="rounded-none text-xs uppercase tracking-wide"
+                  onClick={() => window.dispatchEvent(new CustomEvent('panda:open-share'))}
+                >
+                  Share
+                </DropdownMenuItem>
+              )}
+              {activeChat?._id && (
+                <DropdownMenuItem className="rounded-none text-xs uppercase tracking-wide">
+                  History ({chatMessages.length})
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
-
-      {shouldShowInspectorStrip ? (
-        <div className="surface-2 border-b border-border px-3 py-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant={isChatInspectorOpen ? 'secondary' : 'outline'}
-              size="sm"
-              onClick={() => setIsChatInspectorOpen((prev) => !prev)}
-              className="h-7 gap-1.5 rounded-none font-mono text-xs uppercase tracking-wide"
-            >
-              <Settings2 className="h-3.5 w-3.5" />
-              Inspector
-              <ChevronDown
-                className={cn(
-                  'h-3.5 w-3.5 transition-transform',
-                  isChatInspectorOpen && 'rotate-180'
-                )}
-              />
-            </Button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setChatInspectorTab('run')
-                setIsChatInspectorOpen(true)
-              }}
-              className={cn(
-                'flex items-center gap-1.5 border px-2 py-1 font-mono text-[11px] uppercase tracking-wide',
-                chatInspectorTab === 'run' && isChatInspectorOpen
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-border text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <Activity
-                className={cn('h-3 w-3', agent.isLoading && 'animate-pulse text-primary')}
-              />
-              Run
-              {agent.isLoading ? (
-                <span className="text-primary">
-                  {liveRunSteps.length > 0 ? `(${liveRunSteps.length})` : '(live)'}
-                </span>
-              ) : null}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setChatInspectorTab('memory')
-                setIsChatInspectorOpen(true)
-              }}
-              className={cn(
-                'flex items-center gap-1.5 border px-2 py-1 font-mono text-[11px] uppercase tracking-wide',
-                chatInspectorTab === 'memory' && isChatInspectorOpen
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-border text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <Brain className="h-3 w-3" />
-              Memory
-              {agent.memoryBank?.trim() ? <span className="text-primary">(active)</span> : null}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setChatInspectorTab('evals')
-                setIsChatInspectorOpen(true)
-              }}
-              className={cn(
-                'flex items-center gap-1.5 border px-2 py-1 font-mono text-[11px] uppercase tracking-wide',
-                chatInspectorTab === 'evals' && isChatInspectorOpen
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-border text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <FlaskConical className="h-3 w-3" />
-              Evals
-            </button>
-
-            <span className="ml-auto hidden font-mono text-[11px] text-muted-foreground xl:inline">
-              {agent.isLoading
-                ? `Running • ${liveRunSteps.length} live events`
-                : 'Conversation focus'}
-            </span>
-          </div>
-        </div>
-      ) : null}
-
-      {isChatInspectorOpen && !isMobileLayout ? (
-        <div className="surface-2 border-b border-border px-3 py-2">{chatInspectorTabs}</div>
-      ) : null}
 
       {inlineRateLimitError ? (
         <div className="px-3 pb-2">
@@ -1265,13 +1165,26 @@ export default function ProjectPage() {
         </div>
       ) : null}
 
-      {/* Messages */}
-      <div className="flex-1 overflow-hidden">
-        <MessageList
-          messages={chatMessages}
-          isStreaming={agent.isLoading}
-          onSuggestedAction={handleSuggestedAction}
-        />
+      {/* Messages + Inspector Split */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <PanelGroup direction="vertical" className="flex-1">
+          <Panel defaultSize={isChatInspectorOpen ? 70 : 100} minSize={30}>
+            <MessageList
+              messages={chatMessages}
+              isStreaming={agent.isLoading}
+              onSuggestedAction={handleSuggestedAction}
+            />
+          </Panel>
+
+          {isChatInspectorOpen && !isMobileLayout && (
+            <>
+              <PanelResizeHandle className="h-px bg-border transition-colors hover:bg-primary" />
+              <Panel defaultSize={30} minSize={15} className="surface-2 border-t border-border">
+                {chatInspectorTabs}
+              </Panel>
+            </>
+          )}
+        </PanelGroup>
       </div>
 
       {/* Input */}
@@ -1358,23 +1271,31 @@ export default function ProjectPage() {
   }
 
   return (
-    <div className="fixed inset-0 top-14 z-10 flex flex-col overflow-hidden bg-background">
-      {/* Top Bar */}
+    <div className="fixed inset-0 top-0 z-10 flex flex-col overflow-hidden bg-background">
+      {/* Top Bar - Unified Header */}
       <motion.div
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         className="surface-1 flex h-14 shrink-0 items-center justify-between border-b border-border px-4"
       >
         <div className="flex min-w-0 flex-1 items-center gap-2">
+          {/* Panda Logo + Home Link */}
+          <Link href="/" className="flex shrink-0 items-center">
+            <PandaLogo size="md" variant="icon" />
+          </Link>
+
+          <div className="h-6 w-px bg-border" />
+
           <Link href="/projects" className="shrink-0">
             <Button
               variant="ghost"
-              size="icon"
-              className="h-9 w-9 rounded-none"
+              size="sm"
+              className="h-9 gap-1 rounded-none font-mono text-xs"
               aria-label="Back to projects"
               title="Back to projects"
             >
               <ChevronLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">Projects</span>
             </Button>
           </Link>
 
@@ -1536,7 +1457,11 @@ export default function ProjectPage() {
               )}
             </div>
           ) : (
-            <PanelGroup direction="horizontal" className="h-full">
+            <PanelGroup
+              direction="horizontal"
+              className="h-full"
+              autoSaveId="panda-workbench-outer"
+            >
               <Panel
                 defaultSize={isChatPanelOpen ? (isCompactDesktopLayout ? 64 : 70) : 100}
                 minSize={40}

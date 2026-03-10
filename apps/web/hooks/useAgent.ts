@@ -36,6 +36,11 @@ import { normalizeChatMode, type PromptContext, type ChatMode } from '../lib/age
 import { plugins, specTrackingPlugin } from '../lib/agent/harness/plugins'
 import { appLog } from '@/lib/logger'
 import { toast } from 'sonner'
+import {
+  generateRepoOverview,
+  formatOverviewForPrompt,
+  type FileInfo,
+} from '../lib/agent/context/repo-overview'
 
 /**
  * Agent status type
@@ -169,6 +174,8 @@ function logUseAgentError(message: string, error: unknown): void {
 interface UseAgentOptions {
   chatId: Id<'chats'>
   projectId: Id<'projects'>
+  projectName?: string
+  projectDescription?: string
   mode: ChatMode
   provider: LLMProvider
   model?: string
@@ -228,6 +235,9 @@ interface UseAgentReturn {
   memoryBank: string | null | undefined
   updateMemoryBank: (content: string) => Promise<void>
 
+  // Project overview (computed on-demand, not stored as file)
+  projectOverview: string | null | undefined
+
   // Actions
   sendMessage: (content: string, contextFiles?: string[]) => Promise<void>
   runEvalScenario: (scenario: {
@@ -264,6 +274,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const {
     chatId,
     projectId,
+    projectName,
+    projectDescription,
     mode,
     provider,
     model = 'gpt-4o',
@@ -294,6 +306,40 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     projectId ? { projectId: projectId as Id<'projects'> } : 'skip'
   )
   const updateMemoryBankMutation = useMutation(api.memoryBank.update)
+
+  // Session summaries for context handoffs
+  const latestSessionSummary = useQuery(
+    api.sessionSummaries.getLatest,
+    projectId ? { projectId: projectId as Id<'projects'> } : 'skip'
+  )
+  const saveSessionSummaryMutation = useMutation(api.sessionSummaries.save)
+
+  // Project files for overview generation
+  const projectFiles = useQuery(
+    api.files.list,
+    projectId ? { projectId: projectId as Id<'projects'> } : 'skip'
+  )
+
+  // Project overview - computed on-demand, not stored as file
+  const projectOverviewContent = useMemo(() => {
+    if (!projectFiles || !projectName || projectFiles.length === 0) {
+      return null
+    }
+
+    try {
+      const fileInfos: FileInfo[] = projectFiles.map((f) => ({
+        path: f.path,
+        content: f.content,
+        updatedAt: f.updatedAt,
+      }))
+
+      const overview = generateRepoOverview(fileInfos, projectName, projectDescription)
+      return formatOverviewForPrompt(overview)
+    } catch (err) {
+      appLog.warn('[useAgent] Failed to generate project overview:', err)
+      return null
+    }
+  }, [projectFiles, projectName, projectDescription])
 
   // Artifact store
   const pendingArtifactRecords = useQuery(api.artifacts.list, chatId ? { chatId } : 'skip')
@@ -614,14 +660,39 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   }, [flushRunEventBuffer])
 
   // Clear messages
-  const clear = useCallback(() => {
+  const clear = useCallback(async () => {
+    // Save session summary before clearing
+    if (projectId && chatId && messages.length > 0) {
+      try {
+        const { generateStructuredSummary, formatSummaryForHandoff } =
+          await import('../lib/agent/context/session-summary')
+        const chatMessages = messages.map((msg) => ({
+          role: msg.role,
+          content: msg.content,
+          toolCalls: msg.toolCalls,
+        }))
+        const summary = generateStructuredSummary({ messages: chatMessages })
+        const formattedSummary = formatSummaryForHandoff(summary)
+
+        await saveSessionSummaryMutation({
+          projectId: projectId as Id<'projects'>,
+          chatId: chatId as Id<'chats'>,
+          summary: formattedSummary,
+          structured: summary as unknown as Record<string, unknown>,
+          tokenCount: formattedSummary.length / 4, // Rough token estimate
+        })
+      } catch (err) {
+        appLog.warn('[useAgent] Failed to save session summary:', err)
+      }
+    }
+
     setMessages([])
     setToolCalls([])
     setProgressSteps([])
     setError(null)
     setCurrentIteration(0)
     setCurrentRunUsage(undefined)
-  }, [])
+  }, [projectId, chatId, messages, saveSessionSummaryMutation])
 
   // Handle input change
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -823,11 +894,14 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           projectId,
           chatId,
           userId,
+          projectName,
+          projectDescription,
           chatMode: mode,
           // Use the configured provider type (e.g. "zai") rather than the
           // implementation class name (e.g. "openai-compatible").
           provider: provider?.config?.provider || 'openai',
           previousMessages: previousMessagesSnapshot,
+          projectOverview: projectOverviewContent ?? undefined,
           memoryBank: memoryBankContent ?? undefined,
           userMessage:
             contextFiles && contextFiles.length > 0
@@ -1352,6 +1426,9 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       contextWindowResolution.contextWindow,
       contextWindowResolution.source,
       memoryBankContent,
+      projectName,
+      projectDescription,
+      projectOverviewContent,
     ]
   )
 
@@ -1408,9 +1485,12 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         projectId,
         chatId,
         userId,
+        projectName,
+        projectDescription,
         chatMode: scenarioMode,
         provider: provider.config?.provider || 'openai',
         previousMessages: [],
+        projectOverview: projectOverviewContent ?? undefined,
         memoryBank: memoryBankContent ?? undefined,
         userMessage: textInput,
         customInstructions: architectBrainstormEnabled
@@ -1436,6 +1516,9 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       mode,
       memoryBankContent,
       architectBrainstormEnabled,
+      projectName,
+      projectDescription,
+      projectOverviewContent,
     ]
   )
 
@@ -1462,6 +1545,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       if (!projectId) return
       await updateMemoryBankMutation({ projectId: projectId as Id<'projects'>, content })
     },
+    projectOverview: projectOverviewContent,
     sendMessage,
     runEvalScenario,
     handleSubmit,
