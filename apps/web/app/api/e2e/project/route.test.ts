@@ -114,4 +114,45 @@ describe('/api/e2e/project route', () => {
       restoreEnv()
     }
   })
+
+  test('seeds a chat, file, and runtime checkpoint when requested', async () => {
+    setTestEnv()
+    queryResult = [{ _id: 'project-existing', name: 'Workbench E2E Fixture' }]
+    mutationResult = 'checkpoint-created'
+    try {
+      const { GET } = await import('./route')
+
+      const response = await GET(
+        new Request(
+          'http://localhost:3000/api/e2e/project?name=Workbench%20E2E%20Fixture&filePath=e2e-fixture.ts&fileContent=export%20const%20value%20%3D%201%0A&seedRuntimeCheckpoint=1'
+        )
+      )
+
+      expect(response.status).toBe(200)
+      await expect(response.json()).resolves.toMatchObject({
+        projectId: 'project-existing',
+        created: false,
+        chatId: expect.any(String),
+        filePath: 'e2e-fixture.ts',
+        sessionID: expect.stringContaining('harness_run_resume_fixture_'),
+      })
+      expect(queryCalls).toHaveLength(3)
+      expect(mutationCalls).toHaveLength(2)
+      expect(mutationCalls[0]?.args).toMatchObject({
+        projectId: 'project-existing',
+        path: 'e2e-fixture.ts',
+        content: 'export const value = 1\n',
+        isBinary: false,
+      })
+      expect(mutationCalls[1]?.args).toMatchObject({
+        chatId: expect.any(String),
+        checkpoint: expect.objectContaining({
+          version: 1,
+          sessionID: expect.stringContaining('harness_run_resume_fixture_'),
+        }),
+      })
+    } finally {
+      restoreEnv()
+    }
+  })
 })

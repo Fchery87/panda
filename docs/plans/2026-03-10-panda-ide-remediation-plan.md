@@ -17,6 +17,8 @@ the workbench.
 
 ### Task 1: Immediate Security Hardening
 
+**Status:** Complete
+
 **Files:**
 
 - Modify: `convex/specifications.ts`
@@ -50,6 +52,8 @@ Expected: PASS
 
 ### Task 2: Workbench Surface Consolidation
 
+**Status:** Complete
+
 **Files:**
 
 - Modify: `apps/web/components/workbench/Workbench.tsx`
@@ -77,6 +81,8 @@ PASS
 
 ### Task 3: Settings Governance UX
 
+**Status:** Complete
+
 **Files:**
 
 - Modify: `apps/web/app/settings/page.tsx`
@@ -92,6 +98,8 @@ PASS
 `bun test apps/web/app/settings/settings-advanced-gates.test.ts` Expected: PASS
 
 ### Task 4: Execution Path Consolidation
+
+**Status:** Complete
 
 **Files:**
 
@@ -122,6 +130,8 @@ commands:
 
 ### Task 5: Runtime and Spec Unification
 
+**Status:** Partial
+
 **Files:**
 
 - Modify: `apps/web/hooks/useAgent.ts`
@@ -144,7 +154,17 @@ canonical, reduce legacy runtime fallback scope.
 - run progress can trigger resume
 - resumed sessions are visible in timeline and status
 
+Current state:
+
+- harness runtime is the canonical path for the implemented spec approval flow
+- `useAgent` handles `spec_pending_approval`, `spec_generated`, and
+  `spec_verification`
+- explicit spec approval/edit/cancel is live
+- resume/checkpoint UX is still not fully exposed end-to-end in the browser
+
 ### Task 6: Acceptance-Level Verification
+
+**Status:** Partial
 
 **Files:**
 
@@ -163,6 +183,13 @@ canonical, reduce legacy runtime fallback scope.
 - run command
 - cancel command
 - inspect run history
+
+Current state:
+
+- core repo verification is green
+- workbench browser coverage now includes explicit spec approval review flows
+- the full acceptance matrix is not yet exhaustively implemented as browser E2E
+  coverage for every listed IDE journey
 
 **Step 2: Run full validation suite** Run:
 

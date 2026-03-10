@@ -31,6 +31,7 @@ import {
   type ConvexClient as AgentConvexClient,
 } from '../lib/agent'
 import { ConvexCheckpointStore } from '../lib/agent/harness/convex-checkpoint-store'
+import type { CheckpointStore as HarnessCheckpointStore } from '../lib/agent/harness/checkpoint-store'
 import type { FormalSpecification } from '../lib/agent/spec/types'
 import { getUserFacingAgentError } from '../lib/chat/error-messages'
 import { extractTargetFilePaths } from '../components/chat/live-run-utils'
@@ -262,6 +263,7 @@ interface UseAgentReturn {
   approvePendingSpec: (spec?: FormalSpecification) => void
   updatePendingSpecDraft: (spec: FormalSpecification) => void
   cancelPendingSpec: () => void
+  resumeRuntimeSession: (sessionID: string) => Promise<void>
 
   // Error
   error: string | null
@@ -799,11 +801,17 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   }, [chatId, persistedMessages, getReasoningRuntimeSettings, mode])
 
   // Main submit handler
-  const sendMessage = useCallback(
-    async (rawContent: string, contextFiles?: string[]) => {
+  const sendMessageInternal = useCallback(
+    async (
+      rawContent: string,
+      contextFiles?: string[],
+      options?: { clearInput?: boolean; harnessSessionID?: string }
+    ) => {
       const userContent = rawContent.trim()
       if (!userContent || isRunningRef.current) return
-      setInput('')
+      if (options?.clearInput !== false) {
+        setInput('')
+      }
 
       // Capture a snapshot of prior conversation for prompt building.
       // Note: we exclude tool messages here because our UI message shape
@@ -958,7 +966,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           maxToolCallsPerIteration: 50,
           enableToolDeduplication: true,
           toolLoopThreshold: 3,
-          harnessSessionID: `harness_run_${runId}`,
+          harnessSessionID: options?.harnessSessionID ?? `harness_run_${runId}`,
           harnessAutoResume: true,
           harnessSpecApprovalMode: 'interactive',
         }
@@ -979,22 +987,37 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
 
         // Create agent runtime
         const runtimeSettings = getReasoningRuntimeSettings()
+        const checkpointClient = convex as unknown as {
+          query: (func: unknown, args: Record<string, unknown>) => Promise<unknown>
+          mutation: (func: unknown, args: Record<string, unknown>) => Promise<unknown>
+        }
+        const checkpointStore: HarnessCheckpointStore = options?.harnessSessionID
+          ? {
+              async save(checkpoint) {
+                await new ConvexCheckpointStore(checkpointClient, {
+                  runId,
+                  chatId,
+                  projectId,
+                }).save(checkpoint)
+              },
+              async load(sessionID) {
+                return await new ConvexCheckpointStore(checkpointClient, {
+                  chatId,
+                  projectId,
+                }).load(sessionID)
+              },
+            }
+          : new ConvexCheckpointStore(checkpointClient, {
+              runId,
+              chatId,
+              projectId,
+            })
         const runtime = createAgentRuntime(
           {
             provider,
             model,
             maxIterations: runtimeConfig.maxIterations,
-            harnessCheckpointStore: new ConvexCheckpointStore(
-              convex as unknown as {
-                query: (func: unknown, args: Record<string, unknown>) => Promise<unknown>
-                mutation: (func: unknown, args: Record<string, unknown>) => Promise<unknown>
-              },
-              {
-                runId,
-                chatId,
-                projectId,
-              }
-            ),
+            harnessCheckpointStore: checkpointStore,
             // Risk interrupt UI is not yet implemented — agent permission layer handles
             // write_files/run_command authorization (build agent allows both by default)
             harnessEnableRiskInterrupts: false,
@@ -1552,6 +1575,23 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     ]
   )
 
+  const sendMessage = useCallback(
+    async (rawContent: string, contextFiles?: string[]) => {
+      await sendMessageInternal(rawContent, contextFiles, { clearInput: true })
+    },
+    [sendMessageInternal]
+  )
+
+  const resumeRuntimeSession = useCallback(
+    async (sessionID: string) => {
+      await sendMessageInternal('Resume previous run', undefined, {
+        clearInput: false,
+        harnessSessionID: sessionID,
+      })
+    },
+    [sendMessageInternal]
+  )
+
   const handleSubmit = useCallback(
     async (e?: React.FormEvent) => {
       e?.preventDefault()
@@ -1677,6 +1717,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     approvePendingSpec,
     updatePendingSpecDraft,
     cancelPendingSpec,
+    resumeRuntimeSession,
     error,
     tracePersistenceStatus,
   }

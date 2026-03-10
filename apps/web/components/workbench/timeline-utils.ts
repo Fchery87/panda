@@ -1,7 +1,9 @@
 type TimelineEventType =
+  | 'run_started'
   | 'progress_step'
   | 'tool_call'
   | 'tool_result'
+  | 'assistant_message'
   | 'error'
   | 'snapshot'
   | 'spec_generated'
@@ -39,9 +41,11 @@ export interface TimelineSelection {
 }
 
 const TIMELINE_EVENT_TYPES = new Set<TimelineEventType>([
+  'run_started',
   'progress_step',
   'tool_call',
   'tool_result',
+  'assistant_message',
   'error',
   'snapshot',
   'spec_generated',
@@ -58,6 +62,10 @@ function toTitleCase(value: string): string {
 
 function getTimelineLabel(event: TimelineEventRecord): string {
   switch (event.type) {
+    case 'run_started':
+      return 'Run Started'
+    case 'assistant_message':
+      return 'Assistant Response'
     case 'snapshot':
       return 'Checkpoint Created'
     case 'spec_generated':

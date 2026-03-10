@@ -1041,6 +1041,7 @@ export default function ProjectPage() {
           onOpenArtifacts={() => setIsArtifactPanelOpen(true)}
           currentSpec={agent.currentSpec}
           onSpecClick={() => setIsSpecDrawerOpen(true)}
+          onResumeRuntimeSession={agent.resumeRuntimeSession}
         />
       </TabsContent>
 
@@ -1101,10 +1102,26 @@ export default function ProjectPage() {
             </button>
           )}
 
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsChatInspectorOpen((prev) => !prev)}
+            className="h-7 rounded-none px-2 font-mono text-[11px] uppercase tracking-wide"
+            aria-label="Toggle inspector"
+          >
+            Inspector
+          </Button>
+
           {/* Overflow Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 w-7 rounded-none p-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 rounded-none p-0"
+                aria-label="Chat more actions"
+              >
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>

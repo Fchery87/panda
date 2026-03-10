@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from 'convex/react'
 import type { Id } from '@convex/_generated/dataModel'
 import { api } from '@convex/_generated/api'
+import { Button } from '@/components/ui/button'
 import {
   CheckCircle2,
   ChevronDown,
@@ -37,6 +38,8 @@ interface RunProgressPanelProps {
   currentSpec?: FormalSpecification | null
   /** Callback when spec badge is clicked */
   onSpecClick?: () => void
+  /** Callback when a recoverable runtime checkpoint should be resumed */
+  onResumeRuntimeSession?: (sessionID: string) => void | Promise<void>
 }
 
 const STORAGE_KEY = 'panda.runProgress.isOpen'
@@ -51,6 +54,7 @@ export function RunProgressPanel({
   defaultOpen = false,
   currentSpec,
   onSpecClick,
+  onResumeRuntimeSession,
 }: RunProgressPanelProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen)
   const [hasLoadedPreference, setHasLoadedPreference] = useState(false)
@@ -137,7 +141,7 @@ export function RunProgressPanel({
     latestRuntimeCheckpoint.reason !== 'complete' &&
     typeof latestRuntimeCheckpoint.sessionID === 'string'
 
-  if (!isStreaming && steps.length === 0) {
+  if (!isStreaming && steps.length === 0 && !runtimeCheckpoints?.length) {
     return null
   }
 
@@ -204,6 +208,20 @@ export function RunProgressPanel({
               ? `Resume Ready (${runtimeCheckpoints.length})`
               : `Checkpoints ${runtimeCheckpoints.length}`}
           </span>
+        ) : null}
+        {hasRecoverableCheckpoint &&
+        latestRuntimeCheckpoint?.sessionID &&
+        onResumeRuntimeSession ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={isStreaming}
+            onClick={() => onResumeRuntimeSession(latestRuntimeCheckpoint.sessionID!)}
+            className="h-6 rounded-none border-primary/40 px-2 font-mono text-[10px] uppercase tracking-wide"
+          >
+            Resume Run
+          </Button>
         ) : null}
         {currentSpec && (
           <button
