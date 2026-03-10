@@ -71,7 +71,7 @@ export default defineConfig({
   /* Run your local dev server before starting the tests */
   webServer: {
     command:
-      'cd ../.. && bunx concurrently "E2E_AUTH_BYPASS=true bunx convex dev" "cd apps/web && E2E_AUTH_BYPASS=true NEXT_PUBLIC_E2E_AUTH_BYPASS=true bun run dev"',
+      'cd ../.. && bunx concurrently "E2E_AUTH_BYPASS=true bunx convex dev" "cd apps/web && E2E_AUTH_BYPASS=true NEXT_PUBLIC_E2E_AUTH_BYPASS=true NEXT_PUBLIC_E2E_AGENT_MODE=spec-approval bun run dev"',
     url: 'http://localhost:3000',
     reuseExistingServer: false,
     timeout: 120 * 1000,

@@ -77,6 +77,7 @@ import { normalizeChatMode, type ChatMode } from '@/lib/agent/prompt-library'
 import { getGlobalRegistry } from '@/lib/llm/registry'
 import type { LLMProvider } from '@/lib/llm/types'
 import { getDefaultProviderCapabilities } from '@/lib/llm/types'
+import { createE2EProvider, isE2ESpecApprovalModeEnabled } from '@/lib/llm/e2e-provider'
 
 interface File {
   _id: Id<'files'>
@@ -307,6 +308,10 @@ export default function ProjectPage() {
 
   // Create LLM provider from settings
   const provider = useMemo<LLMProvider | null>(() => {
+    if (isE2ESpecApprovalModeEnabled()) {
+      return createE2EProvider()
+    }
+
     // Use the version as the memo key without depending on referentially-unstable objects.
     void settingsProviderVersion
     const latestSettings = settingsRef.current
@@ -383,6 +388,17 @@ export default function ProjectPage() {
 
   // Build the list of selectable models from enabled providers in effective settings
   const availableModels = useMemo<AvailableModel[]>(() => {
+    if (isE2ESpecApprovalModeEnabled()) {
+      return [
+        {
+          id: 'e2e-spec-model',
+          name: 'E2E Spec Model',
+          provider: 'E2E',
+          providerKey: 'e2e',
+        },
+      ]
+    }
+
     const providerConfigs = effectiveSettings?.providerConfigs
     if (!providerConfigs) return []
 

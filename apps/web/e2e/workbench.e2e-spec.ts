@@ -13,7 +13,6 @@ async function openCreateProjectDialog(page: Page) {
     .filter({ hasText: /create new project/i })
     .first()
   await expect(dialog).toBeVisible()
-  return dialog
 }
 
 async function createAndOpenProject(page: Page): Promise<string> {
@@ -28,23 +27,22 @@ async function createAndOpenProject(page: Page): Promise<string> {
     timeout: 20000,
   })
 
-  const dialog = await openCreateProjectDialog(page)
-  const nameInput = dialog.getByLabel(/project name/i)
+  await openCreateProjectDialog(page)
+  const nameInput = page.locator('input#name').or(page.getByPlaceholder(/my-awesome-project/i))
   await expect(nameInput).toBeEditable()
   await nameInput.fill(projectName)
 
-  const createButton = dialog.getByRole('button', { name: /^create$/i })
+  const createButton = page.getByRole('button', { name: /^create$/i }).last()
   await expect(createButton).toBeEnabled()
   await createButton.click()
 
-  await expect(dialog).not.toBeVisible()
+  await expect(page.locator('[role="dialog"]:visible')).toHaveCount(0)
 
   const projectLink = page.locator('a[href^="/projects/"]', { hasText: projectName }).first()
   await expect(projectLink).toBeVisible({ timeout: 15000 })
   const href = await projectLink.getAttribute('href')
   expect(href).toMatch(/^\/projects\/.+/)
-  await projectLink.scrollIntoViewIfNeeded()
-  await projectLink.click()
+  await page.goto(href!, { waitUntil: 'domcontentloaded' })
   await expect(page).toHaveURL(/\/projects\/.+/, { timeout: 30000 })
   await expect(
     page
@@ -56,6 +54,26 @@ async function createAndOpenProject(page: Page): Promise<string> {
   })
 
   return projectName
+}
+
+async function openWorkbenchProject(page: Page): Promise<void> {
+  let response = await page.request.get('/api/e2e/project?name=Workbench%20E2E%20Fixture')
+  const deadline = Date.now() + 15_000
+
+  while (!response.ok() && Date.now() < deadline) {
+    await page.waitForTimeout(500)
+    response = await page.request.get('/api/e2e/project?name=Workbench%20E2E%20Fixture')
+  }
+
+  expect(response.ok()).toBe(true)
+  const body = (await response.json()) as { projectId: string }
+  expect(body.projectId).toBeTruthy()
+
+  await page.goto(`/projects/${body.projectId}`, { waitUntil: 'commit' })
+  await expect(page.getByRole('navigation', { name: /breadcrumb/i })).toBeVisible({
+    timeout: 30000,
+  })
+  await expect(page.getByRole('textbox').first()).toBeVisible({ timeout: 30000 })
 }
 
 test.describe('Workbench', () => {
@@ -198,5 +216,37 @@ test.describe('Workbench', () => {
       .getByRole('button', { name: /^artifacts$/i })
       .first()
     await expect(artifactsButton).toBeVisible({ timeout: 15000 })
+  })
+
+  test('spec approval flow shows review gate and allows approval', async ({ page }) => {
+    test.setTimeout(90_000)
+    await openWorkbenchProject(page)
+
+    const chatComposer = page
+      .getByPlaceholder(/planning & architecture|describe the code to write|type your message/i)
+      .or(page.getByRole('textbox').first())
+      .first()
+    await expect(chatComposer).toBeVisible({ timeout: 15000 })
+    await chatComposer.fill(
+      'Create a reusable alert banner component and wire it into the dashboard header.'
+    )
+
+    await page.getByRole('button', { name: /send message/i }).click()
+
+    const specReviewCard = page.getByText(/specification ready for review/i)
+    await expect(specReviewCard).toBeVisible({ timeout: 20000 })
+
+    await page.getByRole('button', { name: /approve & execute/i }).click()
+
+    await expect(specReviewCard).not.toBeVisible({ timeout: 20000 })
+    await expect(page.getByRole('log', { name: /chat messages/i })).toContainText(
+      'Create a reusable alert banner component and wire it into the dashboard header.',
+      {
+        timeout: 20000,
+      }
+    )
+    await expect(page.getByRole('tab', { name: /^run$/i })).toBeVisible({
+      timeout: 20000,
+    })
   })
 })

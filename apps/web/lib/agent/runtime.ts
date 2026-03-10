@@ -34,6 +34,8 @@ import {
 import type { CheckpointStore as HarnessCheckpointStore } from './harness/checkpoint-store'
 import type { FormalSpecification, SpecTier } from './spec/types'
 
+const isE2ESpecApprovalModeEnabled = process.env.NEXT_PUBLIC_E2E_AGENT_MODE === 'spec-approval'
+
 /**
  * Runtime options for agent execution
  */
@@ -1087,6 +1089,7 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
       specEngine: {
         enabled: true,
         autoApproveAmbient: true,
+        ...(isE2ESpecApprovalModeEnabled ? { defaultTier: 'explicit' as const } : {}),
       },
       onSpecApproval: async ({ spec }) => {
         if (specApprovalMode !== 'interactive') {

@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 
 import { shouldRedirectToLogin } from '@/lib/auth/routeGuards'
 
-describe('auth middleware guard', () => {
+describe('auth proxy guard', () => {
   test('redirects unauthenticated users on protected routes', () => {
     expect(shouldRedirectToLogin('/projects', false)).toBe(true)
     expect(shouldRedirectToLogin('/projects/123', false)).toBe(true)

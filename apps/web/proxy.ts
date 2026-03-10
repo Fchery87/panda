@@ -3,6 +3,7 @@ import {
   createRouteMatcher,
   nextjsMiddlewareRedirect,
 } from '@convex-dev/auth/nextjs/server'
+import type { NextFetchEvent, NextRequest } from 'next/server'
 import { shouldRedirectToLogin, shouldRedirectToProjects } from '@/lib/auth/routeGuards'
 
 const isProtectedRoute = createRouteMatcher(['/projects(.*)', '/settings(.*)'])
@@ -12,7 +13,7 @@ function isE2EAuthBypassEnabled(): boolean {
   return process.env.NODE_ENV !== 'production' && process.env.E2E_AUTH_BYPASS === 'true'
 }
 
-export default convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
+const authProxy = convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
   if (isE2EAuthBypassEnabled()) {
     return
   }
@@ -36,8 +37,12 @@ export default convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
   })
 })
 
-export const config = {
-  // Run auth middleware on all app routes so Convex Auth can proxy /api/auth
+export function proxy(request: NextRequest, event: NextFetchEvent) {
+  return authProxy(request, event)
+}
+
+export const proxyConfig = {
+  // Run auth proxy on all app routes so Convex Auth can proxy /api/auth
   // actions and handle auth callbacks/token refresh consistently.
   matcher: ['/((?!_next|.*\\..*).*)'],
 }

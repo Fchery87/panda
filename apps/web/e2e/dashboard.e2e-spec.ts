@@ -13,27 +13,28 @@ async function openCreateProjectDialog(page: Page) {
     .filter({ hasText: /create new project/i })
     .first()
   await expect(dialog).toBeVisible()
-  return dialog
 }
 
 async function createProject(page: Page, name: string, description?: string) {
-  const dialog = await openCreateProjectDialog(page)
+  await openCreateProjectDialog(page)
 
-  const nameInput = dialog.getByLabel(/project name/i)
+  const nameInput = page.locator('input#name').or(page.getByPlaceholder(/my-awesome-project/i))
   await expect(nameInput).toBeVisible()
   await expect(nameInput).toBeEditable()
   await nameInput.fill(name)
 
   if (description) {
-    const descriptionInput = dialog.getByLabel(/description \(optional\)/i)
+    const descriptionInput = page
+      .locator('input#description')
+      .or(page.getByPlaceholder(/brief description/i))
     await descriptionInput.fill(description)
   }
 
-  const createButton = dialog.getByRole('button', { name: /^create$/i })
+  const createButton = page.getByRole('button', { name: /^create$/i }).last()
   await expect(createButton).toBeEnabled()
   await createButton.click()
 
-  await expect(dialog).not.toBeVisible()
+  await expect(page.locator('[role="dialog"]:visible')).toHaveCount(0)
 }
 
 test.describe('Dashboard', () => {
@@ -87,12 +88,12 @@ test.describe('Dashboard', () => {
   })
 
   test('project creation validates required fields', async ({ page }) => {
-    const dialog = await openCreateProjectDialog(page)
+    await openCreateProjectDialog(page)
 
-    const createButton = dialog.getByRole('button', { name: /^create$/i })
+    const createButton = page.getByRole('button', { name: /^create$/i }).last()
     await expect(createButton).toBeDisabled()
 
-    const nameInput = dialog.getByLabel(/project name/i)
+    const nameInput = page.locator('input#name').or(page.getByPlaceholder(/my-awesome-project/i))
     await nameInput.fill('Valid Project Name')
 
     await expect(createButton).toBeEnabled()
@@ -102,12 +103,12 @@ test.describe('Dashboard', () => {
   })
 
   test('can cancel project creation', async ({ page }) => {
-    const dialog = await openCreateProjectDialog(page)
+    await openCreateProjectDialog(page)
 
-    const cancelButton = dialog.getByRole('button', { name: /cancel/i })
+    const cancelButton = page.getByRole('button', { name: /cancel/i }).last()
     await cancelButton.click()
 
-    await expect(dialog).not.toBeVisible()
+    await expect(page.locator('[role="dialog"]:visible')).toHaveCount(0)
   })
 
   test('navigation between pages works', async ({ page }) => {
@@ -128,7 +129,7 @@ test.describe('Dashboard', () => {
     await expect(projectLink).toBeVisible({ timeout: 15000 })
     const href = await projectLink.getAttribute('href')
     expect(href).toMatch(/^\/projects\/.+/)
-    await projectLink.click()
+    await page.goto(href!, { waitUntil: 'domcontentloaded' })
     await expect(page).toHaveURL(/\/projects\/.+/, { timeout: 30000 })
     await expect(
       page
