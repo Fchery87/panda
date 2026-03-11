@@ -99,7 +99,7 @@ export function generateRepoOverview(
   const tree = buildDirectoryTree(validFiles.map((f) => f.path))
   const techStack = detectTechStack(validFiles)
   const entryPoints = findEntryPoints(validFiles)
-  const { buildCommands, testCommands } = extractCommands(validFiles)
+  const { buildCommands, testCommands } = extractCommands(validFiles, techStack.packageManager)
   const coreFiles = findCoreFiles(validFiles)
 
   const overview: RepoOverview = {
@@ -347,7 +347,10 @@ function findEntryPoints(files: FileInfo[]): string[] {
   return entryPoints.sort()
 }
 
-function extractCommands(files: FileInfo[]): {
+function extractCommands(
+  files: FileInfo[],
+  packageManager = 'npm'
+): {
   buildCommands: string[]
   testCommands: string[]
 } {
@@ -360,15 +363,20 @@ function extractCommands(files: FileInfo[]): {
       const pkg = JSON.parse(pkgFile.content)
       const scripts = pkg.scripts || {}
 
+      // Determine run command based on package manager
+      const runCmd = packageManager === 'npm' ? 'npm run' : `${packageManager} run`
+      const startCmd = packageManager === 'npm' ? 'npm start' : `${packageManager} start`
+      const testCmd = packageManager === 'npm' ? 'npm test' : `${packageManager} test`
+
       // Build commands
-      if (scripts.build) buildCommands.push(`npm run build`)
-      if (scripts.dev) buildCommands.push(`npm run dev`)
-      if (scripts.start) buildCommands.push(`npm start`)
+      if (scripts.build) buildCommands.push(`${runCmd} build`)
+      if (scripts.dev) buildCommands.push(`${runCmd} dev`)
+      if (scripts.start) buildCommands.push(startCmd)
 
       // Test commands
-      if (scripts.test) testCommands.push(`npm test`)
-      if (scripts['test:unit']) testCommands.push(`npm run test:unit`)
-      if (scripts['test:e2e']) testCommands.push(`npm run test:e2e`)
+      if (scripts.test) testCommands.push(testCmd)
+      if (scripts['test:unit']) testCommands.push(`${runCmd} test:unit`)
+      if (scripts['test:e2e']) testCommands.push(`${runCmd} test:e2e`)
     } catch {
       // Ignore parse errors
     }

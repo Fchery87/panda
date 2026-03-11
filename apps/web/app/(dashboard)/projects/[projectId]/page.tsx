@@ -16,6 +16,7 @@ import { Workbench } from '@/components/workbench/Workbench'
 import { Breadcrumb, buildBreadcrumbItems } from '@/components/workbench/Breadcrumb'
 import { StatusBar } from '@/components/workbench/StatusBar'
 import { ChatInput } from '@/components/chat/ChatInput'
+import { ChatActionBar } from '@/components/chat/ChatActionBar'
 import type { AvailableModel } from '@/components/chat/ModelSelector'
 import { MessageList } from '@/components/chat/MessageList'
 import { RunProgressPanel } from '@/components/chat/RunProgressPanel'
@@ -26,6 +27,7 @@ import { AgentAutomationDialog } from '@/components/projects/AgentAutomationDial
 import { MemoryBankEditor } from '@/components/chat/MemoryBankEditor'
 import { SpecDrawer } from '@/components/chat/SpecDrawer'
 import { SpecPanel } from '@/components/plan/SpecPanel'
+import { PlanPanel } from '@/components/plan/PlanPanel'
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -46,7 +48,6 @@ import {
   AlertTriangle,
   Layers,
   MoreHorizontal,
-  Activity,
   Settings2,
   X,
 } from 'lucide-react'
@@ -58,7 +59,6 @@ import { PandaLogo } from '@/components/ui/panda-logo'
 
 // New UX Components
 import { CommandPalette } from '@/components/command-palette/CommandPalette'
-import { ContextWindowIndicator } from '@/components/chat/ContextWindowIndicator'
 
 // Hooks
 import { useJobs } from '@/hooks/useJobs'
@@ -68,10 +68,20 @@ import { useSpecDriftDetection } from '@/hooks/useSpecDriftDetection'
 import { useLayoutPersistence } from '@/hooks/useLayoutPersistence'
 
 import type { Message } from '@/components/chat/types'
-import { buildMessageWithPlanDraft, deriveNextPlanDraft } from '@/lib/chat/planDraft'
+import {
+  buildApprovedPlanExecutionMessage,
+  canApprovePlan,
+  canBuildFromPlan,
+  deriveNextPlanDraft,
+  getNextPlanStatusAfterDraftChange,
+  getNextPlanStatusAfterGeneration,
+  type PlanStatus,
+} from '@/lib/chat/planDraft'
 import { isRateLimitError, getUserFacingAgentError } from '@/lib/chat/error-messages'
+import { resolveBackgroundExecutionPolicy } from '@/lib/chat/backgroundExecution'
 import { resolveEffectiveAgentPolicy, type AgentPolicy } from '@/lib/agent/automationPolicy'
 import { normalizeChatMode, type ChatMode } from '@/lib/agent/prompt-library'
+import type { SpecTier } from '@/lib/agent/spec/types'
 
 // LLM Provider
 import { getGlobalRegistry } from '@/lib/llm/registry'
@@ -96,6 +106,11 @@ interface Chat {
   title?: string
   mode: ChatMode
   planDraft?: string
+  planStatus?: PlanStatus
+  planSourceMessageId?: string
+  planApprovedAt?: number
+  planLastGeneratedAt?: number
+  planBuildRunId?: Id<'agentRuns'>
   planUpdatedAt?: number
   createdAt: number
   updatedAt: number
@@ -167,11 +182,12 @@ export default function ProjectPage() {
   const [mobileUnreadCount, setMobileUnreadCount] = useState(0)
   const [isMobileKeyboardOpen, setIsMobileKeyboardOpen] = useState(false)
   const [isChatInspectorOpen, setIsChatInspectorOpen] = useState(false)
-  const [chatInspectorTab, setChatInspectorTab] = useState<'run' | 'memory' | 'evals'>('run')
+  const [chatInspectorTab, setChatInspectorTab] = useState<'run' | 'plan' | 'memory' | 'evals'>(
+    'run'
+  )
   const [isSpecDrawerOpen, setIsSpecDrawerOpen] = useState(false)
   const [isSpecPanelOpen, setIsSpecPanelOpen] = useState(false)
   const lastAssistantMessageIdRef = useRef<string | null>(null)
-  const previousAgentLoadingRef = useRef(false)
 
   // Fetch project data
   const project = useQuery(api.projects.get, { id: projectId })
@@ -273,16 +289,19 @@ export default function ProjectPage() {
   )
   const [uiSelectedModel, setUiSelectedModel] = useState<string | null>(null)
   const [reasoningVariant, setReasoningVariant] = useState('none')
+  const [specTier, setSpecTier] = useState<SpecTier | 'auto'>('auto')
   // Pending message for when we need to create chat first
   const [pendingMessage, setPendingMessage] = useState<{
     id: string
     content: string
     mode: ChatMode
+    approvedPlanExecution?: boolean
   } | null>(null)
   const pendingMessageDispatchRef = useRef<string | null>(null)
 
   // Plan Draft (Claude Code-like plan panel)
   const [planDraft, setPlanDraft] = useState('')
+  const [isSavingPlanDraft, setIsSavingPlanDraft] = useState(false)
   const lastSavedPlanDraftRef = useRef<string>('')
   const planSaveTimerRef = useRef<number | null>(null)
 
@@ -439,6 +458,15 @@ export default function ProjectPage() {
     architectBrainstormEnabled,
     provider: provider ?? FALLBACK_PROVIDER, // Stable fallback - checked before use
     model: selectedModel,
+    planDraft,
+    onRunCreated: async ({ runId, approvedPlanExecution }) => {
+      if (!approvedPlanExecution || !activeChat?._id) return
+      await updateChatMutation({
+        id: activeChat._id,
+        planBuildRunId: runId,
+        planStatus: 'executing',
+      })
+    },
   })
   const sendAgentMessage = agent.sendMessage
 
@@ -479,7 +507,9 @@ export default function ProjectPage() {
     if (pendingMessageDispatchRef.current === pendingMessage.id) return
 
     pendingMessageDispatchRef.current = pendingMessage.id
-    void sendAgentMessage(pendingMessage.content).finally(() => {
+    void sendAgentMessage(pendingMessage.content, undefined, {
+      approvedPlanExecution: pendingMessage.approvedPlanExecution,
+    }).finally(() => {
       setPendingMessage((current) => (current?.id === pendingMessage.id ? null : current))
       if (pendingMessageDispatchRef.current === pendingMessage.id) {
         pendingMessageDispatchRef.current = null
@@ -596,18 +626,16 @@ export default function ProjectPage() {
         )?.content ?? null,
     [chatMessages]
   )
+  const backgroundExecutionPolicy = useMemo(
+    () => resolveBackgroundExecutionPolicy(chatMode),
+    [chatMode]
+  )
   const inlineRateLimitError = useMemo(() => {
     if (!agent.error || !isRateLimitError(agent.error)) return null
     return getUserFacingAgentError(agent.error)
   }, [agent.error])
 
-  useEffect(() => {
-    if (agent.isLoading && !previousAgentLoadingRef.current) {
-      setIsChatInspectorOpen(true)
-      setChatInspectorTab('run')
-    }
-    previousAgentLoadingRef.current = agent.isLoading
-  }, [agent.isLoading])
+  // Note: Inspector no longer auto-opens on agent start - user opens it manually
 
   // File mutations
   const upsertFileMutation = useMutation(api.files.upsert)
@@ -633,7 +661,10 @@ export default function ProjectPage() {
   }, [projectId, updateProjectMutation])
 
   const persistPlanDraft = useCallback(
-    async (nextPlanDraft: string) => {
+    async (
+      nextPlanDraft: string,
+      options?: { source?: 'manual' | 'generation'; planSourceMessageId?: string }
+    ) => {
       const chatId = activeChat?._id
       if (!chatId) return
 
@@ -641,8 +672,30 @@ export default function ProjectPage() {
       const lastSaved = lastSavedPlanDraftRef.current.trim()
       if (trimmed === lastSaved) return
 
+      const source = options?.source ?? 'manual'
+      const planStatus =
+        source === 'generation'
+          ? (getNextPlanStatusAfterGeneration({
+              previousDraft: lastSavedPlanDraftRef.current,
+              nextDraft: nextPlanDraft,
+              currentStatus: activeChat?.planStatus,
+            }) ?? (trimmed ? 'awaiting_review' : 'idle'))
+          : getNextPlanStatusAfterDraftChange({
+              previousDraft: lastSavedPlanDraftRef.current,
+              nextDraft: nextPlanDraft,
+              currentStatus: activeChat?.planStatus,
+            })
+
       try {
-        await updateChatMutation({ id: chatId, planDraft: nextPlanDraft })
+        await updateChatMutation({
+          id: chatId,
+          planDraft: nextPlanDraft,
+          planStatus,
+          ...(source === 'generation' ? { planLastGeneratedAt: Date.now() } : {}),
+          ...(source === 'generation' && options?.planSourceMessageId
+            ? { planSourceMessageId: options.planSourceMessageId }
+            : {}),
+        })
         lastSavedPlanDraftRef.current = nextPlanDraft
       } catch (error) {
         toast.error('Failed to save plan draft', {
@@ -650,8 +703,34 @@ export default function ProjectPage() {
         })
       }
     },
-    [activeChat?._id, updateChatMutation]
+    [activeChat?._id, activeChat?.planStatus, updateChatMutation]
   )
+
+  const handleSavePlanDraft = useCallback(async () => {
+    setIsSavingPlanDraft(true)
+    try {
+      await persistPlanDraft(planDraft, { source: 'manual' })
+    } finally {
+      setIsSavingPlanDraft(false)
+    }
+  }, [persistPlanDraft, planDraft])
+
+  const handleApprovePlan = useCallback(async () => {
+    if (!activeChat || !canApprovePlan(activeChat.planStatus, planDraft)) return
+
+    try {
+      await updateChatMutation({
+        id: activeChat._id,
+        planStatus: 'approved',
+        planApprovedAt: Date.now(),
+      })
+      toast.success('Plan approved')
+    } catch (error) {
+      toast.error('Failed to approve plan', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      })
+    }
+  }, [activeChat, planDraft, updateChatMutation])
 
   // Debounced auto-save for plan draft edits
   useEffect(() => {
@@ -700,7 +779,25 @@ export default function ProjectPage() {
     if (planDraft.trim() !== lastSavedPlanDraftRef.current.trim()) return
 
     setPlanDraft(next)
-  }, [agent.messages, agent.status, chatMode, planDraft, architectBrainstormEnabled])
+    if (planSaveTimerRef.current !== null) {
+      window.clearTimeout(planSaveTimerRef.current)
+      planSaveTimerRef.current = null
+    }
+    const latestArchitectMessage = [...agent.messages]
+      .reverse()
+      .find((m) => m.role === 'assistant' && m.mode === 'architect' && m.content.trim())
+    void persistPlanDraft(next, {
+      source: 'generation',
+      planSourceMessageId: latestArchitectMessage?.id,
+    })
+  }, [
+    agent.messages,
+    agent.status,
+    chatMode,
+    planDraft,
+    architectBrainstormEnabled,
+    persistPlanDraft,
+  ])
 
   // File operations
   const handleFileSelect = useCallback(
@@ -843,7 +940,12 @@ export default function ProjectPage() {
 
   // Chat operations
   const handleSendMessage = useCallback(
-    async (content: string, mode: ChatMode, contextFiles?: string[]) => {
+    async (
+      content: string,
+      mode: ChatMode,
+      contextFiles?: string[],
+      options?: { approvedPlanExecution?: boolean }
+    ) => {
       const trimmed = content.trim()
       if (!trimmed) {
         toast.error('Message is empty')
@@ -855,8 +957,10 @@ export default function ProjectPage() {
       setMobilePrimaryPanel('chat')
 
       const finalContent =
-        mode === 'build' || mode === 'code'
-          ? buildMessageWithPlanDraft(planDraft, content, agent.messages)
+        mode === 'build' &&
+        planDraft.trim() &&
+        (options?.approvedPlanExecution || activeChat?.planStatus === 'executing')
+          ? buildApprovedPlanExecutionMessage(planDraft, trimmed)
           : content
 
       if (!activeChat) {
@@ -870,7 +974,12 @@ export default function ProjectPage() {
           toast.success('Chat created')
           setActiveChatId(newChatId)
           // Store pending message - will be sent once chat is active and hook is ready
-          setPendingMessage({ id: `pending-${Date.now()}`, content: finalContent, mode })
+          setPendingMessage({
+            id: `pending-${Date.now()}`,
+            content: finalContent,
+            mode,
+            approvedPlanExecution: options?.approvedPlanExecution,
+          })
         } catch (error) {
           void error
           toast.error('Failed to create chat')
@@ -891,7 +1000,9 @@ export default function ProjectPage() {
       }
 
       // Send directly for existing chats.
-      await sendAgentMessage(finalContent, contextFiles)
+      await sendAgentMessage(finalContent, contextFiles, {
+        approvedPlanExecution: options?.approvedPlanExecution,
+      })
     },
     [
       activeChat,
@@ -902,7 +1013,6 @@ export default function ProjectPage() {
       provider,
       planDraft,
       setActiveChatId,
-      agent.messages,
     ]
   )
 
@@ -919,6 +1029,33 @@ export default function ProjectPage() {
     },
     [activeChat, chatMode, handleSendMessage, updateChatMutation]
   )
+
+  const handleBuildFromPlan = useCallback(async () => {
+    if (!activeChat) return
+    if (!canBuildFromPlan(activeChat.planStatus, planDraft)) {
+      toast.error('Approve the current plan before building')
+      return
+    }
+
+    try {
+      await updateChatMutation({
+        id: activeChat._id,
+        mode: 'build',
+        planStatus: 'executing',
+      })
+      setChatMode('build')
+      await handleSendMessage(
+        'Execute the approved plan. Use the plan as the primary contract, follow it step-by-step, and report progress against it.',
+        'build',
+        undefined,
+        { approvedPlanExecution: true }
+      )
+    } catch (error) {
+      toast.error('Failed to start build from plan', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      })
+    }
+  }, [activeChat, handleSendMessage, planDraft, updateChatMutation])
 
   const handleModeChange = useCallback(
     (nextMode: ChatMode) => {
@@ -1007,7 +1144,7 @@ export default function ProjectPage() {
   const chatInspectorTabs = (
     <Tabs
       value={chatInspectorTab}
-      onValueChange={(value) => setChatInspectorTab(value as 'run' | 'memory' | 'evals')}
+      onValueChange={(value) => setChatInspectorTab(value as 'run' | 'plan' | 'memory' | 'evals')}
       className="gap-2"
     >
       <TabsList className="h-8 w-full justify-start rounded-none border border-border bg-background p-0 font-mono text-xs">
@@ -1016,6 +1153,12 @@ export default function ProjectPage() {
           className="h-full rounded-none border-r border-border px-3 font-mono text-xs uppercase tracking-wide data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
         >
           Run
+        </TabsTrigger>
+        <TabsTrigger
+          value="plan"
+          className="h-full rounded-none border-r border-border px-3 font-mono text-xs uppercase tracking-wide data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+        >
+          Plan
         </TabsTrigger>
         <TabsTrigger
           value="memory"
@@ -1040,9 +1183,39 @@ export default function ProjectPage() {
           onOpenFile={handleFileSelect}
           onOpenArtifacts={() => setIsArtifactPanelOpen(true)}
           currentSpec={agent.currentSpec}
+          planStatus={activeChat?.planStatus}
+          planDraft={planDraft}
           onSpecClick={() => setIsSpecDrawerOpen(true)}
+          onPlanClick={() => {
+            setChatInspectorTab('plan')
+            setIsChatInspectorOpen(true)
+          }}
           onResumeRuntimeSession={agent.resumeRuntimeSession}
         />
+      </TabsContent>
+
+      <TabsContent value="plan" className="m-0">
+        <div className="border border-border bg-background">
+          <PlanPanel
+            planDraft={planDraft}
+            planStatus={activeChat?.planStatus ?? 'idle'}
+            onChange={setPlanDraft}
+            onSave={() => {
+              void handleSavePlanDraft()
+            }}
+            onApprove={() => {
+              void handleApprovePlan()
+            }}
+            onBuildFromPlan={() => {
+              void handleBuildFromPlan()
+            }}
+            isSaving={isSavingPlanDraft}
+            lastSavedAt={activeChat?.planUpdatedAt ?? null}
+            lastGeneratedAt={activeChat?.planLastGeneratedAt ?? null}
+            approveDisabled={!canApprovePlan(activeChat?.planStatus, planDraft) || agent.isLoading}
+            buildDisabled={!canBuildFromPlan(activeChat?.planStatus, planDraft) || agent.isLoading}
+          />
+        </div>
       </TabsContent>
 
       <TabsContent value="memory" className="m-0">
@@ -1072,42 +1245,28 @@ export default function ProjectPage() {
         isMobileLayout ? 'border-t' : 'border-l'
       )}
     >
-      {/* Chat Header - Decluttered */}
-      <div className="panel-header flex items-center gap-2 max-sm:flex-wrap" data-number="04">
-        <Bot className="h-3.5 w-3.5 text-primary" />
-        <span>Chat</span>
-        <div className="ml-2 hidden min-w-0 flex-1 overflow-hidden md:block">
-          <ContextWindowIndicator
-            usage={agent.usageMetrics}
-            chatHistory={chatMessages}
-            onNewSession={handleResetWorkspace}
-          />
+      {/* Chat Header - Compact */}
+      <div className="panel-header-compact flex items-center gap-2" data-number="04">
+        <div className="flex items-center gap-1.5">
+          <Bot className="h-3 w-3 text-primary" />
+          <span>Chat</span>
         </div>
-        <div className="scrollbar-thin ml-auto flex items-center gap-1.5 max-sm:ml-0 max-sm:w-full max-sm:flex-nowrap max-sm:justify-end max-sm:overflow-x-auto max-sm:border-t max-sm:border-border max-sm:pt-2">
-          {agent.isLoading && (
-            <button
-              type="button"
-              onClick={() => {
-                setChatInspectorTab('run')
-                setIsChatInspectorOpen(true)
-              }}
-              className="flex h-7 shrink-0 items-center gap-1.5 border border-primary/40 bg-primary/10 px-2 font-mono text-[11px] uppercase tracking-wide text-primary"
-              title="Open run inspector"
-            >
-              <Activity className="h-3 w-3 animate-pulse" />
-              <span className="hidden sm:inline">
-                {liveRunSteps.length > 0 ? `Running • ${liveRunSteps.length}` : 'Running'}
-              </span>
-              <span className="sm:hidden">Run</span>
-            </button>
-          )}
 
+        {/* Running indicator - subtle pulse dot */}
+        {agent.isLoading && (
+          <div
+            className="ml-1 flex h-2 w-2 animate-pulse rounded-full bg-primary"
+            title="Agent running"
+          />
+        )}
+
+        <div className="ml-auto flex items-center gap-1">
           <Button
             type="button"
             variant="ghost"
             size="sm"
             onClick={() => setIsChatInspectorOpen((prev) => !prev)}
-            className="h-7 rounded-none px-2 font-mono text-[11px] uppercase tracking-wide"
+            className="h-6 rounded-none px-2 font-mono text-[10px] uppercase tracking-wide"
             aria-label="Toggle inspector"
           >
             Inspector
@@ -1119,10 +1278,10 @@ export default function ProjectPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 w-7 rounded-none p-0"
+                className="h-6 w-6 rounded-none p-0"
                 aria-label="Chat more actions"
               >
-                <MoreHorizontal className="h-4 w-4" />
+                <MoreHorizontal className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="rounded-none border-border font-mono">
@@ -1177,29 +1336,41 @@ export default function ProjectPage() {
         </div>
       ) : null}
 
-      {/* Messages + Inspector Split */}
+      {/* Messages - Full height */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <PanelGroup direction="vertical" className="flex-1">
-          <Panel defaultSize={isChatInspectorOpen ? 70 : 100} minSize={30}>
-            <MessageList
-              messages={chatMessages}
-              isStreaming={agent.isLoading}
-              onSuggestedAction={handleSuggestedAction}
-            />
-          </Panel>
-
-          {isChatInspectorOpen && !isMobileLayout && (
-            <>
-              <PanelResizeHandle className="h-px bg-border transition-colors hover:bg-primary" />
-              <Panel defaultSize={30} minSize={15} className="surface-2 border-t border-border">
-                {chatInspectorTabs}
-              </Panel>
-            </>
-          )}
-        </PanelGroup>
+        <MessageList
+          messages={chatMessages}
+          isStreaming={agent.isLoading}
+          onSuggestedAction={handleSuggestedAction}
+        />
       </div>
 
-      {/* Input */}
+      {/* ChatActionBar - between messages and input */}
+      <ChatActionBar
+        planStatus={activeChat?.planStatus}
+        planDraft={planDraft}
+        onPlanReview={() => {
+          setChatInspectorTab('plan')
+          setIsChatInspectorOpen(true)
+        }}
+        onPlanApprove={() => {
+          void handleApprovePlan()
+        }}
+        onBuildFromPlan={() => {
+          void handleBuildFromPlan()
+        }}
+        planApproveDisabled={!canApprovePlan(activeChat?.planStatus, planDraft) || agent.isLoading}
+        planBuildDisabled={!canBuildFromPlan(activeChat?.planStatus, planDraft) || agent.isLoading}
+        showPlanReview={backgroundExecutionPolicy.showInlinePlanReview}
+        pendingSpec={agent.pendingSpec}
+        onSpecApprove={agent.approvePendingSpec}
+        onSpecEdit={() => setIsSpecPanelOpen(true)}
+        onSpecCancel={agent.cancelPendingSpec}
+        showSpecReview={backgroundExecutionPolicy.showInlineSpecReview}
+        specTier={agent.currentSpec?.tier || specTier}
+      />
+
+      {/* Input - Clean, cards removed */}
       <ChatInput
         mode={chatMode}
         onModeChange={handleModeChange}
@@ -1215,11 +1386,8 @@ export default function ProjectPage() {
         variant={reasoningVariant}
         onVariantChange={setReasoningVariant}
         supportsReasoning={supportsReasoning}
-        compactToolbar={true}
-        pendingSpec={agent.pendingSpec}
-        onSpecApprove={agent.approvePendingSpec}
-        onSpecEdit={() => setIsSpecPanelOpen(true)}
-        onSpecCancel={agent.cancelPendingSpec}
+        specTier={specTier}
+        onSpecTierChange={setSpecTier}
       />
 
       <AnimatePresence>
@@ -1254,6 +1422,7 @@ export default function ProjectPage() {
             </motion.div>
           </>
         ) : null}
+        {/* Mobile Inspector Drawer */}
         {isMobileLayout && isChatInspectorOpen ? (
           <>
             <motion.button
@@ -1294,6 +1463,46 @@ export default function ProjectPage() {
               <div className="max-h-[calc(85vh-44px)] overflow-y-auto p-2 pb-[env(safe-area-inset-bottom)] sm:max-h-[calc(75vh-44px)] sm:p-3">
                 {chatInspectorTabs}
               </div>
+            </motion.div>
+          </>
+        ) : null}
+
+        {/* Desktop Inspector Drawer */}
+        {!isMobileLayout && isChatInspectorOpen ? (
+          <>
+            <motion.button
+              type="button"
+              aria-label="Close inspector"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsChatInspectorOpen(false)}
+              className="absolute inset-0 z-20 bg-background/30"
+            />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+              className="shadow-sharp-lg absolute inset-x-0 bottom-0 z-30 max-h-[60vh] border-t border-border bg-background"
+            >
+              <div className="flex items-center justify-between border-b border-border px-3 py-2">
+                <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-wide">
+                  <Settings2 className="h-3.5 w-3.5 text-primary" />
+                  Inspector
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 rounded-none"
+                  onClick={() => setIsChatInspectorOpen(false)}
+                  aria-label="Close inspector"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="max-h-[calc(60vh-44px)] overflow-y-auto p-2">{chatInspectorTabs}</div>
             </motion.div>
           </>
         ) : null}

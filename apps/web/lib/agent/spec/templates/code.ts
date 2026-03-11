@@ -21,6 +21,7 @@ import type {
   Invariant,
 } from '../types'
 import { createAcceptanceCriterion, createStructuralConstraint } from '../types'
+import { hashString } from '../../utils/hash'
 
 /**
  * Generate a code-mode specification
@@ -36,6 +37,7 @@ export function generateCodeSpec(
     chatId?: string
     existingFiles?: string[]
     targetFiles?: string[]
+    model?: string
   }
 ): Omit<FormalSpecification, 'id' | 'version' | 'tier' | 'status' | 'createdAt' | 'updatedAt'> {
   const now = Date.now()
@@ -45,7 +47,7 @@ export function generateCodeSpec(
   const validation = generateCodeValidation(userMessage, context)
 
   const provenance: SpecProvenance = {
-    model: 'gpt-4o',
+    model: context.model || 'unknown',
     promptHash: hashString(userMessage),
     timestamp: now,
     chatId: context.chatId || '',
@@ -220,7 +222,7 @@ function generateCodePlan(
     steps,
     dependencies,
     risks,
-    estimatedTools: ['read_files', 'write_files', 'search_files', 'edit_file'],
+    estimatedTools: ['read_files', 'write_files', 'search_code'],
   }
 }
 
@@ -307,7 +309,7 @@ function generateCodeSteps(
   steps.push({
     id: 'step-1',
     description: 'Read and understand the current code',
-    tools: ['read_files', 'search_files'],
+    tools: ['read_files', 'search_code'],
     targetFiles: context.targetFiles || ['src/'],
     status: 'pending',
   })
@@ -317,7 +319,7 @@ function generateCodeSteps(
     steps.push({
       id: 'step-2',
       description: 'Search for all usages and references',
-      tools: ['search_files'],
+      tools: ['search_code'],
       targetFiles: ['src/'],
       status: 'pending',
     })
@@ -327,7 +329,7 @@ function generateCodeSteps(
   const changeStep: SpecStep = {
     id: `step-${steps.length + 1}`,
     description: 'Apply the requested changes',
-    tools: ['write_files', 'edit_file'],
+    tools: ['write_files'],
     targetFiles: context.targetFiles || ['src/'],
     status: 'pending',
   }
@@ -379,17 +381,4 @@ function extractCodeGoal(message: string): string {
   // Fallback
   const firstSentence = message.split(/[.!?]/)[0] || message
   return firstSentence.slice(0, 100).trim()
-}
-
-/**
- * Simple string hash
- */
-function hashString(str: string): string {
-  let hash = 0
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i)
-    hash = (hash << 5) - hash + char
-    hash = hash & hash
-  }
-  return Math.abs(hash).toString(36).slice(0, 8)
 }

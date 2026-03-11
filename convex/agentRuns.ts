@@ -99,6 +99,10 @@ export const appendEvents = mutation({
         output: v.optional(v.string()),
         error: v.optional(v.string()),
         durationMs: v.optional(v.number()),
+        planStepIndex: v.optional(v.number()),
+        planStepTitle: v.optional(v.string()),
+        planTotalSteps: v.optional(v.number()),
+        completedPlanStepIndexes: v.optional(v.array(v.number())),
         usage: v.optional(v.record(v.string(), v.any())),
       })
     ),
@@ -126,6 +130,10 @@ export const appendEvents = mutation({
         output: event.output,
         error: event.error,
         durationMs: event.durationMs,
+        planStepIndex: event.planStepIndex,
+        planStepTitle: event.planStepTitle,
+        planTotalSteps: event.planTotalSteps,
+        completedPlanStepIndexes: event.completedPlanStepIndexes,
         usage: event.usage,
         createdAt,
       })

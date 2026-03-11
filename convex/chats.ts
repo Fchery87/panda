@@ -1,7 +1,7 @@
 import { query, mutation } from './_generated/server'
 import { v } from 'convex/values'
 import { requireChatOwner, requireProjectOwner } from './lib/authz'
-import { ChatMode } from './schema'
+import { ChatMode, PlanStatus } from './schema'
 
 // list (query) - list chats by projectId, ordered by updatedAt
 export const list = query({
@@ -41,6 +41,11 @@ export const create = mutation({
       title: args.title,
       mode: args.mode,
       planDraft: undefined,
+      planStatus: 'idle',
+      planSourceMessageId: undefined,
+      planApprovedAt: undefined,
+      planLastGeneratedAt: undefined,
+      planBuildRunId: undefined,
       planUpdatedAt: undefined,
       createdAt: now,
       updatedAt: now,
@@ -57,6 +62,11 @@ export const update = mutation({
     title: v.optional(v.string()),
     mode: v.optional(ChatMode),
     planDraft: v.optional(v.string()),
+    planStatus: v.optional(PlanStatus),
+    planSourceMessageId: v.optional(v.string()),
+    planApprovedAt: v.optional(v.number()),
+    planLastGeneratedAt: v.optional(v.number()),
+    planBuildRunId: v.optional(v.id('agentRuns')),
   },
   handler: async (ctx, args) => {
     const { chat } = await requireChatOwner(ctx, args.id)
@@ -71,6 +81,14 @@ export const update = mutation({
       updates.planDraft = args.planDraft
       updates.planUpdatedAt = Date.now()
     }
+    if (args.planStatus !== undefined) updates.planStatus = args.planStatus
+    if (args.planSourceMessageId !== undefined)
+      updates.planSourceMessageId = args.planSourceMessageId
+    if (args.planApprovedAt !== undefined) updates.planApprovedAt = args.planApprovedAt
+    if (args.planLastGeneratedAt !== undefined) {
+      updates.planLastGeneratedAt = args.planLastGeneratedAt
+    }
+    if (args.planBuildRunId !== undefined) updates.planBuildRunId = args.planBuildRunId
 
     await ctx.db.patch(args.id, updates)
 
@@ -147,6 +165,11 @@ export const fork = mutation({
       title: `${originalChat.title || 'Untitled'} (fork)`,
       mode: originalChat.mode,
       planDraft: originalChat.planDraft,
+      planStatus: originalChat.planStatus,
+      planSourceMessageId: originalChat.planSourceMessageId,
+      planApprovedAt: originalChat.planApprovedAt,
+      planLastGeneratedAt: originalChat.planLastGeneratedAt,
+      planBuildRunId: originalChat.planBuildRunId,
       planUpdatedAt: originalChat.planUpdatedAt,
       createdAt: now,
       updatedAt: now,

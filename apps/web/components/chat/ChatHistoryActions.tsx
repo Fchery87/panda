@@ -8,7 +8,7 @@ import type { Id } from '@convex/_generated/dataModel'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { GitFork, Undo2, MoreHorizontal } from 'lucide-react'
+import { GitFork, MoreHorizontal } from 'lucide-react'
 
 interface ChatHistoryActionsProps {
   chatId: Id<'chats'>
@@ -16,7 +16,11 @@ interface ChatHistoryActionsProps {
   className?: string
 }
 
-export function ChatHistoryActions({ chatId, messageCount, className }: ChatHistoryActionsProps) {
+export function ChatHistoryActions({
+  chatId,
+  messageCount: _messageCount,
+  className,
+}: ChatHistoryActionsProps) {
   const [isLoading, setIsLoading] = React.useState(false)
   const [showMenu, setShowMenu] = React.useState(false)
 
@@ -61,19 +65,6 @@ export function ChatHistoryActions({ chatId, messageCount, className }: ChatHist
               <GitFork className="h-3.5 w-3.5" />
               Fork this chat
             </button>
-            {messageCount && messageCount > 1 && (
-              <button
-                onClick={() => {
-                  toast.info('Revert feature coming soon')
-                  setShowMenu(false)
-                }}
-                disabled={isLoading}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left font-mono text-xs transition-colors hover:bg-muted disabled:opacity-50"
-              >
-                <Undo2 className="h-3.5 w-3.5" />
-                Revert to...
-              </button>
-            )}
           </div>
         </>
       )}

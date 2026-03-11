@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'bun:test'
 import {
   describeStepMeta,
+  derivePlanProgress,
   extractTargetFilePaths,
   formatElapsed,
   groupProgressSteps,
   mapLatestRunProgressSteps,
   mapRunEventsToProgressSteps,
+  parsePlanSteps,
   reconcileProgressSteps,
   type LiveProgressStep,
 } from './live-run-utils'
@@ -196,5 +198,81 @@ describe('live run utils', () => {
 
     expect(steps[0]?.status).toBe('completed')
     expect(steps[1]?.status).toBe('completed')
+  })
+
+  it('parses numbered implementation steps from a plan draft', () => {
+    const planDraft = `## Goal
+Plan auth migration
+
+## Implementation Plan
+1. Update auth route in apps/web/app/auth/page.tsx
+2. Add migration helper in apps/web/lib/auth/migrate.ts
+3. Run auth tests
+
+## Risks
+- Session migration edge cases`
+
+    expect(parsePlanSteps(planDraft)).toEqual([
+      'Update auth route in apps/web/app/auth/page.tsx',
+      'Add migration helper in apps/web/lib/auth/migrate.ts',
+      'Run auth tests',
+    ])
+  })
+
+  it('derives best-effort plan progress from run steps', () => {
+    const planSteps = [
+      'Update auth route in apps/web/app/auth/page.tsx',
+      'Add migration helper in apps/web/lib/auth/migrate.ts',
+      'Run auth tests',
+    ]
+
+    const progress = derivePlanProgress(planSteps, [
+      {
+        id: '1',
+        content: 'Updated auth route in apps/web/app/auth/page.tsx',
+        status: 'completed',
+        category: 'tool',
+        createdAt: 1,
+      },
+      {
+        id: '2',
+        content: 'Running auth tests',
+        status: 'running',
+        category: 'tool',
+        createdAt: 2,
+      },
+    ])
+
+    expect(progress.totalSteps).toBe(3)
+    expect(progress.completedSteps).toBe(1)
+    expect(progress.activeStepIndex).toBe(2)
+    expect(progress.statuses).toEqual(['completed', 'pending', 'active'])
+  })
+
+  it('prefers explicit persisted plan progress metadata when available', () => {
+    const planSteps = [
+      'Update auth route in apps/web/app/auth/page.tsx',
+      'Add migration helper in apps/web/lib/auth/migrate.ts',
+      'Run auth tests',
+    ]
+
+    const progress = derivePlanProgress(planSteps, [
+      {
+        id: '1',
+        content: 'Mapped plan progress explicitly',
+        status: 'running',
+        category: 'tool',
+        planStepIndex: 1,
+        planStepTitle: 'Add migration helper in apps/web/lib/auth/migrate.ts',
+        planTotalSteps: 3,
+        completedPlanStepIndexes: [0],
+        createdAt: 1,
+      },
+    ])
+
+    expect(progress.totalSteps).toBe(3)
+    expect(progress.completedSteps).toBe(1)
+    expect(progress.activeStepIndex).toBe(1)
+    expect(progress.statuses).toEqual(['completed', 'active', 'pending'])
   })
 })

@@ -66,6 +66,8 @@ async function openWorkbenchProjectFixture(
     filePath?: string
     fileContent?: string
     seedRuntimeCheckpoint?: boolean
+    planDraft?: string
+    planStatus?: 'awaiting_review' | 'approved' | 'stale' | 'executing'
   }
 ): Promise<{ projectId: string; chatId?: string; filePath?: string; sessionID?: string }> {
   const params = new URLSearchParams({ name: 'Workbench E2E Fixture' })
@@ -77,6 +79,12 @@ async function openWorkbenchProjectFixture(
   }
   if (options?.seedRuntimeCheckpoint) {
     params.set('seedRuntimeCheckpoint', '1')
+  }
+  if (options?.planDraft) {
+    params.set('planDraft', options.planDraft)
+  }
+  if (options?.planStatus) {
+    params.set('planStatus', options.planStatus)
   }
 
   let response = await page.request.get(`/api/e2e/project?${params.toString()}`)
@@ -96,11 +104,35 @@ async function openWorkbenchProjectFixture(
   }
   expect(body.projectId).toBeTruthy()
 
-  await page.goto(`/projects/${body.projectId}`, { waitUntil: 'commit' })
+  const projectUrl = `/projects/${body.projectId}`
+  const navigationDeadline = Date.now() + 120_000
+  let lastNavigationError: unknown = null
+
+  while (Date.now() < navigationDeadline) {
+    try {
+      await page.goto(projectUrl, { waitUntil: 'domcontentloaded', timeout: 120_000 })
+      lastNavigationError = null
+      break
+    } catch (error) {
+      lastNavigationError = error
+      if (
+        !(error instanceof Error) ||
+        (!error.message.includes('ERR_ABORTED') && !error.message.includes('frame was detached'))
+      ) {
+        throw error
+      }
+      await page.waitForTimeout(500)
+    }
+  }
+
+  if (lastNavigationError) {
+    throw lastNavigationError
+  }
+
   await expect(page.getByRole('navigation', { name: /breadcrumb/i })).toBeVisible({
-    timeout: 30000,
+    timeout: 120000,
   })
-  await expect(page.getByRole('textbox').first()).toBeVisible({ timeout: 30000 })
+  await expect(page.getByRole('textbox').first()).toBeVisible({ timeout: 120000 })
   return body
 }
 
@@ -386,5 +418,58 @@ test.describe('Workbench', () => {
 
     await expect(page.getByText(/unsaved changes/i)).toBeVisible({ timeout: 10000 })
     await expect(page.getByText(/unsaved changes/i)).not.toBeVisible({ timeout: 15000 })
+  })
+
+  test('seeded plan workflow can be reviewed, approved, and built from plan', async ({ page }) => {
+    test.setTimeout(180_000)
+    await openWorkbenchProjectFixture(page, {
+      planStatus: 'awaiting_review',
+      planDraft: `## Goal
+Ship the seeded plan workflow
+
+## Clarifications
+- None
+
+## Relevant Files
+- apps/web/components/plan/PlanPanel.tsx
+- apps/web/components/chat/ChatInput.tsx
+
+## Implementation Plan
+1. Review the seeded plan in the plan inspector.
+2. Approve the plan from the review controls.
+3. Start build mode from the approved plan.
+
+## Risks
+- Keep the workflow deterministic for E2E.
+
+## Validation
+- Verify the review card and plan tab update.
+
+## Open Questions
+- None`,
+    })
+
+    const planReviewCard = page.getByText(/plan awaiting review/i)
+    await expect(planReviewCard).toBeVisible({ timeout: 20000 })
+
+    await page.getByRole('button', { name: /review plan/i }).click()
+    await expect(page.getByRole('tab', { name: /^plan$/i })).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('textarea').first()).toHaveValue(/ship the seeded plan workflow/i, {
+      timeout: 10000,
+    })
+
+    const approvePlanButton = page.getByRole('button', { name: /approve plan/i }).first()
+    await approvePlanButton.click()
+
+    const buildFromPlanButton = page.getByRole('button', { name: /build from plan/i }).first()
+    await expect(buildFromPlanButton).toBeVisible({ timeout: 20000 })
+    await buildFromPlanButton.click()
+
+    await expect(page.getByRole('button', { name: /plan executing/i }).first()).toBeVisible({
+      timeout: 20000,
+    })
+    await expect(page.getByRole('button', { name: /run progress/i }).first()).toBeVisible({
+      timeout: 10000,
+    })
   })
 })

@@ -9,63 +9,40 @@
  */
 
 import type { CompletionMessage } from '../llm/types'
+import {
+  assembleContext,
+  type BudgetAllocationOptions,
+  type FileBudgetInfo,
+} from './context/context-budget'
 
 export type ChatMode = 'ask' | 'architect' | 'code' | 'build'
 type LegacyChatMode = ChatMode | 'discuss' | 'debug' | 'review'
 
 /**
- * Mode configuration including allowed tools
+ * Mode configuration
+ * Note: allowedTools are defined in tools.ts:getAllowedToolsForMode()
+ * to maintain a single source of truth for tool permissions.
  */
 export interface ModeConfig {
   description: string
-  allowedTools: string[]
   fileAccess: 'read-only' | 'read-write'
 }
 
 export const MODE_CONFIGS: Record<ChatMode, ModeConfig> = {
   ask: {
     description: 'Read-only Q&A without modifications',
-    allowedTools: ['search_code', 'search_code_ast', 'read_files', 'list_directory'],
     fileAccess: 'read-only',
   },
   architect: {
     description: 'System design and planning',
-    allowedTools: [
-      'search_code',
-      'search_code_ast',
-      'read_files',
-      'list_directory',
-      'update_memory_bank',
-      'task',
-    ],
     fileAccess: 'read-only',
   },
   code: {
     description: 'Default implementation mode',
-    allowedTools: [
-      'search_code',
-      'search_code_ast',
-      'read_files',
-      'list_directory',
-      'write_files',
-      'run_command',
-      'update_memory_bank',
-      'task',
-    ],
     fileAccess: 'read-write',
   },
   build: {
     description: 'Full implementation',
-    allowedTools: [
-      'search_code',
-      'search_code_ast',
-      'read_files',
-      'list_directory',
-      'write_files',
-      'run_command',
-      'update_memory_bank',
-      'task',
-    ],
     fileAccess: 'read-write',
   },
 }
@@ -86,12 +63,31 @@ export interface PromptContext {
   files?: Array<{
     path: string
     content?: string
+    score?: number
   }>
   chatMode: ChatMode
   provider?: string
   previousMessages?: CompletionMessage[]
   userMessage?: string
   customInstructions?: string
+  /** Session summary from previous chat context for handoff */
+  sessionSummary?: string
+  /** Context window size for token budget allocation (defaults to 128000) */
+  contextWindowSize?: number
+  /** LLM provider type for token estimation */
+  providerType?:
+    | 'openai'
+    | 'anthropic'
+    | 'openrouter'
+    | 'together'
+    | 'zai'
+    | 'chutes'
+    | 'deepseek'
+    | 'groq'
+    | 'fireworks'
+    | 'custom'
+  /** Model name for token estimation */
+  model?: string
 }
 
 const ASK_SYSTEM_PROMPT = `You are Panda.ai, a senior engineer helping a teammate understand their codebase.
@@ -122,17 +118,34 @@ INTENT RULES (read first, always):
 1. Determine the intent of the user's message BEFORE choosing a format.
 2. For conventional questions, trade-off discussions, or opinions (e.g. "what do you think of X?", "is Y a good idea?", "how does Z compare to W?"): respond naturally in paragraphs. No plan format. No headers. Just a clear, opinionated engineering take.
 3. For straightforward factual questions: answer directly in plain language (1-4 sentences).
-4. For planning, architecture, or multi-step implementation requests (e.g. "plan out X", "design the architecture for Y"): ONLY THEN use the structured plan format below.
+4. For planning, architecture, or multi-step implementation requests (e.g. "plan out X", "design the architecture for Y"): ONLY THEN produce or update the plan artifact below.
 
-Structured plan format (for explicit architecture/planning requests only):
-1) **Clarifying questions** (0–2 bullets; only what you truly need)
-2) **Proposed plan** (numbered steps; include which files/components are likely to change)
-3) **Risks / trade-offs** (bullets)
-4) **Next step** (one sentence)
+Plan artifact format (for explicit architecture/planning requests only):
+## Goal
+- One short statement of the desired outcome
+
+## Clarifications
+- 0-2 bullets; only questions or assumptions that materially affect implementation
+
+## Relevant Files
+- File paths, symbols, routes, or systems likely impacted
+
+## Implementation Plan
+1. Ordered steps to execute
+
+## Risks
+- Trade-offs, regressions, unknowns
+
+## Validation
+- Checks, tests, or acceptance steps
+
+## Open Questions
+- Remaining unresolved questions, or "None"
 
 Output constraints:
 - Do NOT paste full implementations or large code blocks.
 - If a snippet is necessary for explanation, keep it ≤10 lines and label it clearly.
+- When generating a plan artifact, prefer file paths and code references over generic architecture prose.
 - If asked to "write the code", produce a plan and suggest switching to Code or Build mode.
 
 You have access to project files for context. Use them. Be opinionated and concrete.`
@@ -253,35 +266,93 @@ export function getPromptForMode(context: PromptContext): CompletionMessage[] {
 
   let contextContent = ''
 
-  if (context.projectName) {
-    contextContent += `Project: ${context.projectName}\n`
-  }
-  if (context.projectDescription) {
-    contextContent += `Description: ${context.projectDescription}\n`
-  }
-  if (context.projectOverview) {
-    contextContent += `\n## Project Overview\n${context.projectOverview}\n`
-  }
-  if (context.memoryBank) {
-    contextContent += `\n## Project Memory Bank\n${context.memoryBank}\n`
-  }
-  if (context.files && context.files.length > 0) {
-    const isReadOnly = MODE_CONFIGS[context.chatMode].fileAccess === 'read-only'
-    if (isReadOnly) {
-      contextContent += '\nRelevant files:\n'
-      contextContent += context.files
-        .map((f) => `- ${f.path}${f.content ? `\n\`\`\`\n${f.content}\n\`\`\`` : ''}`)
-        .join('\n\n')
-    } else {
-      contextContent += '\nCurrent files in project:\n'
-      context.files.forEach((f) => {
-        contextContent += `\n--- ${f.path} ---\n`
-        if (f.content) {
-          contextContent += f.content
-        } else {
-          contextContent += '[File content not loaded]'
-        }
-      })
+  // Use context budget allocation when window size is provided
+  if (context.contextWindowSize && context.contextWindowSize > 0) {
+    const fileBudgetInfo: FileBudgetInfo[] =
+      context.files?.map((f) => ({
+        path: f.path,
+        content: f.content,
+        score: f.score ?? 0.5,
+      })) ?? []
+
+    const chatHistory =
+      context.previousMessages?.map((m) => ({
+        role: m.role,
+        content: m.content,
+      })) ?? []
+
+    const budgetOptions: BudgetAllocationOptions = {
+      contextWindowSize: context.contextWindowSize,
+      systemPrompt,
+      projectOverview: context.projectOverview,
+      memoryBank: context.memoryBank,
+      files: fileBudgetInfo,
+      chatHistory,
+      providerType: context.providerType ?? 'openai',
+      model: context.model ?? 'gpt-4o',
+    }
+
+    const budgetedContent = assembleContext(budgetOptions)
+
+    // Build context content from budgeted results
+    const parts: string[] = []
+    if (context.projectName) {
+      parts.push(`Project: ${context.projectName}`)
+    }
+    if (context.projectDescription) {
+      parts.push(`Description: ${context.projectDescription}`)
+    }
+    if (budgetedContent.projectContext) {
+      parts.push(budgetedContent.projectContext)
+    }
+    if (context.sessionSummary) {
+      parts.push(`\n## Previous Session Context\n${context.sessionSummary}`)
+    }
+    if (budgetedContent.fileContents) {
+      const isReadOnly = MODE_CONFIGS[context.chatMode].fileAccess === 'read-only'
+      if (isReadOnly) {
+        parts.push('\nRelevant files:\n' + budgetedContent.fileContents)
+      } else {
+        parts.push('\nCurrent files in project:\n' + budgetedContent.fileContents)
+      }
+    }
+
+    contextContent = parts.join('\n')
+  } else {
+    // Legacy context assembly without budget
+    if (context.projectName) {
+      contextContent += `Project: ${context.projectName}\n`
+    }
+    if (context.projectDescription) {
+      contextContent += `Description: ${context.projectDescription}\n`
+    }
+    if (context.projectOverview) {
+      contextContent += `\n## Project Overview\n${context.projectOverview}\n`
+    }
+    if (context.memoryBank) {
+      contextContent += `\n## Project Memory Bank\n${context.memoryBank}\n`
+    }
+    if (context.sessionSummary) {
+      contextContent += `\n## Previous Session Context\n${context.sessionSummary}\n`
+    }
+    if (context.files && context.files.length > 0) {
+      const isReadOnly = MODE_CONFIGS[context.chatMode].fileAccess === 'read-only'
+      if (isReadOnly) {
+        contextContent += '\nRelevant files:\n'
+        contextContent += context.files
+          .map((f) => `- ${f.path}${f.content ? `\n\`\`\`\n${f.content}\n\`\`\`` : ''}`)
+          .join('\n\n')
+      } else {
+        contextContent += '\nCurrent files in project:\n'
+        context.files.forEach((f) => {
+          contextContent += `\n--- ${f.path} ---\n`
+          if (f.content) {
+            contextContent += f.content
+          } else {
+            contextContent += '[File content not loaded]'
+          }
+        })
+      }
     }
   }
 

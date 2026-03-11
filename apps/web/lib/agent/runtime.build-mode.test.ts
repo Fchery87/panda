@@ -7,6 +7,7 @@ import type {
   ToolCall,
 } from '../llm/types'
 import { AgentRuntime, shouldRewriteBuildResponse } from './runtime'
+import { buildApprovedPlanExecutionMessage } from '../chat/planDraft'
 
 function makeFinish(): StreamChunk {
   return {
@@ -28,6 +29,17 @@ function makeToolCall(name: string, args: Record<string, unknown>): ToolCall {
 }
 
 describe('Build Mode no-code guardrails', () => {
+  it('formats approved-plan build requests as an explicit execution contract', () => {
+    const message = buildApprovedPlanExecutionMessage(
+      '1. Update page.tsx\n2. Run the verification suite'
+    )
+
+    expect(message).toContain('Approved plan:')
+    expect(message).toContain('Execution contract:')
+    expect(message).toContain('Treat the approved plan as the primary execution contract.')
+    expect(message).not.toContain('Plan draft:')
+  })
+
   it('detects fenced code blocks in build responses', () => {
     expect(shouldRewriteBuildResponse('no code here')).toBe(false)
     expect(shouldRewriteBuildResponse('```ts\nexport const x = 1\n```')).toBe(true)

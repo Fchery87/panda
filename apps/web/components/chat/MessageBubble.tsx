@@ -31,15 +31,61 @@ function redactFencedCodeBlocks(content: string): string {
 }
 
 function renderInlineFormatting(text: string) {
-  const parts = text.split(/(\*\*.*?\*\*)/g)
+  // Pattern order matters: code first (most specific), then bold/italic, then links
+  const pattern = /(`[^`]+`|\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_|\[[^\]]+\]\([^)]+\))/g
+  const parts = text.split(pattern)
+
   return parts.map((part, index) => {
-    const boldMatch = part.match(/^\*\*(.*?)\*\*$/)
-    if (!boldMatch) return <Fragment key={index}>{part}</Fragment>
-    return (
-      <strong key={index} className="font-semibold text-foreground">
-        {boldMatch[1]}
-      </strong>
-    )
+    // Code: `text`
+    const codeMatch = part.match(/^`([^`]+)`$/)
+    if (codeMatch) {
+      return (
+        <code
+          key={index}
+          className="rounded bg-muted px-1 py-0.5 font-mono text-xs text-foreground"
+        >
+          {codeMatch[1]}
+        </code>
+      )
+    }
+
+    // Bold: **text** or __text__
+    const boldMatch = part.match(/^\*\*([^*]+)\*\*$/) || part.match(/^__([^_]+)__$/)
+    if (boldMatch) {
+      return (
+        <strong key={index} className="font-semibold text-foreground">
+          {boldMatch[1]}
+        </strong>
+      )
+    }
+
+    // Italic: *text* or _text_
+    const italicMatch = part.match(/^\*([^*]+)\*$/) || part.match(/^_([^_]+)_$/)
+    if (italicMatch) {
+      return (
+        <em key={index} className="italic text-foreground">
+          {italicMatch[1]}
+        </em>
+      )
+    }
+
+    // Link: [text](url)
+    const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/)
+    if (linkMatch) {
+      return (
+        <a
+          key={index}
+          href={linkMatch[2]}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-primary underline underline-offset-2 hover:text-primary/80"
+        >
+          {linkMatch[1]}
+        </a>
+      )
+    }
+
+    return <Fragment key={index}>{part}</Fragment>
   })
 }
 

@@ -9,21 +9,24 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
+  History,
   Loader2,
   XCircle,
-  History,
   Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
+  derivePlanProgress,
   describeStepMeta,
   formatElapsed,
   groupProgressSteps,
   reconcileProgressSteps,
   mapRunEventsToProgressSteps,
+  parsePlanSteps,
   type LiveProgressStep,
 } from './live-run-utils'
 import type { FormalSpecification } from '@/lib/agent/spec/types'
+import type { PlanStatus } from '@/lib/chat/planDraft'
 import { SpecBadgeMini } from '../workbench/SpecBadge'
 
 interface RunProgressPanelProps {
@@ -36,10 +39,20 @@ interface RunProgressPanelProps {
   defaultOpen?: boolean
   /** Current spec for this run */
   currentSpec?: FormalSpecification | null
+  /** Current plan workflow status for this chat */
+  planStatus?: PlanStatus | null
+  /** Current plan artifact for progress mapping */
+  planDraft?: string | null
   /** Callback when spec badge is clicked */
   onSpecClick?: () => void
+  /** Callback when plan badge is clicked */
+  onPlanClick?: () => void
   /** Callback when a recoverable runtime checkpoint should be resumed */
   onResumeRuntimeSession?: (sessionID: string) => void | Promise<void>
+  /** Maximum total steps to display (default: 24) */
+  maxTotalSteps?: number
+  /** Maximum steps per group to display (default: 8) */
+  maxStepsPerGroup?: number
 }
 
 const STORAGE_KEY = 'panda.runProgress.isOpen'
@@ -53,8 +66,13 @@ export function RunProgressPanel({
   onOpenArtifacts,
   defaultOpen = false,
   currentSpec,
+  planStatus,
+  planDraft,
   onSpecClick,
+  onPlanClick,
   onResumeRuntimeSession,
+  maxTotalSteps = 24,
+  maxStepsPerGroup = 8,
 }: RunProgressPanelProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen)
   const [hasLoadedPreference, setHasLoadedPreference] = useState(false)
@@ -119,10 +137,10 @@ export function RunProgressPanel({
 
   const steps = useMemo(() => {
     if (isStreaming && externalLiveSteps && externalLiveSteps.length > 0) {
-      return externalLiveSteps.slice(-24)
+      return externalLiveSteps.slice(-maxTotalSteps)
     }
-    return historicalSteps.slice(-24)
-  }, [isStreaming, externalLiveSteps, historicalSteps])
+    return historicalSteps.slice(-maxTotalSteps)
+  }, [isStreaming, externalLiveSteps, historicalSteps, maxTotalSteps])
 
   const reconciledSteps = useMemo(
     () => reconcileProgressSteps(steps, { isStreaming }),
@@ -130,6 +148,11 @@ export function RunProgressPanel({
   )
 
   const groups = useMemo(() => groupProgressSteps(reconciledSteps), [reconciledSteps])
+  const planProgress = useMemo(() => {
+    const parsedPlanSteps = parsePlanSteps(planDraft)
+    if (parsedPlanSteps.length === 0) return null
+    return derivePlanProgress(parsedPlanSteps, reconciledSteps)
+  }, [planDraft, reconciledSteps])
 
   const startedAt = steps[0]?.createdAt ?? null
   const elapsedMs = startedAt ? Math.max(0, nowMs - startedAt) : 0
@@ -209,6 +232,19 @@ export function RunProgressPanel({
               : `Checkpoints ${runtimeCheckpoints.length}`}
           </span>
         ) : null}
+        {planProgress && (
+          <span
+            className={cn(
+              'border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide',
+              planProgress.completedSteps === planProgress.totalSteps && planProgress.totalSteps > 0
+                ? 'border-primary/50 bg-primary/5 text-primary'
+                : 'border-border text-muted-foreground'
+            )}
+          >
+            Plan {planProgress.completedSteps}/{planProgress.totalSteps}
+            {planProgress.activeStepIndex >= 0 && ` • Step ${planProgress.activeStepIndex + 1}`}
+          </span>
+        )}
         {hasRecoverableCheckpoint &&
         latestRuntimeCheckpoint?.sessionID &&
         onResumeRuntimeSession ? (
@@ -246,6 +282,23 @@ export function RunProgressPanel({
                 • {currentSpec.intent.constraints.length} constraints
               </span>
             )}
+          </button>
+        )}
+        {planStatus && planStatus !== 'idle' && (
+          <button
+            type="button"
+            onClick={onPlanClick}
+            className={cn(
+              'flex items-center gap-1.5 border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide transition-colors hover:bg-muted/50',
+              planStatus === 'approved' && 'border-primary/50 bg-primary/5 text-primary',
+              planStatus === 'executing' && 'border-primary/50 bg-primary/5 text-primary',
+              planStatus === 'awaiting_review' && 'border-border bg-muted/50 text-muted-foreground',
+              planStatus === 'stale' && 'border-warning/50 bg-warning/5 text-warning',
+              planStatus === 'drafting' && 'border-border bg-muted/50 text-muted-foreground'
+            )}
+          >
+            <CheckCircle2 className="h-3 w-3" />
+            <span>Plan {planStatus.replace('_', ' ')}</span>
           </button>
         )}
       </div>
@@ -286,7 +339,7 @@ export function RunProgressPanel({
 
                 {expanded && (
                   <div className="space-y-1 border-t border-border px-2 py-1">
-                    {group.steps.slice(-8).map((step) => (
+                    {group.steps.slice(-maxStepsPerGroup).map((step) => (
                       <div
                         key={step.id}
                         className={cn(

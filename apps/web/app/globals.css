@@ -243,6 +243,10 @@
     @apply border-b border-border px-3 py-2 font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground;
   }
 
+  .panel-header-compact {
+    @apply border-b border-border px-3 py-1.5 font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground;
+  }
+
   .panel-header-numbered::before {
     content: attr(data-number);
     @apply mr-2 font-semibold text-primary;

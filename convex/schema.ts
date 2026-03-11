@@ -21,6 +21,15 @@ export const ChatMode = v.union(
 
 export type ChatModeType = 'ask' | 'architect' | 'code' | 'build'
 
+export const PlanStatus = v.union(
+  v.literal('idle'),
+  v.literal('drafting'),
+  v.literal('awaiting_review'),
+  v.literal('approved'),
+  v.literal('stale'),
+  v.literal('executing')
+)
+
 export default defineSchema({
   // Auth tables (accounts, sessions, verification codes, etc.)
   ...authTables,
@@ -104,6 +113,11 @@ export default defineSchema({
     title: v.optional(v.string()),
     mode: ChatMode,
     planDraft: v.optional(v.string()),
+    planStatus: v.optional(PlanStatus),
+    planSourceMessageId: v.optional(v.string()),
+    planApprovedAt: v.optional(v.number()),
+    planLastGeneratedAt: v.optional(v.number()),
+    planBuildRunId: v.optional(v.id('agentRuns')),
     planUpdatedAt: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -245,6 +259,10 @@ export default defineSchema({
     output: v.optional(v.string()),
     error: v.optional(v.string()),
     durationMs: v.optional(v.number()),
+    planStepIndex: v.optional(v.number()),
+    planStepTitle: v.optional(v.string()),
+    planTotalSteps: v.optional(v.number()),
+    completedPlanStepIndexes: v.optional(v.array(v.number())),
     usage: v.optional(v.record(v.string(), v.any())),
     createdAt: v.number(),
   })

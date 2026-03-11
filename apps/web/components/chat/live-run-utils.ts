@@ -1,3 +1,8 @@
+import {
+  derivePlanProgressMetadata,
+  parsePlanSteps as parsePlanStepsFromDraft,
+} from '@/lib/agent/plan-progress'
+
 export type LiveProgressCategory = 'analysis' | 'rewrite' | 'tool' | 'complete' | 'other'
 
 export interface LiveProgressDetails {
@@ -15,6 +20,10 @@ export interface LiveProgressStep {
   content: string
   status: 'running' | 'completed' | 'error'
   category?: LiveProgressCategory
+  planStepIndex?: number
+  planStepTitle?: string
+  planTotalSteps?: number
+  completedPlanStepIndexes?: number[]
   details?: LiveProgressDetails
   createdAt: number
 }
@@ -32,6 +41,10 @@ interface PersistedRunEvent {
   toolCallId?: string
   args?: Record<string, unknown>
   durationMs?: number
+  planStepIndex?: number
+  planStepTitle?: string
+  planTotalSteps?: number
+  completedPlanStepIndexes?: number[]
   error?: string
   createdAt?: number
 }
@@ -40,6 +53,13 @@ interface LiveProgressGroup {
   key: LiveProgressCategory
   label: string
   steps: LiveProgressStep[]
+}
+
+export interface PlanProgressSummary {
+  totalSteps: number
+  completedSteps: number
+  activeStepIndex: number
+  statuses: Array<'pending' | 'active' | 'completed'>
 }
 
 const GROUP_ORDER: LiveProgressCategory[] = ['analysis', 'rewrite', 'tool', 'complete', 'other']
@@ -132,6 +152,94 @@ export function describeStepMeta(step: LiveProgressStep): {
   }
 }
 
+export function parsePlanSteps(planDraft: string | null | undefined): string[] {
+  return parsePlanStepsFromDraft(planDraft)
+}
+
+export function derivePlanProgress(
+  planSteps: string[],
+  progressSteps: LiveProgressStep[]
+): PlanProgressSummary {
+  const latestExplicitStep = [...progressSteps]
+    .reverse()
+    .find(
+      (step) =>
+        typeof step.planTotalSteps === 'number' && Array.isArray(step.completedPlanStepIndexes)
+    )
+
+  if (
+    latestExplicitStep?.planTotalSteps !== undefined &&
+    latestExplicitStep.planTotalSteps > 0 &&
+    latestExplicitStep.completedPlanStepIndexes !== undefined
+  ) {
+    const totalSteps = latestExplicitStep.planTotalSteps
+    const completedPlanStepIndexes = latestExplicitStep.completedPlanStepIndexes
+    const statuses: Array<'pending' | 'active' | 'completed'> = Array.from(
+      { length: totalSteps },
+      (_, index) => (completedPlanStepIndexes.includes(index) ? 'completed' : 'pending')
+    )
+
+    const latestActiveStep = [...progressSteps]
+      .reverse()
+      .find(
+        (step) =>
+          step.status === 'running' &&
+          typeof step.planStepIndex === 'number' &&
+          typeof step.planTotalSteps === 'number'
+      )
+
+    const activeStepIndex =
+      typeof latestActiveStep?.planStepIndex === 'number' ? latestActiveStep.planStepIndex : -1
+    if (
+      activeStepIndex >= 0 &&
+      activeStepIndex < statuses.length &&
+      statuses[activeStepIndex] !== 'completed'
+    ) {
+      statuses[activeStepIndex] = 'active'
+    }
+
+    return {
+      totalSteps,
+      completedSteps: statuses.filter((status) => status === 'completed').length,
+      activeStepIndex,
+      statuses,
+    }
+  }
+
+  const statuses: Array<'pending' | 'active' | 'completed'> = planSteps.map(() => 'pending')
+
+  for (let index = 0; index < planSteps.length; index += 1) {
+    const matchingCompleted = progressSteps.find((step) => {
+      if (step.status !== 'completed') return false
+      const metadata = derivePlanProgressMetadata(planSteps, step.content, 'completed', [])
+      return metadata?.planStepIndex === index
+    })
+    if (matchingCompleted) {
+      statuses[index] = 'completed'
+      continue
+    }
+
+    const matchingActive = progressSteps.find((step) => {
+      if (step.status !== 'running') return false
+      const metadata = derivePlanProgressMetadata(planSteps, step.content, 'running', [])
+      return metadata?.planStepIndex === index
+    })
+    if (matchingActive) {
+      statuses[index] = 'active'
+    }
+  }
+
+  const completedSteps = statuses.filter((status) => status === 'completed').length
+  const activeStepIndex = statuses.findIndex((status) => status === 'active')
+
+  return {
+    totalSteps: planSteps.length,
+    completedSteps,
+    activeStepIndex,
+    statuses,
+  }
+}
+
 export function extractTargetFilePaths(
   toolName: string | undefined,
   args: Record<string, unknown> | undefined
@@ -195,6 +303,10 @@ export function mapRunEventsToProgressSteps(events: PersistedRunEvent[]): LivePr
               hasArtifactTarget: event.progressHasArtifactTarget,
             }
           : undefined,
+      planStepIndex: event.planStepIndex,
+      planStepTitle: event.planStepTitle,
+      planTotalSteps: event.planTotalSteps,
+      completedPlanStepIndexes: event.completedPlanStepIndexes,
       createdAt: event.createdAt ?? Date.now(),
     }))
 }

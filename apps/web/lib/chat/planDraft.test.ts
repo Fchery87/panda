@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'bun:test'
 import { extractBrainstormPhase } from './brainstorming'
 import {
+  buildApprovedPlanExecutionMessage,
   buildMessageWithPlanDraft,
+  canApprovePlan,
+  canBuildFromPlan,
   deriveNextPlanDraft,
+  getNextPlanStatusAfterDraftChange,
+  getNextPlanStatusAfterGeneration,
   pickLatestArchitectAssistantPlan,
 } from './planDraft'
 
@@ -28,6 +33,18 @@ describe('planDraft helpers', () => {
 
     const result = buildMessageWithPlanDraft(plan, user)
     expect(result).toBe(user)
+  })
+
+  it('buildApprovedPlanExecutionMessage produces an explicit approved-plan contract', () => {
+    const plan = '1) Step one\n2) Step two'
+
+    expect(buildApprovedPlanExecutionMessage(plan)).toBe(
+      'We are switching from Architect (Plan Mode) to Build (Execute Mode).\n\nApproved plan:\n1) Step one\n2) Step two\n\nExecution contract:\n- Treat the approved plan as the primary execution contract.\n- Execute it step-by-step.\n- Use the active specification as a secondary constraint if present.\n- Report progress against the plan while implementing.\n\nOriginal request:\nExecute the approved plan.'
+    )
+  })
+
+  it('buildApprovedPlanExecutionMessage returns the original request when no approved plan exists', () => {
+    expect(buildApprovedPlanExecutionMessage('   ')).toBe('Execute the approved plan.')
   })
 
   it('pickLatestArchitectAssistantPlan returns latest architect assistant content', () => {
@@ -137,5 +154,76 @@ describe('planDraft helpers', () => {
         requireValidatedBrainstorm: true,
       })
     ).toBe('1) Clarifying questions\n2) Proposed plan\n3) Risks\n4) Next step')
+  })
+
+  it('marks approved and executing plans as stale when the draft changes', () => {
+    expect(
+      getNextPlanStatusAfterDraftChange({
+        previousDraft: 'old plan',
+        nextDraft: 'new plan',
+        currentStatus: 'approved',
+      })
+    ).toBe('stale')
+
+    expect(
+      getNextPlanStatusAfterDraftChange({
+        previousDraft: 'old plan',
+        nextDraft: 'new plan',
+        currentStatus: 'executing',
+      })
+    ).toBe('stale')
+  })
+
+  it('keeps status unchanged when the draft text is unchanged after normalization', () => {
+    expect(
+      getNextPlanStatusAfterDraftChange({
+        previousDraft: 'plan\n',
+        nextDraft: 'plan',
+        currentStatus: 'approved',
+      })
+    ).toBe('approved')
+  })
+
+  it('marks generated architect output as awaiting review when it changes the plan', () => {
+    expect(
+      getNextPlanStatusAfterGeneration({
+        previousDraft: 'old plan',
+        nextDraft: 'new plan',
+        currentStatus: 'approved',
+      })
+    ).toBe('awaiting_review')
+  })
+
+  it('does not update generated plan status when the generated draft is empty or unchanged', () => {
+    expect(
+      getNextPlanStatusAfterGeneration({
+        previousDraft: 'same plan',
+        nextDraft: 'same plan',
+        currentStatus: 'drafting',
+      })
+    ).toBeNull()
+
+    expect(
+      getNextPlanStatusAfterGeneration({
+        previousDraft: 'same plan',
+        nextDraft: '   ',
+        currentStatus: 'drafting',
+      })
+    ).toBeNull()
+  })
+
+  it('only allows approval when a non-empty draft is ready for review or stale', () => {
+    expect(canApprovePlan('awaiting_review', 'plan')).toBe(true)
+    expect(canApprovePlan('stale', 'plan')).toBe(true)
+    expect(canApprovePlan('drafting', 'plan')).toBe(false)
+    expect(canApprovePlan('approved', 'plan')).toBe(false)
+    expect(canApprovePlan('awaiting_review', '   ')).toBe(false)
+  })
+
+  it('only allows build when a non-empty draft is approved or executing', () => {
+    expect(canBuildFromPlan('approved', 'plan')).toBe(true)
+    expect(canBuildFromPlan('executing', 'plan')).toBe(true)
+    expect(canBuildFromPlan('stale', 'plan')).toBe(false)
+    expect(canBuildFromPlan('approved', '')).toBe(false)
   })
 })

@@ -32,8 +32,11 @@ describe('prompt-library — natural flow (INTENT RULES)', () => {
   it('ARCHITECT mode: structured plan only for explicit planning requests', () => {
     const text = getSystemText('architect')
     expect(text).toContain('INTENT RULES')
-    expect(text).toContain('ONLY THEN use the structured plan format')
+    expect(text).toContain('ONLY THEN produce or update the plan artifact')
     expect(text).toContain('respond naturally in paragraphs')
+    expect(text).toContain('Relevant Files')
+    expect(text).toContain('Implementation Plan')
+    expect(text).toContain('Validation')
   })
 
   it('CODE mode: quiet execution — no planning preamble, all code via tools', () => {

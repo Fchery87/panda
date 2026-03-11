@@ -25,4 +25,19 @@ describe('Workbench integration wiring', () => {
     )
     expect(desktopWorkbenchCall).toContain('currentChatId={activeChat?._id}')
   })
+
+  it('keeps plan execution detached from auto-opening the inspector', () => {
+    const pagePath = path.resolve(
+      import.meta.dir,
+      '../../app/(dashboard)/projects/[projectId]/page.tsx'
+    )
+    const source = fs.readFileSync(pagePath, 'utf8')
+
+    const handleBuildFromPlanStart = source.indexOf('const handleBuildFromPlan = useCallback')
+    const handleBuildFromPlanEnd = source.indexOf('const handleModeChange = useCallback')
+    const buildFromPlanBlock = source.slice(handleBuildFromPlanStart, handleBuildFromPlanEnd)
+
+    expect(buildFromPlanBlock).not.toContain("setChatInspectorTab('run')")
+    expect(buildFromPlanBlock).not.toContain('setIsChatInspectorOpen(true)')
+  })
 })

@@ -43,7 +43,7 @@ import { ascending } from './identifier'
 import { agents } from './agents'
 import { permissions, checkPermission } from './permissions'
 import { plugins } from './plugins'
-import { compaction, needsCompaction } from './compaction'
+import { compaction, needsCompaction, SUMMARIZATION_PROMPT } from './compaction'
 import { snapshots } from './snapshots'
 import { executeTaskTool, getTaskToolDefinitions } from './task-tool'
 import type {
@@ -298,6 +298,7 @@ export class Runtime {
 
     const specContext: SpecGenerationContext = {
       mode: agent.name,
+      model: agent.model ?? this.provider.config.defaultModel ?? 'unknown',
     }
 
     const { spec } = await this.specEngine.generate(userMessage, specContext, tier)
@@ -1319,6 +1320,7 @@ export class Runtime {
       this.state.messages,
       128000,
       async (messages) => {
+        // Build conversation text for summarization
         const content = messages
           .map((m) => {
             if (m.role === 'user') {
@@ -1330,7 +1332,28 @@ export class Runtime {
             return ''
           })
           .join('\n\n')
-        return `Summary of conversation:\n\n${content.slice(0, 4000)}`
+
+        // Use LLM for intelligent summarization instead of naive truncation
+        const model = _agent.model ?? this.provider.config.defaultModel ?? 'gpt-4o-mini'
+        const summaryMessages: CompletionMessage[] = [
+          { role: 'user', content: `${SUMMARIZATION_PROMPT}\n\n${content}` },
+        ]
+
+        try {
+          const completionOptions: CompletionOptions = {
+            model,
+            messages: summaryMessages,
+            temperature: 0.3,
+            maxTokens: 2000,
+          }
+
+          const result = await this.provider.complete(completionOptions)
+          return result.message.content || `Summary of conversation:\n\n${content.slice(0, 4000)}`
+        } catch (error) {
+          // Fallback to naive truncation if LLM summarization fails
+          console.warn('LLM compaction failed, falling back to truncation:', error)
+          return `Summary of conversation:\n\n${content.slice(0, 4000)}`
+        }
       }
     )
     const compactionBudgetMs = this.config.compactionTimeBudgetMs

@@ -25,7 +25,6 @@ import {
 import {
   createAgentRuntime,
   createToolContext,
-  type AgentEvent,
   type AgentRuntimeLike,
   type RuntimeConfig,
   type ConvexClient as AgentConvexClient,
@@ -36,6 +35,7 @@ import type { FormalSpecification } from '../lib/agent/spec/types'
 import { getUserFacingAgentError } from '../lib/chat/error-messages'
 import { extractTargetFilePaths } from '../components/chat/live-run-utils'
 import { normalizeChatMode, type PromptContext, type ChatMode } from '../lib/agent/prompt-library'
+import { derivePlanProgressMetadata, parsePlanSteps } from '../lib/agent/plan-progress'
 import { plugins, specTrackingPlugin } from '../lib/agent/harness/plugins'
 import { appLog } from '@/lib/logger'
 import { toast } from 'sonner'
@@ -44,6 +44,8 @@ import {
   formatOverviewForPrompt,
   type FileInfo,
 } from '../lib/agent/context/repo-overview'
+import { buildPlanContext } from '../lib/agent/context/plan-context'
+import { resolveBackgroundExecutionPolicy } from '../lib/chat/backgroundExecution'
 
 /**
  * Agent status type
@@ -79,6 +81,10 @@ interface ProgressStep {
     targetFilePaths?: string[]
     hasArtifactTarget?: boolean
   }
+  planStepIndex?: number
+  planStepTitle?: string
+  planTotalSteps?: number
+  completedPlanStepIndexes?: number[]
   createdAt: number
 }
 
@@ -122,6 +128,10 @@ interface RunEventInput {
   output?: string
   error?: string
   durationMs?: number
+  planStepIndex?: number
+  planStepTitle?: string
+  planTotalSteps?: number
+  completedPlanStepIndexes?: number[]
   usage?: Record<string, unknown>
 }
 
@@ -183,6 +193,11 @@ interface UseAgentOptions {
   provider: LLMProvider
   model?: string
   architectBrainstormEnabled?: boolean
+  planDraft?: string
+  onRunCreated?: (args: {
+    runId: Id<'agentRuns'>
+    approvedPlanExecution: boolean
+  }) => void | Promise<void>
 }
 
 /**
@@ -244,7 +259,11 @@ interface UseAgentReturn {
   projectOverview: string | null | undefined
 
   // Actions
-  sendMessage: (content: string, contextFiles?: string[]) => Promise<void>
+  sendMessage: (
+    content: string,
+    contextFiles?: string[],
+    options?: { approvedPlanExecution?: boolean }
+  ) => Promise<void>
   runEvalScenario: (scenario: {
     input?: unknown
     prompt?: string
@@ -289,6 +308,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     provider,
     model = 'gpt-4o',
     architectBrainstormEnabled = false,
+    planDraft,
+    onRunCreated,
   } = options
 
   const convex = useConvex()
@@ -363,6 +384,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const [currentIteration, setCurrentIteration] = useState(0)
   const [toolCalls, setToolCalls] = useState<ToolCallInfo[]>([])
   const [progressSteps, setProgressSteps] = useState<ProgressStep[]>([])
+  const planSteps = useMemo(() => parsePlanSteps(planDraft), [planDraft])
+  const completedPlanStepIndexesRef = useRef<number[]>([])
   const [error, setError] = useState<string | null>(null)
   const [providerModels, setProviderModels] = useState<ModelInfo[]>([])
   const [currentRunUsage, setCurrentRunUsage] = useState<UsageTotals & { source: TokenSource }>()
@@ -702,6 +725,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     setMessages([])
     setToolCalls([])
     setProgressSteps([])
+    completedPlanStepIndexesRef.current = []
     setError(null)
     setCurrentIteration(0)
     setCurrentRunUsage(undefined)
@@ -805,7 +829,11 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     async (
       rawContent: string,
       contextFiles?: string[],
-      options?: { clearInput?: boolean; harnessSessionID?: string }
+      options?: {
+        clearInput?: boolean
+        harnessSessionID?: string
+        approvedPlanExecution?: boolean
+      }
     ) => {
       const userContent = rawContent.trim()
       if (!userContent || isRunningRef.current) return
@@ -842,6 +870,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       setStatus('thinking')
       setError(null)
       setProgressSteps([])
+      completedPlanStepIndexesRef.current = []
 
       // Add user message to local state
       const userMessageId = `msg-${Date.now()}-user`
@@ -892,6 +921,12 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         })
         runIdRef.current = runId
         runSequenceRef.current = 0
+        if (onRunCreated) {
+          await onRunCreated({
+            runId,
+            approvedPlanExecution: Boolean(options?.approvedPlanExecution),
+          })
+        }
         let runFinalized = false
 
         const finalizeRunCompleted = async (summary?: string, usage?: Record<string, unknown>) => {
@@ -947,7 +982,22 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           // implementation class name (e.g. "openai-compatible").
           provider: provider?.config?.provider || 'openai',
           previousMessages: previousMessagesSnapshot,
-          projectOverview: projectOverviewContent ?? undefined,
+          projectOverview:
+            mode === 'architect' && projectFiles
+              ? [
+                  projectOverviewContent,
+                  buildPlanContext({
+                    files: projectFiles.map((f) => ({
+                      path: f.path,
+                      content: f.content,
+                      updatedAt: f.updatedAt,
+                    })),
+                    userMessage: userContent,
+                  }),
+                ]
+                  .filter((value): value is string => Boolean(value))
+                  .join('\n\n') || undefined
+              : (projectOverviewContent ?? undefined),
           memoryBank: memoryBankContent ?? undefined,
           userMessage:
             contextFiles && contextFiles.length > 0
@@ -968,7 +1018,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           toolLoopThreshold: 3,
           harnessSessionID: options?.harnessSessionID ?? `harness_run_${runId}`,
           harnessAutoResume: true,
-          harnessSpecApprovalMode: 'interactive',
+          harnessSpecApprovalMode: resolveBackgroundExecutionPolicy(mode).harnessSpecApprovalMode,
         }
 
         // Get tool context
@@ -1215,7 +1265,16 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                           hasArtifactTarget: Boolean(event.progressHasArtifactTarget),
                         }
                       : undefined,
+                  ...(derivePlanProgressMetadata(
+                    planSteps,
+                    event.content,
+                    event.progressStatus ?? 'running',
+                    completedPlanStepIndexesRef.current
+                  ) ?? {}),
                   createdAt: Date.now(),
+                }
+                if (step.completedPlanStepIndexes) {
+                  completedPlanStepIndexesRef.current = step.completedPlanStepIndexes
                 }
                 setProgressSteps((prev) => [...prev, step].slice(-30))
                 void appendRunEvent({
@@ -1231,6 +1290,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                   args: event.progressArgs,
                   durationMs: step.details?.durationMs,
                   error: step.details?.errorExcerpt,
+                  planStepIndex: step.planStepIndex,
+                  planStepTitle: step.planStepTitle,
+                  planTotalSteps: step.planTotalSteps,
+                  completedPlanStepIndexes: step.completedPlanStepIndexes,
                 })
               }
               break
@@ -1283,10 +1346,20 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             case 'tool_call':
               setStatus('executing_tools')
               if (event.toolCall) {
+                let parsedArgs: Record<string, unknown>
+                try {
+                  parsedArgs = JSON.parse(event.toolCall.function.arguments)
+                } catch (parseError) {
+                  console.error('Failed to parse tool arguments:', parseError)
+                  parsedArgs = {
+                    error: 'Failed to parse arguments',
+                    raw: event.toolCall.function.arguments,
+                  }
+                }
                 const toolInfo: ToolCallInfo = {
                   id: event.toolCall.id,
                   name: event.toolCall.function.name,
-                  args: JSON.parse(event.toolCall.function.arguments),
+                  args: parsedArgs,
                   status: 'pending',
                 }
                 assistantToolCalls.push(toolInfo)
@@ -1572,12 +1645,22 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       projectName,
       projectDescription,
       projectOverviewContent,
+      projectFiles,
+      planSteps,
+      onRunCreated,
     ]
   )
 
   const sendMessage = useCallback(
-    async (rawContent: string, contextFiles?: string[]) => {
-      await sendMessageInternal(rawContent, contextFiles, { clearInput: true })
+    async (
+      rawContent: string,
+      contextFiles?: string[],
+      options?: { approvedPlanExecution?: boolean }
+    ) => {
+      await sendMessageInternal(rawContent, contextFiles, {
+        clearInput: true,
+        approvedPlanExecution: options?.approvedPlanExecution,
+      })
     },
     [sendMessageInternal]
   )
@@ -1650,7 +1733,24 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         chatMode: scenarioMode,
         provider: provider.config?.provider || 'openai',
         previousMessages: [],
-        projectOverview: projectOverviewContent ?? undefined,
+        ...(scenarioMode === 'architect' && projectFiles
+          ? {
+              projectOverview:
+                [
+                  projectOverviewContent,
+                  buildPlanContext({
+                    files: projectFiles.map((f) => ({
+                      path: f.path,
+                      content: f.content,
+                      updatedAt: f.updatedAt,
+                    })),
+                    userMessage: textInput,
+                  }),
+                ]
+                  .filter((value): value is string => Boolean(value))
+                  .join('\n\n') || undefined,
+            }
+          : { projectOverview: projectOverviewContent ?? undefined }),
         memoryBank: memoryBankContent ?? undefined,
         userMessage: textInput,
         customInstructions: architectBrainstormEnabled
@@ -1679,6 +1779,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       projectName,
       projectDescription,
       projectOverviewContent,
+      projectFiles,
     ]
   )
 
@@ -1721,47 +1822,6 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     error,
     tracePersistenceStatus,
   }
-}
-
-/**
- * Hook for simple agent execution without streaming
- * Useful for one-off agent tasks
- */
-export function useAgentSync(options: UseAgentOptions) {
-  const [result, setResult] = useState<{
-    content: string
-    toolResults: AgentEvent[]
-    error?: string
-  } | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-
-  const run = useCallback(
-    async (_content: string) => {
-      setIsLoading(true)
-      setResult(null)
-
-      try {
-        // TODO: Implement sync agent execution
-        // This would call the runAgent helper function
-        setResult({
-          content: 'Agent execution placeholder',
-          toolResults: [],
-        })
-      } catch (error) {
-        setResult({
-          content: '',
-          toolResults: [],
-          error: error instanceof Error ? error.message : String(error),
-        })
-      } finally {
-        setIsLoading(false)
-      }
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- options will be used when implementing the TODO
-    [options]
-  )
-
-  return { run, result, isLoading }
 }
 
 export default useAgent

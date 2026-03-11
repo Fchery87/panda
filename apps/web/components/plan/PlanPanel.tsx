@@ -11,13 +11,40 @@ import remarkGfm from 'remark-gfm'
 
 interface PlanPanelProps {
   planDraft: string
+  planStatus?: 'idle' | 'drafting' | 'awaiting_review' | 'approved' | 'stale' | 'executing'
   onChange: (value: string) => void
   onSave: () => void
+  onApprove?: () => void
+  onBuildFromPlan?: () => void
   isSaving: boolean
   lastSavedAt: number | null
+  lastGeneratedAt?: number | null
+  approveDisabled?: boolean
+  buildDisabled?: boolean
 }
 
-export function PlanPanel({ planDraft, onChange, onSave, isSaving, lastSavedAt }: PlanPanelProps) {
+const STATUS_LABELS: Record<NonNullable<PlanPanelProps['planStatus']>, string> = {
+  idle: 'Idle',
+  drafting: 'Drafting',
+  awaiting_review: 'Awaiting Review',
+  approved: 'Approved',
+  stale: 'Stale',
+  executing: 'Executing',
+}
+
+export function PlanPanel({
+  planDraft,
+  planStatus = 'idle',
+  onChange,
+  onSave,
+  onApprove,
+  onBuildFromPlan,
+  isSaving,
+  lastSavedAt,
+  lastGeneratedAt,
+  approveDisabled = false,
+  buildDisabled = false,
+}: PlanPanelProps) {
   const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit')
 
   const mermaidBlocks = useMemo(() => extractMermaidBlocks(planDraft), [planDraft])
@@ -32,11 +59,44 @@ export function PlanPanel({ planDraft, onChange, onSave, isSaving, lastSavedAt }
         </div>
 
         <div className="flex items-center gap-2">
+          <span className="border border-border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+            {STATUS_LABELS[planStatus]}
+          </span>
+          {lastGeneratedAt && (
+            <span className="font-mono text-xs text-muted-foreground">
+              Generated{' '}
+              {new Date(lastGeneratedAt).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </span>
+          )}
           {lastSavedAt && (
             <span className="font-mono text-xs text-muted-foreground">
               Saved{' '}
               {new Date(lastSavedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
+          )}
+          {onApprove && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onApprove}
+              disabled={approveDisabled}
+              className="h-7 rounded-none px-3 font-mono text-xs"
+            >
+              Approve Plan
+            </Button>
+          )}
+          {onBuildFromPlan && (
+            <Button
+              size="sm"
+              onClick={onBuildFromPlan}
+              disabled={buildDisabled}
+              className="h-7 rounded-none px-3 font-mono text-xs"
+            >
+              Build from Plan
+            </Button>
           )}
           <Button
             size="sm"

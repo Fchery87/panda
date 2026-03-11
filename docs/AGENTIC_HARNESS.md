@@ -1,7 +1,7 @@
 # AGENTIC_HARNESS.md - OpenCode-Style Agentic Harness
 
-> **Version:** 1.0  
-> **Last Updated:** 2026-02-21  
+> **Version:** 1.1  
+> **Last Updated:** 2026-03-10  
 > **Status:** Implemented
 
 ---
@@ -79,6 +79,93 @@ interface AgentConfig {
 - `build` - Full-access for active development
 - `plan` - Read-only analysis and planning
 - `ask` - Quick Q&A
+
+## Plan-Mode Productization
+
+Panda now treats planning as a first-class workflow layered on top of the
+harness instead of only as a chat prompt style.
+
+### Spec vs Plan vs Build
+
+- **Spec** - Formal requirements, constraints, and acceptance criteria
+- **Plan** - Editable implementation strategy with relevant files, ordered
+  steps, validation, and open questions
+- **Build** - Execution mode that can consume an approved plan as the active
+  implementation contract
+
+### Plan Workflow
+
+Plan state is stored on the active chat and currently supports:
+
+- `idle`
+- `drafting`
+- `awaiting_review`
+- `approved`
+- `stale`
+- `executing`
+
+The current chat also stores plan metadata including:
+
+- `planDraft`
+- `planSourceMessageId`
+- `planLastGeneratedAt`
+- `planApprovedAt`
+- `planBuildRunId`
+
+### Architect Mode Contract
+
+For explicit planning requests, Architect Mode now produces a plan artifact with
+these sections:
+
+- `Goal`
+- `Clarifications`
+- `Relevant Files`
+- `Implementation Plan`
+- `Risks`
+- `Validation`
+- `Open Questions`
+
+This artifact is the canonical plan surface used by the UI. The previous
+assistant-message extraction path remains only as a compatibility fallback.
+
+### Build From Plan
+
+When the user approves a plan and triggers **Build from Plan**:
+
+- the chat is switched to build mode
+- the plan status becomes `executing`
+- the new run id is linked back to the chat via `planBuildRunId`
+- the build prompt receives an explicit execution contract that treats the
+  approved plan as primary context instead of relying on conversation memory
+
+Normal build messages do not automatically inherit the plan forever. Approved
+plan injection only happens for explicit build-from-plan runs or while the chat
+is still tied to an active approved-plan execution.
+
+### Planning Context Grounding
+
+Architect mode now receives a targeted planning context bundle in addition to
+the general repo overview. This bundle prioritizes:
+
+- routes and app entry points
+- schema and API boundary files
+- adjacent tests
+- likely affected UI/component files
+
+The goal is to increase concrete file references in the generated plan instead
+of returning only generic architecture prose.
+
+### Run Progress Mapping
+
+Run progress now carries plan-step metadata. Execution events can include:
+
+- current plan step index
+- current plan step title
+- total plan steps
+- completed plan step indexes
+
+`RunProgressPanel` uses that metadata to show plan progress during execution and
+falls back to heuristic matching only when explicit metadata is unavailable.
 
 **Subagent Templates:**
 
@@ -187,6 +274,8 @@ Unified component combining live + historical progress:
 - Displays historical events after completion
 - Groups by category (analysis, rewrite, tool, complete)
 - Clickable file paths and artifact links
+- Shows plan approval/execution state
+- Shows plan step progress when executing an approved plan
 
 ### AgentSelector
 

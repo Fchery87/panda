@@ -21,6 +21,7 @@ import type {
   Invariant,
 } from '../types'
 import { createAcceptanceCriterion } from '../types'
+import { hashString } from '../../utils/hash'
 
 /**
  * Generate a debug-mode specification
@@ -36,6 +37,7 @@ export function generateDebugSpec(
     chatId?: string
     errorMessage?: string
     stackTrace?: string
+    model?: string
   }
 ): Omit<FormalSpecification, 'id' | 'version' | 'tier' | 'status' | 'createdAt' | 'updatedAt'> {
   const now = Date.now()
@@ -45,7 +47,7 @@ export function generateDebugSpec(
   const validation = generateDebugValidation(userMessage, context)
 
   const provenance: SpecProvenance = {
-    model: 'gpt-4o',
+    model: context.model || 'unknown',
     promptHash: hashString(userMessage),
     timestamp: now,
     chatId: context.chatId || '',
@@ -171,7 +173,7 @@ function generateDebugPlan(
     {
       id: 'step-1',
       description: 'Gather information about the issue',
-      tools: ['read_files', 'search_files'],
+      tools: ['read_files', 'search_code'],
       targetFiles: ['src/', 'logs/', 'tests/'],
       status: 'pending',
     },
@@ -192,14 +194,14 @@ function generateDebugPlan(
     {
       id: 'step-4',
       description: 'Identify root cause through systematic investigation',
-      tools: ['read_files', 'search_files'],
+      tools: ['read_files', 'search_code'],
       targetFiles: ['src/'],
       status: 'pending',
     },
     {
       id: 'step-5',
       description: 'Implement the fix',
-      tools: ['write_files', 'edit_file'],
+      tools: ['write_files'],
       targetFiles: ['src/'],
       status: 'pending',
     },
@@ -259,7 +261,7 @@ function generateDebugPlan(
     steps,
     dependencies,
     risks,
-    estimatedTools: ['read_files', 'search_files', 'run_command', 'edit_file'],
+    estimatedTools: ['read_files', 'search_code', 'run_command'],
   }
 }
 
@@ -359,17 +361,4 @@ function extractDebugGoal(message: string, errorMessage?: string): string {
 
   const firstSentence = message.split(/[.!?]/)[0] || message
   return firstSentence.slice(0, 100).trim()
-}
-
-/**
- * Simple string hash
- */
-function hashString(str: string): string {
-  let hash = 0
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i)
-    hash = (hash << 5) - hash + char
-    hash = hash & hash
-  }
-  return Math.abs(hash).toString(36).slice(0, 8)
 }

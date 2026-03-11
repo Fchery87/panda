@@ -21,6 +21,7 @@ import type {
   Invariant,
 } from '../types'
 import { createAcceptanceCriterion } from '../types'
+import { hashString } from '../../utils/hash'
 
 /**
  * Generate an architect-mode specification
@@ -36,6 +37,7 @@ export function generateArchitectSpec(
     chatId?: string
     existingFiles?: string[]
     techStack?: string[]
+    model?: string
   }
 ): Omit<FormalSpecification, 'id' | 'version' | 'tier' | 'status' | 'createdAt' | 'updatedAt'> {
   const now = Date.now()
@@ -45,7 +47,7 @@ export function generateArchitectSpec(
   const validation = generateArchitectValidation(_userMessage, _context)
 
   const provenance: SpecProvenance = {
-    model: 'gpt-4o',
+    model: _context.model || 'unknown',
     promptHash: hashString(_userMessage),
     timestamp: now,
     chatId: _context.chatId || '',
@@ -173,29 +175,15 @@ function generateArchitectPlan(
     {
       id: 'step-2',
       description: 'Identify requirements and constraints',
-      tools: ['read_files', 'search_files'],
+      tools: ['read_files', 'search_code'],
       targetFiles: context.existingFiles || ['src/'],
       status: 'pending',
     },
     {
       id: 'step-3',
       description: 'Research and evaluate design options',
-      tools: ['read_files', 'search_files'],
+      tools: ['read_files', 'search_code'],
       targetFiles: ['src/', 'docs/'],
-      status: 'pending',
-    },
-    {
-      id: 'step-4',
-      description: 'Document the proposed architecture',
-      tools: ['write_files'],
-      targetFiles: ['docs/', 'src/types/'],
-      status: 'pending',
-    },
-    {
-      id: 'step-5',
-      description: 'Define interfaces and contracts',
-      tools: ['write_files'],
-      targetFiles: ['src/interfaces/', 'src/types/'],
       status: 'pending',
     },
   ]
@@ -229,7 +217,7 @@ function generateArchitectPlan(
     steps,
     dependencies,
     risks,
-    estimatedTools: ['read_files', 'write_files', 'search_files'],
+    estimatedTools: ['read_files', 'search_code'],
   }
 }
 
@@ -311,17 +299,4 @@ function extractDesignGoal(message: string): string {
 
   const firstSentence = message.split(/[.!?]/)[0] || message
   return firstSentence.slice(0, 100).trim()
-}
-
-/**
- * Simple string hash
- */
-function hashString(str: string): string {
-  let hash = 0
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i)
-    hash = (hash << 5) - hash + char
-    hash = hash & hash
-  }
-  return Math.abs(hash).toString(36).slice(0, 8)
 }

@@ -28,6 +28,7 @@ import {
 import { validateSpec, type ValidationResult } from './validator'
 import { verifySpec, type SpecVerificationReport } from './verifier'
 import { ascending } from '../harness/identifier'
+import { hashString } from '../utils/hash'
 import type { DriftReport, DriftFinding, ReconciliationChange } from './reconciler'
 
 /**
@@ -50,6 +51,8 @@ export interface SpecGenerationContext {
   errorMessage?: string
   /** Stack trace (for debug mode) */
   stackTrace?: string
+  /** Model used to generate the spec */
+  model?: string
 }
 
 /**
@@ -635,7 +638,7 @@ export class SpecEngine {
       },
       provenance: {
         model: 'gpt-4o',
-        promptHash: this.hashString(userMessage),
+        promptHash: hashString(userMessage),
         timestamp: now,
         chatId: context.chatId || '',
       },
@@ -653,6 +656,7 @@ export class SpecEngine {
     _tier: SpecTier
   ): Omit<FormalSpecification, 'id' | 'version' | 'tier' | 'status' | 'createdAt' | 'updatedAt'> {
     const mode = context.mode?.toLowerCase() || 'code'
+    const model = context.model || 'unknown'
 
     switch (mode) {
       case 'build':
@@ -661,6 +665,7 @@ export class SpecEngine {
           chatId: context.chatId,
           existingFiles: context.existingFiles,
           techStack: context.techStack,
+          model,
         })
 
       case 'architect':
@@ -669,6 +674,7 @@ export class SpecEngine {
           chatId: context.chatId,
           existingFiles: context.existingFiles,
           techStack: context.techStack,
+          model,
         })
 
       case 'debug':
@@ -677,6 +683,7 @@ export class SpecEngine {
           chatId: context.chatId,
           errorMessage: context.errorMessage,
           stackTrace: context.stackTrace,
+          model,
         })
 
       case 'review':
@@ -684,6 +691,7 @@ export class SpecEngine {
           projectId: context.projectId,
           chatId: context.chatId,
           targetFiles: context.targetFiles,
+          model,
         })
 
       case 'code':
@@ -695,6 +703,7 @@ export class SpecEngine {
           chatId: context.chatId,
           existingFiles: context.existingFiles,
           targetFiles: context.targetFiles,
+          model,
         })
     }
   }
@@ -705,19 +714,6 @@ export class SpecEngine {
   private inferGoalFromMessage(message: string): string {
     const firstSentence = message.split(/[.!?]/)[0] || message
     return firstSentence.slice(0, 150).trim()
-  }
-
-  /**
-   * Simple string hash
-   */
-  private hashString(str: string): string {
-    let hash = 0
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i)
-      hash = (hash << 5) - hash + char
-      hash = hash & hash
-    }
-    return Math.abs(hash).toString(36).slice(0, 8)
   }
 }
 

@@ -21,6 +21,7 @@ import type {
   Invariant,
 } from '../types'
 import { createAcceptanceCriterion, createStructuralConstraint } from '../types'
+import { hashString } from '../../utils/hash'
 
 /**
  * Generate a build-mode specification
@@ -36,6 +37,7 @@ export function generateBuildSpec(
     chatId?: string
     existingFiles?: string[]
     techStack?: string[]
+    model?: string
   }
 ): Omit<FormalSpecification, 'id' | 'version' | 'tier' | 'status' | 'createdAt' | 'updatedAt'> {
   const now = Date.now()
@@ -51,7 +53,7 @@ export function generateBuildSpec(
 
   // Generate provenance
   const provenance: SpecProvenance = {
-    model: 'gpt-4o',
+    model: _context.model || 'unknown',
     promptHash: hashString(_userMessage),
     timestamp: now,
     chatId: _context.chatId || '',
@@ -196,7 +198,7 @@ function generateBuildPlan(
     steps,
     dependencies,
     risks,
-    estimatedTools: ['read_files', 'write_files', 'search_files', 'run_command'],
+    estimatedTools: ['read_files', 'write_files', 'search_code', 'run_command'],
   }
 }
 
@@ -278,7 +280,7 @@ function generateStepsFromMessage(userMessage: string): SpecStep[] {
   steps.push({
     id: 'step-1',
     description: 'Analyze existing codebase structure and patterns',
-    tools: ['read_files', 'list_directory', 'search_files'],
+    tools: ['read_files', 'list_directory', 'search_code'],
     targetFiles: ['src/', 'package.json'],
     status: 'pending',
   })
@@ -294,7 +296,7 @@ function generateStepsFromMessage(userMessage: string): SpecStep[] {
     steps.push({
       id: `step-${stepNum}`,
       description: 'Design the system architecture and define interfaces',
-      tools: ['read_files', 'write_files'],
+      tools: ['read_files', 'search_code'],
       targetFiles: ['src/types/', 'src/interfaces/'],
       status: 'pending',
     })
@@ -305,7 +307,7 @@ function generateStepsFromMessage(userMessage: string): SpecStep[] {
   steps.push({
     id: `step-${stepNum}`,
     description: 'Implement core functionality',
-    tools: ['write_files', 'edit_file'],
+    tools: ['write_files'],
     targetFiles: ['src/'],
     status: 'pending',
   })
@@ -316,7 +318,7 @@ function generateStepsFromMessage(userMessage: string): SpecStep[] {
     steps.push({
       id: `step-${stepNum}`,
       description: 'Integrate with existing systems/components',
-      tools: ['edit_file', 'read_files'],
+      tools: ['write_files', 'read_files'],
       targetFiles: ['src/'],
       status: 'pending',
     })
@@ -365,17 +367,4 @@ function extractGoal(message: string): string {
   // Fallback: use first sentence or first 100 chars
   const firstSentence = message.split(/[.!?]/)[0] || message
   return firstSentence.slice(0, 100).trim()
-}
-
-/**
- * Simple string hash for prompt identification
- */
-function hashString(str: string): string {
-  let hash = 0
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i)
-    hash = (hash << 5) - hash + char
-    hash = hash & hash
-  }
-  return Math.abs(hash).toString(36).slice(0, 8)
 }

@@ -155,4 +155,41 @@ describe('/api/e2e/project route', () => {
       restoreEnv()
     }
   })
+
+  test('seeds a chat with plan workflow metadata when requested', async () => {
+    setTestEnv()
+    queryResult = [{ _id: 'project-existing', name: 'Workbench E2E Fixture' }]
+    mutationResult = 'chat-updated'
+    try {
+      const { GET } = await import('./route')
+
+      const response = await GET(
+        new Request(
+          'http://localhost:3000/api/e2e/project?name=Workbench%20E2E%20Fixture&planStatus=awaiting_review&planDraft=%23%23%20Goal%0ASeed%20the%20plan%20artifact%0A%0A%23%23%20Implementation%20Plan%0A1.%20Open%20the%20plan%20panel%0A2.%20Approve%20the%20plan'
+        )
+      )
+
+      expect(response.status).toBe(200)
+      await expect(response.json()).resolves.toMatchObject({
+        projectId: 'project-existing',
+        created: false,
+        chatId: expect.any(String),
+        planStatus: 'awaiting_review',
+      })
+      expect(queryCalls).toHaveLength(2)
+      expect(mutationCalls).toHaveLength(1)
+      expect(mutationCalls[0]).toMatchObject({
+        name: expect.any(String),
+        args: {
+          id: expect.any(String),
+          planStatus: 'awaiting_review',
+          planDraft:
+            '## Goal\nSeed the plan artifact\n\n## Implementation Plan\n1. Open the plan panel\n2. Approve the plan',
+          planLastGeneratedAt: expect.any(Number),
+        },
+      })
+    } finally {
+      restoreEnv()
+    }
+  })
 })

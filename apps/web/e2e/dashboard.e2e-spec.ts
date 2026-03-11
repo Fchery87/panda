@@ -134,7 +134,7 @@ test.describe('Dashboard', () => {
     await expect(
       page
         .getByRole('main')
-        .getByRole('button', { name: /^reset$/i })
+        .getByRole('button', { name: /^reset workspace$/i })
         .first()
     ).toBeVisible({ timeout: 30000 })
   })

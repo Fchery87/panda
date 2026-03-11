@@ -1287,14 +1287,57 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
         progressStatus: 'running',
         progressCategory: 'rewrite',
       }
-      yield {
-        type: 'reset',
-        resetReason:
-          promptContext.chatMode === 'architect' ? 'plan_mode_rewrite' : 'build_mode_rewrite',
+
+      // Rewrite within the harness instead of falling back to legacy runtime
+      const rewriteMessage: CompletionMessage = {
+        role: 'user',
+        content:
+          promptContext.chatMode === 'architect'
+            ? 'Rewrite your previous answer into Plan Mode format. Do not include any fenced code blocks. Focus on architecture, design decisions, and implementation approach.'
+            : 'Your previous answer included fenced code blocks, which are not allowed in Build Mode. Use the write_files tool to create or modify files instead. In chat, output only a short summary and next steps. Do not include any fenced code blocks.',
       }
 
-      const legacyRuntime = new AgentRuntime(this.options, this.toolContext)
-      yield* legacyRuntime.run(promptContext, config)
+      const rewriteMessages = [...completionMessages, rewriteMessage]
+      const { initialMessages: rewriteInitialMessages, userMessage: rewriteUserMessage } =
+        completionMessagesToHarnessMessages({
+          sessionID: sessionID + '-rewrite',
+          messages: rewriteMessages,
+        })
+
+      rewriteUserMessage.agent = userMessage.agent
+
+      // Create a fresh harness runtime for the rewrite
+      const rewriteRuntime = new HarnessRuntime(
+        this.options.provider,
+        createHarnessToolExecutors(this.toolContext),
+        harnessRuntimeConfig
+      )
+
+      // Continue with harness runtime for the rewrite
+      for await (const event of rewriteRuntime.run(
+        sessionID + '-rewrite',
+        rewriteUserMessage,
+        rewriteInitialMessages
+      )) {
+        const mapped = mapHarnessEventToAgentEvent(event, pendingToolCalls)
+        if (!mapped) continue
+
+        if (mapped.type === 'text' && mapped.content) {
+          streamedText += mapped.content
+          yield mapped
+        } else if (mapped.type === 'tool_result') {
+          yield mapped
+        } else if (mapped.type === 'complete') {
+          yield mapped
+          return
+        } else {
+          yield mapped
+        }
+      }
+
+      yield {
+        type: 'complete',
+      }
       return
     }
 

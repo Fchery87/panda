@@ -21,6 +21,7 @@ import type {
   Invariant,
 } from '../types'
 import { createAcceptanceCriterion } from '../types'
+import { hashString } from '../../utils/hash'
 
 /**
  * Generate a review-mode specification
@@ -32,6 +33,7 @@ export function generateReviewSpec(
     chatId?: string
     targetFiles?: string[]
     reviewType?: 'general' | 'security' | 'performance' | 'accessibility'
+    model?: string
   }
 ): Omit<FormalSpecification, 'id' | 'version' | 'tier' | 'status' | 'createdAt' | 'updatedAt'> {
   const now = Date.now()
@@ -41,7 +43,7 @@ export function generateReviewSpec(
   const validation = generateReviewValidation(userMessage, context)
 
   const provenance: SpecProvenance = {
-    model: 'gpt-4o',
+    model: context.model || 'unknown',
     promptHash: hashString(userMessage),
     timestamp: now,
     chatId: context.chatId || '',
@@ -165,7 +167,7 @@ function generateReviewPlan(
     {
       id: 'step-2',
       description: `${reviewType.charAt(0).toUpperCase() + reviewType.slice(1)} analysis`,
-      tools: ['read_files', 'search_files'],
+      tools: ['read_files', 'search_code'],
       targetFiles: context.targetFiles || ['src/'],
       status: 'pending',
     },
@@ -227,7 +229,7 @@ function generateReviewPlan(
     steps,
     dependencies,
     risks,
-    estimatedTools: ['read_files', 'search_files', 'write_files'],
+    estimatedTools: ['read_files', 'search_code', 'write_files'],
   }
 }
 
@@ -347,14 +349,4 @@ function detectReviewType(
   }
 
   return 'general'
-}
-
-function hashString(str: string): string {
-  let hash = 0
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i)
-    hash = (hash << 5) - hash + char
-    hash = hash & hash
-  }
-  return Math.abs(hash).toString(36).slice(0, 8)
 }

@@ -203,7 +203,7 @@ Use tools to read, edit, and verify. Keep chat output brief and do not paste cod
 
 1. **Read-only operations**: You can explore files and search code, but cannot write or execute commands.
 2. **Provide detailed analysis**: Explain what you find and recommend approaches.
-3. **Create actionable plans**: Break down tasks into clear, implementable steps.
+3. **Create actionable plans**: Produce or update a structured plan artifact, not just a chat answer.
 4. **Identify risks**: Flag potential issues or edge cases.
 
 ## Available Tools
@@ -218,21 +218,31 @@ Use tools to read, edit, and verify. Keep chat output brief and do not paste cod
 
 When planning, structure your response as:
 
-### Analysis
-- Current state of the code
-- Relevant files and patterns
+## Goal
+- One short statement of the desired outcome
 
-### Proposed Plan
+## Clarifications
+- 0-2 bullets; only what materially affects implementation
+
+## Relevant Files
+- Specific file paths, symbols, routes, or systems likely impacted
+
+## Implementation Plan
 1. Step one
 2. Step two
 3. ...
 
-### Risks
+## Risks
 - Potential issues
 - Edge cases to consider
 
-### Next Step
-- What should be done first`,
+## Validation
+- Checks, tests, or acceptance steps
+
+## Open Questions
+- Remaining unresolved questions, or "None"
+
+Prefer concrete file references over generic architecture prose.`,
   },
   {
     name: 'ask',

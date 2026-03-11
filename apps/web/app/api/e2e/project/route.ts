@@ -2,10 +2,19 @@ import { NextResponse } from 'next/server'
 import { ConvexHttpClient } from 'convex/browser'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
+import type { PlanStatus } from '@/lib/chat/planDraft'
 
 const DEFAULT_FIXTURE_NAME = 'Workbench E2E Fixture'
 const DEFAULT_FIXTURE_DESCRIPTION = 'Deterministic browser E2E fixture project'
 const DEFAULT_CHAT_TITLE = 'Workbench E2E Chat'
+const PLAN_STATUSES: PlanStatus[] = [
+  'idle',
+  'drafting',
+  'awaiting_review',
+  'approved',
+  'stale',
+  'executing',
+]
 
 interface RuntimeCheckpointEnvelope {
   version: 1
@@ -100,6 +109,12 @@ export async function GET(request: Request) {
   const filePath = url.searchParams.get('filePath')?.trim() || null
   const fileContent = url.searchParams.get('fileContent') ?? ''
   const seedRuntimeCheckpoint = url.searchParams.get('seedRuntimeCheckpoint') === '1'
+  const planDraft = url.searchParams.get('planDraft')?.trim() || null
+  const requestedPlanStatus = url.searchParams.get('planStatus')?.trim() || null
+  const planStatus =
+    requestedPlanStatus && PLAN_STATUSES.includes(requestedPlanStatus as PlanStatus)
+      ? (requestedPlanStatus as PlanStatus)
+      : null
 
   const convex = new ConvexHttpClient(convexUrl)
   const projects = await convex.query(api.projects.list, {})
@@ -113,7 +128,7 @@ export async function GET(request: Request) {
       })
 
   let chatId: Id<'chats'> | undefined
-  if (filePath || seedRuntimeCheckpoint) {
+  if (filePath || seedRuntimeCheckpoint || planDraft || planStatus) {
     const chats = await convex.query(api.chats.list, { projectId })
     const existingChat = chats[0]
     chatId =
@@ -123,6 +138,15 @@ export async function GET(request: Request) {
         title: DEFAULT_CHAT_TITLE,
         mode: 'build',
       }))
+  }
+
+  if (chatId && (planDraft || planStatus)) {
+    await convex.mutation(api.chats.update, {
+      id: chatId,
+      ...(planDraft ? { planDraft } : {}),
+      ...(planStatus ? { planStatus } : {}),
+      ...(planDraft ? { planLastGeneratedAt: Date.now() } : {}),
+    })
   }
 
   if (filePath) {
@@ -150,6 +174,7 @@ export async function GET(request: Request) {
     created: !existing,
     ...(chatId ? { chatId } : {}),
     ...(filePath ? { filePath } : {}),
+    ...(planStatus ? { planStatus } : {}),
     ...(sessionID ? { sessionID } : {}),
   })
 }
