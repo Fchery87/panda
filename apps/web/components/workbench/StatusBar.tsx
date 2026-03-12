@@ -104,10 +104,14 @@ export function StatusBar({
         )}
 
         {branch && (
-          <span className="flex items-center gap-1">
+          <button
+            type="button"
+            className="flex items-center gap-1 transition-colors hover:text-foreground"
+            aria-label={`Git branch: ${branch}`}
+          >
             <GitBranch className="h-3 w-3" />
             {branch}
-          </span>
+          </button>
         )}
 
         <span

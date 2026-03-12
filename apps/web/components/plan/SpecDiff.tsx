@@ -105,7 +105,7 @@ export function SpecDiff({
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-success flex items-center gap-1 font-mono text-[10px]">
+          <span className="flex items-center gap-1 font-mono text-[10px] text-success">
             <Plus className="h-3 w-3" />
             {comparison.differences.filter((d) => d.type.includes('added')).length}
           </span>
@@ -113,7 +113,7 @@ export function SpecDiff({
             <Minus className="h-3 w-3" />
             {comparison.differences.filter((d) => d.type.includes('removed')).length}
           </span>
-          <span className="text-warning flex items-center gap-1 font-mono text-[10px]">
+          <span className="flex items-center gap-1 font-mono text-[10px] text-warning">
             <Edit3 className="h-3 w-3" />
             {comparison.differences.filter((d) => d.type.includes('changed')).length}
           </span>
@@ -234,12 +234,12 @@ function OverviewTab({
     <div className="space-y-6">
       {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="border-success/30 bg-success/5 border p-3">
+        <div className="border border-success/30 bg-success/5 p-3">
           <div className="flex items-center gap-2">
-            <Plus className="text-success h-4 w-4" />
-            <span className="text-success font-mono text-xs uppercase">Added</span>
+            <Plus className="h-4 w-4 text-success" />
+            <span className="font-mono text-xs uppercase text-success">Added</span>
           </div>
-          <p className="text-success mt-2 font-mono text-2xl font-semibold">{added.length}</p>
+          <p className="mt-2 font-mono text-2xl font-semibold text-success">{added.length}</p>
         </div>
         <div className="border border-destructive/30 bg-destructive/5 p-3">
           <div className="flex items-center gap-2">
@@ -248,12 +248,12 @@ function OverviewTab({
           </div>
           <p className="mt-2 font-mono text-2xl font-semibold text-destructive">{removed.length}</p>
         </div>
-        <div className="border-warning/30 bg-warning/5 border p-3">
+        <div className="border border-warning/30 bg-warning/5 p-3">
           <div className="flex items-center gap-2">
-            <Edit3 className="text-warning h-4 w-4" />
-            <span className="text-warning font-mono text-xs uppercase">Changed</span>
+            <Edit3 className="h-4 w-4 text-warning" />
+            <span className="font-mono text-xs uppercase text-warning">Changed</span>
           </div>
-          <p className="text-warning mt-2 font-mono text-2xl font-semibold">{changed.length}</p>
+          <p className="mt-2 font-mono text-2xl font-semibold text-warning">{changed.length}</p>
         </div>
       </div>
 
@@ -302,9 +302,9 @@ function OverviewTab({
  */
 function DiffRow({ diff }: { diff: SpecDifference }) {
   const getIcon = () => {
-    if (diff.type.includes('added')) return <Plus className="text-success h-3.5 w-3.5" />
+    if (diff.type.includes('added')) return <Plus className="h-3.5 w-3.5 text-success" />
     if (diff.type.includes('removed')) return <Minus className="h-3.5 w-3.5 text-destructive" />
-    return <Edit3 className="text-warning h-3.5 w-3.5" />
+    return <Edit3 className="h-3.5 w-3.5 text-warning" />
   }
 
   const getColorClass = () => {
@@ -422,9 +422,9 @@ function CriterionDiffRow({
       )}
     >
       <div className="flex items-center gap-2">
-        {isAdded && <Plus className="text-success h-3.5 w-3.5" />}
+        {isAdded && <Plus className="h-3.5 w-3.5 text-success" />}
         {isRemoved && <Minus className="h-3.5 w-3.5 text-destructive" />}
-        {isChanged && <Edit3 className="text-warning h-3.5 w-3.5" />}
+        {isChanged && <Edit3 className="h-3.5 w-3.5 text-warning" />}
         <span className="font-mono text-xs text-muted-foreground">{criterion?.id}</span>
       </div>
       <p className="mt-2 text-sm">
@@ -437,7 +437,7 @@ function CriterionDiffRow({
           <p className="font-mono text-[10px] text-destructive line-through">
             {criterionA.behavior}
           </p>
-          <p className="text-success font-mono text-[10px]">{criterionB.behavior}</p>
+          <p className="font-mono text-[10px] text-success">{criterionB.behavior}</p>
         </div>
       )}
     </div>
@@ -579,9 +579,9 @@ function ConstraintDiffRow({
       )}
     >
       <div className="flex items-center gap-2">
-        {isAdded && <Plus className="text-success h-3.5 w-3.5" />}
+        {isAdded && <Plus className="h-3.5 w-3.5 text-success" />}
         {isRemoved && <Minus className="h-3.5 w-3.5 text-destructive" />}
-        {isChanged && <Edit3 className="text-warning h-3.5 w-3.5" />}
+        {isChanged && <Edit3 className="h-3.5 w-3.5 text-warning" />}
         <span className="border px-1.5 py-0.5 font-mono text-[10px] uppercase">
           {getTypeLabel()}
         </span>
@@ -713,9 +713,9 @@ function StepDiffRow({
       )}
     >
       <div className="flex items-center gap-2">
-        {isAdded && <Plus className="text-success h-3.5 w-3.5" />}
+        {isAdded && <Plus className="h-3.5 w-3.5 text-success" />}
         {isRemoved && <Minus className="h-3.5 w-3.5 text-destructive" />}
-        {isChanged && <Edit3 className="text-warning h-3.5 w-3.5" />}
+        {isChanged && <Edit3 className="h-3.5 w-3.5 text-warning" />}
         <span className="font-mono text-xs text-muted-foreground">{step?.id}</span>
       </div>
       <p className="mt-2 text-sm">{step?.description}</p>
@@ -756,9 +756,9 @@ function DependencyDiffRow({ diff }: { diff: SpecDifference }) {
       )}
     >
       <div className="flex items-center gap-2">
-        {isAdded && <Plus className="text-success h-3.5 w-3.5" />}
+        {isAdded && <Plus className="h-3.5 w-3.5 text-success" />}
         {isRemoved && <Minus className="h-3.5 w-3.5 text-destructive" />}
-        {isChanged && <Edit3 className="text-warning h-3.5 w-3.5" />}
+        {isChanged && <Edit3 className="h-3.5 w-3.5 text-warning" />}
         <FileText className="h-3.5 w-3.5 text-muted-foreground" />
         <span className="font-mono text-xs">{dep?.path}</span>
       </div>

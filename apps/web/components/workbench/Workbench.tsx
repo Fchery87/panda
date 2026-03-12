@@ -54,18 +54,39 @@ interface WorkbenchProps {
   onSaveFile: (filePath: string, content: string) => void
 }
 
+function GripIndicator({ direction }: { direction: 'vertical' | 'horizontal' }) {
+  if (direction === 'vertical') {
+    return (
+      <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+        <div className="h-1 w-1 bg-muted-foreground/40" />
+        <div className="h-1 w-1 bg-muted-foreground/40" />
+        <div className="h-1 w-1 bg-muted-foreground/40" />
+      </div>
+    )
+  }
+  return (
+    <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+      <div className="h-1 w-1 bg-muted-foreground/40" />
+      <div className="h-1 w-1 bg-muted-foreground/40" />
+      <div className="h-1 w-1 bg-muted-foreground/40" />
+    </div>
+  )
+}
+
 function VerticalResizeHandle({ className }: { className?: string }) {
   return (
-    <PanelResizeHandle className={cn('group relative', className)}>
+    <PanelResizeHandle className={cn('group relative w-4 cursor-col-resize', className)}>
       <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border transition-colors group-hover:bg-primary group-data-[resize-handle-state=drag]:bg-primary" />
+      <GripIndicator direction="vertical" />
     </PanelResizeHandle>
   )
 }
 
 function HorizontalResizeHandle({ className }: { className?: string }) {
   return (
-    <PanelResizeHandle className={cn('group relative h-px', className)}>
+    <PanelResizeHandle className={cn('group relative h-4 cursor-row-resize', className)}>
       <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-border transition-colors group-hover:bg-primary group-data-[resize-handle-state=drag]:bg-primary" />
+      <GripIndicator direction="horizontal" />
     </PanelResizeHandle>
   )
 }
@@ -383,6 +404,7 @@ export function Workbench({
             isExpanded={isSidebarExpanded}
             onTabChange={handleSidebarTabChange}
             onToggleExpand={handleToggleSidebar}
+            projectId={projectId}
           />
 
           {isSidebarExpanded && (
@@ -393,27 +415,35 @@ export function Workbench({
                 maxSize={30}
                 className="surface-1 border-r border-border"
               >
-                <div className="h-full overflow-auto">
-                  {activeSidebarTab === 'explorer' ? (
-                    <FileTree
-                      files={files.map((f) => ({
-                        _id: f._id,
-                        path: f.path,
-                        content: f.content ?? '',
-                        isBinary: f.isBinary,
-                        updatedAt: f.updatedAt,
-                      }))}
-                      selectedPath={selectedFilePath}
-                      onSelect={onSelectFile}
-                      onCreate={onCreateFile}
-                      onRename={onRenameFile}
-                      onDelete={onDeleteFile}
-                    />
-                  ) : activeSidebarTab === 'search' ? (
-                    <ProjectSearchPanel onSelectFile={onSelectFile} />
-                  ) : (
-                    <SpecHistory projectId={projectId} />
-                  )}
+                <div className="flex h-full flex-col">
+                  {/* Sidebar Panel Header */}
+                  <div className="panel-header-compact shrink-0">
+                    {activeSidebarTab === 'explorer' && 'Explorer'}
+                    {activeSidebarTab === 'search' && 'Search'}
+                    {activeSidebarTab === 'specs' && 'Specifications'}
+                  </div>
+                  <div className="flex-1 overflow-auto">
+                    {activeSidebarTab === 'explorer' ? (
+                      <FileTree
+                        files={files.map((f) => ({
+                          _id: f._id,
+                          path: f.path,
+                          content: f.content ?? '',
+                          isBinary: f.isBinary,
+                          updatedAt: f.updatedAt,
+                        }))}
+                        selectedPath={selectedFilePath}
+                        onSelect={onSelectFile}
+                        onCreate={onCreateFile}
+                        onRename={onRenameFile}
+                        onDelete={onDeleteFile}
+                      />
+                    ) : activeSidebarTab === 'search' ? (
+                      <ProjectSearchPanel onSelectFile={onSelectFile} />
+                    ) : (
+                      <SpecHistory projectId={projectId} />
+                    )}
+                  </div>
                 </div>
               </Panel>
               <VerticalResizeHandle />

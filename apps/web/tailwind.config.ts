@@ -53,6 +53,14 @@ const config: Config = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        success: {
+          DEFAULT: 'hsl(var(--status-success))',
+          foreground: 'hsl(var(--background))',
+        },
+        warning: {
+          DEFAULT: 'hsl(var(--status-warning))',
+          foreground: 'hsl(var(--background))',
+        },
         status: {
           success: 'hsl(var(--status-success))',
           error: 'hsl(var(--status-error))',

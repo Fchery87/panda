@@ -31,7 +31,7 @@ export function Breadcrumb({ items, projectName, projectId, className }: Breadcr
 
       <Link
         href={`/projects/${projectId}`}
-        className="font-mono text-xs font-medium text-foreground transition-colors hover:text-primary"
+        className="font-mono text-sm font-medium text-foreground transition-colors hover:text-primary"
       >
         {projectName}
       </Link>

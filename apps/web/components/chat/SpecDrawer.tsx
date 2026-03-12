@@ -163,7 +163,7 @@ function ConstraintItem({ constraint }: { constraint: Constraint }) {
 function AcceptanceCriterionItem({ criterion }: { criterion: AcceptanceCriterion }) {
   const statusIcons = {
     pending: <div className="h-2 w-2 rounded-full border border-muted-foreground" />,
-    passed: <CheckCircle2 className="text-success h-3 w-3" />,
+    passed: <CheckCircle2 className="h-3 w-3 text-success" />,
     failed: <XCircle className="h-3 w-3 text-destructive" />,
     skipped: <div className="h-2 w-2 rounded-full bg-muted-foreground/50" />,
   }
@@ -366,7 +366,7 @@ export function SpecDrawer({ spec, isOpen, onClose }: SpecDrawerProps) {
                       )}
                     >
                       {result.passed ? (
-                        <CheckCircle2 className="text-success h-3 w-3" />
+                        <CheckCircle2 className="h-3 w-3 text-success" />
                       ) : (
                         <XCircle className="h-3 w-3 text-destructive" />
                       )}

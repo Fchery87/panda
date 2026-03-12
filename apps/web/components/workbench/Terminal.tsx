@@ -438,7 +438,7 @@ export function Terminal({ projectId }: TerminalProps) {
           onChange={(e) => setCommand(e.target.value)}
           placeholder="Type a command (e.g., npm install, git status)..."
           disabled={isExecuting}
-          className="flex-1 border-none bg-transparent font-mono text-sm text-foreground outline-none placeholder:text-muted-foreground/50 disabled:opacity-50"
+          className="bg-surface-0 flex-1 rounded-none border border-border/50 px-3 py-1.5 font-mono text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-50"
         />
 
         <Button

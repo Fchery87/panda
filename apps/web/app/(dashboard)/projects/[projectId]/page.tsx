@@ -1246,7 +1246,7 @@ export default function ProjectPage() {
       )}
     >
       {/* Chat Header - Compact */}
-      <div className="panel-header-compact flex items-center gap-2" data-number="04">
+      <div className="panel-header-compact flex items-center gap-2">
         <div className="flex items-center gap-1.5">
           <Bot className="h-3 w-3 text-primary" />
           <span>Chat</span>
@@ -1584,11 +1584,17 @@ export default function ProjectPage() {
           {/* Secondary Actions */}
           <div className="flex items-center gap-1 pl-3">
             <Button
-              variant={isChatPanelOpen ? 'secondary' : 'ghost'}
+              variant="ghost"
               size="sm"
-              className="h-8 gap-1.5 rounded-none font-mono text-xs"
+              className={cn(
+                'h-8 gap-1.5 rounded-none font-mono text-xs transition-colors',
+                isChatPanelOpen
+                  ? 'border border-primary/30 bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              )}
               onClick={() => setIsChatPanelOpen(!isChatPanelOpen)}
               title="Toggle chat panel (Ctrl+B)"
+              aria-label="Toggle chat panel"
             >
               {isChatPanelOpen ? (
                 <PanelRightClose className="h-4 w-4" />
@@ -1598,14 +1604,19 @@ export default function ProjectPage() {
               <span className="hidden lg:inline">Chat</span>
             </Button>
             <Button
-              variant={isArtifactPanelOpen ? 'secondary' : 'ghost'}
+              variant="ghost"
               size="sm"
               className={cn(
-                'h-8 gap-1.5 rounded-none font-mono text-xs',
-                pendingArtifactCount > 0 && !isArtifactPanelOpen && 'text-primary'
+                'h-8 gap-1.5 rounded-none font-mono text-xs transition-colors',
+                isArtifactPanelOpen
+                  ? 'border border-primary/30 bg-primary/10 text-primary'
+                  : pendingArtifactCount > 0
+                    ? 'border border-primary/30 text-primary'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               )}
               onClick={() => setIsArtifactPanelOpen(!isArtifactPanelOpen)}
               title="Toggle artifacts panel (Ctrl+Shift+A)"
+              aria-label="Toggle artifacts panel"
             >
               {isArtifactPanelOpen ? (
                 <PanelRightClose className="h-4 w-4" />
@@ -1618,8 +1629,8 @@ export default function ProjectPage() {
                   className={cn(
                     'ml-0.5 flex h-4 min-w-4 items-center justify-center px-1 text-[10px]',
                     isArtifactPanelOpen
-                      ? 'rounded-none bg-primary/20 text-primary'
-                      : 'rounded-none bg-primary text-primary-foreground'
+                      ? 'bg-primary/20 text-primary'
+                      : 'bg-primary text-primary-foreground'
                   )}
                 >
                   {pendingArtifactCount}

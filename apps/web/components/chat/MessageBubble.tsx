@@ -291,7 +291,7 @@ export function MessageBubble({
   }
 
   return (
-    <div className={cn('flex gap-2.5 xl:gap-3', isUser ? 'flex-row-reverse' : 'flex-row')}>
+    <div className={cn('flex gap-3 lg:gap-4 xl:gap-5', isUser ? 'flex-row-reverse' : 'flex-row')}>
       {/* Avatar */}
       <motion.div
         initial={{ scale: 0.8, opacity: 0 }}
@@ -373,7 +373,7 @@ export function MessageBubble({
           className={cn(
             'relative rounded-none border px-4 py-2.5 text-sm leading-relaxed',
             'px-3 py-2 text-[13px] xl:px-4 xl:py-2.5 xl:text-sm',
-            isUser ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
+            isUser ? 'max-w-[85%] bg-primary text-primary-foreground' : 'bg-muted text-foreground'
           )}
         >
           <div

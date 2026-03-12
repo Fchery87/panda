@@ -202,10 +202,10 @@ export function SpecVerificationResults({
 
       {/* Stats Bar */}
       <div className="grid grid-cols-3 gap-2">
-        <div className="border-success/30 bg-success/5 border p-2 text-center">
+        <div className="border border-success/30 bg-success/5 p-2 text-center">
           <div className="flex items-center justify-center gap-1.5">
-            <CheckCircle2 className="text-success h-3.5 w-3.5" />
-            <span className="text-success font-mono text-lg font-semibold">{passedCount}</span>
+            <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+            <span className="font-mono text-lg font-semibold text-success">{passedCount}</span>
           </div>
           <span className="font-mono text-[10px] uppercase text-muted-foreground">Passed</span>
         </div>

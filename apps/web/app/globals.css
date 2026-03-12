@@ -44,20 +44,20 @@
     /* Status colors */
     --status-success: 142 71% 45%;
     --status-error: 0 84% 60%;
-    --status-warning: 38 92% 50%;
+    --status-warning: 25 95% 53%;
     --status-info: 217 91% 60%;
     --status-online: 142 71% 45%;
 
     /* Terminal semantic colors */
     --terminal-success: 142 71% 35%;
     --terminal-error: 0 76% 50%;
-    --terminal-warning: 38 92% 45%;
+    --terminal-warning: 25 95% 48%;
 
-    /* Diff semantic colors */
-    --diff-added-bg: 142 71% 45%;
-    --diff-added-fg: 142 71% 45%;
-    --diff-removed-bg: 0 84% 60%;
-    --diff-removed-fg: 0 84% 60%;
+    /* Diff semantic colors - fg is bright/saturated, bg is muted */
+    --diff-added-fg: 142 76% 36%;
+    --diff-added-bg: 142 71% 50%;
+    --diff-removed-fg: 0 84% 50%;
+    --diff-removed-bg: 0 84% 65%;
 
     /* Interactive states */
     --interactive-hover: 38 92% 50%;
@@ -88,6 +88,7 @@
     --surface-0: 30 10% 8%;
     --surface-1: 30 10% 12%;
     --surface-2: 30 10% 16%;
+    --surface-3: 30 10% 20%;
     --chart-1: 38 92% 50%;
     --chart-2: 40 20% 98%;
     --chart-3: 30 10% 15%;
@@ -105,20 +106,20 @@
     /* Status colors */
     --status-success: 142 71% 45%;
     --status-error: 0 84% 60%;
-    --status-warning: 38 92% 50%;
+    --status-warning: 25 95% 53%;
     --status-info: 217 91% 60%;
     --status-online: 142 71% 45%;
 
     /* Terminal semantic colors */
     --terminal-success: 142 71% 65%;
     --terminal-error: 0 76% 72%;
-    --terminal-warning: 38 92% 65%;
+    --terminal-warning: 25 95% 65%;
 
-    /* Diff semantic colors */
-    --diff-added-bg: 142 71% 45%;
-    --diff-added-fg: 142 71% 45%;
-    --diff-removed-bg: 0 84% 60%;
-    --diff-removed-fg: 0 84% 60%;
+    /* Diff semantic colors - fg is bright/saturated, bg is muted */
+    --diff-added-fg: 142 76% 36%;
+    --diff-added-bg: 142 71% 50%;
+    --diff-removed-fg: 0 84% 50%;
+    --diff-removed-bg: 0 84% 65%;
 
     /* Interactive states */
     --interactive-hover: 38 92% 50%;
@@ -180,6 +181,9 @@
   }
   .surface-2 {
     background-color: hsl(var(--surface-2));
+  }
+  .surface-3 {
+    background-color: hsl(var(--surface-3));
   }
 
   /* ═══════════════════════════════════════════════════════════
@@ -252,6 +256,11 @@
     @apply mr-2 font-semibold text-primary;
   }
 
+  /* Panel inset - subtle inner shadow/highlight for depth */
+  .panel-inset {
+    box-shadow: inset 0 1px 0 hsl(var(--foreground) / 0.04);
+  }
+
   /* ═══════════════════════════════════════════════════════════
      BUTTON OVERRIDES - Sharp, no rounded corners
      ═══════════════════════════════════════════════════════════ */
@@ -310,6 +319,18 @@
   }
   .bg-terminal-error {
     background-color: hsl(var(--terminal-error) / 0.05);
+  }
+  .text-success {
+    color: hsl(var(--status-success));
+  }
+  .text-warning {
+    color: hsl(var(--status-warning));
+  }
+  .bg-success {
+    background-color: hsl(var(--status-success) / 0.1);
+  }
+  .bg-warning {
+    background-color: hsl(var(--status-warning) / 0.1);
   }
   .text-diff-added {
     color: hsl(var(--diff-added-fg));
