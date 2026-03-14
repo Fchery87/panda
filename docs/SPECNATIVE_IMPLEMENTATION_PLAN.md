@@ -1,5 +1,8 @@
 # Panda SpecNative Implementation Plan
 
+> Historical implementation plan. This remains useful as strategy/context, but
+> its status fields do not describe the current Panda web product on their own.
+
 > **Version:** 1.0  
 > **Date:** February 28, 2026  
 > **Author:** Specification Engineering Team  

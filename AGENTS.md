@@ -1,9 +1,9 @@
 # AGENTS.md - AI Agent Instructions for Panda.ai
 
 > **Version:** 1.0  
-> **Last Updated:** 2026-02-01  
+> **Last Updated:** 2026-03-13  
 > **Maintainer:** AI Development Team  
-> **Status:** Perfect Health (100/100)
+> **Status:** Active web platform
 
 ---
 
@@ -30,13 +30,14 @@ When working on this codebase:
 
 ## Project Philosophy
 
-### Perfect Health Standard
+### Quality Standard
 
-We maintain a **100/100 health score**. This means:
+The standard for this repo is a fully green web app verification pass. This
+means:
 
 - ✅ Zero TypeScript errors
 - ✅ Zero ESLint warnings
-- ✅ All tests passing (13 unit + E2E)
+- ✅ Unit and browser acceptance tests passing
 - ✅ Build successful
 - ✅ Formatting consistent
 

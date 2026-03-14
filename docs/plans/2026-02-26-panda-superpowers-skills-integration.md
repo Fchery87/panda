@@ -1,5 +1,8 @@
 # Panda Superpowers-Style Skills Integration Implementation Plan
 
+> Historical implementation plan. Keep this as reference for the skills
+> integration effort, not as the live project status document.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to
 > implement this plan task-by-task.
 

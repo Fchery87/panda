@@ -1,5 +1,8 @@
 # Panda Evolution: Implementation Log (Feb 24, 2026)
 
+> Historical implementation log. This document records a specific development
+> slice and is not the current product/status source of truth.
+
 This document summarizes the major feature implementations, architectural
 refactors, and critical bug fixes completed today to evolve Panda from a serial
 assistant to a parallel orchestration system.

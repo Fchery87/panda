@@ -1,5 +1,8 @@
 # Panda IDE Remediation Plan
 
+> Historical remediation plan. This plan predates the later web stabilization
+> pass and should be read as a completed record, not the current roadmap.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to
 > implement this plan task-by-task.
 

@@ -1,5 +1,10 @@
 # Comprehensive System Code Review - Panda Project
 
+> Historical review snapshot from 2026-03-01. Some findings and status numbers
+> have been superseded by the completed web stabilization work. For current repo
+> status, see [VALIDATION_TASKS.md](./VALIDATION_TASKS.md) and
+> [README.md](./README.md).
+
 **Date:** 2026-03-01 **Review Scope:** Full monorepo (Next.js frontend + Convex
 backend + SDK) **Reviewer:** Automated comprehensive system scan **Profile:**
 Perfectionist

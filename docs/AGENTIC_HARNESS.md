@@ -1,4 +1,4 @@
-# AGENTIC_HARNESS.md - OpenCode-Style Agentic Harness
+# AGENTIC_HARNESS.md - Panda Agentic Harness
 
 > **Version:** 1.1  
 > **Last Updated:** 2026-03-10  
@@ -8,10 +8,11 @@
 
 ## Overview
 
-Panda.ai implements an OpenCode-style agentic harness that provides a
-provider-agnostic agent execution system. It was designed to mirror the
-architecture of OpenCode while integrating with Panda's existing Convex-based
-backend.
+Panda.ai implements an OpenCode-inspired agentic harness that provides a
+provider-agnostic execution system for Panda’s web-only workbench. The harness
+is adapted to Panda’s current browser product, Convex-backed persistence model,
+and plan-review/build workflow rather than trying to mirror another interface
+surface one-to-one.
 
 ## Architecture
 

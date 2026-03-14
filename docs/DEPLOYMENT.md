@@ -1,13 +1,13 @@
-# Panda.ai Deployment Guide (Convex + Next.js + Vercel)
+# Panda Web Deployment Guide (Convex + Next.js + Vercel)
 
 > Last updated: February 7, 2026
 >
-> Scope: Production deployment for this repository (`panda-ai`) with Convex
-> backend and Next.js frontend.
+> Scope: Production deployment for this repository (`panda`) with Convex backend
+> and Next.js frontend.
 
 ## 1. Architecture and deployment model
 
-This project is split into:
+Panda is a web-only product split into:
 
 - Frontend: Next.js app in `apps/web`
 - Backend: Convex functions in `convex/`

@@ -45,13 +45,8 @@ const interfaceMap = [
     label: '02',
     title: 'Workspace',
     icon: Monitor,
-    summary:
-      'Edit code, preview results, view timeline context, and run terminal commands in one place.',
-    bullets: [
-      'Tabbed editor + preview + timeline',
-      'Integrated terminal',
-      'Status-aware, mobile-friendly layout',
-    ],
+    summary: 'Edit files, inspect timeline context, and run terminal commands in one place.',
+    bullets: ['Tabbed editor + timeline', 'Integrated terminal', 'Responsive workbench layout'],
   },
   {
     id: 'chat',
@@ -59,25 +54,21 @@ const interfaceMap = [
     title: 'Chat Panel',
     icon: PanelRight,
     summary:
-      'Talk to the agent, inspect runs, manage memory, and evaluate responses without leaving the project.',
+      'Talk to the agent, move between planning and build flows, and keep the active run visible while you work.',
     bullets: [
       'Message history + streaming input',
-      'Run / Memory / Evals inspector',
-      'Plan and debug dialogs',
+      'Mode, model, and file-context controls',
+      'Plan review and build actions',
     ],
   },
   {
-    id: 'specs',
+    id: 'inspector',
     label: '04',
-    title: 'Spec System',
+    title: 'Inspector',
     icon: Shield,
     summary:
-      'Formalize intent through specifications that drive agent behavior, validate outputs, and evolve with your code.',
-    bullets: [
-      'Three-tier intent classification',
-      'Editable requirements and constraints',
-      'Living specs with drift detection',
-    ],
+      'Inspect run history, plan state, memory, and eval surfaces without leaving the project session.',
+    bullets: ['Run timeline and history', 'Plan panel with approval state', 'Memory and eval tabs'],
   },
 ]
 
@@ -111,11 +102,6 @@ const workspaceDetails = [
     userValue: 'Write and save code directly in the workbench instead of switching tools.',
   },
   {
-    name: 'Preview',
-    role: 'Dedicated preview surface inside the workspace.',
-    userValue: 'Check output and behavior while staying in the same interface.',
-  },
-  {
     name: 'Timeline',
     role: 'Chat-linked timeline view (`Timeline chatId={currentChatId}`).',
     userValue: 'Understand what changed and when in the context of the active conversation.',
@@ -139,44 +125,42 @@ const chatDetails = [
     userValue: 'You can direct the agent precisely and attach project context inline.',
   },
   {
-    name: 'RunProgressPanel',
-    role: 'Live and historical run progress with tool-level event visibility.',
-    userValue:
-      'See what the agent is doing in real time and inspect runs when something looks off.',
+    name: 'Plan Review Card',
+    role: 'Inline review surface for approved, awaiting-review, and executing plan states.',
+    userValue: 'Move from planning to execution without losing the active chat context.',
   },
   {
-    name: 'MemoryBankEditor',
-    role: 'Editable persistent memory for project-specific instructions and context.',
+    name: 'Permission Requests',
+    role: 'Browser-native approval UI for risky command execution and other gated actions.',
     userValue: 'Teach Panda how your project works so future runs stay aligned.',
   },
   {
-    name: 'EvalPanel',
-    role: 'Run evaluation scenarios against recent prompt/reply context.',
-    userValue: 'Validate behavior and quality without leaving the chat surface.',
+    name: 'Share + History Actions',
+    role: 'Chat actions that open the share dialog and run-history inspector.',
+    userValue: 'Review past execution and share the active chat without leaving the project.',
   },
 ]
 
 const specDetails = [
   {
-    name: 'Intent Classifier',
-    role: 'Automatically detects task complexity to set the Spec Tier (Instant, Ambient, or Explicit).',
-    userValue:
-      'Simple tasks stay fast, while complex architecture changes get the rigor they need.',
+    name: 'Run Tab',
+    role: 'Shows persisted run history and current execution progress.',
+    userValue: 'Use it to inspect what happened, not just what the agent said.',
   },
   {
-    name: 'SpecPanel',
-    role: 'Dedicated surface for reviewing EARS-style requirements and typed constraints.',
-    userValue: 'You can align with the agent on the "what" and "how" before any code is written.',
+    name: 'Plan Tab',
+    role: 'Editable plan surface with review, approval, and build-from-plan controls.',
+    userValue: 'This is where planning turns into an execution contract.',
   },
   {
-    name: 'SpecBadge / Drawer',
-    role: 'Ambient status indicators in the StatusBar and quick-view drawer for Tier 2 tasks.',
-    userValue: 'Monitor spec-verification progress without losing focus on your code.',
+    name: 'Memory Tab',
+    role: 'Persistent project context the agent can reuse across future runs.',
+    userValue: 'Keep repeated instructions out of every prompt.',
   },
   {
-    name: 'Drift Detection',
-    role: 'Plugin-based monitoring that detects when manual code changes diverge from the spec.',
-    userValue: 'Keeps your documentation and implementation in sync automatically.',
+    name: 'Evals Tab',
+    role: 'Evaluation surface for checking response quality and scenario behavior.',
+    userValue: 'Use it to validate how Panda behaves on repeated workflows.',
   },
 ]
 
@@ -189,27 +173,27 @@ const workflowSteps = [
   {
     title: 'Edit and inspect in Workspace',
     description:
-      'Open multiple files as tabs, edit code, switch to preview or timeline, and run terminal commands while staying in the same project session.',
+      'Open multiple files as tabs, edit code, inspect the timeline, and run terminal commands while staying in the same project session.',
   },
   {
-    title: 'Ask Panda to plan/code/debug',
+    title: 'Ask Panda to plan, ask, or build',
     description:
-      'Use the chat input mode selector and send a request. Panda classifies your intent into a Spec Tier (v1.5+).',
+      'Use the chat input mode selector and send a request with file mentions, model controls, and the right browser context.',
   },
   {
-    title: 'Review and Refine Specs',
+    title: 'Review and approve the plan',
     description:
-      'For complex tasks, use the SpecPanel to edit requirements and constraints. Approve the spec to trigger execution.',
+      'For structured work, review the saved plan in the inspector and approve it before build execution starts.',
   },
   {
-    title: 'Inspect the run',
+    title: 'Inspect or resume the run',
     description:
-      'Open the inspector to view Run, Memory, and Evals. Use Plan and Debug actions for deeper control during longer or more complex tasks.',
+      'Open the inspector to view Run, Plan, Memory, and Evals. Recover a paused run when Panda surfaces a resumable checkpoint.',
   },
   {
-    title: 'Apply, verify, repeat',
+    title: 'Share, verify, repeat',
     description:
-      'Review changes in the workspace, run commands in terminal, and continue the conversation with updated project state and context.',
+      'Review changes in the workspace, verify the results, and share the active chat or revisit run history when needed.',
   },
 ]
 
@@ -282,15 +266,17 @@ export default function EducationPage() {
                   </div>
 
                   <h1 className="text-display text-4xl sm:text-5xl lg:text-6xl">
-                    Understand the full Panda workflow.
+                    Learn how Panda’s web workbench fits together.
                   </h1>
 
                   <p className="max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-                    This page explains how Panda is organized for users: what the{' '}
+                    This page explains Panda as it exists today: what the{' '}
                     <span className="font-mono text-foreground">Explorer</span>,{' '}
                     <span className="font-mono text-foreground">Workspace</span>, and{' '}
-                    <span className="font-mono text-foreground">Chat Panel</span> do, how they
-                    connect, and how to move from idea to validated code without leaving the app.
+                    <span className="font-mono text-foreground">Chat Panel</span> do, how the{' '}
+                    <span className="font-mono text-foreground">Inspector</span> supports plan and
+                    run review, and how to move from idea to verified output without leaving the
+                    browser.
                   </p>
 
                   <div className="flex flex-wrap gap-3">
@@ -338,7 +324,7 @@ export default function EducationPage() {
                           Workspace executes work
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Edit code, preview, inspect timeline, run terminal commands.
+                          Edit code, inspect timeline, and run terminal commands.
                         </p>
                       </div>
                     </div>
@@ -349,7 +335,18 @@ export default function EducationPage() {
                           Chat orchestrates the loop
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Prompt the agent, inspect runs, manage memory, and evaluate results.
+                          Prompt the agent, review plans, and manage active execution.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Shield className="mt-0.5 h-4 w-4 text-primary" />
+                      <div>
+                        <p className="font-mono text-xs uppercase tracking-wide">
+                          Inspector explains state
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Track plan status, run history, memory, and evals.
                         </p>
                       </div>
                     </div>
@@ -369,14 +366,16 @@ export default function EducationPage() {
                   <span className="h-px w-8 bg-primary" />
                   <span className="text-label text-muted-foreground">Interface Map</span>
                 </div>
-                <h2 className="text-display text-3xl sm:text-4xl">The 3 panels that drive Panda</h2>
+                <h2 className="text-display text-3xl sm:text-4xl">
+                  The 4 surfaces that drive Panda
+                </h2>
               </div>
               <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                Explorer → Workspace → Chat → Spec → Verify
+                Explorer → Workspace → Chat → Inspector
               </div>
             </div>
 
-            <div className="grid gap-px bg-border md:grid-cols-3">
+            <div className="grid gap-px bg-border md:grid-cols-2 lg:grid-cols-4">
               {interfaceMap.map((section, index) => {
                 const Icon = section.icon
                 return (
@@ -425,7 +424,7 @@ export default function EducationPage() {
                 <span className="text-label text-muted-foreground">Workflow</span>
               </div>
               <h2 className="text-display max-w-3xl text-3xl sm:text-4xl">
-                The Panda Spec-Code Loop
+                The Panda browser workflow
               </h2>
             </div>
 
@@ -531,21 +530,17 @@ export default function EducationPage() {
               <div className="lg:col-span-8">
                 <p className="text-base leading-relaxed text-muted-foreground">
                   The Workspace is where code work happens. Panda&apos;s{' '}
-                  <span className="font-mono text-foreground">Workbench</span> component combines
-                  file tabs, an editor, preview, timeline, and terminal into a responsive layout
-                  that changes for desktop, compact desktop, and mobile. This keeps editing,
-                  execution, and inspection inside one continuous loop.
+                  <span className="font-mono text-foreground">Workbench</span> combines file tabs,
+                  an editor, timeline context, and terminal execution into a responsive browser
+                  layout. This keeps editing, execution, and inspection inside one continuous loop.
                 </p>
                 <div className="mt-4 border border-border bg-background p-4">
                   <div className="mb-2 font-mono text-xs uppercase tracking-widest text-primary">
                     Layout behavior (current implementation)
                   </div>
                   <p className="text-sm leading-relaxed text-muted-foreground">
-                    Desktop uses resizable panels. Mobile switches between{' '}
-                    <span className="font-mono text-foreground">Files</span>,{' '}
-                    <span className="font-mono text-foreground">Editor</span>, and{' '}
-                    <span className="font-mono text-foreground">Terminal</span> tabs so users can
-                    still work effectively on smaller screens.
+                    Desktop uses resizable panels. Smaller layouts keep the same workbench surfaces
+                    available without forcing you out of the project session.
                   </p>
                 </div>
               </div>
@@ -574,41 +569,40 @@ export default function EducationPage() {
               <div className="lg:col-span-8">
                 <p className="text-base leading-relaxed text-muted-foreground">
                   The Chat Panel is more than a prompt box. It is Panda&apos;s orchestration surface
-                  for conversation, agent runs, memory, and evaluation. In the current project page,
-                  the panel includes a context usage indicator, inspector toggles, Plan/Debug
-                  actions, message history, and a feature-rich chat input with mode/model controls
-                  and file mentions.
+                  for planning, asking, building, permission review, and message history. In the
+                  current project page, the panel includes inspector toggles, plan review actions,
+                  chat history, and a feature-rich input with mode/model controls and file mentions.
                 </p>
 
                 <div className="mt-4 grid gap-px bg-border sm:grid-cols-3">
                   <div className="border border-transparent bg-background p-4">
                     <div className="mb-2 flex items-center gap-2 font-mono text-xs uppercase tracking-wide">
                       <Terminal className="h-3.5 w-3.5 text-primary" />
-                      Run Inspector
+                      Plan + Run
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      <span className="font-mono text-foreground">RunProgressPanel</span> shows live
-                      steps, tool activity, and debugging detail.
+                      Inline plan review cards and run status surfaces keep execution visible in the
+                      chat flow.
                     </p>
                   </div>
                   <div className="border border-transparent bg-background p-4">
                     <div className="mb-2 flex items-center gap-2 font-mono text-xs uppercase tracking-wide">
                       <Brain className="h-3.5 w-3.5 text-primary" />
-                      Memory
+                      Permissions
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      <span className="font-mono text-foreground">MemoryBankEditor</span> stores
-                      project-specific context the agent should retain.
+                      Risky commands and other gated actions can be reviewed in the browser before
+                      they proceed.
                     </p>
                   </div>
                   <div className="border border-transparent bg-background p-4">
                     <div className="mb-2 flex items-center gap-2 font-mono text-xs uppercase tracking-wide">
                       <Bot className="h-3.5 w-3.5 text-primary" />
-                      Evals
+                      Share + History
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      <span className="font-mono text-foreground">EvalPanel</span> helps test and
-                      validate agent responses against scenarios.
+                      The current chat can be shared, and the active run history can be reopened
+                      from the same panel.
                     </p>
                   </div>
                 </div>
@@ -623,47 +617,44 @@ export default function EducationPage() {
           </div>
         </section>
 
-        <section id="specs" className="py-16 lg:py-20">
+        <section id="inspector" className="py-16 lg:py-20">
           <div className="container">
             <div className="mb-8 grid gap-6 lg:grid-cols-12">
               <div className="lg:col-span-4">
                 <div className="mb-4 flex items-center gap-3">
                   <Shield className="h-4 w-4 text-primary" />
                   <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                    Specification System
+                    Inspector
                   </span>
                 </div>
-                <h2 className="text-display text-3xl">Specification-Native Development</h2>
+                <h2 className="text-display text-3xl">How the Inspector supports the workbench</h2>
               </div>
               <div className="lg:col-span-8">
                 <p className="text-base leading-relaxed text-muted-foreground">
-                  Panda transforms from a reactive IDE into a spec-native system where formal
-                  specifications are first-class primitives. This ensures that every change is tied
-                  to a validated intent, reducing drift and increasing architectural integrity.
+                  The Inspector is Panda&apos;s control surface for understanding what the agent is
+                  doing and what happens next. It keeps the current run, saved plan, project memory,
+                  and eval tooling close to the active chat instead of scattering them across
+                  separate pages.
                 </p>
                 <div className="mt-6 grid gap-4 sm:grid-cols-3">
                   <div className="border border-border bg-background p-4">
-                    <div className="mb-2 font-mono text-xs font-bold text-primary">
-                      TIER 1: INSTANT
-                    </div>
+                    <div className="mb-2 font-mono text-xs font-bold text-primary">RUN</div>
                     <p className="text-sm text-muted-foreground">
-                      Direct AI response for simple edits. No spec overhead.
+                      Inspect persisted run events, progress, and execution history.
+                    </p>
+                  </div>
+                  <div className="border border-border bg-background p-4">
+                    <div className="mb-2 font-mono text-xs font-bold text-primary">PLAN</div>
+                    <p className="text-sm text-muted-foreground">
+                      Review, approve, and build from the current implementation plan.
                     </p>
                   </div>
                   <div className="border border-border bg-background p-4">
                     <div className="mb-2 font-mono text-xs font-bold text-primary">
-                      TIER 2: AMBIENT
+                      MEMORY / EVALS
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Spec generated silently. Verified via the StatusBar badge.
-                    </p>
-                  </div>
-                  <div className="border border-border bg-background p-4">
-                    <div className="mb-2 font-mono text-xs font-bold text-primary">
-                      TIER 3: EXPLICIT
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Full SpecPanel review. User approves before execution.
+                      Preserve context and validate repeatable agent behavior.
                     </p>
                   </div>
                 </div>
@@ -679,14 +670,12 @@ export default function EducationPage() {
             <div className="bg-surface-1 mt-12 border border-border p-6 lg:p-8">
               <div className="grid gap-8 lg:grid-cols-2">
                 <div>
-                  <h3 className="mb-4 text-xl font-semibold">Living Specs & Drift Detection</h3>
+                  <h3 className="mb-4 text-xl font-semibold">Plan review and run recovery</h3>
                   <p className="text-sm leading-relaxed text-muted-foreground">
-                    Unlike traditional waterfall specs, Panda&apos;s specs are{' '}
-                    <strong>living documents</strong>. If you manually edit code that is covered by
-                    an active specification, the
-                    <span className="mx-1 font-mono text-foreground">Drift Detection</span> plugin
-                    identifies the divergence and offers to reconcile the spec with the new
-                    implementation.
+                    Panda&apos;s current browser workflow centers on explicit plan review for
+                    structured work and resumable runs for interrupted execution. When a run pauses,
+                    Panda can surface a recovery path instead of forcing you to restart from
+                    scratch.
                   </p>
                   <div className="mt-6 flex items-center gap-4">
                     <div className="flex -space-x-2">
@@ -694,7 +683,7 @@ export default function EducationPage() {
                       <GitBranch className="h-8 w-8 rounded-full border border-background bg-primary/10 p-1.5 text-primary" />
                     </div>
                     <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                      Continuous Bidirectional Sync
+                      Reviewable + Recoverable
                     </p>
                   </div>
                 </div>
@@ -702,27 +691,27 @@ export default function EducationPage() {
                   <div className="flex items-start gap-3">
                     <Target className="mt-1 h-4 w-4 text-primary" />
                     <div>
-                      <h4 className="text-sm font-semibold">EARS Requirements</h4>
+                      <h4 className="text-sm font-semibold">Build from plan</h4>
                       <p className="text-xs text-muted-foreground">
-                        Easy Approach to Requirements Syntax for clear, verifiable behavior.
+                        Approve the saved plan, then use it as the execution contract for build.
                       </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <Shield className="mt-1 h-4 w-4 text-primary" />
                     <div>
-                      <h4 className="text-sm font-semibold">Typed Constraints</h4>
+                      <h4 className="text-sm font-semibold">Browser approvals</h4>
                       <p className="text-xs text-muted-foreground">
-                        Enforce structural, behavioral, or security rules across the run.
+                        Review risky command execution directly in the web interface.
                       </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <CheckCircle2 className="mt-1 h-4 w-4 text-primary" />
                     <div>
-                      <h4 className="text-sm font-semibold">Automated Verification</h4>
+                      <h4 className="text-sm font-semibold">Run history + sharing</h4>
                       <p className="text-xs text-muted-foreground">
-                        Every spec step is verified post-execution to ensure intent matches output.
+                        Reopen what happened and share the active chat when you need outside review.
                       </p>
                     </div>
                   </div>
@@ -745,19 +734,12 @@ export default function EducationPage() {
                       Use <span className="font-mono text-foreground">@file-path</span> mentions in
                       chat to pull exact files into the request context.
                     </li>
+                    <li>Use the chat actions menu to open run history or share the active chat.</li>
                     <li>
-                      Toggle the chat panel with{' '}
-                      <span className="font-mono text-foreground">Cmd/Ctrl + B</span>.
+                      Open the inspector when you need Run, Plan, Memory, or Evals without leaving
+                      the project page.
                     </li>
-                    <li>
-                      Toggle the artifact panel with{' '}
-                      <span className="font-mono text-foreground">Cmd/Ctrl + Shift + A</span>.
-                    </li>
-                    <li>
-                      Open the command palette with{' '}
-                      <span className="font-mono text-foreground">Ctrl + K</span> (shown in the
-                      workbench empty state).
-                    </li>
+                    <li>Review the plan before using Build for larger implementation tasks.</li>
                   </ul>
                 </div>
               </div>
@@ -766,10 +748,10 @@ export default function EducationPage() {
                 <div className="shadow-sharp-md surface-1 border border-border p-5">
                   <h2 className="mb-3 text-xl font-semibold">Why this layout matters</h2>
                   <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
-                    Panda reduces context switching by keeping navigation, editing, execution, and
-                    agent interaction in one synchronized workspace. Instead of jumping across
-                    separate IDE, terminal, chat, and notes tools, each panel updates the others as
-                    you work.
+                    Panda reduces context switching by keeping navigation, editing, execution,
+                    approval, and review in one synchronized browser workspace. Instead of jumping
+                    across separate IDE, terminal, chat, and review tools, each surface updates the
+                    others as you work.
                   </p>
                   <Link href="/projects">
                     <Button className="rounded-none font-mono tracking-wide">

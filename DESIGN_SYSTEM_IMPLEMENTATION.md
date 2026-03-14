@@ -1,5 +1,8 @@
 # Design System Implementation Summary
 
+> Historical implementation summary. Use this as a design-system record, not as
+> the current verification or product-status document.
+
 ## Overview
 
 Comprehensive design system overhaul for Panda IDE implementing a consistent

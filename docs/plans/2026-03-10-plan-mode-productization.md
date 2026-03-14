@@ -1,5 +1,8 @@
 # Panda Plan Mode Productization Implementation Plan
 
+> Historical implementation record for plan-mode productization. The current
+> web-platform status is tracked in newer stabilization and validation docs.
+
 > **Status:** Implemented on 2026-03-10
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to

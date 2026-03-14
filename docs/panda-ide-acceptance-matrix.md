@@ -1,5 +1,9 @@
 # Panda IDE Acceptance Matrix
 
+> Historical acceptance reference. Some entries describe older UI assumptions;
+> use the current Playwright suite and
+> [VALIDATION_TASKS.md](../VALIDATION_TASKS.md) for the latest acceptance bar.
+
 ## Core Workbench
 
 | Workflow                    | Expected Result                                       | Status Target |

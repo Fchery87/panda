@@ -1,5 +1,8 @@
 # Security Hardening: 3 High-Impact Items
 
+> Historical planning document. Proposed items here should be read as plan
+> inputs, not as a statement of current implemented security status.
+
 Three targeted, zero-infrastructure security additions that address Panda's real
 threat surface.
 

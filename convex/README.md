@@ -1,6 +1,6 @@
-# Convex Backend - Panda.ai
+# Convex Backend - Panda
 
-> This directory contains all Convex backend functions for Panda.ai.
+> This directory contains the Convex backend for Panda's web app.
 
 ## Database Schema
 
@@ -141,7 +141,7 @@ Required Convex environment variables:
 AUTH_GOOGLE_ID=your-client-id
 AUTH_GOOGLE_SECRET=your-client-secret
 CONVEX_AUTH_SECRET=your-random-secret
-SITE_URL=https://your-app.convex.site
+SITE_URL=https://your-app-domain.com
 
 # LLM Providers
 OPENAI_API_KEY=sk-...
@@ -170,5 +170,5 @@ bunx convex deploy
 
 - [README.md](../README.md) - Project overview
 - [AGENTS.md](../AGENTS.md) - AI agent instructions
-- [AGENTIC_HARNESS.md](./AGENTIC_HARNESS.md) - Agent harness docs
-- [DEPLOYMENT.md](./DEPLOYMENT.md) - Deployment guide
+- [docs/AGENTIC_HARNESS.md](../docs/AGENTIC_HARNESS.md) - Agent harness docs
+- [docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md) - Deployment guide

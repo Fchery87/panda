@@ -1,4 +1,4 @@
-# Google OAuth 2.0 Setup Guide for Panda.ai
+# Google OAuth 2.0 Setup Guide for Panda
 
 > **Source:**
 > [Official Google OAuth 2.0 for Web Server Apps](https://developers.google.com/identity/protocols/oauth2/web-server)
@@ -9,7 +9,7 @@
 
 1. Go to the [Google Cloud Console](https://console.cloud.google.com/)
 2. Click the project selector dropdown (top left) → **"New Project"**
-3. Name: `panda-ai-auth` (or any name)
+3. Name: `panda-web-auth` (or any name)
 4. Click **Create** and wait for it to provision
 5. Select the new project from the dropdown
 
@@ -23,7 +23,7 @@
 2. Select **"External"** (for apps available to any Google user)
 3. Click **"Create"**
 4. Fill in App Information:
-   - **App name:** `Panda.ai`
+   - **App name:** `Panda`
    - **User support email:** Your email address
    - **App logo:** (Optional) Upload your app logo
    - **App domain:** Your app's homepage URL
@@ -50,7 +50,7 @@ development/testing).
 1. Go to **"APIs & Services"** → **"Credentials"** (left sidebar)
 2. Click **"+ Create Credentials"** → **"OAuth client ID"**
 3. Select **"Web application"** as the Application type
-4. **Name:** `Panda.ai Web Client`
+4. **Name:** `Panda Web Client`
 5. Under **"Authorized redirect URIs"**, click **"+ Add URI"**
 6. Enter your Convex callback URL:
 
@@ -195,7 +195,7 @@ the OAuth 2.0 flow works like this:
 | `email`   | Access user's email address      | ✅ Yes   |
 | `profile` | Access user's basic profile info | ✅ Yes   |
 
-**Note:** Panda.ai uses these scopes to:
+**Note:** Panda uses these scopes to:
 
 - Authenticate the user (openid)
 - Store user's email (email)

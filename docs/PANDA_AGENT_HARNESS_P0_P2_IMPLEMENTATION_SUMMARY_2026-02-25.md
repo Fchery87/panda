@@ -1,5 +1,8 @@
 # Panda Agent Harness P0-P2 Implementation Summary (2026-02-25)
 
+> Historical milestone summary. Verification counts and completion claims here
+> reflect the project state on 2026-02-25, not the latest stabilization status.
+
 ## Status
 
 - `P0` (Reliability): Complete

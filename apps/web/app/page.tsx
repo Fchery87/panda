@@ -11,9 +11,9 @@ import { cn } from '@/lib/utils'
 const features = [
   {
     number: '01',
-    title: 'Context-Aware AI Chat',
+    title: 'Plan Review Before Execution',
     description:
-      'Switch between ask, plan, code, and build flows without losing context across your project.',
+      'Move from architecting to building with saved plans, explicit approval gates, and build-from-plan execution.',
     icon: Bot,
     size: 'small',
   },
@@ -21,23 +21,23 @@ const features = [
     number: '02',
     title: 'Files, Diffs, and Artifacts',
     description:
-      'Browse your project, review generated changes, and apply updates with a clear edit workflow.',
+      'Open files, edit in place, review generated artifacts, and apply updates from the same browser workspace.',
     icon: FileCode,
     size: 'large',
   },
   {
     number: '03',
-    title: 'Terminal Built Into the Loop',
+    title: 'Runs You Can Resume',
     description:
-      'Run commands with live output, track jobs, and keep execution history next to code and chat.',
+      'Track run progress, inspect history, recover paused execution from checkpoints, and keep work moving.',
     icon: Terminal,
     size: 'large',
   },
   {
     number: '04',
-    title: 'Real-Time Project State',
+    title: 'Browser-Native Approvals and Sharing',
     description:
-      'Convex-powered sync keeps project data, sessions, and UI state responsive as you work.',
+      'Review risky commands in the browser, keep project state synced live, and share the active chat with one link.',
     icon: Zap,
     size: 'small',
   },
@@ -86,20 +86,21 @@ export default function Home() {
                 {/* Label */}
                 <div className="inline-flex items-center gap-3">
                   <span className="h-px w-8 bg-primary" />
-                  <span className="text-label text-muted-foreground">AI coding workbench</span>
+                  <span className="text-label text-muted-foreground">Web AI coding workbench</span>
                 </div>
 
                 {/* Headline */}
                 <h1 className="text-display text-5xl sm:text-6xl lg:text-7xl">
-                  <span className="block">Build</span>
-                  <span className="block">with</span>
-                  <span className="block text-primary">full context.</span>
+                  <span className="block">Plan.</span>
+                  <span className="block">Approve.</span>
+                  <span className="block text-primary">Build in the browser.</span>
                 </h1>
 
                 {/* Body */}
                 <p className="max-w-md text-lg leading-relaxed text-muted-foreground">
-                  Panda brings AI chat, project files, terminal output, and change review into one
-                  browser workspace so you can move from idea to running code without tab switching.
+                  Panda is a web-only AI coding workspace for shipping real project work with saved
+                  plans, resumable runs, file edits, artifact review, command approvals, and shared
+                  chat history in one place.
                 </p>
 
                 {/* CTA */}
@@ -122,13 +123,17 @@ export default function Home() {
                       Learn How Panda Works
                     </Button>
                   </Link>
-                  <a href="https://github.com" target="_blank" rel="noopener noreferrer">
+                  <a
+                    href="https://github.com/Fchery87/panda"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     <Button
                       size="lg"
                       variant="outline"
                       className="rounded-none font-mono tracking-wide"
                     >
-                      View on GitHub
+                      View Source
                     </Button>
                   </a>
                 </div>
@@ -154,7 +159,7 @@ export default function Home() {
                         <div className="h-3 w-3 rounded-full bg-muted-foreground/30" />
                       </div>
                       <span className="font-mono text-xs text-muted-foreground">
-                        panda.ai — terminal
+                        panda.ai — workbench session
                       </span>
                     </div>
                   </div>
@@ -163,26 +168,27 @@ export default function Home() {
                   <div className="space-y-3 p-6 font-mono text-sm">
                     <div className="flex items-center gap-2">
                       <span className="text-primary">➜</span>
-                      <span className="text-muted-foreground">~</span>
-                      <span className="text-foreground">npm create panda-project</span>
+                      <span className="text-muted-foreground">plan</span>
+                      <span className="text-foreground">Plan awaiting review</span>
                     </div>
                     <div className="space-y-1 pl-6 text-muted-foreground">
-                      <div>Creating project structure...</div>
-                      <div>Installing dependencies...</div>
-                      <div className="text-primary">✓ Project ready</div>
+                      <div>Relevant files grounded from the repo</div>
+                      <div>Implementation plan saved to the active chat</div>
+                      <div className="text-primary">✓ Ready for approval</div>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-primary">➜</span>
-                      <span className="text-muted-foreground">~/my-project</span>
-                      <span className="text-foreground">panda dev</span>
+                      <span className="text-muted-foreground">build</span>
+                      <span className="text-foreground">Build from approved plan</span>
                     </div>
                     <div className="space-y-1 pl-6 text-muted-foreground">
-                      <div>Starting dev server on port 3000...</div>
-                      <div className="text-primary">✓ Ready at http://localhost:3000</div>
+                      <div>Command approval required: chained operations detected</div>
+                      <div>Run progress saved with resumable checkpoint</div>
+                      <div className="text-primary">✓ Execution completed</div>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-primary">➜</span>
-                      <span className="text-muted-foreground">~/my-project</span>
+                      <span className="text-muted-foreground">share</span>
                       <motion.span
                         className="inline-block h-4 w-2 bg-primary"
                         animate={{ opacity: [1, 0, 1] }}
@@ -215,8 +221,8 @@ export default function Home() {
               <span className="text-label text-muted-foreground">Features</span>
             </div>
             <h2 className="text-display max-w-2xl text-4xl sm:text-5xl">
-              One workspace for the whole dev loop.{' '}
-              <span className="text-muted-foreground">No scattered tools.</span>
+              One browser workspace for planning, execution, approvals, and recovery.{' '}
+              <span className="text-muted-foreground">No desktop client required.</span>
             </h2>
           </motion.div>
 
@@ -271,11 +277,13 @@ export default function Home() {
               <PandaLogo size="xl" variant="icon" />
             </div>
 
-            <h2 className="text-display mb-6 text-4xl sm:text-5xl">Ready to build with Panda?</h2>
+            <h2 className="text-display mb-6 text-4xl sm:text-5xl">
+              Ready to run your next build in Panda?
+            </h2>
 
             <p className="mb-10 text-lg text-muted-foreground">
-              Start a project, open the workbench, and ship faster with AI that can plan, code, and
-              help you run the work.
+              Start a project, review the plan, approve the risky parts, and keep moving with a
+              browser workbench that remembers where your run left off.
             </p>
 
             <Link href="/projects">
