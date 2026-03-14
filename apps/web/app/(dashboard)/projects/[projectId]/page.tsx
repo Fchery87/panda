@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useParams } from 'next/navigation'
-import { useQuery, useMutation } from 'convex/react'
+import { useConvex, useQuery, useMutation } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { motion } from 'framer-motion'
@@ -46,6 +46,11 @@ import { useProjectPlanDraft } from '@/hooks/useProjectPlanDraft'
 import { useProjectWorkbenchFiles } from '@/hooks/useProjectWorkbenchFiles'
 import { useProjectWorkspaceUi } from '@/hooks/useProjectWorkspaceUi'
 import { useSpecDriftDetection } from '@/hooks/useSpecDriftDetection'
+import {
+  deriveWorkspaceArtifactPreviews,
+  resolveArtifactPreviewNavigation,
+  type WorkspaceArtifactPreview,
+} from '@/components/workbench/artifact-preview'
 
 import type { Message, MessageAnnotationInfo, PersistedRunEventInfo } from '@/components/chat/types'
 import { canApprovePlan, canBuildFromPlan, type PlanStatus } from '@/lib/chat/planDraft'
@@ -54,6 +59,11 @@ import { resolveBackgroundExecutionPolicy } from '@/lib/chat/backgroundExecution
 import type { AgentPolicy } from '@/lib/agent/automationPolicy'
 import { normalizeChatMode, type ChatMode } from '@/lib/agent/prompt-library'
 import type { LLMProvider } from '@/lib/llm/types'
+import {
+  applyArtifact,
+  getPrimaryArtifactAction,
+  type ArtifactAction,
+} from '@/lib/artifacts/executeArtifact'
 
 interface File {
   _id: Id<'files'>
@@ -98,6 +108,13 @@ interface AgentRunEvent extends PersistedRunEventInfo {
   runId: Id<'agentRuns'>
   chatId: Id<'chats'>
   sequence: number
+  createdAt: number
+}
+
+type ArtifactRecord = {
+  _id: Id<'artifacts'>
+  actions: ArtifactAction[]
+  status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'rejected'
   createdAt: number
 }
 
@@ -150,6 +167,7 @@ export default function ProjectPage() {
     setIsShareDialogOpen,
   } = useProjectWorkspaceUi()
   const lastAssistantMessageIdRef = useRef<string | null>(null)
+  const seenPendingArtifactIdsRef = useRef<Set<string>>(new Set())
 
   // Fetch project data
   const project = useQuery(api.projects.get, { id: projectId })
@@ -166,10 +184,15 @@ export default function ProjectPage() {
 
   // Jobs (Terminal)
   const { isAnyJobRunning } = useJobs(projectId)
+  const convex = useConvex()
 
   const projectAgentPolicy = readAgentPolicyField(project, 'agentPolicy')
   const createChatMutation = useMutation(api.chats.create)
   const updateChatMutation = useMutation(api.chats.update)
+  const upsertFileMutation = useMutation(api.files.upsert)
+  const createAndExecuteJobMutation = useMutation(api.jobs.createAndExecute)
+  const updateJobStatusMutation = useMutation(api.jobs.updateStatus)
+  const updateArtifactStatusMutation = useMutation(api.artifacts.updateStatus)
   const {
     settings,
     setActiveChatId,
@@ -248,13 +271,16 @@ export default function ProjectPage() {
   const artifactRecords = useQuery(
     api.artifacts.list,
     activeChat ? { chatId: activeChat._id } : 'skip'
-  ) as
-    | Array<{
-        _id: Id<'artifacts'>
-        status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'rejected'
-      }>
-    | undefined
+  ) as ArtifactRecord[] | undefined
   const pendingArtifactCount = (artifactRecords || []).filter((a) => a.status === 'pending').length
+  const pendingArtifactPreviews = useMemo(
+    () => deriveWorkspaceArtifactPreviews((artifactRecords ?? []).map((record) => ({ ...record }))),
+    [artifactRecords]
+  )
+  const pendingArtifactPreview = useMemo<WorkspaceArtifactPreview | null>(() => {
+    if (!selectedFilePath) return null
+    return pendingArtifactPreviews.find((preview) => preview.filePath === selectedFilePath) ?? null
+  }, [pendingArtifactPreviews, selectedFilePath])
 
   // Reset workspace handler
   const handleResetWorkspace = useCallback(() => {
@@ -388,6 +414,7 @@ export default function ProjectPage() {
     handleFileRename,
     handleFileDelete,
     handleEditorSave,
+    handleEditorDirtyChange,
   } = useProjectWorkbenchFiles({
     projectId,
     files,
@@ -398,6 +425,107 @@ export default function ProjectPage() {
     setOpenTabs,
     setMobilePrimaryPanel,
   })
+
+  useEffect(() => {
+    seenPendingArtifactIdsRef.current.clear()
+  }, [activeChat?._id])
+
+  useEffect(() => {
+    if (pendingArtifactPreviews.length === 0) return
+
+    const newPreviews = pendingArtifactPreviews.filter(
+      (preview) => !seenPendingArtifactIdsRef.current.has(preview.artifactId)
+    )
+
+    if (newPreviews.length === 0) return
+
+    for (const preview of newPreviews) {
+      seenPendingArtifactIdsRef.current.add(preview.artifactId)
+    }
+
+    const targetPreview = newPreviews[0]
+    const navigation = resolveArtifactPreviewNavigation({
+      preview: targetPreview,
+      openTabs,
+      selectedFilePath,
+    })
+
+    if (navigation.shouldOpenTab) {
+      setOpenTabs((prev) => {
+        if (prev.some((tab) => tab.path === targetPreview.filePath)) return prev
+        return [...prev, { path: targetPreview.filePath }]
+      })
+    }
+
+    if (navigation.shouldSelectFile) {
+      setMobilePrimaryPanel('workspace')
+      setSelectedFilePath(targetPreview.filePath)
+      setSelectedFileLocation(null)
+      setCursorPosition(null)
+    }
+  }, [
+    openTabs,
+    pendingArtifactPreviews,
+    selectedFilePath,
+    setCursorPosition,
+    setMobilePrimaryPanel,
+    setOpenTabs,
+    setSelectedFileLocation,
+    setSelectedFilePath,
+  ])
+
+  const handleApplyPendingArtifact = useCallback(
+    async (artifactId: string) => {
+      const record = artifactRecords?.find((artifact) => artifact._id === artifactId)
+      const action = record ? getPrimaryArtifactAction(record) : null
+      if (!record || !action) return
+
+      try {
+        await applyArtifact({
+          artifactId: record._id,
+          action,
+          projectId,
+          convex,
+          upsertFile: upsertFileMutation,
+          createAndExecuteJob: createAndExecuteJobMutation,
+          updateJobStatus: (jobId, status, updates) =>
+            updateJobStatusMutation({
+              id: jobId,
+              status,
+              ...updates,
+            }),
+          updateArtifactStatus: updateArtifactStatusMutation,
+        })
+        toast.success('Applied pending artifact', {
+          description:
+            action.type === 'file_write' ? action.payload.filePath : action.payload.command,
+        })
+      } catch (error) {
+        toast.error('Failed to apply pending artifact', {
+          description: error instanceof Error ? error.message : String(error),
+        })
+      }
+    },
+    [
+      artifactRecords,
+      convex,
+      createAndExecuteJobMutation,
+      projectId,
+      updateArtifactStatusMutation,
+      updateJobStatusMutation,
+      upsertFileMutation,
+    ]
+  )
+
+  const handleRejectPendingArtifact = useCallback(
+    async (artifactId: string) => {
+      await updateArtifactStatusMutation({
+        id: artifactId as Id<'artifacts'>,
+        status: 'rejected',
+      })
+    },
+    [updateArtifactStatusMutation]
+  )
 
   useEffect(() => {
     if (!isMobileLayout || mobilePrimaryPanel === 'chat') {
@@ -739,6 +867,7 @@ export default function ProjectPage() {
         onRenameFile={handleFileRename}
         onDeleteFile={handleFileDelete}
         onSaveFile={handleEditorSave}
+        onEditorDirtyChange={handleEditorDirtyChange}
         isMobileLayout={isMobileLayout}
         isCompactDesktopLayout={isCompactDesktopLayout}
         mobilePrimaryPanel={mobilePrimaryPanel}
@@ -749,6 +878,9 @@ export default function ProjectPage() {
         isChatPanelOpen={isChatPanelOpen}
         isArtifactPanelOpen={isArtifactPanelOpen}
         onArtifactPanelOpenChange={setIsArtifactPanelOpen}
+        pendingArtifactPreview={pendingArtifactPreview}
+        onApplyPendingArtifact={handleApplyPendingArtifact}
+        onRejectPendingArtifact={handleRejectPendingArtifact}
         chatMode={chatMode}
         onModeChange={handleModeChange}
         cursorPosition={cursorPosition}

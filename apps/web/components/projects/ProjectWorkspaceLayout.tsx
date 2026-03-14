@@ -11,6 +11,7 @@ import { Workbench } from '@/components/workbench/Workbench'
 import { cn } from '@/lib/utils'
 import type { FormalSpecification } from '@/lib/agent/spec/types'
 import type { ChatMode } from '@/lib/agent/prompt-library'
+import type { WorkspaceArtifactPreview } from '@/components/workbench/artifact-preview'
 
 type OpenTab = {
   path: string
@@ -42,6 +43,7 @@ interface ProjectWorkspaceLayoutProps {
   onRenameFile: (oldPath: string, newPath: string) => Promise<void>
   onDeleteFile: (path: string) => Promise<void>
   onSaveFile: (filePath: string, content: string) => Promise<void>
+  onEditorDirtyChange: (filePath: string, isDirty: boolean) => void
   isMobileLayout: boolean
   isCompactDesktopLayout: boolean
   mobilePrimaryPanel: 'workspace' | 'chat'
@@ -52,6 +54,9 @@ interface ProjectWorkspaceLayoutProps {
   isChatPanelOpen: boolean
   isArtifactPanelOpen: boolean
   onArtifactPanelOpenChange: (open: boolean) => void
+  pendingArtifactPreview?: WorkspaceArtifactPreview | null
+  onApplyPendingArtifact: (artifactId: string) => void
+  onRejectPendingArtifact: (artifactId: string) => void
   chatMode: ChatMode
   onModeChange: (mode: ChatMode) => void
   cursorPosition: { line: number; column: number } | null
@@ -74,6 +79,7 @@ export function ProjectWorkspaceLayout({
   onRenameFile,
   onDeleteFile,
   onSaveFile,
+  onEditorDirtyChange,
   isMobileLayout,
   isCompactDesktopLayout,
   mobilePrimaryPanel,
@@ -84,6 +90,9 @@ export function ProjectWorkspaceLayout({
   isChatPanelOpen,
   isArtifactPanelOpen,
   onArtifactPanelOpenChange,
+  pendingArtifactPreview,
+  onApplyPendingArtifact,
+  onRejectPendingArtifact,
   chatMode,
   onModeChange,
   cursorPosition,
@@ -106,6 +115,11 @@ export function ProjectWorkspaceLayout({
       onRenameFile={onRenameFile}
       onDeleteFile={onDeleteFile}
       onSaveFile={onSaveFile}
+      pendingArtifactPreview={pendingArtifactPreview}
+      onApplyPendingArtifact={onApplyPendingArtifact}
+      onRejectPendingArtifact={onRejectPendingArtifact}
+      onOpenArtifacts={() => onArtifactPanelOpenChange(true)}
+      onEditorDirtyChange={onEditorDirtyChange}
     />
   )
 

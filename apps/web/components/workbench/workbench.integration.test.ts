@@ -39,4 +39,50 @@ describe('Workbench integration wiring', () => {
     expect(buildFromPlanBlock).not.toContain("setChatInspectorTab('run')")
     expect(buildFromPlanBlock).not.toContain('setIsChatInspectorOpen(true)')
   })
+
+  it('threads pending artifact previews into the workspace editor path', () => {
+    const pagePath = path.resolve(
+      import.meta.dir,
+      '../../app/(dashboard)/projects/[projectId]/page.tsx'
+    )
+    const pageSource = fs.readFileSync(pagePath, 'utf8')
+    const layoutPath = path.resolve(import.meta.dir, '../projects/ProjectWorkspaceLayout.tsx')
+    const layoutSource = fs.readFileSync(layoutPath, 'utf8')
+    const workbenchPath = path.resolve(import.meta.dir, 'Workbench.tsx')
+    const workbenchSource = fs.readFileSync(workbenchPath, 'utf8')
+
+    expect(pageSource).toContain('pendingArtifactPreview={pendingArtifactPreview}')
+    expect(layoutSource).toContain('pendingArtifactPreview={pendingArtifactPreview}')
+    expect(workbenchSource).toContain('PendingArtifactOverlay')
+    expect(workbenchSource).toContain('pendingArtifactPreview')
+  })
+
+  it('tracks editor dirty state in page-owned tabs so artifact navigation can avoid stealing focus', () => {
+    const pagePath = path.resolve(
+      import.meta.dir,
+      '../../app/(dashboard)/projects/[projectId]/page.tsx'
+    )
+    const pageSource = fs.readFileSync(pagePath, 'utf8')
+    const layoutPath = path.resolve(import.meta.dir, '../projects/ProjectWorkspaceLayout.tsx')
+    const layoutSource = fs.readFileSync(layoutPath, 'utf8')
+    const workbenchPath = path.resolve(import.meta.dir, 'Workbench.tsx')
+    const workbenchSource = fs.readFileSync(workbenchPath, 'utf8')
+    const editorContainerPath = path.resolve(import.meta.dir, '../editor/EditorContainer.tsx')
+    const editorContainerSource = fs.readFileSync(editorContainerPath, 'utf8')
+
+    expect(pageSource).toContain('onEditorDirtyChange={handleEditorDirtyChange}')
+    expect(layoutSource).toContain('onEditorDirtyChange={onEditorDirtyChange}')
+    expect(workbenchSource).toContain('onDirtyChange={(isDirty) =>')
+    expect(workbenchSource).toContain('onEditorDirtyChange(selectedFile.path, isDirty)')
+    expect(editorContainerSource).toContain('onDirtyChange?: (isDirty: boolean) => void')
+  })
+
+  it('uses the shared diff viewer for pending artifact previews and does not depend on the legacy workbench diff component', () => {
+    const overlayPath = path.resolve(import.meta.dir, 'PendingArtifactOverlay.tsx')
+    const overlaySource = fs.readFileSync(overlayPath, 'utf8')
+    const legacyDiffPath = path.resolve(import.meta.dir, 'DiffViewer.tsx')
+
+    expect(overlaySource).toContain("import { DiffViewer } from '@/components/diff/DiffViewer'")
+    expect(fs.existsSync(legacyDiffPath)).toBe(false)
+  })
 })

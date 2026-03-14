@@ -36,6 +36,7 @@ interface EditorContainerProps {
     nonce: number
   } | null
   onSave?: (content: string) => void
+  onDirtyChange?: (isDirty: boolean) => void
   onInlineChat?: (prompt: string, selectedText: string, filePath: string) => Promise<string | null>
 }
 
@@ -44,9 +45,14 @@ export function EditorContainer({
   content: initialContent,
   jumpTo,
   onSave: externalOnSave,
+  onDirtyChange,
   onInlineChat,
 }: EditorContainerProps) {
   const { content, isDirty, updateContent } = useFileContent(initialContent, externalOnSave)
+
+  React.useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
 
   const handleSave = React.useCallback(
     (newContent: string) => {

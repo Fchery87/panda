@@ -214,6 +214,23 @@ export function useProjectWorkbenchFiles(args: {
     [files, projectId, upsertFileMutation]
   )
 
+  const handleEditorDirtyChange = useCallback(
+    (filePath: string, isDirty: boolean) => {
+      setOpenTabs((prev) => {
+        let changed = false
+        const next = prev.map((tab) => {
+          if (tab.path !== filePath) return tab
+          if (tab.isDirty === isDirty) return tab
+          changed = true
+          return { ...tab, isDirty }
+        })
+
+        return changed ? next : prev
+      })
+    },
+    [setOpenTabs]
+  )
+
   return {
     handleFileSelect,
     handleTabClose,
@@ -221,5 +238,6 @@ export function useProjectWorkbenchFiles(args: {
     handleFileRename,
     handleFileDelete,
     handleEditorSave,
+    handleEditorDirtyChange,
   }
 }

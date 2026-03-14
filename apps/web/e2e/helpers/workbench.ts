@@ -76,6 +76,9 @@ export async function openWorkbenchProjectFixture(
     name?: string
     filePath?: string
     fileContent?: string
+    artifactContent?: string
+    autoApplyFiles?: boolean
+    autoRunCommands?: boolean
     seedRuntimeCheckpoint?: boolean
     planDraft?: string
     planStatus?: 'awaiting_review' | 'approved' | 'stale' | 'executing'
@@ -89,6 +92,15 @@ export async function openWorkbenchProjectFixture(
   }
   if (options?.fileContent) {
     params.set('fileContent', options.fileContent)
+  }
+  if (options?.artifactContent) {
+    params.set('artifactContent', options.artifactContent)
+  }
+  if (options?.autoApplyFiles !== undefined) {
+    params.set('autoApplyFiles', options.autoApplyFiles ? '1' : '0')
+  }
+  if (options?.autoRunCommands !== undefined) {
+    params.set('autoRunCommands', options.autoRunCommands ? '1' : '0')
   }
   if (options?.seedRuntimeCheckpoint) {
     params.set('seedRuntimeCheckpoint', '1')

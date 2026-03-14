@@ -173,6 +173,87 @@ describe('/api/e2e/project route', () => {
     }
   })
 
+  test('seeds a pending file artifact when requested', async () => {
+    setTestEnv()
+    queryResult = [{ _id: 'project-existing', name: 'Workbench E2E Fixture' }]
+    mutationResult = 'artifact-created'
+    try {
+      const { GET } = await import('./route')
+
+      const response = await GET(
+        new Request(
+          'http://localhost:3000/api/e2e/project?name=Workbench%20E2E%20Fixture&filePath=e2e-artifact.ts&fileContent=export%20const%20value%20%3D%201%0A&artifactContent=export%20const%20value%20%3D%202%0A'
+        )
+      )
+
+      expect(response.status).toBe(200)
+      await expect(response.json()).resolves.toMatchObject({
+        projectId: 'project-existing',
+        created: false,
+        chatId: expect.any(String),
+        filePath: 'e2e-artifact.ts',
+        artifactPath: 'e2e-artifact.ts',
+      })
+      const artifactMutation = mutationCalls.find(
+        (call) =>
+          call.args &&
+          'actions' in call.args &&
+          Array.isArray(call.args.actions) &&
+          call.args.status === 'pending'
+      )
+      expect(artifactMutation).toBeTruthy()
+      expect(artifactMutation?.args).toMatchObject({
+        chatId: expect.any(String),
+        status: 'pending',
+        actions: [
+          {
+            type: 'file_write',
+            payload: {
+              filePath: 'e2e-artifact.ts',
+              content: 'export const value = 2\n',
+              originalContent: 'export const value = 1\n',
+            },
+          },
+        ],
+      })
+    } finally {
+      restoreEnv()
+    }
+  })
+
+  test('sets a project agent policy override when requested', async () => {
+    setTestEnv()
+    queryResult = [{ _id: 'project-existing', name: 'Workbench E2E Fixture' }]
+    try {
+      const { GET } = await import('./route')
+
+      const response = await GET(
+        new Request(
+          'http://localhost:3000/api/e2e/project?name=Workbench%20E2E%20Fixture&autoApplyFiles=0&autoRunCommands=0'
+        )
+      )
+
+      expect(response.status).toBe(200)
+      await expect(response.json()).resolves.toMatchObject({
+        projectId: 'project-existing',
+        created: false,
+      })
+      expect(mutationCalls).toContainEqual({
+        name: expect.any(String),
+        args: {
+          id: 'project-existing',
+          agentPolicy: {
+            autoApplyFiles: false,
+            autoRunCommands: false,
+            allowedCommandPrefixes: [],
+          },
+        },
+      })
+    } finally {
+      restoreEnv()
+    }
+  })
+
   test('seeds a chat with plan workflow metadata when requested', async () => {
     setTestEnv()
     queryResult = [{ _id: 'project-existing', name: 'Workbench E2E Fixture' }]
@@ -272,6 +353,51 @@ describe('/api/e2e/project route', () => {
       expect(response.status).toBe(200)
       await expect(response.json()).resolves.toEqual({
         projectId: 'project-created-after-cleanup',
+        created: true,
+      })
+      expect(createAttempts).toBe(2)
+      expect(mutationCalls.some((call) => 'id' in call.args)).toBe(true)
+    } finally {
+      restoreEnv()
+    }
+  })
+
+  test('reclaims legacy browser-test projects without the default fixture description', async () => {
+    setTestEnv()
+    queryResult = [
+      {
+        _id: 'legacy-dashboard-project',
+        name: 'Test Project 1700000000000',
+        createdAt: 100,
+        lastOpenedAt: 100,
+      },
+    ]
+    let createAttempts = 0
+    mutationImpl = (_func, args) => {
+      if ('name' in args && 'description' in args) {
+        createAttempts += 1
+        if (createAttempts === 1) {
+          throw new Error(
+            'Project limit reached. You have 100 projects (maximum: 100). Please delete an existing project before creating a new one.'
+          )
+        }
+        return 'project-created-after-legacy-cleanup'
+      }
+      if ('id' in args) {
+        expect(args).toEqual({ id: 'legacy-dashboard-project' })
+        return 'legacy-dashboard-project'
+      }
+      return mutationResult
+    }
+
+    try {
+      const { GET } = await import('./route')
+
+      const response = await GET(new Request('http://localhost:3000/api/e2e/project'))
+
+      expect(response.status).toBe(200)
+      await expect(response.json()).resolves.toEqual({
+        projectId: 'project-created-after-legacy-cleanup',
         created: true,
       })
       expect(createAttempts).toBe(2)

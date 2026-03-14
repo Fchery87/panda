@@ -166,6 +166,32 @@ test.describe('Workbench', () => {
     await expect(page.getByText(/unsaved changes/i)).not.toBeVisible({ timeout: 15000 })
   })
 
+  test('seeded pending artifact opens a workspace preview overlay that can be applied', async ({
+    page,
+  }) => {
+    test.setTimeout(180_000)
+    await openWorkbenchProjectFixture(page, {
+      filePath: 'e2e-artifact.ts',
+      fileContent: 'export const value = 1\n',
+      artifactContent: 'export const value = 2\n',
+      autoApplyFiles: false,
+    })
+
+    const pendingArtifactOverlay = page
+      .locator('div')
+      .filter({ hasText: /pending artifact preview/i })
+      .first()
+    await expect(pendingArtifactOverlay).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText(/e2e-artifact\.ts/i).first()).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText('+1')).toBeVisible({ timeout: 10_000 })
+
+    await pendingArtifactOverlay
+      .getByRole('button', { name: /^apply$/i })
+      .first()
+      .click()
+    await expect(page.getByText(/pending artifact preview/i)).not.toBeVisible({ timeout: 20_000 })
+  })
+
   test('seeded plan workflow can be reviewed, approved, and built from plan', async ({ page }) => {
     test.setTimeout(180_000)
     await openWorkbenchProjectFixture(page, {

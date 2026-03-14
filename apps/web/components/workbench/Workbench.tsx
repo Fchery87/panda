@@ -6,6 +6,7 @@ import { FileTree } from './FileTree'
 import { FileTabs } from './FileTabs'
 import { ProjectSearchPanel } from './ProjectSearchPanel'
 import { Terminal } from './Terminal'
+import { PendingArtifactOverlay } from './PendingArtifactOverlay'
 import { EditorContainer } from '../editor/EditorContainer'
 import { cn } from '@/lib/utils'
 import {
@@ -23,6 +24,7 @@ import { Button } from '@/components/ui/button'
 import { Timeline } from './Timeline'
 import { SpecHistory } from './SpecHistory'
 import { ActivityBar, useActivityBarState } from './ActivityBar'
+import type { WorkspaceArtifactPreview } from './artifact-preview'
 
 interface OpenFileTab {
   path: string
@@ -52,6 +54,11 @@ interface WorkbenchProps {
   onRenameFile: (oldPath: string, newPath: string) => void
   onDeleteFile: (path: string) => void
   onSaveFile: (filePath: string, content: string) => void
+  pendingArtifactPreview?: WorkspaceArtifactPreview | null
+  onApplyPendingArtifact: (artifactId: string) => void
+  onRejectPendingArtifact: (artifactId: string) => void
+  onOpenArtifacts: () => void
+  onEditorDirtyChange: (filePath: string, isDirty: boolean) => void
 }
 
 function GripIndicator({ direction }: { direction: 'vertical' | 'horizontal' }) {
@@ -164,6 +171,11 @@ export function Workbench({
   onRenameFile,
   onDeleteFile,
   onSaveFile,
+  pendingArtifactPreview,
+  onApplyPendingArtifact,
+  onRejectPendingArtifact,
+  onOpenArtifacts,
+  onEditorDirtyChange,
 }: WorkbenchProps) {
   const [activeTab, setActiveTab] = useState<EditorTab>('code')
   const {
@@ -359,12 +371,27 @@ export function Workbench({
               <div className="flex-1 overflow-hidden">
                 {activeTab === 'code' ? (
                   selectedFile ? (
-                    <EditorContainer
-                      filePath={selectedFile.path}
-                      content={selectedFile.content ?? ''}
-                      jumpTo={selectedLocation}
-                      onSave={(content) => onSaveFile(selectedFile.path, content)}
-                    />
+                    <div className="flex h-full flex-col">
+                      {pendingArtifactPreview ? (
+                        <PendingArtifactOverlay
+                          preview={pendingArtifactPreview}
+                          onApply={onApplyPendingArtifact}
+                          onReject={onRejectPendingArtifact}
+                          onOpenArtifacts={onOpenArtifacts}
+                        />
+                      ) : null}
+                      <div className="min-h-0 flex-1">
+                        <EditorContainer
+                          filePath={selectedFile.path}
+                          content={selectedFile.content ?? ''}
+                          jumpTo={selectedLocation}
+                          onSave={(content) => onSaveFile(selectedFile.path, content)}
+                          onDirtyChange={(isDirty) =>
+                            onEditorDirtyChange(selectedFile.path, isDirty)
+                          }
+                        />
+                      </div>
+                    </div>
                   ) : (
                     <EmptyState
                       onCreateFile={onCreateFile}
@@ -505,12 +532,27 @@ export function Workbench({
                 <div className="flex-1 overflow-hidden">
                   {activeTab === 'code' ? (
                     selectedFile ? (
-                      <EditorContainer
-                        filePath={selectedFile.path}
-                        content={selectedFile.content ?? ''}
-                        jumpTo={selectedLocation}
-                        onSave={(content) => onSaveFile(selectedFile.path, content)}
-                      />
+                      <div className="flex h-full flex-col">
+                        {pendingArtifactPreview ? (
+                          <PendingArtifactOverlay
+                            preview={pendingArtifactPreview}
+                            onApply={onApplyPendingArtifact}
+                            onReject={onRejectPendingArtifact}
+                            onOpenArtifacts={onOpenArtifacts}
+                          />
+                        ) : null}
+                        <div className="min-h-0 flex-1">
+                          <EditorContainer
+                            filePath={selectedFile.path}
+                            content={selectedFile.content ?? ''}
+                            jumpTo={selectedLocation}
+                            onSave={(content) => onSaveFile(selectedFile.path, content)}
+                            onDirtyChange={(isDirty) =>
+                              onEditorDirtyChange(selectedFile.path, isDirty)
+                            }
+                          />
+                        </div>
+                      </div>
                     ) : (
                       <EmptyState
                         onCreateFile={onCreateFile}

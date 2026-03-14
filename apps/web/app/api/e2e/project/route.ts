@@ -9,6 +9,7 @@ const DEFAULT_FIXTURE_DESCRIPTION = 'Deterministic browser E2E fixture project'
 const DEFAULT_CHAT_TITLE = 'Workbench E2E Chat'
 const E2E_FIXTURE_NAME_PREFIXES = [
   'Workbench E2E Fixture',
+  'Workbench Smoke',
   'Spec Review Fixture',
   'Agent Run Plan',
   'Agent Run Resume',
@@ -17,6 +18,9 @@ const E2E_FIXTURE_NAME_PREFIXES = [
   'Permission Allow',
   'Sharing Fixture',
   'Workbench Test',
+  'Test Project',
+  'Open Test',
+  'Searchable',
 ]
 const PLAN_STATUSES: PlanStatus[] = [
   'idle',
@@ -135,6 +139,10 @@ function getFixtureCleanupCandidate(
   return fixtureProjects[0] ?? null
 }
 
+async function listFixtureProjects(convex: ConvexHttpClient): Promise<E2EFixtureProject[]> {
+  return (await convex.query(api.projects.list, {})) as E2EFixtureProject[]
+}
+
 export async function GET(request: Request) {
   if (!isE2EFixtureModeEnabled()) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -150,7 +158,10 @@ export async function GET(request: Request) {
     const fixtureName = url.searchParams.get('name')?.trim() || DEFAULT_FIXTURE_NAME
     const filePath = url.searchParams.get('filePath')?.trim() || null
     const fileContent = url.searchParams.get('fileContent') ?? ''
+    const artifactContent = url.searchParams.get('artifactContent') ?? null
     const seedRuntimeCheckpoint = url.searchParams.get('seedRuntimeCheckpoint') === '1'
+    const autoApplyFiles = url.searchParams.get('autoApplyFiles')
+    const autoRunCommands = url.searchParams.get('autoRunCommands')
     const planDraft = url.searchParams.get('planDraft')?.trim() || null
     const requestedPlanStatus = url.searchParams.get('planStatus')?.trim() || null
     const planStatus =
@@ -159,7 +170,7 @@ export async function GET(request: Request) {
         : null
 
     const convex = new ConvexHttpClient(convexUrl)
-    const projects = (await convex.query(api.projects.list, {})) as E2EFixtureProject[]
+    let projects = await listFixtureProjects(convex)
     const existing = projects.find((project) => project.name === fixtureName)
 
     let projectId = existing?._id
@@ -187,12 +198,28 @@ export async function GET(request: Request) {
 
           await convex.mutation(api.projects.remove, { id: cleanupCandidate._id })
           removedProjectIds.add(cleanupCandidate._id)
+          projects = await listFixtureProjects(convex)
+          const reclaimedFixture = projects.find((project) => project.name === fixtureName)
+          if (reclaimedFixture) {
+            projectId = reclaimedFixture._id
+          }
         }
       }
     }
 
     let chatId: Id<'chats'> | undefined
-    if (filePath || seedRuntimeCheckpoint || planDraft || planStatus) {
+    if (autoApplyFiles !== null || autoRunCommands !== null) {
+      await convex.mutation(api.projects.update, {
+        id: projectId,
+        agentPolicy: {
+          autoApplyFiles: autoApplyFiles === null ? false : autoApplyFiles === '1',
+          autoRunCommands: autoRunCommands === null ? false : autoRunCommands === '1',
+          allowedCommandPrefixes: [],
+        },
+      })
+    }
+
+    if (filePath || artifactContent || seedRuntimeCheckpoint || planDraft || planStatus) {
       const chats = await convex.query(api.chats.list, { projectId })
       const existingChat = chats[0]
       chatId =
@@ -224,6 +251,23 @@ export async function GET(request: Request) {
       })
     }
 
+    if (chatId && filePath && artifactContent !== null) {
+      await convex.mutation(api.artifacts.create, {
+        chatId,
+        actions: [
+          {
+            type: 'file_write',
+            payload: {
+              filePath,
+              content: artifactContent,
+              originalContent: fileContent,
+            },
+          },
+        ],
+        status: 'pending',
+      })
+    }
+
     let sessionID: string | undefined
     if (seedRuntimeCheckpoint && chatId) {
       sessionID = `harness_run_resume_fixture_${Date.now()}`
@@ -238,6 +282,7 @@ export async function GET(request: Request) {
       created: !existing,
       ...(chatId ? { chatId } : {}),
       ...(filePath ? { filePath } : {}),
+      ...(artifactContent !== null && filePath ? { artifactPath: filePath } : {}),
       ...(planStatus ? { planStatus } : {}),
       ...(sessionID ? { sessionID } : {}),
     })
