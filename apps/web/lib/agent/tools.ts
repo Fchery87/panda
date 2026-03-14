@@ -13,7 +13,9 @@
 import { appLog } from '@/lib/logger'
 import type { ToolDefinition, ToolCall, ToolResult } from '../llm/types'
 import type { ChatMode } from './prompt-library'
+import { analyzeCommand, isCommandPipelineSafe } from './command-analysis'
 import { executeOracleSearch } from './harness/oracle'
+import { repairJSON, safeJSONParse } from './harness/tool-repair'
 
 type ConvexFunctionRef = unknown
 type ConvexArgs = Record<string, unknown>
@@ -44,6 +46,7 @@ export function getAllowedToolsForMode(mode: ChatMode): string[] {
       'read_files',
       'list_directory',
       'write_files',
+      'apply_patch',
       'run_command',
       'update_memory_bank',
     ],
@@ -54,6 +57,7 @@ export function getAllowedToolsForMode(mode: ChatMode): string[] {
       'read_files',
       'list_directory',
       'write_files',
+      'apply_patch',
       'run_command',
       'update_memory_bank',
     ],
@@ -161,14 +165,14 @@ export const AGENT_TOOLS: ToolDefinition[] = [
     function: {
       name: 'run_command',
       description:
-        'Run a CLI command (tests, builds, linting, etc.). Use to verify changes work correctly.',
+        'Run a CLI command (tests, builds, linting, etc.). Safe read-only pipelines are allowed, while redirects and chained commands are higher risk and may require approval.',
       parameters: {
         type: 'object',
         properties: {
           command: {
             type: 'string',
             description:
-              'Command to run (e.g., "npm test", "npm run lint"). NOTE: Shell operators (|, &&, >, etc.) are strictly forbidden for security reasons. Run commands individually.',
+              'Command to run (e.g., "npm test", "npm run lint"). Safe read-only pipes like "npm test | head -20" are allowed. Redirects and command chaining are higher risk.',
           },
           timeout: {
             type: 'number',
@@ -317,6 +321,28 @@ export const AGENT_TOOLS: ToolDefinition[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'apply_patch',
+      description:
+        'Apply a unified diff patch to a file. Use this for small edits to large files to save tokens. The patch must be in unified diff format.',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: {
+            type: 'string',
+            description: 'File path to apply the patch to',
+          },
+          patch: {
+            type: 'string',
+            description: 'Unified diff patch text to apply',
+          },
+        },
+        required: ['path', 'patch'],
+      },
+    },
+  },
 ]
 
 /**
@@ -349,6 +375,13 @@ export interface ToolContext {
   userId: string
   // File operations
   readFiles: (paths: string[]) => Promise<Array<{ path: string; content: string | null }>>
+  // Patch operations
+  applyPatch: (params: { path: string; patch: string }) => Promise<{
+    success: boolean
+    error?: string
+    appliedHunks: number
+    fuzzyMatches: number
+  }>
   listDirectory?: (
     path?: string,
     recursive?: boolean
@@ -925,6 +958,69 @@ export function createToolContext(
         }
       }
     },
+
+    // Apply a unified diff patch to a file
+    applyPatch: async (params: { path: string; patch: string }) => {
+      try {
+        const { applyPatchText } = await import('./patch')
+
+        // Read the current file content using readFiles from the closure
+        const fileResults = await convexClient.query<
+          Array<{ path: string; content: string | null; exists: boolean }>
+        >(api.files.batchGet, {
+          projectId,
+          paths: [params.path],
+        })
+
+        const fileResult = fileResults[0]
+
+        if (!fileResult || fileResult.content === null) {
+          return {
+            success: false,
+            error: `File not found: ${params.path}`,
+            appliedHunks: 0,
+            fuzzyMatches: 0,
+          }
+        }
+
+        // Apply the patch
+        const result = applyPatchText(fileResult.content, params.patch, { fuzzyLines: 3 })
+
+        if (result.success && result.content !== undefined) {
+          // Write the patched content back as an artifact
+          if (api.artifacts.create) {
+            await convexClient.mutation(api.artifacts.create, {
+              chatId,
+              actions: [
+                {
+                  type: 'file_write',
+                  payload: {
+                    filePath: params.path,
+                    content: result.content,
+                    originalContent: fileResult.content,
+                  },
+                },
+              ],
+              status: 'pending',
+            })
+          }
+        }
+
+        return {
+          success: result.success,
+          error: result.error,
+          appliedHunks: result.appliedHunks,
+          fuzzyMatches: result.fuzzyMatches,
+        }
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to apply patch',
+          appliedHunks: 0,
+          fuzzyMatches: 0,
+        }
+      }
+    },
   }
 }
 
@@ -980,6 +1076,20 @@ export async function executeTool(
 
       case 'run_command': {
         const { command, timeout, cwd } = args
+        const commandAnalysis = analyzeCommand(String(command ?? ''))
+        if (commandAnalysis.kind === 'pipeline' && !isCommandPipelineSafe(commandAnalysis)) {
+          return {
+            toolCallId: toolCall.id,
+            toolName: toolCall.function.name,
+            args,
+            output: '',
+            error:
+              'Only read-only pipelines are allowed automatically. Redirects and mutating pipelines require approval or a simpler command.',
+            durationMs: 0,
+            timestamp: Date.now(),
+            retryCount: 0,
+          }
+        }
         const result = await context.runCommand(command, timeout, cwd)
         output = JSON.stringify(
           {
@@ -1061,6 +1171,22 @@ export async function executeTool(
         }
         break
       }
+
+      case 'apply_patch': {
+        if (!context.applyPatch) {
+          throw new Error('apply_patch is not available in this context')
+        }
+        const result = await context.applyPatch({
+          path: String(args.path ?? ''),
+          patch: String(args.patch ?? ''),
+        })
+        output = JSON.stringify(result, null, 2)
+        if (!result.success) {
+          error = result.error
+        }
+        break
+      }
+
       default:
         error = `Unknown tool: ${toolCall.function.name}`
     }
@@ -1091,6 +1217,7 @@ export async function executeTool(
 
 /**
  * Parse tool call arguments
+ * Includes automatic JSON repair for malformed tool calls
  */
 export function parseToolCall(toolCall: ToolCall): ParsedToolCall {
   try {
@@ -1099,10 +1226,18 @@ export function parseToolCall(toolCall: ToolCall): ParsedToolCall {
       parsedArgs: JSON.parse(toolCall.function.arguments),
     }
   } catch (parseError) {
+    // Try to repair the JSON before giving up
     void parseError
+    const repairedArgs = repairJSON(toolCall.function.arguments)
+    const parsedArgs = safeJSONParse<Record<string, unknown>>(repairedArgs, {})
+
+    if (parsedArgs && Object.keys(parsedArgs).length > 0) {
+      console.warn('[tools] parseToolCall: Repaired malformed tool arguments JSON')
+    }
+
     return {
       ...toolCall,
-      parsedArgs: {},
+      parsedArgs: parsedArgs ?? {},
     }
   }
 }

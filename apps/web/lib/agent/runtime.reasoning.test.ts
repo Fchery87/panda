@@ -13,6 +13,7 @@ const TOOL_CONTEXT = {
   chatId: 'c',
   userId: 'u',
   readFiles: async () => [],
+  applyPatch: async () => ({ success: true, appliedHunks: 1, fuzzyMatches: 0 }),
   writeFiles: async () => [],
   runCommand: async () => ({ stdout: '', stderr: '', exitCode: 0, durationMs: 0 }),
   updateMemoryBank: async () => ({ success: true }),

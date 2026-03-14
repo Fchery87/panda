@@ -42,6 +42,7 @@ export type ToolInterruptDecision = 'approve' | 'reject' | 'edit'
 export interface ToolInterruptRequest {
   sessionID: Identifier
   messageID: Identifier
+  toolCallId?: string
   toolName: string
   args: Record<string, unknown>
   patterns: string[]
@@ -399,6 +400,19 @@ export interface RuntimeConfig {
   }>
   /** SpecNative engine configuration */
   specEngine?: SpecEngineConfig
+  /**
+   * Stream resilience configuration
+   */
+  streamIdleTimeoutMs?: number
+  maxStreamRetries?: number
+  streamRetryBackoffMs?: number
+}
+
+export interface RuntimeSnapshotEvent {
+  hash: string
+  step: number
+  files: string[]
+  timestamp: number
 }
 
 /**
@@ -481,6 +495,7 @@ export type EventType =
   | 'permission.decided'
   | 'subagent.started'
   | 'subagent.completed'
+  | 'snapshot.created'
   | 'error'
 
 /**

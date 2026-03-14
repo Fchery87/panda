@@ -1,0 +1,211 @@
+'use client'
+
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { Id } from '@convex/_generated/dataModel'
+import { toast } from 'sonner'
+import {
+  buildApprovedPlanExecutionMessage,
+  canBuildFromPlan,
+  type PlanStatus,
+} from '@/lib/chat/planDraft'
+import type { ChatMode } from '@/lib/agent/prompt-library'
+
+type MessageWorkflowChat = {
+  _id: Id<'chats'>
+  mode: ChatMode
+  planStatus?: PlanStatus
+}
+
+export function useProjectMessageWorkflow(args: {
+  projectId: Id<'projects'>
+  activeChat: MessageWorkflowChat | null
+  chatMode: ChatMode
+  setChatMode: (mode: ChatMode) => void
+  planDraft: string
+  providerAvailable: boolean
+  createChatMutation: (args: {
+    projectId: Id<'projects'>
+    title: string
+    mode: ChatMode
+  }) => Promise<Id<'chats'>>
+  updateChatMutation: (args: {
+    id: Id<'chats'>
+    mode?: ChatMode
+    planStatus?: PlanStatus
+  }) => Promise<unknown>
+  sendAgentMessage: (
+    content: string,
+    contextFiles?: string[],
+    options?: { approvedPlanExecution?: boolean }
+  ) => Promise<void>
+  setActiveChatId: (chatId: Id<'chats'>) => void
+  setMobilePrimaryPanel: (panel: 'workspace' | 'chat') => void
+}) {
+  const {
+    projectId,
+    activeChat,
+    chatMode,
+    setChatMode,
+    planDraft,
+    providerAvailable,
+    createChatMutation,
+    updateChatMutation,
+    sendAgentMessage,
+    setActiveChatId,
+    setMobilePrimaryPanel,
+  } = args
+  const [pendingMessage, setPendingMessage] = useState<{
+    id: string
+    content: string
+    mode: ChatMode
+    approvedPlanExecution?: boolean
+  } | null>(null)
+  const pendingMessageDispatchRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!pendingMessage || !activeChat || chatMode !== pendingMessage.mode) return
+    if (pendingMessageDispatchRef.current === pendingMessage.id) return
+
+    pendingMessageDispatchRef.current = pendingMessage.id
+    void sendAgentMessage(pendingMessage.content, undefined, {
+      approvedPlanExecution: pendingMessage.approvedPlanExecution,
+    }).finally(() => {
+      setPendingMessage((current) => (current?.id === pendingMessage.id ? null : current))
+      if (pendingMessageDispatchRef.current === pendingMessage.id) {
+        pendingMessageDispatchRef.current = null
+      }
+    })
+  }, [activeChat, chatMode, pendingMessage, sendAgentMessage])
+
+  const handleSendMessage = useCallback(
+    async (
+      content: string,
+      mode: ChatMode,
+      contextFiles?: string[],
+      options?: { approvedPlanExecution?: boolean }
+    ) => {
+      const trimmed = content.trim()
+      if (!trimmed) {
+        toast.error('Message is empty')
+        return
+      }
+
+      setChatMode(mode)
+      setMobilePrimaryPanel('chat')
+
+      const finalContent =
+        mode === 'build' &&
+        planDraft.trim() &&
+        (options?.approvedPlanExecution || activeChat?.planStatus === 'executing')
+          ? buildApprovedPlanExecutionMessage(planDraft, trimmed)
+          : content
+
+      if (!activeChat) {
+        try {
+          const newChatId = await createChatMutation({
+            projectId,
+            title: trimmed.slice(0, 50),
+            mode,
+          })
+          toast.success('Chat created')
+          setActiveChatId(newChatId)
+          setPendingMessage({
+            id: `pending-${Date.now()}`,
+            content: finalContent,
+            mode,
+            approvedPlanExecution: options?.approvedPlanExecution,
+          })
+        } catch (error) {
+          void error
+          toast.error('Failed to create chat')
+        }
+        return
+      }
+
+      if (activeChat.mode !== mode) {
+        await updateChatMutation({ id: activeChat._id, mode })
+      }
+
+      if (!providerAvailable) {
+        toast.error('LLM provider not configured', {
+          description: 'Please configure your LLM settings in the settings page.',
+        })
+        return
+      }
+
+      await sendAgentMessage(finalContent, contextFiles, {
+        approvedPlanExecution: options?.approvedPlanExecution,
+      })
+    },
+    [
+      activeChat,
+      createChatMutation,
+      planDraft,
+      projectId,
+      providerAvailable,
+      sendAgentMessage,
+      setActiveChatId,
+      setChatMode,
+      setMobilePrimaryPanel,
+      updateChatMutation,
+    ]
+  )
+
+  const handleSuggestedAction = useCallback(
+    async (prompt: string, targetMode?: ChatMode) => {
+      const mode = targetMode ?? chatMode
+      if (targetMode) {
+        if (activeChat && activeChat.mode !== targetMode) {
+          void updateChatMutation({ id: activeChat._id, mode: targetMode })
+        }
+        setChatMode(targetMode)
+      }
+      await handleSendMessage(prompt, mode)
+    },
+    [activeChat, chatMode, handleSendMessage, setChatMode, updateChatMutation]
+  )
+
+  const handleBuildFromPlan = useCallback(async () => {
+    if (!activeChat) return
+    if (!canBuildFromPlan(activeChat.planStatus, planDraft)) {
+      toast.error('Approve the current plan before building')
+      return
+    }
+
+    try {
+      await updateChatMutation({
+        id: activeChat._id,
+        mode: 'build',
+        planStatus: 'executing',
+      })
+      setChatMode('build')
+      await handleSendMessage(
+        'Execute the approved plan. Use the plan as the primary contract, follow it step-by-step, and report progress against it.',
+        'build',
+        undefined,
+        { approvedPlanExecution: true }
+      )
+    } catch (error) {
+      toast.error('Failed to start build from plan', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      })
+    }
+  }, [activeChat, planDraft, setChatMode, updateChatMutation, handleSendMessage])
+
+  const handleModeChange = useCallback(
+    (nextMode: ChatMode) => {
+      setChatMode(nextMode)
+      if (activeChat && activeChat.mode !== nextMode) {
+        void updateChatMutation({ id: activeChat._id, mode: nextMode })
+      }
+    },
+    [activeChat, setChatMode, updateChatMutation]
+  )
+
+  return {
+    handleSendMessage,
+    handleSuggestedAction,
+    handleBuildFromPlan,
+    handleModeChange,
+  }
+}

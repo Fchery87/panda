@@ -104,6 +104,14 @@ export const appendEvents = mutation({
         planTotalSteps: v.optional(v.number()),
         completedPlanStepIndexes: v.optional(v.array(v.number())),
         usage: v.optional(v.record(v.string(), v.any())),
+        snapshot: v.optional(
+          v.object({
+            hash: v.string(),
+            step: v.number(),
+            files: v.array(v.string()),
+            timestamp: v.number(),
+          })
+        ),
       })
     ),
   },
@@ -135,6 +143,7 @@ export const appendEvents = mutation({
         planTotalSteps: event.planTotalSteps,
         completedPlanStepIndexes: event.completedPlanStepIndexes,
         usage: event.usage,
+        snapshot: event.snapshot,
         createdAt,
       })
       insertedIds.push(id)

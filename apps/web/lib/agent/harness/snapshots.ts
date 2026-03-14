@@ -24,7 +24,7 @@ export interface Snapshot {
  */
 class SnapshotManager {
   private snapshots: Map<Identifier, Snapshot[]> = new Map()
-  private gitDir: string | null = null
+  private gitDir: string | null = '.'
 
   /**
    * Initialize the snapshot manager for a project

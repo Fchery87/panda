@@ -198,20 +198,34 @@ export class AnthropicProvider implements LLMProvider {
               error: formatProviderError(part.error ?? 'Unknown Anthropic stream error'),
             }
             return
-          case 'finish':
+          case 'finish': {
+            // Extract usage data including Anthropic-specific cache tokens
+            const usage = part.totalUsage
+            const inputTokens = usage?.inputTokens ?? 0
+            const outputTokens = usage?.outputTokens ?? 0
+
+            // Type assertion for Anthropic-specific usage fields
+            const anthropicUsage = usage as {
+              cacheCreationInputTokens?: number
+              cacheReadInputTokens?: number
+            }
+
             yield {
               type: 'finish',
               finishReason: normalizeFinishReason(part.finishReason),
-              usage: part.totalUsage
+              usage: usage
                 ? {
-                    promptTokens: part.totalUsage.inputTokens ?? 0,
-                    completionTokens: part.totalUsage.outputTokens ?? 0,
-                    totalTokens:
-                      (part.totalUsage.inputTokens ?? 0) + (part.totalUsage.outputTokens ?? 0),
+                    promptTokens: inputTokens,
+                    completionTokens: outputTokens,
+                    totalTokens: inputTokens + outputTokens,
+                    reasoningTokens: (usage as { reasoningTokens?: number }).reasoningTokens,
+                    cacheWriteTokens: anthropicUsage.cacheCreationInputTokens,
+                    cacheReadTokens: anthropicUsage.cacheReadInputTokens,
                   }
                 : undefined,
             }
             break
+          }
           default:
             break
         }

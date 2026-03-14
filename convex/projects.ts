@@ -34,6 +34,9 @@ export const get = query({
   },
 })
 
+// Default limits if not configured
+const DEFAULT_MAX_PROJECTS_PER_USER = 100
+
 // create (mutation) - create new project
 export const create = mutation({
   args: {
@@ -43,6 +46,21 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await requireAuth(ctx)
+
+    // Check resource limits
+    const adminSettings = await ctx.db.query('adminSettings').order('desc').first()
+    const maxProjects = adminSettings?.maxProjectsPerUser ?? DEFAULT_MAX_PROJECTS_PER_USER
+
+    const existingProjects = await ctx.db
+      .query('projects')
+      .withIndex('by_creator', (q) => q.eq('createdBy', userId))
+      .collect()
+
+    if (existingProjects.length >= maxProjects) {
+      throw new Error(
+        `Project limit reached. You have ${existingProjects.length} projects (maximum: ${maxProjects}). Please delete an existing project before creating a new one.`
+      )
+    }
 
     const now = Date.now()
 

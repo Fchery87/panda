@@ -4,6 +4,9 @@ export interface RuntimeCheckpointPendingSubtask {
   part: SubtaskPart
   parentAgent: AgentConfig
   description: string
+  toolCallId?: string
+  input?: Record<string, unknown>
+  startedAt?: number
 }
 
 export interface RuntimeCheckpointState {
@@ -18,9 +21,15 @@ export interface RuntimeCheckpointState {
     input: number
     output: number
     reasoning: number
+    cacheRead?: number
+    cacheWrite?: number
   }
   lastToolLoopSignature: string | null
   toolLoopStreak: number
+  toolCallHistory?: string[]
+  toolCallFrequency?: [string, number][]
+  cyclicPatternDetected?: boolean
+  lastInterventionStep?: number
 }
 
 export type RuntimeCheckpointReason = 'step' | 'complete' | 'error'

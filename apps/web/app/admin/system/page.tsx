@@ -16,7 +16,8 @@ import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Settings, Save, AlertCircle, Bot, Server, Lock } from 'lucide-react'
+import { ArrowLeft, Settings, Save, AlertCircle, Bot, Server, Lock, Sparkles } from 'lucide-react'
+import { EnhancementLLMConfig } from '@/components/settings/EnhancementLLMConfig'
 
 export default function AdminSystemPage() {
   const router = useRouter()
@@ -34,6 +35,11 @@ export default function AdminSystemPage() {
     maxChatsPerProject: 50,
   })
 
+  const [enhancementConfig, setEnhancementConfig] = React.useState({
+    enhancementProvider: 'openai',
+    enhancementModel: 'gpt-4o-mini',
+  })
+
   React.useEffect(() => {
     if (settings) {
       setControls({
@@ -44,6 +50,10 @@ export default function AdminSystemPage() {
         registrationEnabled: settings.registrationEnabled !== false,
         maxProjectsPerUser: settings.maxProjectsPerUser || 100,
         maxChatsPerProject: settings.maxChatsPerProject || 50,
+      })
+      setEnhancementConfig({
+        enhancementProvider: settings.enhancementProvider || 'openai',
+        enhancementModel: settings.enhancementModel || 'gpt-4o-mini',
       })
     }
   }, [settings])
@@ -59,6 +69,8 @@ export default function AdminSystemPage() {
         registrationEnabled: controls.registrationEnabled,
         maxProjectsPerUser: controls.maxProjectsPerUser,
         maxChatsPerProject: controls.maxChatsPerProject,
+        enhancementProvider: enhancementConfig.enhancementProvider,
+        enhancementModel: enhancementConfig.enhancementModel,
       })
       toast.success('System settings saved successfully')
     } catch (error) {
@@ -115,14 +127,18 @@ export default function AdminSystemPage() {
       )}
 
       <Tabs defaultValue="features" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+        <TabsList className="grid w-full grid-cols-4 lg:w-[500px]">
           <TabsTrigger value="features" className="flex items-center gap-2">
             <Bot className="h-4 w-4" />
             Features
           </TabsTrigger>
+          <TabsTrigger value="llm" className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4" />
+            LLM
+          </TabsTrigger>
           <TabsTrigger value="access" className="flex items-center gap-2">
             <Lock className="h-4 w-4" />
-            Access Control
+            Access
           </TabsTrigger>
           <TabsTrigger value="limits" className="flex items-center gap-2">
             <Server className="h-4 w-4" />
@@ -208,6 +224,83 @@ export default function AdminSystemPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* LLM Configuration Tab */}
+        <TabsContent value="llm" className="space-y-6">
+          <EnhancementLLMConfig
+            enhancementProvider={enhancementConfig.enhancementProvider}
+            enhancementModel={enhancementConfig.enhancementModel}
+            onUpdate={(config) =>
+              setEnhancementConfig({
+                enhancementProvider: config.enhancementProvider,
+                enhancementModel: config.enhancementModel,
+              })
+            }
+            availableProviders={{
+              openai: {
+                name: 'OpenAI',
+                availableModels: ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+                enabled: true,
+              },
+              anthropic: {
+                name: 'Anthropic',
+                availableModels: ['claude-sonnet-4-5', 'claude-opus-4-6', 'claude-3-haiku'],
+                enabled: true,
+              },
+              openrouter: {
+                name: 'OpenRouter',
+                availableModels: [
+                  'qwen/qwen3-coder:free',
+                  'moonshotai/kimi-dev-72b:free',
+                  'deepseek/deepseek-coder:free',
+                  'openai/gpt-4o-mini',
+                  'meta-llama/llama-3.1-8b-instruct',
+                ],
+                enabled: true,
+              },
+              together: {
+                name: 'Together.ai',
+                availableModels: [
+                  'meta-llama/Llama-3.1-70B-Instruct-Turbo',
+                  'meta-llama/Llama-3.1-8B-Instruct-Turbo',
+                  'mistralai/Mixtral-8x22B-Instruct-v0.1',
+                  'Qwen/Qwen2.5-72B-Instruct-Turbo',
+                ],
+                enabled: true,
+              },
+              deepseek: {
+                name: 'DeepSeek',
+                availableModels: ['deepseek-chat', 'deepseek-coder', 'deepseek-reasoner'],
+                enabled: true,
+              },
+              groq: {
+                name: 'Groq',
+                availableModels: [
+                  'llama-3.3-70b-versatile',
+                  'llama-3.1-70b-versatile',
+                  'llama-3.1-8b-instant',
+                  'mixtral-8x7b-32768',
+                ],
+                enabled: true,
+              },
+              zai: {
+                name: 'Z.ai',
+                availableModels: ['glm-4.7', 'glm-4.7-flashx', 'glm-4.7-flash'],
+                enabled: true,
+              },
+              chutes: {
+                name: 'Chutes.ai',
+                availableModels: [
+                  'meta-llama/Meta-Llama-3.1-8B-Instruct',
+                  'meta-llama/Meta-Llama-3.1-70B-Instruct',
+                  'deepseek-ai/DeepSeek-V3',
+                  'Qwen/Qwen2.5-72B-Instruct',
+                ],
+                enabled: true,
+              },
+            }}
+          />
         </TabsContent>
 
         {/* Access Control Tab */}

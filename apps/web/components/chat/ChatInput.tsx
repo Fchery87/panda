@@ -15,13 +15,23 @@ import {
   Target,
   Zap,
   Eye,
+  Sparkles,
+  Undo2,
 } from 'lucide-react'
+import { useAction, useQuery } from 'convex/react'
+import { api } from '@convex/_generated/api'
+import { toast } from 'sonner'
 import { AgentSelector, MODE_OPTIONS } from './AgentSelector'
 import { MentionPicker } from './MentionPicker'
 import { ModelSelector, type AvailableModel } from './ModelSelector'
 import { VariantSelector } from './VariantSelector'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import type { SpecTier } from '@/lib/agent/spec/types'
+
+/**
+ * Enhance state for prompt enhancement button
+ */
+type EnhanceState = 'idle' | 'enhancing' | 'enhanced'
 
 /**
  * Parse @-mention tokens from the message text.
@@ -92,6 +102,17 @@ export function ChatInput({
   const [mentionStart, setMentionStart] = useState<number>(-1)
   const [optionsOpen, setOptionsOpen] = useState(false)
 
+  // Enhance prompt state
+  const [enhanceState, setEnhanceState] = useState<EnhanceState>('idle')
+  const [preEnhanceText, setPreEnhanceText] = useState('')
+
+  // Convex action for enhancing prompts
+  const enhancePrompt = useAction(api.enhancePrompt.enhance)
+
+  // Fetch admin defaults and user settings for enhancement LLM configuration
+  const adminDefaults = useQuery(api.settings.getAdminDefaults)
+  const userSettings = useQuery(api.settings.get)
+
   const mode = controlledMode ?? uncontrolledMode
   const setMode = useCallback(
     (nextMode: ChatMode) => {
@@ -115,16 +136,23 @@ export function ChatInput({
     }
   }, [input, isStreaming, mode, onSendMessage])
 
+  const handleSendWithReset = useCallback(() => {
+    handleSend()
+    // Reset enhance state after sending
+    setEnhanceState('idle')
+    setPreEnhanceText('')
+  }, [handleSend])
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       // Don't send on Enter if mention picker is open (handled by picker itself)
       if (mentionQuery !== null) return
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault()
-        handleSend()
+        handleSendWithReset()
       }
     },
-    [handleSend, mentionQuery]
+    [handleSendWithReset, mentionQuery]
   )
 
   const handleInputChange = useCallback(
@@ -180,6 +208,70 @@ export function ChatInput({
   const handleStop = useCallback(() => {
     onStopStreaming?.()
   }, [onStopStreaming])
+
+  const handleEnhance = useCallback(async () => {
+    if (!input.trim() || enhanceState === 'enhancing') return
+
+    // Store current text for potential revert
+    setPreEnhanceText(input)
+    setEnhanceState('enhancing')
+
+    try {
+      // Get the provider to use
+      const provider = adminDefaults?.enhancementProvider || 'openai'
+
+      // Get API key from user's provider configs
+      const providerConfig = userSettings?.providerConfigs?.[provider] as
+        | { apiKey?: string; useCodingPlan?: boolean }
+        | undefined
+      const apiKey = providerConfig?.apiKey
+      const useCodingPlan = provider === 'zai' ? providerConfig?.useCodingPlan : undefined
+
+      const result = await enhancePrompt({
+        prompt: input.trim(),
+        provider: adminDefaults?.enhancementProvider || undefined,
+        model: adminDefaults?.enhancementModel || undefined,
+        apiKey,
+        useCodingPlan,
+      })
+
+      if (result?.enhancedPrompt) {
+        setInput(result.enhancedPrompt)
+        setEnhanceState('enhanced')
+
+        // Auto-resize textarea after setting new content
+        setTimeout(() => {
+          if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto'
+            textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`
+          }
+        }, 0)
+      } else {
+        throw new Error('No enhanced prompt returned')
+      }
+    } catch {
+      // Restore original text on error
+      setInput(preEnhanceText || input)
+      setEnhanceState('idle')
+      toast.error('Failed to enhance prompt. Please try again.')
+    }
+  }, [input, enhanceState, enhancePrompt, preEnhanceText, adminDefaults, userSettings])
+
+  const handleRevert = useCallback(() => {
+    if (preEnhanceText) {
+      setInput(preEnhanceText)
+      setPreEnhanceText('')
+      setEnhanceState('idle')
+
+      // Auto-resize textarea after reverting
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.style.height = 'auto'
+          textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`
+        }
+      }, 0)
+    }
+  }, [preEnhanceText])
 
   useEffect(() => {
     if (textareaRef.current && !isStreaming) {
@@ -282,29 +374,68 @@ export function ChatInput({
               </Button>
             </motion.div>
           ) : (
-            <motion.div
-              key="send"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              transition={{ duration: 0.1 }}
-              className="absolute bottom-3 right-3"
-            >
-              <Button
-                size="icon"
-                onClick={handleSend}
-                disabled={!input.trim()}
-                aria-label="Send message"
-                className={cn(
-                  'transition-sharp h-7 w-7 rounded-none',
-                  input.trim()
-                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                    : 'bg-secondary text-muted-foreground'
+            <>
+              {/* Enhance prompt button - only show when there's text */}
+              <AnimatePresence>
+                {input.trim() && (
+                  <motion.div
+                    key="enhance"
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.8, opacity: 0 }}
+                    transition={{ duration: 0.1 }}
+                    className="absolute bottom-3 right-12"
+                  >
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      onClick={enhanceState === 'enhanced' ? handleRevert : handleEnhance}
+                      disabled={enhanceState === 'enhancing' || isStreaming}
+                      aria-label={
+                        enhanceState === 'enhanced' ? 'Revert enhancement' : 'Enhance prompt'
+                      }
+                      className={cn(
+                        'transition-sharp h-7 w-7 rounded-none',
+                        enhanceState === 'enhanced'
+                          ? 'border-primary bg-primary/10 text-primary hover:bg-primary/20'
+                          : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground',
+                        enhanceState === 'enhancing' && 'animate-spin'
+                      )}
+                    >
+                      {enhanceState === 'enhanced' ? (
+                        <Undo2 className="h-3 w-3" />
+                      ) : (
+                        <Sparkles className="h-3 w-3" />
+                      )}
+                    </Button>
+                  </motion.div>
                 )}
+              </AnimatePresence>
+
+              <motion.div
+                key="send"
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+                transition={{ duration: 0.1 }}
+                className="absolute bottom-3 right-3"
               >
-                <Send className="h-3 w-3" />
-              </Button>
-            </motion.div>
+                <Button
+                  size="icon"
+                  onClick={handleSendWithReset}
+                  disabled={!input.trim()}
+                  aria-label="Send message"
+                  className={cn(
+                    'transition-sharp h-7 w-7 rounded-none',
+                    input.trim()
+                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                      : 'bg-secondary text-muted-foreground'
+                  )}
+                >
+                  <Send className="h-3 w-3" />
+                </Button>
+              </motion.div>
+            </>
           )}
         </AnimatePresence>
       </div>

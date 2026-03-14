@@ -25,6 +25,9 @@ export const get = query({
   },
 })
 
+// Default limits if not configured
+const DEFAULT_MAX_CHATS_PER_PROJECT = 50
+
 // create (mutation) - create new chat with title and mode
 export const create = mutation({
   args: {
@@ -34,6 +37,22 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     await requireProjectOwner(ctx, args.projectId)
+
+    // Check resource limits
+    const adminSettings = await ctx.db.query('adminSettings').order('desc').first()
+    const maxChats = adminSettings?.maxChatsPerProject ?? DEFAULT_MAX_CHATS_PER_PROJECT
+
+    const existingChats = await ctx.db
+      .query('chats')
+      .withIndex('by_updated', (q) => q.eq('projectId', args.projectId))
+      .collect()
+
+    if (existingChats.length >= maxChats) {
+      throw new Error(
+        `Chat limit reached for this project. There are ${existingChats.length} chats (maximum: ${maxChats}). Please delete an existing chat before creating a new one.`
+      )
+    }
+
     const now = Date.now()
 
     const chatId = await ctx.db.insert('chats', {

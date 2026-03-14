@@ -957,6 +957,53 @@ describe('harness Runtime', () => {
     ).toBe(true)
   })
 
+  test('emits a snapshot event when step snapshots are enabled', async () => {
+    resetHarnessTestState()
+    const originalTrack = snapshots.track.bind(snapshots)
+
+    ;(snapshots as unknown as { track: typeof snapshots.track }).track = async (
+      sessionID,
+      messageID,
+      step
+    ) => ({
+      hash: `hash-${step}`,
+      messageID,
+      step,
+      timestamp: Date.now(),
+      files: ['apps/web/lib/agent/runtime.ts'],
+    })
+
+    try {
+      const provider = createProvider(() => {})
+      const runtime = new Runtime(provider, new Map(), {
+        maxSteps: 2,
+        enableSnapshots: true,
+      })
+      const userMessage = createUserMessage({
+        id: 'msg-user-snapshot',
+        sessionID: 'session-snapshot-events',
+        text: 'Take a snapshot',
+        agent: 'build',
+      })
+
+      const events = []
+      for await (const event of runtime.run('session-snapshot-events', userMessage)) {
+        events.push(event)
+      }
+
+      expect(
+        events.some(
+          (event) =>
+            event.type === 'snapshot' &&
+            event.snapshot?.hash === 'hash-1' &&
+            event.snapshot?.files?.includes('apps/web/lib/agent/runtime.ts')
+        )
+      ).toBe(true)
+    } finally {
+      ;(snapshots as unknown as { track: typeof snapshots.track }).track = originalTrack
+    }
+  })
+
   test('enforces core subagent depth guard for task tool execution', async () => {
     resetHarnessTestState()
     let streamCalls = 0

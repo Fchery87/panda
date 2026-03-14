@@ -186,6 +186,9 @@ export interface StreamChunk {
     promptTokens: number
     completionTokens: number
     totalTokens: number
+    reasoningTokens?: number
+    cacheReadTokens?: number
+    cacheWriteTokens?: number
   }
   error?: string
 }

@@ -45,6 +45,8 @@ async function getAdminSettings(ctx: SettingsCtx) {
       globalDefaultProvider: null,
       globalDefaultModel: null,
       globalProviderConfigs: {},
+      enhancementProvider: null,
+      enhancementModel: null,
       allowUserOverrides: true,
       allowUserMCP: true,
       allowUserSubagents: true,
@@ -203,6 +205,8 @@ export const getAdminDefaults = query({
     return {
       globalDefaultProvider: adminSettings.globalDefaultProvider,
       globalDefaultModel: adminSettings.globalDefaultModel,
+      enhancementProvider: adminSettings.enhancementProvider,
+      enhancementModel: adminSettings.enhancementModel,
       allowUserOverrides: adminSettings.allowUserOverrides ?? true,
       allowUserMCP: adminSettings.allowUserMCP ?? true,
       allowUserSubagents: adminSettings.allowUserSubagents ?? true,

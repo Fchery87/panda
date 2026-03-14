@@ -264,6 +264,14 @@ export default defineSchema({
     planTotalSteps: v.optional(v.number()),
     completedPlanStepIndexes: v.optional(v.array(v.number())),
     usage: v.optional(v.record(v.string(), v.any())),
+    snapshot: v.optional(
+      v.object({
+        hash: v.string(),
+        step: v.number(),
+        files: v.array(v.string()),
+        timestamp: v.number(),
+      })
+    ),
     createdAt: v.number(),
   })
     .index('by_run_sequence', ['runId', 'sequence'])
@@ -382,6 +390,10 @@ export default defineSchema({
     globalDefaultProvider: v.optional(v.string()),
     globalDefaultModel: v.optional(v.string()),
     globalProviderConfigs: v.optional(v.record(v.string(), v.record(v.string(), v.any()))),
+
+    // Prompt Enhancement LLM Configuration
+    enhancementProvider: v.optional(v.string()),
+    enhancementModel: v.optional(v.string()),
 
     // Feature flags
     allowUserOverrides: v.optional(v.boolean()),

@@ -29,6 +29,7 @@ import type {
   ToolInterruptRequest,
   ToolInterruptResult,
   ToolRiskTier,
+  RuntimeSnapshotEvent,
 } from './types'
 import type { FormalSpecification, SpecTier } from '../spec/types'
 import type {
@@ -37,15 +38,19 @@ import type {
   ToolDefinition,
   ToolCall,
   CompletionMessage,
+  StreamChunk,
 } from '../../llm/types'
 import { AGENT_TOOLS } from '../tools'
+import { analyzeCommand } from '../command-analysis'
 import { ascending } from './identifier'
 import { agents } from './agents'
 import { permissions, checkPermission } from './permissions'
 import { plugins } from './plugins'
+import { repairJSON, fuzzyMatchToolName, safeJSONParse } from './tool-repair'
 import { compaction, needsCompaction, SUMMARIZATION_PROMPT } from './compaction'
+import { withTimeoutAndRetry, isContextOverflowError } from '../../llm/stream-resilience'
 import { snapshots } from './snapshots'
-import { executeTaskTool, getTaskToolDefinitions } from './task-tool'
+import { createSubtaskPart, executeTaskTool, getTaskToolDefinitions } from './task-tool'
 import type {
   RuntimeCheckpoint,
   RuntimeCheckpointPendingSubtask,
@@ -70,9 +75,16 @@ interface RuntimeState {
     input: number
     output: number
     reasoning: number
+    cacheRead?: number
+    cacheWrite?: number
   }
   lastToolLoopSignature: string | null
   toolLoopStreak: number
+  /** Enhanced doom loop tracking */
+  toolCallHistory: string[] // Recent tool call patterns
+  toolCallFrequency: Map<string, number> // Per-tool frequency across session
+  cyclicPatternDetected: boolean
+  lastInterventionStep: number
   /** Active specification being executed against */
   activeSpec?: FormalSpecification
 }
@@ -117,6 +129,7 @@ export type RuntimeEventType =
   | 'permission_decision'
   | 'interrupt_request'
   | 'interrupt_decision'
+  | 'snapshot'
   | 'error'
   | 'complete'
   // SpecNative events
@@ -132,13 +145,21 @@ export interface RuntimeEvent {
   content?: string
   reasoningContent?: string
   toolCall?: ToolCall
-  toolResult?: { toolName: string; output: string; error?: string }
+  toolResult?: {
+    toolCallId: string
+    toolName: string
+    args: Record<string, unknown>
+    output: string
+    error?: string
+    durationMs: number
+  }
   interrupt?: {
     toolName: string
     riskTier: ToolRiskTier
     decision?: 'approve' | 'reject' | 'edit'
     reason?: string
   }
+  snapshot?: RuntimeSnapshotEvent
   subagent?: {
     agent: string
     sessionID: Identifier
@@ -174,7 +195,7 @@ const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = {
   enableToolDeduplication: true,
   toolLoopThreshold: 3,
   contextCompactionThreshold: 0.9,
-  enableSnapshots: false,
+  enableSnapshots: true,
   snapshotFailureMode: 'warn',
   enableReasoning: true,
   maxSubagentDepth: 2,
@@ -188,6 +209,10 @@ const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = {
     maxSpecsPerProject: 100,
     enableDriftDetection: false,
   },
+  // Stream resilience configuration
+  streamIdleTimeoutMs: 120000,
+  maxStreamRetries: 3,
+  streamRetryBackoffMs: 2000,
 }
 
 /**
@@ -411,9 +436,13 @@ export class Runtime {
       abortController: new AbortController(),
       pendingSubtasks: [],
       cost: 0,
-      tokens: { input: 0, output: 0, reasoning: 0 },
+      tokens: { input: 0, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0 },
       lastToolLoopSignature: null,
       toolLoopStreak: 0,
+      toolCallHistory: [],
+      toolCallFrequency: new Map(),
+      cyclicPatternDetected: false,
+      lastInterventionStep: 0,
     }
   }
 
@@ -590,10 +619,81 @@ export class Runtime {
     let reasoningContent = ''
     const pendingToolCalls: ToolCall[] = []
     let finishReason: FinishReason = 'unknown'
-    let usage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 }
+    let usage: StreamChunk['usage'] = { promptTokens: 0, completionTokens: 0, totalTokens: 0 }
+
+    // Stream resilience: wrap with timeout and retry
+    const streamIdleTimeoutMs = this.config.streamIdleTimeoutMs ?? 120000
+    const maxStreamRetries = this.config.maxStreamRetries ?? 3
+    const streamRetryBackoffMs = this.config.streamRetryBackoffMs ?? 2000
 
     try {
-      for await (const chunk of this.provider.completionStream(completionOptions)) {
+      let contextOverflowRetryCount = 0
+      const maxContextOverflowRetries = 1
+
+      const processStreamWithResilience = async function* (this: Runtime) {
+        type StreamEvent = { type: 'chunk'; data: StreamChunk } | { type: 'error'; error: string }
+        while (true) {
+          try {
+            const streamFactory = () => this.provider.completionStream(completionOptions)
+
+            for await (const chunk of withTimeoutAndRetry(streamFactory, streamIdleTimeoutMs, {
+              maxRetries: maxStreamRetries,
+              initialDelayMs: streamRetryBackoffMs,
+            })) {
+              // Filter out retry notification chunks
+              if (typeof chunk === 'object' && chunk !== null && 'type' in (chunk as object)) {
+                const chunkType = (chunk as { type?: string }).type
+                if (chunkType === 'retry') {
+                  yield {
+                    type: 'chunk',
+                    data: {
+                      type: 'status_thinking',
+                      content: 'Retrying LLM request...',
+                    } as StreamChunk,
+                  } as StreamEvent
+                  continue
+                }
+              }
+              yield { type: 'chunk', data: chunk as StreamChunk } as StreamEvent
+            }
+            return
+          } catch (error) {
+            const errorObj = error instanceof Error ? error : new Error(String(error))
+
+            // Handle context overflow by triggering compaction
+            if (
+              isContextOverflowError(errorObj) &&
+              contextOverflowRetryCount < maxContextOverflowRetries
+            ) {
+              contextOverflowRetryCount++
+
+              // Trigger compaction
+              for await (const event of this.performCompaction(agent)) {
+                // Consume compaction events
+                yield event as StreamEvent
+              }
+
+              if (contextOverflowRetryCount <= maxContextOverflowRetries) {
+                // Update completion options with compacted messages
+                completionOptions.messages = this.buildCompletionMessages(isLastStep)
+                continue // Retry the stream with compacted context
+              }
+            }
+
+            yield { type: 'error', error: errorObj.message } as StreamEvent
+            return
+          }
+        }
+      }.bind(this)
+
+      for await (const event of processStreamWithResilience()) {
+        if (event.type === 'error') {
+          yield { type: 'error', error: event.error }
+          return { finishReason: 'error', messageID }
+        }
+
+        const chunk = event.data
+
         switch (chunk.type) {
           case 'text':
             if (chunk.content) {
@@ -621,6 +721,18 @@ export class Runtime {
               usage = chunk.usage
               this.state.tokens.input += usage.promptTokens
               this.state.tokens.output += usage.completionTokens
+              // Track reasoning and cache tokens if available
+              if (usage.reasoningTokens) {
+                this.state.tokens.reasoning += usage.reasoningTokens
+              }
+              if (usage.cacheReadTokens) {
+                this.state.tokens.cacheRead =
+                  (this.state.tokens.cacheRead ?? 0) + usage.cacheReadTokens
+              }
+              if (usage.cacheWriteTokens) {
+                this.state.tokens.cacheWrite =
+                  (this.state.tokens.cacheWrite ?? 0) + usage.cacheWriteTokens
+              }
             }
             if (chunk.finishReason) {
               finishReason = this.mapFinishReason(chunk.finishReason)
@@ -629,11 +741,18 @@ export class Runtime {
 
           case 'error':
             yield { type: 'error', error: chunk.error }
-            return { finishReason: 'error' as FinishReason, messageID }
+            return { finishReason: 'error', messageID }
+
+          case 'status_thinking':
+            if (chunk.content) {
+              yield { type: 'status', content: chunk.content }
+            }
+            break
         }
       }
     } catch (error) {
-      yield { type: 'error', error: error instanceof Error ? error.message : 'Stream error' }
+      const errorMessage = error instanceof Error ? error.message : 'Stream error'
+      yield { type: 'error', error: errorMessage }
       return { finishReason: 'error', messageID }
     }
 
@@ -661,19 +780,43 @@ export class Runtime {
 
     if (pendingToolCalls.length > 0) {
       finishReason = 'tool-calls'
+      // Get list of available tool names for fuzzy matching
+      const availableToolNames = [
+        ...AGENT_TOOLS,
+        ...getTaskToolDefinitions(),
+        ...plugins.getTools(),
+      ].map((t) => t.function.name)
+
       const preparedToolCalls = pendingToolCalls.map((toolCall) => {
-        const parsedArgs = (() => {
-          try {
-            return JSON.parse(toolCall.function.arguments) as Record<string, unknown>
-          } catch {
-            return {} as Record<string, unknown>
+        // Try to repair tool name if it's not recognized
+        let toolName = toolCall.function.name
+        if (!availableToolNames.includes(toolName)) {
+          const matchedName = fuzzyMatchToolName(toolName, availableToolNames)
+          if (matchedName) {
+            console.warn(`[runtime] Tool name '${toolName}' was corrected to '${matchedName}'`)
+            toolName = matchedName
           }
-        })()
+        }
+
+        // Try to parse arguments with repair fallback
+        let parsedArgs: Record<string, unknown>
+        try {
+          parsedArgs = JSON.parse(toolCall.function.arguments) as Record<string, unknown>
+        } catch {
+          // Try repair
+          const repairedArgs = repairJSON(toolCall.function.arguments)
+          parsedArgs = safeJSONParse(repairedArgs, {}) as Record<string, unknown>
+          if (Object.keys(parsedArgs).length > 0) {
+            console.warn('[runtime] Tool arguments JSON was repaired automatically')
+          } else {
+            parsedArgs = {} as Record<string, unknown>
+          }
+        }
 
         return {
-          toolCall,
+          toolCall: { ...toolCall, function: { ...toolCall.function, name: toolName } },
           parsedArgs,
-          dedupKey: this.createToolCallDedupKey(toolCall.function.name, parsedArgs),
+          dedupKey: this.createToolCallDedupKey(toolName, parsedArgs),
         }
       })
 
@@ -705,9 +848,21 @@ export class Runtime {
         }
       }
 
-      const toolLoopGuardTriggered = this.applyToolLoopGuard(executableToolKeysForLoop)
-      if (toolLoopGuardTriggered) {
+      const loopGuardResult = this.applyToolLoopGuard(executableToolKeysForLoop)
+
+      // Progressive intervention: warn at threshold - 1
+      if (loopGuardResult.warned) {
+        yield {
+          type: 'status',
+          content:
+            'Warning: You appear to be repeating similar tool calls. Try a different approach to avoid a loop.',
+        }
+      }
+
+      if (loopGuardResult.triggered) {
         const threshold = this.config.toolLoopThreshold
+
+        // Hard stop
         yield {
           type: 'error',
           error:
@@ -716,21 +871,134 @@ export class Runtime {
         }
         this.state.isComplete = true
       } else {
-        for (const { toolCall, parsedArgs, dedupKey } of preparedToolCalls) {
+        // Partition tools into parallelizable (read-only) and sequential (side effects)
+        const parallelizableTools = [
+          'read_files',
+          'list_directory',
+          'search_code',
+          'search_code_ast',
+          'search_codebase',
+        ]
+        const partitionedTools = preparedToolCalls.reduce(
+          (acc, tool) => {
+            const toolName = tool.toolCall.function.name
+            if (parallelizableTools.includes(toolName)) {
+              acc.parallel.push(tool)
+            } else {
+              acc.sequential.push(tool)
+            }
+            return acc
+          },
+          { parallel: [] as typeof preparedToolCalls, sequential: [] as typeof preparedToolCalls }
+        )
+
+        // Execute tools (parallel tools can run concurrently)
+        const sequentialTools = partitionedTools.sequential
+        const parallelTools = partitionedTools.parallel
+
+        // Execute parallel tools concurrently
+        if (parallelTools.length > 0) {
+          yield {
+            type: 'status',
+            content: `Executing ${parallelTools.length} read-only tool(s)`,
+          }
+
+          for (const tool of parallelTools) {
+            const { toolCall, parsedArgs, dedupKey } = tool
+            const toolName = toolCall.function.name
+
+            if (dedupEnabled && seenDedupKeysThisStep.has(dedupKey)) {
+              const error =
+                `Skipped duplicate tool call within step: ${toolName} ` + '(duplicate tool call)'
+
+              yield this.createToolResultEvent({
+                toolCallId: toolCall.id,
+                toolName,
+                args: parsedArgs,
+                output: '',
+                error,
+              })
+
+              assistantMessage.parts.push({
+                id: ascending('part_'),
+                messageID,
+                sessionID: this.state.sessionID,
+                type: 'tool',
+                tool: toolName,
+                state: {
+                  status: 'error',
+                  input: parsedArgs,
+                  error,
+                  time: { start: Date.now(), end: Date.now() },
+                },
+              })
+              continue
+            }
+            if (dedupEnabled) {
+              seenDedupKeysThisStep.add(dedupKey)
+            }
+
+            if (
+              typeof maxToolCallsPerStep === 'number' &&
+              processedToolCallsThisStep >= maxToolCallsPerStep
+            ) {
+              const error =
+                `Reached maximum tool calls per step (${maxToolCallsPerStep}); ` +
+                `skipping additional tool call: ${toolName}`
+
+              yield this.createToolResultEvent({
+                toolCallId: toolCall.id,
+                toolName,
+                args: parsedArgs,
+                output: '',
+                error,
+              })
+
+              assistantMessage.parts.push({
+                id: ascending('part_'),
+                messageID,
+                sessionID: this.state.sessionID,
+                type: 'tool',
+                tool: toolName,
+                state: {
+                  status: 'error',
+                  input: parsedArgs,
+                  error,
+                  time: { start: Date.now(), end: Date.now() },
+                },
+              })
+              continue
+            }
+
+            processedToolCallsThisStep++
+            for await (const event of this.executeToolAndAddToMessage(
+              toolCall,
+              parsedArgs,
+              agent,
+              messageID,
+              assistantMessage
+            )) {
+              yield event
+            }
+          }
+        }
+
+        // Execute sequential tools in order
+        for (const tool of sequentialTools) {
+          const { toolCall, parsedArgs, dedupKey } = tool
           const toolName = toolCall.function.name
 
           if (dedupEnabled && seenDedupKeysThisStep.has(dedupKey)) {
             const error =
               `Skipped duplicate tool call within step: ${toolName} ` + '(duplicate tool call)'
 
-            yield {
-              type: 'tool_result',
-              toolResult: {
-                toolName,
-                output: '',
-                error,
-              },
-            }
+            yield this.createToolResultEvent({
+              toolCallId: toolCall.id,
+              toolName,
+              args: parsedArgs,
+              output: '',
+              error,
+            })
 
             assistantMessage.parts.push({
               id: ascending('part_'),
@@ -759,14 +1027,13 @@ export class Runtime {
               `Reached maximum tool calls per step (${maxToolCallsPerStep}); ` +
               `skipping additional tool call: ${toolName}`
 
-            yield {
-              type: 'tool_result',
-              toolResult: {
-                toolName,
-                output: '',
-                error,
-              },
-            }
+            yield this.createToolResultEvent({
+              toolCallId: toolCall.id,
+              toolName,
+              args: parsedArgs,
+              output: '',
+              error,
+            })
 
             assistantMessage.parts.push({
               id: ascending('part_'),
@@ -785,55 +1052,15 @@ export class Runtime {
           }
 
           processedToolCallsThisStep++
-
-          if (toolCall.function.name === 'task') {
-            const rawArgs = JSON.parse(toolCall.function.arguments) as {
-              subagent_type?: string
-              prompt?: string
-              description?: string
-            }
-            const subtaskPart: SubtaskPart = {
-              id: ascending('part_'),
-              messageID,
-              sessionID: this.state.sessionID,
-              type: 'subtask',
-              agent: String(rawArgs.subagent_type ?? ''),
-              prompt: String(rawArgs.prompt ?? ''),
-            }
-            this.state.pendingSubtasks.push({
-              part: subtaskPart,
-              parentAgent: agent,
-              description: String(rawArgs.description ?? 'subtask'),
-            })
-            assistantMessage.parts.push(subtaskPart)
-            continue
-          }
-
-          const toolResult = yield* this.executeToolCall(toolCall, agent, messageID)
-          const toolInput = toolResult.argsUsed ?? parsedArgs
-
-          const toolPart: ToolPart = {
-            id: ascending('part_'),
+          for await (const event of this.executeToolAndAddToMessage(
+            toolCall,
+            parsedArgs,
+            agent,
             messageID,
-            sessionID: this.state.sessionID,
-            type: 'tool',
-            tool: toolCall.function.name,
-            state: toolResult.error
-              ? {
-                  status: 'error',
-                  input: toolInput,
-                  error: toolResult.error,
-                  time: { start: Date.now(), end: Date.now() },
-                }
-              : {
-                  status: 'completed',
-                  input: toolInput,
-                  output: toolResult.output,
-                  time: { start: Date.now(), end: Date.now() },
-                },
+            assistantMessage
+          )) {
+            yield event
           }
-
-          assistantMessage.parts.push(toolPart)
         }
       }
     } else {
@@ -871,12 +1098,20 @@ export class Runtime {
     if (!this.state) throw new Error('Runtime not initialized')
 
     const toolName = toolCall.function.name
+    const startedAt = Date.now()
     let args: Record<string, unknown>
     try {
       args = JSON.parse(toolCall.function.arguments) as Record<string, unknown>
     } catch {
       const error = `Invalid tool arguments for ${toolName}`
-      yield { type: 'tool_result', toolResult: { toolName, output: '', error } }
+      yield this.createToolResultEvent({
+        toolCallId: toolCall.id,
+        toolName,
+        args: {},
+        output: '',
+        error,
+        startedAt,
+      })
       return { output: '', error }
     }
     const patterns = this.extractPatterns(toolName, args)
@@ -903,7 +1138,14 @@ export class Runtime {
         content: error,
         interrupt: { toolName, riskTier, decision: 'reject', reason: 'Risk policy deny' },
       }
-      yield { type: 'tool_result', toolResult: { toolName, output: '', error } }
+      yield this.createToolResultEvent({
+        toolCallId: toolCall.id,
+        toolName,
+        args,
+        output: '',
+        error,
+        startedAt,
+      })
       return { output: '', error, argsUsed: args }
     }
 
@@ -911,6 +1153,7 @@ export class Runtime {
       const interruptResult = yield* this.requestToolInterrupt({
         sessionID: this.state.sessionID,
         messageID,
+        toolCallId: toolCall.id,
         toolName,
         args,
         patterns,
@@ -926,14 +1169,14 @@ export class Runtime {
     for (const pattern of patterns) {
       const decision = checkPermission(agent.permission, toolName, pattern || undefined)
       if (decision === 'deny') {
-        yield {
-          type: 'tool_result',
-          toolResult: {
-            toolName,
-            output: '',
-            error: `Permission denied for tool: ${toolName}${pattern ? ` (${pattern})` : ''}`,
-          },
-        }
+        yield this.createToolResultEvent({
+          toolCallId: toolCall.id,
+          toolName,
+          args,
+          output: '',
+          error: `Permission denied for tool: ${toolName}${pattern ? ` (${pattern})` : ''}`,
+          startedAt,
+        })
         return { output: '', error: `Permission denied for tool: ${toolName}`, argsUsed: args }
       }
     }
@@ -968,9 +1211,76 @@ export class Runtime {
       }
     }
 
+    if (toolName === 'task') {
+      const subagentType = args.subagent_type
+      const prompt = args.prompt
+      const description = args.description
+
+      if (
+        typeof subagentType !== 'string' ||
+        typeof prompt !== 'string' ||
+        typeof description !== 'string'
+      ) {
+        const error = 'Invalid task tool arguments'
+        yield this.createToolResultEvent({
+          toolCallId: toolCall.id,
+          toolName,
+          args,
+          output: '',
+          error,
+          startedAt,
+        })
+        return { output: '', error, argsUsed: args }
+      }
+
+      const currentDepth = this.config.subagentDepth ?? 0
+      const maxDepth = this.config.maxSubagentDepth ?? 0
+      if (currentDepth >= maxDepth) {
+        const error = 'Maximum subagent depth reached'
+        yield this.createToolResultEvent({
+          toolCallId: toolCall.id,
+          toolName,
+          args,
+          output: '',
+          error,
+          startedAt,
+        })
+        return { output: '', error, argsUsed: args }
+      }
+
+      const result = {
+        output: '',
+        metadata: {
+          deferredTask: {
+            subagentType,
+            prompt,
+            description,
+          },
+        },
+        argsUsed: args,
+      }
+
+      await this.executeHook('tool.execute.after', hookContext, {
+        toolName,
+        args,
+        result,
+      })
+
+      return result
+    }
+
     const executor = this.toolExecutors.get(toolName)
     if (!executor) {
-      return { output: '', error: `Unknown tool: ${toolName}`, argsUsed: args }
+      const error = `Unknown tool: ${toolName}`
+      yield this.createToolResultEvent({
+        toolCallId: toolCall.id,
+        toolName,
+        args,
+        output: '',
+        error,
+        startedAt,
+      })
+      return { output: '', error, argsUsed: args }
     }
 
     const cacheKey = this.createToolCallDedupKey(toolName, args)
@@ -984,14 +1294,14 @@ export class Runtime {
           type: 'status',
           content: `Idempotency cache hit for ${toolName}; reusing prior result`,
         }
-        yield {
-          type: 'tool_result',
-          toolResult: {
-            toolName,
-            output: cached.output,
-            error: cached.error,
-          },
-        }
+        yield this.createToolResultEvent({
+          toolCallId: toolCall.id,
+          toolName,
+          args: cached.argsUsed ?? args,
+          output: cached.output,
+          error: cached.error,
+          startedAt,
+        })
         return cached
       }
     }
@@ -1021,14 +1331,14 @@ export class Runtime {
           this.toolCallResultCache.set(cacheKey, { ...result, argsUsed: args })
         }
 
-        yield {
-          type: 'tool_result',
-          toolResult: {
-            toolName,
-            output: result.output,
-            error: result.error,
-          },
-        }
+        yield this.createToolResultEvent({
+          toolCallId: toolCall.id,
+          toolName,
+          args,
+          output: result.output,
+          error: result.error,
+          startedAt,
+        })
 
         await this.executeHook('tool.execute.after', hookContext, {
           toolName,
@@ -1052,12 +1362,100 @@ export class Runtime {
           continue
         }
 
-        yield { type: 'tool_result', toolResult: { toolName, output: '', error: errorMessage } }
+        yield this.createToolResultEvent({
+          toolCallId: toolCall.id,
+          toolName,
+          args,
+          output: '',
+          error: errorMessage,
+          startedAt,
+        })
         return { output: '', error: errorMessage, argsUsed: args }
       }
     }
 
     return { output: '', error: lastError ?? 'Tool execution failed', argsUsed: args }
+  }
+
+  private async *executeToolAndAddToMessage(
+    toolCall: ToolCall,
+    parsedArgs: Record<string, unknown>,
+    agent: AgentConfig,
+    messageID: Identifier,
+    assistantMessage: AssistantMessage
+  ): AsyncGenerator<RuntimeEvent, void> {
+    if (!this.state) throw new Error('Runtime not initialized')
+
+    const toolIterator = this.executeToolCall(toolCall, agent, messageID)
+    let result:
+      | {
+          output: string
+          error?: string
+          metadata?: Record<string, unknown>
+          argsUsed?: Record<string, unknown>
+        }
+      | undefined
+
+    while (true) {
+      const next = await toolIterator.next()
+      if (next.done) {
+        result = next.value
+        break
+      }
+      yield next.value
+    }
+
+    const toolName = toolCall.function.name
+    const argsUsed = result?.argsUsed ?? parsedArgs
+    const deferredTask = result?.metadata?.deferredTask as
+      | {
+          subagentType: string
+          prompt: string
+          description: string
+        }
+      | undefined
+
+    if (deferredTask) {
+      const deferredStartedAt = Date.now()
+      const subtaskPart = createSubtaskPart(
+        messageID,
+        this.state.sessionID,
+        deferredTask.subagentType,
+        deferredTask.prompt
+      )
+      assistantMessage.parts.push(subtaskPart)
+      this.state.pendingSubtasks.push({
+        part: subtaskPart,
+        parentAgent: agent,
+        description: deferredTask.description,
+        toolCallId: toolCall.id,
+        input: argsUsed,
+        startedAt: deferredStartedAt,
+      })
+      return
+    }
+
+    assistantMessage.parts.push({
+      id: ascending('part_'),
+      messageID,
+      sessionID: this.state.sessionID,
+      type: 'tool',
+      tool: toolName,
+      state: result?.error
+        ? {
+            status: 'error',
+            input: argsUsed,
+            error: result.error,
+            time: { start: Date.now(), end: Date.now() },
+          }
+        : {
+            status: 'completed',
+            input: argsUsed,
+            output: result?.output ?? '',
+            metadata: result?.metadata,
+            time: { start: Date.now(), end: Date.now() },
+          },
+    })
   }
 
   /**
@@ -1135,8 +1533,18 @@ export class Runtime {
         })
 
         yield {
-          type: 'tool_result',
-          toolResult: { toolName: 'task', output: '', error: errorMessage },
+          ...this.createToolResultEvent({
+            toolCallId: pending.toolCallId ?? subtask.id,
+            toolName: 'task',
+            args: pending.input ?? {
+              subagent_type: subtask.agent,
+              prompt: subtask.prompt,
+              description: pending.description,
+            },
+            output: '',
+            error: errorMessage,
+            startedAt: pending.startedAt,
+          }),
         }
 
         yield {
@@ -1163,12 +1571,18 @@ export class Runtime {
         })
 
         yield {
-          type: 'tool_result',
-          toolResult: {
+          ...this.createToolResultEvent({
+            toolCallId: pending.toolCallId ?? subtask.id,
             toolName: 'task',
+            args: pending.input ?? {
+              subagent_type: subtask.agent,
+              prompt: subtask.prompt,
+              description: pending.description,
+            },
             output: taskResult.output,
             ...(taskResult.error ? { error: taskResult.error } : {}),
-          },
+            startedAt: pending.startedAt,
+          }),
         }
 
         yield {
@@ -1410,6 +1824,19 @@ export class Runtime {
         }
         return
       }
+
+      if (outcome.value) {
+        yield {
+          type: 'snapshot',
+          content: `Step ${outcome.value.step} snapshot created`,
+          snapshot: {
+            hash: outcome.value.hash,
+            step: outcome.value.step,
+            files: outcome.value.files,
+            timestamp: outcome.value.timestamp,
+          },
+        }
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Snapshot failed'
       if (failureMode === 'error') {
@@ -1580,11 +2007,17 @@ export class Runtime {
     return ['']
   }
 
-  private classifyToolRisk(toolName: string, _args: Record<string, unknown>): ToolRiskTier {
+  private classifyToolRisk(toolName: string, args: Record<string, unknown>): ToolRiskTier {
     const override = this.config.toolRiskOverrides?.[toolName]
     if (override) return override
 
-    if (toolName === 'run_command') return 'critical'
+    if (toolName === 'run_command') {
+      const analysis = analyzeCommand(String(args.command ?? ''))
+      if (analysis.kind === 'pipeline' && !analysis.requiresApproval) return 'low'
+      if (analysis.kind === 'chain') return 'high'
+      if (analysis.kind === 'redirect') return 'critical'
+      return 'critical'
+    }
     if (toolName === 'write_files') return 'high'
     if (toolName === 'update_memory_bank') return 'medium'
     if (toolName === 'task') return 'high'
@@ -1659,12 +2092,13 @@ export class Runtime {
         },
       }
       yield {
-        type: 'tool_result',
-        toolResult: {
+        ...this.createToolResultEvent({
+          toolCallId: request.toolCallId ?? request.messageID,
           toolName: request.toolName,
+          args: request.args,
           output: '',
           error: `Interrupted: ${errorMessage}`,
-        },
+        }),
       }
       return { approved: false, args: request.args, error: `Interrupted: ${errorMessage}` }
     }
@@ -1682,7 +2116,13 @@ export class Runtime {
           reason: result.reason,
         },
       }
-      yield { type: 'tool_result', toolResult: { toolName: request.toolName, output: '', error } }
+      yield this.createToolResultEvent({
+        toolCallId: request.toolCallId ?? request.messageID,
+        toolName: request.toolName,
+        args: request.args,
+        output: '',
+        error,
+      })
       return { approved: false, args: request.args, error }
     }
 
@@ -1709,6 +2149,30 @@ export class Runtime {
 
   private isToolIdempotencyCacheAllowed(toolName: string): boolean {
     return !['write_files', 'run_command', 'task', 'update_memory_bank'].includes(toolName)
+  }
+
+  private createToolResultEvent(args: {
+    toolCallId: string
+    toolName: string
+    args: Record<string, unknown>
+    output: string
+    error?: string
+    startedAt?: number
+    finishedAt?: number
+  }): RuntimeEvent {
+    const finishedAt = args.finishedAt ?? Date.now()
+    const startedAt = args.startedAt ?? finishedAt
+    return {
+      type: 'tool_result',
+      toolResult: {
+        toolCallId: args.toolCallId,
+        toolName: args.toolName,
+        args: args.args,
+        output: args.output,
+        ...(args.error ? { error: args.error } : {}),
+        durationMs: Math.max(0, finishedAt - startedAt),
+      },
+    }
   }
 
   private isRetryableToolError(errorMessage: string): boolean {
@@ -1750,32 +2214,122 @@ export class Runtime {
       .join(',')}}`
   }
 
-  private applyToolLoopGuard(toolKeysForStep: string[]): boolean {
-    if (!this.state) return false
+  private applyToolLoopGuard(toolKeysForStep: string[]): { triggered: boolean; warned: boolean } {
+    if (!this.state) return { triggered: false, warned: false }
 
     const threshold = this.config.toolLoopThreshold
-    if (typeof threshold !== 'number' || threshold <= 0) return false
+    if (typeof threshold !== 'number' || threshold <= 0) return { triggered: false, warned: false }
+
+    // Track per-tool-call frequency across session
+    for (const key of toolKeysForStep) {
+      const currentFreq = this.state.toolCallFrequency.get(key) ?? 0
+      this.state.toolCallFrequency.set(key, currentFreq + 1)
+    }
+
+    // Add to sliding window history
+    const signature = toolKeysForStep.join('\x1f')
+    this.state.toolCallHistory.push(signature)
+    // Keep only recent history for pattern detection (sliding window)
+    const windowSize = threshold * 4 // Allow for some variation
+    if (this.state.toolCallHistory.length > windowSize) {
+      this.state.toolCallHistory.shift()
+    }
+
+    // Check for cyclic pattern detection (A→B→A→B pattern)
+    if (this.detectCyclicPattern()) {
+      const shouldWarn = this.shouldWarnAboutDoomLoop()
+      if (shouldWarn) {
+        return { triggered: false, warned: true }
+      }
+      return { triggered: this.handleDoomLoop(toolKeysForStep), warned: false }
+    }
 
     if (toolKeysForStep.length === 0) {
       this.state.lastToolLoopSignature = null
       this.state.toolLoopStreak = 0
-      return false
+      return { triggered: false, warned: false }
     }
 
-    const signature = toolKeysForStep.join('\u001f')
     if (this.state.lastToolLoopSignature === signature) {
       const nextStreak = this.state.toolLoopStreak + 1
+
+      // Progressive intervention: warn at threshold - 1
+      if (nextStreak === threshold - 1 && this.shouldWarnAboutDoomLoop()) {
+        return { triggered: false, warned: true }
+      }
+
       if (nextStreak > threshold) {
-        this.state.toolLoopStreak = nextStreak
-        return true
+        return { triggered: this.handleDoomLoop(toolKeysForStep), warned: false }
       }
       this.state.toolLoopStreak = nextStreak
-      return false
+      return { triggered: false, warned: false }
     }
 
     this.state.lastToolLoopSignature = signature
     this.state.toolLoopStreak = 1
+    return { triggered: false, warned: false }
+  }
+
+  /**
+   * Check if we should warn the LLM about potential doom loop
+   * Only warn once per intervention point
+   */
+  private shouldWarnAboutDoomLoop(): boolean {
+    if (!this.state) return false
+
+    const currentStep = this.state.step
+    // Only warn if we haven't warned in this step already
+    if (currentStep === this.state.lastInterventionStep) {
+      return false
+    }
+    this.state.lastInterventionStep = currentStep
+    return true
+  }
+
+  /**
+   * Detect cyclic patterns like A→B→A→B in tool call history
+   */
+  private detectCyclicPattern(): boolean {
+    if (!this.state) return false
+
+    const history = this.state.toolCallHistory
+    const threshold = this.config.toolLoopThreshold ?? 3
+
+    // Need at least 4 entries to detect a cycle (A→B→A→B)
+    if (history.length < 4) return false
+
+    // Check for A→B→A→B pattern in recent history
+    const recent = history.slice(-4)
+    const [a, b, c, d] = recent
+
+    if (a === c && b === d && a !== b) {
+      // Detected A→B→A→B pattern
+      const toolFreq = this.state.toolCallFrequency
+      const toolNames = a?.split('\x1f').map((k) => k.split(':')[0]) ?? []
+
+      // Only flag if tools are being called frequently
+      const highFreqTools = toolNames.filter((name) => {
+        let count = 0
+        for (const [key, freq] of toolFreq) {
+          if (key.startsWith(`${name}:`) && freq > threshold) {
+            count++
+          }
+        }
+        return count > 0
+      })
+
+      return highFreqTools.length > 0
+    }
+
     return false
+  }
+
+  /**
+   * Handle doom loop detection - returns true to indicate hard stop
+   */
+  private handleDoomLoop(_toolKeysForStep: string[]): boolean {
+    // Always hard stop when doom loop is detected
+    return true
   }
 
   private serializeStateForCheckpoint(): RuntimeCheckpointState | null {
@@ -1792,6 +2346,10 @@ export class Runtime {
       tokens: { ...this.state.tokens },
       lastToolLoopSignature: this.state.lastToolLoopSignature,
       toolLoopStreak: this.state.toolLoopStreak,
+      toolCallHistory: this.state.toolCallHistory,
+      toolCallFrequency: Array.from(this.state.toolCallFrequency.entries()),
+      cyclicPatternDetected: this.state.cyclicPatternDetected,
+      lastInterventionStep: this.state.lastInterventionStep,
     }
   }
 
@@ -1808,6 +2366,10 @@ export class Runtime {
       tokens: { ...checkpointState.tokens },
       lastToolLoopSignature: checkpointState.lastToolLoopSignature,
       toolLoopStreak: checkpointState.toolLoopStreak,
+      toolCallHistory: checkpointState.toolCallHistory ?? [],
+      toolCallFrequency: new Map(checkpointState.toolCallFrequency ?? []),
+      cyclicPatternDetected: checkpointState.cyclicPatternDetected ?? false,
+      lastInterventionStep: checkpointState.lastInterventionStep ?? 0,
     }
   }
 

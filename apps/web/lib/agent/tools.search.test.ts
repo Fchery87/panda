@@ -19,6 +19,7 @@ function createBaseContext(): ToolContext {
     chatId: 'chat_1',
     userId: 'user_1',
     readFiles: async () => [],
+    applyPatch: async () => ({ success: true, appliedHunks: 1, fuzzyMatches: 0 }),
     writeFiles: async () => [],
     runCommand: async () => ({ stdout: '', stderr: '', exitCode: 0, durationMs: 1 }),
     updateMemoryBank: async () => ({ success: true }),

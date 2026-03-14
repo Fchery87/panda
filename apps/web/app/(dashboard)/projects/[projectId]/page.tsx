@@ -1,7 +1,6 @@
 'use client'
 
-import { appLog } from '@/lib/logger'
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '@convex/_generated/api'
@@ -16,18 +15,15 @@ import { Workbench } from '@/components/workbench/Workbench'
 import { Breadcrumb, buildBreadcrumbItems } from '@/components/workbench/Breadcrumb'
 import { StatusBar } from '@/components/workbench/StatusBar'
 import { ChatInput } from '@/components/chat/ChatInput'
+import { PermissionDialog } from '@/components/chat/PermissionDialog'
 import { ChatActionBar } from '@/components/chat/ChatActionBar'
-import type { AvailableModel } from '@/components/chat/ModelSelector'
 import { MessageList } from '@/components/chat/MessageList'
-import { RunProgressPanel } from '@/components/chat/RunProgressPanel'
-import { EvalPanel } from '@/components/chat/EvalPanel'
 import { mapLatestRunProgressSteps } from '@/components/chat/live-run-utils'
 import { ArtifactPanel } from '@/components/artifacts/ArtifactPanel'
 import { AgentAutomationDialog } from '@/components/projects/AgentAutomationDialog'
-import { MemoryBankEditor } from '@/components/chat/MemoryBankEditor'
+import { ProjectChatInspector } from '@/components/projects/ProjectChatInspector'
 import { SpecDrawer } from '@/components/chat/SpecDrawer'
 import { SpecPanel } from '@/components/plan/SpecPanel'
-import { PlanPanel } from '@/components/plan/PlanPanel'
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -37,7 +33,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 import {
   PanelRight,
@@ -48,8 +43,6 @@ import {
   AlertTriangle,
   Layers,
   MoreHorizontal,
-  Settings2,
-  X,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -63,31 +56,20 @@ import { CommandPalette } from '@/components/command-palette/CommandPalette'
 // Hooks
 import { useJobs } from '@/hooks/useJobs'
 import { useAgent } from '@/hooks/useAgent'
-import { useAutoApplyArtifacts } from '@/hooks/useAutoApplyArtifacts'
+import { useProjectChatSession } from '@/hooks/useProjectChatSession'
+import { useProjectMessageWorkflow } from '@/hooks/useProjectMessageWorkflow'
+import { useProjectPlanDraft } from '@/hooks/useProjectPlanDraft'
+import { useProjectWorkbenchFiles } from '@/hooks/useProjectWorkbenchFiles'
+import { useProjectWorkspaceUi } from '@/hooks/useProjectWorkspaceUi'
 import { useSpecDriftDetection } from '@/hooks/useSpecDriftDetection'
-import { useLayoutPersistence } from '@/hooks/useLayoutPersistence'
 
 import type { Message } from '@/components/chat/types'
-import {
-  buildApprovedPlanExecutionMessage,
-  canApprovePlan,
-  canBuildFromPlan,
-  deriveNextPlanDraft,
-  getNextPlanStatusAfterDraftChange,
-  getNextPlanStatusAfterGeneration,
-  type PlanStatus,
-} from '@/lib/chat/planDraft'
+import { canApprovePlan, canBuildFromPlan, type PlanStatus } from '@/lib/chat/planDraft'
 import { isRateLimitError, getUserFacingAgentError } from '@/lib/chat/error-messages'
 import { resolveBackgroundExecutionPolicy } from '@/lib/chat/backgroundExecution'
-import { resolveEffectiveAgentPolicy, type AgentPolicy } from '@/lib/agent/automationPolicy'
+import type { AgentPolicy } from '@/lib/agent/automationPolicy'
 import { normalizeChatMode, type ChatMode } from '@/lib/agent/prompt-library'
-import type { SpecTier } from '@/lib/agent/spec/types'
-
-// LLM Provider
-import { getGlobalRegistry } from '@/lib/llm/registry'
 import type { LLMProvider } from '@/lib/llm/types'
-import { getDefaultProviderCapabilities } from '@/lib/llm/types'
-import { createE2EProvider, isE2ESpecApprovalModeEnabled } from '@/lib/llm/e2e-provider'
 
 interface File {
   _id: Id<'files'>
@@ -146,8 +128,16 @@ interface AgentRunEvent {
   error?: string
   durationMs?: number
   usage?: Record<string, unknown>
+  snapshot?: {
+    hash: string
+    step: number
+    files: string[]
+    timestamp: number
+  }
   createdAt: number
 }
+
+type ChatInspectorTab = 'run' | 'plan' | 'memory' | 'evals'
 
 function readAgentPolicyField(
   source: unknown,
@@ -163,30 +153,36 @@ export default function ProjectPage() {
   const params = useParams()
   const projectId = params.projectId as Id<'projects'>
 
-  // UI State
-  const [isArtifactPanelOpen, setIsArtifactPanelOpen] = useState(false)
-  const { isChatPanelOpen, setIsChatPanelOpen } = useLayoutPersistence()
-  const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
-  const [selectedFileLocation, setSelectedFileLocation] = useState<{
-    line: number
-    column: number
-    nonce: number
-  } | null>(null)
-  const [openTabs, setOpenTabs] = useState<Array<{ path: string; isDirty?: boolean }>>([])
-  const [cursorPosition, setCursorPosition] = useState<{ line: number; column: number } | null>(
-    null
-  )
-  const [isMobileLayout, setIsMobileLayout] = useState(false)
-  const [isCompactDesktopLayout, setIsCompactDesktopLayout] = useState(false)
-  const [mobilePrimaryPanel, setMobilePrimaryPanel] = useState<'workspace' | 'chat'>('workspace')
-  const [mobileUnreadCount, setMobileUnreadCount] = useState(0)
-  const [isMobileKeyboardOpen, setIsMobileKeyboardOpen] = useState(false)
-  const [isChatInspectorOpen, setIsChatInspectorOpen] = useState(false)
-  const [chatInspectorTab, setChatInspectorTab] = useState<'run' | 'plan' | 'memory' | 'evals'>(
-    'run'
-  )
-  const [isSpecDrawerOpen, setIsSpecDrawerOpen] = useState(false)
-  const [isSpecPanelOpen, setIsSpecPanelOpen] = useState(false)
+  const {
+    isArtifactPanelOpen,
+    setIsArtifactPanelOpen,
+    isChatPanelOpen,
+    setIsChatPanelOpen,
+    selectedFilePath,
+    setSelectedFilePath,
+    selectedFileLocation,
+    setSelectedFileLocation,
+    openTabs,
+    setOpenTabs,
+    cursorPosition,
+    setCursorPosition,
+    isMobileLayout,
+    isCompactDesktopLayout,
+    mobilePrimaryPanel,
+    setMobilePrimaryPanel,
+    mobileUnreadCount,
+    setMobileUnreadCount,
+    isMobileKeyboardOpen,
+    setIsMobileKeyboardOpen,
+    isChatInspectorOpen,
+    setIsChatInspectorOpen,
+    chatInspectorTab,
+    setChatInspectorTab,
+    isSpecDrawerOpen,
+    setIsSpecDrawerOpen,
+    isSpecPanelOpen,
+    setIsSpecPanelOpen,
+  } = useProjectWorkspaceUi()
   const lastAssistantMessageIdRef = useRef<string | null>(null)
 
   // Fetch project data
@@ -202,250 +198,36 @@ export default function ProjectPage() {
   // Fetch chats
   const chats = useQuery(api.chats.list, { projectId }) as Chat[] | undefined
 
-  // Get or create default chat
-  const [activeChatId, setActiveChatId] = useState<Id<'chats'> | null>(null)
-
-  useEffect(() => {
-    const mobileMedia = window.matchMedia('(max-width: 1023px)')
-    const compactDesktopMedia = window.matchMedia('(min-width: 1024px) and (max-width: 1279px)')
-    const update = () => {
-      setIsMobileLayout(mobileMedia.matches)
-      setIsCompactDesktopLayout(compactDesktopMedia.matches)
-    }
-    update()
-    mobileMedia.addEventListener('change', update)
-    compactDesktopMedia.addEventListener('change', update)
-    return () => {
-      mobileMedia.removeEventListener('change', update)
-      compactDesktopMedia.removeEventListener('change', update)
-    }
-  }, [])
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
-        e.preventDefault()
-        setIsChatPanelOpen((prev) => !prev)
-      }
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'a') {
-        e.preventDefault()
-        setIsArtifactPanelOpen((prev) => !prev)
-      }
-      // Terminal toggle: Ctrl+`
-      if ((e.metaKey || e.ctrlKey) && e.key === '`') {
-        e.preventDefault()
-        // Dispatch custom event for Workbench to handle
-        window.dispatchEvent(new CustomEvent('panda:toggle-terminal'))
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [setIsChatPanelOpen])
-
-  // Listen for share dialog open event
-  useEffect(() => {
-    const handleOpenShare = () => {
-      // TODO: Implement share dialog
-      toast.info('Share feature coming soon')
-    }
-    window.addEventListener('panda:open-share', handleOpenShare)
-    return () => window.removeEventListener('panda:open-share', handleOpenShare)
-  }, [])
-
-  useEffect(() => {
-    if (!chats || chats.length === 0) return
-    if (!activeChatId || !chats.some((c) => c._id === activeChatId)) {
-      setActiveChatId(chats[0]._id)
-    }
-  }, [chats, activeChatId])
-
-  const activeChat = useMemo(() => {
-    if (!chats || chats.length === 0) return null
-    if (activeChatId) return chats.find((c) => c._id === activeChatId) ?? chats[0]
-    return chats[0]
-  }, [chats, activeChatId])
-
-  // Sync plan draft state when switching chats
-  useEffect(() => {
-    const nextPlanDraft = activeChat?.planDraft ?? ''
-    setPlanDraft(nextPlanDraft)
-    lastSavedPlanDraftRef.current = nextPlanDraft
-  }, [activeChat?._id, activeChat?.planDraft])
-
-  // Keep UI/runtime mode aligned with the active chat metadata.
-  useEffect(() => {
-    if (!activeChat?.mode) return
-    setChatMode(normalizeChatMode(activeChat.mode, 'architect'))
-  }, [activeChat?._id, activeChat?.mode])
-
   // Jobs (Terminal)
   const { isAnyJobRunning } = useJobs(projectId)
 
-  // Chat mode state - synchronized with ChatInput's internal mode
-  const [chatMode, setChatMode] = useState<ChatMode>('architect')
-  const [architectBrainstormEnabled, setArchitectBrainstormEnabled] = useState(
-    process.env.NEXT_PUBLIC_ENABLE_ARCHITECT_BRAINSTORM === 'true'
-  )
-  const [uiSelectedModel, setUiSelectedModel] = useState<string | null>(null)
-  const [reasoningVariant, setReasoningVariant] = useState('none')
-  const [specTier, setSpecTier] = useState<SpecTier | 'auto'>('auto')
-  // Pending message for when we need to create chat first
-  const [pendingMessage, setPendingMessage] = useState<{
-    id: string
-    content: string
-    mode: ChatMode
-    approvedPlanExecution?: boolean
-  } | null>(null)
-  const pendingMessageDispatchRef = useRef<string | null>(null)
-
-  // Plan Draft (Claude Code-like plan panel)
-  const [planDraft, setPlanDraft] = useState('')
-  const [isSavingPlanDraft, setIsSavingPlanDraft] = useState(false)
-  const lastSavedPlanDraftRef = useRef<string>('')
-  const planSaveTimerRef = useRef<number | null>(null)
-
-  // Fetch settings to get provider configuration
-  const settings = useQuery(api.settings.get)
-  const effectiveSettings = useQuery(api.settings.getEffective)
-  const settingsRef = useRef(settings)
-  settingsRef.current = settings
-  const settingsProviderVersion = settings?.updatedAt ?? null
-
   const projectAgentPolicy = readAgentPolicyField(project, 'agentPolicy')
-  const userAgentDefaults = readAgentPolicyField(settings, 'agentDefaults')
-  const effectiveAutomationPolicy = useMemo<AgentPolicy>(() => {
-    const policy = resolveEffectiveAgentPolicy({
-      projectPolicy: projectAgentPolicy,
-      userDefaults: userAgentDefaults,
-      mode: chatMode,
-    })
-    return policy
-  }, [projectAgentPolicy, userAgentDefaults, chatMode])
-
-  useAutoApplyArtifacts({ projectId, chatId: activeChat?._id, policy: effectiveAutomationPolicy })
-
-  // Create LLM provider from settings
-  const provider = useMemo<LLMProvider | null>(() => {
-    if (isE2ESpecApprovalModeEnabled()) {
-      return createE2EProvider()
-    }
-
-    // Use the version as the memo key without depending on referentially-unstable objects.
-    void settingsProviderVersion
-    const latestSettings = settingsRef.current
-    if (!latestSettings) return null
-
-    const registry = getGlobalRegistry()
-    const defaultProviderId = latestSettings.defaultProvider || 'openai'
-    const providerConfig = latestSettings.providerConfigs?.[defaultProviderId]
-
-    if (!providerConfig?.enabled || !providerConfig.apiKey) {
-      registry.removeProvider(defaultProviderId)
-      return null
-    }
-
-    const nextProviderConfig = {
-      provider: (providerConfig?.provider || 'openai') as
-        | 'openai'
-        | 'openrouter'
-        | 'together'
-        | 'anthropic'
-        | 'zai'
-        | 'chutes'
-        | 'custom',
-      auth: {
-        apiKey: providerConfig?.apiKey || '',
-        baseUrl: providerConfig?.baseUrl,
-      },
-      defaultModel: providerConfig?.defaultModel,
-    }
-
-    // Check if we already have this provider and refresh it if settings changed.
-    const existingProvider = registry.getProvider(defaultProviderId)
-    if (existingProvider) {
-      const existingConfig = registry.getProviderConfig(defaultProviderId)
-      const configChanged =
-        existingConfig?.provider !== nextProviderConfig.provider ||
-        existingConfig?.auth?.apiKey !== nextProviderConfig.auth.apiKey ||
-        existingConfig?.auth?.baseUrl !== nextProviderConfig.auth.baseUrl ||
-        existingConfig?.defaultModel !== nextProviderConfig.defaultModel
-      if (configChanged) {
-        registry.updateProviderConfig(defaultProviderId, nextProviderConfig)
-        return registry.getProvider(defaultProviderId) ?? null
-      }
-      return existingProvider
-    }
-
-    try {
-      return registry.createProvider(defaultProviderId, nextProviderConfig, true)
-    } catch (error) {
-      appLog.error('Failed to create provider from settings:', error)
-      return null
-    }
-  }, [settingsProviderVersion])
-
-  const selectedModel = useMemo(() => {
-    // Prefer the admin-effective model so the selector shows the right value on refresh
-    if (effectiveSettings?.effectiveModel) return effectiveSettings.effectiveModel
-    // Fall back to user's configured model
-    const selectedProviderId = settings?.defaultProvider || 'openai'
-    const providerDefaultModel = (
-      settings?.providerConfigs?.[selectedProviderId] as Record<string, unknown> | undefined
-    )?.defaultModel as string | undefined
-    if (providerDefaultModel) return providerDefaultModel
-    if (settings?.defaultModel) return settings.defaultModel
-    if (provider?.config?.defaultModel) return provider.config.defaultModel
-    return 'gpt-4o'
-  }, [
-    effectiveSettings?.effectiveModel,
-    settings?.defaultProvider,
-    settings?.defaultModel,
-    settings?.providerConfigs,
+  const createChatMutation = useMutation(api.chats.create)
+  const updateChatMutation = useMutation(api.chats.update)
+  const {
+    settings,
+    setActiveChatId,
+    activeChat,
+    chatMode,
+    setChatMode,
+    architectBrainstormEnabled,
+    setArchitectBrainstormEnabled,
+    uiSelectedModel,
+    setUiSelectedModel,
+    reasoningVariant,
+    setReasoningVariant,
+    specTier,
+    setSpecTier,
     provider,
-  ])
-
-  // Build the list of selectable models from enabled providers in effective settings
-  const availableModels = useMemo<AvailableModel[]>(() => {
-    if (isE2ESpecApprovalModeEnabled()) {
-      return [
-        {
-          id: 'e2e-spec-model',
-          name: 'E2E Spec Model',
-          provider: 'E2E',
-          providerKey: 'e2e',
-        },
-      ]
-    }
-
-    const providerConfigs = effectiveSettings?.providerConfigs
-    if (!providerConfigs) return []
-
-    const models: AvailableModel[] = []
-    for (const [key, rawConfig] of Object.entries(providerConfigs)) {
-      const config = rawConfig as {
-        enabled?: boolean
-        name?: string
-        availableModels?: string[]
-      }
-      if (!config?.enabled) continue
-      const providerName = config.name || key
-      for (const modelId of config.availableModels ?? []) {
-        // Strip org prefix ("org/model:variant" → "model") for the display name
-        const withoutOrg = modelId.includes('/') ? modelId.split('/').slice(1).join('/') : modelId
-        const displayName = withoutOrg.split(':')[0]
-        models.push({ id: modelId, name: displayName, provider: providerName, providerKey: key })
-      }
-    }
-    return models
-  }, [effectiveSettings?.providerConfigs])
-
-  const supportsReasoning = useMemo(() => {
-    const providerType = (settings?.defaultProvider || 'openai') as Parameters<
-      typeof getDefaultProviderCapabilities
-    >[0]
-    return getDefaultProviderCapabilities(providerType).supportsReasoning
-  }, [settings?.defaultProvider])
+    selectedModel,
+    availableModels,
+    supportsReasoning,
+  } = useProjectChatSession({
+    projectId,
+    chats,
+    projectAgentPolicy,
+  })
+  const persistedPlanDraft = activeChat?.planDraft ?? ''
 
   // Initialize agent hook when activeChat and provider exist
   // Skip the hook if provider is not available - we'll show an error when user tries to send
@@ -458,7 +240,7 @@ export default function ProjectPage() {
     architectBrainstormEnabled,
     provider: provider ?? FALLBACK_PROVIDER, // Stable fallback - checked before use
     model: selectedModel,
-    planDraft,
+    planDraft: persistedPlanDraft,
     onRunCreated: async ({ runId, approvedPlanExecution }) => {
       if (!approvedPlanExecution || !activeChat?._id) return
       await updateChatMutation({
@@ -469,6 +251,31 @@ export default function ProjectPage() {
     },
   })
   const sendAgentMessage = agent.sendMessage
+
+  const { planDraft, setPlanDraft, isSavingPlanDraft, handleSavePlanDraft, handleApprovePlan } =
+    useProjectPlanDraft({
+      activeChat,
+      chatMode,
+      architectBrainstormEnabled,
+      agentStatus: agent.status,
+      agentMessages: agent.messages,
+      updateChatMutation,
+    })
+
+  const { handleSendMessage, handleSuggestedAction, handleBuildFromPlan, handleModeChange } =
+    useProjectMessageWorkflow({
+      projectId,
+      activeChat,
+      chatMode,
+      setChatMode,
+      planDraft,
+      providerAvailable: Boolean(provider),
+      createChatMutation,
+      updateChatMutation,
+      sendAgentMessage,
+      setActiveChatId,
+      setMobilePrimaryPanel,
+    })
 
   const artifactRecords = useQuery(
     api.artifacts.list,
@@ -499,23 +306,7 @@ export default function ProjectPage() {
     toast.success('Workspace reset', {
       description: 'Chat, artifacts, and plan draft have been cleared',
     })
-  }, [agent])
-
-  // Handle sending pending message after chat is created
-  useEffect(() => {
-    if (!pendingMessage || !activeChat || chatMode !== pendingMessage.mode) return
-    if (pendingMessageDispatchRef.current === pendingMessage.id) return
-
-    pendingMessageDispatchRef.current = pendingMessage.id
-    void sendAgentMessage(pendingMessage.content, undefined, {
-      approvedPlanExecution: pendingMessage.approvedPlanExecution,
-    }).finally(() => {
-      setPendingMessage((current) => (current?.id === pendingMessage.id ? null : current))
-      if (pendingMessageDispatchRef.current === pendingMessage.id) {
-        pendingMessageDispatchRef.current = null
-      }
-    })
-  }, [pendingMessage, activeChat, chatMode, sendAgentMessage])
+  }, [agent, setChatMode, setIsArtifactPanelOpen, setPlanDraft])
 
   // Auto-open artifact panel when there are pending artifacts in build/code mode
   useEffect(() => {
@@ -523,7 +314,7 @@ export default function ProjectPage() {
     if (isWriteMode && pendingArtifactCount > 0 && !isArtifactPanelOpen) {
       setIsArtifactPanelOpen(true)
     }
-  }, [pendingArtifactCount, chatMode, isArtifactPanelOpen])
+  }, [pendingArtifactCount, chatMode, isArtifactPanelOpen, setIsArtifactPanelOpen])
 
   // Fetch messages for active chat (fallback when not streaming)
   const convexMessages = useQuery(
@@ -609,6 +400,17 @@ export default function ProjectPage() {
   const liveRunSteps = useMemo(() => {
     return agent.progressSteps.length > 0 ? agent.progressSteps : replayProgressSteps
   }, [agent.progressSteps, replayProgressSteps])
+  const snapshotRunEvents = useMemo(
+    () => (runEvents ?? []).filter((event) => event.type === 'snapshot'),
+    [runEvents]
+  )
+  const subagentToolCalls = useMemo(
+    () =>
+      chatMessages
+        .flatMap((message) => message.toolCalls ?? [])
+        .filter((call) => call.name === 'task'),
+    [chatMessages]
+  )
   const latestUserPrompt = useMemo(
     () =>
       [...chatMessages]
@@ -637,441 +439,29 @@ export default function ProjectPage() {
 
   // Note: Inspector no longer auto-opens on agent start - user opens it manually
 
-  // File mutations
-  const upsertFileMutation = useMutation(api.files.upsert)
-  const deleteFileMutation = useMutation(api.files.remove)
-
-  // Chat mutations
-  const createChatMutation = useMutation(api.chats.create)
-  const updateChatMutation = useMutation(api.chats.update)
-
-  // Update project last opened
-  const updateProjectMutation = useMutation(api.projects.update)
-
-  // Update last opened on mount
-  useEffect(() => {
-    if (projectId) {
-      updateProjectMutation({
-        id: projectId,
-        lastOpenedAt: Date.now(),
-      }).catch((error) => {
-        void error
-      })
-    }
-  }, [projectId, updateProjectMutation])
-
-  const persistPlanDraft = useCallback(
-    async (
-      nextPlanDraft: string,
-      options?: { source?: 'manual' | 'generation'; planSourceMessageId?: string }
-    ) => {
-      const chatId = activeChat?._id
-      if (!chatId) return
-
-      const trimmed = nextPlanDraft.trim()
-      const lastSaved = lastSavedPlanDraftRef.current.trim()
-      if (trimmed === lastSaved) return
-
-      const source = options?.source ?? 'manual'
-      const planStatus =
-        source === 'generation'
-          ? (getNextPlanStatusAfterGeneration({
-              previousDraft: lastSavedPlanDraftRef.current,
-              nextDraft: nextPlanDraft,
-              currentStatus: activeChat?.planStatus,
-            }) ?? (trimmed ? 'awaiting_review' : 'idle'))
-          : getNextPlanStatusAfterDraftChange({
-              previousDraft: lastSavedPlanDraftRef.current,
-              nextDraft: nextPlanDraft,
-              currentStatus: activeChat?.planStatus,
-            })
-
-      try {
-        await updateChatMutation({
-          id: chatId,
-          planDraft: nextPlanDraft,
-          planStatus,
-          ...(source === 'generation' ? { planLastGeneratedAt: Date.now() } : {}),
-          ...(source === 'generation' && options?.planSourceMessageId
-            ? { planSourceMessageId: options.planSourceMessageId }
-            : {}),
-        })
-        lastSavedPlanDraftRef.current = nextPlanDraft
-      } catch (error) {
-        toast.error('Failed to save plan draft', {
-          description: error instanceof Error ? error.message : 'Unknown error',
-        })
-      }
-    },
-    [activeChat?._id, activeChat?.planStatus, updateChatMutation]
-  )
-
-  const handleSavePlanDraft = useCallback(async () => {
-    setIsSavingPlanDraft(true)
-    try {
-      await persistPlanDraft(planDraft, { source: 'manual' })
-    } finally {
-      setIsSavingPlanDraft(false)
-    }
-  }, [persistPlanDraft, planDraft])
-
-  const handleApprovePlan = useCallback(async () => {
-    if (!activeChat || !canApprovePlan(activeChat.planStatus, planDraft)) return
-
-    try {
-      await updateChatMutation({
-        id: activeChat._id,
-        planStatus: 'approved',
-        planApprovedAt: Date.now(),
-      })
-      toast.success('Plan approved')
-    } catch (error) {
-      toast.error('Failed to approve plan', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      })
-    }
-  }, [activeChat, planDraft, updateChatMutation])
-
-  // Debounced auto-save for plan draft edits
-  useEffect(() => {
-    if (!activeChat?._id) return
-    const trimmed = planDraft.trim()
-    const lastSaved = lastSavedPlanDraftRef.current.trim()
-    if (trimmed === lastSaved) return
-
-    if (planSaveTimerRef.current !== null) {
-      window.clearTimeout(planSaveTimerRef.current)
-      planSaveTimerRef.current = null
-    }
-
-    planSaveTimerRef.current = window.setTimeout(() => {
-      void persistPlanDraft(planDraft)
-    }, 750)
-
-    return () => {
-      if (planSaveTimerRef.current !== null) {
-        window.clearTimeout(planSaveTimerRef.current)
-        planSaveTimerRef.current = null
-      }
-    }
-  }, [activeChat?._id, planDraft, persistPlanDraft])
-
-  // Auto-update plan draft after a Plan completion (Claude Code-like)
-  useEffect(() => {
-    const next = deriveNextPlanDraft({
-      mode: chatMode,
-      agentStatus: agent.status,
-      currentPlanDraft: planDraft,
-      requireValidatedBrainstorm: architectBrainstormEnabled,
-      messages: agent.messages
-        .filter(
-          (
-            m
-          ): m is typeof m & {
-            role: 'user' | 'assistant'
-          } => m.role === 'user' || m.role === 'assistant'
-        )
-        .map((m) => ({ role: m.role, mode: m.mode, content: m.content })),
-    })
-    if (!next) return
-
-    // Don't clobber manual edits that haven't been saved yet.
-    if (planDraft.trim() !== lastSavedPlanDraftRef.current.trim()) return
-
-    setPlanDraft(next)
-    if (planSaveTimerRef.current !== null) {
-      window.clearTimeout(planSaveTimerRef.current)
-      planSaveTimerRef.current = null
-    }
-    const latestArchitectMessage = [...agent.messages]
-      .reverse()
-      .find((m) => m.role === 'assistant' && m.mode === 'architect' && m.content.trim())
-    void persistPlanDraft(next, {
-      source: 'generation',
-      planSourceMessageId: latestArchitectMessage?.id,
-    })
-  }, [
-    agent.messages,
-    agent.status,
-    chatMode,
-    planDraft,
-    architectBrainstormEnabled,
-    persistPlanDraft,
-  ])
-
-  // File operations
-  const handleFileSelect = useCallback(
-    (path: string, location?: { line: number; column: number }) => {
-      setMobilePrimaryPanel('workspace')
-      setSelectedFilePath(path)
-      if (location) {
-        setSelectedFileLocation({
-          ...location,
-          nonce: Date.now(),
-        })
-        setCursorPosition({ line: location.line, column: location.column })
-      } else {
-        setSelectedFileLocation(null)
-        setCursorPosition(null)
-      }
-      setOpenTabs((prev) => {
-        if (prev.some((t) => t.path === path)) return prev
-        return [...prev, { path }]
-      })
-    },
-    []
-  )
-
-  const handleTabClose = useCallback(
-    (path: string) => {
-      setOpenTabs((prev) => {
-        const next = prev.filter((t) => t.path !== path)
-        if (next.length === 0) {
-          setSelectedFilePath(null)
-        } else if (selectedFilePath === path) {
-          const index = prev.findIndex((t) => t.path === path)
-          const nextTab = next[Math.min(index, next.length - 1)]
-          setSelectedFilePath(nextTab?.path ?? null)
-        }
-        return next
-      })
-    },
-    [selectedFilePath]
-  )
-
-  const handleFileCreate = useCallback(
-    async (path: string) => {
-      try {
-        await upsertFileMutation({
-          projectId,
-          path,
-          content: '',
-          isBinary: false,
-        })
-        toast.success(`Created ${path}`)
-        setSelectedFilePath(path)
-        setSelectedFileLocation(null)
-      } catch (error) {
-        toast.error('Failed to create file', {
-          description: error instanceof Error ? error.message : 'Unknown error',
-        })
-      }
-    },
-    [projectId, upsertFileMutation]
-  )
-
-  const handleFileRename = useCallback(
-    async (oldPath: string, newPath: string) => {
-      try {
-        const file = files?.find((f) => f.path === oldPath)
-        if (!file) {
-          toast.error('File not found')
-          return
-        }
-
-        // Update existing file path in place.
-        await upsertFileMutation({
-          id: file._id,
-          projectId,
-          path: newPath,
-          content: file.content,
-          isBinary: file.isBinary,
-        })
-
-        toast.success(`Renamed to ${newPath}`)
-        if (selectedFilePath === oldPath) {
-          setSelectedFilePath(newPath)
-          setSelectedFileLocation(null)
-        }
-      } catch (error) {
-        toast.error('Failed to rename file', {
-          description: error instanceof Error ? error.message : 'Unknown error',
-        })
-      }
-    },
-    [files, projectId, upsertFileMutation, selectedFilePath]
-  )
-
-  const handleFileDelete = useCallback(
-    async (path: string) => {
-      try {
-        const file = files?.find((f) => f.path === path)
-        if (!file) {
-          toast.error('File not found')
-          return
-        }
-
-        await deleteFileMutation({ id: file._id })
-        toast.success(`Deleted ${path}`)
-
-        if (selectedFilePath === path) {
-          setSelectedFilePath(null)
-          setSelectedFileLocation(null)
-        }
-      } catch (error) {
-        toast.error('Failed to delete file', {
-          description: error instanceof Error ? error.message : 'Unknown error',
-        })
-      }
-    },
-    [files, deleteFileMutation, selectedFilePath]
-  )
-
-  const handleEditorSave = useCallback(
-    async (filePath: string, content: string) => {
-      try {
-        const file = files?.find((f) => f.path === filePath)
-        await upsertFileMutation({
-          id: file?._id,
-          projectId,
-          path: filePath,
-          content,
-          isBinary: false,
-        })
-        toast.success(`Saved ${filePath}`)
-      } catch (error) {
-        toast.error('Failed to save file', {
-          description: error instanceof Error ? error.message : 'Unknown error',
-        })
-      }
-    },
-    [files, projectId, upsertFileMutation]
-  )
-
-  // Chat operations
-  const handleSendMessage = useCallback(
-    async (
-      content: string,
-      mode: ChatMode,
-      contextFiles?: string[],
-      options?: { approvedPlanExecution?: boolean }
-    ) => {
-      const trimmed = content.trim()
-      if (!trimmed) {
-        toast.error('Message is empty')
-        return
-      }
-
-      // Update chat mode
-      setChatMode(mode)
-      setMobilePrimaryPanel('chat')
-
-      const finalContent =
-        mode === 'build' &&
-        planDraft.trim() &&
-        (options?.approvedPlanExecution || activeChat?.planStatus === 'executing')
-          ? buildApprovedPlanExecutionMessage(planDraft, trimmed)
-          : content
-
-      if (!activeChat) {
-        // Create new chat if none exists
-        try {
-          const newChatId = await createChatMutation({
-            projectId,
-            title: trimmed.slice(0, 50),
-            mode,
-          })
-          toast.success('Chat created')
-          setActiveChatId(newChatId)
-          // Store pending message - will be sent once chat is active and hook is ready
-          setPendingMessage({
-            id: `pending-${Date.now()}`,
-            content: finalContent,
-            mode,
-            approvedPlanExecution: options?.approvedPlanExecution,
-          })
-        } catch (error) {
-          void error
-          toast.error('Failed to create chat')
-        }
-        return
-      }
-
-      if (activeChat.mode !== mode) {
-        await updateChatMutation({ id: activeChat._id, mode })
-      }
-
-      // Check if provider is available
-      if (!provider) {
-        toast.error('LLM provider not configured', {
-          description: 'Please configure your LLM settings in the settings page.',
-        })
-        return
-      }
-
-      // Send directly for existing chats.
-      await sendAgentMessage(finalContent, contextFiles, {
-        approvedPlanExecution: options?.approvedPlanExecution,
-      })
-    },
-    [
-      activeChat,
-      projectId,
-      createChatMutation,
-      sendAgentMessage,
-      updateChatMutation,
-      provider,
-      planDraft,
-      setActiveChatId,
-    ]
-  )
-
-  const handleSuggestedAction = useCallback(
-    async (prompt: string, targetMode?: ChatMode) => {
-      const mode = targetMode ?? chatMode
-      if (targetMode) {
-        if (activeChat && activeChat.mode !== targetMode) {
-          void updateChatMutation({ id: activeChat._id, mode: targetMode })
-        }
-        setChatMode(targetMode)
-      }
-      await handleSendMessage(prompt, mode)
-    },
-    [activeChat, chatMode, handleSendMessage, updateChatMutation]
-  )
-
-  const handleBuildFromPlan = useCallback(async () => {
-    if (!activeChat) return
-    if (!canBuildFromPlan(activeChat.planStatus, planDraft)) {
-      toast.error('Approve the current plan before building')
-      return
-    }
-
-    try {
-      await updateChatMutation({
-        id: activeChat._id,
-        mode: 'build',
-        planStatus: 'executing',
-      })
-      setChatMode('build')
-      await handleSendMessage(
-        'Execute the approved plan. Use the plan as the primary contract, follow it step-by-step, and report progress against it.',
-        'build',
-        undefined,
-        { approvedPlanExecution: true }
-      )
-    } catch (error) {
-      toast.error('Failed to start build from plan', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      })
-    }
-  }, [activeChat, handleSendMessage, planDraft, updateChatMutation])
-
-  const handleModeChange = useCallback(
-    (nextMode: ChatMode) => {
-      setChatMode(nextMode)
-      if (activeChat && activeChat.mode !== nextMode) {
-        void updateChatMutation({ id: activeChat._id, mode: nextMode })
-      }
-    },
-    [activeChat, updateChatMutation]
-  )
+  const {
+    handleFileSelect,
+    handleTabClose,
+    handleFileCreate,
+    handleFileRename,
+    handleFileDelete,
+    handleEditorSave,
+  } = useProjectWorkbenchFiles({
+    projectId,
+    files,
+    selectedFilePath,
+    setSelectedFilePath,
+    setSelectedFileLocation,
+    setCursorPosition,
+    setOpenTabs,
+    setMobilePrimaryPanel,
+  })
 
   useEffect(() => {
     if (!isMobileLayout || mobilePrimaryPanel === 'chat') {
       setMobileUnreadCount(0)
     }
-  }, [isMobileLayout, mobilePrimaryPanel])
+  }, [isMobileLayout, mobilePrimaryPanel, setMobileUnreadCount])
 
   useEffect(() => {
     const latestAssistant = [...chatMessages].reverse().find((msg) => msg.role === 'assistant')
@@ -1088,7 +478,7 @@ export default function ProjectPage() {
         setMobileUnreadCount((count) => Math.min(99, count + 1))
       }
     }
-  }, [chatMessages, isMobileLayout, mobilePrimaryPanel])
+  }, [chatMessages, isMobileLayout, mobilePrimaryPanel, setMobileUnreadCount])
 
   useEffect(() => {
     if (!isMobileLayout) {
@@ -1139,104 +529,7 @@ export default function ProjectPage() {
       window.visualViewport?.removeEventListener('resize', onViewportChange)
       window.visualViewport?.removeEventListener('scroll', onViewportChange)
     }
-  }, [isMobileLayout])
-
-  const chatInspectorTabs = (
-    <Tabs
-      value={chatInspectorTab}
-      onValueChange={(value) => setChatInspectorTab(value as 'run' | 'plan' | 'memory' | 'evals')}
-      className="gap-2"
-    >
-      <TabsList className="h-8 w-full justify-start rounded-none border border-border bg-background p-0 font-mono text-xs">
-        <TabsTrigger
-          value="run"
-          className="h-full rounded-none border-r border-border px-3 font-mono text-xs uppercase tracking-wide data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-        >
-          Run
-        </TabsTrigger>
-        <TabsTrigger
-          value="plan"
-          className="h-full rounded-none border-r border-border px-3 font-mono text-xs uppercase tracking-wide data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-        >
-          Plan
-        </TabsTrigger>
-        <TabsTrigger
-          value="memory"
-          className="h-full rounded-none border-r border-border px-3 font-mono text-xs uppercase tracking-wide data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-        >
-          Memory
-        </TabsTrigger>
-        <TabsTrigger
-          value="evals"
-          className="h-full rounded-none px-3 font-mono text-xs uppercase tracking-wide data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-        >
-          Evals
-        </TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="run" className="m-0">
-        <RunProgressPanel
-          chatId={activeChat?._id}
-          liveSteps={liveRunSteps}
-          isStreaming={agent.isLoading}
-          tracePersistenceStatus={agent.tracePersistenceStatus}
-          onOpenFile={handleFileSelect}
-          onOpenArtifacts={() => setIsArtifactPanelOpen(true)}
-          currentSpec={agent.currentSpec}
-          planStatus={activeChat?.planStatus}
-          planDraft={planDraft}
-          onSpecClick={() => setIsSpecDrawerOpen(true)}
-          onPlanClick={() => {
-            setChatInspectorTab('plan')
-            setIsChatInspectorOpen(true)
-          }}
-          onResumeRuntimeSession={agent.resumeRuntimeSession}
-        />
-      </TabsContent>
-
-      <TabsContent value="plan" className="m-0">
-        <div className="border border-border bg-background">
-          <PlanPanel
-            planDraft={planDraft}
-            planStatus={activeChat?.planStatus ?? 'idle'}
-            onChange={setPlanDraft}
-            onSave={() => {
-              void handleSavePlanDraft()
-            }}
-            onApprove={() => {
-              void handleApprovePlan()
-            }}
-            onBuildFromPlan={() => {
-              void handleBuildFromPlan()
-            }}
-            isSaving={isSavingPlanDraft}
-            lastSavedAt={activeChat?.planUpdatedAt ?? null}
-            lastGeneratedAt={activeChat?.planLastGeneratedAt ?? null}
-            approveDisabled={!canApprovePlan(activeChat?.planStatus, planDraft) || agent.isLoading}
-            buildDisabled={!canBuildFromPlan(activeChat?.planStatus, planDraft) || agent.isLoading}
-          />
-        </div>
-      </TabsContent>
-
-      <TabsContent value="memory" className="m-0">
-        <div className="border border-border bg-background">
-          <MemoryBankEditor memoryBank={agent.memoryBank} onSave={agent.updateMemoryBank} />
-        </div>
-      </TabsContent>
-
-      <TabsContent value="evals" className="m-0">
-        <div className="border border-border bg-background">
-          <EvalPanel
-            projectId={projectId}
-            chatId={activeChat?._id}
-            lastUserPrompt={latestUserPrompt}
-            lastAssistantReply={latestAssistantReply}
-            onRunScenario={agent.runEvalScenario}
-          />
-        </div>
-      </TabsContent>
-    </Tabs>
-  )
+  }, [isMobileLayout, setIsMobileKeyboardOpen])
 
   const chatPanelContent = (
     <div
@@ -1371,6 +664,9 @@ export default function ProjectPage() {
       />
 
       {/* Input - Clean, cards removed */}
+      {/* Permission Dialog - mounted above chat input */}
+      <PermissionDialog />
+
       <ChatInput
         mode={chatMode}
         onModeChange={handleModeChange}
@@ -1422,90 +718,51 @@ export default function ProjectPage() {
             </motion.div>
           </>
         ) : null}
-        {/* Mobile Inspector Drawer */}
-        {isMobileLayout && isChatInspectorOpen ? (
-          <>
-            <motion.button
-              type="button"
-              aria-label="Close inspector"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsChatInspectorOpen(false)}
-              className="absolute inset-0 z-20 bg-background/55 backdrop-blur-[1px]"
-            />
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-              className="shadow-sharp-lg absolute inset-x-0 bottom-0 z-30 max-h-[85vh] border-t border-border bg-background sm:inset-x-3 sm:bottom-3 sm:max-h-[75vh] sm:border"
-            >
-              <div className="flex items-center justify-between border-b border-border px-3 py-2">
-                <div className="flex items-center gap-2">
-                  <div className="h-1 w-8 bg-border sm:hidden" />
-                  <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-wide">
-                    <Settings2 className="h-3.5 w-3.5 text-primary" />
-                    Inspector
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 rounded-none"
-                  onClick={() => setIsChatInspectorOpen(false)}
-                  aria-label="Close inspector"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="max-h-[calc(85vh-44px)] overflow-y-auto p-2 pb-[env(safe-area-inset-bottom)] sm:max-h-[calc(75vh-44px)] sm:p-3">
-                {chatInspectorTabs}
-              </div>
-            </motion.div>
-          </>
-        ) : null}
-
-        {/* Desktop Inspector Drawer */}
-        {!isMobileLayout && isChatInspectorOpen ? (
-          <>
-            <motion.button
-              type="button"
-              aria-label="Close inspector"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsChatInspectorOpen(false)}
-              className="absolute inset-0 z-20 bg-background/30"
-            />
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-              className="shadow-sharp-lg absolute inset-x-0 bottom-0 z-30 max-h-[60vh] border-t border-border bg-background"
-            >
-              <div className="flex items-center justify-between border-b border-border px-3 py-2">
-                <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-wide">
-                  <Settings2 className="h-3.5 w-3.5 text-primary" />
-                  Inspector
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 rounded-none"
-                  onClick={() => setIsChatInspectorOpen(false)}
-                  aria-label="Close inspector"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="max-h-[calc(60vh-44px)] overflow-y-auto p-2">{chatInspectorTabs}</div>
-            </motion.div>
-          </>
-        ) : null}
+        <ProjectChatInspector
+          projectId={projectId}
+          chatId={activeChat?._id}
+          isMobileLayout={isMobileLayout}
+          isOpen={isChatInspectorOpen}
+          tab={chatInspectorTab as ChatInspectorTab}
+          onOpenChange={setIsChatInspectorOpen}
+          onTabChange={(value) => setChatInspectorTab(value)}
+          liveSteps={liveRunSteps}
+          isStreaming={agent.isLoading}
+          tracePersistenceStatus={agent.tracePersistenceStatus}
+          onOpenFile={handleFileSelect}
+          onOpenArtifacts={() => setIsArtifactPanelOpen(true)}
+          currentSpec={agent.currentSpec}
+          planStatus={activeChat?.planStatus}
+          planDraft={planDraft}
+          onSpecClick={() => setIsSpecDrawerOpen(true)}
+          onPlanClick={() => {
+            setChatInspectorTab('plan')
+            setIsChatInspectorOpen(true)
+          }}
+          onResumeRuntimeSession={agent.resumeRuntimeSession}
+          snapshotEvents={snapshotRunEvents}
+          subagentToolCalls={subagentToolCalls}
+          onPlanDraftChange={setPlanDraft}
+          onSavePlanDraft={() => {
+            void handleSavePlanDraft()
+          }}
+          onApprovePlan={() => {
+            void handleApprovePlan()
+          }}
+          onBuildFromPlan={() => {
+            void handleBuildFromPlan()
+          }}
+          isSavingPlanDraft={isSavingPlanDraft}
+          lastSavedAt={activeChat?.planUpdatedAt ?? null}
+          lastGeneratedAt={activeChat?.planLastGeneratedAt ?? null}
+          approveDisabled={!canApprovePlan(activeChat?.planStatus, planDraft) || agent.isLoading}
+          buildDisabled={!canBuildFromPlan(activeChat?.planStatus, planDraft) || agent.isLoading}
+          memoryBank={agent.memoryBank}
+          onSaveMemoryBank={agent.updateMemoryBank}
+          lastUserPrompt={latestUserPrompt}
+          lastAssistantReply={latestAssistantReply}
+          onRunEvalScenario={agent.runEvalScenario}
+        />
       </AnimatePresence>
     </div>
   )

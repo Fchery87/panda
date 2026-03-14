@@ -39,6 +39,7 @@ function makeToolContext(): ToolContext {
     userId: 'u',
     readFiles: async () => [],
     listDirectory: async () => [],
+    applyPatch: async () => ({ success: true, appliedHunks: 1, fuzzyMatches: 0 }),
     writeFiles: async () => [{ path: 'x.ts', success: true }],
     runCommand: async () => ({ stdout: '', stderr: '', exitCode: 0, durationMs: 0 }),
     updateMemoryBank: async () => ({ success: true }),
@@ -77,8 +78,6 @@ describe('Harness adapter guardrail parity', () => {
   })
 
   it('executes task tool through the harness adapter and emits subagent progress', async () => {
-    process.env.NEXT_PUBLIC_PANDA_AGENT_HARNESS = '1'
-
     let callCount = 0
     const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }
     const provider: LLMProvider = {
@@ -125,7 +124,9 @@ describe('Harness adapter guardrail parity', () => {
         provider: 'openai',
         userMessage: 'delegate this',
       },
-      makeToolContext()
+      makeToolContext(),
+      {},
+      { harnessEnableRiskInterrupts: false }
     )) {
       events.push(evt)
     }
@@ -146,12 +147,9 @@ describe('Harness adapter guardrail parity', () => {
         (e) => e.type === 'progress_step' && String(e.content ?? '').includes('Subagent completed')
       )
     ).toBe(true)
-    delete process.env.NEXT_PUBLIC_PANDA_AGENT_HARNESS
   })
 
   it('executes search_codebase through the harness adapter executor path', async () => {
-    process.env.NEXT_PUBLIC_PANDA_AGENT_HARNESS = '1'
-
     let callCount = 0
     const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }
     const provider: LLMProvider = {
@@ -234,13 +232,9 @@ describe('Harness adapter guardrail parity', () => {
     expect(toolResult).toBeDefined()
     expect(toolResult?.toolResult?.error).toBeUndefined()
     expect(String(toolResult?.toolResult?.output ?? '')).toContain('oracle_multi_tier')
-
-    delete process.env.NEXT_PUBLIC_PANDA_AGENT_HARNESS
   })
 
   it('emits matching stable progress IDs for parallel subagent start/complete events', async () => {
-    process.env.NEXT_PUBLIC_PANDA_AGENT_HARNESS = '1'
-
     let callCount = 0
     const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }
     const provider: LLMProvider = {
@@ -295,7 +289,9 @@ describe('Harness adapter guardrail parity', () => {
         provider: 'openai',
         userMessage: 'delegate twice',
       },
-      makeToolContext()
+      makeToolContext(),
+      {},
+      { harnessEnableRiskInterrupts: false }
     )) {
       events.push(evt)
     }
@@ -319,13 +315,9 @@ describe('Harness adapter guardrail parity', () => {
     expect(new Set(startIds).size).toBe(2)
     expect(new Set(completeIds).size).toBe(2)
     expect(new Set(completeIds)).toEqual(new Set(startIds))
-
-    delete process.env.NEXT_PUBLIC_PANDA_AGENT_HARNESS
   })
 
   it('rewrites within harness when fenced code detected in architect mode and does not leak fenced code', async () => {
-    process.env.NEXT_PUBLIC_PANDA_AGENT_HARNESS = '1'
-
     let callCount = 0
     const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }
     const provider: LLMProvider = {
@@ -364,7 +356,9 @@ describe('Harness adapter guardrail parity', () => {
         provider: 'openai',
         userMessage: 'plan this change',
       },
-      makeToolContext()
+      makeToolContext(),
+      {},
+      { harnessEnableRiskInterrupts: false }
     )) {
       events.push(evt)
     }
@@ -378,12 +372,9 @@ describe('Harness adapter guardrail parity', () => {
     expect(streamedText.includes('```')).toBe(false)
     const complete = events.find((e) => e.type === 'complete')
     expect(complete).toBeDefined()
-    delete process.env.NEXT_PUBLIC_PANDA_AGENT_HARNESS
   })
 
   it('emits subagent failure progress from core runtime events with error details', async () => {
-    process.env.NEXT_PUBLIC_PANDA_AGENT_HARNESS = '1'
-
     let callCount = 0
     const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }
     const provider: LLMProvider = {
@@ -425,7 +416,9 @@ describe('Harness adapter guardrail parity', () => {
         provider: 'openai',
         userMessage: 'delegate this',
       },
-      makeToolContext()
+      makeToolContext(),
+      {},
+      { harnessEnableRiskInterrupts: false }
     )) {
       events.push(evt)
     }
@@ -439,12 +432,9 @@ describe('Harness adapter guardrail parity', () => {
 
     expect(failedSubagentProgress).toBeDefined()
     expect(String(failedSubagentProgress?.progressError ?? '')).toContain('Unknown subagent type')
-    delete process.env.NEXT_PUBLIC_PANDA_AGENT_HARNESS
   })
 
   it('checks checkpoint store for resume when harness auto-resume is enabled', async () => {
-    process.env.NEXT_PUBLIC_PANDA_AGENT_HARNESS = '1'
-
     const seenSessionIDs: string[] = []
     const checkpointStore: CheckpointStore = {
       async save(_checkpoint: RuntimeCheckpoint) {
@@ -498,12 +488,9 @@ describe('Harness adapter guardrail parity', () => {
     expect(callCount).toBe(1)
     expect(seenSessionIDs).toEqual(['harness_run_test_1'])
     expect(events.some((e) => e.type === 'complete')).toBe(true)
-    delete process.env.NEXT_PUBLIC_PANDA_AGENT_HARNESS
   })
 
   it('resumes from a seeded harness checkpoint when auto-resume is enabled', async () => {
-    process.env.NEXT_PUBLIC_PANDA_AGENT_HARNESS = '1'
-
     const sessionID = 'harness_run_resume_seeded'
     let loadCalls = 0
     const seededCheckpoint: RuntimeCheckpoint = {
@@ -578,12 +565,9 @@ describe('Harness adapter guardrail parity', () => {
       events.some((e) => e.type === 'text' && String(e.content ?? '').includes('Resumed'))
     ).toBe(true)
     expect(events.some((e) => e.type === 'complete')).toBe(true)
-    delete process.env.NEXT_PUBLIC_PANDA_AGENT_HARNESS
   })
 
   it('enforces read-only eval mode by denying write tools in harness adapter', async () => {
-    process.env.NEXT_PUBLIC_PANDA_AGENT_HARNESS = '1'
-
     let callCount = 0
     const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }
     const provider: LLMProvider = {
@@ -636,7 +620,6 @@ describe('Harness adapter guardrail parity', () => {
       (e) => e.type === 'tool_result' && e.toolResult?.toolName === 'write_files'
     )
     expect(writeResult?.toolResult?.error).toContain('Eval mode denied tool')
-    delete process.env.NEXT_PUBLIC_PANDA_AGENT_HARNESS
   })
 
   it('pauses explicit specs until approval and resumes after approval', async () => {

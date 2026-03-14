@@ -29,7 +29,6 @@ import {
   permissions as harnessPermissions,
   agents as harnessAgents,
   ascending as harnessAscending,
-  bus as harnessBus,
 } from './harness'
 import type { CheckpointStore as HarnessCheckpointStore } from './harness/checkpoint-store'
 import type { FormalSpecification, SpecTier } from './spec/types'
@@ -60,9 +59,11 @@ export type AgentEventType =
   // Backward compatibility for existing hook switch statements.
   | 'thinking'
   | 'progress_step'
+  | 'snapshot'
   | 'text'
   | 'tool_call'
   | 'tool_result'
+  | 'retry'
   | 'reset'
   | 'error'
   | 'spec_pending_approval'
@@ -84,6 +85,12 @@ export interface AgentEvent {
   progressDurationMs?: number
   progressError?: string
   progressHasArtifactTarget?: boolean
+  snapshot?: {
+    hash: string
+    step: number
+    files: string[]
+    timestamp: number
+  }
   reasoningContent?: string
   toolCall?: ToolCall
   toolResult?: ToolExecutionResult
@@ -824,10 +831,6 @@ export class AgentRuntime {
   }
 }
 
-function isHarnessRuntimeEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_PANDA_AGENT_HARNESS === '1'
-}
-
 function mapChatModeToHarnessAgent(chatMode: PromptContext['chatMode']): string {
   switch (chatMode) {
     case 'architect':
@@ -1119,140 +1122,99 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
       ? mapChatModeToHarnessAgent(promptContext.chatMode)
       : 'build'
 
-    let streamedText = ''
     let attemptText = ''
     let sawToolCall = false
     let fenceTriggered = false
     let pendingComplete: AgentEvent | null = null
-    const pendingToolCalls: Array<{
-      id: string
-      toolName: string
-      args: Record<string, unknown>
-      startedAt: number
-    }> = []
-    const busQueue: AgentEvent[] = []
-    const unsub = harnessBus.on(['permission.requested', 'permission.decided'], (busEvent) => {
-      if (busEvent.sessionID !== sessionID) return
-      const payload = busEvent.payload as Record<string, unknown>
-      switch (busEvent.type) {
-        case 'permission.requested':
-          busQueue.push({
-            type: 'progress_step',
-            content: 'Permission requested',
-            progressStatus: 'running',
-            progressCategory: 'tool',
-          })
-          break
-        case 'permission.decided':
-          busQueue.push({
-            type: 'progress_step',
-            content: `Permission ${String(payload.decision ?? 'unknown')}`,
-            progressStatus: payload.decision === 'deny' ? 'error' : 'completed',
-            progressCategory: 'tool',
-          })
-          break
+    let shouldResume = false
+    if (
+      config?.harnessAutoResume === true &&
+      (config.harnessCheckpointStore ?? this.options.harnessCheckpointStore)
+    ) {
+      try {
+        const checkpointStore =
+          config.harnessCheckpointStore ?? this.options.harnessCheckpointStore!
+        const checkpoint = await checkpointStore.load(sessionID)
+        shouldResume = checkpoint !== null && checkpoint.reason !== 'complete'
+      } catch (error) {
+        logRuntimeError('Failed to load harness checkpoint, falling back to fresh run', error)
+        shouldResume = false
       }
-    })
+    }
 
-    try {
-      let shouldResume = false
-      if (
-        config?.harnessAutoResume === true &&
-        (config.harnessCheckpointStore ?? this.options.harnessCheckpointStore)
-      ) {
-        try {
-          const checkpointStore =
-            config.harnessCheckpointStore ?? this.options.harnessCheckpointStore!
-          const checkpoint = await checkpointStore.load(sessionID)
-          shouldResume = checkpoint !== null && checkpoint.reason !== 'complete'
-        } catch (error) {
-          logRuntimeError('Failed to load harness checkpoint, falling back to fresh run', error)
-          shouldResume = false
+    const source = shouldResume
+      ? harnessRuntime.resume(sessionID)
+      : harnessRuntime.run(sessionID, userMessage, initialMessages)
+
+    for await (const event of source) {
+      const mapped = mapHarnessEventToAgentEvent(event)
+
+      if (!mapped) continue
+
+      if (mapped.type === 'tool_call') {
+        sawToolCall = true
+        yield {
+          type: 'progress_step',
+          content: `Running tool: ${mapped.toolCall?.function.name ?? 'unknown'}`,
+          progressStatus: 'running',
+          progressCategory: 'tool',
+          progressToolName: mapped.toolCall?.function.name,
+          progressToolCallId: mapped.toolCall?.id,
+          progressArgs: mapped.toolCall
+            ? JSON.parse(mapped.toolCall.function.arguments)
+            : undefined,
         }
-      }
-
-      const source = shouldResume
-        ? harnessRuntime.resume(sessionID)
-        : harnessRuntime.run(sessionID, userMessage, initialMessages)
-
-      for await (const event of source) {
-        const mapped = mapHarnessEventToAgentEvent(event, pendingToolCalls)
-
-        while (busQueue.length > 0) {
-          yield busQueue.shift()!
-        }
-
-        if (!mapped) continue
-
-        if (mapped.type === 'tool_call') {
-          sawToolCall = true
-          yield {
-            type: 'progress_step',
-            content: `Running tool: ${mapped.toolCall?.function.name ?? 'unknown'}`,
-            progressStatus: 'running',
-            progressCategory: 'tool',
-            progressToolName: mapped.toolCall?.function.name,
-            progressToolCallId: mapped.toolCall?.id,
-            progressArgs: mapped.toolCall
-              ? JSON.parse(mapped.toolCall.function.arguments)
-              : undefined,
-          }
-          yield mapped
-          continue
-        }
-
-        if (mapped.type === 'tool_result') {
-          yield {
-            type: 'progress_step',
-            content: `Tool ${mapped.toolResult?.error ? 'failed' : 'completed'}: ${
-              mapped.toolResult?.toolName ?? 'unknown'
-            }`,
-            progressStatus: mapped.toolResult?.error ? 'error' : 'completed',
-            progressCategory: 'tool',
-            progressToolName: mapped.toolResult?.toolName,
-            progressToolCallId: mapped.toolResult?.toolCallId,
-            progressArgs: mapped.toolResult?.args,
-            progressDurationMs: mapped.toolResult?.durationMs,
-            progressError: mapped.toolResult?.error,
-          }
-          yield mapped
-          continue
-        }
-
-        if (mapped.type === 'text' && mapped.content) {
-          const isGuardrailMode =
-            promptContext.chatMode === 'build' || promptContext.chatMode === 'architect'
-          if (isGuardrailMode) {
-            const combined = attemptText + mapped.content
-            const fenceIndex = combined.indexOf('```')
-            if (fenceIndex !== -1) {
-              const safePrefixLength = Math.max(0, fenceIndex - attemptText.length)
-              if (safePrefixLength > 0) {
-                const safeText = mapped.content.slice(0, safePrefixLength)
-                attemptText += safeText
-                streamedText += safeText
-                yield { ...mapped, content: safeText }
-              }
-              fenceTriggered = true
-              break
-            }
-          }
-
-          attemptText += mapped.content
-          streamedText += mapped.content
-          yield mapped
-          continue
-        }
-
-        if (mapped.type === 'complete') {
-          pendingComplete = { ...mapped }
-          continue
-        }
-
         yield mapped
+        continue
       }
-    } finally {
-      unsub()
+
+      if (mapped.type === 'tool_result') {
+        yield {
+          type: 'progress_step',
+          content: `Tool ${mapped.toolResult?.error ? 'failed' : 'completed'}: ${
+            mapped.toolResult?.toolName ?? 'unknown'
+          }`,
+          progressStatus: mapped.toolResult?.error ? 'error' : 'completed',
+          progressCategory: 'tool',
+          progressToolName: mapped.toolResult?.toolName,
+          progressToolCallId: mapped.toolResult?.toolCallId,
+          progressArgs: mapped.toolResult?.args,
+          progressDurationMs: mapped.toolResult?.durationMs,
+          progressError: mapped.toolResult?.error,
+        }
+        yield mapped
+        continue
+      }
+
+      if (mapped.type === 'text' && mapped.content) {
+        const isGuardrailMode =
+          promptContext.chatMode === 'build' || promptContext.chatMode === 'architect'
+        if (isGuardrailMode) {
+          const combined = attemptText + mapped.content
+          const fenceIndex = combined.indexOf('```')
+          if (fenceIndex !== -1) {
+            const safePrefixLength = Math.max(0, fenceIndex - attemptText.length)
+            if (safePrefixLength > 0) {
+              const safeText = mapped.content.slice(0, safePrefixLength)
+              attemptText += safeText
+              yield { ...mapped, content: safeText }
+            }
+            fenceTriggered = true
+            break
+          }
+        }
+
+        attemptText += mapped.content
+        yield mapped
+        continue
+      }
+
+      if (mapped.type === 'complete') {
+        pendingComplete = { ...mapped }
+        continue
+      }
+
+      yield mapped
     }
 
     const shouldFallbackForArchitect =
@@ -1319,11 +1281,10 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
         rewriteUserMessage,
         rewriteInitialMessages
       )) {
-        const mapped = mapHarnessEventToAgentEvent(event, pendingToolCalls)
+        const mapped = mapHarnessEventToAgentEvent(event)
         if (!mapped) continue
 
         if (mapped.type === 'text' && mapped.content) {
-          streamedText += mapped.content
           yield mapped
         } else if (mapped.type === 'tool_result') {
           yield mapped
@@ -1341,12 +1302,8 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
       return
     }
 
-    while (busQueue.length > 0) {
-      yield busQueue.shift()!
-    }
-
     if (pendingComplete) {
-      yield { ...pendingComplete, content: streamedText }
+      yield pendingComplete
     }
   }
 
@@ -1375,15 +1332,7 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
   }
 }
 
-function mapHarnessEventToAgentEvent(
-  event: HarnessRuntimeEvent,
-  pendingToolCalls: Array<{
-    id: string
-    toolName: string
-    args: Record<string, unknown>
-    startedAt: number
-  }>
-): AgentEvent | null {
+function mapHarnessEventToAgentEvent(event: HarnessRuntimeEvent): AgentEvent | null {
   switch (event.type) {
     case 'step_start':
       return {
@@ -1395,29 +1344,19 @@ function mapHarnessEventToAgentEvent(
     case 'text':
       return { type: 'text', content: event.content }
     case 'tool_call': {
-      if (event.toolCall) {
-        pendingToolCalls.push({
-          id: event.toolCall.id,
-          toolName: event.toolCall.function.name,
-          args: JSON.parse(event.toolCall.function.arguments),
-          startedAt: Date.now(),
-        })
-      }
       return {
         type: 'tool_call',
         toolCall: event.toolCall,
       }
     }
     case 'tool_result': {
-      const pending = pendingToolCalls.shift()
-
       const toolResult: ToolExecutionResult = {
-        toolCallId: pending?.id ?? `harness-result-${Date.now()}`,
-        toolName: event.toolResult?.toolName ?? pending?.toolName ?? 'unknown',
-        args: pending?.args ?? {},
+        toolCallId: event.toolResult?.toolCallId ?? `harness-result-${Date.now()}`,
+        toolName: event.toolResult?.toolName ?? 'unknown',
+        args: event.toolResult?.args ?? {},
         output: event.toolResult?.output ?? '',
         error: event.toolResult?.error,
-        durationMs: pending ? Date.now() - pending.startedAt : 0,
+        durationMs: event.toolResult?.durationMs ?? 0,
         timestamp: Date.now(),
         retryCount: 0,
       }
@@ -1484,6 +1423,12 @@ function mapHarnessEventToAgentEvent(
         progressToolCallId: event.subagent?.id,
         progressError: event.subagent?.error,
       }
+    case 'snapshot':
+      return {
+        type: 'snapshot',
+        content: event.content,
+        snapshot: event.snapshot,
+      }
     case 'error':
       return { type: 'error', error: event.error }
     case 'complete':
@@ -1509,10 +1454,7 @@ export function createAgentRuntime(
   options: RuntimeOptions,
   toolContext: ToolContext
 ): AgentRuntimeLike {
-  if (isHarnessRuntimeEnabled()) {
-    return new HarnessAgentRuntimeAdapter(options, toolContext)
-  }
-  return new AgentRuntime(options, toolContext)
+  return new HarnessAgentRuntimeAdapter(options, toolContext)
 }
 
 /**

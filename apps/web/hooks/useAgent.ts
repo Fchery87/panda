@@ -26,15 +26,12 @@ import {
   createAgentRuntime,
   createToolContext,
   type AgentRuntimeLike,
-  type RuntimeConfig,
   type ConvexClient as AgentConvexClient,
 } from '../lib/agent'
-import { ConvexCheckpointStore } from '../lib/agent/harness/convex-checkpoint-store'
-import type { CheckpointStore as HarnessCheckpointStore } from '../lib/agent/harness/checkpoint-store'
 import type { FormalSpecification } from '../lib/agent/spec/types'
 import { getUserFacingAgentError } from '../lib/chat/error-messages'
 import { extractTargetFilePaths } from '../components/chat/live-run-utils'
-import { normalizeChatMode, type PromptContext, type ChatMode } from '../lib/agent/prompt-library'
+import { normalizeChatMode, type ChatMode } from '../lib/agent/prompt-library'
 import { derivePlanProgressMetadata, parsePlanSteps } from '../lib/agent/plan-progress'
 import { plugins, specTrackingPlugin } from '../lib/agent/harness/plugins'
 import { appLog } from '@/lib/logger'
@@ -44,8 +41,12 @@ import {
   formatOverviewForPrompt,
   type FileInfo,
 } from '../lib/agent/context/repo-overview'
-import { buildPlanContext } from '../lib/agent/context/plan-context'
-import { resolveBackgroundExecutionPolicy } from '../lib/chat/backgroundExecution'
+import {
+  buildAgentPromptContext,
+  buildAgentRuntimeConfig,
+  createAgentCheckpointStore,
+} from '../lib/agent/session-controller'
+import { useRunEventBuffer, type TracePersistenceStatus } from './useRunEventBuffer'
 
 /**
  * Agent status type
@@ -133,11 +134,15 @@ interface RunEventInput {
   planTotalSteps?: number
   completedPlanStepIndexes?: number[]
   usage?: Record<string, unknown>
+  snapshot?: {
+    hash: string
+    step: number
+    files: string[]
+    timestamp: number
+  }
 }
 
 type TokenSource = 'exact' | 'estimated'
-type TracePersistenceStatus = 'live' | 'degraded'
-
 interface UsageTotals {
   promptTokens: number
   completionTokens: number
@@ -153,11 +158,6 @@ interface UsageMetrics {
   remainingTokens: number
   usagePct: number
   contextSource: ContextWindowSource
-}
-
-interface BufferedRunEvent {
-  runId: Id<'agentRuns'>
-  event: RunEventInput & { sequence: number }
 }
 
 function summarizeArgs(args: Record<string, unknown> | undefined): string | undefined {
@@ -391,23 +391,13 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const [currentRunUsage, setCurrentRunUsage] = useState<UsageTotals & { source: TokenSource }>()
   const [currentSpec, setCurrentSpec] = useState<FormalSpecification | null>(null)
   const [pendingSpec, setPendingSpec] = useState<FormalSpecification | null>(null)
-  const [tracePersistenceStatus, setTracePersistenceStatus] =
-    useState<TracePersistenceStatus>('live')
 
   // Refs for controlling the agent
   const abortControllerRef = useRef<AbortController | null>(null)
   const isRunningRef = useRef(false)
   const toolContextRef = useRef<ReturnType<typeof createToolContext> | null>(null)
   const rafFlushRef = useRef<number | null>(null)
-  const runIdRef = useRef<Id<'agentRuns'> | null>(null)
-  const runSequenceRef = useRef(0)
-  const runEventBufferRef = useRef<BufferedRunEvent[]>([])
-  const runEventFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const runEventFlushPromiseRef = useRef<Promise<void> | null>(null)
   const runtimeRef = useRef<AgentRuntimeLike | null>(null)
-  const runEventFlushAgainRef = useRef(false)
-  const runEventFlushAgainForceRef = useRef(false)
-  const tracePersistenceStatusRef = useRef<TracePersistenceStatus>('live')
 
   // Create artifact queue helpers
   const artifactQueue = useRef({
@@ -551,122 +541,17 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       contextSource: contextWindowResolution.source,
     }
   }, [mode, sessionUsage, currentRunUsage, contextWindowResolution])
-
-  const setTraceStatus = useCallback((next: TracePersistenceStatus) => {
-    if (tracePersistenceStatusRef.current === next) return
-    tracePersistenceStatusRef.current = next
-    setTracePersistenceStatus(next)
-  }, [])
-
-  const flushRunEventBuffer = useCallback(
-    async (options?: { force?: boolean; reason?: string }) => {
-      if (runEventFlushTimerRef.current !== null) {
-        clearTimeout(runEventFlushTimerRef.current)
-        runEventFlushTimerRef.current = null
-      }
-
-      if (runEventFlushPromiseRef.current) {
-        runEventFlushAgainRef.current = true
-        if (options?.force) {
-          runEventFlushAgainForceRef.current = true
-        }
-        if (options?.force) {
-          await runEventFlushPromiseRef.current
-          // Force flush callers must wait for any trailing flush queued while an
-          // earlier flush was in flight.
-          await flushRunEventBuffer({ ...options, force: true })
-        }
-        return
-      }
-
-      if (runEventBufferRef.current.length === 0) return
-
-      const doFlush = async () => {
-        const pending = runEventBufferRef.current.splice(0, runEventBufferRef.current.length)
-        if (pending.length === 0) return
-
-        const grouped = new Map<Id<'agentRuns'>, Array<BufferedRunEvent['event']>>()
-        for (const entry of pending) {
-          const events = grouped.get(entry.runId)
-          if (events) {
-            events.push(entry.event)
-          } else {
-            grouped.set(entry.runId, [entry.event])
-          }
-        }
-
-        try {
-          for (const [runId, events] of grouped) {
-            await appendRunEvents({ runId, events })
-          }
-          setTraceStatus('live')
-        } catch (err) {
-          runEventBufferRef.current = [...pending, ...runEventBufferRef.current]
-          setTraceStatus('degraded')
-          logUseAgentError(
-            `Failed to flush run event buffer${options?.reason ? ` (${options.reason})` : ''}`,
-            err
-          )
-          // Best-effort retry path for transient failures; avoids throwing into UI flow.
-          if (runEventFlushTimerRef.current === null) {
-            runEventFlushTimerRef.current = setTimeout(() => {
-              runEventFlushTimerRef.current = null
-              void flushRunEventBuffer({ reason: 'retry' })
-            }, 1000)
-          }
-        }
-      }
-
-      runEventFlushPromiseRef.current = doFlush().finally(() => {
-        runEventFlushPromiseRef.current = null
-      })
-      await runEventFlushPromiseRef.current
-
-      if (runEventFlushAgainRef.current) {
-        const pendingForce = runEventFlushAgainForceRef.current
-        runEventFlushAgainRef.current = false
-        runEventFlushAgainForceRef.current = false
-        if (runEventBufferRef.current.length > 0) {
-          await flushRunEventBuffer({
-            ...options,
-            force: Boolean(options?.force) || pendingForce,
-          })
-        }
-      }
-    },
-    [appendRunEvents, setTraceStatus]
-  )
-
-  const scheduleRunEventFlush = useCallback(() => {
-    if (runEventFlushTimerRef.current !== null) return
-    runEventFlushTimerRef.current = setTimeout(() => {
-      runEventFlushTimerRef.current = null
-      void flushRunEventBuffer({ reason: 'timer' })
-    }, 400)
-  }, [flushRunEventBuffer])
-
-  const appendRunEvent = useCallback(
-    async (event: RunEventInput, options?: { forceFlush?: boolean }) => {
-      const runId = runIdRef.current
-      if (!runId) return
-      runSequenceRef.current += 1
-      runEventBufferRef.current.push({
-        runId,
-        event: { sequence: runSequenceRef.current, ...event },
-      })
-
-      if (runEventBufferRef.current.length >= 10 || options?.forceFlush) {
-        await flushRunEventBuffer({
-          force: Boolean(options?.forceFlush),
-          reason: options?.forceFlush ? 'force' : 'threshold',
-        })
-        return
-      }
-
-      scheduleRunEventFlush()
-    },
-    [flushRunEventBuffer, scheduleRunEventFlush]
-  )
+  const {
+    tracePersistenceStatus,
+    runIdRef,
+    beginRun,
+    clearRun,
+    appendRunEvent,
+    flushRunEventBuffer,
+  } = useRunEventBuffer<RunEventInput>({
+    appendRunEvents,
+    onError: logUseAgentError,
+  })
 
   // Stop the agent
   const stop = useCallback(() => {
@@ -683,17 +568,13 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       cancelAnimationFrame(rafFlushRef.current)
       rafFlushRef.current = null
     }
-    if (runEventFlushTimerRef.current !== null) {
-      clearTimeout(runEventFlushTimerRef.current)
-      runEventFlushTimerRef.current = null
-    }
     if (runId) {
       // Keep runId/sequence until sendMessage finalizes the stopped run so
       // trailing abort-unwind events can still be buffered and persisted.
       void flushRunEventBuffer({ force: true, reason: 'stop' })
     }
     setStatus('idle')
-  }, [flushRunEventBuffer, pendingSpec])
+  }, [flushRunEventBuffer, pendingSpec, runIdRef])
 
   // Clear messages
   const clear = useCallback(async () => {
@@ -919,8 +800,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           model,
           userMessage: userContent,
         })
-        runIdRef.current = runId
-        runSequenceRef.current = 0
+        beginRun(runId)
         if (onRunCreated) {
           await onRunCreated({
             runId,
@@ -938,8 +818,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             summary,
             usage,
           })
-          runIdRef.current = null
-          runSequenceRef.current = 0
+          clearRun()
         }
 
         const finalizeRunFailed = async (message: string) => {
@@ -950,8 +829,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             runId: runIdRef.current,
             error: message,
           })
-          runIdRef.current = null
-          runSequenceRef.current = 0
+          clearRun()
         }
 
         const finalizeRunStopped = async () => {
@@ -961,8 +839,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           await stopRun({
             runId: runIdRef.current,
           })
-          runIdRef.current = null
-          runSequenceRef.current = 0
+          clearRun()
         }
 
         await appendRunEvent({
@@ -971,55 +848,38 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           status: 'running',
         })
 
-        const promptContext: PromptContext = {
+        const promptContext = buildAgentPromptContext({
           projectId,
           chatId,
           userId,
           projectName,
           projectDescription,
-          chatMode: mode,
-          // Use the configured provider type (e.g. "zai") rather than the
-          // implementation class name (e.g. "openai-compatible").
+          mode,
           provider: provider?.config?.provider || 'openai',
-          previousMessages: previousMessagesSnapshot,
-          projectOverview:
-            mode === 'architect' && projectFiles
-              ? [
-                  projectOverviewContent,
-                  buildPlanContext({
-                    files: projectFiles.map((f) => ({
-                      path: f.path,
-                      content: f.content,
-                      updatedAt: f.updatedAt,
-                    })),
-                    userMessage: userContent,
-                  }),
-                ]
-                  .filter((value): value is string => Boolean(value))
-                  .join('\n\n') || undefined
-              : (projectOverviewContent ?? undefined),
-          memoryBank: memoryBankContent ?? undefined,
-          userMessage:
-            contextFiles && contextFiles.length > 0
-              ? `${userContent}\n\n[Context files referenced by user: ${contextFiles.map((f) => `@file:${f}`).join(', ')}. Read these files first when relevant to the request.]`
-              : userContent,
-          customInstructions: architectBrainstormEnabled
-            ? 'Architect brainstorming protocol: enabled'
-            : undefined,
-        }
+          previousMessages: previousMessagesSnapshot.map((message) => ({
+            role: message.role === 'assistant' ? 'assistant' : 'user',
+            content: message.content,
+          })),
+          projectOverviewContent,
+          projectFiles: projectFiles?.map((file) => ({
+            path: file.path,
+            content: file.content,
+            updatedAt: file.updatedAt,
+          })),
+          memoryBankContent,
+          userContent,
+          contextFiles,
+          architectBrainstormEnabled,
+        })
 
         // Create runtime config with deduplication
         // Note: maxToolCallsPerIteration is set high to allow batch file generation
         // The AI should be able to generate as many files as needed in one iteration
-        const runtimeConfig: RuntimeConfig = {
-          maxIterations: 10,
-          maxToolCallsPerIteration: 50,
-          enableToolDeduplication: true,
-          toolLoopThreshold: 3,
-          harnessSessionID: options?.harnessSessionID ?? `harness_run_${runId}`,
-          harnessAutoResume: true,
-          harnessSpecApprovalMode: resolveBackgroundExecutionPolicy(mode).harnessSpecApprovalMode,
-        }
+        const runtimeConfig = buildAgentRuntimeConfig({
+          runId,
+          mode,
+          harnessSessionID: options?.harnessSessionID,
+        })
 
         // Get tool context
         if (!userId) {
@@ -1041,36 +901,21 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           query: (func: unknown, args: Record<string, unknown>) => Promise<unknown>
           mutation: (func: unknown, args: Record<string, unknown>) => Promise<unknown>
         }
-        const checkpointStore: HarnessCheckpointStore = options?.harnessSessionID
-          ? {
-              async save(checkpoint) {
-                await new ConvexCheckpointStore(checkpointClient, {
-                  runId,
-                  chatId,
-                  projectId,
-                }).save(checkpoint)
-              },
-              async load(sessionID) {
-                return await new ConvexCheckpointStore(checkpointClient, {
-                  chatId,
-                  projectId,
-                }).load(sessionID)
-              },
-            }
-          : new ConvexCheckpointStore(checkpointClient, {
-              runId,
-              chatId,
-              projectId,
-            })
+        const checkpointStore = createAgentCheckpointStore({
+          client: checkpointClient,
+          runId,
+          chatId,
+          projectId,
+          harnessSessionID: options?.harnessSessionID,
+        })
         const runtime = createAgentRuntime(
           {
             provider,
             model,
             maxIterations: runtimeConfig.maxIterations,
             harnessCheckpointStore: checkpointStore,
-            // Risk interrupt UI is not yet implemented — agent permission layer handles
-            // write_files/run_command authorization (build agent allows both by default)
-            harnessEnableRiskInterrupts: false,
+            // Enable risk interrupts - PermissionDialog handles the UI
+            harnessEnableRiskInterrupts: true,
             ...(runtimeSettings.reasoning ? { reasoning: runtimeSettings.reasoning } : {}),
           },
           toolContext
@@ -1166,6 +1011,27 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               const iterationMatch = event.content?.match(/Iteration (\d+)/)
               if (iterationMatch) {
                 setCurrentIteration(parseInt(iterationMatch[1], 10))
+              }
+              break
+            }
+
+            case 'retry': {
+              // Handle stream retry events
+              if (event.content) {
+                void appendRunEvent({
+                  type: 'status',
+                  content: event.content,
+                  status: 'retrying',
+                })
+                // Add a progress step to show retry status
+                const step: ProgressStep = {
+                  id: `progress-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                  content: event.content,
+                  status: 'running',
+                  category: 'other',
+                  createdAt: Date.now(),
+                }
+                setProgressSteps((prev) => [...prev, step].slice(-30))
               }
               break
             }
@@ -1448,6 +1314,25 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               }
               break
 
+            case 'snapshot':
+              if (event.snapshot) {
+                const step: ProgressStep = {
+                  id: `snapshot-${event.snapshot.hash}`,
+                  content: event.content ?? `Step ${event.snapshot.step} snapshot created`,
+                  status: 'completed',
+                  category: 'other',
+                  createdAt: event.snapshot.timestamp,
+                }
+                setProgressSteps((prev) => [...prev, step].slice(-30))
+                void appendRunEvent({
+                  type: 'snapshot',
+                  content: step.content,
+                  status: 'completed',
+                  snapshot: event.snapshot,
+                })
+              }
+              break
+
             case 'complete':
               setPendingSpec(null)
               setStatus('complete')
@@ -1585,8 +1470,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             await stopRun({
               runId: runIdRef.current,
             })
-            runIdRef.current = null
-            runSequenceRef.current = 0
+            clearRun()
           }
           return
         }
@@ -1609,8 +1493,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           } catch (runErr) {
             logUseAgentError('Failed to finalize run failure', runErr)
           } finally {
-            runIdRef.current = null
-            runSequenceRef.current = 0
+            clearRun()
           }
         }
         toast.error(userFacing.title, {
@@ -1628,6 +1511,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       providerType,
       architectBrainstormEnabled,
       addMessage,
+      beginRun,
+      clearRun,
       createRun,
       appendRunEvent,
       completeRun,
@@ -1637,6 +1522,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       flushRunEventBuffer,
       stopRun,
       userId,
+      runIdRef,
       getReasoningRuntimeSettings,
       sessionUsage.totalTokens,
       contextWindowResolution.contextWindow,
@@ -1724,39 +1610,25 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             ? scenario.input
             : JSON.stringify(scenario.input ?? '', null, 2)
 
-      const promptContext: PromptContext = {
+      const promptContext = buildAgentPromptContext({
         projectId,
         chatId,
         userId,
         projectName,
         projectDescription,
-        chatMode: scenarioMode,
+        mode: scenarioMode,
         provider: provider.config?.provider || 'openai',
         previousMessages: [],
-        ...(scenarioMode === 'architect' && projectFiles
-          ? {
-              projectOverview:
-                [
-                  projectOverviewContent,
-                  buildPlanContext({
-                    files: projectFiles.map((f) => ({
-                      path: f.path,
-                      content: f.content,
-                      updatedAt: f.updatedAt,
-                    })),
-                    userMessage: textInput,
-                  }),
-                ]
-                  .filter((value): value is string => Boolean(value))
-                  .join('\n\n') || undefined,
-            }
-          : { projectOverview: projectOverviewContent ?? undefined }),
-        memoryBank: memoryBankContent ?? undefined,
-        userMessage: textInput,
-        customInstructions: architectBrainstormEnabled
-          ? 'Architect brainstorming protocol: enabled'
-          : undefined,
-      }
+        projectOverviewContent,
+        projectFiles: projectFiles?.map((file) => ({
+          path: file.path,
+          content: file.content,
+          updatedAt: file.updatedAt,
+        })),
+        memoryBankContent,
+        userContent: textInput,
+        architectBrainstormEnabled,
+      })
 
       const result = await runtime.runSync(promptContext)
       return {

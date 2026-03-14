@@ -20,6 +20,8 @@ import type {
   CompletionMessage,
   ToolDefinition,
 } from '../types'
+import { getDefaultProviderCapabilities } from '../types'
+import { mapReasoningToProvider, processChunkWithThinking } from '../reasoning-transform'
 import { zaiCompletionStream } from './zai-stream'
 
 type FinishReason = NonNullable<StreamChunk['finishReason']>
@@ -204,7 +206,13 @@ export class OpenAICompatibleProvider implements LLMProvider {
       const tools =
         options.tools && options.tools.length > 0 ? this.convertTools(options.tools) : undefined
 
-      const streamOptions: StreamTextArgs = {
+      // Apply reasoning options if available
+      const providerType = this.config.provider
+      const capabilities = this.config.capabilities ?? getDefaultProviderCapabilities(providerType)
+      const reasoningParams = mapReasoningToProvider(options.reasoning, providerType, capabilities)
+
+      // Build stream options with reasoning support
+      const streamOptions = {
         model: this.client(options.model),
         messages: this.convertMessages(options.messages),
         temperature: options.temperature ?? 0.7,
@@ -214,7 +222,12 @@ export class OpenAICompatibleProvider implements LLMProvider {
         frequencyPenalty: options.frequencyPenalty,
         presencePenalty: options.presencePenalty,
         ...(tools && { tools }),
-      }
+        ...(reasoningParams && {
+          providerOptions: {
+            [providerType]: reasoningParams as Record<string, unknown>,
+          },
+        }),
+      } as StreamTextArgs
 
       const result = streamText(streamOptions)
       for await (const part of result.fullStream as AsyncIterable<AiStreamPart>) {
@@ -223,8 +236,13 @@ export class OpenAICompatibleProvider implements LLMProvider {
             const delta = part.textDelta ?? part.text
             if (!delta) break
             const chunks = splitForPerceivedStreaming(delta)
-            for (const chunk of chunks) {
-              yield { type: 'text', content: chunk }
+            for (const chunkText of chunks) {
+              const chunk: StreamChunk = { type: 'text', content: chunkText }
+              // Process for think tags (DeepSeek, open-source models)
+              const processed = processChunkWithThinking(chunk)
+              for (const processedChunk of processed) {
+                yield processedChunk
+              }
             }
             break
           }
