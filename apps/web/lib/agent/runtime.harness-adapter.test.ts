@@ -748,6 +748,69 @@ describe('Harness adapter guardrail parity', () => {
     expect(writeResult?.toolResult?.error).toContain('Eval mode denied tool')
   })
 
+  it('does not crash when harness tool-call progress receives malformed JSON arguments', async () => {
+    const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }
+    const provider: LLMProvider = {
+      name: 'fake',
+      config,
+      async listModels() {
+        return []
+      },
+      async complete() {
+        throw new Error('not used')
+      },
+      async *completionStream(_options: CompletionOptions): AsyncGenerator<StreamChunk> {
+        yield {
+          type: 'tool_call',
+          toolCall: {
+            id: 'tool-malformed',
+            type: 'function',
+            function: {
+              name: 'read_files',
+              arguments: '{"paths":["apps/web/lib/agent/runtime.ts',
+            },
+          },
+        }
+        yield {
+          type: 'finish',
+          finishReason: 'tool_calls',
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        }
+      },
+    }
+
+    const events: any[] = []
+    for await (const evt of streamAgent(
+      provider,
+      {
+        projectId: 'p',
+        chatId: 'c',
+        userId: 'u',
+        chatMode: 'build',
+        provider: 'openai',
+        userMessage: 'read the runtime file',
+      },
+      makeToolContext(),
+      {},
+      { harnessEnableRiskInterrupts: false }
+    )) {
+      events.push(evt)
+    }
+
+    const progressStep = events.find(
+      (event) =>
+        event.type === 'progress_step' && event.progressToolCallId === 'tool-malformed'
+    )
+    expect(progressStep).toBeDefined()
+    expect(progressStep?.progressArgs).toEqual({})
+
+    const toolResult = events.find(
+      (event) => event.type === 'tool_result' && event.toolResult?.toolCallId === 'tool-malformed'
+    )
+    expect(toolResult).toBeDefined()
+    expect(toolResult?.toolResult?.error).toBeDefined()
+  })
+
   it('pauses explicit specs until approval and resumes after approval', async () => {
     let callCount = 0
     const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }

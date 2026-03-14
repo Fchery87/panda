@@ -31,6 +31,7 @@ import {
   ascending as harnessAscending,
 } from './harness'
 import type { CheckpointStore as HarnessCheckpointStore } from './harness/checkpoint-store'
+import { safeJSONParse } from './harness/tool-repair'
 import type { Permission as HarnessPermission } from './harness/types'
 import type { FormalSpecification, SpecTier } from './spec/types'
 
@@ -1168,7 +1169,7 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
           progressToolName: mapped.toolCall?.function.name,
           progressToolCallId: mapped.toolCall?.id,
           progressArgs: mapped.toolCall
-            ? JSON.parse(mapped.toolCall.function.arguments)
+            ? (safeJSONParse<Record<string, unknown>>(mapped.toolCall.function.arguments, {}) ?? {})
             : undefined,
         }
         yield mapped
