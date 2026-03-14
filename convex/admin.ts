@@ -1,6 +1,7 @@
 import { query, mutation, type MutationCtx, type QueryCtx } from './_generated/server'
 import { v } from 'convex/values'
 import { getAuthUserId } from '@convex-dev/auth/server'
+import type { Id } from './_generated/dataModel'
 
 /**
  * Check if the current user is an admin
@@ -19,6 +20,39 @@ async function requireAdmin(ctx: AdminCtx) {
   }
 
   return { userId, user }
+}
+
+async function countProjectsByUser(ctx: AdminCtx, userId: string) {
+  const userIdAsId = ctx.db.normalizeId('users', userId)
+  if (!userIdAsId) return 0
+
+  const projects = await ctx.db
+    .query('projects')
+    .withIndex('by_creator', (q) => q.eq('createdBy', userIdAsId))
+    .collect()
+
+  return projects.length
+}
+
+async function countChatsByUser(ctx: AdminCtx, userId: string) {
+  const userIdAsId = ctx.db.normalizeId('users', userId)
+  if (!userIdAsId) return 0
+
+  const projects = await ctx.db
+    .query('projects')
+    .withIndex('by_creator', (q) => q.eq('createdBy', userIdAsId))
+    .collect()
+
+  let chatCount = 0
+  for (const project of projects) {
+    const chats = await ctx.db
+      .query('chats')
+      .withIndex('by_project', (q) => q.eq('projectId', project._id))
+      .collect()
+    chatCount += chats.length
+  }
+
+  return chatCount
 }
 
 /**
@@ -80,6 +114,23 @@ export const updateSettings = mutation({
     const { userId } = await requireAdmin(ctx)
 
     const existing = await ctx.db.query('adminSettings').order('desc').first()
+    const previousSettings = existing
+      ? {
+          globalDefaultProvider: existing.globalDefaultProvider ?? null,
+          globalDefaultModel: existing.globalDefaultModel ?? null,
+          enhancementProvider: existing.enhancementProvider ?? null,
+          enhancementModel: existing.enhancementModel ?? null,
+          allowUserOverrides: existing.allowUserOverrides ?? true,
+          allowUserMCP: existing.allowUserMCP ?? true,
+          allowUserSubagents: existing.allowUserSubagents ?? true,
+          systemMaintenance: existing.systemMaintenance ?? false,
+          registrationEnabled: existing.registrationEnabled ?? true,
+          maxProjectsPerUser: existing.maxProjectsPerUser ?? 100,
+          maxChatsPerProject: existing.maxChatsPerProject ?? 50,
+          trackUsageAnalytics: existing.trackUsageAnalytics ?? true,
+          trackProviderUsage: existing.trackProviderUsage ?? true,
+        }
+      : null
 
     const updateData = {
       ...args,
@@ -87,12 +138,34 @@ export const updateSettings = mutation({
       updatedBy: userId,
     }
 
+    const resourceId = existing ? existing._id : await ctx.db.insert('adminSettings', updateData)
+
     if (existing) {
       await ctx.db.patch(existing._id, updateData)
-      return existing._id
-    } else {
-      return await ctx.db.insert('adminSettings', updateData)
     }
+
+    const changedKeys = Object.keys(args).filter((key) => {
+      const typedKey = key as keyof typeof args
+      return previousSettings?.[typedKey as keyof typeof previousSettings] !== args[typedKey]
+    })
+
+    await ctx.db.insert('auditLog', {
+      userId,
+      action: 'UPDATE_SETTINGS',
+      resource: 'adminSettings',
+      resourceId,
+      details: {
+        changedKeys,
+        before: previousSettings,
+        after: {
+          ...previousSettings,
+          ...args,
+        },
+      },
+      createdAt: Date.now(),
+    })
+
+    return resourceId
   },
 })
 
@@ -113,9 +186,17 @@ export const listUsers = query({
 
     const limit = args.limit ?? 50
 
-    // Get all users and filter in memory
-    // Note: For production with many users, consider implementing pagination with cursors
-    const allUsers = await ctx.db.query('users').order('desc').take(1000)
+    let allUsers = await ctx.db.query('users').order('desc').take(1000)
+    if (args.cursor) {
+      const cursorUser = await ctx.db.get(args.cursor as Id<'users'>)
+      if (cursorUser) {
+        allUsers = allUsers.filter(
+          (user) =>
+            user._creationTime < cursorUser._creationTime ||
+            (user._creationTime === cursorUser._creationTime && user._id < cursorUser._id)
+        )
+      }
+    }
 
     // Apply filters in memory
     let users = allUsers
@@ -141,7 +222,7 @@ export const listUsers = query({
     const hasMore = users.length > limit
     const results = hasMore ? users.slice(0, limit) : users
 
-    // Get user analytics for each user
+    const projectCountByUser = new Map<string, number>()
     const usersWithAnalytics = await Promise.all(
       results.map(async (user) => {
         const analytics = await ctx.db
@@ -149,9 +230,19 @@ export const listUsers = query({
           .withIndex('by_user', (q) => q.eq('userId', user._id))
           .first()
 
+        const projectCount = analytics?.totalProjects ?? (await countProjectsByUser(ctx, user._id))
+        projectCountByUser.set(user._id, projectCount)
+
         return {
           ...user,
-          analytics: analytics || null,
+          analytics: analytics
+            ? {
+                ...analytics,
+                totalProjects: analytics?.totalProjects ?? projectCountByUser.get(user._id) ?? 0,
+              }
+            : {
+                totalProjects: projectCountByUser.get(user._id) ?? 0,
+              },
         }
       })
     )
@@ -209,10 +300,21 @@ export const getUserDetails = query({
       .withIndex('by_user', (q) => q.eq('userId', args.userId))
       .collect()
 
+    const chatCount = analytics?.totalChats ?? (await countChatsByUser(ctx, args.userId))
+
     return {
       user,
       settings,
-      analytics,
+      analytics: analytics
+        ? {
+            ...analytics,
+            totalProjects: analytics?.totalProjects ?? projects.length,
+            totalChats: analytics?.totalChats ?? chatCount,
+          }
+        : {
+            totalProjects: projects.length,
+            totalChats: chatCount,
+          },
       projectCount: projects.length,
       mcpServerCount: mcpServers.length,
       subagentCount: subagents.length,
@@ -449,7 +551,17 @@ export const getSystemOverview = query({
 
     // Get active users (last 24 hours) - based on analytics
     const userAnalytics = await ctx.db.query('userAnalytics').collect()
-    const recentlyActive = userAnalytics.filter((a) => a.lastActiveAt && a.lastActiveAt > oneDayAgo)
+    const recentAnalyticsUsers = new Set(
+      userAnalytics
+        .filter((a) => a.lastActiveAt && a.lastActiveAt > oneDayAgo)
+        .map((analytics) => analytics.userId)
+    )
+    const recentRunUsers = new Set(
+      (await ctx.db.query('agentRuns').collect())
+        .filter((run) => run.startedAt > oneDayAgo)
+        .map((run) => run.userId)
+    )
+    const recentlyActive = new Set([...recentAnalyticsUsers, ...recentRunUsers])
 
     return {
       users: {
@@ -458,7 +570,7 @@ export const getSystemOverview = query({
         admins: adminUsers.length,
         banned: bannedUsers.length,
         recentRegistrations: recentRegistrations.length,
-        recentlyActive: recentlyActive.length,
+        recentlyActive: recentlyActive.size,
       },
       projects: {
         total: totalProjects.length,

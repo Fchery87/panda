@@ -33,6 +33,7 @@ import {
   FolderGit,
   Bot,
   Activity,
+  ChevronDown,
 } from 'lucide-react'
 
 const filterOptions = [
@@ -45,14 +46,29 @@ const filterOptions = [
 type AdminUserFilter = 'all' | 'admins' | 'banned' | 'active'
 type AdminUserId = Id<'users'>
 
+type AdminListUser = NonNullable<
+  ReturnType<typeof useQuery<typeof api.admin.listUsers>>
+>['users'][number]
+
+function mergeUsers(existing: AdminListUser[], incoming: AdminListUser[]): AdminListUser[] {
+  const merged = new Map(existing.map((user) => [user._id, user]))
+  for (const user of incoming) {
+    merged.set(user._id, user)
+  }
+  return Array.from(merged.values())
+}
+
 export default function AdminUsersPage() {
   const router = useRouter()
   const [search, setSearch] = React.useState('')
   const [filter, setFilter] = React.useState<AdminUserFilter>('all')
   const [selectedUserId, setSelectedUserId] = React.useState<AdminUserId | null>(null)
   const [isLoading, setIsLoading] = React.useState(false)
+  const [cursor, setCursor] = React.useState<string | undefined>(undefined)
+  const [loadedUsers, setLoadedUsers] = React.useState<AdminListUser[]>([])
 
   const users = useQuery(api.admin.listUsers, {
+    cursor,
     search: search || undefined,
     filter,
     limit: 50,
@@ -66,6 +82,16 @@ export default function AdminUsersPage() {
   const updateUserAdmin = useMutation(api.admin.updateUserAdmin)
   const updateUserBan = useMutation(api.admin.updateUserBan)
   const deleteUser = useMutation(api.admin.deleteUser)
+
+  React.useEffect(() => {
+    setCursor(undefined)
+    setLoadedUsers([])
+  }, [search, filter])
+
+  React.useEffect(() => {
+    if (!users) return
+    setLoadedUsers((previous) => (cursor ? mergeUsers(previous, users.users) : users.users))
+  }, [users, cursor])
 
   const handleToggleAdmin = async (userId: AdminUserId, isAdmin: boolean) => {
     setIsLoading(true)
@@ -175,7 +201,7 @@ export default function AdminUsersPage() {
         {/* User List */}
         <Card className="rounded-none lg:col-span-2">
           <CardHeader>
-            <CardTitle>Users ({users?.users.length || 0})</CardTitle>
+            <CardTitle>Users ({loadedUsers.length || 0})</CardTitle>
             <CardDescription>
               Click on a user to view details and manage permissions
             </CardDescription>
@@ -183,7 +209,7 @@ export default function AdminUsersPage() {
           <CardContent>
             <ScrollArea className="h-[600px]">
               <div className="space-y-2">
-                {users?.users.map((user) => (
+                {loadedUsers.map((user) => (
                   <div
                     key={user._id}
                     onClick={() => setSelectedUserId(user._id)}
@@ -228,9 +254,22 @@ export default function AdminUsersPage() {
                   </div>
                 ))}
 
-                {users?.users.length === 0 && (
+                {loadedUsers.length === 0 && (
                   <div className="py-12 text-center text-muted-foreground">No users found</div>
                 )}
+
+                {users?.hasMore ? (
+                  <div className="flex justify-center pt-4">
+                    <Button
+                      variant="outline"
+                      className="rounded-none"
+                      onClick={() => setCursor(users.nextCursor ?? undefined)}
+                    >
+                      <ChevronDown className="mr-2 h-4 w-4" />
+                      Load More Users
+                    </Button>
+                  </div>
+                ) : null}
               </div>
             </ScrollArea>
           </CardContent>

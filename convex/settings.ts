@@ -50,6 +50,8 @@ async function getAdminSettings(ctx: SettingsCtx) {
       allowUserOverrides: true,
       allowUserMCP: true,
       allowUserSubagents: true,
+      systemMaintenance: false,
+      registrationEnabled: true,
       updatedAt: 0,
     }
   )
@@ -209,6 +211,8 @@ export const getAdminDefaults = query({
       allowUserOverrides: adminSettings.allowUserOverrides ?? true,
       allowUserMCP: adminSettings.allowUserMCP ?? true,
       allowUserSubagents: adminSettings.allowUserSubagents ?? true,
+      registrationEnabled: adminSettings.registrationEnabled ?? true,
+      systemMaintenance: adminSettings.systemMaintenance ?? false,
       updatedAt: adminSettings.updatedAt,
     }
   },

@@ -798,8 +798,7 @@ describe('Harness adapter guardrail parity', () => {
     }
 
     const progressStep = events.find(
-      (event) =>
-        event.type === 'progress_step' && event.progressToolCallId === 'tool-malformed'
+      (event) => event.type === 'progress_step' && event.progressToolCallId === 'tool-malformed'
     )
     expect(progressStep).toBeDefined()
     expect(progressStep?.progressArgs).toEqual({})

@@ -3,6 +3,7 @@ import { v } from 'convex/values'
 import { ChatMode, PersistedRunEvent, RuntimeCheckpointPayload, TokenUsage } from './schema'
 import type { Id } from './_generated/dataModel'
 import { requireAgentRunOwner, requireChatOwner, requireProjectOwner } from './lib/authz'
+import { trackUserAnalytics } from './lib/userAnalytics'
 
 type RuntimeCheckpointEnvelope = {
   version: number
@@ -75,7 +76,7 @@ export const create = mutation({
     }
 
     const startedAt = Date.now()
-    return await ctx.db.insert('agentRuns', {
+    const runId = await ctx.db.insert('agentRuns', {
       projectId: args.projectId,
       chatId: args.chatId,
       userId,
@@ -86,6 +87,12 @@ export const create = mutation({
       status: 'running',
       startedAt,
     })
+
+    await trackUserAnalytics(ctx, userId, {
+      provider: args.provider,
+    })
+
+    return runId
   },
 })
 
@@ -138,7 +145,7 @@ export const complete = mutation({
     usage: v.optional(TokenUsage),
   },
   handler: async (ctx, args) => {
-    await requireAgentRunOwner(ctx, args.runId)
+    const { userId } = await requireAgentRunOwner(ctx, args.runId)
 
     const completedAt = Date.now()
     await ctx.db.patch(args.runId, {
@@ -146,6 +153,10 @@ export const complete = mutation({
       summary: args.summary,
       usage: args.usage,
       completedAt,
+    })
+
+    await trackUserAnalytics(ctx, userId, {
+      totalTokensUsed: args.usage?.totalTokens ?? 0,
     })
 
     return args.runId

@@ -441,8 +441,8 @@ export default function AdminSystemPage() {
 
               <div className="rounded-none bg-muted p-4">
                 <p className="text-sm text-muted-foreground">
-                  <strong>Note:</strong> These limits are currently for reference only. Future
-                  versions will enforce these limits automatically.
+                  <strong>Note:</strong> These limits are enforced when users create new projects
+                  and chats. Existing projects and chats are not retroactively trimmed.
                 </p>
               </div>
             </CardContent>

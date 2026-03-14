@@ -2,6 +2,7 @@ import { query, mutation } from './_generated/server'
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
 import { requireAuth, getCurrentUserId } from './lib/auth'
+import { trackUserAnalytics } from './lib/userAnalytics'
 
 // list (query) - list all projects for current user
 export const list = query({
@@ -72,6 +73,10 @@ export const create = mutation({
       lastOpenedAt: now,
       repoUrl: args.repoUrl,
       agentPolicy: null,
+    })
+
+    await trackUserAnalytics(ctx, userId, {
+      totalProjects: 1,
     })
 
     return projectId
@@ -158,12 +163,16 @@ export const remove = mutation({
       .withIndex('by_project', (q) => q.eq('projectId', args.id))
       .collect()
 
+    let deletedMessageCount = 0
+
     for (const chat of chats) {
       // Delete all messages for this chat
       const messages = await ctx.db
         .query('messages')
         .withIndex('by_chat', (q) => q.eq('chatId', chat._id))
         .collect()
+
+      deletedMessageCount += messages.length
 
       for (const message of messages) {
         // Delete artifacts associated with this message
@@ -194,6 +203,12 @@ export const remove = mutation({
 
     // Finally, delete the project
     await ctx.db.delete(args.id)
+
+    await trackUserAnalytics(ctx, userId, {
+      totalProjects: -1,
+      totalChats: -chats.length,
+      totalMessages: -deletedMessageCount,
+    })
 
     return args.id
   },

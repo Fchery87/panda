@@ -2,12 +2,13 @@ import { query, mutation } from './_generated/server'
 import { v } from 'convex/values'
 import { requireChatOwner, requireProjectOwner } from './lib/authz'
 import { ChatMode, PlanStatus } from './schema'
+import { trackUserAnalytics } from './lib/userAnalytics'
 
 // list (query) - list chats by projectId, ordered by updatedAt
 export const list = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
-    await requireProjectOwner(ctx, args.projectId)
+    const { project } = await requireProjectOwner(ctx, args.projectId)
     return await ctx.db
       .query('chats')
       .withIndex('by_updated', (q) => q.eq('projectId', args.projectId))
@@ -36,7 +37,7 @@ export const create = mutation({
     mode: ChatMode,
   },
   handler: async (ctx, args) => {
-    await requireProjectOwner(ctx, args.projectId)
+    const { project } = await requireProjectOwner(ctx, args.projectId)
 
     // Check resource limits
     const adminSettings = await ctx.db.query('adminSettings').order('desc').first()
@@ -68,6 +69,10 @@ export const create = mutation({
       planUpdatedAt: undefined,
       createdAt: now,
       updatedAt: now,
+    })
+
+    await trackUserAnalytics(ctx, project.createdBy, {
+      totalChats: 1,
     })
 
     return chatId
@@ -119,7 +124,7 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id('chats') },
   handler: async (ctx, args) => {
-    await requireChatOwner(ctx, args.id)
+    const { project } = await requireChatOwner(ctx, args.id)
 
     // Delete all messages for this chat
     const messages = await ctx.db
@@ -164,6 +169,11 @@ export const remove = mutation({
     // Delete the chat
     await ctx.db.delete(args.id)
 
+    await trackUserAnalytics(ctx, project.createdBy, {
+      totalChats: -1,
+      totalMessages: -messages.length,
+    })
+
     return args.id
   },
 })
@@ -175,7 +185,7 @@ export const fork = mutation({
     upToMessageId: v.optional(v.id('messages')),
   },
   handler: async (ctx, args) => {
-    const { chat: originalChat } = await requireChatOwner(ctx, args.chatId)
+    const { chat: originalChat, project } = await requireChatOwner(ctx, args.chatId)
 
     const now = Date.now()
 
@@ -204,6 +214,7 @@ export const fork = mutation({
       ? (await ctx.db.get(args.upToMessageId))?.createdAt
       : undefined
 
+    let copiedMessageCount = 0
     for (const message of messages) {
       if (cutoffTime && message.createdAt > cutoffTime) {
         break
@@ -216,7 +227,13 @@ export const fork = mutation({
         annotations: message.annotations,
         createdAt: message.createdAt,
       })
+      copiedMessageCount += 1
     }
+
+    await trackUserAnalytics(ctx, project.createdBy, {
+      totalChats: 1,
+      totalMessages: copiedMessageCount,
+    })
 
     return forkedChatId
   },

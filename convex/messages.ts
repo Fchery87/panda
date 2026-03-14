@@ -2,12 +2,13 @@ import { query, mutation } from './_generated/server'
 import { v } from 'convex/values'
 import { MessageAnnotation } from './schema'
 import { requireChatOwner, requireMessageOwner } from './lib/authz'
+import { trackUserAnalytics } from './lib/userAnalytics'
 
 // list (query) - list messages by chatId, ordered by createdAt
 export const list = query({
   args: { chatId: v.id('chats') },
   handler: async (ctx, args) => {
-    await requireChatOwner(ctx, args.chatId)
+    const { project } = await requireChatOwner(ctx, args.chatId)
     return await ctx.db
       .query('messages')
       .withIndex('by_created', (q) => q.eq('chatId', args.chatId))
@@ -34,7 +35,7 @@ export const add = mutation({
     annotations: v.optional(v.array(MessageAnnotation)),
   },
   handler: async (ctx, args) => {
-    await requireChatOwner(ctx, args.chatId)
+    const { project } = await requireChatOwner(ctx, args.chatId)
 
     const now = Date.now()
 
@@ -49,6 +50,10 @@ export const add = mutation({
     // Update the chat's updatedAt timestamp
     await ctx.db.patch(args.chatId, {
       updatedAt: now,
+    })
+
+    await trackUserAnalytics(ctx, project.createdBy, {
+      totalMessages: 1,
     })
 
     return messageId
@@ -80,7 +85,7 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id('messages') },
   handler: async (ctx, args) => {
-    await requireMessageOwner(ctx, args.id)
+    const { project } = await requireMessageOwner(ctx, args.id)
 
     // Delete artifacts associated with this message
     const artifacts = await ctx.db
@@ -94,6 +99,10 @@ export const remove = mutation({
 
     // Delete the message
     await ctx.db.delete(args.id)
+
+    await trackUserAnalytics(ctx, project.createdBy, {
+      totalMessages: -1,
+    })
 
     return args.id
   },
