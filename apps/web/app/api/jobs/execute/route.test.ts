@@ -38,7 +38,7 @@ describe('/api/jobs/execute route', () => {
 
     expect(response.status).toBe(400)
     const payload = (await response.json()) as { error: string }
-    expect(payload.error).toContain('Shell operators')
+    expect(payload.error).toContain('multiple operations')
   })
 
   it('rejects non-allowlisted commands', async () => {

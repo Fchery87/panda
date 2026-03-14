@@ -13,11 +13,15 @@ import { useConvex, useMutation, useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { toast } from 'sonner'
-import { applyArtifact, getPrimaryArtifactAction } from '@/lib/artifacts/executeArtifact'
+import {
+  applyArtifact,
+  getPrimaryArtifactAction,
+  type ArtifactAction,
+} from '@/lib/artifacts/executeArtifact'
 
 type ArtifactRecord = {
   _id: Id<'artifacts'>
-  actions: Array<Record<string, unknown>>
+  actions: ArtifactAction[]
   status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'rejected'
   createdAt: number
 }
@@ -31,7 +35,10 @@ interface ArtifactPanelProps {
 }
 
 type ArtifactCardData = React.ComponentProps<typeof ArtifactCard>['artifact']
-type MappedArtifact = ArtifactCardData & { rawStatus: ArtifactRecord['status'] }
+type MappedArtifact = ArtifactCardData & {
+  action: ArtifactAction
+  rawStatus: ArtifactRecord['status']
+}
 
 function asArtifactId(id: string): Id<'artifacts'> {
   return id as Id<'artifacts'>
@@ -73,7 +80,8 @@ export function ArtifactPanel({
         return {
           id: record._id,
           type: action.type,
-          payload: action.payload as unknown,
+          action,
+          payload: action.payload,
           createdAt: record.createdAt,
           description: action.type === 'file_write' ? 'File change queued' : 'Command queued',
           status: mapStatusToCardStatus(record.status),
@@ -108,10 +116,7 @@ export function ArtifactPanel({
       try {
         const result = await applyArtifact({
           artifactId: asArtifactId(artifact.id),
-          action: {
-            type: artifact.type,
-            payload: artifact.payload as unknown as Record<string, unknown>,
-          },
+          action: artifact.action,
           projectId,
           convex,
           upsertFile,
@@ -163,10 +168,7 @@ export function ArtifactPanel({
         try {
           await applyArtifact({
             artifactId: asArtifactId(artifact.id),
-            action: {
-              type: artifact.type,
-              payload: artifact.payload as unknown as Record<string, unknown>,
-            },
+            action: artifact.action,
             projectId,
             convex,
             upsertFile,

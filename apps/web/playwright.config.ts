@@ -1,5 +1,41 @@
 import { defineConfig, devices } from '@playwright/test'
 
+const chromiumProject = {
+  name: 'chromium',
+  use: {
+    ...devices['Desktop Chrome'],
+    channel: 'chromium',
+  },
+}
+
+const mobileChromeProject = {
+  name: 'Mobile Chrome',
+  use: {
+    ...devices['Pixel 5'],
+    channel: 'chromium',
+  },
+}
+
+const browserProjects =
+  process.env.PW_ALL_BROWSERS === 'true'
+    ? [
+        chromiumProject,
+        {
+          name: 'firefox',
+          use: { ...devices['Desktop Firefox'] },
+        },
+        {
+          name: 'webkit',
+          use: { ...devices['Desktop Safari'] },
+        },
+        mobileChromeProject,
+        {
+          name: 'Mobile Safari',
+          use: { ...devices['iPhone 12'] },
+        },
+      ]
+    : [chromiumProject]
+
 /**
  * Playwright Configuration for Panda.ai E2E Tests
  *
@@ -40,40 +76,14 @@ export default defineConfig({
   },
 
   /* Configure projects for major browsers */
-  projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
-
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
-
-    /* Test against mobile viewports */
-    {
-      name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
-    },
-
-    {
-      name: 'Mobile Safari',
-      use: { ...devices['iPhone 12'] },
-    },
-  ],
+  projects: browserProjects,
 
   /* Run your local dev server before starting the tests */
   webServer: {
     command:
       'cd ../.. && bunx concurrently "E2E_AUTH_BYPASS=true bunx convex dev" "cd apps/web && E2E_AUTH_BYPASS=true NEXT_PUBLIC_E2E_AUTH_BYPASS=true NEXT_PUBLIC_E2E_AGENT_MODE=spec-approval bun run dev"',
     url: 'http://localhost:3000',
-    reuseExistingServer: false,
+    reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === 'true',
     timeout: 120 * 1000,
   },
 })

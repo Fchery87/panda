@@ -6,26 +6,15 @@ import { useQuery, useMutation } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { motion } from 'framer-motion'
-import { AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 
 // Components
-import { Workbench } from '@/components/workbench/Workbench'
 import { Breadcrumb, buildBreadcrumbItems } from '@/components/workbench/Breadcrumb'
-import { StatusBar } from '@/components/workbench/StatusBar'
-import { ChatInput } from '@/components/chat/ChatInput'
-import { PermissionDialog } from '@/components/chat/PermissionDialog'
-import { ChatActionBar } from '@/components/chat/ChatActionBar'
-import { MessageList } from '@/components/chat/MessageList'
 import { mapLatestRunProgressSteps } from '@/components/chat/live-run-utils'
-import { ArtifactPanel } from '@/components/artifacts/ArtifactPanel'
 import { AgentAutomationDialog } from '@/components/projects/AgentAutomationDialog'
-import { ProjectChatInspector } from '@/components/projects/ProjectChatInspector'
-import { SpecDrawer } from '@/components/chat/SpecDrawer'
-import { SpecPanel } from '@/components/plan/SpecPanel'
-
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { ProjectChatPanel } from '@/components/projects/ProjectChatPanel'
+import { ProjectShareDialog } from '@/components/projects/ProjectShareDialog'
+import { ProjectWorkspaceLayout } from '@/components/projects/ProjectWorkspaceLayout'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -38,9 +27,7 @@ import {
   PanelRight,
   PanelRightClose,
   ChevronLeft,
-  Bot,
   RotateCcw,
-  AlertTriangle,
   Layers,
   MoreHorizontal,
 } from 'lucide-react'
@@ -49,9 +36,6 @@ import { cn } from '@/lib/utils'
 
 // UI Components
 import { PandaLogo } from '@/components/ui/panda-logo'
-
-// New UX Components
-import { CommandPalette } from '@/components/command-palette/CommandPalette'
 
 // Hooks
 import { useJobs } from '@/hooks/useJobs'
@@ -63,7 +47,7 @@ import { useProjectWorkbenchFiles } from '@/hooks/useProjectWorkbenchFiles'
 import { useProjectWorkspaceUi } from '@/hooks/useProjectWorkspaceUi'
 import { useSpecDriftDetection } from '@/hooks/useSpecDriftDetection'
 
-import type { Message } from '@/components/chat/types'
+import type { Message, MessageAnnotationInfo, PersistedRunEventInfo } from '@/components/chat/types'
 import { canApprovePlan, canBuildFromPlan, type PlanStatus } from '@/lib/chat/planDraft'
 import { isRateLimitError, getUserFacingAgentError } from '@/lib/chat/error-messages'
 import { resolveBackgroundExecutionPolicy } from '@/lib/chat/backgroundExecution'
@@ -104,36 +88,16 @@ interface ConvexMessage {
   chatId: Id<'chats'>
   role: 'user' | 'assistant' | 'system'
   content: string
-  annotations?: Array<Record<string, unknown>>
+  annotations?: MessageAnnotationInfo[]
   createdAt: number
 }
 
-interface AgentRunEvent {
+interface AgentRunEvent extends PersistedRunEventInfo {
   _id: Id<'agentRunEvents'>
   _creationTime: number
   runId: Id<'agentRuns'>
   chatId: Id<'chats'>
   sequence: number
-  type: string
-  content?: string
-  status?: string
-  progressCategory?: string
-  progressToolName?: string
-  progressHasArtifactTarget?: boolean
-  targetFilePaths?: string[]
-  toolCallId?: string
-  toolName?: string
-  args?: Record<string, unknown>
-  output?: string
-  error?: string
-  durationMs?: number
-  usage?: Record<string, unknown>
-  snapshot?: {
-    hash: string
-    step: number
-    files: string[]
-    timestamp: number
-  }
   createdAt: number
 }
 
@@ -182,6 +146,8 @@ export default function ProjectPage() {
     setIsSpecDrawerOpen,
     isSpecPanelOpen,
     setIsSpecPanelOpen,
+    isShareDialogOpen,
+    setIsShareDialogOpen,
   } = useProjectWorkspaceUi()
   const lastAssistantMessageIdRef = useRef<string | null>(null)
 
@@ -222,6 +188,7 @@ export default function ProjectPage() {
     selectedModel,
     availableModels,
     supportsReasoning,
+    effectiveAutomationPolicy,
   } = useProjectChatSession({
     projectId,
     chats,
@@ -241,6 +208,7 @@ export default function ProjectPage() {
     provider: provider ?? FALLBACK_PROVIDER, // Stable fallback - checked before use
     model: selectedModel,
     planDraft: persistedPlanDraft,
+    automationPolicy: effectiveAutomationPolicy,
     onRunCreated: async ({ runId, approvedPlanExecution }) => {
       if (!approvedPlanExecution || !activeChat?._id) return
       await updateChatMutation({
@@ -330,49 +298,23 @@ export default function ProjectPage() {
   const chatMessages: Message[] = useMemo(() => {
     if (!activeChat) {
       return (
-        convexMessages?.map((msg) => ({
-          _id: msg._id,
-          role: msg.role,
-          content: msg.content,
-          reasoningContent:
-            Array.isArray(msg.annotations) &&
-            msg.annotations.length > 0 &&
-            typeof msg.annotations[0]?.reasoningSummary === 'string'
-              ? (msg.annotations[0]?.reasoningSummary as string)
-              : undefined,
-          annotations:
-            Array.isArray(msg.annotations) && msg.annotations.length > 0
+        convexMessages?.map((msg) => {
+          const firstAnnotation = msg.annotations?.[0]
+          return {
+            _id: msg._id,
+            role: msg.role,
+            content: msg.content,
+            reasoningContent: firstAnnotation?.reasoningSummary,
+            annotations: firstAnnotation
               ? {
-                  mode: normalizeChatMode(msg.annotations[0]?.mode, chatMode),
-                  model: msg.annotations[0]?.model as string | undefined,
-                  provider: msg.annotations[0]?.provider as string | undefined,
-                  tokenCount: msg.annotations[0]?.tokenCount as number | undefined,
-                  promptTokens: msg.annotations[0]?.promptTokens as number | undefined,
-                  completionTokens: msg.annotations[0]?.completionTokens as number | undefined,
-                  totalTokens: msg.annotations[0]?.totalTokens as number | undefined,
-                  tokenSource: msg.annotations[0]?.tokenSource as 'exact' | 'estimated' | undefined,
-                  contextWindow: msg.annotations[0]?.contextWindow as number | undefined,
-                  contextUsedTokens: msg.annotations[0]?.contextUsedTokens as number | undefined,
-                  contextRemainingTokens: msg.annotations[0]?.contextRemainingTokens as
-                    | number
-                    | undefined,
-                  contextUsagePct: msg.annotations[0]?.contextUsagePct as number | undefined,
-                  contextSource: msg.annotations[0]?.contextSource as
-                    | 'map'
-                    | 'provider'
-                    | 'fallback'
-                    | undefined,
-                  reasoningTokens: msg.annotations[0]?.reasoningTokens as number | undefined,
+                  ...firstAnnotation,
+                  mode: normalizeChatMode(firstAnnotation.mode, chatMode),
                 }
               : undefined,
-          toolCalls:
-            Array.isArray(msg.annotations) &&
-            msg.annotations.length > 0 &&
-            Array.isArray(msg.annotations[0]?.toolCalls)
-              ? (msg.annotations[0]?.toolCalls as Message['toolCalls'])
-              : undefined,
-          createdAt: msg.createdAt,
-        })) || []
+            toolCalls: firstAnnotation?.toolCalls,
+            createdAt: msg.createdAt,
+          }
+        }) || []
       )
     }
 
@@ -531,240 +473,97 @@ export default function ProjectPage() {
     }
   }, [isMobileLayout, setIsMobileKeyboardOpen])
 
+  const selectedChatModel = uiSelectedModel || selectedModel
   const chatPanelContent = (
-    <div
-      className={cn(
-        'surface-1 relative flex h-full flex-col border-border',
-        isMobileLayout ? 'border-t' : 'border-l'
-      )}
-    >
-      {/* Chat Header - Compact */}
-      <div className="panel-header-compact flex items-center gap-2">
-        <div className="flex items-center gap-1.5">
-          <Bot className="h-3 w-3 text-primary" />
-          <span>Chat</span>
-        </div>
-
-        {/* Running indicator - subtle pulse dot */}
-        {agent.isLoading && (
-          <div
-            className="ml-1 flex h-2 w-2 animate-pulse rounded-full bg-primary"
-            title="Agent running"
-          />
-        )}
-
-        <div className="ml-auto flex items-center gap-1">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsChatInspectorOpen((prev) => !prev)}
-            className="h-6 rounded-none px-2 font-mono text-[10px] uppercase tracking-wide"
-            aria-label="Toggle inspector"
-          >
-            Inspector
-          </Button>
-
-          {/* Overflow Menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 rounded-none p-0"
-                aria-label="Chat more actions"
-              >
-                <MoreHorizontal className="h-3.5 w-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="rounded-none border-border font-mono">
-              <DropdownMenuItem
-                onClick={() => setIsChatInspectorOpen((prev) => !prev)}
-                className="rounded-none text-xs uppercase tracking-wide"
-              >
-                Inspector
-              </DropdownMenuItem>
-              {activeChat?._id && (
-                <DropdownMenuItem
-                  className="rounded-none text-xs uppercase tracking-wide"
-                  onClick={() => window.dispatchEvent(new CustomEvent('panda:open-share'))}
-                >
-                  Share
-                </DropdownMenuItem>
-              )}
-              {activeChat?._id && (
-                <DropdownMenuItem className="rounded-none text-xs uppercase tracking-wide">
-                  History ({chatMessages.length})
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-
-      {inlineRateLimitError ? (
-        <div className="px-3 pb-2">
-          <Alert
-            variant="destructive"
-            className="rounded-none border-destructive/70 bg-destructive/5"
-          >
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle className="font-mono text-xs uppercase tracking-wide">
-              {inlineRateLimitError.title}
-            </AlertTitle>
-            <AlertDescription className="space-y-2 font-mono text-xs">
-              <p>{inlineRateLimitError.description}</p>
-              <div className="flex items-center gap-2">
-                <Button
-                  asChild
-                  size="sm"
-                  variant="outline"
-                  className="h-7 rounded-none font-mono text-xs"
-                >
-                  <Link href="/settings">Open LLM Settings</Link>
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        </div>
-      ) : null}
-
-      {/* Messages - Full height */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <MessageList
-          messages={chatMessages}
-          isStreaming={agent.isLoading}
-          onSuggestedAction={handleSuggestedAction}
-        />
-      </div>
-
-      {/* ChatActionBar - between messages and input */}
-      <ChatActionBar
-        planStatus={activeChat?.planStatus}
-        planDraft={planDraft}
-        onPlanReview={() => {
-          setChatInspectorTab('plan')
-          setIsChatInspectorOpen(true)
-        }}
-        onPlanApprove={() => {
-          void handleApprovePlan()
-        }}
-        onBuildFromPlan={() => {
-          void handleBuildFromPlan()
-        }}
-        planApproveDisabled={!canApprovePlan(activeChat?.planStatus, planDraft) || agent.isLoading}
-        planBuildDisabled={!canBuildFromPlan(activeChat?.planStatus, planDraft) || agent.isLoading}
-        showPlanReview={backgroundExecutionPolicy.showInlinePlanReview}
-        pendingSpec={agent.pendingSpec}
-        onSpecApprove={agent.approvePendingSpec}
-        onSpecEdit={() => setIsSpecPanelOpen(true)}
-        onSpecCancel={agent.cancelPendingSpec}
-        showSpecReview={backgroundExecutionPolicy.showInlineSpecReview}
-        specTier={agent.currentSpec?.tier || specTier}
-      />
-
-      {/* Input - Clean, cards removed */}
-      {/* Permission Dialog - mounted above chat input */}
-      <PermissionDialog />
-
-      <ChatInput
-        mode={chatMode}
-        onModeChange={handleModeChange}
-        architectBrainstormEnabled={architectBrainstormEnabled}
-        onArchitectBrainstormEnabledChange={setArchitectBrainstormEnabled}
-        onSendMessage={handleSendMessage}
-        isStreaming={agent.isLoading}
-        onStopStreaming={agent.stop}
-        filePaths={files?.map((f) => f.path) ?? []}
-        model={uiSelectedModel || selectedModel}
-        onModelChange={setUiSelectedModel}
-        availableModels={availableModels}
-        variant={reasoningVariant}
-        onVariantChange={setReasoningVariant}
-        supportsReasoning={supportsReasoning}
-        specTier={specTier}
-        onSpecTierChange={setSpecTier}
-      />
-
-      <AnimatePresence>
-        {agent.pendingSpec && isSpecPanelOpen ? (
-          <>
-            <motion.button
-              type="button"
-              aria-label="Close spec editor"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsSpecPanelOpen(false)}
-              className="absolute inset-0 z-20 bg-background/55 backdrop-blur-[1px]"
-            />
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-              className="shadow-sharp-lg absolute inset-x-0 bottom-0 z-30 max-h-[90vh] border-t border-border bg-background sm:inset-x-3 sm:bottom-3 sm:border"
-            >
-              <SpecPanel
-                spec={agent.pendingSpec}
-                onEdit={agent.updatePendingSpecDraft}
-                onExecute={(spec) => {
-                  agent.approvePendingSpec(spec)
-                  setIsSpecPanelOpen(false)
-                }}
-                onCancel={agent.cancelPendingSpec}
-                onClose={() => setIsSpecPanelOpen(false)}
-              />
-            </motion.div>
-          </>
-        ) : null}
-        <ProjectChatInspector
-          projectId={projectId}
-          chatId={activeChat?._id}
-          isMobileLayout={isMobileLayout}
-          isOpen={isChatInspectorOpen}
-          tab={chatInspectorTab as ChatInspectorTab}
-          onOpenChange={setIsChatInspectorOpen}
-          onTabChange={(value) => setChatInspectorTab(value)}
-          liveSteps={liveRunSteps}
-          isStreaming={agent.isLoading}
-          tracePersistenceStatus={agent.tracePersistenceStatus}
-          onOpenFile={handleFileSelect}
-          onOpenArtifacts={() => setIsArtifactPanelOpen(true)}
-          currentSpec={agent.currentSpec}
-          planStatus={activeChat?.planStatus}
-          planDraft={planDraft}
-          onSpecClick={() => setIsSpecDrawerOpen(true)}
-          onPlanClick={() => {
-            setChatInspectorTab('plan')
-            setIsChatInspectorOpen(true)
-          }}
-          onResumeRuntimeSession={agent.resumeRuntimeSession}
-          snapshotEvents={snapshotRunEvents}
-          subagentToolCalls={subagentToolCalls}
-          onPlanDraftChange={setPlanDraft}
-          onSavePlanDraft={() => {
-            void handleSavePlanDraft()
-          }}
-          onApprovePlan={() => {
-            void handleApprovePlan()
-          }}
-          onBuildFromPlan={() => {
-            void handleBuildFromPlan()
-          }}
-          isSavingPlanDraft={isSavingPlanDraft}
-          lastSavedAt={activeChat?.planUpdatedAt ?? null}
-          lastGeneratedAt={activeChat?.planLastGeneratedAt ?? null}
-          approveDisabled={!canApprovePlan(activeChat?.planStatus, planDraft) || agent.isLoading}
-          buildDisabled={!canBuildFromPlan(activeChat?.planStatus, planDraft) || agent.isLoading}
-          memoryBank={agent.memoryBank}
-          onSaveMemoryBank={agent.updateMemoryBank}
-          lastUserPrompt={latestUserPrompt}
-          lastAssistantReply={latestAssistantReply}
-          onRunEvalScenario={agent.runEvalScenario}
-        />
-      </AnimatePresence>
-    </div>
+    <ProjectChatPanel
+      projectId={projectId}
+      activeChatId={activeChat?._id}
+      activeChatPlanStatus={activeChat?.planStatus}
+      activeChatPlanUpdatedAt={activeChat?.planUpdatedAt}
+      activeChatPlanLastGeneratedAt={activeChat?.planLastGeneratedAt}
+      activeChatExists={Boolean(activeChat?._id)}
+      chatMessages={chatMessages}
+      chatMode={chatMode}
+      architectBrainstormEnabled={architectBrainstormEnabled}
+      onArchitectBrainstormEnabledChange={setArchitectBrainstormEnabled}
+      onModeChange={handleModeChange}
+      onSendMessage={handleSendMessage}
+      onSuggestedAction={handleSuggestedAction}
+      isStreaming={agent.isLoading}
+      onStopStreaming={agent.stop}
+      filePaths={files?.map((f) => f.path) ?? []}
+      model={selectedChatModel}
+      onModelChange={setUiSelectedModel}
+      availableModels={availableModels}
+      variant={reasoningVariant}
+      onVariantChange={setReasoningVariant}
+      supportsReasoning={supportsReasoning}
+      specTier={specTier}
+      onSpecTierChange={setSpecTier}
+      inlineRateLimitError={inlineRateLimitError}
+      onToggleInspector={() => setIsChatInspectorOpen((prev) => !prev)}
+      onOpenHistory={() => {
+        setChatInspectorTab('run')
+        setIsChatInspectorOpen(true)
+      }}
+      onOpenShare={() => setIsShareDialogOpen(true)}
+      onResetWorkspace={handleResetWorkspace}
+      planDraft={planDraft}
+      onPlanReview={() => {
+        setChatInspectorTab('plan')
+        setIsChatInspectorOpen(true)
+      }}
+      onPlanApprove={() => {
+        void handleApprovePlan()
+      }}
+      onBuildFromPlan={() => {
+        void handleBuildFromPlan()
+      }}
+      planApproveDisabled={!canApprovePlan(activeChat?.planStatus, planDraft) || agent.isLoading}
+      planBuildDisabled={!canBuildFromPlan(activeChat?.planStatus, planDraft) || agent.isLoading}
+      showInlinePlanReview={backgroundExecutionPolicy.showInlinePlanReview}
+      pendingSpec={agent.pendingSpec}
+      onSpecApprove={agent.approvePendingSpec}
+      onSpecEdit={() => setIsSpecPanelOpen(true)}
+      onSpecCancel={agent.cancelPendingSpec}
+      showInlineSpecReview={backgroundExecutionPolicy.showInlineSpecReview}
+      currentSpecTier={agent.currentSpec?.tier || specTier}
+      isSpecPanelOpen={isSpecPanelOpen}
+      onCloseSpecPanel={() => setIsSpecPanelOpen(false)}
+      onEditPendingSpec={agent.updatePendingSpecDraft}
+      onExecutePendingSpec={(spec) => {
+        agent.approvePendingSpec(spec)
+        setIsSpecPanelOpen(false)
+      }}
+      isMobileLayout={isMobileLayout}
+      isInspectorOpen={isChatInspectorOpen}
+      inspectorTab={chatInspectorTab as ChatInspectorTab}
+      onInspectorOpenChange={setIsChatInspectorOpen}
+      onInspectorTabChange={setChatInspectorTab}
+      liveSteps={liveRunSteps}
+      tracePersistenceStatus={agent.tracePersistenceStatus}
+      onOpenFile={handleFileSelect}
+      onOpenArtifacts={() => setIsArtifactPanelOpen(true)}
+      currentSpec={agent.currentSpec}
+      onSpecClick={() => setIsSpecDrawerOpen(true)}
+      onPlanClick={() => {
+        setChatInspectorTab('plan')
+        setIsChatInspectorOpen(true)
+      }}
+      onResumeRuntimeSession={agent.resumeRuntimeSession}
+      snapshotEvents={snapshotRunEvents}
+      subagentToolCalls={subagentToolCalls}
+      onPlanDraftChange={setPlanDraft}
+      onSavePlanDraft={() => {
+        void handleSavePlanDraft()
+      }}
+      isSavingPlanDraft={isSavingPlanDraft}
+      memoryBank={agent.memoryBank}
+      onSaveMemoryBank={agent.updateMemoryBank}
+      lastUserPrompt={latestUserPrompt}
+      lastAssistantReply={latestAssistantReply}
+      onRunEvalScenario={agent.runEvalScenario}
+    />
   )
 
   // Loading state
@@ -785,6 +584,12 @@ export default function ProjectPage() {
 
   return (
     <div className="fixed inset-0 top-0 z-10 flex flex-col overflow-hidden bg-background">
+      <ProjectShareDialog
+        open={isShareDialogOpen}
+        onOpenChange={setIsShareDialogOpen}
+        chatId={activeChat?._id}
+        chatTitle={activeChat?.title}
+      />
       {/* Top Bar - Unified Header */}
       <motion.div
         initial={{ y: -20, opacity: 0 }}
@@ -921,158 +726,37 @@ export default function ProjectPage() {
         </div>
       </motion.div>
 
-      {/* Main Content */}
-      <div className="relative flex flex-1 flex-col overflow-hidden">
-        <div className="relative flex-1 overflow-hidden">
-          {isMobileLayout ? (
-            <div className="flex h-full flex-col">
-              <div className="flex-1 overflow-hidden">
-                {mobilePrimaryPanel === 'workspace' ? (
-                  <Workbench
-                    projectId={projectId}
-                    currentChatId={activeChat?._id}
-                    files={files}
-                    selectedFilePath={selectedFilePath}
-                    selectedLocation={selectedFileLocation}
-                    openTabs={openTabs}
-                    onSelectFile={handleFileSelect}
-                    onCloseTab={handleTabClose}
-                    onCreateFile={handleFileCreate}
-                    onRenameFile={handleFileRename}
-                    onDeleteFile={handleFileDelete}
-                    onSaveFile={handleEditorSave}
-                  />
-                ) : (
-                  chatPanelContent
-                )}
-              </div>
-              {!isMobileKeyboardOpen && (
-                <div className="surface-1 grid min-h-12 grid-cols-2 border-t border-border pb-[env(safe-area-inset-bottom)] font-mono text-xs uppercase tracking-widest">
-                  <button
-                    type="button"
-                    onClick={() => setMobilePrimaryPanel('workspace')}
-                    className={cn(
-                      'h-full border-r border-border',
-                      mobilePrimaryPanel === 'workspace'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    Workspace
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMobilePrimaryPanel('chat')}
-                    className={cn(
-                      'relative h-full',
-                      mobilePrimaryPanel === 'chat'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    Chat
-                    {mobileUnreadCount > 0 && mobilePrimaryPanel !== 'chat' && (
-                      <span className="absolute right-2 top-1.5 min-w-5 border border-border bg-destructive px-1.5 py-0.5 text-center font-mono text-xs text-destructive-foreground">
-                        {mobileUnreadCount}
-                      </span>
-                    )}
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <PanelGroup
-              direction="horizontal"
-              className="h-full"
-              autoSaveId="panda-workbench-outer"
-            >
-              <Panel
-                defaultSize={isChatPanelOpen ? (isCompactDesktopLayout ? 64 : 70) : 100}
-                minSize={40}
-                className="flex flex-col"
-              >
-                <Workbench
-                  projectId={projectId}
-                  currentChatId={activeChat?._id}
-                  files={files}
-                  selectedFilePath={selectedFilePath}
-                  selectedLocation={selectedFileLocation}
-                  openTabs={openTabs}
-                  onSelectFile={handleFileSelect}
-                  onCloseTab={handleTabClose}
-                  onCreateFile={handleFileCreate}
-                  onRenameFile={handleFileRename}
-                  onDeleteFile={handleFileDelete}
-                  onSaveFile={handleEditorSave}
-                />
-              </Panel>
-
-              {isChatPanelOpen && (
-                <>
-                  <PanelResizeHandle className="h-full w-px bg-border transition-colors hover:bg-primary" />
-
-                  <Panel
-                    defaultSize={isCompactDesktopLayout ? 36 : 30}
-                    minSize={isCompactDesktopLayout ? 30 : 25}
-                    maxSize={isCompactDesktopLayout ? 45 : 50}
-                    className="flex flex-col"
-                  >
-                    {chatPanelContent}
-                  </Panel>
-                </>
-              )}
-            </PanelGroup>
-          )}
-
-          {/* Artifact Panel - Side drawer */}
-          <AnimatePresence>
-            {isArtifactPanelOpen && (
-              <motion.div
-                initial={{ opacity: 0, x: 300 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 300 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                className="shadow-sharp-lg absolute bottom-0 right-0 top-0 z-40 w-72 border-l border-border bg-background xl:w-80"
-              >
-                <ArtifactPanel
-                  projectId={projectId}
-                  chatId={activeChat?._id}
-                  isOpen={true}
-                  onClose={() => setIsArtifactPanelOpen(false)}
-                  position="right"
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Command Palette */}
-          <CommandPalette
-            files={files?.map((f) => ({ path: f.path })) ?? []}
-            onModeChange={handleModeChange}
-            currentMode={chatMode}
-          />
-        </div>
-
-        {/* Status Bar */}
-        <StatusBar
-          filePath={selectedFilePath}
-          cursorPosition={cursorPosition}
-          isConnected={true}
-          isStreaming={agent.isLoading}
-          specEngineEnabled={true}
-          specStatus={agent.currentSpec?.status ?? null}
-          specConstraintsMet={
-            agent.currentSpec?.verificationResults?.filter((result) => result.passed).length
-          }
-          specConstraintsTotal={agent.currentSpec?.intent.acceptanceCriteria.length}
-          onSpecClick={agent.currentSpec ? () => setIsSpecDrawerOpen(true) : undefined}
-        />
-        <SpecDrawer
-          spec={agent.currentSpec}
-          isOpen={isSpecDrawerOpen}
-          onClose={() => setIsSpecDrawerOpen(false)}
-        />
-      </div>
+      <ProjectWorkspaceLayout
+        projectId={projectId}
+        activeChatId={activeChat?._id}
+        files={files}
+        selectedFilePath={selectedFilePath}
+        selectedFileLocation={selectedFileLocation}
+        openTabs={openTabs}
+        onSelectFile={handleFileSelect}
+        onCloseTab={handleTabClose}
+        onCreateFile={handleFileCreate}
+        onRenameFile={handleFileRename}
+        onDeleteFile={handleFileDelete}
+        onSaveFile={handleEditorSave}
+        isMobileLayout={isMobileLayout}
+        isCompactDesktopLayout={isCompactDesktopLayout}
+        mobilePrimaryPanel={mobilePrimaryPanel}
+        onMobilePrimaryPanelChange={setMobilePrimaryPanel}
+        mobileUnreadCount={mobileUnreadCount}
+        isMobileKeyboardOpen={isMobileKeyboardOpen}
+        chatPanel={chatPanelContent}
+        isChatPanelOpen={isChatPanelOpen}
+        isArtifactPanelOpen={isArtifactPanelOpen}
+        onArtifactPanelOpenChange={setIsArtifactPanelOpen}
+        chatMode={chatMode}
+        onModeChange={handleModeChange}
+        cursorPosition={cursorPosition}
+        isStreaming={agent.isLoading}
+        currentSpec={agent.currentSpec}
+        isSpecDrawerOpen={isSpecDrawerOpen}
+        onSpecDrawerOpenChange={setIsSpecDrawerOpen}
+      />
     </div>
   )
 }

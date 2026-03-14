@@ -2,6 +2,7 @@ import {
   derivePlanProgressMetadata,
   parsePlanSteps as parsePlanStepsFromDraft,
 } from '@/lib/agent/plan-progress'
+import type { PersistedRunEventInfo } from '@/components/chat/types'
 
 export type LiveProgressCategory = 'analysis' | 'rewrite' | 'tool' | 'complete' | 'other'
 
@@ -26,27 +27,6 @@ export interface LiveProgressStep {
   completedPlanStepIndexes?: number[]
   details?: LiveProgressDetails
   createdAt: number
-}
-
-interface PersistedRunEvent {
-  _id?: string
-  runId?: string
-  type: string
-  content?: string
-  status?: string
-  progressCategory?: string
-  progressToolName?: string
-  progressHasArtifactTarget?: boolean
-  targetFilePaths?: string[]
-  toolCallId?: string
-  args?: Record<string, unknown>
-  durationMs?: number
-  planStepIndex?: number
-  planStepTitle?: string
-  planTotalSteps?: number
-  completedPlanStepIndexes?: number[]
-  error?: string
-  createdAt?: number
 }
 
 interface LiveProgressGroup {
@@ -271,7 +251,7 @@ export function extractTargetFilePaths(
   return []
 }
 
-export function mapRunEventsToProgressSteps(events: PersistedRunEvent[]): LiveProgressStep[] {
+export function mapRunEventsToProgressSteps(events: PersistedRunEventInfo[]): LiveProgressStep[] {
   return events
     .filter((event) => event.type === 'progress_step' && typeof event.content === 'string')
     .map((event, index) => ({
@@ -311,7 +291,7 @@ export function mapRunEventsToProgressSteps(events: PersistedRunEvent[]): LivePr
     }))
 }
 
-export function mapLatestRunProgressSteps(events: PersistedRunEvent[]): LiveProgressStep[] {
+export function mapLatestRunProgressSteps(events: PersistedRunEventInfo[]): LiveProgressStep[] {
   const latestRunId = [...events]
     .reverse()
     .find((event) => typeof event.runId === 'string' && event.runId.length > 0)?.runId

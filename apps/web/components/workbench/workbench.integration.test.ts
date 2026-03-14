@@ -17,13 +17,12 @@ describe('Workbench integration wiring', () => {
       import.meta.dir,
       '../../app/(dashboard)/projects/[projectId]/page.tsx'
     )
-    const source = fs.readFileSync(pagePath, 'utf8')
+    const pageSource = fs.readFileSync(pagePath, 'utf8')
+    const layoutPath = path.resolve(import.meta.dir, '../projects/ProjectWorkspaceLayout.tsx')
+    const layoutSource = fs.readFileSync(layoutPath, 'utf8')
 
-    const desktopWorkbenchCall = source.slice(
-      source.indexOf('<Workbench'),
-      source.lastIndexOf('/>') + 2
-    )
-    expect(desktopWorkbenchCall).toContain('currentChatId={activeChat?._id}')
+    expect(pageSource).toContain('activeChatId={activeChat?._id}')
+    expect(layoutSource).toContain('currentChatId={activeChatId}')
   })
 
   it('keeps plan execution detached from auto-opening the inspector', () => {

@@ -5,17 +5,31 @@ const mutationCalls: Array<{ name: string; args: Record<string, unknown> }> = []
 
 let queryResult: unknown = []
 let mutationResult: unknown = 'project-created'
+let queryError: Error | null = null
+let mutationError: Error | null = null
+let mutationImpl:
+  | ((func: unknown, args: Record<string, unknown>) => Promise<unknown> | unknown)
+  | null = null
 
 class MockConvexHttpClient {
   constructor(_url: string) {}
 
   query(func: unknown, args: Record<string, unknown>) {
     queryCalls.push({ name: getFunctionLabel(func), args })
+    if (queryError) {
+      return Promise.reject(queryError)
+    }
     return Promise.resolve(queryResult)
   }
 
   mutation(func: unknown, args: Record<string, unknown>) {
     mutationCalls.push({ name: getFunctionLabel(func), args })
+    if (mutationImpl) {
+      return Promise.resolve(mutationImpl(func, args))
+    }
+    if (mutationError) {
+      return Promise.reject(mutationError)
+    }
     return Promise.resolve(mutationResult)
   }
 }
@@ -45,6 +59,9 @@ describe('/api/e2e/project route', () => {
     mutationCalls.length = 0
     queryResult = []
     mutationResult = 'project-created'
+    queryError = null
+    mutationError = null
+    mutationImpl = null
     env.NODE_ENV = 'test'
     env.E2E_AUTH_BYPASS = 'true'
     env.NEXT_PUBLIC_CONVEX_URL = 'https://example.convex.cloud'
@@ -188,6 +205,77 @@ describe('/api/e2e/project route', () => {
           planLastGeneratedAt: expect.any(Number),
         },
       })
+    } finally {
+      restoreEnv()
+    }
+  })
+
+  test('returns a structured 500 response when fixture bootstrap fails', async () => {
+    setTestEnv()
+    mutationError = new Error('Unauthorized: Authentication required')
+    try {
+      const { GET } = await import('./route')
+
+      const response = await GET(new Request('http://localhost:3000/api/e2e/project'))
+
+      expect(response.status).toBe(500)
+      await expect(response.json()).resolves.toEqual({
+        error: 'Failed to create E2E fixture project',
+        details: 'Unauthorized: Authentication required',
+      })
+    } finally {
+      restoreEnv()
+    }
+  })
+
+  test('reclaims the oldest E2E fixture project and retries when the project limit is reached', async () => {
+    setTestEnv()
+    queryResult = [
+      {
+        _id: 'fixture-oldest',
+        name: 'Agent Run Plan 1',
+        description: 'Deterministic browser E2E fixture project',
+        createdAt: 100,
+        lastOpenedAt: 100,
+      },
+      {
+        _id: 'fixture-newer',
+        name: 'Sharing Fixture 2',
+        description: 'Deterministic browser E2E fixture project',
+        createdAt: 200,
+        lastOpenedAt: 200,
+      },
+    ]
+    let createAttempts = 0
+    mutationImpl = (_func, args) => {
+      if ('name' in args && 'description' in args) {
+        createAttempts += 1
+        if (createAttempts === 1) {
+          throw new Error(
+            'Project limit reached. You have 172 projects (maximum: 100). Please delete an existing project before creating a new one.'
+          )
+        }
+        return 'project-created-after-cleanup'
+      }
+      if ('id' in args) {
+        expect(args).toEqual({ id: 'fixture-oldest' })
+        return 'fixture-oldest'
+      }
+      return mutationResult
+    }
+
+    try {
+      const { GET } = await import('./route')
+
+      const response = await GET(new Request('http://localhost:3000/api/e2e/project'))
+
+      expect(response.status).toBe(200)
+      await expect(response.json()).resolves.toEqual({
+        projectId: 'project-created-after-cleanup',
+        created: true,
+      })
+      expect(createAttempts).toBe(2)
+      expect(mutationCalls.some((call) => 'id' in call.args)).toBe(true)
     } finally {
       restoreEnv()
     }

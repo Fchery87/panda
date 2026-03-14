@@ -234,6 +234,132 @@ describe('Harness adapter guardrail parity', () => {
     expect(String(toolResult?.toolResult?.output ?? '')).toContain('oracle_multi_tier')
   })
 
+  it('auto-approves allowlisted run_command calls from harness session permissions', async () => {
+    let callCount = 0
+    const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }
+    const provider: LLMProvider = {
+      name: 'fake',
+      config,
+      async listModels() {
+        return []
+      },
+      async complete() {
+        throw new Error('not used')
+      },
+      async *completionStream(_options: CompletionOptions): AsyncGenerator<StreamChunk> {
+        callCount += 1
+        if (callCount === 1) {
+          yield {
+            type: 'tool_call',
+            toolCall: makeToolCall('run_command', {
+              command: 'bun test apps/web/lib/agent/runtime.harness-adapter.test.ts',
+            }),
+          }
+          yield makeFinish()
+          return
+        }
+
+        yield { type: 'text', content: 'Command executed.' }
+        yield makeFinish()
+      },
+    }
+
+    const events: any[] = []
+    for await (const evt of streamAgent(
+      provider,
+      {
+        projectId: 'p',
+        chatId: 'c',
+        userId: 'u',
+        chatMode: 'architect',
+        provider: 'openai',
+        userMessage: 'run the allowlisted test command',
+      },
+      makeToolContext(),
+      {
+        harnessEnableRiskInterrupts: true,
+        harnessSessionPermissions: {
+          'run_command:bun test*': 'allow',
+        },
+      }
+    )) {
+      events.push(evt)
+    }
+
+    expect(callCount).toBe(2)
+    expect(
+      events.some(
+        (event) =>
+          event.type === 'progress_step' &&
+          String(event.content ?? '').includes('Command approval required')
+      )
+    ).toBe(false)
+
+    const toolResult = events.find(
+      (event) => event.type === 'tool_result' && event.toolResult?.toolName === 'run_command'
+    )
+    expect(toolResult?.toolResult?.error).toBeUndefined()
+    expect(toolResult?.toolResult?.output).toContain('"exitCode": 0')
+  })
+
+  it('surfaces command approval reasons in permission request progress for non-allowlisted commands', async () => {
+    const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }
+    const provider: LLMProvider = {
+      name: 'fake',
+      config,
+      async listModels() {
+        return []
+      },
+      async complete() {
+        throw new Error('not used')
+      },
+      async *completionStream(_options: CompletionOptions): AsyncGenerator<StreamChunk> {
+        yield {
+          type: 'tool_call',
+          toolCall: makeToolCall('run_command', {
+            command: 'bun test && bun run lint',
+          }),
+        }
+        yield makeFinish()
+      },
+    }
+
+    const events: any[] = []
+    for await (const evt of streamAgent(
+      provider,
+      {
+        projectId: 'p',
+        chatId: 'c',
+        userId: 'u',
+        chatMode: 'architect',
+        provider: 'openai',
+        userMessage: 'run chained commands',
+      },
+      makeToolContext(),
+      {},
+      {
+        harnessEnableRiskInterrupts: false,
+      }
+    )) {
+      events.push(evt)
+      if (
+        evt.type === 'progress_step' &&
+        String(evt.content ?? '').includes('Command approval required')
+      ) {
+        break
+      }
+    }
+
+    expect(
+      events.some(
+        (event) =>
+          event.type === 'progress_step' &&
+          event.content ===
+            'Command approval required: Command chaining runs multiple operations in one request.'
+      )
+    ).toBe(true)
+  })
+
   it('emits matching stable progress IDs for parallel subagent start/complete events', async () => {
     let callCount = 0
     const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }

@@ -22,11 +22,11 @@ import { Separator } from '@/components/ui/separator'
 import { ProviderCard } from '@/components/settings/ProviderCard'
 import { ConnectProvider } from '@/components/settings/ConnectProvider'
 import { ThemeToggleFull } from '@/components/settings/ThemeToggle'
-import { PermissionsEditor } from '@/components/settings/PermissionsEditor'
+import { AgentDefaultsEditor } from '@/components/settings/AgentDefaultsEditor'
 import { MCPServerEditor } from '@/components/settings/MCPServerEditor'
 import { SubagentEditor } from '@/components/settings/SubagentEditor'
 import { UserLLMConfig } from '@/components/settings/UserLLMConfig'
-import { type PermissionsConfig, DEFAULT_PERMISSIONS } from '@/lib/permissions'
+import { getDefaultPolicyForMode, type AgentPolicy } from '@/lib/agent/automationPolicy'
 import { User, Palette, Bot, Save, Loader2, ArrowLeft, Settings2 } from 'lucide-react'
 import { getDefaultProviderCapabilities, type ProviderType } from '@/lib/llm/types'
 import { extractOpenRouterFreeCodingModelIds } from '@/lib/llm/openrouter-free-models'
@@ -227,7 +227,9 @@ export default function SettingsPage() {
   const settingsRef = React.useRef(settings)
   settingsRef.current = settings
 
-  const [permissions, setPermissions] = React.useState<PermissionsConfig>(DEFAULT_PERMISSIONS)
+  const [agentDefaults, setAgentDefaults] = React.useState<AgentPolicy>(
+    getDefaultPolicyForMode('code')
+  )
   const allowUserMcp = adminDefaults?.allowUserMCP !== false
   const allowUserSubagents = adminDefaults?.allowUserSubagents !== false
 
@@ -248,7 +250,7 @@ export default function SettingsPage() {
     if (latestSettings === undefined) return
 
     if (latestSettings === null) {
-      setPermissions(DEFAULT_PERMISSIONS)
+      setAgentDefaults(getDefaultPolicyForMode('code'))
       setFormState((prev) => ({
         ...prev,
         theme: 'system',
@@ -262,11 +264,12 @@ export default function SettingsPage() {
       return
     }
 
-    if ((latestSettings as Record<string, unknown>).permissions) {
-      setPermissions((latestSettings as Record<string, unknown>).permissions as PermissionsConfig)
-    } else {
-      setPermissions(DEFAULT_PERMISSIONS)
-    }
+    setAgentDefaults(
+      ((latestSettings as Record<string, unknown>).agentDefaults as
+        | AgentPolicy
+        | null
+        | undefined) ?? getDefaultPolicyForMode('code')
+    )
 
     setFormState((prev) => ({
       ...prev,
@@ -544,7 +547,7 @@ export default function SettingsPage() {
         defaultProvider: formState.defaultProvider,
         defaultModel: formState.defaultModel,
         providerConfigs: providersForSave,
-        permissions,
+        agentDefaults,
         overrideGlobalProvider: formState.overrideGlobalProvider,
         overrideGlobalModel: formState.overrideGlobalModel,
       } as Parameters<typeof updateSettings>[0])
@@ -657,13 +660,13 @@ export default function SettingsPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Permissions</CardTitle>
+                <CardTitle>Automation Defaults</CardTitle>
                 <CardDescription>
-                  Configure fine-grained permissions for tools and commands.
+                  Configure the browser automation defaults Panda uses for new projects.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <PermissionsEditor value={permissions} onChange={setPermissions} />
+                <AgentDefaultsEditor value={agentDefaults} onChange={setAgentDefaults} />
               </CardContent>
             </Card>
           </TabsContent>

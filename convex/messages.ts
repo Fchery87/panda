@@ -1,5 +1,6 @@
 import { query, mutation } from './_generated/server'
 import { v } from 'convex/values'
+import { MessageAnnotation } from './schema'
 import { requireChatOwner, requireMessageOwner } from './lib/authz'
 
 // list (query) - list messages by chatId, ordered by createdAt
@@ -30,7 +31,7 @@ export const add = mutation({
     chatId: v.id('chats'),
     role: v.union(v.literal('user'), v.literal('assistant'), v.literal('system')),
     content: v.string(),
-    annotations: v.optional(v.array(v.record(v.string(), v.any()))),
+    annotations: v.optional(v.array(MessageAnnotation)),
   },
   handler: async (ctx, args) => {
     await requireChatOwner(ctx, args.chatId)
@@ -59,7 +60,7 @@ export const update = mutation({
   args: {
     id: v.id('messages'),
     content: v.optional(v.string()),
-    annotations: v.optional(v.array(v.record(v.string(), v.any()))),
+    annotations: v.optional(v.array(MessageAnnotation)),
   },
   handler: async (ctx, args) => {
     const { message } = await requireMessageOwner(ctx, args.id)

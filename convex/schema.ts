@@ -30,6 +30,145 @@ export const PlanStatus = v.union(
   v.literal('executing')
 )
 
+export const TokenUsage = v.object({
+  promptTokens: v.number(),
+  completionTokens: v.number(),
+  totalTokens: v.number(),
+  reasoningTokens: v.optional(v.number()),
+  cacheRead: v.optional(v.number()),
+  cacheWrite: v.optional(v.number()),
+})
+
+export const PersistedRunSnapshot = v.object({
+  hash: v.string(),
+  step: v.number(),
+  files: v.array(v.string()),
+  timestamp: v.number(),
+})
+
+export const PersistedRunEvent = v.object({
+  sequence: v.number(),
+  type: v.string(),
+  content: v.optional(v.string()),
+  status: v.optional(v.string()),
+  progressCategory: v.optional(v.string()),
+  progressToolName: v.optional(v.string()),
+  progressHasArtifactTarget: v.optional(v.boolean()),
+  targetFilePaths: v.optional(v.array(v.string())),
+  toolCallId: v.optional(v.string()),
+  toolName: v.optional(v.string()),
+  args: v.optional(v.record(v.string(), v.any())),
+  output: v.optional(v.string()),
+  error: v.optional(v.string()),
+  durationMs: v.optional(v.number()),
+  planStepIndex: v.optional(v.number()),
+  planStepTitle: v.optional(v.string()),
+  planTotalSteps: v.optional(v.number()),
+  completedPlanStepIndexes: v.optional(v.array(v.number())),
+  usage: v.optional(TokenUsage),
+  snapshot: v.optional(PersistedRunSnapshot),
+})
+
+export const RuntimeCheckpointState = v.object({
+  sessionID: v.string(),
+  messages: v.array(v.any()),
+  step: v.number(),
+  isComplete: v.boolean(),
+  isLastStep: v.boolean(),
+  pendingSubtasks: v.array(v.any()),
+  cost: v.number(),
+  tokens: v.object({
+    input: v.number(),
+    output: v.number(),
+    reasoning: v.number(),
+    cacheRead: v.optional(v.number()),
+    cacheWrite: v.optional(v.number()),
+  }),
+  lastToolLoopSignature: v.union(v.string(), v.null()),
+  toolLoopStreak: v.number(),
+  toolCallHistory: v.optional(v.array(v.string())),
+  toolCallFrequency: v.optional(
+    v.array(
+      v.union(
+        v.object({
+          key: v.string(),
+          count: v.number(),
+        }),
+        v.array(v.union(v.string(), v.number()))
+      )
+    )
+  ),
+  cyclicPatternDetected: v.optional(v.boolean()),
+  lastInterventionStep: v.optional(v.number()),
+})
+
+export const RuntimeCheckpointPayload = v.object({
+  version: v.literal(1),
+  sessionID: v.string(),
+  agentName: v.string(),
+  reason: v.union(v.literal('step'), v.literal('complete'), v.literal('error')),
+  savedAt: v.number(),
+  state: RuntimeCheckpointState,
+})
+
+export const MessageToolCallResult = v.object({
+  output: v.string(),
+  error: v.optional(v.string()),
+  durationMs: v.number(),
+})
+
+export const MessageToolCall = v.object({
+  id: v.string(),
+  name: v.string(),
+  args: v.record(v.string(), v.any()),
+  status: v.union(
+    v.literal('pending'),
+    v.literal('running'),
+    v.literal('completed'),
+    v.literal('error')
+  ),
+  result: v.optional(MessageToolCallResult),
+})
+
+export const MessageAnnotation = v.object({
+  mode: v.optional(ChatMode),
+  reasoningSummary: v.optional(v.string()),
+  toolCalls: v.optional(v.array(MessageToolCall)),
+  model: v.optional(v.string()),
+  provider: v.optional(v.string()),
+  tokenCount: v.optional(v.number()),
+  promptTokens: v.optional(v.number()),
+  completionTokens: v.optional(v.number()),
+  totalTokens: v.optional(v.number()),
+  tokenSource: v.optional(v.union(v.literal('exact'), v.literal('estimated'))),
+  contextWindow: v.optional(v.number()),
+  contextUsedTokens: v.optional(v.number()),
+  contextRemainingTokens: v.optional(v.number()),
+  contextUsagePct: v.optional(v.number()),
+  contextSource: v.optional(
+    v.union(v.literal('map'), v.literal('provider'), v.literal('fallback'))
+  ),
+  reasoningTokens: v.optional(v.number()),
+})
+
+export const ArtifactAction = v.union(
+  v.object({
+    type: v.literal('file_write'),
+    payload: v.object({
+      filePath: v.string(),
+      content: v.string(),
+      originalContent: v.optional(v.union(v.string(), v.null())),
+    }),
+  }),
+  v.object({
+    type: v.literal('command_run'),
+    payload: v.object({
+      command: v.string(),
+      workingDirectory: v.optional(v.string()),
+    }),
+  })
+)
+
 export default defineSchema({
   // Auth tables (accounts, sessions, verification codes, etc.)
   ...authTables,
@@ -130,7 +269,7 @@ export default defineSchema({
     chatId: v.id('chats'),
     role: v.union(v.literal('user'), v.literal('assistant'), v.literal('system')),
     content: v.string(),
-    annotations: v.optional(v.array(v.record(v.string(), v.any()))),
+    annotations: v.optional(v.array(MessageAnnotation)),
     createdAt: v.number(),
   })
     .index('by_chat', ['chatId'])
@@ -140,7 +279,7 @@ export default defineSchema({
   artifacts: defineTable({
     chatId: v.id('chats'),
     messageId: v.optional(v.id('messages')),
-    actions: v.array(v.record(v.string(), v.any())),
+    actions: v.array(ArtifactAction),
     status: v.union(
       v.literal('pending'),
       v.literal('in_progress'),
@@ -233,7 +372,7 @@ export default defineSchema({
     userMessage: v.optional(v.string()),
     summary: v.optional(v.string()),
     error: v.optional(v.string()),
-    usage: v.optional(v.record(v.string(), v.any())),
+    usage: v.optional(TokenUsage),
     startedAt: v.number(),
     completedAt: v.optional(v.number()),
   })
@@ -263,15 +402,8 @@ export default defineSchema({
     planStepTitle: v.optional(v.string()),
     planTotalSteps: v.optional(v.number()),
     completedPlanStepIndexes: v.optional(v.array(v.number())),
-    usage: v.optional(v.record(v.string(), v.any())),
-    snapshot: v.optional(
-      v.object({
-        hash: v.string(),
-        step: v.number(),
-        files: v.array(v.string()),
-        timestamp: v.number(),
-      })
-    ),
+    usage: v.optional(TokenUsage),
+    snapshot: v.optional(PersistedRunSnapshot),
     createdAt: v.number(),
   })
     .index('by_run_sequence', ['runId', 'sequence'])
@@ -300,7 +432,7 @@ export default defineSchema({
     agentName: v.string(),
     reason: v.union(v.literal('step'), v.literal('complete'), v.literal('error')),
     savedAt: v.number(),
-    checkpoint: v.any(),
+    checkpoint: RuntimeCheckpointPayload,
   })
     .index('by_chat_session_saved', ['chatId', 'sessionID', 'savedAt'])
     .index('by_project_session_saved', ['projectId', 'sessionID', 'savedAt'])

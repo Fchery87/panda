@@ -9,6 +9,13 @@ export interface RuntimeCheckpointPendingSubtask {
   startedAt?: number
 }
 
+export interface RuntimeCheckpointToolCallFrequencyEntry {
+  key: string
+  count: number
+}
+
+export type RuntimeCheckpointLegacyToolCallFrequencyEntry = [string, number]
+
 export interface RuntimeCheckpointState {
   sessionID: Identifier
   messages: Message[]
@@ -27,7 +34,9 @@ export interface RuntimeCheckpointState {
   lastToolLoopSignature: string | null
   toolLoopStreak: number
   toolCallHistory?: string[]
-  toolCallFrequency?: [string, number][]
+  toolCallFrequency?: Array<
+    RuntimeCheckpointToolCallFrequencyEntry | RuntimeCheckpointLegacyToolCallFrequencyEntry
+  >
   cyclicPatternDetected?: boolean
   lastInterventionStep?: number
 }

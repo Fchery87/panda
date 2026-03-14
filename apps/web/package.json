@@ -11,7 +11,9 @@
     "typecheck": "tsc --noEmit",
     "test": "bun test app components hooks lib",
     "test:coverage": "bun test --coverage app components hooks lib",
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test e2e/workbench.e2e-spec.ts e2e/agent-run.e2e-spec.ts e2e/permissions.e2e-spec.ts e2e/sharing.e2e-spec.ts",
+    "test:e2e:all-browsers": "PW_ALL_BROWSERS=true playwright test e2e/workbench.e2e-spec.ts e2e/agent-run.e2e-spec.ts e2e/permissions.e2e-spec.ts e2e/sharing.e2e-spec.ts",
+    "test:e2e:reuse-server": "PLAYWRIGHT_REUSE_SERVER=true playwright test e2e/workbench.e2e-spec.ts e2e/agent-run.e2e-spec.ts e2e/permissions.e2e-spec.ts e2e/sharing.e2e-spec.ts",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug"
   },

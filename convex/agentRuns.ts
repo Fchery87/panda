@@ -1,6 +1,6 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
-import { ChatMode } from './schema'
+import { ChatMode, PersistedRunEvent, RuntimeCheckpointPayload, TokenUsage } from './schema'
 import type { Id } from './_generated/dataModel'
 import { requireAgentRunOwner, requireChatOwner, requireProjectOwner } from './lib/authz'
 
@@ -44,6 +44,15 @@ function parseRuntimeCheckpointEnvelope(checkpoint: unknown): RuntimeCheckpointE
   if (typeof stateSessionID !== 'string' || stateSessionID !== sessionID) {
     throw new Error('Runtime checkpoint state.sessionID must match sessionID')
   }
+  if (typeof (state as Record<string, unknown>).step !== 'number') {
+    throw new Error('Runtime checkpoint state.step must be a finite number')
+  }
+  if (typeof (state as Record<string, unknown>).isComplete !== 'boolean') {
+    throw new Error('Runtime checkpoint state.isComplete is required')
+  }
+  if (typeof (state as Record<string, unknown>).isLastStep !== 'boolean') {
+    throw new Error('Runtime checkpoint state.isLastStep is required')
+  }
 
   return { version, sessionID, agentName, reason, savedAt }
 }
@@ -83,45 +92,15 @@ export const create = mutation({
 export const appendEvents = mutation({
   args: {
     runId: v.id('agentRuns'),
-    events: v.array(
-      v.object({
-        sequence: v.number(),
-        type: v.string(),
-        content: v.optional(v.string()),
-        status: v.optional(v.string()),
-        progressCategory: v.optional(v.string()),
-        progressToolName: v.optional(v.string()),
-        progressHasArtifactTarget: v.optional(v.boolean()),
-        targetFilePaths: v.optional(v.array(v.string())),
-        toolCallId: v.optional(v.string()),
-        toolName: v.optional(v.string()),
-        args: v.optional(v.record(v.string(), v.any())),
-        output: v.optional(v.string()),
-        error: v.optional(v.string()),
-        durationMs: v.optional(v.number()),
-        planStepIndex: v.optional(v.number()),
-        planStepTitle: v.optional(v.string()),
-        planTotalSteps: v.optional(v.number()),
-        completedPlanStepIndexes: v.optional(v.array(v.number())),
-        usage: v.optional(v.record(v.string(), v.any())),
-        snapshot: v.optional(
-          v.object({
-            hash: v.string(),
-            step: v.number(),
-            files: v.array(v.string()),
-            timestamp: v.number(),
-          })
-        ),
-      })
-    ),
+    events: v.array(PersistedRunEvent),
   },
   handler: async (ctx, args) => {
     const { run } = await requireAgentRunOwner(ctx, args.runId)
 
+    const normalizedEvents = [...args.events].sort((a, b) => a.sequence - b.sequence)
     const createdAt = Date.now()
-    const insertedIds = []
-    for (const event of args.events) {
-      const id = await ctx.db.insert('agentRunEvents', {
+    for (const [index, event] of normalizedEvents.entries()) {
+      await ctx.db.insert('agentRunEvents', {
         runId: args.runId,
         chatId: run.chatId,
         sequence: event.sequence,
@@ -144,12 +123,11 @@ export const appendEvents = mutation({
         completedPlanStepIndexes: event.completedPlanStepIndexes,
         usage: event.usage,
         snapshot: event.snapshot,
-        createdAt,
+        createdAt: createdAt + index,
       })
-      insertedIds.push(id)
     }
 
-    return insertedIds
+    return normalizedEvents.length
   },
 })
 
@@ -157,7 +135,7 @@ export const complete = mutation({
   args: {
     runId: v.id('agentRuns'),
     summary: v.optional(v.string()),
-    usage: v.optional(v.record(v.string(), v.any())),
+    usage: v.optional(TokenUsage),
   },
   handler: async (ctx, args) => {
     await requireAgentRunOwner(ctx, args.runId)
@@ -284,7 +262,7 @@ export const saveRuntimeCheckpoint = mutation({
   args: {
     runId: v.optional(v.id('agentRuns')),
     chatId: v.optional(v.id('chats')),
-    checkpoint: v.any(),
+    checkpoint: RuntimeCheckpointPayload,
   },
   handler: async (ctx, args) => {
     let projectId: Id<'projects'>

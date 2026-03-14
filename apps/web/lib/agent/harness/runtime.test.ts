@@ -1329,4 +1329,56 @@ describe('harness Runtime', () => {
     ).toBe(true)
     expect(resumedEvents.some((event) => event.type === 'complete')).toBe(true)
   })
+
+  test('resumes from checkpoints that still use legacy tuple tool frequency entries', async () => {
+    resetHarnessTestState()
+    const checkpointStore = new InMemoryCheckpointStore()
+    const sessionID = 'session-legacy-tool-frequency'
+
+    checkpointStore.save({
+      version: 1,
+      sessionID,
+      agentName: 'build',
+      reason: 'step',
+      savedAt: Date.now(),
+      state: {
+        sessionID,
+        messages: [
+          createUserMessage({
+            id: 'msg-user-legacy-tool-frequency',
+            sessionID,
+            text: 'Resume legacy checkpoint',
+            agent: 'build',
+          }),
+        ],
+        step: 1,
+        isComplete: false,
+        isLastStep: false,
+        pendingSubtasks: [],
+        cost: 0,
+        tokens: { input: 0, output: 0, reasoning: 0 },
+        lastToolLoopSignature: null,
+        toolLoopStreak: 0,
+        toolCallFrequency: [['read_files:{"path":"src"}', 2]] as never,
+      },
+    })
+
+    const runtime = new Runtime(
+      createProvider(() => {}, 'stop'),
+      new Map(),
+      { checkpointStore, maxSteps: 3 }
+    )
+
+    const resumedEvents = []
+    for await (const event of runtime.resume(sessionID)) {
+      resumedEvents.push(event)
+    }
+
+    expect(resumedEvents.some((event) => event.type === 'complete')).toBe(true)
+    const latestCheckpoint = checkpointStore.load(sessionID)
+    expect(latestCheckpoint?.state.toolCallFrequency).toContainEqual({
+      key: 'read_files:{"path":"src"}',
+      count: 2,
+    })
+  })
 })

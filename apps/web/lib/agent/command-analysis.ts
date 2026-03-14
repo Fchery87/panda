@@ -8,6 +8,7 @@ export interface CommandAnalysis {
   operators: string[]
   riskTier: CommandRiskTier
   requiresApproval: boolean
+  reason: string
 }
 
 const PIPE_OPERATOR = '|'
@@ -55,6 +56,7 @@ export function analyzeCommand(command: string): CommandAnalysis {
       operators,
       riskTier: 'high',
       requiresApproval: true,
+      reason: 'Output redirection can create or overwrite files.',
     }
   }
 
@@ -66,6 +68,7 @@ export function analyzeCommand(command: string): CommandAnalysis {
       operators,
       riskTier: 'medium',
       requiresApproval: true,
+      reason: 'Command chaining runs multiple operations in one request.',
     }
   }
 
@@ -82,6 +85,9 @@ export function analyzeCommand(command: string): CommandAnalysis {
       operators,
       riskTier: safePipeline ? 'low' : 'medium',
       requiresApproval: !safePipeline,
+      reason: safePipeline
+        ? 'Read-only pipeline.'
+        : 'Only read-only pipelines can run automatically.',
     }
   }
 
@@ -92,6 +98,7 @@ export function analyzeCommand(command: string): CommandAnalysis {
     operators,
     riskTier: 'low',
     requiresApproval: false,
+    reason: 'Single command.',
   }
 }
 

@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { toast } from 'sonner'
 import { useLayoutPersistence } from './useLayoutPersistence'
 
 type MobilePrimaryPanel = 'workspace' | 'chat'
@@ -29,6 +28,7 @@ export function useProjectWorkspaceUi() {
   const [chatInspectorTab, setChatInspectorTab] = useState<ChatInspectorTab>('run')
   const [isSpecDrawerOpen, setIsSpecDrawerOpen] = useState(false)
   const [isSpecPanelOpen, setIsSpecPanelOpen] = useState(false)
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
 
   useEffect(() => {
     const mobileMedia = window.matchMedia('(max-width: 1023px)')
@@ -65,14 +65,6 @@ export function useProjectWorkspaceUi() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [setIsChatPanelOpen])
 
-  useEffect(() => {
-    const handleOpenShare = () => {
-      toast.info('Share feature coming soon')
-    }
-    window.addEventListener('panda:open-share', handleOpenShare)
-    return () => window.removeEventListener('panda:open-share', handleOpenShare)
-  }, [])
-
   return {
     isArtifactPanelOpen,
     setIsArtifactPanelOpen,
@@ -102,5 +94,7 @@ export function useProjectWorkspaceUi() {
     setIsSpecDrawerOpen,
     isSpecPanelOpen,
     setIsSpecPanelOpen,
+    isShareDialogOpen,
+    setIsShareDialogOpen,
   }
 }

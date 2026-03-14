@@ -164,7 +164,6 @@ export const getEffective = query({
       // Base settings
       theme: userSettings?.theme ?? 'system',
       language: userSettings?.language ?? 'en',
-      permissions: userSettings?.permissions,
       agentDefaults: userSettings?.agentDefaults,
 
       // Provider configuration
@@ -233,12 +232,6 @@ export const update = mutation({
         })
       )
     ),
-    permissions: v.optional(
-      v.object({
-        tools: v.optional(v.record(v.string(), v.string())),
-        bash: v.optional(v.record(v.string(), v.string())),
-      })
-    ),
     // Admin override tracking
     overrideGlobalProvider: v.optional(v.boolean()),
     overrideGlobalModel: v.optional(v.boolean()),
@@ -292,7 +285,6 @@ export const update = mutation({
       if (args.defaultProvider !== undefined) updates.defaultProvider = args.defaultProvider
       if (args.defaultModel !== undefined) updates.defaultModel = args.defaultModel
       if (args.agentDefaults !== undefined) updates.agentDefaults = args.agentDefaults
-      if (args.permissions !== undefined) updates.permissions = args.permissions
       if (args.overrideGlobalProvider !== undefined)
         updates.overrideGlobalProvider = args.overrideGlobalProvider
       if (args.overrideGlobalModel !== undefined)
@@ -312,7 +304,6 @@ export const update = mutation({
         defaultProvider: args.defaultProvider,
         defaultModel: args.defaultModel,
         agentDefaults: args.agentDefaults ?? null,
-        permissions: args.permissions,
         overrideGlobalProvider: args.overrideGlobalProvider,
         overrideGlobalModel: args.overrideGlobalModel,
         overrideProviderConfigs: args.overrideProviderConfigs,

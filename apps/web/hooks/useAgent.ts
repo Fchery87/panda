@@ -31,6 +31,7 @@ import {
 import type { FormalSpecification } from '../lib/agent/spec/types'
 import { getUserFacingAgentError } from '../lib/chat/error-messages'
 import { extractTargetFilePaths } from '../components/chat/live-run-utils'
+import { buildHarnessSessionPermissions, type AgentPolicy } from '../lib/agent/automationPolicy'
 import { normalizeChatMode, type ChatMode } from '../lib/agent/prompt-library'
 import { derivePlanProgressMetadata, parsePlanSteps } from '../lib/agent/plan-progress'
 import { plugins, specTrackingPlugin } from '../lib/agent/harness/plugins'
@@ -47,26 +48,18 @@ import {
   createAgentCheckpointStore,
 } from '../lib/agent/session-controller'
 import { useRunEventBuffer, type TracePersistenceStatus } from './useRunEventBuffer'
+import type {
+  MessageAnnotationInfo,
+  PersistedRunEventInfo,
+  TokenSource,
+  TokenUsageInfo,
+  ToolCallInfo,
+} from '@/components/chat/types'
 
 /**
  * Agent status type
  */
 type AgentStatus = 'idle' | 'thinking' | 'streaming' | 'executing_tools' | 'complete' | 'error'
-
-/**
- * Tool call info for UI display
- */
-interface ToolCallInfo {
-  id: string
-  name: string
-  args: Record<string, unknown>
-  status: 'pending' | 'running' | 'completed' | 'error'
-  result?: {
-    output: string
-    error?: string
-    durationMs: number
-  }
-}
 
 interface ProgressStep {
   id: string
@@ -89,25 +82,6 @@ interface ProgressStep {
   createdAt: number
 }
 
-interface PersistedMessageAnnotation {
-  mode?: unknown
-  reasoningSummary?: unknown
-  toolCalls?: unknown
-  model?: unknown
-  provider?: unknown
-  tokenCount?: unknown
-  promptTokens?: unknown
-  completionTokens?: unknown
-  totalTokens?: unknown
-  tokenSource?: unknown
-  contextWindow?: unknown
-  contextUsedTokens?: unknown
-  contextRemainingTokens?: unknown
-  contextUsagePct?: unknown
-  contextSource?: unknown
-  reasoningTokens?: unknown
-}
-
 interface ReasoningProviderConfig {
   showReasoningPanel?: boolean
   reasoningEnabled?: boolean
@@ -115,34 +89,7 @@ interface ReasoningProviderConfig {
   reasoningMode?: 'auto' | 'low' | 'medium' | 'high'
 }
 
-interface RunEventInput {
-  type: string
-  content?: string
-  status?: string
-  progressCategory?: 'analysis' | 'rewrite' | 'tool' | 'complete' | 'other'
-  progressToolName?: string
-  progressHasArtifactTarget?: boolean
-  targetFilePaths?: string[]
-  toolCallId?: string
-  toolName?: string
-  args?: Record<string, unknown>
-  output?: string
-  error?: string
-  durationMs?: number
-  planStepIndex?: number
-  planStepTitle?: string
-  planTotalSteps?: number
-  completedPlanStepIndexes?: number[]
-  usage?: Record<string, unknown>
-  snapshot?: {
-    hash: string
-    step: number
-    files: string[]
-    timestamp: number
-  }
-}
-
-type TokenSource = 'exact' | 'estimated'
+type RunEventInput = PersistedRunEventInfo
 interface UsageTotals {
   promptTokens: number
   completionTokens: number
@@ -194,6 +141,7 @@ interface UseAgentOptions {
   model?: string
   architectBrainstormEnabled?: boolean
   planDraft?: string
+  automationPolicy?: AgentPolicy
   onRunCreated?: (args: {
     runId: Id<'agentRuns'>
     approvedPlanExecution: boolean
@@ -213,22 +161,7 @@ interface UseAgentReturn {
     mode: ChatMode
     createdAt: number
     toolCalls?: ToolCallInfo[]
-    annotations?: {
-      model?: string
-      tokenCount?: number
-      promptTokens?: number
-      completionTokens?: number
-      totalTokens?: number
-      tokenSource?: TokenSource
-      mode?: ChatMode
-      provider?: string
-      reasoningTokens?: number
-      contextWindow?: number
-      contextUsedTokens?: number
-      contextRemainingTokens?: number
-      contextUsagePct?: number
-      contextSource?: ContextWindowSource
-    }
+    annotations?: MessageAnnotationInfo
   }>
 
   // Input
@@ -309,6 +242,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     model = 'gpt-4o',
     architectBrainstormEnabled = false,
     planDraft,
+    automationPolicy,
     onRunCreated,
   } = options
 
@@ -653,7 +587,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       .filter((msg) => msg.role === 'user' || msg.role === 'assistant')
       .map((msg) => {
         const firstAnnotation = Array.isArray(msg.annotations)
-          ? (msg.annotations[0] as PersistedMessageAnnotation | undefined)
+          ? (msg.annotations[0] as MessageAnnotationInfo | undefined)
           : undefined
 
         // Map stored and legacy modes consistently to the current 4-mode model.
@@ -809,7 +743,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         }
         let runFinalized = false
 
-        const finalizeRunCompleted = async (summary?: string, usage?: Record<string, unknown>) => {
+        const finalizeRunCompleted = async (summary?: string, usage?: RunEventInput['usage']) => {
           if (!runIdRef.current || runFinalized) return
           runFinalized = true
           await flushRunEventBuffer({ force: true, reason: 'complete' })
@@ -916,6 +850,9 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             harnessCheckpointStore: checkpointStore,
             // Enable risk interrupts - PermissionDialog handles the UI
             harnessEnableRiskInterrupts: true,
+            harnessSessionPermissions: automationPolicy
+              ? buildHarnessSessionPermissions(automationPolicy)
+              : undefined,
             ...(runtimeSettings.reasoning ? { reasoning: runtimeSettings.reasoning } : {}),
           },
           toolContext
@@ -1357,7 +1294,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                   usedTokens: sessionUsage.totalTokens + runUsage.totalTokens,
                   contextWindow: contextWindowResolution.contextWindow,
                 })
-                const annotations: Record<string, unknown> = {
+                const annotations: MessageAnnotationInfo = {
                   mode,
                   model,
                   provider: provider?.config?.provider,
@@ -1390,14 +1327,14 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                   {
                     type: 'assistant_message',
                     content: assistantContent,
-                    usage: event.usage as Record<string, unknown> | undefined,
+                    usage: event.usage as TokenUsageInfo | undefined,
                     status: 'completed',
                   },
                   { forceFlush: true }
                 )
                 await finalizeRunCompleted(
                   assistantContent,
-                  event.usage as Record<string, unknown> | undefined
+                  event.usage as TokenUsageInfo | undefined
                 )
               } catch (err) {
                 logUseAgentError('Failed to persist assistant message', err)
@@ -1533,6 +1470,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       projectOverviewContent,
       projectFiles,
       planSteps,
+      automationPolicy,
       onRunCreated,
     ]
   )
@@ -1553,6 +1491,9 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
 
   const resumeRuntimeSession = useCallback(
     async (sessionID: string) => {
+      toast.info('Resuming previous run', {
+        description: 'Panda is restoring the latest recoverable runtime checkpoint.',
+      })
       await sendMessageInternal('Resume previous run', undefined, {
         clearInput: false,
         harnessSessionID: sessionID,
@@ -1594,6 +1535,9 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           model,
           maxIterations: 10,
           harnessEvalMode: scenario.evalMode ?? 'read_only',
+          harnessSessionPermissions: automationPolicy
+            ? buildHarnessSessionPermissions(automationPolicy)
+            : undefined,
           ...(runtimeSettings.reasoning ? { reasoning: runtimeSettings.reasoning } : {}),
         },
         toolContext
@@ -1652,6 +1596,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       projectDescription,
       projectOverviewContent,
       projectFiles,
+      automationPolicy,
     ]
   )
 

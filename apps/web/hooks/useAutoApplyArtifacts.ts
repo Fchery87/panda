@@ -6,18 +6,21 @@ import { toast } from 'sonner'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { shouldAutoApplyArtifact, type AgentPolicy } from '@/lib/agent/automationPolicy'
-import { applyArtifact, getPrimaryArtifactAction } from '@/lib/artifacts/executeArtifact'
+import {
+  applyArtifact,
+  getPrimaryArtifactAction,
+  type ArtifactAction,
+} from '@/lib/artifacts/executeArtifact'
 
 type ArtifactRecord = {
   _id: Id<'artifacts'>
-  actions: Array<Record<string, unknown>>
+  actions: ArtifactAction[]
   status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'rejected'
 }
 
 type PendingArtifact = {
   id: Id<'artifacts'>
-  type: 'file_write' | 'command_run'
-  payload: Record<string, unknown>
+  action: ArtifactAction
 }
 
 export function useAutoApplyArtifacts(args: {
@@ -38,8 +41,7 @@ export function useAutoApplyArtifacts(args: {
         if (!action) return null
         return {
           id: record._id,
-          type: action.type,
-          payload: action.payload,
+          action,
         }
       })
       .filter(Boolean) as PendingArtifact[]
@@ -69,10 +71,7 @@ export function useAutoApplyArtifacts(args: {
     for (const artifact of pendingArtifacts) {
       if (processingRef.current.has(artifact.id)) continue
 
-      const shouldApply = shouldAutoApplyArtifact(policy, {
-        type: artifact.type,
-        payload: artifact.payload,
-      })
+      const shouldApply = shouldAutoApplyArtifact(policy, artifact.action)
       if (!shouldApply) continue
 
       processingRef.current.add(artifact.id)
@@ -81,7 +80,7 @@ export function useAutoApplyArtifacts(args: {
         try {
           const result = await applyArtifact({
             artifactId: artifact.id,
-            action: { type: artifact.type, payload: artifact.payload },
+            action: artifact.action,
             projectId: args.projectId,
             convex,
             upsertFile,

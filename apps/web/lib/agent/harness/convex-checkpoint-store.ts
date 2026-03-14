@@ -3,9 +3,22 @@ import type { Id } from '@convex/_generated/dataModel'
 
 import type { CheckpointStore, RuntimeCheckpoint } from './checkpoint-store'
 
+type SaveRuntimeCheckpointArgs = {
+  checkpoint: RuntimeCheckpoint
+  runId?: Id<'agentRuns'>
+  chatId?: Id<'chats'>
+}
+
+type LoadRuntimeCheckpointArgs = {
+  sessionID: string
+  runId?: Id<'agentRuns'>
+  chatId?: Id<'chats'>
+  projectId?: Id<'projects'>
+}
+
 type ConvexClientLike = {
-  query: (func: unknown, args: Record<string, unknown>) => Promise<unknown>
-  mutation: (func: unknown, args: Record<string, unknown>) => Promise<unknown>
+  query: (func: unknown, args: LoadRuntimeCheckpointArgs) => Promise<unknown>
+  mutation: (func: unknown, args: SaveRuntimeCheckpointArgs) => Promise<unknown>
 }
 
 type AgentRunsRuntimeCheckpointApiRef = {
@@ -50,7 +63,7 @@ export class ConvexCheckpointStore implements CheckpointStore {
       throw new Error('ConvexCheckpointStore.save requires scope.runId or scope.chatId')
     }
 
-    const args: Record<string, unknown> = {
+    const args: SaveRuntimeCheckpointArgs = {
       checkpoint,
       ...(this.scope.runId ? { runId: this.scope.runId } : {}),
       ...(this.scope.chatId ? { chatId: this.scope.chatId } : {}),
@@ -60,7 +73,7 @@ export class ConvexCheckpointStore implements CheckpointStore {
   }
 
   async load(sessionID: string): Promise<RuntimeCheckpoint | null> {
-    const args: Record<string, unknown> = {
+    const args: LoadRuntimeCheckpointArgs = {
       sessionID,
       ...(this.scope.runId ? { runId: this.scope.runId } : {}),
       ...(this.scope.chatId ? { chatId: this.scope.chatId } : {}),

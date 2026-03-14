@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import {
+  buildHarnessSessionPermissions,
   isCommandAllowedByPrefix,
   resolveEffectiveAgentPolicy,
   shouldAutoApplyArtifact,
@@ -61,5 +62,18 @@ describe('automationPolicy', () => {
         payload: { command: 'bunx eslint .', workingDirectory: undefined },
       })
     ).toBe(false)
+  })
+
+  it('builds harness session permissions from allowlisted command prefixes', () => {
+    const policy: AgentPolicy = {
+      autoApplyFiles: false,
+      autoRunCommands: true,
+      allowedCommandPrefixes: ['bun test', ' bun run lint '],
+    }
+
+    expect(buildHarnessSessionPermissions(policy)).toEqual({
+      'run_command:bun test*': 'allow',
+      'run_command:bun run lint*': 'allow',
+    })
   })
 })

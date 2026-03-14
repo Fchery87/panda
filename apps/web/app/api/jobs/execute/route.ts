@@ -359,7 +359,10 @@ export async function POST(req: NextRequest) {
 
   const analysis = analyzeCommand(command)
   if (analysis.kind === 'chain') {
-    return Response.json({ error: 'Shell operators are not allowed' }, { status: 400 })
+    return Response.json(
+      { error: `${analysis.reason} Split chained commands and run them one at a time.` },
+      { status: 400 }
+    )
   }
 
   try {

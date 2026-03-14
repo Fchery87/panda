@@ -21,6 +21,27 @@ interface BufferedRunEvent<TEvent extends object> {
   event: TEvent & { sequence: number }
 }
 
+export function groupBufferedRunEvents<TEvent extends object>(
+  entries: Array<BufferedRunEvent<TEvent>>
+): Map<Id<'agentRuns'>, Array<TEvent & { sequence: number }>> {
+  const grouped = new Map<Id<'agentRuns'>, Array<TEvent & { sequence: number }>>()
+
+  for (const entry of entries) {
+    const events = grouped.get(entry.runId)
+    if (events) {
+      events.push(entry.event)
+    } else {
+      grouped.set(entry.runId, [entry.event])
+    }
+  }
+
+  for (const events of grouped.values()) {
+    events.sort((a, b) => a.sequence - b.sequence)
+  }
+
+  return grouped
+}
+
 export function useRunEventBuffer<TEvent extends object>({
   appendRunEvents,
   onError,
@@ -81,15 +102,7 @@ export function useRunEventBuffer<TEvent extends object>({
         const pending = runEventBufferRef.current.splice(0, runEventBufferRef.current.length)
         if (pending.length === 0) return
 
-        const grouped = new Map<Id<'agentRuns'>, Array<TEvent & { sequence: number }>>()
-        for (const entry of pending) {
-          const events = grouped.get(entry.runId)
-          if (events) {
-            events.push(entry.event)
-          } else {
-            grouped.set(entry.runId, [entry.event])
-          }
-        }
+        const grouped = groupBufferedRunEvents(pending)
 
         try {
           for (const [runId, events] of grouped) {

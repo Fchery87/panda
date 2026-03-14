@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { bus } from '@/lib/agent/harness/event-bus'
+import { describePermissionRequest } from '@/lib/agent/permission-presentation'
 import { permissions } from '@/lib/agent/harness/permissions'
 import type { PermissionDecision, PermissionRequest } from '@/lib/agent/harness/types'
 import type { Identifier } from '@/lib/agent/harness/types'
@@ -29,6 +30,42 @@ interface PermissionRequestWithID {
   id: Identifier
   request: PermissionRequest
   timestamp: number
+}
+
+declare global {
+  interface Window {
+    __PANDA_E2E__?: {
+      emitPermissionRequest?: () => void
+    }
+  }
+}
+
+function isE2EPermissionHookEnabled(): boolean {
+  return process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_E2E_AUTH_BYPASS === 'true'
+}
+
+function emitE2EPermissionRequest(eventBus: typeof bus): void {
+  const sessionID = `e2e_permission_session_${Date.now()}`
+  const requestId = `e2e_permission_request_${Date.now()}`
+
+  eventBus.emit('permission.requested', sessionID, {
+    id: requestId,
+    request: {
+      sessionID,
+      messageID: 'e2e_permission_message',
+      tool: 'run_command',
+      pattern: 'bun test && bun run lint',
+      metadata: {
+        args: {
+          command: 'bun test && bun run lint',
+        },
+        commandAnalysis: {
+          riskTier: 'high',
+          reason: 'Command chaining runs multiple operations in one request.',
+        },
+      },
+    } satisfies PermissionRequest,
+  })
 }
 
 interface PermissionCardProps {
@@ -49,29 +86,12 @@ function PermissionCard({ request, onRespond, timeoutMs, onTimeout }: Permission
   const metadata = request.request.metadata
   const detailArgs =
     metadata && typeof metadata === 'object' && 'args' in metadata ? metadata.args : undefined
-
-  // Determine risk tier based on tool
-  const getRiskTier = (toolName: string): 'low' | 'medium' | 'high' => {
-    if (['write_files', 'apply_patch', 'run_command'].includes(toolName)) {
-      return 'high'
-    }
-    if (['update_memory_bank', 'task'].includes(toolName)) {
-      return 'medium'
-    }
-    return 'low'
-  }
-
-  const riskTier = getRiskTier(tool)
+  const presentation = describePermissionRequest(request.request)
+  const riskTier = presentation.riskTier
   const riskColors = {
     low: 'border-green-500/50 bg-green-500/5 text-green-600',
     medium: 'border-yellow-500/50 bg-yellow-500/5 text-yellow-600',
     high: 'border-red-500/50 bg-red-500/5 text-red-600',
-  }
-
-  const riskLabels = {
-    low: 'Low Risk',
-    medium: 'Medium Risk',
-    high: 'High Risk',
   }
 
   // Countdown timer
@@ -132,11 +152,11 @@ function PermissionCard({ request, onRespond, timeoutMs, onTimeout }: Permission
 
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex items-center gap-2">
-            <span className="font-mono text-xs font-semibold">{tool}</span>
+            <span className="font-mono text-xs font-semibold">{presentation.title}</span>
             <span
               className={cn('px-1.5 py-0.5 font-mono text-[10px] uppercase', riskColors[riskTier])}
             >
-              {riskLabels[riskTier]}
+              {presentation.riskLabel}
             </span>
             {timeRemaining <= 10000 && (
               <span className="flex items-center gap-1 font-mono text-[10px] text-red-500">
@@ -146,9 +166,15 @@ function PermissionCard({ request, onRespond, timeoutMs, onTimeout }: Permission
             )}
           </div>
 
-          {pattern && (
+          <div className="mb-1 font-mono text-xs text-muted-foreground">{presentation.summary}</div>
+          {presentation.detail ? (
+            <div className="mb-2 font-mono text-[11px] text-muted-foreground/80">
+              {presentation.detail}
+            </div>
+          ) : null}
+          {pattern ? (
             <div className="mb-2 truncate font-mono text-xs text-muted-foreground">{pattern}</div>
-          )}
+          ) : null}
 
           {/* Progress bar for timeout */}
           <div className="mb-3 h-1 overflow-hidden bg-border">
@@ -236,6 +262,26 @@ export function PermissionDialog({
   className,
 }: PermissionDialogProps) {
   const [pendingRequests, setPendingRequests] = useState<PermissionRequestWithID[]>([])
+
+  useEffect(() => {
+    if (!isE2EPermissionHookEnabled() || typeof window === 'undefined') {
+      return
+    }
+
+    window.__PANDA_E2E__ = {
+      ...window.__PANDA_E2E__,
+      emitPermissionRequest: () => emitE2EPermissionRequest(bus),
+    }
+
+    return () => {
+      if (window.__PANDA_E2E__) {
+        delete window.__PANDA_E2E__.emitPermissionRequest
+        if (Object.keys(window.__PANDA_E2E__).length === 0) {
+          delete window.__PANDA_E2E__
+        }
+      }
+    }
+  }, [])
 
   // Subscribe to permission events
   useEffect(() => {

@@ -18,6 +18,7 @@ describe('command analysis', () => {
     expect(analysis.kind).toBe('redirect')
     expect(analysis.riskTier).toBe('high')
     expect(analysis.requiresApproval).toBe(true)
+    expect(analysis.reason).toContain('overwrite files')
   })
 
   it('flags chained commands as medium risk', () => {
@@ -26,5 +27,6 @@ describe('command analysis', () => {
     expect(analysis.kind).toBe('chain')
     expect(analysis.riskTier).toBe('medium')
     expect(analysis.requiresApproval).toBe(true)
+    expect(analysis.reason).toContain('multiple operations')
   })
 })

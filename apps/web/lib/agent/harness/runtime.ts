@@ -44,7 +44,7 @@ import { AGENT_TOOLS } from '../tools'
 import { analyzeCommand } from '../command-analysis'
 import { ascending } from './identifier'
 import { agents } from './agents'
-import { permissions, checkPermission } from './permissions'
+import { permissions, checkPermission, mergePermissions } from './permissions'
 import { plugins } from './plugins'
 import { repairJSON, fuzzyMatchToolName, safeJSONParse } from './tool-repair'
 import { compaction, needsCompaction, SUMMARIZATION_PROMPT } from './compaction'
@@ -56,6 +56,7 @@ import type {
   RuntimeCheckpointPendingSubtask,
   RuntimeCheckpointReason,
   RuntimeCheckpointState,
+  RuntimeCheckpointLegacyToolCallFrequencyEntry,
 } from './checkpoint-store'
 import { SpecEngine, createSpecEngine, type SpecGenerationContext } from '../spec/engine'
 
@@ -87,6 +88,19 @@ interface RuntimeState {
   lastInterventionStep: number
   /** Active specification being executed against */
   activeSpec?: FormalSpecification
+}
+
+function normalizeCheckpointToolCallFrequency(
+  entries: RuntimeCheckpointState['toolCallFrequency']
+): Array<{ key: string; count: number }> {
+  return (entries ?? []).flatMap((entry) => {
+    if (Array.isArray(entry)) {
+      const [key, count] = entry as RuntimeCheckpointLegacyToolCallFrequencyEntry
+      return typeof key === 'string' && typeof count === 'number' ? [{ key, count }] : []
+    }
+
+    return typeof entry?.key === 'string' && typeof entry.count === 'number' ? [entry] : []
+  })
 }
 
 type PendingSubtask = RuntimeCheckpointPendingSubtask
@@ -1166,8 +1180,13 @@ export class Runtime {
       args = interruptResult.args
     }
 
+    const effectivePermissions = mergePermissions(
+      agent.permission,
+      permissions.getSessionPermissions(this.state.sessionID) ?? {}
+    )
+
     for (const pattern of patterns) {
-      const decision = checkPermission(agent.permission, toolName, pattern || undefined)
+      const decision = checkPermission(effectivePermissions, toolName, pattern || undefined)
       if (decision === 'deny') {
         yield this.createToolResultEvent({
           toolCallId: toolCall.id,
@@ -1182,13 +1201,35 @@ export class Runtime {
     }
 
     const askPatterns = patterns.filter(
-      (pattern) => checkPermission(agent.permission, toolName, pattern || undefined) === 'ask'
+      (pattern) => checkPermission(effectivePermissions, toolName, pattern || undefined) === 'ask'
     )
 
     if (askPatterns.length > 0) {
+      const primaryPattern = askPatterns[0]
+      let permissionReason: string | undefined
+      const permissionMetadata: Record<string, unknown> = {
+        args,
+        target: primaryPattern,
+      }
+
+      if (toolName === 'run_command') {
+        const analysis = analyzeCommand(String(args.command ?? ''))
+        permissionReason = analysis.reason
+        permissionMetadata.analysis = {
+          kind: analysis.kind,
+          riskTier: analysis.riskTier,
+          reason: analysis.reason,
+          requiresApproval: analysis.requiresApproval,
+        }
+        permissionMetadata.reason = analysis.reason
+      }
+
       yield {
         type: 'permission_request',
-        content: `Permission requested for: ${toolName} (${askPatterns.length} target${askPatterns.length === 1 ? '' : 's'})`,
+        content:
+          toolName === 'run_command' && permissionReason
+            ? `Command approval required: ${permissionReason}`
+            : `Permission requested for: ${toolName} (${askPatterns.length} target${askPatterns.length === 1 ? '' : 's'})`,
       }
 
       for (const pattern of askPatterns) {
@@ -1197,7 +1238,10 @@ export class Runtime {
           messageID,
           toolName,
           pattern,
-          { args, target: pattern }
+          {
+            ...permissionMetadata,
+            target: pattern,
+          }
         )
 
         yield {
@@ -2347,7 +2391,10 @@ export class Runtime {
       lastToolLoopSignature: this.state.lastToolLoopSignature,
       toolLoopStreak: this.state.toolLoopStreak,
       toolCallHistory: this.state.toolCallHistory,
-      toolCallFrequency: Array.from(this.state.toolCallFrequency.entries()),
+      toolCallFrequency: Array.from(this.state.toolCallFrequency.entries()).map(([key, count]) => ({
+        key,
+        count,
+      })),
       cyclicPatternDetected: this.state.cyclicPatternDetected,
       lastInterventionStep: this.state.lastInterventionStep,
     }
@@ -2367,7 +2414,11 @@ export class Runtime {
       lastToolLoopSignature: checkpointState.lastToolLoopSignature,
       toolLoopStreak: checkpointState.toolLoopStreak,
       toolCallHistory: checkpointState.toolCallHistory ?? [],
-      toolCallFrequency: new Map(checkpointState.toolCallFrequency ?? []),
+      toolCallFrequency: new Map(
+        normalizeCheckpointToolCallFrequency(checkpointState.toolCallFrequency).map(
+          ({ key, count }) => [key, count]
+        )
+      ),
       cyclicPatternDetected: checkpointState.cyclicPatternDetected ?? false,
       lastInterventionStep: checkpointState.lastInterventionStep ?? 0,
     }

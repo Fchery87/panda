@@ -5,10 +5,22 @@ import { api } from '@convex/_generated/api'
 import type { ConvexReactClient } from 'convex/react'
 import { executeQueuedJob } from '@/lib/jobs/executeJob'
 
-export type ArtifactAction = {
-  type: 'file_write' | 'command_run'
-  payload: Record<string, unknown>
-}
+export type ArtifactAction =
+  | {
+      type: 'file_write'
+      payload: {
+        filePath: string
+        content: string
+        originalContent?: string | null
+      }
+    }
+  | {
+      type: 'command_run'
+      payload: {
+        command: string
+        workingDirectory?: string
+      }
+    }
 
 export type ArtifactRecordStatus = 'pending' | 'in_progress' | 'completed' | 'failed' | 'rejected'
 
@@ -23,9 +35,9 @@ export function inferArtifactJobType(command: string) {
 }
 
 export function getPrimaryArtifactAction(record: {
-  actions: Array<Record<string, unknown>>
+  actions: ArtifactAction[]
 }): ArtifactAction | null {
-  const action = record.actions?.[0] as ArtifactAction | undefined
+  const action = record.actions?.[0]
   if (!action || (action.type !== 'file_write' && action.type !== 'command_run')) return null
   return action
 }
@@ -79,41 +91,39 @@ export async function applyArtifact({
 
   try {
     if (action.type === 'file_write') {
-      const payload = action.payload as { filePath: string; content: string }
       const existing = await convex.query(api.files.getByPath, {
         projectId,
-        path: payload.filePath,
+        path: action.payload.filePath,
       })
 
       await upsertFile({
         id: existing?._id,
         projectId,
-        path: payload.filePath,
-        content: payload.content,
+        path: action.payload.filePath,
+        content: action.payload.content,
         isBinary: false,
       })
 
       await updateArtifactStatus({ id: artifactId, status: 'completed' })
-      return { kind: 'file', description: payload.filePath }
+      return { kind: 'file', description: action.payload.filePath }
     }
 
-    const payload = action.payload as { command: string; workingDirectory?: string }
     const { jobId } = await createAndExecuteJob({
       projectId,
-      type: inferArtifactJobType(payload.command),
-      command: payload.command,
-      workingDirectory: payload.workingDirectory,
+      type: inferArtifactJobType(action.payload.command),
+      command: action.payload.command,
+      workingDirectory: action.payload.workingDirectory,
     })
 
     await executeQueuedJob({
       jobId,
-      command: payload.command,
-      workingDirectory: payload.workingDirectory,
+      command: action.payload.command,
+      workingDirectory: action.payload.workingDirectory,
       updateJobStatus,
     })
 
     await updateArtifactStatus({ id: artifactId, status: 'completed' })
-    return { kind: 'command', description: payload.command }
+    return { kind: 'command', description: action.payload.command }
   } catch (error) {
     await updateArtifactStatus({ id: artifactId, status: 'failed' })
     throw error

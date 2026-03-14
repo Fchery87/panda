@@ -1,4 +1,6 @@
+import type { Permission } from './harness/types'
 import type { ChatMode } from './prompt-library'
+import type { ArtifactAction } from '@/lib/artifacts/executeArtifact'
 
 export type AgentPolicy = {
   autoApplyFiles: boolean
@@ -53,17 +55,22 @@ export function resolveEffectiveAgentPolicy(args: {
   }
 }
 
-export function shouldAutoApplyArtifact(
-  policy: AgentPolicy,
-  artifact: {
-    type: 'file_write' | 'command_run'
-    payload: Record<string, unknown>
-  }
-): boolean {
+export function shouldAutoApplyArtifact(policy: AgentPolicy, artifact: ArtifactAction): boolean {
   if (artifact.type === 'file_write') return policy.autoApplyFiles
   if (!policy.autoRunCommands) return false
-  return isCommandAllowedByPrefix(
-    String(artifact.payload?.command ?? ''),
-    policy.allowedCommandPrefixes
-  )
+  return isCommandAllowedByPrefix(artifact.payload.command, policy.allowedCommandPrefixes)
+}
+
+export function buildHarnessSessionPermissions(policy: AgentPolicy): Permission {
+  const permissions: Permission = {}
+
+  if (!policy.autoRunCommands) {
+    return permissions
+  }
+
+  for (const prefix of normalizePrefixList(policy.allowedCommandPrefixes)) {
+    permissions[`run_command:${prefix}*`] = 'allow'
+  }
+
+  return permissions
 }

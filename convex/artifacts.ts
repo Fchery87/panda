@@ -1,5 +1,6 @@
 import { query, mutation } from './_generated/server'
 import { v } from 'convex/values'
+import { ArtifactAction } from './schema'
 import { requireArtifactOwner, requireChatOwner } from './lib/authz'
 
 // list (query) - list artifacts by chatId
@@ -28,7 +29,7 @@ export const create = mutation({
   args: {
     chatId: v.id('chats'),
     messageId: v.optional(v.id('messages')),
-    actions: v.array(v.record(v.string(), v.any())),
+    actions: v.array(ArtifactAction),
     status: v.union(
       v.literal('pending'),
       v.literal('in_progress'),
@@ -64,7 +65,7 @@ export const updateStatus = mutation({
       v.literal('failed'),
       v.literal('rejected')
     ),
-    actions: v.optional(v.array(v.record(v.string(), v.any()))),
+    actions: v.optional(v.array(ArtifactAction)),
   },
   handler: async (ctx, args) => {
     const { artifact } = await requireArtifactOwner(ctx, args.id)

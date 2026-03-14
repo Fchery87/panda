@@ -44,7 +44,7 @@ Tailwind, Framer Motion.
 
 ### Task 1: Restore Repo Health Baseline
 
-**Status:** Pending
+**Status:** Complete
 
 **Files:**
 
@@ -106,7 +106,7 @@ Expected: all PASS.
 
 ### Task 2: Collapse to One Canonical Runtime for the Web App
 
-**Status:** Pending
+**Status:** Complete
 
 **Files:**
 
@@ -159,7 +159,7 @@ Expected: PASS, with fewer adapter-only assertions.
 
 ### Task 3: Break Up the Browser Workspace Shell
 
-**Status:** Pending
+**Status:** Complete
 
 **Files:**
 
@@ -204,7 +204,7 @@ Expected: PASS.
 
 ### Task 4: Harden Browser Tooling and Permission UX
 
-**Status:** Pending
+**Status:** Complete
 
 **Files:**
 
@@ -254,7 +254,7 @@ Expected: PASS.
 
 ### Task 5: Tighten Persistence Schemas and Run Event Ingestion
 
-**Status:** Pending
+**Status:** Complete
 
 **Files:**
 
@@ -301,7 +301,7 @@ Expected: PASS.
 
 ### Task 6: Finish the Exposed Browser Product Flows
 
-**Status:** Pending
+**Status:** Complete
 
 **Files:**
 
@@ -351,7 +351,7 @@ Expected: PASS.
 
 ### Task 7: Raise the Web-Only Acceptance Bar
 
-**Status:** Pending
+**Status:** Complete
 
 **Files:**
 

@@ -31,6 +31,7 @@ import {
   ascending as harnessAscending,
 } from './harness'
 import type { CheckpointStore as HarnessCheckpointStore } from './harness/checkpoint-store'
+import type { Permission as HarnessPermission } from './harness/types'
 import type { FormalSpecification, SpecTier } from './spec/types'
 
 const isE2ESpecApprovalModeEnabled = process.env.NEXT_PUBLIC_E2E_AGENT_MODE === 'spec-approval'
@@ -48,6 +49,7 @@ export interface RuntimeOptions {
   harnessCheckpointStore?: HarnessCheckpointStore
   harnessEnableRiskInterrupts?: boolean
   harnessEvalMode?: 'read_only' | 'full'
+  harnessSessionPermissions?: HarnessPermission
 }
 
 /**
@@ -1028,7 +1030,12 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
       config?.harnessEnableRiskInterrupts ?? this.options.harnessEnableRiskInterrupts ?? true
     const harnessEvalMode = config?.harnessEvalMode ?? this.options.harnessEvalMode
     const specApprovalMode = config?.harnessSpecApprovalMode ?? 'auto_approve'
+    const sessionPermissions = this.options.harnessSessionPermissions
     this.pendingSpecApprovalResolver = null
+
+    if (sessionPermissions && Object.keys(sessionPermissions).length > 0) {
+      harnessPermissions.setSessionPermissions(sessionID, sessionPermissions)
+    }
 
     const harnessRuntimeConfig: Partial<HarnessRuntimeConfig> = {
       ...(typeof config?.maxIterations === 'number' ? { maxSteps: config.maxIterations } : {}),

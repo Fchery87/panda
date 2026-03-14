@@ -1083,8 +1083,7 @@ export async function executeTool(
             toolName: toolCall.function.name,
             args,
             output: '',
-            error:
-              'Only read-only pipelines are allowed automatically. Redirects and mutating pipelines require approval or a simpler command.',
+            error: `${commandAnalysis.reason} Use a single command or a read-only pipeline instead.`,
             durationMs: 0,
             timestamp: Date.now(),
             retryCount: 0,

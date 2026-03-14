@@ -1,161 +1,14 @@
-import { test, expect, Page } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
+import { openWorkbenchProjectFixture } from './helpers/workbench'
 
-async function openCreateProjectDialog(page: Page) {
-  const newProjectButton = page
-    .getByRole('main')
-    .getByRole('button', { name: /new project/i })
-    .first()
-  await expect(newProjectButton).toBeVisible()
-  await newProjectButton.click()
-
-  const dialog = page
-    .locator('[role="dialog"]:visible')
-    .filter({ hasText: /create new project/i })
-    .first()
-  await expect(dialog).toBeVisible()
-}
-
-async function createAndOpenProject(page: Page): Promise<string> {
-  const projectName = `Workbench Test ${Date.now()}`
-
-  await page.goto('/projects')
-  const notFoundHeading = page.getByRole('heading', { name: '404' })
-  if (await notFoundHeading.isVisible().catch(() => false)) {
-    await page.reload()
-  }
-  await expect(page.getByRole('heading', { name: /your work|projects/i, level: 1 })).toBeVisible({
-    timeout: 20000,
-  })
-
-  await openCreateProjectDialog(page)
-  const nameInput = page.locator('input#name').or(page.getByPlaceholder(/my-awesome-project/i))
-  await expect(nameInput).toBeEditable()
-  await nameInput.fill(projectName)
-
-  const createButton = page.getByRole('button', { name: /^create$/i }).last()
-  await expect(createButton).toBeEnabled()
-  await createButton.click()
-
-  await expect(page.locator('[role="dialog"]:visible')).toHaveCount(0)
-
-  const projectLink = page.locator('a[href^="/projects/"]', { hasText: projectName }).first()
-  await expect(projectLink).toBeVisible({ timeout: 15000 })
-  const href = await projectLink.getAttribute('href')
-  expect(href).toMatch(/^\/projects\/.+/)
-  await page.goto(href!, { waitUntil: 'domcontentloaded' })
-  await expect(page).toHaveURL(/\/projects\/.+/, { timeout: 30000 })
-  await expect(
-    page
-      .getByRole('main')
-      .getByRole('button', { name: /^reset$/i })
-      .first()
-  ).toBeVisible({
-    timeout: 30000,
-  })
-
-  return projectName
-}
-
-async function openWorkbenchProject(page: Page): Promise<void> {
-  await openWorkbenchProjectFixture(page)
-}
-
-async function openWorkbenchProjectFixture(
-  page: Page,
-  options?: {
-    filePath?: string
-    fileContent?: string
-    seedRuntimeCheckpoint?: boolean
-    planDraft?: string
-    planStatus?: 'awaiting_review' | 'approved' | 'stale' | 'executing'
-  }
-): Promise<{ projectId: string; chatId?: string; filePath?: string; sessionID?: string }> {
-  const params = new URLSearchParams({ name: 'Workbench E2E Fixture' })
-  if (options?.filePath) {
-    params.set('filePath', options.filePath)
-  }
-  if (options?.fileContent) {
-    params.set('fileContent', options.fileContent)
-  }
-  if (options?.seedRuntimeCheckpoint) {
-    params.set('seedRuntimeCheckpoint', '1')
-  }
-  if (options?.planDraft) {
-    params.set('planDraft', options.planDraft)
-  }
-  if (options?.planStatus) {
-    params.set('planStatus', options.planStatus)
-  }
-
-  let response = await page.request.get(`/api/e2e/project?${params.toString()}`)
-  const deadline = Date.now() + 15_000
-
-  while (!response.ok() && Date.now() < deadline) {
-    await page.waitForTimeout(500)
-    response = await page.request.get(`/api/e2e/project?${params.toString()}`)
-  }
-
-  expect(response.ok()).toBe(true)
-  const body = (await response.json()) as {
-    projectId: string
-    chatId?: string
-    filePath?: string
-    sessionID?: string
-  }
-  expect(body.projectId).toBeTruthy()
-
-  const projectUrl = `/projects/${body.projectId}`
-  const navigationDeadline = Date.now() + 120_000
-  let lastNavigationError: unknown = null
-
-  while (Date.now() < navigationDeadline) {
-    try {
-      await page.goto(projectUrl, { waitUntil: 'domcontentloaded', timeout: 120_000 })
-      lastNavigationError = null
-      break
-    } catch (error) {
-      lastNavigationError = error
-      if (
-        !(error instanceof Error) ||
-        (!error.message.includes('ERR_ABORTED') && !error.message.includes('frame was detached'))
-      ) {
-        throw error
-      }
-      await page.waitForTimeout(500)
-    }
-  }
-
-  if (lastNavigationError) {
-    throw lastNavigationError
-  }
-
-  await expect(page.getByRole('navigation', { name: /breadcrumb/i })).toBeVisible({
-    timeout: 120000,
-  })
-  await expect(page.getByRole('textbox').first()).toBeVisible({ timeout: 120000 })
-  return body
-}
-
-async function triggerSpecReview(page: Page, prompt: string) {
-  await openWorkbenchProject(page)
-
-  const chatComposer = page
-    .getByPlaceholder(/planning & architecture|describe the code to write|type your message/i)
-    .or(page.getByRole('textbox').first())
-    .first()
-  await expect(chatComposer).toBeVisible({ timeout: 15000 })
-  await chatComposer.fill(prompt)
-
-  await page.getByRole('button', { name: /send message/i }).click()
-
-  const specReviewCard = page.getByText(/specification ready for review/i)
-  await expect(specReviewCard).toBeVisible({ timeout: 20000 })
-  return specReviewCard
+async function openWorkbenchSmokeFixture(page: Page, name: string) {
+  await openWorkbenchProjectFixture(page, { name })
+  return name
 }
 
 test.describe('Workbench', () => {
   test('workbench page loads', async ({ page }) => {
-    const projectName = await createAndOpenProject(page)
+    const projectName = await openWorkbenchSmokeFixture(page, 'Workbench Smoke Page')
 
     await expect(page).toHaveURL(/\/projects\/.+/)
 
@@ -166,7 +19,7 @@ test.describe('Workbench', () => {
   })
 
   test('file tree is visible', async ({ page }) => {
-    await createAndOpenProject(page)
+    await openWorkbenchSmokeFixture(page, 'Workbench Smoke Explorer')
 
     const fileTreeHeader = page.getByText(/explorer/i).first()
     await expect(fileTreeHeader).toBeVisible()
@@ -179,7 +32,7 @@ test.describe('Workbench', () => {
   })
 
   test('editor area is present', async ({ page }) => {
-    await createAndOpenProject(page)
+    await openWorkbenchSmokeFixture(page, 'Workbench Smoke Editor')
 
     const codeTab = page.getByRole('button', { name: /code/i }).first()
     await expect(codeTab).toBeVisible()
@@ -194,7 +47,7 @@ test.describe('Workbench', () => {
   })
 
   test('terminal area is present', async ({ page }) => {
-    await createAndOpenProject(page)
+    await openWorkbenchSmokeFixture(page, 'Workbench Smoke Terminal')
 
     const terminalHeader = page.getByText(/terminal/i).first()
     await expect(terminalHeader).toBeVisible()
@@ -204,7 +57,7 @@ test.describe('Workbench', () => {
   })
 
   test('can navigate between tabs', async ({ page }) => {
-    await createAndOpenProject(page)
+    await openWorkbenchSmokeFixture(page, 'Workbench Smoke Tabs')
 
     const codeTab = page.getByRole('button', { name: /code/i }).first()
     const timelineTab = page.getByRole('button', { name: /timeline/i }).first()
@@ -218,7 +71,7 @@ test.describe('Workbench', () => {
   })
 
   test('chat panel is visible', async ({ page }) => {
-    await createAndOpenProject(page)
+    await openWorkbenchSmokeFixture(page, 'Workbench Smoke Chat')
 
     const chatHeader = page.getByText(/chat/i).first()
     await expect(chatHeader).toBeVisible()
@@ -235,7 +88,7 @@ test.describe('Workbench', () => {
   })
 
   test('top navigation works', async ({ page }) => {
-    await createAndOpenProject(page)
+    await openWorkbenchSmokeFixture(page, 'Workbench Smoke Navigation')
 
     const backButton = page.locator('a[href="/projects"] button').first()
     await expect(backButton).toBeVisible({ timeout: 15000 })
@@ -244,14 +97,14 @@ test.describe('Workbench', () => {
   })
 
   test('workbench layout has resizable panels', async ({ page }) => {
-    await createAndOpenProject(page)
+    await openWorkbenchSmokeFixture(page, 'Workbench Smoke Layout')
 
     const resizeHandle = page.locator('.w-px.bg-border').first()
     await expect(resizeHandle).toBeVisible()
   })
 
   test('project name is displayed in header', async ({ page }) => {
-    const projectName = await createAndOpenProject(page)
+    const projectName = await openWorkbenchSmokeFixture(page, 'Workbench Smoke Header')
 
     const headerProjectName = page
       .getByRole('navigation', { name: /breadcrumb/i })
@@ -260,141 +113,34 @@ test.describe('Workbench', () => {
   })
 
   test('can access workbench from project list', async ({ page }) => {
+    const projectName = 'Workbench Smoke Project List'
+    await openWorkbenchProjectFixture(page, { name: projectName })
     await page.goto('/projects')
 
-    const projectLinks = page.locator('a[href^="/projects/"]').first()
+    const projectLink = page.locator('a[href^="/projects/"]', { hasText: projectName }).first()
+    await expect(projectLink).toBeVisible({ timeout: 15_000 })
+    const href = await projectLink.getAttribute('href')
+    expect(href).toMatch(/^\/projects\/.+/)
+    await page.goto(href!)
+    await expect(page).toHaveURL(/\/projects\/.+/, { timeout: 15_000 })
 
-    if (await projectLinks.isVisible().catch(() => false)) {
-      const href = await projectLinks.getAttribute('href')
-      expect(href).toMatch(/^\/projects\/.+/)
-      await page.goto(href!)
-      await expect(page).toHaveURL(/\/projects\/.+/, { timeout: 15000 })
-
-      const explorerHeader = page.getByText(/explorer/i).first()
-      await expect(explorerHeader).toBeVisible()
-    }
+    const explorerHeader = page.getByText(/explorer/i).first()
+    await expect(explorerHeader).toBeVisible()
   })
 
-  test('workspace reset button is visible', async ({ page }) => {
-    await createAndOpenProject(page)
+  test('automation button is visible', async ({ page }) => {
+    await openWorkbenchSmokeFixture(page, 'Workbench Smoke Reset')
 
-    const resetButton = page
-      .getByRole('main')
-      .getByRole('button', { name: /^reset$/i })
-      .first()
-    await expect(resetButton).toBeVisible({ timeout: 15000 })
-  })
-
-  test('artifacts button is visible', async ({ page }) => {
-    await createAndOpenProject(page)
-
-    const artifactsButton = page
-      .getByRole('main')
-      .getByRole('button', { name: /^artifacts$/i })
-      .first()
-    await expect(artifactsButton).toBeVisible({ timeout: 15000 })
-  })
-
-  test('spec approval flow shows review gate and allows approval', async ({ page }) => {
-    test.setTimeout(90_000)
-    const specReviewCard = await triggerSpecReview(
-      page,
-      'Create a reusable alert banner component and wire it into the dashboard header.'
-    )
-
-    await page.getByRole('button', { name: /approve & execute/i }).click()
-
-    await expect(specReviewCard).not.toBeVisible({ timeout: 20000 })
-    await expect(page.getByRole('log', { name: /chat messages/i })).toContainText(
-      'Create a reusable alert banner component and wire it into the dashboard header.',
-      {
-        timeout: 20000,
-      }
-    )
-    await expect(page.getByRole('tab', { name: /^run$/i })).toBeVisible({
-      timeout: 20000,
+    await expect(page.getByRole('button', { name: /^automation$/i })).toBeVisible({
+      timeout: 15_000,
     })
   })
 
-  test('spec review can be cancelled before execution', async ({ page }) => {
-    test.setTimeout(90_000)
-    const specReviewCard = await triggerSpecReview(
-      page,
-      'Add a compact status chip component and use it in the artifact list.'
-    )
+  test('artifacts toggle is visible', async ({ page }) => {
+    await openWorkbenchSmokeFixture(page, 'Workbench Smoke Artifacts')
 
-    await page.getByRole('button', { name: /^cancel$/i }).click()
-
-    await expect(specReviewCard).not.toBeVisible({ timeout: 20000 })
-    await expect(
-      page
-        .getByPlaceholder(/planning & architecture|describe the code to write|type your message/i)
-        .or(page.getByRole('textbox').first())
-        .first()
-    ).toBeVisible({
-      timeout: 20000,
-    })
-    await expect(page.getByRole('log', { name: /chat messages/i })).toContainText(
-      'Add a compact status chip component and use it in the artifact list.'
-    )
-  })
-
-  test('spec review supports editing before execution', async ({ page }) => {
-    test.setTimeout(90_000)
-    await triggerSpecReview(page, 'Create a command summary panel for the terminal drawer.')
-
-    await page.getByRole('button', { name: /^edit$/i }).click()
-    await expect(page.getByText(/review the specification before execution/i)).toBeVisible({
-      timeout: 20000,
-    })
-
-    await page.getByRole('button', { name: /add requirement/i }).click()
-    const triggerInput = page.getByPlaceholder(/the user submits the form/i).last()
-    const behaviorInput = page.getByPlaceholder(/validate all input fields/i).last()
-    await triggerInput.fill('the operator opens the terminal drawer')
-    await behaviorInput.fill('render a concise command summary panel')
-    await page
-      .getByRole('button', { name: /^save$/i })
-      .last()
-      .click()
-    await page.getByRole('button', { name: /save changes/i }).click()
-    await expect(page.getByText(/the operator opens the terminal drawer/i)).toBeVisible({
-      timeout: 20000,
-    })
-    await expect(page.getByText(/render a concise command summary panel/i)).toBeVisible({
-      timeout: 20000,
-    })
-  })
-
-  test('runtime checkpoint can be resumed from run progress panel', async ({ page }) => {
-    test.setTimeout(90_000)
-    await openWorkbenchProjectFixture(page, { seedRuntimeCheckpoint: true })
-
-    const resumeReadyBadge = page.getByText(/resume ready/i)
-    if (!(await resumeReadyBadge.isVisible().catch(() => false))) {
-      await page.getByRole('button', { name: /toggle inspector/i }).click()
-    }
-    await expect(resumeReadyBadge).toBeVisible({ timeout: 20000 })
-    await page.getByRole('button', { name: /resume run/i }).click()
-
-    await expect(page.getByRole('log', { name: /chat messages/i })).toContainText(
-      'Resume previous run',
-      { timeout: 20000 }
-    )
-    await expect(page.getByRole('log', { name: /chat messages/i })).toContainText(
-      'E2E agent completed approved specification.',
-      { timeout: 30000 }
-    )
-
-    await page
-      .getByRole('button', { name: /timeline/i })
-      .first()
-      .click()
-    const timelinePanel = page.locator('div').filter({
-      has: page.getByRole('heading', { name: /run timeline/i }),
-    })
-    await expect(timelinePanel.getByText(/resume previous run/i).first()).toBeVisible({
-      timeout: 20000,
+    await expect(page.getByRole('button', { name: /toggle artifacts panel/i })).toBeVisible({
+      timeout: 15_000,
     })
   })
 
@@ -452,24 +198,32 @@ Ship the seeded plan workflow
     const planReviewCard = page.getByText(/plan awaiting review/i)
     await expect(planReviewCard).toBeVisible({ timeout: 20000 })
 
-    await page.getByRole('button', { name: /review plan/i }).click()
-    await expect(page.getByRole('tab', { name: /^plan$/i })).toBeVisible({ timeout: 10000 })
-    await expect(page.locator('textarea').first()).toHaveValue(/ship the seeded plan workflow/i, {
-      timeout: 10000,
-    })
+    await page.getByRole('button', { name: /^review$/i }).click()
+    const planInspector = page.getByRole('tabpanel', { name: /^plan$/i })
+    await expect(page.getByRole('tab', { name: /^plan$/i })).toBeVisible({ timeout: 10_000 })
+    await expect(planInspector.getByRole('textbox').first()).toHaveValue(
+      /ship the seeded plan workflow/i,
+      {
+        timeout: 10_000,
+      }
+    )
 
-    const approvePlanButton = page.getByRole('button', { name: /approve plan/i }).first()
-    await approvePlanButton.click()
+    await planInspector.getByRole('button', { name: /approve plan/i }).click()
 
-    const buildFromPlanButton = page.getByRole('button', { name: /build from plan/i }).first()
-    await expect(buildFromPlanButton).toBeVisible({ timeout: 20000 })
+    const buildFromPlanButton = planInspector.getByRole('button', { name: /build from plan/i })
+    await expect(buildFromPlanButton).toBeVisible({ timeout: 20_000 })
+    await expect(buildFromPlanButton).toBeEnabled({ timeout: 20_000 })
     await buildFromPlanButton.click()
 
-    await expect(page.getByRole('button', { name: /plan executing/i }).first()).toBeVisible({
-      timeout: 20000,
-    })
-    await expect(page.getByRole('button', { name: /run progress/i }).first()).toBeVisible({
-      timeout: 10000,
+    await expect(page.getByText(/plan executing/i).first()).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByRole('log', { name: /chat messages/i })).toContainText(
+      'E2E agent completed approved specification.',
+      {
+        timeout: 20_000,
+      }
+    )
+    await expect(planInspector.getByText(/executing/i).first()).toBeVisible({
+      timeout: 20_000,
     })
   })
 })

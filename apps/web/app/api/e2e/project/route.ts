@@ -7,6 +7,17 @@ import type { PlanStatus } from '@/lib/chat/planDraft'
 const DEFAULT_FIXTURE_NAME = 'Workbench E2E Fixture'
 const DEFAULT_FIXTURE_DESCRIPTION = 'Deterministic browser E2E fixture project'
 const DEFAULT_CHAT_TITLE = 'Workbench E2E Chat'
+const E2E_FIXTURE_NAME_PREFIXES = [
+  'Workbench E2E Fixture',
+  'Spec Review Fixture',
+  'Agent Run Plan',
+  'Agent Run Resume',
+  'Agent Run History',
+  'Permission Reject',
+  'Permission Allow',
+  'Sharing Fixture',
+  'Workbench Test',
+]
 const PLAN_STATUSES: PlanStatus[] = [
   'idle',
   'drafting',
@@ -47,6 +58,14 @@ interface RuntimeCheckpointEnvelope {
     lastToolLoopSignature: null
     toolLoopStreak: number
   }
+}
+
+interface E2EFixtureProject {
+  _id: Id<'projects'>
+  name: string
+  description?: string
+  createdAt: number
+  lastOpenedAt?: number
 }
 
 function isE2EFixtureModeEnabled(): boolean {
@@ -94,87 +113,141 @@ function buildSeededRuntimeCheckpoint(sessionID: string): RuntimeCheckpointEnvel
   }
 }
 
+function isProjectLimitError(error: unknown): boolean {
+  return error instanceof Error && error.message.includes('Project limit reached')
+}
+
+function getFixtureCleanupCandidate(
+  projects: E2EFixtureProject[],
+  removedProjectIds: Set<string>,
+  currentFixtureName: string
+): E2EFixtureProject | null {
+  const fixtureProjects = projects
+    .filter(
+      (project) =>
+        !removedProjectIds.has(project._id) &&
+        project.name !== currentFixtureName &&
+        (project.description === DEFAULT_FIXTURE_DESCRIPTION ||
+          E2E_FIXTURE_NAME_PREFIXES.some((prefix) => project.name.startsWith(prefix)))
+    )
+    .sort((a, b) => (a.lastOpenedAt ?? a.createdAt) - (b.lastOpenedAt ?? b.createdAt))
+
+  return fixtureProjects[0] ?? null
+}
+
 export async function GET(request: Request) {
   if (!isE2EFixtureModeEnabled()) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL
-  if (!convexUrl) {
-    return NextResponse.json({ error: 'Convex URL not configured' }, { status: 500 })
-  }
+  try {
+    const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL
+    if (!convexUrl) {
+      return NextResponse.json({ error: 'Convex URL not configured' }, { status: 500 })
+    }
 
-  const url = new URL(request.url)
-  const fixtureName = url.searchParams.get('name')?.trim() || DEFAULT_FIXTURE_NAME
-  const filePath = url.searchParams.get('filePath')?.trim() || null
-  const fileContent = url.searchParams.get('fileContent') ?? ''
-  const seedRuntimeCheckpoint = url.searchParams.get('seedRuntimeCheckpoint') === '1'
-  const planDraft = url.searchParams.get('planDraft')?.trim() || null
-  const requestedPlanStatus = url.searchParams.get('planStatus')?.trim() || null
-  const planStatus =
-    requestedPlanStatus && PLAN_STATUSES.includes(requestedPlanStatus as PlanStatus)
-      ? (requestedPlanStatus as PlanStatus)
-      : null
+    const url = new URL(request.url)
+    const fixtureName = url.searchParams.get('name')?.trim() || DEFAULT_FIXTURE_NAME
+    const filePath = url.searchParams.get('filePath')?.trim() || null
+    const fileContent = url.searchParams.get('fileContent') ?? ''
+    const seedRuntimeCheckpoint = url.searchParams.get('seedRuntimeCheckpoint') === '1'
+    const planDraft = url.searchParams.get('planDraft')?.trim() || null
+    const requestedPlanStatus = url.searchParams.get('planStatus')?.trim() || null
+    const planStatus =
+      requestedPlanStatus && PLAN_STATUSES.includes(requestedPlanStatus as PlanStatus)
+        ? (requestedPlanStatus as PlanStatus)
+        : null
 
-  const convex = new ConvexHttpClient(convexUrl)
-  const projects = await convex.query(api.projects.list, {})
-  const existing = projects.find((project) => project.name === fixtureName)
+    const convex = new ConvexHttpClient(convexUrl)
+    const projects = (await convex.query(api.projects.list, {})) as E2EFixtureProject[]
+    const existing = projects.find((project) => project.name === fixtureName)
 
-  const projectId = existing
-    ? existing._id
-    : await convex.mutation(api.projects.create, {
-        name: fixtureName,
-        description: DEFAULT_FIXTURE_DESCRIPTION,
+    let projectId = existing?._id
+    if (!projectId) {
+      const removedProjectIds = new Set<string>()
+      while (!projectId) {
+        try {
+          projectId = await convex.mutation(api.projects.create, {
+            name: fixtureName,
+            description: DEFAULT_FIXTURE_DESCRIPTION,
+          })
+        } catch (error) {
+          if (!isProjectLimitError(error)) {
+            throw error
+          }
+
+          const cleanupCandidate = getFixtureCleanupCandidate(
+            projects,
+            removedProjectIds,
+            fixtureName
+          )
+          if (!cleanupCandidate) {
+            throw error
+          }
+
+          await convex.mutation(api.projects.remove, { id: cleanupCandidate._id })
+          removedProjectIds.add(cleanupCandidate._id)
+        }
+      }
+    }
+
+    let chatId: Id<'chats'> | undefined
+    if (filePath || seedRuntimeCheckpoint || planDraft || planStatus) {
+      const chats = await convex.query(api.chats.list, { projectId })
+      const existingChat = chats[0]
+      chatId =
+        existingChat?._id ??
+        (await convex.mutation(api.chats.create, {
+          projectId,
+          title: DEFAULT_CHAT_TITLE,
+          mode: 'build',
+        }))
+    }
+
+    if (chatId && (planDraft || planStatus)) {
+      await convex.mutation(api.chats.update, {
+        id: chatId,
+        ...(planDraft ? { planDraft } : {}),
+        ...(planStatus ? { planStatus } : {}),
+        ...(planDraft ? { planLastGeneratedAt: Date.now() } : {}),
       })
+    }
 
-  let chatId: Id<'chats'> | undefined
-  if (filePath || seedRuntimeCheckpoint || planDraft || planStatus) {
-    const chats = await convex.query(api.chats.list, { projectId })
-    const existingChat = chats[0]
-    chatId =
-      existingChat?._id ??
-      (await convex.mutation(api.chats.create, {
+    if (filePath) {
+      const existingFile = await convex.query(api.files.getByPath, { projectId, path: filePath })
+      await convex.mutation(api.files.upsert, {
+        ...(existingFile?._id ? { id: existingFile._id } : {}),
         projectId,
-        title: DEFAULT_CHAT_TITLE,
-        mode: 'build',
-      }))
-  }
+        path: filePath,
+        content: fileContent,
+        isBinary: false,
+      })
+    }
 
-  if (chatId && (planDraft || planStatus)) {
-    await convex.mutation(api.chats.update, {
-      id: chatId,
-      ...(planDraft ? { planDraft } : {}),
-      ...(planStatus ? { planStatus } : {}),
-      ...(planDraft ? { planLastGeneratedAt: Date.now() } : {}),
-    })
-  }
+    let sessionID: string | undefined
+    if (seedRuntimeCheckpoint && chatId) {
+      sessionID = `harness_run_resume_fixture_${Date.now()}`
+      await convex.mutation(api.agentRuns.saveRuntimeCheckpoint, {
+        chatId,
+        checkpoint: buildSeededRuntimeCheckpoint(sessionID),
+      })
+    }
 
-  if (filePath) {
-    const existingFile = await convex.query(api.files.getByPath, { projectId, path: filePath })
-    await convex.mutation(api.files.upsert, {
-      ...(existingFile?._id ? { id: existingFile._id } : {}),
+    return NextResponse.json({
       projectId,
-      path: filePath,
-      content: fileContent,
-      isBinary: false,
+      created: !existing,
+      ...(chatId ? { chatId } : {}),
+      ...(filePath ? { filePath } : {}),
+      ...(planStatus ? { planStatus } : {}),
+      ...(sessionID ? { sessionID } : {}),
     })
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error: 'Failed to create E2E fixture project',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
-
-  let sessionID: string | undefined
-  if (seedRuntimeCheckpoint && chatId) {
-    sessionID = `harness_run_resume_fixture_${Date.now()}`
-    await convex.mutation(api.agentRuns.saveRuntimeCheckpoint, {
-      chatId,
-      checkpoint: buildSeededRuntimeCheckpoint(sessionID),
-    })
-  }
-
-  return NextResponse.json({
-    projectId,
-    created: !existing,
-    ...(chatId ? { chatId } : {}),
-    ...(filePath ? { filePath } : {}),
-    ...(planStatus ? { planStatus } : {}),
-    ...(sessionID ? { sessionID } : {}),
-  })
 }
