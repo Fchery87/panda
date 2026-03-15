@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useRef, useCallback, useState, useEffect } from 'react'
+import React, { useRef, useCallback, useState, useEffect, useMemo } from 'react'
 import { EditorSelection, StateEffect, StateField } from '@codemirror/state'
 import { Decoration, EditorView } from '@codemirror/view'
 import CodeMirror from '@uiw/react-codemirror'
