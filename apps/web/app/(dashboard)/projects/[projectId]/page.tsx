@@ -11,7 +11,6 @@ import { toast } from 'sonner'
 // Components
 import { Breadcrumb, buildBreadcrumbItems } from '@/components/workbench/Breadcrumb'
 import { mapLatestRunProgressSteps } from '@/components/chat/live-run-utils'
-import { AgentAutomationDialog } from '@/components/projects/AgentAutomationDialog'
 import { ProjectChatPanel } from '@/components/projects/ProjectChatPanel'
 import { ProjectShareDialog } from '@/components/projects/ProjectShareDialog'
 import { ProjectWorkspaceLayout } from '@/components/projects/ProjectWorkspaceLayout'
@@ -24,14 +23,13 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 import {
-  PanelRight,
-  PanelRightClose,
   ChevronLeft,
   RotateCcw,
   MoreHorizontal,
+  PanelLeftOpen,
+  PanelLeftClose,
 } from 'lucide-react'
 import Link from 'next/link'
-import { cn } from '@/lib/utils'
 
 // UI Components
 import { PandaLogo } from '@/components/ui/panda-logo'
@@ -39,6 +37,7 @@ import { PandaLogo } from '@/components/ui/panda-logo'
 // Hooks
 import { useJobs } from '@/hooks/useJobs'
 import { useAgent } from '@/hooks/useAgent'
+import { useSidebar } from '@/hooks/useSidebar'
 import { useProjectChatSession } from '@/hooks/useProjectChatSession'
 import { useProjectMessageWorkflow } from '@/hooks/useProjectMessageWorkflow'
 import { useProjectPlanDraft } from '@/hooks/useProjectPlanDraft'
@@ -163,6 +162,9 @@ export default function ProjectPage() {
     isShareDialogOpen,
     setIsShareDialogOpen,
   } = useProjectWorkspaceUi()
+
+  const { activeSection, isFlyoutOpen, handleSectionChange, toggleFlyout } = useSidebar()
+
   const [automationMode, setAutomationMode] = useState<'manual' | 'auto'>('manual')
   const lastAssistantMessageIdRef = useRef<string | null>(null)
   const seenPendingArtifactIdsRef = useRef<Set<string>>(new Set())
@@ -712,10 +714,26 @@ export default function ProjectPage() {
         className="surface-1 flex h-14 shrink-0 items-center justify-between border-b border-border px-4"
       >
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          {/* Panda Logo + Home Link */}
-          <Link href="/" className="flex shrink-0 items-center">
-            <PandaLogo size="md" variant="icon" />
-          </Link>
+          {/* Sidebar Toggle + Panda Wordmark */}
+          <div className="flex shrink-0 items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 rounded-none p-0"
+              onClick={toggleFlyout}
+              title={isFlyoutOpen ? 'Close sidebar' : 'Open sidebar'}
+              aria-label={isFlyoutOpen ? 'Close sidebar' : 'Open sidebar'}
+            >
+              {isFlyoutOpen ? (
+                <PanelLeftClose className="h-4 w-4" />
+              ) : (
+                <PanelLeftOpen className="h-4 w-4" />
+              )}
+            </Button>
+            <Link href="/" className="flex shrink-0 items-center">
+              <PandaLogo size="md" variant="icon" />
+            </Link>
+          </div>
 
           <div className="h-6 w-px bg-border" />
 
@@ -749,61 +767,29 @@ export default function ProjectPage() {
         </div>
 
         <div className="flex items-center gap-1">
-          {/* Primary Actions */}
-          <div className="flex items-center gap-1 border-r border-border pr-3">
-            <AgentAutomationDialog
-              projectId={projectId}
-              projectPolicy={readAgentPolicyField(project, 'agentPolicy')}
-              userDefaults={readAgentPolicyField(settings, 'agentDefaults')}
-            />
-          </div>
-
-          {/* Secondary Actions */}
-          <div className="flex items-center gap-1 pl-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              className={cn(
-                'h-8 gap-1.5 rounded-none font-mono text-xs transition-colors',
-                isChatPanelOpen
-                  ? 'border border-primary/30 bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              )}
-              onClick={() => setIsChatPanelOpen(!isChatPanelOpen)}
-              title="Toggle chat panel (Ctrl+B)"
-              aria-label="Toggle chat panel"
-            >
-              {isChatPanelOpen ? (
-                <PanelRightClose className="h-4 w-4" />
-              ) : (
-                <PanelRight className="h-4 w-4" />
-              )}
-              <span className="hidden lg:inline">Chat</span>
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 gap-1 rounded-none font-mono text-xs"
-                  title="More actions"
-                  aria-label="More actions"
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                  <span className="hidden xl:inline">More</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="rounded-none border-border font-mono">
-                <DropdownMenuItem
-                  onClick={handleResetWorkspace}
-                  className="rounded-none text-xs uppercase tracking-wide"
-                >
-                  <RotateCcw className="mr-2 h-3.5 w-3.5" />
-                  Reset Workspace
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 gap-1 rounded-none font-mono text-xs"
+                title="More actions"
+                aria-label="More actions"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+                <span className="hidden xl:inline">More</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="rounded-none border-border font-mono">
+              <DropdownMenuItem
+                onClick={handleResetWorkspace}
+                className="rounded-none text-xs uppercase tracking-wide"
+              >
+                <RotateCcw className="mr-2 h-3.5 w-3.5" />
+                Reset Workspace
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </motion.div>
 
@@ -841,6 +827,10 @@ export default function ProjectPage() {
         currentSpec={agent.currentSpec}
         isSpecDrawerOpen={isSpecDrawerOpen}
         onSpecDrawerOpenChange={setIsSpecDrawerOpen}
+        activeSection={activeSection}
+        isFlyoutOpen={isFlyoutOpen}
+        handleSectionChange={handleSectionChange}
+        toggleFlyout={toggleFlyout}
       />
     </div>
   )

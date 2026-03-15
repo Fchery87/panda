@@ -8,11 +8,11 @@ import { PreviewPanel } from '@/components/preview/PreviewPanel'
 import { SpecDrawer } from '@/components/chat/SpecDrawer'
 import { StatusBar } from '@/components/workbench/StatusBar'
 import { Workbench } from '@/components/workbench/Workbench'
-import { useSidebar } from '@/hooks/useSidebar'
 import { cn } from '@/lib/utils'
 import type { FormalSpecification } from '@/lib/agent/spec/types'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import type { WorkspaceArtifactPreview } from '@/components/workbench/artifact-preview'
+import type { SidebarSection } from '@/components/sidebar/SidebarRail'
 
 type OpenTab = {
   path: string
@@ -65,6 +65,10 @@ interface ProjectWorkspaceLayoutProps {
   currentSpec: FormalSpecification | null
   isSpecDrawerOpen: boolean
   onSpecDrawerOpenChange: (open: boolean) => void
+  activeSection: SidebarSection
+  isFlyoutOpen: boolean
+  handleSectionChange: (section: SidebarSection) => void
+  toggleFlyout: () => void
 }
 
 export function ProjectWorkspaceLayout({
@@ -101,9 +105,11 @@ export function ProjectWorkspaceLayout({
   currentSpec,
   isSpecDrawerOpen,
   onSpecDrawerOpenChange,
+  activeSection,
+  isFlyoutOpen,
+  handleSectionChange,
+  toggleFlyout,
 }: ProjectWorkspaceLayoutProps) {
-  const { activeSection, isFlyoutOpen, handleSectionChange, toggleFlyout } = useSidebar()
-
   const workbench = (
     <Workbench
       projectId={projectId}
