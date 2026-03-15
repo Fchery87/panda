@@ -40,7 +40,6 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
         isChatPanelOpen={true}
         automationMode="manual"
         onAutomationModeChange={() => {}}
-        onOpenArtifacts={() => {}}
         chatMode="code"
         onModeChange={() => {}}
         cursorPosition={null}

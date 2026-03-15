@@ -967,7 +967,6 @@ export default function ProjectPage() {
           pendingArtifactPreview={pendingArtifactPreview}
           onApplyPendingArtifact={handleApplyPendingArtifact}
           onRejectPendingArtifact={handleRejectPendingArtifact}
-          onOpenArtifacts={() => openReviewTab('artifacts')}
           chatMode={chatMode}
           onModeChange={handleModeChange}
           cursorPosition={cursorPosition}
@@ -995,7 +994,7 @@ export default function ProjectPage() {
               if (result.error) throw new Error(result.error)
               
               let output = result.output
-              if (output.startsWith('\`\`\`')) {
+              if (output.startsWith('```')) {
                 const lines = output.split('\n')
                 if (lines.length > 2) {
                   output = lines.slice(1, -1).join('\n')

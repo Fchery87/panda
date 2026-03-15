@@ -63,7 +63,6 @@ interface ProjectWorkspaceLayoutProps {
   pendingArtifactPreview?: WorkspaceArtifactPreview | null
   onApplyPendingArtifact: (artifactId: string) => void
   onRejectPendingArtifact: (artifactId: string) => void
-  onOpenArtifacts: () => void
   chatMode: ChatMode
   onModeChange: (mode: ChatMode) => void
   cursorPosition: { line: number; column: number } | null
@@ -105,7 +104,6 @@ export function ProjectWorkspaceLayout({
   pendingArtifactPreview,
   onApplyPendingArtifact,
   onRejectPendingArtifact,
-  onOpenArtifacts,
   chatMode,
   onModeChange,
   cursorPosition,
@@ -136,7 +134,6 @@ export function ProjectWorkspaceLayout({
       pendingArtifactPreview={pendingArtifactPreview}
       onApplyPendingArtifact={onApplyPendingArtifact}
       onRejectPendingArtifact={onRejectPendingArtifact}
-      onOpenArtifacts={onOpenArtifacts}
       onEditorDirtyChange={onEditorDirtyChange}
       onContextualChat={onContextualChat}
       onInlineChat={onInlineChat}
