@@ -35,7 +35,6 @@ export function AttachmentButton({
       if (type === 'image') {
         const reader = new FileReader()
         reader.onload = (e) => {
-          attachment.preview = e.target?.result as string
           onAttach({ ...attachment, preview: e.target?.result as string })
         }
         reader.readAsDataURL(file)
