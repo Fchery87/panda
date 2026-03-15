@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import {
-  Send,
+  ArrowUp,
   Square,
   Lightbulb,
   SlidersHorizontal,
@@ -22,6 +22,7 @@ import { useAction, useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import { toast } from 'sonner'
 import { AgentSelector, MODE_OPTIONS } from './AgentSelector'
+import { AttachmentButton, type Attachment } from './AttachmentButton'
 import { MentionPicker } from './MentionPicker'
 import { ModelSelector, type AvailableModel } from './ModelSelector'
 import { VariantSelector } from './VariantSelector'
@@ -95,6 +96,7 @@ export function ChatInput({
 }: ChatInputProps) {
   const [input, setInput] = useState('')
   const [uncontrolledMode, setUncontrolledMode] = useState<ChatMode>('code')
+  const [attachments, setAttachments] = useState<Attachment[]>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // @-mention picker state
@@ -124,12 +126,21 @@ export function ChatInput({
     [controlledMode, onModeChange]
   )
 
+  const handleAttach = useCallback((attachment: Attachment) => {
+    setAttachments(prev => [...prev, attachment])
+  }, [])
+
+  const handleRemoveAttachment = useCallback((id: string) => {
+    setAttachments(prev => prev.filter(a => a.id !== id))
+  }, [])
+
   const handleSend = useCallback(() => {
     if (input.trim() && !isStreaming) {
       const { message, contextFiles } = parseMentions(input.trim())
       onSendMessage?.(message || input.trim(), mode, contextFiles)
       setInput('')
       setMentionQuery(null)
+      setAttachments([])
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto'
       }
@@ -432,7 +443,7 @@ export function ChatInput({
                       : 'bg-secondary text-muted-foreground'
                   )}
                 >
-                  <Send className="h-3 w-3" />
+                  <ArrowUp className="h-3 w-3" />
                 </Button>
               </motion.div>
             </>
@@ -442,6 +453,12 @@ export function ChatInput({
 
       {/* Bottom toolbar: single row always */}
       <div className="mt-2 flex items-center gap-2">
+        <AttachmentButton
+          attachments={attachments}
+          onAttach={handleAttach}
+          onRemove={handleRemoveAttachment}
+          disabled={isStreaming}
+        />
         <AgentSelector mode={mode} onModeChange={setMode} disabled={isStreaming} />
 
         {hasAdvancedControls && (
