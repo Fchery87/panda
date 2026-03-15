@@ -8,6 +8,7 @@ import { CommandPalette } from '@/components/command-palette/CommandPalette'
 import { SpecDrawer } from '@/components/chat/SpecDrawer'
 import { StatusBar } from '@/components/workbench/StatusBar'
 import { Workbench } from '@/components/workbench/Workbench'
+import { useSidebar } from '@/hooks/useSidebar'
 import { cn } from '@/lib/utils'
 import type { FormalSpecification } from '@/lib/agent/spec/types'
 import type { ChatMode } from '@/lib/agent/prompt-library'
@@ -101,6 +102,8 @@ export function ProjectWorkspaceLayout({
   isSpecDrawerOpen,
   onSpecDrawerOpenChange,
 }: ProjectWorkspaceLayoutProps) {
+  const { activeSection, isFlyoutOpen, handleSectionChange, toggleFlyout } = useSidebar()
+
   const workbench = (
     <Workbench
       projectId={projectId}
@@ -120,6 +123,10 @@ export function ProjectWorkspaceLayout({
       onRejectPendingArtifact={onRejectPendingArtifact}
       onOpenArtifacts={() => onArtifactPanelOpenChange(true)}
       onEditorDirtyChange={onEditorDirtyChange}
+      sidebarActiveSection={activeSection}
+      isSidebarFlyoutOpen={isFlyoutOpen}
+      onSidebarSectionChange={handleSectionChange}
+      onToggleSidebarFlyout={toggleFlyout}
     />
   )
 

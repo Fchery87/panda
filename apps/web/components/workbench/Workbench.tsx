@@ -23,7 +23,10 @@ import type { Id } from '@convex/_generated/dataModel'
 import { Button } from '@/components/ui/button'
 import { Timeline } from './Timeline'
 import { SpecHistory } from './SpecHistory'
-import { ActivityBar, useActivityBarState } from './ActivityBar'
+import { SidebarRail } from '@/components/sidebar/SidebarRail'
+import { SidebarFlyout } from '@/components/sidebar/SidebarFlyout'
+import { SidebarHistoryPanel } from '@/components/sidebar/SidebarHistoryPanel'
+import type { SidebarSection } from '@/components/sidebar/SidebarRail'
 import type { WorkspaceArtifactPreview } from './artifact-preview'
 
 interface OpenFileTab {
@@ -59,6 +62,11 @@ interface WorkbenchProps {
   onRejectPendingArtifact: (artifactId: string) => void
   onOpenArtifacts: () => void
   onEditorDirtyChange: (filePath: string, isDirty: boolean) => void
+  // Sidebar props
+  sidebarActiveSection: SidebarSection
+  isSidebarFlyoutOpen: boolean
+  onSidebarSectionChange: (section: SidebarSection) => void
+  onToggleSidebarFlyout: () => void
 }
 
 function GripIndicator({ direction }: { direction: 'vertical' | 'horizontal' }) {
@@ -176,14 +184,12 @@ export function Workbench({
   onRejectPendingArtifact,
   onOpenArtifacts,
   onEditorDirtyChange,
+  sidebarActiveSection,
+  isSidebarFlyoutOpen,
+  onSidebarSectionChange,
+  onToggleSidebarFlyout,
 }: WorkbenchProps) {
   const [activeTab, setActiveTab] = useState<EditorTab>('code')
-  const {
-    activeTab: activeSidebarTab,
-    isExpanded: isSidebarExpanded,
-    handleTabChange: handleSidebarTabChange,
-    handleToggleExpand: handleToggleSidebar,
-  } = useActivityBarState()
   const [mobilePanel, setMobilePanel] = useState<'files' | 'editor' | 'terminal'>('editor')
   const [isMobile, setIsMobile] = useState(false)
   const [isCompactDesktop, setIsCompactDesktop] = useState(false)
@@ -278,10 +284,10 @@ export function Workbench({
               <div className="flex border-b border-border">
                 <button
                   type="button"
-                  onClick={() => handleSidebarTabChange('explorer')}
+                  onClick={() => onSidebarSectionChange('explorer')}
                   className={cn(
                     'min-h-11 flex-1 border-r border-border px-2 py-2 font-mono text-xs uppercase tracking-widest',
-                    activeSidebarTab === 'explorer'
+                    sidebarActiveSection === 'explorer'
                       ? 'bg-surface-2 text-foreground'
                       : 'text-muted-foreground hover:text-foreground'
                   )}
@@ -290,10 +296,10 @@ export function Workbench({
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleSidebarTabChange('search')}
+                  onClick={() => onSidebarSectionChange('search')}
                   className={cn(
                     'min-h-11 flex-1 border-r border-border px-2 py-2 font-mono text-xs uppercase tracking-widest',
-                    activeSidebarTab === 'search'
+                    sidebarActiveSection === 'search'
                       ? 'bg-surface-2 text-foreground'
                       : 'text-muted-foreground hover:text-foreground'
                   )}
@@ -302,10 +308,10 @@ export function Workbench({
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleSidebarTabChange('specs')}
+                  onClick={() => onSidebarSectionChange('specs')}
                   className={cn(
                     'min-h-11 flex-1 px-2 py-2 font-mono text-xs uppercase tracking-widest',
-                    activeSidebarTab === 'specs'
+                    sidebarActiveSection === 'specs'
                       ? 'bg-surface-2 text-foreground'
                       : 'text-muted-foreground hover:text-foreground'
                   )}
@@ -315,7 +321,7 @@ export function Workbench({
               </div>
 
               <div className="scrollbar-thin flex-1 overflow-auto">
-                {activeSidebarTab === 'explorer' ? (
+                {sidebarActiveSection === 'explorer' ? (
                   <FileTree
                     files={files.map((f) => ({
                       _id: f._id,
@@ -330,7 +336,7 @@ export function Workbench({
                     onRename={onRenameFile}
                     onDelete={onDeleteFile}
                   />
-                ) : activeSidebarTab === 'search' ? (
+                ) : sidebarActiveSection === 'search' ? (
                   <ProjectSearchPanel onSelectFile={onSelectFile} />
                 ) : (
                   <SpecHistory projectId={projectId} />
@@ -395,7 +401,7 @@ export function Workbench({
                   ) : (
                     <EmptyState
                       onCreateFile={onCreateFile}
-                      onOpenSearch={() => handleSidebarTabChange('search')}
+                      onOpenSearch={() => onSidebarSectionChange('search')}
                       variant="mobile"
                     />
                   )
@@ -424,58 +430,46 @@ export function Workbench({
   return (
     <div className="surface-0 h-full w-full">
       <PanelGroup direction="horizontal" className="h-full" autoSaveId="panda-workbench-inner">
-        {/* Activity Bar + Sidebar */}
+        {/* Sidebar Rail + Flyout */}
         <div className="flex h-full">
-          <ActivityBar
-            activeTab={activeSidebarTab}
-            isExpanded={isSidebarExpanded}
-            onTabChange={handleSidebarTabChange}
-            onToggleExpand={handleToggleSidebar}
-            projectId={projectId}
+          <SidebarRail
+            activeSection={sidebarActiveSection}
+            isFlyoutOpen={isSidebarFlyoutOpen}
+            onSectionChange={onSidebarSectionChange}
+            onToggleFlyout={onToggleSidebarFlyout}
+            projectId={String(projectId)}
           />
-
-          {isSidebarExpanded && (
-            <>
-              <Panel
-                defaultSize={isCompactDesktop ? 16 : 18}
-                minSize={15}
-                maxSize={30}
-                className="surface-1 border-r border-border"
-              >
-                <div className="flex h-full flex-col">
-                  {/* Sidebar Panel Header */}
-                  <div className="panel-header-compact shrink-0">
-                    {activeSidebarTab === 'explorer' && 'Explorer'}
-                    {activeSidebarTab === 'search' && 'Search'}
-                    {activeSidebarTab === 'specs' && 'Specifications'}
-                  </div>
-                  <div className="flex-1 overflow-auto">
-                    {activeSidebarTab === 'explorer' ? (
-                      <FileTree
-                        files={files.map((f) => ({
-                          _id: f._id,
-                          path: f.path,
-                          content: f.content ?? '',
-                          isBinary: f.isBinary,
-                          updatedAt: f.updatedAt,
-                        }))}
-                        selectedPath={selectedFilePath}
-                        onSelect={onSelectFile}
-                        onCreate={onCreateFile}
-                        onRename={onRenameFile}
-                        onDelete={onDeleteFile}
-                      />
-                    ) : activeSidebarTab === 'search' ? (
-                      <ProjectSearchPanel onSelectFile={onSelectFile} />
-                    ) : (
-                      <SpecHistory projectId={projectId} />
-                    )}
-                  </div>
-                </div>
-              </Panel>
-              <VerticalResizeHandle />
-            </>
-          )}
+          <SidebarFlyout isOpen={isSidebarFlyoutOpen} activeSection={sidebarActiveSection}>
+            {sidebarActiveSection === 'explorer' && (
+              <FileTree
+                files={files.map((f) => ({ _id: f._id, path: f.path, content: f.content ?? '', isBinary: f.isBinary, updatedAt: f.updatedAt }))}
+                selectedPath={selectedFilePath}
+                onSelect={onSelectFile}
+                onCreate={onCreateFile}
+                onRename={onRenameFile}
+                onDelete={onDeleteFile}
+              />
+            )}
+            {sidebarActiveSection === 'search' && (
+              <ProjectSearchPanel onSelectFile={onSelectFile} />
+            )}
+            {sidebarActiveSection === 'specs' && (
+              <SpecHistory projectId={projectId} />
+            )}
+            {sidebarActiveSection === 'history' && (
+              <SidebarHistoryPanel
+                projectId={projectId}
+                activeChatId={currentChatId}
+                onSelectChat={() => {}}
+              />
+            )}
+            {(sidebarActiveSection === 'new-chat' || sidebarActiveSection === 'builder' || sidebarActiveSection === 'terminal') && (
+              <div className="flex h-full items-center justify-center p-4 text-center font-mono text-xs text-muted-foreground">
+                Coming soon
+              </div>
+            )}
+          </SidebarFlyout>
+          {isSidebarFlyoutOpen && <VerticalResizeHandle />}
         </div>
 
         {/* Main content area - Editor with tabs */}
@@ -556,7 +550,7 @@ export function Workbench({
                     ) : (
                       <EmptyState
                         onCreateFile={onCreateFile}
-                        onOpenSearch={() => handleSidebarTabChange('search')}
+                        onOpenSearch={() => onSidebarSectionChange('search')}
                         variant="desktop"
                       />
                     )
