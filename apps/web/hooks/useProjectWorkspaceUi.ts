@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useLayoutPersistence } from './useLayoutPersistence'
 
-type MobilePrimaryPanel = 'workspace' | 'chat'
+type MobilePrimaryPanel = 'workspace' | 'chat' | 'preview'
 type ChatInspectorTab = 'run' | 'plan' | 'memory' | 'evals'
 
 export function useProjectWorkspaceUi() {

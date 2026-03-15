@@ -1,5 +1,7 @@
 'use client'
 
+import { useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import type { Id } from '@convex/_generated/dataModel'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { CommandPalette } from '@/components/command-palette/CommandPalette'
@@ -47,8 +49,8 @@ interface ProjectWorkspaceLayoutProps {
   onEditorDirtyChange: (filePath: string, isDirty: boolean) => void
   isMobileLayout: boolean
   isCompactDesktopLayout: boolean
-  mobilePrimaryPanel: 'workspace' | 'chat'
-  onMobilePrimaryPanelChange: (panel: 'workspace' | 'chat') => void
+  mobilePrimaryPanel: 'workspace' | 'chat' | 'preview'
+  onMobilePrimaryPanelChange: (panel: 'workspace' | 'chat' | 'preview') => void
   mobileUnreadCount: number
   isMobileKeyboardOpen: boolean
   chatPanel: React.ReactNode
@@ -110,6 +112,8 @@ export function ProjectWorkspaceLayout({
   handleSectionChange,
   toggleFlyout,
 }: ProjectWorkspaceLayoutProps) {
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+
   const workbench = (
     <Workbench
       projectId={projectId}
@@ -140,12 +144,21 @@ export function ProjectWorkspaceLayout({
     <div className="relative flex flex-1 flex-col overflow-hidden">
       <div className="relative flex-1 overflow-hidden">
         {isMobileLayout ? (
-          <div className="flex h-full flex-col">
+          <div className="relative flex h-full flex-col">
             <div className="flex-1 overflow-hidden">
-              {mobilePrimaryPanel === 'workspace' ? workbench : chatPanel}
+              {mobilePrimaryPanel === 'workspace'
+                ? workbench
+                : mobilePrimaryPanel === 'chat'
+                  ? chatPanel
+                  : (
+                    <PreviewPanel
+                      projectId={projectId}
+                      chatId={activeChatId}
+                    />
+                  )}
             </div>
             {!isMobileKeyboardOpen && (
-              <div className="surface-1 grid min-h-12 grid-cols-2 border-t border-border pb-[env(safe-area-inset-bottom)] font-mono text-xs uppercase tracking-widest">
+              <div className="surface-1 grid min-h-12 grid-cols-3 border-t border-border pb-[env(safe-area-inset-bottom)] font-mono text-xs uppercase tracking-widest">
                 <button
                   type="button"
                   onClick={() => onMobilePrimaryPanelChange('workspace')}
@@ -162,7 +175,7 @@ export function ProjectWorkspaceLayout({
                   type="button"
                   onClick={() => onMobilePrimaryPanelChange('chat')}
                   className={cn(
-                    'relative h-full',
+                    'relative h-full border-r border-border',
                     mobilePrimaryPanel === 'chat'
                       ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:text-foreground'
@@ -175,8 +188,69 @@ export function ProjectWorkspaceLayout({
                     </span>
                   )}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => onMobilePrimaryPanelChange('preview')}
+                  className={cn(
+                    'relative h-full',
+                    mobilePrimaryPanel === 'preview'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  Preview
+                </button>
               </div>
             )}
+            {/* Mobile sidebar overlay */}
+            <AnimatePresence>
+              {isMobileSidebarOpen && (
+                <>
+                  {/* Backdrop */}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setIsMobileSidebarOpen(false)}
+                    className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm"
+                  />
+                  {/* Sidebar panel */}
+                  <motion.div
+                    initial={{ x: '-100%' }}
+                    animate={{ x: 0 }}
+                    exit={{ x: '-100%' }}
+                    transition={{ duration: 0.2, ease: 'easeOut' }}
+                    className="surface-1 absolute inset-y-0 left-0 z-50 w-64 border-r border-border"
+                  >
+                    <div className="flex h-full flex-col p-4">
+                      <div className="mb-4 font-mono text-xs uppercase tracking-widest text-muted-foreground">Navigation</div>
+                      {[
+                        { section: 'new-chat' as SidebarSection, label: 'New Chat' },
+                        { section: 'explorer' as SidebarSection, label: 'Explorer' },
+                        { section: 'search' as SidebarSection, label: 'Search' },
+                        { section: 'history' as SidebarSection, label: 'History' },
+                        { section: 'builder' as SidebarSection, label: 'Preview' },
+                        { section: 'specs' as SidebarSection, label: 'Specifications' },
+                        { section: 'terminal' as SidebarSection, label: 'Terminal' },
+                      ].map(({ section, label }) => (
+                        <button
+                          key={section}
+                          type="button"
+                          onClick={() => {
+                            handleSectionChange(section)
+                            setIsMobileSidebarOpen(false)
+                            onMobilePrimaryPanelChange('workspace')
+                          }}
+                          className="flex items-center gap-3 px-3 py-2.5 font-mono text-sm text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
           </div>
         ) : (
           <PanelGroup direction="horizontal" className="h-full" autoSaveId="panda-workbench-outer">
