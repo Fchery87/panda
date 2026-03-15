@@ -143,6 +143,13 @@ async function listFixtureProjects(convex: ConvexHttpClient): Promise<E2EFixture
   return (await convex.query(api.projects.list, {})) as E2EFixtureProject[]
 }
 
+async function getMaxProjectsPerUser(convex: ConvexHttpClient): Promise<number> {
+  const defaults = (await convex.query(api.settings.getAdminDefaults, {})) as
+    | { maxProjectsPerUser?: number }
+    | null
+  return defaults?.maxProjectsPerUser ?? 100
+}
+
 export async function GET(request: Request) {
   if (!isE2EFixtureModeEnabled()) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -171,12 +178,31 @@ export async function GET(request: Request) {
 
     const convex = new ConvexHttpClient(convexUrl)
     let projects = await listFixtureProjects(convex)
+    const maxProjectsPerUser = await getMaxProjectsPerUser(convex)
     const existing = projects.find((project) => project.name === fixtureName)
 
     let projectId = existing?._id
     if (!projectId) {
       const removedProjectIds = new Set<string>()
       while (!projectId) {
+        if (projects.length >= maxProjectsPerUser) {
+          const cleanupCandidate = getFixtureCleanupCandidate(
+            projects,
+            removedProjectIds,
+            fixtureName
+          )
+          if (cleanupCandidate) {
+            await convex.mutation(api.projects.remove, { id: cleanupCandidate._id })
+            removedProjectIds.add(cleanupCandidate._id)
+            projects = await listFixtureProjects(convex)
+            const reclaimedFixture = projects.find((project) => project.name === fixtureName)
+            if (reclaimedFixture) {
+              projectId = reclaimedFixture._id
+              continue
+            }
+          }
+        }
+
         try {
           projectId = await convex.mutation(api.projects.create, {
             name: fixtureName,

@@ -6,10 +6,10 @@ import type { Id } from '@convex/_generated/dataModel'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { CommandPalette } from '@/components/command-palette/CommandPalette'
 import { RightPanel } from '@/components/panels/RightPanel'
-import { PreviewPanel } from '@/components/preview/PreviewPanel'
 import { SpecDrawer } from '@/components/chat/SpecDrawer'
 import { StatusBar } from '@/components/workbench/StatusBar'
 import { Workbench } from '@/components/workbench/Workbench'
+import { useWorkspace } from '@/contexts/WorkspaceContext'
 import { cn } from '@/lib/utils'
 import type { FormalSpecification } from '@/lib/agent/spec/types'
 import type { ChatMode } from '@/lib/agent/prompt-library'
@@ -49,17 +49,21 @@ interface ProjectWorkspaceLayoutProps {
   onEditorDirtyChange: (filePath: string, isDirty: boolean) => void
   isMobileLayout: boolean
   isCompactDesktopLayout: boolean
-  mobilePrimaryPanel: 'workspace' | 'chat' | 'preview'
-  onMobilePrimaryPanelChange: (panel: 'workspace' | 'chat' | 'preview') => void
+  mobilePrimaryPanel: 'workspace' | 'chat' | 'review'
+  onMobilePrimaryPanelChange: (panel: 'workspace' | 'chat' | 'review') => void
   mobileUnreadCount: number
   isMobileKeyboardOpen: boolean
   chatPanel: React.ReactNode
+  reviewPanel: React.ReactNode
+  isReviewPanelOpen: boolean
+  onReviewPanelOpenChange: (open: boolean) => void
   isChatPanelOpen: boolean
   automationMode: 'manual' | 'auto'
   onAutomationModeChange: (mode: 'manual' | 'auto') => void
   pendingArtifactPreview?: WorkspaceArtifactPreview | null
   onApplyPendingArtifact: (artifactId: string) => void
   onRejectPendingArtifact: (artifactId: string) => void
+  onOpenArtifacts: () => void
   chatMode: ChatMode
   onModeChange: (mode: ChatMode) => void
   cursorPosition: { line: number; column: number } | null
@@ -67,10 +71,10 @@ interface ProjectWorkspaceLayoutProps {
   currentSpec: FormalSpecification | null
   isSpecDrawerOpen: boolean
   onSpecDrawerOpenChange: (open: boolean) => void
-  activeSection: SidebarSection
-  isFlyoutOpen: boolean
-  handleSectionChange: (section: SidebarSection) => void
-  toggleFlyout: () => void
+  previewUrl?: string | null
+  previewState?: 'idle' | 'building' | 'running' | 'failed'
+  isPreviewOpen: boolean
+  onPreviewOpenChange: (open: boolean) => void
 }
 
 export function ProjectWorkspaceLayout({
@@ -94,12 +98,16 @@ export function ProjectWorkspaceLayout({
   mobileUnreadCount,
   isMobileKeyboardOpen,
   chatPanel,
+  reviewPanel,
+  isReviewPanelOpen,
+  onReviewPanelOpenChange,
   isChatPanelOpen,
   automationMode,
   onAutomationModeChange,
   pendingArtifactPreview,
   onApplyPendingArtifact,
   onRejectPendingArtifact,
+  onOpenArtifacts,
   chatMode,
   onModeChange,
   cursorPosition,
@@ -107,11 +115,12 @@ export function ProjectWorkspaceLayout({
   currentSpec,
   isSpecDrawerOpen,
   onSpecDrawerOpenChange,
-  activeSection,
-  isFlyoutOpen,
-  handleSectionChange,
-  toggleFlyout,
+  previewUrl,
+  previewState,
+  isPreviewOpen,
+  onPreviewOpenChange,
 }: ProjectWorkspaceLayoutProps) {
+  const { handleSectionChange } = useWorkspace()
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
 
   const workbench = (
@@ -131,12 +140,12 @@ export function ProjectWorkspaceLayout({
       pendingArtifactPreview={pendingArtifactPreview}
       onApplyPendingArtifact={onApplyPendingArtifact}
       onRejectPendingArtifact={onRejectPendingArtifact}
-      onOpenArtifacts={() => {}}
+      onOpenArtifacts={onOpenArtifacts}
       onEditorDirtyChange={onEditorDirtyChange}
-      sidebarActiveSection={activeSection}
-      isSidebarFlyoutOpen={isFlyoutOpen}
-      onSidebarSectionChange={handleSectionChange}
-      onToggleSidebarFlyout={toggleFlyout}
+      previewUrl={previewUrl}
+      previewState={previewState}
+      isPreviewOpen={isPreviewOpen}
+      onPreviewOpenChange={onPreviewOpenChange}
     />
   )
 
@@ -150,12 +159,9 @@ export function ProjectWorkspaceLayout({
                 ? workbench
                 : mobilePrimaryPanel === 'chat'
                   ? chatPanel
-                  : (
-                    <PreviewPanel
-                      projectId={projectId}
-                      chatId={activeChatId}
-                    />
-                  )}
+                  : mobilePrimaryPanel === 'review'
+                    ? reviewPanel
+                    : null}
             </div>
             {!isMobileKeyboardOpen && (
               <div className="surface-1 grid min-h-12 grid-cols-3 border-t border-border pb-[env(safe-area-inset-bottom)] font-mono text-xs uppercase tracking-widest">
@@ -169,7 +175,7 @@ export function ProjectWorkspaceLayout({
                       : 'text-muted-foreground hover:text-foreground'
                   )}
                 >
-                  Workspace
+                  Work
                 </button>
                 <button
                   type="button"
@@ -190,15 +196,15 @@ export function ProjectWorkspaceLayout({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onMobilePrimaryPanelChange('preview')}
+                  onClick={() => onMobilePrimaryPanelChange('review')}
                   className={cn(
                     'relative h-full',
-                    mobilePrimaryPanel === 'preview'
+                    mobilePrimaryPanel === 'review'
                       ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:text-foreground'
                   )}
                 >
-                  Preview
+                  Review
                 </button>
               </div>
             )}
@@ -223,14 +229,15 @@ export function ProjectWorkspaceLayout({
                     className="surface-1 absolute inset-y-0 left-0 z-50 w-64 border-r border-border"
                   >
                     <div className="flex h-full flex-col p-4">
-                      <div className="mb-4 font-mono text-xs uppercase tracking-widest text-muted-foreground">Navigation</div>
+                      <div className="mb-4 font-mono text-xs uppercase tracking-widest text-muted-foreground">
+                        Navigation
+                      </div>
                       {[
-                        { section: 'new-chat' as SidebarSection, label: 'New Chat' },
                         { section: 'explorer' as SidebarSection, label: 'Explorer' },
                         { section: 'search' as SidebarSection, label: 'Search' },
                         { section: 'history' as SidebarSection, label: 'History' },
-                        { section: 'builder' as SidebarSection, label: 'Preview' },
                         { section: 'specs' as SidebarSection, label: 'Specifications' },
+                        { section: 'git' as SidebarSection, label: 'Source Control' },
                         { section: 'terminal' as SidebarSection, label: 'Terminal' },
                       ].map(({ section, label }) => (
                         <button
@@ -241,7 +248,7 @@ export function ProjectWorkspaceLayout({
                             setIsMobileSidebarOpen(false)
                             onMobilePrimaryPanelChange('workspace')
                           }}
-                          className="flex items-center gap-3 px-3 py-2.5 font-mono text-sm text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
+                          className="hover:bg-surface-2 flex items-center gap-3 px-3 py-2.5 font-mono text-sm text-muted-foreground transition-colors hover:text-foreground"
                         >
                           {label}
                         </button>
@@ -253,7 +260,12 @@ export function ProjectWorkspaceLayout({
             </AnimatePresence>
           </div>
         ) : (
-          <PanelGroup direction="horizontal" className="h-full" autoSaveId="panda-workbench-outer">
+          <PanelGroup
+            key={isChatPanelOpen ? 'with-chat' : 'without-chat'}
+            direction="horizontal"
+            className="h-full"
+            autoSaveId="panda-workbench-outer"
+          >
             <Panel
               defaultSize={isChatPanelOpen ? (isCompactDesktopLayout ? 64 : 70) : 100}
               minSize={40}
@@ -274,12 +286,6 @@ export function ProjectWorkspaceLayout({
                 >
                   <RightPanel
                     chatContent={chatPanel}
-                    previewContent={
-                      <PreviewPanel
-                        projectId={projectId}
-                        chatId={activeChatId}
-                      />
-                    }
                     chatInput={null}
                     automationMode={automationMode}
                     onAutomationModeChange={onAutomationModeChange}
@@ -289,6 +295,32 @@ export function ProjectWorkspaceLayout({
               </>
             )}
           </PanelGroup>
+        )}
+        {!isMobileLayout && (
+          <AnimatePresence>
+            {isReviewPanelOpen ? (
+              <>
+                <motion.button
+                  type="button"
+                  aria-label="Close review panel"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => onReviewPanelOpenChange(false)}
+                  className="absolute inset-0 z-20 bg-background/30"
+                />
+                <motion.div
+                  initial={{ y: '100%' }}
+                  animate={{ y: 0 }}
+                  exit={{ y: '100%' }}
+                  transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+                  className="shadow-sharp-lg absolute inset-x-0 bottom-0 z-30 max-h-[60vh] border-t border-border bg-background"
+                >
+                  <div className="max-h-[60vh] overflow-hidden">{reviewPanel}</div>
+                </motion.div>
+              </>
+            ) : null}
+          </AnimatePresence>
         )}
 
         <CommandPalette

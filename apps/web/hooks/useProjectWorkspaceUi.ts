@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { useLayoutPersistence } from './useLayoutPersistence'
+import { useRuntimePreview } from './useRuntimePreview'
 
-type MobilePrimaryPanel = 'workspace' | 'chat' | 'preview'
-type ChatInspectorTab = 'run' | 'plan' | 'memory' | 'evals'
+type MobilePrimaryPanel = 'workspace' | 'chat' | 'review'
+type ChatInspectorTab = 'run' | 'plan' | 'artifacts' | 'memory' | 'evals'
 
 export function useProjectWorkspaceUi() {
   const [isArtifactPanelOpen, setIsArtifactPanelOpen] = useState(false)
@@ -29,6 +30,7 @@ export function useProjectWorkspaceUi() {
   const [isSpecDrawerOpen, setIsSpecDrawerOpen] = useState(false)
   const [isSpecPanelOpen, setIsSpecPanelOpen] = useState(false)
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
+  const runtimePreview = useRuntimePreview()
 
   useEffect(() => {
     const mobileMedia = window.matchMedia('(max-width: 1023px)')
@@ -45,25 +47,9 @@ export function useProjectWorkspaceUi() {
       compactDesktopMedia.removeEventListener('change', update)
     }
   }, [])
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
-        e.preventDefault()
-        setIsChatPanelOpen((prev) => !prev)
-      }
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'a') {
-        e.preventDefault()
-        setIsArtifactPanelOpen((prev) => !prev)
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === '`') {
-        e.preventDefault()
-        window.dispatchEvent(new CustomEvent('panda:toggle-terminal'))
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [setIsChatPanelOpen])
+  // Keyboard shortcuts moved to the shared shortcut registry.
+  // Terminal toggle: Ctrl+` -> shortcut registry.
+  // Sidebar toggle: Ctrl+B -> useSidebar.
 
   return {
     isArtifactPanelOpen,
@@ -96,5 +82,13 @@ export function useProjectWorkspaceUi() {
     setIsSpecPanelOpen,
     isShareDialogOpen,
     setIsShareDialogOpen,
+    previewUrl: runtimePreview.previewUrl,
+    setPreviewUrl: runtimePreview.setPreviewUrl,
+    previewState: runtimePreview.previewState,
+    setPreviewState: runtimePreview.setPreviewState,
+    isPreviewOpen: runtimePreview.isPreviewOpen,
+    setIsPreviewOpen: runtimePreview.setIsPreviewOpen,
+    openPreview: runtimePreview.openPreview,
+    closePreview: runtimePreview.closePreview,
   }
 }

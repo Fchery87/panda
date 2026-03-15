@@ -4,14 +4,21 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
-import { AlertTriangle, Bot, History, MoreHorizontal, RotateCcw } from 'lucide-react'
+import {
+  AlertTriangle,
+  Bot,
+  History,
+  MoreHorizontal,
+  RotateCcw,
+  MessageSquarePlus,
+} from 'lucide-react'
 import Link from 'next/link'
 import { ChatActionBar } from '@/components/chat/ChatActionBar'
 import { ChatInput } from '@/components/chat/ChatInput'
 import { MessageList } from '@/components/chat/MessageList'
 import type { AvailableModel } from '@/components/chat/ModelSelector'
 import { PermissionDialog } from '@/components/chat/PermissionDialog'
-import { ProjectChatInspector } from '@/components/projects/ProjectChatInspector'
+import { ProjectChatInspector, type InspectorTab } from '@/components/projects/ProjectChatInspector'
 import { SpecPanel } from '@/components/plan/SpecPanel'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -29,7 +36,7 @@ import type { ChatMode } from '@/lib/agent/prompt-library'
 import type { PlanStatus } from '@/lib/chat/planDraft'
 import type { TracePersistenceStatus } from '@/hooks/useRunEventBuffer'
 
-type ChatInspectorTab = 'run' | 'plan' | 'memory' | 'evals'
+// Removed ChatInspectorTab definition
 
 type SnapshotEvent = {
   _id?: string
@@ -82,7 +89,10 @@ interface ProjectChatPanelProps {
   onToggleInspector: () => void
   onOpenHistory: () => void
   onOpenShare: () => void
+  previewUrl?: string | null
+  onOpenPreview?: () => void
   onResetWorkspace: () => void
+  onNewChat?: () => void
   planDraft: string
   onPlanReview: () => void
   onPlanApprove: () => void
@@ -102,9 +112,9 @@ interface ProjectChatPanelProps {
   onExecutePendingSpec: (spec: FormalSpecification) => void
   isMobileLayout: boolean
   isInspectorOpen: boolean
-  inspectorTab: ChatInspectorTab
+  inspectorTab: InspectorTab
   onInspectorOpenChange: (open: boolean) => void
-  onInspectorTabChange: (tab: ChatInspectorTab) => void
+  onInspectorTabChange: (tab: InspectorTab) => void
   liveSteps: LiveProgressStep[]
   tracePersistenceStatus: TracePersistenceStatus
   onOpenFile: (path: string) => void
@@ -133,6 +143,7 @@ interface ProjectChatPanelProps {
     error?: string
     usage?: { promptTokens: number; completionTokens: number; totalTokens: number }
   }>
+  renderInspectorInline?: boolean
 }
 
 export function ProjectChatPanel({
@@ -164,7 +175,10 @@ export function ProjectChatPanel({
   onToggleInspector,
   onOpenHistory,
   onOpenShare,
+  previewUrl,
+  onOpenPreview,
   onResetWorkspace,
+  onNewChat,
   planDraft,
   onPlanReview,
   onPlanApprove,
@@ -205,6 +219,7 @@ export function ProjectChatPanel({
   lastUserPrompt,
   lastAssistantReply,
   onRunEvalScenario,
+  renderInspectorInline = true,
 }: ProjectChatPanelProps) {
   const runtimeCheckpoints = useQuery(
     api.agentRuns.listRuntimeCheckpoints,
@@ -243,16 +258,42 @@ export function ProjectChatPanel({
         )}
 
         <div className="ml-auto flex items-center gap-1">
+          {onNewChat && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 rounded-none p-0 text-muted-foreground hover:text-foreground"
+              onClick={onNewChat}
+              aria-label="New chat"
+              title="New chat"
+            >
+              <MessageSquarePlus className="h-3.5 w-3.5" />
+            </Button>
+          )}
+
           <Button
             type="button"
             variant="ghost"
             size="sm"
             onClick={onToggleInspector}
             className="h-6 rounded-none px-2 font-mono text-[10px] uppercase tracking-wide"
-            aria-label="Toggle inspector"
+            aria-label="Toggle review panel"
           >
-            Inspector
+            Review
           </Button>
+
+          {previewUrl && onOpenPreview ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onOpenPreview}
+              className="h-6 rounded-none px-2 font-mono text-[10px] uppercase tracking-wide"
+              aria-label="Open runtime preview"
+            >
+              Preview
+            </Button>
+          ) : null}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -433,42 +474,44 @@ export function ProjectChatPanel({
           </>
         ) : null}
 
-        <ProjectChatInspector
-          projectId={projectId}
-          chatId={activeChatId}
-          isMobileLayout={isMobileLayout}
-          isOpen={isInspectorOpen}
-          tab={inspectorTab}
-          onOpenChange={onInspectorOpenChange}
-          onTabChange={onInspectorTabChange}
-          liveSteps={liveSteps}
-          isStreaming={isStreaming}
-          tracePersistenceStatus={tracePersistenceStatus}
-          onOpenFile={onOpenFile}
-          onOpenArtifacts={onOpenArtifacts}
-          currentSpec={currentSpec}
-          planStatus={activeChatPlanStatus}
-          planDraft={planDraft}
-          onSpecClick={onSpecClick}
-          onPlanClick={onPlanClick}
-          onResumeRuntimeSession={onResumeRuntimeSession}
-          snapshotEvents={snapshotEvents}
-          subagentToolCalls={subagentToolCalls}
-          onPlanDraftChange={onPlanDraftChange}
-          onSavePlanDraft={onSavePlanDraft}
-          onApprovePlan={onPlanApprove}
-          onBuildFromPlan={onBuildFromPlan}
-          isSavingPlanDraft={isSavingPlanDraft}
-          lastSavedAt={activeChatPlanUpdatedAt ?? null}
-          lastGeneratedAt={activeChatPlanLastGeneratedAt ?? null}
-          approveDisabled={planApproveDisabled}
-          buildDisabled={planBuildDisabled}
-          memoryBank={memoryBank}
-          onSaveMemoryBank={onSaveMemoryBank}
-          lastUserPrompt={lastUserPrompt}
-          lastAssistantReply={lastAssistantReply}
-          onRunEvalScenario={onRunEvalScenario}
-        />
+        {renderInspectorInline ? (
+          <ProjectChatInspector
+            projectId={projectId}
+            chatId={activeChatId}
+            isMobileLayout={isMobileLayout}
+            isOpen={isInspectorOpen}
+            tab={inspectorTab}
+            onOpenChange={onInspectorOpenChange}
+            onTabChange={onInspectorTabChange}
+            liveSteps={liveSteps}
+            isStreaming={isStreaming}
+            tracePersistenceStatus={tracePersistenceStatus}
+            onOpenFile={onOpenFile}
+            onOpenArtifacts={onOpenArtifacts}
+            currentSpec={currentSpec}
+            planStatus={activeChatPlanStatus}
+            planDraft={planDraft}
+            onSpecClick={onSpecClick}
+            onPlanClick={onPlanClick}
+            onResumeRuntimeSession={onResumeRuntimeSession}
+            snapshotEvents={snapshotEvents}
+            subagentToolCalls={subagentToolCalls}
+            onPlanDraftChange={onPlanDraftChange}
+            onSavePlanDraft={onSavePlanDraft}
+            onApprovePlan={onPlanApprove}
+            onBuildFromPlan={onBuildFromPlan}
+            isSavingPlanDraft={isSavingPlanDraft}
+            lastSavedAt={activeChatPlanUpdatedAt ?? null}
+            lastGeneratedAt={activeChatPlanLastGeneratedAt ?? null}
+            approveDisabled={planApproveDisabled}
+            buildDisabled={planBuildDisabled}
+            memoryBank={memoryBank}
+            onSaveMemoryBank={onSaveMemoryBank}
+            lastUserPrompt={lastUserPrompt}
+            lastAssistantReply={lastAssistantReply}
+            onRunEvalScenario={onRunEvalScenario}
+          />
+        ) : null}
       </AnimatePresence>
     </div>
   )

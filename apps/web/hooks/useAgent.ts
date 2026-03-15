@@ -34,7 +34,7 @@ import { extractTargetFilePaths } from '../components/chat/live-run-utils'
 import { buildHarnessSessionPermissions, type AgentPolicy } from '../lib/agent/automationPolicy'
 import { normalizeChatMode, type ChatMode } from '../lib/agent/prompt-library'
 import { derivePlanProgressMetadata, parsePlanSteps } from '../lib/agent/plan-progress'
-import { plugins, specTrackingPlugin } from '../lib/agent/harness/plugins'
+import { registerDefaultPlugins } from '../lib/agent/harness/plugins'
 import { appLog } from '@/lib/logger'
 import { toast } from 'sonner'
 import {
@@ -356,10 +356,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   useEffect(() => {
     if (!userId) return
 
-    // Ensure specTracking plugin is registered to track drift
-    if (!plugins.has('spec-tracking')) {
-      plugins.register(specTrackingPlugin)
-    }
+    registerDefaultPlugins()
 
     toolContextRef.current = createToolContext(
       projectId,

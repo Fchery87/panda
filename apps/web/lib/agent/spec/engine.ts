@@ -722,7 +722,7 @@ export class SpecEngine {
  */
 export function createSpecEngine(config?: Partial<SpecEngineConfig>): SpecEngine {
   return new SpecEngine({
-    enabled: false,
+    enabled: true,
     autoApproveAmbient: true,
     maxSpecsPerProject: 100,
     enableDriftDetection: false,
@@ -731,6 +731,6 @@ export function createSpecEngine(config?: Partial<SpecEngineConfig>): SpecEngine
 }
 
 /**
- * Default spec engine instance (disabled by default)
+ * Default spec engine instance
  */
 export const defaultSpecEngine = createSpecEngine()

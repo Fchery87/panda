@@ -10,7 +10,7 @@ describe('SpecEngine', () => {
   describe('initialization', () => {
     test('creates engine with default config', () => {
       const engine = createSpecEngine()
-      expect(engine.isEnabled()).toBe(false)
+      expect(engine.isEnabled()).toBe(true)
     })
 
     test('creates engine with enabled config', () => {

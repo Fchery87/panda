@@ -43,7 +43,7 @@ export function AttachmentButton({
       }
       setIsOpen(false)
     },
-    [onAttach],
+    [onAttach]
   )
 
   return (
@@ -95,7 +95,7 @@ export function AttachmentButton({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="flex w-full items-center gap-2 px-3 py-2 font-mono text-xs text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
+            className="hover:bg-surface-2 flex w-full items-center gap-2 px-3 py-2 font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
             <FilePlus2 className="h-3.5 w-3.5" />
             Upload File
@@ -103,7 +103,7 @@ export function AttachmentButton({
           <button
             type="button"
             onClick={() => imageInputRef.current?.click()}
-            className="flex w-full items-center gap-2 px-3 py-2 font-mono text-xs text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
+            className="hover:bg-surface-2 flex w-full items-center gap-2 px-3 py-2 font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
             <ImagePlus className="h-3.5 w-3.5" />
             Upload Image

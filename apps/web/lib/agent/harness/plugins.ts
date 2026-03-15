@@ -355,4 +355,14 @@ export const specTrackingPlugin = createPlugin('spec-tracking', {
   },
 })
 
+export const defaultPlugins = [loggingPlugin, costTrackingPlugin, specTrackingPlugin] as const
+
+export function registerDefaultPlugins(): void {
+  for (const plugin of defaultPlugins) {
+    if (!plugins.has(plugin.name)) {
+      plugins.register(plugin)
+    }
+  }
+}
+
 export type { Plugin, HookType, HookHandler, HookContext }

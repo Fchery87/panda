@@ -17,7 +17,6 @@ describe('project history flow', () => {
     expect(panelSource).toContain('History ({chatMessages.length})')
 
     expect(pageSource).toContain('onOpenHistory={() => {')
-    expect(pageSource).toContain("setChatInspectorTab('run')")
-    expect(pageSource).toContain('setIsChatInspectorOpen(true)')
+    expect(pageSource).toContain("openReviewTab('run')")
   })
 })

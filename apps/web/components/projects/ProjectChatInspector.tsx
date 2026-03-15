@@ -10,6 +10,7 @@ import { SnapshotTimeline } from '@/components/chat/SnapshotTimeline'
 import { SubagentPanel } from '@/components/chat/SubagentPanel'
 import type { ToolCallInfo } from '@/components/chat/types'
 import { PlanPanel } from '@/components/plan/PlanPanel'
+import { ArtifactPanel } from '@/components/artifacts/ArtifactPanel'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { LiveProgressStep } from '@/components/chat/live-run-utils'
@@ -17,7 +18,8 @@ import type { FormalSpecification } from '@/lib/agent/spec/types'
 import type { PlanStatus } from '@/lib/chat/planDraft'
 import type { TracePersistenceStatus } from '@/hooks/useRunEventBuffer'
 
-type InspectorTab = 'run' | 'plan' | 'memory' | 'evals'
+export type InspectorTab = 'run' | 'plan' | 'artifacts' | 'memory' | 'evals'
+export type ReviewTab = InspectorTab
 
 type SnapshotEvent = {
   _id?: string
@@ -31,14 +33,8 @@ type SnapshotEvent = {
   }
 }
 
-interface ProjectChatInspectorProps {
-  projectId: Id<'projects'>
+export interface InspectorRunContentProps {
   chatId?: Id<'chats'> | null
-  isMobileLayout: boolean
-  isOpen: boolean
-  tab: InspectorTab
-  onOpenChange: (open: boolean) => void
-  onTabChange: (tab: InspectorTab) => void
   liveSteps: LiveProgressStep[]
   isStreaming: boolean
   tracePersistenceStatus: TracePersistenceStatus
@@ -52,6 +48,49 @@ interface ProjectChatInspectorProps {
   onResumeRuntimeSession: (sessionID: string) => Promise<void>
   snapshotEvents: SnapshotEvent[]
   subagentToolCalls: ToolCallInfo[]
+}
+
+export function InspectorRunContent({
+  chatId,
+  liveSteps,
+  isStreaming,
+  tracePersistenceStatus,
+  onOpenFile,
+  onOpenArtifacts,
+  currentSpec,
+  planStatus,
+  planDraft,
+  onSpecClick,
+  onPlanClick,
+  onResumeRuntimeSession,
+  snapshotEvents,
+  subagentToolCalls,
+}: InspectorRunContentProps) {
+  return (
+    <div className="m-0 space-y-3">
+      <RunProgressPanel
+        chatId={chatId}
+        liveSteps={liveSteps}
+        isStreaming={isStreaming}
+        tracePersistenceStatus={tracePersistenceStatus}
+        onOpenFile={onOpenFile}
+        onOpenArtifacts={onOpenArtifacts}
+        currentSpec={currentSpec}
+        planStatus={planStatus}
+        planDraft={planDraft}
+        onSpecClick={onSpecClick}
+        onPlanClick={onPlanClick}
+        onResumeRuntimeSession={onResumeRuntimeSession}
+      />
+      <SnapshotTimeline events={snapshotEvents} />
+      <SubagentPanel toolCalls={subagentToolCalls} />
+    </div>
+  )
+}
+
+export interface InspectorPlanContentProps {
+  planDraft: string
+  planStatus?: PlanStatus | null
   onPlanDraftChange: (value: string) => void
   onSavePlanDraft: () => void
   onApprovePlan: () => void
@@ -61,8 +100,59 @@ interface ProjectChatInspectorProps {
   lastGeneratedAt?: number | null
   approveDisabled: boolean
   buildDisabled: boolean
+}
+
+export function InspectorPlanContent({
+  planDraft,
+  planStatus,
+  onPlanDraftChange,
+  onSavePlanDraft,
+  onApprovePlan,
+  onBuildFromPlan,
+  isSavingPlanDraft,
+  lastSavedAt,
+  lastGeneratedAt,
+  approveDisabled,
+  buildDisabled,
+}: InspectorPlanContentProps) {
+  return (
+    <div className="m-0 border border-border bg-background">
+      <PlanPanel
+        planDraft={planDraft}
+        planStatus={planStatus ?? 'idle'}
+        onChange={onPlanDraftChange}
+        onSave={onSavePlanDraft}
+        onApprove={onApprovePlan}
+        onBuildFromPlan={onBuildFromPlan}
+        isSaving={isSavingPlanDraft}
+        lastSavedAt={lastSavedAt ?? null}
+        lastGeneratedAt={lastGeneratedAt ?? null}
+        approveDisabled={approveDisabled}
+        buildDisabled={buildDisabled}
+      />
+    </div>
+  )
+}
+
+export interface InspectorMemoryContentProps {
   memoryBank: string | null | undefined
   onSaveMemoryBank: (content: string) => Promise<void>
+}
+
+export function InspectorMemoryContent({
+  memoryBank,
+  onSaveMemoryBank,
+}: InspectorMemoryContentProps) {
+  return (
+    <div className="m-0 border border-border bg-background">
+      <MemoryBankEditor memoryBank={memoryBank} onSave={onSaveMemoryBank} />
+    </div>
+  )
+}
+
+export interface InspectorEvalsContentProps {
+  projectId: Id<'projects'>
+  chatId?: Id<'chats'> | null
   lastUserPrompt?: string | null
   lastAssistantReply?: string | null
   onRunEvalScenario?: (scenario: {
@@ -76,6 +166,39 @@ interface ProjectChatInspectorProps {
     error?: string
     usage?: { promptTokens: number; completionTokens: number; totalTokens: number }
   }>
+}
+
+export function InspectorEvalsContent({
+  projectId,
+  chatId,
+  lastUserPrompt,
+  lastAssistantReply,
+  onRunEvalScenario,
+}: InspectorEvalsContentProps) {
+  return (
+    <div className="m-0 border border-border bg-background">
+      <EvalPanel
+        projectId={projectId}
+        chatId={chatId}
+        lastUserPrompt={lastUserPrompt}
+        lastAssistantReply={lastAssistantReply}
+        onRunScenario={onRunEvalScenario}
+      />
+    </div>
+  )
+}
+
+export interface ProjectChatInspectorProps
+  extends
+    InspectorRunContentProps,
+    InspectorPlanContentProps,
+    InspectorMemoryContentProps,
+    InspectorEvalsContentProps {
+  isMobileLayout: boolean
+  isOpen: boolean
+  tab: InspectorTab
+  onOpenChange: (open: boolean) => void
+  onTabChange: (tab: InspectorTab) => void
 }
 
 export function ProjectChatInspector({
@@ -134,6 +257,12 @@ export function ProjectChatInspector({
           Plan
         </TabsTrigger>
         <TabsTrigger
+          value="artifacts"
+          className="h-full rounded-none border-r border-border px-3 font-mono text-xs uppercase tracking-wide data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+        >
+          Artifacts
+        </TabsTrigger>
+        <TabsTrigger
           value="memory"
           className="h-full rounded-none border-r border-border px-3 font-mono text-xs uppercase tracking-wide data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
         >
@@ -148,60 +277,58 @@ export function ProjectChatInspector({
       </TabsList>
 
       <TabsContent value="run" className="m-0">
-        <div className="space-y-3">
-          <RunProgressPanel
-            chatId={chatId}
-            liveSteps={liveSteps}
-            isStreaming={isStreaming}
-            tracePersistenceStatus={tracePersistenceStatus}
-            onOpenFile={onOpenFile}
-            onOpenArtifacts={onOpenArtifacts}
-            currentSpec={currentSpec}
-            planStatus={planStatus}
-            planDraft={planDraft}
-            onSpecClick={onSpecClick}
-            onPlanClick={onPlanClick}
-            onResumeRuntimeSession={onResumeRuntimeSession}
-          />
-          <SnapshotTimeline events={snapshotEvents} />
-          <SubagentPanel toolCalls={subagentToolCalls} />
-        </div>
+        <InspectorRunContent
+          chatId={chatId}
+          liveSteps={liveSteps}
+          isStreaming={isStreaming}
+          tracePersistenceStatus={tracePersistenceStatus}
+          onOpenFile={onOpenFile}
+          onOpenArtifacts={onOpenArtifacts}
+          currentSpec={currentSpec}
+          planStatus={planStatus}
+          planDraft={planDraft}
+          onSpecClick={onSpecClick}
+          onPlanClick={onPlanClick}
+          onResumeRuntimeSession={onResumeRuntimeSession}
+          snapshotEvents={snapshotEvents}
+          subagentToolCalls={subagentToolCalls}
+        />
       </TabsContent>
 
       <TabsContent value="plan" className="m-0">
-        <div className="border border-border bg-background">
-          <PlanPanel
-            planDraft={planDraft}
-            planStatus={planStatus ?? 'idle'}
-            onChange={onPlanDraftChange}
-            onSave={onSavePlanDraft}
-            onApprove={onApprovePlan}
-            onBuildFromPlan={onBuildFromPlan}
-            isSaving={isSavingPlanDraft}
-            lastSavedAt={lastSavedAt ?? null}
-            lastGeneratedAt={lastGeneratedAt ?? null}
-            approveDisabled={approveDisabled}
-            buildDisabled={buildDisabled}
-          />
+        <InspectorPlanContent
+          planDraft={planDraft}
+          planStatus={planStatus}
+          onPlanDraftChange={onPlanDraftChange}
+          onSavePlanDraft={onSavePlanDraft}
+          onApprovePlan={onApprovePlan}
+          onBuildFromPlan={onBuildFromPlan}
+          isSavingPlanDraft={isSavingPlanDraft}
+          lastSavedAt={lastSavedAt}
+          lastGeneratedAt={lastGeneratedAt}
+          approveDisabled={approveDisabled}
+          buildDisabled={buildDisabled}
+        />
+      </TabsContent>
+
+      <TabsContent value="artifacts" className="m-0">
+        <div className="m-0 h-[420px] border border-border bg-background">
+          <ArtifactPanel projectId={projectId} chatId={chatId} position="right" />
         </div>
       </TabsContent>
 
       <TabsContent value="memory" className="m-0">
-        <div className="border border-border bg-background">
-          <MemoryBankEditor memoryBank={memoryBank} onSave={onSaveMemoryBank} />
-        </div>
+        <InspectorMemoryContent memoryBank={memoryBank} onSaveMemoryBank={onSaveMemoryBank} />
       </TabsContent>
 
       <TabsContent value="evals" className="m-0">
-        <div className="border border-border bg-background">
-          <EvalPanel
-            projectId={projectId}
-            chatId={chatId}
-            lastUserPrompt={lastUserPrompt}
-            lastAssistantReply={lastAssistantReply}
-            onRunScenario={onRunEvalScenario}
-          />
-        </div>
+        <InspectorEvalsContent
+          projectId={projectId}
+          chatId={chatId}
+          lastUserPrompt={lastUserPrompt}
+          lastAssistantReply={lastAssistantReply}
+          onRunEvalScenario={onRunEvalScenario}
+        />
       </TabsContent>
     </Tabs>
   )
@@ -231,7 +358,7 @@ export function ProjectChatInspector({
                 <div className="h-1 w-8 bg-border sm:hidden" />
                 <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-wide">
                   <Settings2 className="h-3.5 w-3.5 text-primary" />
-                  Inspector
+                  Review
                 </div>
               </div>
               <Button
@@ -273,7 +400,7 @@ export function ProjectChatInspector({
             <div className="flex items-center justify-between border-b border-border px-3 py-2">
               <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-wide">
                 <Settings2 className="h-3.5 w-3.5 text-primary" />
-                Inspector
+                Review
               </div>
               <Button
                 type="button"

@@ -18,8 +18,8 @@ export function LivePreview({ url, className }: LivePreviewProps) {
     return (
       <div className={cn('flex h-full flex-col items-center justify-center', className)}>
         <Monitor className="h-12 w-12 text-muted-foreground/30" />
-        <p className="font-mono text-sm font-medium text-foreground mt-4">No preview available</p>
-        <p className="font-mono text-xs text-muted-foreground mt-1">
+        <p className="mt-4 font-mono text-sm font-medium text-foreground">No preview available</p>
+        <p className="mt-1 font-mono text-xs text-muted-foreground">
           Preview will appear when the agent generates a running application
         </p>
       </div>
@@ -86,7 +86,10 @@ export function LivePreview({ url, className }: LivePreviewProps) {
         <iframe
           key={refreshKey}
           src={url}
-          className={cn('h-full border border-border bg-white', viewport === 'desktop' ? 'w-full' : 'w-[375px]')}
+          className={cn(
+            'h-full border border-border bg-white',
+            viewport === 'desktop' ? 'w-full' : 'w-[375px]'
+          )}
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
           title="Live Preview"
         />

@@ -6,11 +6,12 @@ interface ModeToggleProps {
   mode: 'manual' | 'auto'
   onModeChange: (mode: 'manual' | 'auto') => void
   disabled?: boolean
+  className?: string
 }
 
-export function ModeToggle({ mode, onModeChange, disabled }: ModeToggleProps) {
+export function ModeToggle({ mode, onModeChange, disabled, className }: ModeToggleProps) {
   return (
-    <div className="relative flex border border-border bg-background">
+    <div className={cn('relative flex border border-border bg-background', className)}>
       <div
         className={cn(
           'absolute inset-y-0 w-1/2 bg-primary transition-transform duration-150',

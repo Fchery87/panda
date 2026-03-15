@@ -14,14 +14,13 @@ import { cn } from '@/lib/utils'
 import {
   buildEvalScorecard,
   containsTextScorer,
-  createEvalTemplateScenarios,
   exactMatchScorer,
   normalizedTextExactScorer,
   regexTextScorer,
   runEvalSuite,
-  type EvalTemplate,
   type EvalScenario,
-} from '@/lib/agent/harness'
+} from '@/lib/agent/harness/evals'
+import { createEvalTemplateScenarios, type EvalTemplate } from '@/lib/agent/harness/eval-templates'
 import { ChevronDown, ChevronRight, FlaskConical, Play, Plus } from 'lucide-react'
 import {
   Select,

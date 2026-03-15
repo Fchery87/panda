@@ -7,6 +7,9 @@ let queryResult: unknown = []
 let mutationResult: unknown = 'project-created'
 let queryError: Error | null = null
 let mutationError: Error | null = null
+let queryImpl:
+  | ((func: unknown, args: Record<string, unknown>) => Promise<unknown> | unknown)
+  | null = null
 let mutationImpl:
   | ((func: unknown, args: Record<string, unknown>) => Promise<unknown> | unknown)
   | null = null
@@ -16,6 +19,9 @@ class MockConvexHttpClient {
 
   query(func: unknown, args: Record<string, unknown>) {
     queryCalls.push({ name: getFunctionLabel(func), args })
+    if (queryImpl) {
+      return Promise.resolve(queryImpl(func, args))
+    }
     if (queryError) {
       return Promise.reject(queryError)
     }
@@ -61,6 +67,7 @@ describe('/api/e2e/project route', () => {
     mutationResult = 'project-created'
     queryError = null
     mutationError = null
+    queryImpl = null
     mutationImpl = null
     env.NODE_ENV = 'test'
     env.E2E_AUTH_BYPASS = 'true'
@@ -102,7 +109,7 @@ describe('/api/e2e/project route', () => {
         projectId: 'project-existing',
         created: false,
       })
-      expect(queryCalls).toHaveLength(1)
+      expect(queryCalls).toHaveLength(2)
       expect(mutationCalls).toHaveLength(0)
     } finally {
       restoreEnv()
@@ -121,7 +128,7 @@ describe('/api/e2e/project route', () => {
         projectId: 'project-created',
         created: true,
       })
-      expect(queryCalls).toHaveLength(1)
+      expect(queryCalls).toHaveLength(2)
       expect(mutationCalls).toHaveLength(1)
       expect(mutationCalls[0]?.args).toMatchObject({
         name: 'Workbench E2E Fixture',
@@ -153,7 +160,7 @@ describe('/api/e2e/project route', () => {
         filePath: 'e2e-fixture.ts',
         sessionID: expect.stringContaining('harness_run_resume_fixture_'),
       })
-      expect(queryCalls).toHaveLength(3)
+      expect(queryCalls).toHaveLength(4)
       expect(mutationCalls).toHaveLength(2)
       expect(mutationCalls[0]?.args).toMatchObject({
         projectId: 'project-existing',
@@ -274,7 +281,7 @@ describe('/api/e2e/project route', () => {
         chatId: expect.any(String),
         planStatus: 'awaiting_review',
       })
-      expect(queryCalls).toHaveLength(2)
+      expect(queryCalls).toHaveLength(3)
       expect(mutationCalls).toHaveLength(1)
       expect(mutationCalls[0]).toMatchObject({
         name: expect.any(String),
@@ -402,6 +409,65 @@ describe('/api/e2e/project route', () => {
       })
       expect(createAttempts).toBe(2)
       expect(mutationCalls.some((call) => 'id' in call.args)).toBe(true)
+    } finally {
+      restoreEnv()
+    }
+  })
+
+  test('reclaims an old fixture before create when already at the project limit', async () => {
+    setTestEnv()
+    const projectsAtLimit = Array.from({ length: 100 }, (_, index) => ({
+      _id: `fixture-${index}`,
+      name: `Workbench Smoke ${index}`,
+      description: 'Deterministic browser E2E fixture project',
+      createdAt: index + 1,
+      lastOpenedAt: index + 1,
+    }))
+
+    let removedOldFixture = false
+    queryImpl = () => {
+      const queryIndex = queryCalls.length
+      if (queryIndex === 1) {
+        return projectsAtLimit
+      }
+      if (queryIndex === 2) {
+        return { maxProjectsPerUser: 100 }
+      }
+      if (queryIndex === 3) {
+        return projectsAtLimit.filter((project) => project._id !== 'fixture-0')
+      }
+      return []
+    }
+
+    mutationImpl = (func, args) => {
+      if ('id' in args) {
+        expect(args).toEqual({ id: 'fixture-0' })
+        removedOldFixture = true
+        return 'fixture-0'
+      }
+      if ('name' in args && 'description' in args) {
+        expect(removedOldFixture).toBe(true)
+        return 'project-created-after-proactive-cleanup'
+      }
+      return mutationResult
+    }
+
+    try {
+      const { GET } = await import('./route')
+
+      const response = await GET(
+        new Request('http://localhost:3000/api/e2e/project?name=Loop%20Debug%20Fixture')
+      )
+
+      expect(response.status).toBe(200)
+      await expect(response.json()).resolves.toEqual({
+        projectId: 'project-created-after-proactive-cleanup',
+        created: true,
+      })
+
+      expect(
+        mutationCalls.filter((call) => 'name' in call.args && 'description' in call.args)
+      ).toHaveLength(1)
     } finally {
       restoreEnv()
     }

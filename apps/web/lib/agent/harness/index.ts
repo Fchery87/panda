@@ -63,7 +63,15 @@ export { ascending, random, parseTimestamp, compare } from './identifier'
 export { bus } from './event-bus'
 export { permissions, checkPermission, mergePermissions, DEFAULT_PERMISSIONS } from './permissions'
 export { agents, parseAgentMarkdown, BUILTIN_AGENTS, SUBAGENT_TEMPLATES } from './agents'
-export { plugins, createPlugin, loggingPlugin, costTrackingPlugin } from './plugins'
+export {
+  plugins,
+  createPlugin,
+  loggingPlugin,
+  costTrackingPlugin,
+  specTrackingPlugin,
+  defaultPlugins,
+  registerDefaultPlugins,
+} from './plugins'
 export {
   compaction,
   estimateTokens,

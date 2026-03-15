@@ -9,7 +9,6 @@ describe('Workbench integration wiring', () => {
 
     expect(source).not.toContain("import { Preview } from './Preview'")
     expect(source).not.toContain("activeTab === 'preview'")
-    expect(source).not.toContain('>Preview<')
   })
 
   it('passes currentChatId to desktop workbench so timeline history works', () => {

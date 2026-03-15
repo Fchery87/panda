@@ -3,32 +3,19 @@
 import type { ComponentType } from 'react'
 import Link from 'next/link'
 import {
-  MessageSquarePlus,
   FolderTree,
   Search,
   Clock,
-  Eye,
   FileCheck,
+  GitBranch,
   TerminalSquare,
   Settings,
   BookOpen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
-export type SidebarSection =
-  | 'new-chat'
-  | 'explorer'
-  | 'search'
-  | 'history'
-  | 'builder'
-  | 'specs'
-  | 'terminal'
+export type SidebarSection = 'explorer' | 'search' | 'history' | 'specs' | 'git' | 'terminal'
 
 interface SidebarRailProps {
   activeSection: SidebarSection
@@ -46,12 +33,11 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'new-chat', icon: MessageSquarePlus, label: 'New Chat', shortcut: 'Ctrl+N' },
   { id: 'explorer', icon: FolderTree, label: 'Explorer', shortcut: 'Ctrl+Shift+E' },
   { id: 'search', icon: Search, label: 'Search', shortcut: 'Ctrl+Shift+F' },
   { id: 'history', icon: Clock, label: 'History', shortcut: 'Ctrl+Shift+H' },
-  { id: 'builder', icon: Eye, label: 'Preview', shortcut: 'Ctrl+Shift+P' },
   { id: 'specs', icon: FileCheck, label: 'Specs', shortcut: 'Ctrl+Shift+S' },
+  { id: 'git', icon: GitBranch, label: 'Source Control', shortcut: 'Ctrl+Shift+G' },
   { id: 'terminal', icon: TerminalSquare, label: 'Terminal', shortcut: 'Ctrl+`' },
 ]
 
@@ -95,14 +81,12 @@ export function SidebarRail({
                       'relative flex h-12 w-12 items-center justify-center transition-colors duration-150',
                       isActive
                         ? 'bg-surface-2 text-foreground'
-                        : 'text-muted-foreground hover:bg-surface-2 hover:text-foreground'
+                        : 'hover:bg-surface-2 text-muted-foreground hover:text-foreground'
                     )}
                     aria-label={item.label}
                     aria-pressed={isActive}
                   >
-                    {isActive && (
-                      <div className="absolute left-0 top-0 h-full w-0.5 bg-primary" />
-                    )}
+                    {isActive && <div className="absolute left-0 top-0 h-full w-0.5 bg-primary" />}
                     <Icon className="h-5 w-5" />
                   </button>
                 </TooltipTrigger>
@@ -126,7 +110,7 @@ export function SidebarRail({
             <TooltipTrigger asChild>
               <Link
                 href={projectId ? `/projects/${projectId}/settings` : '/settings'}
-                className="flex h-12 w-12 items-center justify-center text-muted-foreground transition-colors duration-150 hover:bg-surface-2 hover:text-foreground"
+                className="hover:bg-surface-2 flex h-12 w-12 items-center justify-center text-muted-foreground transition-colors duration-150 hover:text-foreground"
                 aria-label="Settings"
               >
                 <Settings className="h-5 w-5" />
@@ -141,7 +125,7 @@ export function SidebarRail({
             <TooltipTrigger asChild>
               <Link
                 href="/education"
-                className="flex h-12 w-12 items-center justify-center text-muted-foreground transition-colors duration-150 hover:bg-surface-2 hover:text-foreground"
+                className="hover:bg-surface-2 flex h-12 w-12 items-center justify-center text-muted-foreground transition-colors duration-150 hover:text-foreground"
                 aria-label="Documentation"
               >
                 <BookOpen className="h-5 w-5" />

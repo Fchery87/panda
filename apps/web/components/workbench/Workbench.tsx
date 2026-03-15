@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
+import type { Id } from '@convex/_generated/dataModel'
 import { FileTree } from './FileTree'
 import { FileTabs } from './FileTabs'
 import { ProjectSearchPanel } from './ProjectSearchPanel'
@@ -16,17 +17,21 @@ import {
   Search,
   History,
   Terminal as TerminalIcon,
-  ChevronUp,
   Minimize2,
+  TerminalSquare,
+  Eye,
+  ChevronUp,
 } from 'lucide-react'
-import type { Id } from '@convex/_generated/dataModel'
 import { Button } from '@/components/ui/button'
 import { Timeline } from './Timeline'
 import { SpecHistory } from './SpecHistory'
 import { SidebarRail } from '@/components/sidebar/SidebarRail'
 import { SidebarFlyout } from '@/components/sidebar/SidebarFlyout'
 import { SidebarHistoryPanel } from '@/components/sidebar/SidebarHistoryPanel'
-import type { SidebarSection } from '@/components/sidebar/SidebarRail'
+import { SidebarGitPanel } from '@/components/sidebar/SidebarGitPanel'
+import { PreviewPanel } from '@/components/preview/PreviewPanel'
+import { useWorkspace } from '@/contexts/WorkspaceContext'
+import { useShortcuts } from '@/hooks/useShortcuts'
 import type { WorkspaceArtifactPreview } from './artifact-preview'
 
 interface OpenFileTab {
@@ -62,11 +67,10 @@ interface WorkbenchProps {
   onRejectPendingArtifact: (artifactId: string) => void
   onOpenArtifacts: () => void
   onEditorDirtyChange: (filePath: string, isDirty: boolean) => void
-  // Sidebar props
-  sidebarActiveSection: SidebarSection
-  isSidebarFlyoutOpen: boolean
-  onSidebarSectionChange: (section: SidebarSection) => void
-  onToggleSidebarFlyout: () => void
+  previewUrl?: string | null
+  previewState?: 'idle' | 'building' | 'running' | 'failed'
+  isPreviewOpen?: boolean
+  onPreviewOpenChange?: (open: boolean) => void
 }
 
 function GripIndicator({ direction }: { direction: 'vertical' | 'horizontal' }) {
@@ -184,15 +188,24 @@ export function Workbench({
   onRejectPendingArtifact,
   onOpenArtifacts,
   onEditorDirtyChange,
-  sidebarActiveSection,
-  isSidebarFlyoutOpen,
-  onSidebarSectionChange,
-  onToggleSidebarFlyout,
+  previewUrl,
+  previewState,
+  isPreviewOpen,
+  onPreviewOpenChange,
 }: WorkbenchProps) {
+  const {
+    activeSection: sidebarActiveSection,
+    isFlyoutOpen: isSidebarFlyoutOpen,
+    handleSectionChange: onSidebarSectionChange,
+    toggleFlyout: onToggleSidebarFlyout,
+    onSelectChat,
+    isMobileLayout: isMobile,
+    isCompactDesktopLayout: isCompactDesktop,
+  } = useWorkspace()
   const [activeTab, setActiveTab] = useState<EditorTab>('code')
-  const [mobilePanel, setMobilePanel] = useState<'files' | 'editor' | 'terminal'>('editor')
-  const [isMobile, setIsMobile] = useState(false)
-  const [isCompactDesktop, setIsCompactDesktop] = useState(false)
+  const [mobilePanel, setMobilePanel] = useState<'files' | 'editor' | 'terminal' | 'preview'>(
+    'editor'
+  )
   const [isTerminalExpanded, setIsTerminalExpanded] = useState(() => {
     if (typeof window === 'undefined') return false
     const stored = localStorage.getItem(TERMINAL_STORAGE_KEY)
@@ -205,36 +218,46 @@ export function Workbench({
     localStorage.setItem(TERMINAL_STORAGE_KEY, String(isTerminalExpanded))
   }, [isTerminalExpanded])
 
-  // Listen for terminal toggle event from page.tsx
-  useEffect(() => {
-    const handleToggleTerminal = () => {
-      setIsTerminalExpanded((prev) => !prev)
-    }
-    window.addEventListener('panda:toggle-terminal', handleToggleTerminal)
-    return () => window.removeEventListener('panda:toggle-terminal', handleToggleTerminal)
-  }, [])
+  const shortcuts = useMemo(
+    () => [
+      {
+        id: 'toggle-terminal',
+        keys: 'mod+`',
+        label: 'Toggle Terminal',
+        handler: () => setIsTerminalExpanded((prev) => !prev),
+        category: 'Panels',
+      },
+    ],
+    []
+  )
 
-  useEffect(() => {
-    const mobileMedia = window.matchMedia('(max-width: 1023px)')
-    const compactDesktopMedia = window.matchMedia('(min-width: 1024px) and (max-width: 1279px)')
-    const update = () => {
-      setIsMobile(mobileMedia.matches)
-      setIsCompactDesktop(compactDesktopMedia.matches)
-    }
-    update()
-    mobileMedia.addEventListener('change', update)
-    compactDesktopMedia.addEventListener('change', update)
-    return () => {
-      mobileMedia.removeEventListener('change', update)
-      compactDesktopMedia.removeEventListener('change', update)
-    }
-  }, [])
+  useShortcuts(shortcuts)
 
   useEffect(() => {
     if (selectedFilePath) {
       setMobilePanel('editor')
     }
   }, [selectedFilePath])
+
+  useEffect(() => {
+    if (isPreviewOpen && previewUrl) {
+      setMobilePanel('preview')
+    }
+  }, [isPreviewOpen, previewUrl])
+
+  const canShowPreview = Boolean(isPreviewOpen && previewUrl)
+  const previewTitle =
+    previewState === 'building'
+      ? 'Preview Building'
+      : previewState === 'failed'
+        ? 'Preview Failed'
+        : 'Preview'
+
+  useEffect(() => {
+    if (!canShowPreview && mobilePanel === 'preview') {
+      setMobilePanel('editor')
+    }
+  }, [canShowPreview, mobilePanel])
 
   if (isMobile) {
     return (
@@ -268,7 +291,7 @@ export function Workbench({
             type="button"
             onClick={() => setMobilePanel('terminal')}
             className={cn(
-              'h-full min-h-11 flex-1',
+              'h-full min-h-11 flex-1 border-r border-border',
               mobilePanel === 'terminal'
                 ? 'bg-primary text-primary-foreground'
                 : 'text-muted-foreground hover:text-foreground'
@@ -276,6 +299,20 @@ export function Workbench({
           >
             Terminal
           </button>
+          {canShowPreview && (
+            <button
+              type="button"
+              onClick={() => setMobilePanel('preview')}
+              className={cn(
+                'h-full min-h-11 flex-1',
+                mobilePanel === 'preview'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              Preview
+            </button>
+          )}
         </div>
 
         <div className="h-[calc(100%-2.75rem)]">
@@ -338,6 +375,8 @@ export function Workbench({
                   />
                 ) : sidebarActiveSection === 'search' ? (
                   <ProjectSearchPanel onSelectFile={onSelectFile} />
+                ) : sidebarActiveSection === 'git' ? (
+                  <SidebarGitPanel projectId={projectId} />
                 ) : (
                   <SpecHistory projectId={projectId} />
                 )}
@@ -422,6 +461,37 @@ export function Workbench({
               </div>
             </div>
           )}
+
+          {mobilePanel === 'preview' && (
+            <div className="surface-1 flex h-full flex-col">
+              <div className="panel-header flex items-center justify-between" data-number="04">
+                <div className="flex items-center gap-2">
+                  <Eye className="h-4 w-4" />
+                  <span>Preview</span>
+                </div>
+                {onPreviewOpenChange && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    onClick={() => {
+                      onPreviewOpenChange(false)
+                      setMobilePanel('editor')
+                    }}
+                  >
+                    <Minimize2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+              <div className="relative flex-1 overflow-hidden">
+                <PreviewPanel
+                  projectId={projectId}
+                  chatId={currentChatId}
+                  previewUrl={previewUrl}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -442,7 +512,13 @@ export function Workbench({
           <SidebarFlyout isOpen={isSidebarFlyoutOpen} activeSection={sidebarActiveSection}>
             {sidebarActiveSection === 'explorer' && (
               <FileTree
-                files={files.map((f) => ({ _id: f._id, path: f.path, content: f.content ?? '', isBinary: f.isBinary, updatedAt: f.updatedAt }))}
+                files={files.map((f) => ({
+                  _id: f._id,
+                  path: f.path,
+                  content: f.content ?? '',
+                  isBinary: f.isBinary,
+                  updatedAt: f.updatedAt,
+                }))}
                 selectedPath={selectedFilePath}
                 onSelect={onSelectFile}
                 onCreate={onCreateFile}
@@ -453,19 +529,31 @@ export function Workbench({
             {sidebarActiveSection === 'search' && (
               <ProjectSearchPanel onSelectFile={onSelectFile} />
             )}
-            {sidebarActiveSection === 'specs' && (
-              <SpecHistory projectId={projectId} />
-            )}
+            {sidebarActiveSection === 'specs' && <SpecHistory projectId={projectId} />}
+            {sidebarActiveSection === 'git' && <SidebarGitPanel projectId={projectId} />}
             {sidebarActiveSection === 'history' && (
               <SidebarHistoryPanel
                 projectId={projectId}
                 activeChatId={currentChatId}
-                onSelectChat={() => {}}
+                onSelectChat={onSelectChat}
               />
             )}
-            {(sidebarActiveSection === 'new-chat' || sidebarActiveSection === 'builder' || sidebarActiveSection === 'terminal') && (
-              <div className="flex h-full items-center justify-center p-4 text-center font-mono text-xs text-muted-foreground">
-                Coming soon
+            {sidebarActiveSection === 'terminal' && (
+              <div className="flex flex-col gap-3 p-3">
+                <p className="font-mono text-xs text-muted-foreground">
+                  The terminal lives in the workspace panel below.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsTerminalExpanded(true)
+                    onToggleSidebarFlyout()
+                  }}
+                  className="hover:bg-surface-2 flex items-center justify-center gap-2 border border-border px-3 py-2 font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <TerminalSquare className="h-3.5 w-3.5" />
+                  Open Terminal
+                </button>
               </div>
             )}
           </SidebarFlyout>
@@ -477,88 +565,130 @@ export function Workbench({
           <PanelGroup direction="vertical" className="h-full">
             {/* Editor + Timeline (tabbed) */}
             <Panel defaultSize={isCompactDesktop ? 76 : isTerminalExpanded ? 70 : 100}>
-              <div className="surface-0 flex h-full flex-col">
-                {/* File Tabs */}
-                {openTabs.length > 0 && (
-                  <FileTabs
-                    tabs={openTabs}
-                    activePath={selectedFilePath}
-                    onSelect={onSelectFile}
-                    onClose={onCloseTab || (() => {})}
-                  />
-                )}
-
-                {/* Tab Header */}
-                <div
-                  className={cn(
-                    'panel-header flex items-center gap-0 p-0',
-                    openTabs.length === 0 && ''
-                  )}
-                  data-number="02"
-                >
-                  <button
-                    onClick={() => setActiveTab('code')}
-                    className={cn(
-                      'transition-sharp flex items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-widest',
-                      activeTab === 'code'
-                        ? 'border-b-2 border-primary bg-background text-primary'
-                        : 'text-muted-foreground hover:text-foreground'
+              <PanelGroup direction="horizontal" className="h-full">
+                <Panel>
+                  <div className="surface-0 flex h-full flex-col">
+                    {/* File Tabs */}
+                    {openTabs.length > 0 && (
+                      <FileTabs
+                        tabs={openTabs}
+                        activePath={selectedFilePath}
+                        onSelect={onSelectFile}
+                        onClose={onCloseTab || (() => {})}
+                      />
                     )}
-                  >
-                    <Code2 className="h-3.5 w-3.5" />
-                    Code
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('timeline')}
-                    className={cn(
-                      'transition-sharp flex items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-widest',
-                      activeTab === 'timeline'
-                        ? 'border-b-2 border-primary bg-background text-primary'
-                        : 'text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    <History className="h-3.5 w-3.5" />
-                    Timeline
-                  </button>
-                </div>
 
-                {/* Tab Content */}
-                <div className="flex-1 overflow-hidden">
-                  {activeTab === 'code' ? (
-                    selectedFile ? (
-                      <div className="flex h-full flex-col">
-                        {pendingArtifactPreview ? (
-                          <PendingArtifactOverlay
-                            preview={pendingArtifactPreview}
-                            onApply={onApplyPendingArtifact}
-                            onReject={onRejectPendingArtifact}
-                            onOpenArtifacts={onOpenArtifacts}
+                    {/* Tab Header */}
+                    <div
+                      className={cn(
+                        'panel-header flex items-center gap-0 p-0',
+                        openTabs.length === 0 && ''
+                      )}
+                      data-number="02"
+                    >
+                      <button
+                        onClick={() => setActiveTab('code')}
+                        className={cn(
+                          'transition-sharp flex items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-widest',
+                          activeTab === 'code'
+                            ? 'border-b-2 border-primary bg-background text-primary'
+                            : 'text-muted-foreground hover:text-foreground'
+                        )}
+                      >
+                        <Code2 className="h-3.5 w-3.5" />
+                        Code
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('timeline')}
+                        className={cn(
+                          'transition-sharp flex items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-widest',
+                          activeTab === 'timeline'
+                            ? 'border-b-2 border-primary bg-background text-primary'
+                            : 'text-muted-foreground hover:text-foreground'
+                        )}
+                      >
+                        <History className="h-3.5 w-3.5" />
+                        Timeline
+                      </button>
+                    </div>
+
+                    {/* Tab Content */}
+                    <div className="flex-1 overflow-hidden">
+                      {activeTab === 'code' ? (
+                        selectedFile ? (
+                          <div className="flex h-full flex-col">
+                            {pendingArtifactPreview ? (
+                              <PendingArtifactOverlay
+                                preview={pendingArtifactPreview}
+                                onApply={onApplyPendingArtifact}
+                                onReject={onRejectPendingArtifact}
+                                onOpenArtifacts={onOpenArtifacts}
+                              />
+                            ) : null}
+                            <div className="min-h-0 flex-1">
+                              <EditorContainer
+                                filePath={selectedFile.path}
+                                content={selectedFile.content ?? ''}
+                                jumpTo={selectedLocation}
+                                onSave={(content) => onSaveFile(selectedFile.path, content)}
+                                onDirtyChange={(isDirty) =>
+                                  onEditorDirtyChange(selectedFile.path, isDirty)
+                                }
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <EmptyState
+                            onCreateFile={onCreateFile}
+                            onOpenSearch={() => onSidebarSectionChange('search')}
+                            variant="desktop"
                           />
-                        ) : null}
-                        <div className="min-h-0 flex-1">
-                          <EditorContainer
-                            filePath={selectedFile.path}
-                            content={selectedFile.content ?? ''}
-                            jumpTo={selectedLocation}
-                            onSave={(content) => onSaveFile(selectedFile.path, content)}
-                            onDirtyChange={(isDirty) =>
-                              onEditorDirtyChange(selectedFile.path, isDirty)
-                            }
+                        )
+                      ) : (
+                        <Timeline chatId={currentChatId} />
+                      )}
+                    </div>
+                  </div>
+                </Panel>
+
+                {/* Desktop Preview Panel Split (if active) */}
+                {canShowPreview && (
+                  <>
+                    <VerticalResizeHandle />
+                    <Panel
+                      defaultSize={40}
+                      minSize={20}
+                      className="border-l border-border bg-background"
+                    >
+                      <div className="flex h-full flex-col">
+                        <div className="surface-1 flex min-h-11 items-center justify-between border-b border-border px-4 font-mono text-xs uppercase tracking-wide">
+                          <div className="flex items-center gap-2">
+                            <Eye className="h-4 w-4" />
+                            {previewTitle}
+                          </div>
+                          {onPreviewOpenChange && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                              onClick={() => onPreviewOpenChange(false)}
+                            >
+                              <Minimize2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                        <div className="relative flex-1 overflow-hidden">
+                          <PreviewPanel
+                            projectId={projectId}
+                            chatId={currentChatId}
+                            previewUrl={previewUrl}
                           />
                         </div>
                       </div>
-                    ) : (
-                      <EmptyState
-                        onCreateFile={onCreateFile}
-                        onOpenSearch={() => onSidebarSectionChange('search')}
-                        variant="desktop"
-                      />
-                    )
-                  ) : (
-                    <Timeline chatId={currentChatId} />
-                  )}
-                </div>
-              </div>
+                    </Panel>
+                  </>
+                )}
+              </PanelGroup>
             </Panel>
 
             {/* Terminal - Collapsible */}

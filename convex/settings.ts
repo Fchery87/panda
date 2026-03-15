@@ -52,6 +52,7 @@ async function getAdminSettings(ctx: SettingsCtx) {
       allowUserSubagents: true,
       systemMaintenance: false,
       registrationEnabled: true,
+      maxProjectsPerUser: 100,
       updatedAt: 0,
     }
   )
@@ -213,6 +214,7 @@ export const getAdminDefaults = query({
       allowUserSubagents: adminSettings.allowUserSubagents ?? true,
       registrationEnabled: adminSettings.registrationEnabled ?? true,
       systemMaintenance: adminSettings.systemMaintenance ?? false,
+      maxProjectsPerUser: adminSettings.maxProjectsPerUser ?? 100,
       updatedAt: adminSettings.updatedAt,
     }
   },

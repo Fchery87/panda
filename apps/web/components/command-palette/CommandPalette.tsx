@@ -16,6 +16,7 @@ import {
 import { useTheme } from 'next-themes'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { useShortcuts } from '@/hooks/useShortcuts'
 import { cn } from '@/lib/utils'
 import { useCommandPaletteStore } from '@/stores/commandPaletteStore'
 import type { ChatMode } from '@/lib/agent/prompt-library'
@@ -49,11 +50,20 @@ export function CommandPalette({
   const router = useRouter()
   const { setTheme } = useTheme()
 
-  // Register Cmd+K / Ctrl+K shortcut
-  useHotkeys('mod+k', (e) => {
-    e.preventDefault()
-    useCommandPaletteStore.getState().toggle()
-  })
+  const shortcuts = useMemo(
+    () => [
+      {
+        id: 'command-palette',
+        keys: 'mod+k',
+        label: 'Command Palette',
+        handler: () => useCommandPaletteStore.getState().toggle(),
+        category: 'General',
+      },
+    ],
+    []
+  )
+
+  useShortcuts(shortcuts)
 
   // Close on Escape
   useHotkeys('esc', () => closePalette(), { enabled: isOpen })

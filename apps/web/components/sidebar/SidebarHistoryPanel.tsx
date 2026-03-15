@@ -4,8 +4,9 @@ import { useState } from 'react'
 import { useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
-import { MessageSquare, Search } from 'lucide-react'
+import { MessageSquare, Search, MessageSquarePlus } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { useWorkspace } from '@/contexts/WorkspaceContext'
 
 interface SidebarHistoryPanelProps {
   projectId: Id<'projects'>
@@ -20,6 +21,7 @@ export function SidebarHistoryPanel({
   activeChatId,
   onSelectChat,
 }: SidebarHistoryPanelProps) {
+  const { onNewChat } = useWorkspace()
   const [scope, setScope] = useState<Scope>('project')
   const [search, setSearch] = useState('')
 
@@ -65,9 +67,20 @@ export function SidebarHistoryPanel({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search history..."
-            className="w-full bg-transparent font-mono text-xs focus:outline-none placeholder:text-muted-foreground/50"
+            className="w-full bg-transparent font-mono text-xs placeholder:text-muted-foreground/50 focus:outline-none"
           />
         </div>
+      </div>
+
+      {/* New Chat Button */}
+      <div className="border-b border-border p-2">
+        <button
+          onClick={onNewChat}
+          className="flex w-full items-center justify-center gap-2 border border-border bg-primary px-3 py-2 font-mono text-xs text-primary-foreground transition-colors hover:bg-primary/90"
+        >
+          <MessageSquarePlus className="h-3.5 w-3.5" />
+          New Chat
+        </button>
       </div>
 
       {/* Chat list */}
@@ -93,7 +106,7 @@ export function SidebarHistoryPanel({
                   className={`flex w-full items-center gap-2 px-3 py-2 text-left transition-colors duration-150 ${
                     isActive
                       ? 'bg-primary/10 text-foreground'
-                      : 'text-muted-foreground hover:bg-surface-2 hover:text-foreground'
+                      : 'hover:bg-surface-2 text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   <MessageSquare className="h-3.5 w-3.5 flex-shrink-0" />

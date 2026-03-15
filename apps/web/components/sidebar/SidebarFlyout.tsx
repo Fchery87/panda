@@ -5,13 +5,12 @@ import type { ReactNode } from 'react'
 import type { SidebarSection } from './SidebarRail'
 
 const SECTION_LABELS: Record<SidebarSection, string> = {
-  'new-chat': 'New Chat',
-  'explorer': 'Explorer',
-  'search': 'Search',
-  'history': 'History',
-  'builder': 'Preview',
-  'specs': 'Specifications',
-  'terminal': 'Terminal',
+  explorer: 'Explorer',
+  search: 'Search',
+  history: 'History',
+  specs: 'Specifications',
+  git: 'Source Control',
+  terminal: 'Terminal',
 }
 
 interface SidebarFlyoutProps {
@@ -32,12 +31,8 @@ export function SidebarFlyout({ isOpen, activeSection, children }: SidebarFlyout
           className="surface-1 h-full flex-shrink-0 overflow-hidden border-r border-border"
         >
           <div className="flex h-full w-[220px] flex-col">
-            <div className="panel-header-compact shrink-0">
-              {SECTION_LABELS[activeSection]}
-            </div>
-            <div className="flex-1 overflow-auto">
-              {children}
-            </div>
+            <div className="panel-header-compact shrink-0">{SECTION_LABELS[activeSection]}</div>
+            <div className="flex-1 overflow-auto">{children}</div>
           </div>
         </motion.div>
       )}

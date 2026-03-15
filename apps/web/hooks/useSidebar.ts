@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { SidebarSection } from '@/components/sidebar/SidebarRail'
+import { useShortcuts } from '@/hooks/useShortcuts'
 
 const SECTION_KEY = 'panda:sidebar-section'
 const FLYOUT_KEY = 'panda:sidebar-flyout-open'
@@ -29,18 +30,20 @@ export function useSidebar() {
     localStorage.setItem(FLYOUT_KEY, String(isFlyoutOpen))
   }, [isFlyoutOpen])
 
-  // Ctrl+B / Cmd+B keyboard shortcut to toggle flyout
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
-        e.preventDefault()
-        setIsFlyoutOpen((prev) => !prev)
-      }
-    }
+  const shortcuts = useMemo(
+    () => [
+      {
+        id: 'toggle-sidebar',
+        keys: 'mod+b',
+        label: 'Toggle Sidebar',
+        handler: () => setIsFlyoutOpen((prev) => !prev),
+        category: 'Navigation',
+      },
+    ],
+    []
+  )
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
+  useShortcuts(shortcuts)
 
   const handleSectionChange = (section: SidebarSection) => {
     if (section === activeSection && isFlyoutOpen) {

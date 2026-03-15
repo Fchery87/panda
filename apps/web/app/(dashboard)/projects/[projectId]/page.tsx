@@ -14,7 +14,9 @@ import { mapLatestRunProgressSteps } from '@/components/chat/live-run-utils'
 import { ProjectChatPanel } from '@/components/projects/ProjectChatPanel'
 import { ProjectShareDialog } from '@/components/projects/ProjectShareDialog'
 import { ProjectWorkspaceLayout } from '@/components/projects/ProjectWorkspaceLayout'
+import { ReviewPanel } from '@/components/review/ReviewPanel'
 import { Button } from '@/components/ui/button'
+import { WorkspaceProvider, type WorkspaceContextValue } from '@/contexts/WorkspaceContext'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,13 +24,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-import {
-  ChevronLeft,
-  RotateCcw,
-  MoreHorizontal,
-  PanelLeftOpen,
-  PanelLeftClose,
-} from 'lucide-react'
+import { ChevronLeft, RotateCcw, MoreHorizontal, PanelLeftOpen, PanelLeftClose } from 'lucide-react'
 import Link from 'next/link'
 
 // UI Components
@@ -43,6 +39,7 @@ import { useProjectMessageWorkflow } from '@/hooks/useProjectMessageWorkflow'
 import { useProjectPlanDraft } from '@/hooks/useProjectPlanDraft'
 import { useProjectWorkbenchFiles } from '@/hooks/useProjectWorkbenchFiles'
 import { useProjectWorkspaceUi } from '@/hooks/useProjectWorkspaceUi'
+import { useShortcutListener } from '@/hooks/useShortcuts'
 import { useSpecDriftDetection } from '@/hooks/useSpecDriftDetection'
 import {
   deriveWorkspaceArtifactPreviews,
@@ -62,6 +59,14 @@ import {
   getPrimaryArtifactAction,
   type ArtifactAction,
 } from '@/lib/artifacts/executeArtifact'
+
+import { ArtifactPanel } from '@/components/artifacts/ArtifactPanel'
+import {
+  InspectorEvalsContent,
+  InspectorMemoryContent,
+  InspectorPlanContent,
+  InspectorRunContent,
+} from '@/components/projects/ProjectChatInspector'
 
 interface File {
   _id: Id<'files'>
@@ -116,7 +121,31 @@ type ArtifactRecord = {
   createdAt: number
 }
 
-type ChatInspectorTab = 'run' | 'plan' | 'memory' | 'evals'
+type ChatInspectorTab = 'run' | 'plan' | 'artifacts' | 'memory' | 'evals'
+
+const URL_PATTERN = /https?:\/\/[^\s)]+/gi
+
+function extractLatestPreviewUrl(messages: Message[]): string | null {
+  const candidates = [...messages].reverse()
+
+  for (const message of candidates) {
+    if (message.role !== 'assistant' || typeof message.content !== 'string') continue
+    const matches = message.content.match(URL_PATTERN)
+    if (!matches) continue
+
+    for (const match of matches.reverse()) {
+      try {
+        const parsed = new URL(match)
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') continue
+        return parsed.toString()
+      } catch {
+        continue
+      }
+    }
+  }
+
+  return null
+}
 
 function readAgentPolicyField(
   source: unknown,
@@ -161,6 +190,14 @@ export default function ProjectPage() {
     setIsSpecPanelOpen,
     isShareDialogOpen,
     setIsShareDialogOpen,
+    previewUrl,
+    setPreviewUrl,
+    previewState,
+    setPreviewState,
+    isPreviewOpen,
+    setIsPreviewOpen,
+    openPreview,
+    closePreview,
   } = useProjectWorkspaceUi()
 
   const { activeSection, isFlyoutOpen, handleSectionChange, toggleFlyout } = useSidebar()
@@ -194,7 +231,6 @@ export default function ProjectPage() {
   const updateJobStatusMutation = useMutation(api.jobs.updateStatus)
   const updateArtifactStatusMutation = useMutation(api.artifacts.updateStatus)
   const {
-    settings,
     setActiveChatId,
     activeChat,
     chatMode,
@@ -217,6 +253,7 @@ export default function ProjectPage() {
     chats,
     projectAgentPolicy,
   })
+  useShortcutListener()
   const persistedPlanDraft = activeChat?.planDraft ?? ''
 
   // Initialize agent hook when activeChat and provider exist
@@ -282,6 +319,18 @@ export default function ProjectPage() {
   }, [pendingArtifactPreviews, selectedFilePath])
 
   // Reset workspace handler
+  const handleSelectChat = useCallback(
+    (chatId: Id<'chats'>) => {
+      setActiveChatId(chatId)
+    },
+    [setActiveChatId]
+  )
+
+  const handleNewChat = useCallback(async () => {
+    const id = await createChatMutation({ projectId, title: 'New Chat', mode: chatMode })
+    setActiveChatId(id)
+  }, [createChatMutation, projectId, chatMode, setActiveChatId])
+
   const handleResetWorkspace = useCallback(() => {
     // Stop any running agent
     agent.stop()
@@ -385,6 +434,7 @@ export default function ProjectPage() {
         )?.content ?? null,
     [chatMessages]
   )
+  const latestPreviewUrl = useMemo(() => extractLatestPreviewUrl(chatMessages), [chatMessages])
   const backgroundExecutionPolicy = useMemo(
     () => resolveBackgroundExecutionPolicy(chatMode),
     [chatMode]
@@ -517,6 +567,37 @@ export default function ProjectPage() {
   )
 
   useEffect(() => {
+    if (latestPreviewUrl) {
+      setPreviewUrl((current) => (current === latestPreviewUrl ? current : latestPreviewUrl))
+      setPreviewState('running')
+      return
+    }
+
+    setPreviewState(agent.isLoading ? 'building' : 'idle')
+  }, [agent.isLoading, latestPreviewUrl, setPreviewState, setPreviewUrl])
+
+  const openReviewTab = useCallback(
+    (tab: ChatInspectorTab) => {
+      setChatInspectorTab(tab)
+      if (isMobileLayout) {
+        setMobilePrimaryPanel('review')
+        setIsChatInspectorOpen(false)
+        return
+      }
+      setIsChatInspectorOpen(true)
+    },
+    [isMobileLayout, setChatInspectorTab, setIsChatInspectorOpen, setMobilePrimaryPanel]
+  )
+
+  const handleOpenPreview = useCallback(() => {
+    if (!latestPreviewUrl) return
+    if (isMobileLayout) {
+      setMobilePrimaryPanel('workspace')
+    }
+    openPreview({ url: latestPreviewUrl, state: 'running' })
+  }, [isMobileLayout, latestPreviewUrl, openPreview, setMobilePrimaryPanel])
+
+  useEffect(() => {
     if (!isMobileLayout || mobilePrimaryPanel === 'chat') {
       setMobileUnreadCount(0)
     }
@@ -618,17 +699,26 @@ export default function ProjectPage() {
       specTier={specTier}
       onSpecTierChange={setSpecTier}
       inlineRateLimitError={inlineRateLimitError}
-      onToggleInspector={() => setIsChatInspectorOpen((prev) => !prev)}
+      onToggleInspector={() => {
+        if (isMobileLayout) {
+          openReviewTab(chatInspectorTab as ChatInspectorTab)
+          return
+        }
+        setIsChatInspectorOpen((prev) => !prev)
+      }}
       onOpenHistory={() => {
-        setChatInspectorTab('run')
-        setIsChatInspectorOpen(true)
+        openReviewTab('run')
       }}
       onOpenShare={() => setIsShareDialogOpen(true)}
+      previewUrl={latestPreviewUrl}
+      onOpenPreview={handleOpenPreview}
       onResetWorkspace={handleResetWorkspace}
+      onNewChat={() => {
+        void handleNewChat()
+      }}
       planDraft={planDraft}
       onPlanReview={() => {
-        setChatInspectorTab('plan')
-        setIsChatInspectorOpen(true)
+        openReviewTab('plan')
       }}
       onPlanApprove={() => {
         void handleApprovePlan()
@@ -653,19 +743,20 @@ export default function ProjectPage() {
         setIsSpecPanelOpen(false)
       }}
       isMobileLayout={isMobileLayout}
-      isInspectorOpen={isChatInspectorOpen}
+      isInspectorOpen={false}
       inspectorTab={chatInspectorTab as ChatInspectorTab}
-      onInspectorOpenChange={setIsChatInspectorOpen}
-      onInspectorTabChange={setChatInspectorTab}
+      onInspectorOpenChange={() => {}}
+      onInspectorTabChange={() => {}}
       liveSteps={liveRunSteps}
       tracePersistenceStatus={agent.tracePersistenceStatus}
       onOpenFile={handleFileSelect}
-      onOpenArtifacts={() => {}}
+      onOpenArtifacts={() => {
+        openReviewTab('artifacts')
+      }}
       currentSpec={agent.currentSpec}
       onSpecClick={() => setIsSpecDrawerOpen(true)}
       onPlanClick={() => {
-        setChatInspectorTab('plan')
-        setIsChatInspectorOpen(true)
+        openReviewTab('plan')
       }}
       onResumeRuntimeSession={agent.resumeRuntimeSession}
       snapshotEvents={snapshotRunEvents}
@@ -680,6 +771,71 @@ export default function ProjectPage() {
       lastUserPrompt={latestUserPrompt}
       lastAssistantReply={latestAssistantReply}
       onRunEvalScenario={agent.runEvalScenario}
+      renderInspectorInline={false}
+    />
+  )
+
+  const reviewPanelContent = (
+    <ReviewPanel
+      activeTab={chatInspectorTab}
+      onTabChange={(tab) => setChatInspectorTab(tab as ChatInspectorTab)}
+      runContent={
+        <InspectorRunContent
+          chatId={activeChat?._id}
+          liveSteps={liveRunSteps}
+          isStreaming={agent.isLoading}
+          tracePersistenceStatus={agent.tracePersistenceStatus}
+          onOpenFile={handleFileSelect}
+          onOpenArtifacts={() => openReviewTab('artifacts')}
+          currentSpec={agent.currentSpec}
+          planStatus={activeChat?.planStatus}
+          planDraft={planDraft}
+          onSpecClick={() => setIsSpecDrawerOpen(true)}
+          onPlanClick={() => openReviewTab('plan')}
+          onResumeRuntimeSession={agent.resumeRuntimeSession}
+          snapshotEvents={snapshotRunEvents}
+          subagentToolCalls={subagentToolCalls}
+        />
+      }
+      planContent={
+        <InspectorPlanContent
+          planDraft={planDraft}
+          planStatus={activeChat?.planStatus}
+          onPlanDraftChange={setPlanDraft}
+          onSavePlanDraft={() => {
+            void handleSavePlanDraft()
+          }}
+          onApprovePlan={() => {
+            void handleApprovePlan()
+          }}
+          onBuildFromPlan={() => {
+            void handleBuildFromPlan()
+          }}
+          isSavingPlanDraft={isSavingPlanDraft}
+          lastSavedAt={activeChat?.planUpdatedAt}
+          lastGeneratedAt={activeChat?.planLastGeneratedAt}
+          approveDisabled={!canApprovePlan(activeChat?.planStatus, planDraft) || agent.isLoading}
+          buildDisabled={!canBuildFromPlan(activeChat?.planStatus, planDraft) || agent.isLoading}
+        />
+      }
+      artifactsContent={
+        <ArtifactPanel projectId={projectId} chatId={activeChat?._id} position="right" />
+      }
+      memoryContent={
+        <InspectorMemoryContent
+          memoryBank={agent.memoryBank}
+          onSaveMemoryBank={agent.updateMemoryBank}
+        />
+      }
+      evalsContent={
+        <InspectorEvalsContent
+          projectId={projectId}
+          chatId={activeChat?._id}
+          lastUserPrompt={latestUserPrompt}
+          lastAssistantReply={latestAssistantReply}
+          onRunEvalScenario={agent.runEvalScenario}
+        />
+      }
     />
   )
 
@@ -699,139 +855,181 @@ export default function ProjectPage() {
     )
   }
 
+  const workspaceContextValue: WorkspaceContextValue = {
+    selectedFilePath,
+    setSelectedFilePath,
+    selectedFileLocation,
+    setSelectedFileLocation,
+    openTabs,
+    setOpenTabs,
+    cursorPosition,
+    setCursorPosition,
+    activeSection,
+    isFlyoutOpen,
+    handleSectionChange,
+    toggleFlyout,
+    isMobileLayout,
+    isCompactDesktopLayout,
+    mobilePrimaryPanel,
+    setMobilePrimaryPanel,
+    isChatPanelOpen,
+    setIsChatPanelOpen,
+    projectId,
+    activeChatId: activeChat?._id,
+    chatMode,
+    onSelectChat: handleSelectChat,
+    onNewChat: () => {
+      void handleNewChat()
+    },
+    previewUrl,
+    setPreviewUrl,
+    previewState,
+    setPreviewState,
+    isPreviewOpen,
+    setIsPreviewOpen,
+    openPreview,
+    closePreview,
+  }
+
   return (
-    <div className="fixed inset-0 top-0 z-10 flex flex-col overflow-hidden bg-background">
-      <ProjectShareDialog
-        open={isShareDialogOpen}
-        onOpenChange={setIsShareDialogOpen}
-        chatId={activeChat?._id}
-        chatTitle={activeChat?.title}
-      />
-      {/* Top Bar - Unified Header */}
-      <motion.div
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="surface-1 flex h-14 shrink-0 items-center justify-between border-b border-border px-4"
-      >
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          {/* Sidebar Toggle + Panda Wordmark */}
-          <div className="flex shrink-0 items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 rounded-none p-0"
-              onClick={toggleFlyout}
-              title={isFlyoutOpen ? 'Close sidebar' : 'Open sidebar'}
-              aria-label={isFlyoutOpen ? 'Close sidebar' : 'Open sidebar'}
-            >
-              {isFlyoutOpen ? (
-                <PanelLeftClose className="h-4 w-4" />
-              ) : (
-                <PanelLeftOpen className="h-4 w-4" />
-              )}
-            </Button>
-            <Link href="/" className="flex shrink-0 items-center">
-              <PandaLogo size="md" variant="icon" />
-            </Link>
-          </div>
-
-          <div className="h-6 w-px bg-border" />
-
-          <Link href="/projects" className="shrink-0">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-9 gap-1 rounded-none font-mono text-xs"
-              aria-label="Back to projects"
-              title="Back to projects"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              <span className="hidden sm:inline">Projects</span>
-            </Button>
-          </Link>
-
-          <div className="h-6 w-px bg-border" />
-
-          <Breadcrumb
-            projectName={project.name}
-            projectId={projectId}
-            items={buildBreadcrumbItems(selectedFilePath)}
-          />
-
-          {isAnyJobRunning && (
-            <span
-              className="ml-2 flex h-2 w-2 animate-pulse rounded-full bg-primary"
-              title="Jobs running"
-            />
-          )}
-        </div>
-
-        <div className="flex items-center gap-1">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+    <WorkspaceProvider value={workspaceContextValue}>
+      <div className="fixed inset-0 top-0 z-10 flex flex-col overflow-hidden bg-background">
+        <ProjectShareDialog
+          open={isShareDialogOpen}
+          onOpenChange={setIsShareDialogOpen}
+          chatId={activeChat?._id}
+          chatTitle={activeChat?.title}
+        />
+        {/* Top Bar - Unified Header */}
+        <motion.div
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="surface-1 flex h-14 shrink-0 items-center justify-between border-b border-border px-4"
+        >
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            {/* Sidebar Toggle + Panda Wordmark */}
+            <div className="flex shrink-0 items-center gap-1">
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 gap-1 rounded-none font-mono text-xs"
-                title="More actions"
-                aria-label="More actions"
+                className="h-8 w-8 rounded-none p-0"
+                onClick={toggleFlyout}
+                title={isFlyoutOpen ? 'Close sidebar' : 'Open sidebar'}
+                aria-label={isFlyoutOpen ? 'Close sidebar' : 'Open sidebar'}
               >
-                <MoreHorizontal className="h-4 w-4" />
-                <span className="hidden xl:inline">More</span>
+                {isFlyoutOpen ? (
+                  <PanelLeftClose className="h-4 w-4" />
+                ) : (
+                  <PanelLeftOpen className="h-4 w-4" />
+                )}
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="rounded-none border-border font-mono">
-              <DropdownMenuItem
-                onClick={handleResetWorkspace}
-                className="rounded-none text-xs uppercase tracking-wide"
-              >
-                <RotateCcw className="mr-2 h-3.5 w-3.5" />
-                Reset Workspace
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </motion.div>
+              <Link href="/" className="flex shrink-0 items-center">
+                <PandaLogo size="md" variant="icon" />
+              </Link>
+            </div>
 
-      <ProjectWorkspaceLayout
-        projectId={projectId}
-        activeChatId={activeChat?._id}
-        files={files}
-        selectedFilePath={selectedFilePath}
-        selectedFileLocation={selectedFileLocation}
-        openTabs={openTabs}
-        onSelectFile={handleFileSelect}
-        onCloseTab={handleTabClose}
-        onCreateFile={handleFileCreate}
-        onRenameFile={handleFileRename}
-        onDeleteFile={handleFileDelete}
-        onSaveFile={handleEditorSave}
-        onEditorDirtyChange={handleEditorDirtyChange}
-        isMobileLayout={isMobileLayout}
-        isCompactDesktopLayout={isCompactDesktopLayout}
-        mobilePrimaryPanel={mobilePrimaryPanel}
-        onMobilePrimaryPanelChange={setMobilePrimaryPanel}
-        mobileUnreadCount={mobileUnreadCount}
-        isMobileKeyboardOpen={isMobileKeyboardOpen}
-        chatPanel={chatPanelContent}
-        isChatPanelOpen={isChatPanelOpen}
-        automationMode={automationMode}
-        onAutomationModeChange={setAutomationMode}
-        pendingArtifactPreview={pendingArtifactPreview}
-        onApplyPendingArtifact={handleApplyPendingArtifact}
-        onRejectPendingArtifact={handleRejectPendingArtifact}
-        chatMode={chatMode}
-        onModeChange={handleModeChange}
-        cursorPosition={cursorPosition}
-        isStreaming={agent.isLoading}
-        currentSpec={agent.currentSpec}
-        isSpecDrawerOpen={isSpecDrawerOpen}
-        onSpecDrawerOpenChange={setIsSpecDrawerOpen}
-        activeSection={activeSection}
-        isFlyoutOpen={isFlyoutOpen}
-        handleSectionChange={handleSectionChange}
-        toggleFlyout={toggleFlyout}
-      />
-    </div>
+            <div className="h-6 w-px bg-border" />
+
+            <Link href="/projects" className="shrink-0">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-9 gap-1 rounded-none font-mono text-xs"
+                aria-label="Back to projects"
+                title="Back to projects"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Projects</span>
+              </Button>
+            </Link>
+
+            <div className="h-6 w-px bg-border" />
+
+            <Breadcrumb
+              projectName={project.name}
+              projectId={projectId}
+              items={buildBreadcrumbItems(selectedFilePath)}
+            />
+
+            {isAnyJobRunning && (
+              <span
+                className="ml-2 flex h-2 w-2 animate-pulse rounded-full bg-primary"
+                title="Jobs running"
+              />
+            )}
+          </div>
+
+          <div className="flex items-center gap-1">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 gap-1 rounded-none font-mono text-xs"
+                  title="More actions"
+                  aria-label="More actions"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                  <span className="hidden xl:inline">More</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="rounded-none border-border font-mono">
+                <DropdownMenuItem
+                  onClick={handleResetWorkspace}
+                  className="rounded-none text-xs uppercase tracking-wide"
+                >
+                  <RotateCcw className="mr-2 h-3.5 w-3.5" />
+                  Reset Workspace
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </motion.div>
+
+        <ProjectWorkspaceLayout
+          projectId={projectId}
+          activeChatId={activeChat?._id}
+          files={files}
+          selectedFilePath={selectedFilePath}
+          selectedFileLocation={selectedFileLocation}
+          openTabs={openTabs}
+          onSelectFile={handleFileSelect}
+          onCloseTab={handleTabClose}
+          onCreateFile={handleFileCreate}
+          onRenameFile={handleFileRename}
+          onDeleteFile={handleFileDelete}
+          onSaveFile={handleEditorSave}
+          onEditorDirtyChange={handleEditorDirtyChange}
+          isMobileLayout={isMobileLayout}
+          isCompactDesktopLayout={isCompactDesktopLayout}
+          mobilePrimaryPanel={mobilePrimaryPanel}
+          onMobilePrimaryPanelChange={setMobilePrimaryPanel}
+          mobileUnreadCount={mobileUnreadCount}
+          isMobileKeyboardOpen={isMobileKeyboardOpen}
+          chatPanel={chatPanelContent}
+          reviewPanel={reviewPanelContent}
+          isReviewPanelOpen={isChatInspectorOpen}
+          onReviewPanelOpenChange={setIsChatInspectorOpen}
+          isChatPanelOpen={isChatPanelOpen}
+          automationMode={automationMode}
+          onAutomationModeChange={setAutomationMode}
+          pendingArtifactPreview={pendingArtifactPreview}
+          onApplyPendingArtifact={handleApplyPendingArtifact}
+          onRejectPendingArtifact={handleRejectPendingArtifact}
+          onOpenArtifacts={() => openReviewTab('artifacts')}
+          chatMode={chatMode}
+          onModeChange={handleModeChange}
+          cursorPosition={cursorPosition}
+          isStreaming={agent.isLoading}
+          currentSpec={agent.currentSpec}
+          isSpecDrawerOpen={isSpecDrawerOpen}
+          onSpecDrawerOpenChange={setIsSpecDrawerOpen}
+          previewUrl={previewUrl}
+          previewState={previewState}
+          isPreviewOpen={isPreviewOpen}
+          onPreviewOpenChange={setIsPreviewOpen}
+        />
+      </div>
+    </WorkspaceProvider>
   )
 }

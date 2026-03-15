@@ -1,0 +1,28 @@
+{
+  "node": {
+    "000a45780af9a87d5a08e51cde0366f2062bf52c67": {
+      "workers": {
+        "app/(dashboard)/projects/[projectId]/page": {
+          "moduleId": "[project]/apps/web/.next-internal/server/app/(dashboard)/projects/[projectId]/page/actions.js { ACTIONS_MODULE0 => \"[project]/node_modules/.bun/@convex-dev+auth@0.0.90+c40c709e16b8c960/node_modules/@convex-dev/auth/dist/nextjs/server/invalidateCache.js [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "invalidateCache",
+          "filename": "node_modules/.bun/@convex-dev+auth@0.0.90+c40c709e16b8c960/node_modules/@convex-dev/auth/dist/nextjs/server/invalidateCache.js"
+        },
+        "app/(dashboard)/projects/page": {
+          "moduleId": "[project]/apps/web/.next-internal/server/app/(dashboard)/projects/page/actions.js { ACTIONS_MODULE0 => \"[project]/node_modules/.bun/@convex-dev+auth@0.0.90+c40c709e16b8c960/node_modules/@convex-dev/auth/dist/nextjs/server/invalidateCache.js [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
+          "async": false,
+          "exportedName": "invalidateCache",
+          "filename": "node_modules/.bun/@convex-dev+auth@0.0.90+c40c709e16b8c960/node_modules/@convex-dev/auth/dist/nextjs/server/invalidateCache.js"
+        }
+      },
+      "layer": {
+        "app/(dashboard)/projects/[projectId]/page": "action-browser",
+        "app/(dashboard)/projects/page": "action-browser"
+      },
+      "filename": "node_modules/.bun/@convex-dev+auth@0.0.90+c40c709e16b8c960/node_modules/@convex-dev/auth/dist/nextjs/server/invalidateCache.js",
+      "exportedName": "invalidateCache"
+    }
+  },
+  "edge": {},
+  "encryptionKey": "lDfaL3pbnw69tU2iaoPhxYMzDPQVYoi11SiWNIUKRyM="
+}

@@ -127,11 +127,11 @@ export function ChatInput({
   )
 
   const handleAttach = useCallback((attachment: Attachment) => {
-    setAttachments(prev => [...prev, attachment])
+    setAttachments((prev) => [...prev, attachment])
   }, [])
 
   const handleRemoveAttachment = useCallback((id: string) => {
-    setAttachments(prev => prev.filter(a => a.id !== id))
+    setAttachments((prev) => prev.filter((a) => a.id !== id))
   }, [])
 
   const handleSend = useCallback(() => {

@@ -218,7 +218,7 @@ const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = {
   toolRetryBackoffMs: 200,
   enableToolCallIdempotencyCache: false,
   specEngine: {
-    enabled: false,
+    enabled: true,
     autoApproveAmbient: true,
     maxSpecsPerProject: 100,
     enableDriftDetection: false,
