@@ -5,13 +5,13 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import { cn } from '@/lib/utils'
-import { File as FileIcon, Bot } from 'lucide-react'
+import { File as FileIcon, Bot, Folder, Globe } from 'lucide-react'
 import { listSubagents } from '@/lib/agents/registry'
 
 interface MentionItem {
   id: string
   name: string
-  type: 'file' | 'agent'
+  type: 'file' | 'agent' | 'folder' | 'url'
   description?: string
 }
 
@@ -56,9 +56,43 @@ export function MentionPicker({ filePaths, query, onSelect, onClose }: MentionPi
 
     const agentItems = [...builtInAgentItems, ...userAgentItems]
 
+    const folderPaths = Array.from(
+      new Set(
+        filePaths
+          .map((p) => {
+            const parts = p.split('/')
+            parts.pop()
+            return parts.join('/')
+          })
+          .filter(Boolean)
+      )
+    )
+
+    const folderItems: MentionItem[] = folderPaths
+      .filter((p) => p.toLowerCase().includes(q))
+      .slice(0, 3)
+      .map((p) => ({
+        id: `folder:${p}`,
+        name: p.split('/').pop() || p,
+        type: 'folder' as const,
+        description: p,
+      }))
+
+    const isUrl = /^https?:\/\//i.test(q)
+    const urlItems: MentionItem[] = isUrl
+      ? [
+          {
+            id: q,
+            name: q,
+            type: 'url' as const,
+            description: 'Include documentation context',
+          },
+        ]
+      : []
+
     const fileItems: MentionItem[] = filePaths
       .filter((p) => p.toLowerCase().includes(q))
-      .slice(0, 8 - agentItems.length)
+      .slice(0, 8 - (agentItems.length + folderItems.length + urlItems.length))
       .map((p) => ({
         id: p,
         name: p.split('/').pop() || p,
@@ -66,7 +100,7 @@ export function MentionPicker({ filePaths, query, onSelect, onClose }: MentionPi
         description: p.split('/').slice(0, -1).join('/'),
       }))
 
-    return [...agentItems, ...fileItems]
+    return [...urlItems, ...agentItems, ...folderItems, ...fileItems]
   }, [filePaths, query, builtInSubagents, userSubagents])
 
   // Reset selection when results change
@@ -107,6 +141,17 @@ export function MentionPicker({ filePaths, query, onSelect, onClose }: MentionPi
 
   const agentCount = items.filter((i) => i.type === 'agent').length
   const fileCount = items.filter((i) => i.type === 'file').length
+  const folderCount = items.filter((i) => i.type === 'folder').length
+  const urlCount = items.filter((i) => i.type === 'url').length
+
+  const getHeaderParts = () => {
+    const parts = []
+    if (urlCount > 0) parts.push(`${urlCount} url${urlCount > 1 ? 's' : ''}`)
+    if (agentCount > 0) parts.push(`${agentCount} agent${agentCount > 1 ? 's' : ''}`)
+    if (folderCount > 0) parts.push(`${folderCount} folder${folderCount > 1 ? 's' : ''}`)
+    if (fileCount > 0) parts.push(`${fileCount} file${fileCount > 1 ? 's' : ''}`)
+    return parts.join(' · ')
+  }
 
   return (
     <AnimatePresence>
@@ -123,9 +168,7 @@ export function MentionPicker({ filePaths, query, onSelect, onClose }: MentionPi
         {/* Header */}
         <div className="border-b border-border px-3 py-1.5">
           <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-            {agentCount > 0 && `${agentCount} agent${agentCount > 1 ? 's' : ''}`}
-            {agentCount > 0 && fileCount > 0 && ' · '}
-            {fileCount > 0 && `${fileCount} file${fileCount > 1 ? 's' : ''}`}
+            {getHeaderParts()}
           </span>
         </div>
 
@@ -146,6 +189,10 @@ export function MentionPicker({ filePaths, query, onSelect, onClose }: MentionPi
             >
               {item.type === 'agent' ? (
                 <Bot className="h-3.5 w-3.5 shrink-0 text-primary" />
+              ) : item.type === 'folder' ? (
+                <Folder className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+              ) : item.type === 'url' ? (
+                <Globe className="h-3.5 w-3.5 shrink-0 text-primary/70" />
               ) : (
                 <FileIcon className="h-3.5 w-3.5 shrink-0 text-primary/70" />
               )}

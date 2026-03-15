@@ -23,7 +23,6 @@ import {
   ChevronUp,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Timeline } from './Timeline'
 import { SpecHistory } from './SpecHistory'
 import { SidebarRail } from '@/components/sidebar/SidebarRail'
 import { SidebarFlyout } from '@/components/sidebar/SidebarFlyout'
@@ -65,6 +64,8 @@ interface WorkbenchProps {
   onApplyPendingArtifact: (artifactId: string) => void
   onRejectPendingArtifact: (artifactId: string) => void
   onEditorDirtyChange: (filePath: string, isDirty: boolean) => void
+  onContextualChat?: (selection: string, filePath: string) => void
+  onInlineChat?: (prompt: string, selectedText: string, filePath: string) => Promise<string | null>
 }
 
 function GripIndicator({ direction }: { direction: 'vertical' | 'horizontal' }) {
@@ -160,8 +161,6 @@ function EmptyState({ onCreateFile, onOpenSearch, variant = 'desktop' }: EmptySt
   )
 }
 
-type EditorTab = 'code' | 'timeline'
-
 const TERMINAL_STORAGE_KEY = 'panda:terminal-expanded'
 
 export function Workbench({
@@ -181,6 +180,8 @@ export function Workbench({
   onApplyPendingArtifact,
   onRejectPendingArtifact,
   onEditorDirtyChange,
+  onContextualChat,
+  onInlineChat,
 }: WorkbenchProps) {
   const {
     activeSection: sidebarActiveSection,
@@ -191,7 +192,6 @@ export function Workbench({
     isMobileLayout: isMobile,
     isCompactDesktopLayout: isCompactDesktop,
   } = useWorkspace()
-  const [activeTab, setActiveTab] = useState<EditorTab>('code')
   const [mobilePanel, setMobilePanel] = useState<'files' | 'editor' | 'terminal'>('editor')
   const [isTerminalExpanded, setIsTerminalExpanded] = useState(() => {
     if (typeof window === 'undefined') return false
@@ -339,66 +339,37 @@ export function Workbench({
 
           {mobilePanel === 'editor' && (
             <div className="surface-0 flex h-full flex-col">
-              <div className="panel-header flex items-center gap-0 p-0" data-number="02">
-                <button
-                  onClick={() => setActiveTab('code')}
-                  className={cn(
-                    'flex min-h-11 items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-widest',
-                    activeTab === 'code'
-                      ? 'border-b-2 border-primary bg-background text-primary'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  <Code2 className="h-3.5 w-3.5" />
-                  Code
-                </button>
-                <button
-                  onClick={() => setActiveTab('timeline')}
-                  className={cn(
-                    'flex min-h-11 items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-widest',
-                    activeTab === 'timeline'
-                      ? 'border-b-2 border-primary bg-background text-primary'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  <History className="h-3.5 w-3.5" />
-                  Timeline
-                </button>
-              </div>
-
               <div className="flex-1 overflow-hidden">
-                {activeTab === 'code' ? (
-                  selectedFile ? (
-                    <div className="flex h-full flex-col">
-                      {pendingArtifactPreview ? (
-                        <PendingArtifactOverlay
-                          preview={pendingArtifactPreview}
-                          onApply={onApplyPendingArtifact}
-                          onReject={onRejectPendingArtifact}
+                {selectedFile ? (
+                  <div className="flex h-full flex-col">
+                    {pendingArtifactPreview ? (
+                      <PendingArtifactOverlay
+                        preview={pendingArtifactPreview}
+                        onApply={onApplyPendingArtifact}
+                        onReject={onRejectPendingArtifact}
+                      />
+                    ) : (
+                      <div className="min-h-0 flex-1">
+                        <EditorContainer
+                          filePath={selectedFile.path}
+                          content={selectedFile.content ?? ''}
+                          jumpTo={selectedLocation}
+                          onSave={(content) => onSaveFile(selectedFile.path, content)}
+                          onDirtyChange={(isDirty) =>
+                            onEditorDirtyChange(selectedFile.path, isDirty)
+                          }
+                          onContextualChat={onContextualChat}
+                          onInlineChat={onInlineChat}
                         />
-                      ) : (
-                        <div className="min-h-0 flex-1">
-                          <EditorContainer
-                            filePath={selectedFile.path}
-                            content={selectedFile.content ?? ''}
-                            jumpTo={selectedLocation}
-                            onSave={(content) => onSaveFile(selectedFile.path, content)}
-                            onDirtyChange={(isDirty) =>
-                              onEditorDirtyChange(selectedFile.path, isDirty)
-                            }
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <EmptyState
-                      onCreateFile={onCreateFile}
-                      onOpenSearch={() => onSidebarSectionChange('search')}
-                      variant="mobile"
-                    />
-                  )
+                      </div>
+                    )}
+                  </div>
                 ) : (
-                  <Timeline chatId={currentChatId} />
+                  <EmptyState
+                    onCreateFile={onCreateFile}
+                    onOpenSearch={() => onSidebarSectionChange('search')}
+                    variant="mobile"
+                  />
                 )}
               </div>
             </div>
@@ -500,74 +471,38 @@ export function Workbench({
                       />
                     )}
 
-                    {/* Tab Header */}
-                    <div
-                      className={cn(
-                        'panel-header flex items-center gap-0 p-0',
-                        openTabs.length === 0 && ''
-                      )}
-                      data-number="02"
-                    >
-                      <button
-                        onClick={() => setActiveTab('code')}
-                        className={cn(
-                          'transition-sharp flex items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-widest',
-                          activeTab === 'code'
-                            ? 'border-b-2 border-primary bg-background text-primary'
-                            : 'text-muted-foreground hover:text-foreground'
-                        )}
-                      >
-                        <Code2 className="h-3.5 w-3.5" />
-                        Code
-                      </button>
-                      <button
-                        onClick={() => setActiveTab('timeline')}
-                        className={cn(
-                          'transition-sharp flex items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-widest',
-                          activeTab === 'timeline'
-                            ? 'border-b-2 border-primary bg-background text-primary'
-                            : 'text-muted-foreground hover:text-foreground'
-                        )}
-                      >
-                        <History className="h-3.5 w-3.5" />
-                        Timeline
-                      </button>
-                    </div>
-
                     {/* Tab Content */}
                     <div className="flex-1 overflow-hidden">
-                      {activeTab === 'code' ? (
-                        selectedFile ? (
-                          <div className="flex h-full flex-col">
-                            {pendingArtifactPreview ? (
-                              <PendingArtifactOverlay
-                                preview={pendingArtifactPreview}
-                                onApply={onApplyPendingArtifact}
-                                onReject={onRejectPendingArtifact}
+                      {selectedFile ? (
+                        <div className="flex h-full flex-col">
+                          {pendingArtifactPreview ? (
+                            <PendingArtifactOverlay
+                              preview={pendingArtifactPreview}
+                              onApply={onApplyPendingArtifact}
+                              onReject={onRejectPendingArtifact}
+                            />
+                          ) : (
+                            <div className="min-h-0 flex-1">
+                              <EditorContainer
+                                filePath={selectedFile.path}
+                                content={selectedFile.content ?? ''}
+                                jumpTo={selectedLocation}
+                                onSave={(content) => onSaveFile(selectedFile.path, content)}
+                                onDirtyChange={(isDirty) =>
+                                  onEditorDirtyChange(selectedFile.path, isDirty)
+                                }
+                                onContextualChat={onContextualChat}
+                                onInlineChat={onInlineChat}
                               />
-                            ) : (
-                              <div className="min-h-0 flex-1">
-                                <EditorContainer
-                                  filePath={selectedFile.path}
-                                  content={selectedFile.content ?? ''}
-                                  jumpTo={selectedLocation}
-                                  onSave={(content) => onSaveFile(selectedFile.path, content)}
-                                  onDirtyChange={(isDirty) =>
-                                    onEditorDirtyChange(selectedFile.path, isDirty)
-                                  }
-                                />
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <EmptyState
-                            onCreateFile={onCreateFile}
-                            onOpenSearch={() => onSidebarSectionChange('search')}
-                            variant="desktop"
-                          />
-                        )
+                            </div>
+                          )}
+                        </div>
                       ) : (
-                        <Timeline chatId={currentChatId} />
+                        <EmptyState
+                          onCreateFile={onCreateFile}
+                          onOpenSearch={() => onSidebarSectionChange('search')}
+                          variant="desktop"
+                        />
                       )}
                     </div>
                   </div>

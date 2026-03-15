@@ -144,6 +144,8 @@ interface ProjectChatPanelProps {
     usage?: { promptTokens: number; completionTokens: number; totalTokens: number }
   }>
   renderInspectorInline?: boolean
+  contextualPrompt?: string | null
+  onContextualPromptHandled?: () => void
 }
 
 export function ProjectChatPanel({
@@ -220,6 +222,8 @@ export function ProjectChatPanel({
   lastAssistantReply,
   onRunEvalScenario,
   renderInspectorInline = true,
+  contextualPrompt,
+  onContextualPromptHandled,
 }: ProjectChatPanelProps) {
   const runtimeCheckpoints = useQuery(
     api.agentRuns.listRuntimeCheckpoints,
@@ -442,6 +446,8 @@ export function ProjectChatPanel({
         supportsReasoning={supportsReasoning}
         specTier={specTier}
         onSpecTierChange={onSpecTierChange}
+        contextualPrompt={contextualPrompt}
+        onContextualPromptHandled={onContextualPromptHandled}
       />
 
       <AnimatePresence>

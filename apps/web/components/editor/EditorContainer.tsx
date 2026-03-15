@@ -38,6 +38,7 @@ interface EditorContainerProps {
   onSave?: (content: string) => void
   onDirtyChange?: (isDirty: boolean) => void
   onInlineChat?: (prompt: string, selectedText: string, filePath: string) => Promise<string | null>
+  onContextualChat?: (selectedText: string, filePath: string) => void
 }
 
 export function EditorContainer({
@@ -47,6 +48,7 @@ export function EditorContainer({
   onSave: externalOnSave,
   onDirtyChange,
   onInlineChat,
+  onContextualChat,
 }: EditorContainerProps) {
   const { content, isDirty, updateContent } = useFileContent(initialContent, externalOnSave)
 
@@ -78,6 +80,7 @@ export function EditorContainer({
           jumpTo={jumpTo}
           onSave={handleSave}
           onInlineChat={onInlineChat}
+          onContextualChat={onContextualChat}
         />
       </div>
     </div>

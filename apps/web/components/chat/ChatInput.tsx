@@ -74,6 +74,8 @@ interface ChatInputProps {
   specTier?: SpecTier | 'auto'
   /** SpecNative: Callback when user changes spec tier override */
   onSpecTierChange?: (tier: SpecTier | 'auto') => void
+  contextualPrompt?: string | null
+  onContextualPromptHandled?: () => void
 }
 
 export function ChatInput({
@@ -93,6 +95,8 @@ export function ChatInput({
   supportsReasoning = false,
   specTier = 'auto',
   onSpecTierChange,
+  contextualPrompt,
+  onContextualPromptHandled,
 }: ChatInputProps) {
   const [input, setInput] = useState('')
   const [uncontrolledMode, setUncontrolledMode] = useState<ChatMode>('code')
@@ -107,6 +111,25 @@ export function ChatInput({
   // Enhance prompt state
   const [enhanceState, setEnhanceState] = useState<EnhanceState>('idle')
   const [preEnhanceText, setPreEnhanceText] = useState('')
+
+  useEffect(() => {
+    if (contextualPrompt) {
+      setInput((prev) => {
+        const separator = prev && !prev.endsWith('\n') ? '\n\n' : ''
+        return prev + separator + contextualPrompt
+      })
+      onContextualPromptHandled?.()
+      
+      // Auto-resize
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.style.height = 'auto'
+          textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`
+          textareaRef.current.focus()
+        }
+      }, 0)
+    }
+  }, [contextualPrompt, onContextualPromptHandled])
 
   // Convex action for enhancing prompts
   const enhancePrompt = useAction(api.enhancePrompt.enhance)

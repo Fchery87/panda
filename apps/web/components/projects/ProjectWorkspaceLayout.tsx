@@ -71,6 +71,8 @@ interface ProjectWorkspaceLayoutProps {
   currentSpec: FormalSpecification | null
   isSpecDrawerOpen: boolean
   onSpecDrawerOpenChange: (open: boolean) => void
+  onContextualChat?: (selection: string, filePath: string) => void
+  onInlineChat?: (prompt: string, selectedText: string, filePath: string) => Promise<string | null>
 }
 
 export function ProjectWorkspaceLayout({
@@ -111,6 +113,8 @@ export function ProjectWorkspaceLayout({
   currentSpec,
   isSpecDrawerOpen,
   onSpecDrawerOpenChange,
+  onContextualChat,
+  onInlineChat,
 }: ProjectWorkspaceLayoutProps) {
   const { handleSectionChange } = useWorkspace()
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
@@ -134,6 +138,8 @@ export function ProjectWorkspaceLayout({
       onRejectPendingArtifact={onRejectPendingArtifact}
       onOpenArtifacts={onOpenArtifacts}
       onEditorDirtyChange={onEditorDirtyChange}
+      onContextualChat={onContextualChat}
+      onInlineChat={onInlineChat}
     />
   )
 

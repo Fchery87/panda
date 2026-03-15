@@ -5,9 +5,12 @@ import { EditorSelection, StateEffect, StateField } from '@codemirror/state'
 import { Decoration, EditorView } from '@codemirror/view'
 import CodeMirror from '@uiw/react-codemirror'
 import { javascript } from '@codemirror/lang-javascript'
+import { unifiedMergeView } from '@codemirror/merge'
 import { pandaTheme } from './panda-theme'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { InlineChat } from './InlineChat'
+import { Button } from '@/components/ui/button'
+import { Check, X } from 'lucide-react'
 
 interface CodeMirrorEditorProps {
   filePath: string
@@ -19,6 +22,7 @@ interface CodeMirrorEditorProps {
   } | null
   onSave?: (content: string) => void
   onInlineChat?: (prompt: string, selectedText: string, filePath: string) => Promise<string | null>
+  onContextualChat?: (selectedText: string, filePath: string) => void
 }
 
 const addJumpHighlightEffect = StateEffect.define<{ from: number; to: number }>()
@@ -63,6 +67,7 @@ export function CodeMirrorEditor({
   jumpTo,
   onSave,
   onInlineChat,
+  onContextualChat,
 }: CodeMirrorEditorProps) {
   const editorViewRef = useRef<EditorView | null>(null)
   const clearHighlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -70,6 +75,11 @@ export function CodeMirrorEditor({
     isOpen: boolean
     selectedText: string
     position: { top: number; left: number }
+  } | null>(null)
+  
+  const [diffState, setDiffState] = useState<{
+    originalContent: string
+    isPending: boolean
   } | null>(null)
 
   const isTypeScript =
@@ -90,8 +100,6 @@ export function CodeMirrorEditor({
     if (!view) return
 
     const selection = view.state.selection.main
-    if (selection.from === selection.to) return
-
     const selectedText = view.state.doc.sliceString(selection.from, selection.to)
     const coords = view.coordsAtPos(selection.from)
     if (!coords) return
@@ -115,6 +123,13 @@ export function CodeMirrorEditor({
       if (result !== null && editorViewRef.current) {
         const view = editorViewRef.current
         const selection = view.state.selection.main
+        
+        // Save original document for the merge view
+        setDiffState({
+          originalContent: view.state.doc.toString(),
+          isPending: true
+        })
+        
         view.dispatch({
           changes: { from: selection.from, to: selection.to, insert: result },
         })
@@ -132,6 +147,19 @@ export function CodeMirrorEditor({
       openInlineChat()
     }
   })
+
+  useHotkeys('mod+l', (e) => {
+    e.preventDefault()
+    if (!onContextualChat) return
+    const view = editorViewRef.current
+    if (!view) return
+
+    const selection = view.state.selection.main
+    if (selection.from === selection.to) return
+
+    const selectedText = view.state.doc.sliceString(selection.from, selection.to)
+    onContextualChat(selectedText, filePath)
+  }, { enableOnFormTags: ['INPUT', 'TEXTAREA'] })
 
   useEffect(() => {
     if (!jumpTo) return
@@ -173,8 +201,37 @@ export function CodeMirrorEditor({
     }
   }, [])
 
+  const handleAcceptDiff = useCallback(() => {
+    setDiffState(null)
+  }, [])
+
+  const handleRejectDiff = useCallback(() => {
+    if (diffState && editorViewRef.current) {
+      const view = editorViewRef.current
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: diffState.originalContent }
+      })
+      setDiffState(null)
+    }
+  }, [diffState])
+
+  const mergeExtensions = useMemo(() => {
+    if (!diffState?.isPending) return []
+    return [
+      unifiedMergeView({
+        original: diffState.originalContent,
+        highlightChanges: true,
+        gutter: true,
+      }),
+      EditorView.theme({
+        '.cm-deletedChunk': { backgroundColor: 'rgba(255, 0, 0, 0.1) !important' },
+        '.cm-insertedChunk': { backgroundColor: 'rgba(0, 255, 0, 0.1) !important' },
+      })
+    ]
+  }, [diffState])
+
   return (
-    <div className="h-full w-full">
+    <div className="relative h-full w-full">
       <CodeMirror
         value={content}
         height="100%"
@@ -186,6 +243,7 @@ export function CodeMirrorEditor({
             jsx: true,
             typescript: isTypeScript,
           }),
+          ...mergeExtensions,
         ]}
         basicSetup={{
           lineNumbers: true,
@@ -215,6 +273,19 @@ export function CodeMirrorEditor({
           onClose={closeInlineChat}
           onSubmit={handleInlineChatSubmit}
         />
+      )}
+      {diffState?.isPending && (
+        <div className="absolute top-4 right-6 z-10 flex items-center gap-2 rounded-md border border-border bg-background p-1.5 shadow-lg">
+          <span className="px-2 font-mono text-xs font-semibold text-muted-foreground">Review Inline Diff</span>
+          <Button variant="ghost" size="sm" onClick={handleRejectDiff} className="h-7 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive">
+            <X className="mr-1.5 h-3.5 w-3.5" />
+            Reject
+          </Button>
+          <Button variant="default" size="sm" onClick={handleAcceptDiff} className="h-7 bg-primary text-xs text-primary-foreground hover:bg-primary/90">
+            <Check className="mr-1.5 h-3.5 w-3.5" />
+            Accept
+          </Button>
+        </div>
       )}
     </div>
   )

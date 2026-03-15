@@ -9,8 +9,10 @@ import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 
 // Components
+import { useHotkeys } from 'react-hotkeys-hook'
 import { Breadcrumb, buildBreadcrumbItems } from '@/components/workbench/Breadcrumb'
 import { mapLatestRunProgressSteps } from '@/components/chat/live-run-utils'
+import { ComposerOverlay } from '@/components/chat/ComposerOverlay'
 import { ProjectChatPanel } from '@/components/projects/ProjectChatPanel'
 import { ProjectShareDialog } from '@/components/projects/ProjectShareDialog'
 import { ProjectWorkspaceLayout } from '@/components/projects/ProjectWorkspaceLayout'
@@ -173,8 +175,15 @@ export default function ProjectPage() {
   const { activeSection, isFlyoutOpen, handleSectionChange, toggleFlyout } = useSidebar()
 
   const [automationMode, setAutomationMode] = useState<'manual' | 'auto'>('manual')
+  const [contextualPrompt, setContextualPrompt] = useState<string | null>(null)
+  const [isComposerOpen, setIsComposerOpen] = useState(false)
   const lastAssistantMessageIdRef = useRef<string | null>(null)
   const seenPendingArtifactIdsRef = useRef<Set<string>>(new Set())
+
+  useHotkeys('mod+i', (e) => {
+    e.preventDefault()
+    setIsComposerOpen(prev => !prev)
+  }, { enableOnFormTags: ['INPUT', 'TEXTAREA'] })
 
   // Fetch project data
   const project = useQuery(api.projects.get, { id: projectId })
@@ -718,9 +727,10 @@ export default function ProjectPage() {
       memoryBank={agent.memoryBank}
       onSaveMemoryBank={agent.updateMemoryBank}
       lastUserPrompt={latestUserPrompt}
-      lastAssistantReply={latestAssistantReply}
       onRunEvalScenario={agent.runEvalScenario}
       renderInspectorInline={false}
+      contextualPrompt={contextualPrompt}
+      onContextualPromptHandled={() => setContextualPrompt(null)}
     />
   )
 
@@ -965,6 +975,44 @@ export default function ProjectPage() {
           currentSpec={agent.currentSpec}
           isSpecDrawerOpen={isSpecDrawerOpen}
           onSpecDrawerOpenChange={setIsSpecDrawerOpen}
+          onContextualChat={(selection, filePath) => {
+            const ext = filePath.split('.').pop() || 'text'
+            const prompt = `\`\`\`${ext}\n// ${filePath}\n${selection}\n\`\`\``
+            setContextualPrompt(prompt)
+            if (!isChatPanelOpen) {
+               setIsChatPanelOpen(true)
+            }
+            if (isMobileLayout) {
+               setMobilePrimaryPanel('chat')
+            }
+          }}
+          onInlineChat={async (prompt, selection, filePath) => {
+            try {
+              const result = await agent.runEvalScenario({
+                prompt: `The user wants to edit ${filePath}.\n${selection ? `Selected text:\n\`\`\`\n${selection}\n\`\`\`\n` : ''}User request: ${prompt}\n\nReturn ONLY the new code that should replace the selected text (or be inserted at the cursor). Do NOT wrap it in markdown block quotes. Do NOT add any explanations.`,
+                mode: 'code'
+              })
+              if (result.error) throw new Error(result.error)
+              
+              let output = result.output
+              if (output.startsWith('\`\`\`')) {
+                const lines = output.split('\n')
+                if (lines.length > 2) {
+                  output = lines.slice(1, -1).join('\n')
+                }
+              }
+              return output
+            } catch (err) {
+              console.error('Inline chat error:', err)
+              return null
+            }
+          }}
+        />
+        <ComposerOverlay
+          isOpen={isComposerOpen}
+          onClose={() => setIsComposerOpen(false)}
+          onSubmit={(prompt, ctx) => handleSendMessage(prompt, 'build', ctx)}
+          isStreaming={agent.isLoading}
         />
       </div>
     </WorkspaceProvider>

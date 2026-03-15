@@ -59,7 +59,13 @@ export function buildAgentPromptContext(args: {
     memoryBank: args.memoryBankContent ?? undefined,
     userMessage:
       args.contextFiles && args.contextFiles.length > 0
-        ? `${args.userContent}\n\n[Context files referenced by user: ${args.contextFiles.map((file) => `@file:${file}`).join(', ')}. Read these files first when relevant to the request.]`
+        ? `${args.userContent}\n\n[Context assets referenced by user: ${args.contextFiles
+            .map((asset) => {
+              if (asset.startsWith('folder:')) return `Folder: ${asset.replace('folder:', '')}`
+              if (/^https?:\/\//i.test(asset)) return `URL: ${asset}`
+              return `File: ${asset}`
+            })
+            .join(', ')}. Reference these assets first when relevant to the request.]`
         : args.userContent,
     customInstructions: args.architectBrainstormEnabled
       ? 'Architect brainstorming protocol: enabled'
