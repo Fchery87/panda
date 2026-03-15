@@ -1,5 +1,6 @@
 'use client'
 
+import type { ComponentType } from 'react'
 import Link from 'next/link'
 import {
   MessageSquarePlus,
@@ -39,7 +40,7 @@ interface SidebarRailProps {
 
 interface NavItem {
   id: SidebarSection
-  icon: React.ComponentType<{ className?: string }>
+  icon: ComponentType<{ className?: string }>
   label: string
   shortcut: string
 }
@@ -91,7 +92,7 @@ export function SidebarRail({
                     type="button"
                     onClick={() => handleItemClick(item.id)}
                     className={cn(
-                      'relative flex h-11 w-12 items-center justify-center transition-colors duration-150',
+                      'relative flex h-12 w-12 items-center justify-center transition-colors duration-150',
                       isActive
                         ? 'bg-surface-2 text-foreground'
                         : 'text-muted-foreground hover:bg-surface-2 hover:text-foreground'
@@ -102,14 +103,14 @@ export function SidebarRail({
                     {isActive && (
                       <div className="absolute left-0 top-0 h-full w-0.5 bg-primary" />
                     )}
-                    <Icon className="h-[18px] w-[18px]" />
+                    <Icon className="h-5 w-5" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right">
-                  <span className="font-mono text-xs">{item.label}</span>
-                  <span className="ml-2 font-mono text-xs text-muted-foreground">
-                    ({item.shortcut})
-                  </span>
+                <TooltipContent side="right" className="font-mono text-xs">
+                  {item.label}
+                  {item.shortcut && (
+                    <span className="ml-2 text-muted-foreground">({item.shortcut})</span>
+                  )}
                 </TooltipContent>
               </Tooltip>
             )
@@ -125,14 +126,14 @@ export function SidebarRail({
             <TooltipTrigger asChild>
               <Link
                 href={projectId ? `/projects/${projectId}/settings` : '/settings'}
-                className="flex h-11 w-12 items-center justify-center text-muted-foreground transition-colors duration-150 hover:bg-surface-2 hover:text-foreground"
+                className="flex h-12 w-12 items-center justify-center text-muted-foreground transition-colors duration-150 hover:bg-surface-2 hover:text-foreground"
                 aria-label="Settings"
               >
-                <Settings className="h-[18px] w-[18px]" />
+                <Settings className="h-5 w-5" />
               </Link>
             </TooltipTrigger>
-            <TooltipContent side="right">
-              <span className="font-mono text-xs">Settings</span>
+            <TooltipContent side="right" className="font-mono text-xs">
+              Settings
             </TooltipContent>
           </Tooltip>
 
@@ -140,14 +141,14 @@ export function SidebarRail({
             <TooltipTrigger asChild>
               <Link
                 href="/education"
-                className="flex h-11 w-12 items-center justify-center text-muted-foreground transition-colors duration-150 hover:bg-surface-2 hover:text-foreground"
+                className="flex h-12 w-12 items-center justify-center text-muted-foreground transition-colors duration-150 hover:bg-surface-2 hover:text-foreground"
                 aria-label="Documentation"
               >
-                <BookOpen className="h-[18px] w-[18px]" />
+                <BookOpen className="h-5 w-5" />
               </Link>
             </TooltipTrigger>
-            <TooltipContent side="right">
-              <span className="font-mono text-xs">Documentation</span>
+            <TooltipContent side="right" className="font-mono text-xs">
+              Documentation
             </TooltipContent>
           </Tooltip>
         </div>
