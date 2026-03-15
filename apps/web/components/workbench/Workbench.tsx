@@ -29,7 +29,6 @@ import { SidebarRail } from '@/components/sidebar/SidebarRail'
 import { SidebarFlyout } from '@/components/sidebar/SidebarFlyout'
 import { SidebarHistoryPanel } from '@/components/sidebar/SidebarHistoryPanel'
 import { SidebarGitPanel } from '@/components/sidebar/SidebarGitPanel'
-import { PreviewPanel } from '@/components/preview/PreviewPanel'
 import { useWorkspace } from '@/contexts/WorkspaceContext'
 import { useShortcuts } from '@/hooks/useShortcuts'
 import type { WorkspaceArtifactPreview } from './artifact-preview'
@@ -65,12 +64,7 @@ interface WorkbenchProps {
   pendingArtifactPreview?: WorkspaceArtifactPreview | null
   onApplyPendingArtifact: (artifactId: string) => void
   onRejectPendingArtifact: (artifactId: string) => void
-  onOpenArtifacts: () => void
   onEditorDirtyChange: (filePath: string, isDirty: boolean) => void
-  previewUrl?: string | null
-  previewState?: 'idle' | 'building' | 'running' | 'failed'
-  isPreviewOpen?: boolean
-  onPreviewOpenChange?: (open: boolean) => void
 }
 
 function GripIndicator({ direction }: { direction: 'vertical' | 'horizontal' }) {
@@ -186,12 +180,7 @@ export function Workbench({
   pendingArtifactPreview,
   onApplyPendingArtifact,
   onRejectPendingArtifact,
-  onOpenArtifacts,
   onEditorDirtyChange,
-  previewUrl,
-  previewState,
-  isPreviewOpen,
-  onPreviewOpenChange,
 }: WorkbenchProps) {
   const {
     activeSection: sidebarActiveSection,
@@ -203,9 +192,7 @@ export function Workbench({
     isCompactDesktopLayout: isCompactDesktop,
   } = useWorkspace()
   const [activeTab, setActiveTab] = useState<EditorTab>('code')
-  const [mobilePanel, setMobilePanel] = useState<'files' | 'editor' | 'terminal' | 'preview'>(
-    'editor'
-  )
+  const [mobilePanel, setMobilePanel] = useState<'files' | 'editor' | 'terminal'>('editor')
   const [isTerminalExpanded, setIsTerminalExpanded] = useState(() => {
     if (typeof window === 'undefined') return false
     const stored = localStorage.getItem(TERMINAL_STORAGE_KEY)
@@ -238,26 +225,6 @@ export function Workbench({
       setMobilePanel('editor')
     }
   }, [selectedFilePath])
-
-  useEffect(() => {
-    if (isPreviewOpen && previewUrl) {
-      setMobilePanel('preview')
-    }
-  }, [isPreviewOpen, previewUrl])
-
-  const canShowPreview = Boolean(isPreviewOpen && previewUrl)
-  const previewTitle =
-    previewState === 'building'
-      ? 'Preview Building'
-      : previewState === 'failed'
-        ? 'Preview Failed'
-        : 'Preview'
-
-  useEffect(() => {
-    if (!canShowPreview && mobilePanel === 'preview') {
-      setMobilePanel('editor')
-    }
-  }, [canShowPreview, mobilePanel])
 
   if (isMobile) {
     return (
@@ -299,20 +266,6 @@ export function Workbench({
           >
             Terminal
           </button>
-          {canShowPreview && (
-            <button
-              type="button"
-              onClick={() => setMobilePanel('preview')}
-              className={cn(
-                'h-full min-h-11 flex-1',
-                mobilePanel === 'preview'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              Preview
-            </button>
-          )}
         </div>
 
         <div className="h-[calc(100%-2.75rem)]">
@@ -422,20 +375,20 @@ export function Workbench({
                           preview={pendingArtifactPreview}
                           onApply={onApplyPendingArtifact}
                           onReject={onRejectPendingArtifact}
-                          onOpenArtifacts={onOpenArtifacts}
                         />
-                      ) : null}
-                      <div className="min-h-0 flex-1">
-                        <EditorContainer
-                          filePath={selectedFile.path}
-                          content={selectedFile.content ?? ''}
-                          jumpTo={selectedLocation}
-                          onSave={(content) => onSaveFile(selectedFile.path, content)}
-                          onDirtyChange={(isDirty) =>
-                            onEditorDirtyChange(selectedFile.path, isDirty)
-                          }
-                        />
-                      </div>
+                      ) : (
+                        <div className="min-h-0 flex-1">
+                          <EditorContainer
+                            filePath={selectedFile.path}
+                            content={selectedFile.content ?? ''}
+                            jumpTo={selectedLocation}
+                            onSave={(content) => onSaveFile(selectedFile.path, content)}
+                            onDirtyChange={(isDirty) =>
+                              onEditorDirtyChange(selectedFile.path, isDirty)
+                            }
+                          />
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <EmptyState
@@ -458,37 +411,6 @@ export function Workbench({
               </div>
               <div className="flex-1 overflow-hidden">
                 <Terminal projectId={projectId} />
-              </div>
-            </div>
-          )}
-
-          {mobilePanel === 'preview' && (
-            <div className="surface-1 flex h-full flex-col">
-              <div className="panel-header flex items-center justify-between" data-number="04">
-                <div className="flex items-center gap-2">
-                  <Eye className="h-4 w-4" />
-                  <span>Preview</span>
-                </div>
-                {onPreviewOpenChange && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0"
-                    onClick={() => {
-                      onPreviewOpenChange(false)
-                      setMobilePanel('editor')
-                    }}
-                  >
-                    <Minimize2 className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-              </div>
-              <div className="relative flex-1 overflow-hidden">
-                <PreviewPanel
-                  projectId={projectId}
-                  chatId={currentChatId}
-                  previewUrl={previewUrl}
-                />
               </div>
             </div>
           )}
@@ -622,20 +544,20 @@ export function Workbench({
                                 preview={pendingArtifactPreview}
                                 onApply={onApplyPendingArtifact}
                                 onReject={onRejectPendingArtifact}
-                                onOpenArtifacts={onOpenArtifacts}
                               />
-                            ) : null}
-                            <div className="min-h-0 flex-1">
-                              <EditorContainer
-                                filePath={selectedFile.path}
-                                content={selectedFile.content ?? ''}
-                                jumpTo={selectedLocation}
-                                onSave={(content) => onSaveFile(selectedFile.path, content)}
-                                onDirtyChange={(isDirty) =>
-                                  onEditorDirtyChange(selectedFile.path, isDirty)
-                                }
-                              />
-                            </div>
+                            ) : (
+                              <div className="min-h-0 flex-1">
+                                <EditorContainer
+                                  filePath={selectedFile.path}
+                                  content={selectedFile.content ?? ''}
+                                  jumpTo={selectedLocation}
+                                  onSave={(content) => onSaveFile(selectedFile.path, content)}
+                                  onDirtyChange={(isDirty) =>
+                                    onEditorDirtyChange(selectedFile.path, isDirty)
+                                  }
+                                />
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <EmptyState
@@ -650,44 +572,6 @@ export function Workbench({
                     </div>
                   </div>
                 </Panel>
-
-                {/* Desktop Preview Panel Split (if active) */}
-                {canShowPreview && (
-                  <>
-                    <VerticalResizeHandle />
-                    <Panel
-                      defaultSize={40}
-                      minSize={20}
-                      className="border-l border-border bg-background"
-                    >
-                      <div className="flex h-full flex-col">
-                        <div className="surface-1 flex min-h-11 items-center justify-between border-b border-border px-4 font-mono text-xs uppercase tracking-wide">
-                          <div className="flex items-center gap-2">
-                            <Eye className="h-4 w-4" />
-                            {previewTitle}
-                          </div>
-                          {onPreviewOpenChange && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                              onClick={() => onPreviewOpenChange(false)}
-                            >
-                              <Minimize2 className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                        </div>
-                        <div className="relative flex-1 overflow-hidden">
-                          <PreviewPanel
-                            projectId={projectId}
-                            chatId={currentChatId}
-                            previewUrl={previewUrl}
-                          />
-                        </div>
-                      </div>
-                    </Panel>
-                  </>
-                )}
               </PanelGroup>
             </Panel>
 

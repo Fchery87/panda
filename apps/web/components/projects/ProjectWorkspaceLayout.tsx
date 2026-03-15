@@ -71,10 +71,6 @@ interface ProjectWorkspaceLayoutProps {
   currentSpec: FormalSpecification | null
   isSpecDrawerOpen: boolean
   onSpecDrawerOpenChange: (open: boolean) => void
-  previewUrl?: string | null
-  previewState?: 'idle' | 'building' | 'running' | 'failed'
-  isPreviewOpen: boolean
-  onPreviewOpenChange: (open: boolean) => void
 }
 
 export function ProjectWorkspaceLayout({
@@ -115,10 +111,6 @@ export function ProjectWorkspaceLayout({
   currentSpec,
   isSpecDrawerOpen,
   onSpecDrawerOpenChange,
-  previewUrl,
-  previewState,
-  isPreviewOpen,
-  onPreviewOpenChange,
 }: ProjectWorkspaceLayoutProps) {
   const { handleSectionChange } = useWorkspace()
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
@@ -142,10 +134,6 @@ export function ProjectWorkspaceLayout({
       onRejectPendingArtifact={onRejectPendingArtifact}
       onOpenArtifacts={onOpenArtifacts}
       onEditorDirtyChange={onEditorDirtyChange}
-      previewUrl={previewUrl}
-      previewState={previewState}
-      isPreviewOpen={isPreviewOpen}
-      onPreviewOpenChange={onPreviewOpenChange}
     />
   )
 
@@ -261,14 +249,47 @@ export function ProjectWorkspaceLayout({
           </div>
         ) : (
           <PanelGroup
-            key={isChatPanelOpen ? 'with-chat' : 'without-chat'}
+            key={`${isReviewPanelOpen ? 'with-review' : 'without-review'}-${isChatPanelOpen ? 'with-chat' : 'without-chat'}`}
             direction="horizontal"
             className="h-full"
             autoSaveId="panda-workbench-outer"
           >
+            {isReviewPanelOpen && (
+              <>
+                <Panel
+                  defaultSize={30}
+                  minSize={25}
+                  maxSize={45}
+                  className="flex flex-col"
+                >
+                  <div className="flex h-full flex-col bg-background">
+                    <div className="surface-1 flex min-h-11 items-center justify-between border-b border-border px-4 font-mono text-xs uppercase tracking-wide">
+                      <span>Review</span>
+                      <button
+                        onClick={() => onReviewPanelOpenChange(false)}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      {reviewPanel}
+                    </div>
+                  </div>
+                </Panel>
+                <PanelResizeHandle className="h-full w-px bg-border transition-colors hover:bg-primary" />
+              </>
+            )}
+
             <Panel
-              defaultSize={isChatPanelOpen ? (isCompactDesktopLayout ? 64 : 70) : 100}
-              minSize={40}
+              defaultSize={
+                isChatPanelOpen && isReviewPanelOpen
+                  ? 40
+                  : isChatPanelOpen || isReviewPanelOpen
+                    ? (isCompactDesktopLayout && !isReviewPanelOpen ? 64 : 70)
+                    : 100
+              }
+              minSize={30}
               className="flex flex-col"
             >
               {workbench}
@@ -295,32 +316,6 @@ export function ProjectWorkspaceLayout({
               </>
             )}
           </PanelGroup>
-        )}
-        {!isMobileLayout && (
-          <AnimatePresence>
-            {isReviewPanelOpen ? (
-              <>
-                <motion.button
-                  type="button"
-                  aria-label="Close review panel"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={() => onReviewPanelOpenChange(false)}
-                  className="absolute inset-0 z-20 bg-background/30"
-                />
-                <motion.div
-                  initial={{ y: '100%' }}
-                  animate={{ y: 0 }}
-                  exit={{ y: '100%' }}
-                  transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-                  className="shadow-sharp-lg absolute inset-x-0 bottom-0 z-30 max-h-[60vh] border-t border-border bg-background"
-                >
-                  <div className="max-h-[60vh] overflow-hidden">{reviewPanel}</div>
-                </motion.div>
-              </>
-            ) : null}
-          </AnimatePresence>
         )}
 
         <CommandPalette

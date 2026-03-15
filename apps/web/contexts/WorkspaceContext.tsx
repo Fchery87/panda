@@ -49,17 +49,6 @@ interface LayoutState {
   setMobilePrimaryPanel: Dispatch<SetStateAction<'workspace' | 'chat' | 'review'>>
   isChatPanelOpen: boolean
   setIsChatPanelOpen: Dispatch<SetStateAction<boolean>>
-  previewUrl: string | null
-  setPreviewUrl: Dispatch<SetStateAction<string | null>>
-  previewState: 'idle' | 'building' | 'running' | 'failed'
-  setPreviewState: Dispatch<SetStateAction<'idle' | 'building' | 'running' | 'failed'>>
-  isPreviewOpen: boolean
-  setIsPreviewOpen: Dispatch<SetStateAction<boolean>>
-  openPreview: (options?: {
-    url?: string | null
-    state?: 'idle' | 'building' | 'running' | 'failed'
-  }) => void
-  closePreview: () => void
 }
 
 interface ProjectState {

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useLayoutPersistence } from './useLayoutPersistence'
-import { useRuntimePreview } from './useRuntimePreview'
 
 type MobilePrimaryPanel = 'workspace' | 'chat' | 'review'
 type ChatInspectorTab = 'run' | 'plan' | 'artifacts' | 'memory' | 'evals'
@@ -30,7 +29,6 @@ export function useProjectWorkspaceUi() {
   const [isSpecDrawerOpen, setIsSpecDrawerOpen] = useState(false)
   const [isSpecPanelOpen, setIsSpecPanelOpen] = useState(false)
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
-  const runtimePreview = useRuntimePreview()
 
   useEffect(() => {
     const mobileMedia = window.matchMedia('(max-width: 1023px)')
@@ -82,13 +80,5 @@ export function useProjectWorkspaceUi() {
     setIsSpecPanelOpen,
     isShareDialogOpen,
     setIsShareDialogOpen,
-    previewUrl: runtimePreview.previewUrl,
-    setPreviewUrl: runtimePreview.setPreviewUrl,
-    previewState: runtimePreview.previewState,
-    setPreviewState: runtimePreview.setPreviewState,
-    isPreviewOpen: runtimePreview.isPreviewOpen,
-    setIsPreviewOpen: runtimePreview.setIsPreviewOpen,
-    openPreview: runtimePreview.openPreview,
-    closePreview: runtimePreview.closePreview,
   }
 }

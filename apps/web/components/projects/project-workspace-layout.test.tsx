@@ -48,10 +48,6 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
         currentSpec={null}
         isSpecDrawerOpen={false}
         onSpecDrawerOpenChange={() => {}}
-        previewUrl={null}
-        previewState="idle"
-        isPreviewOpen={false}
-        onPreviewOpenChange={() => {}}
         onApplyPendingArtifact={() => {}}
         onRejectPendingArtifact={() => {}}
       />

@@ -123,29 +123,7 @@ type ArtifactRecord = {
 
 type ChatInspectorTab = 'run' | 'plan' | 'artifacts' | 'memory' | 'evals'
 
-const URL_PATTERN = /https?:\/\/[^\s)]+/gi
-
-function extractLatestPreviewUrl(messages: Message[]): string | null {
-  const candidates = [...messages].reverse()
-
-  for (const message of candidates) {
-    if (message.role !== 'assistant' || typeof message.content !== 'string') continue
-    const matches = message.content.match(URL_PATTERN)
-    if (!matches) continue
-
-    for (const match of matches.reverse()) {
-      try {
-        const parsed = new URL(match)
-        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') continue
-        return parsed.toString()
-      } catch {
-        continue
-      }
-    }
-  }
-
-  return null
-}
+// Add placeholder function if needed or safely remove usages
 
 function readAgentPolicyField(
   source: unknown,
@@ -190,14 +168,6 @@ export default function ProjectPage() {
     setIsSpecPanelOpen,
     isShareDialogOpen,
     setIsShareDialogOpen,
-    previewUrl,
-    setPreviewUrl,
-    previewState,
-    setPreviewState,
-    isPreviewOpen,
-    setIsPreviewOpen,
-    openPreview,
-    closePreview,
   } = useProjectWorkspaceUi()
 
   const { activeSection, isFlyoutOpen, handleSectionChange, toggleFlyout } = useSidebar()
@@ -434,7 +404,6 @@ export default function ProjectPage() {
         )?.content ?? null,
     [chatMessages]
   )
-  const latestPreviewUrl = useMemo(() => extractLatestPreviewUrl(chatMessages), [chatMessages])
   const backgroundExecutionPolicy = useMemo(
     () => resolveBackgroundExecutionPolicy(chatMode),
     [chatMode]
@@ -566,16 +535,6 @@ export default function ProjectPage() {
     [updateArtifactStatusMutation]
   )
 
-  useEffect(() => {
-    if (latestPreviewUrl) {
-      setPreviewUrl((current) => (current === latestPreviewUrl ? current : latestPreviewUrl))
-      setPreviewState('running')
-      return
-    }
-
-    setPreviewState(agent.isLoading ? 'building' : 'idle')
-  }, [agent.isLoading, latestPreviewUrl, setPreviewState, setPreviewUrl])
-
   const openReviewTab = useCallback(
     (tab: ChatInspectorTab) => {
       setChatInspectorTab(tab)
@@ -588,14 +547,6 @@ export default function ProjectPage() {
     },
     [isMobileLayout, setChatInspectorTab, setIsChatInspectorOpen, setMobilePrimaryPanel]
   )
-
-  const handleOpenPreview = useCallback(() => {
-    if (!latestPreviewUrl) return
-    if (isMobileLayout) {
-      setMobilePrimaryPanel('workspace')
-    }
-    openPreview({ url: latestPreviewUrl, state: 'running' })
-  }, [isMobileLayout, latestPreviewUrl, openPreview, setMobilePrimaryPanel])
 
   useEffect(() => {
     if (!isMobileLayout || mobilePrimaryPanel === 'chat') {
@@ -710,8 +661,6 @@ export default function ProjectPage() {
         openReviewTab('run')
       }}
       onOpenShare={() => setIsShareDialogOpen(true)}
-      previewUrl={latestPreviewUrl}
-      onOpenPreview={handleOpenPreview}
       onResetWorkspace={handleResetWorkspace}
       onNewChat={() => {
         void handleNewChat()
@@ -881,14 +830,6 @@ export default function ProjectPage() {
     onNewChat: () => {
       void handleNewChat()
     },
-    previewUrl,
-    setPreviewUrl,
-    previewState,
-    setPreviewState,
-    isPreviewOpen,
-    setIsPreviewOpen,
-    openPreview,
-    closePreview,
   }
 
   return (
@@ -1024,10 +965,6 @@ export default function ProjectPage() {
           currentSpec={agent.currentSpec}
           isSpecDrawerOpen={isSpecDrawerOpen}
           onSpecDrawerOpenChange={setIsSpecDrawerOpen}
-          previewUrl={previewUrl}
-          previewState={previewState}
-          isPreviewOpen={isPreviewOpen}
-          onPreviewOpenChange={setIsPreviewOpen}
         />
       </div>
     </WorkspaceProvider>
