@@ -1,6 +1,7 @@
 'use client'
 
 import { AnimatePresence, motion } from 'framer-motion'
+import type { ReactNode } from 'react'
 import type { SidebarSection } from './SidebarRail'
 
 const SECTION_LABELS: Record<SidebarSection, string> = {
@@ -16,7 +17,7 @@ const SECTION_LABELS: Record<SidebarSection, string> = {
 interface SidebarFlyoutProps {
   isOpen: boolean
   activeSection: SidebarSection
-  children: React.ReactNode
+  children: ReactNode
 }
 
 export function SidebarFlyout({ isOpen, activeSection, children }: SidebarFlyoutProps) {
@@ -31,7 +32,7 @@ export function SidebarFlyout({ isOpen, activeSection, children }: SidebarFlyout
           className="surface-1 h-full flex-shrink-0 overflow-hidden border-r border-border"
         >
           <div className="flex h-full w-[220px] flex-col">
-            <div className="panel-header-compact shrink-0 font-mono text-[10px] uppercase tracking-widest">
+            <div className="panel-header-compact shrink-0">
               {SECTION_LABELS[activeSection]}
             </div>
             <div className="flex-1 overflow-auto">
