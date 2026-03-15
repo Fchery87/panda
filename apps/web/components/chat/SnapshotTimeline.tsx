@@ -4,6 +4,9 @@ import { useState } from 'react'
 import { GitBranch, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { deriveSnapshotEntries } from './run-insights'
+import { GitDiffViewer } from './GitDiffViewer'
+import { parseGitDiff } from '@/lib/chat/parseGitDiff'
+import type { GitDiffFile } from '@/lib/chat/parseGitDiff'
 
 interface SnapshotTimelineProps {
   events?: Array<{
@@ -22,7 +25,7 @@ interface SnapshotTimelineProps {
 export function SnapshotTimeline({ events = [] }: SnapshotTimelineProps) {
   const entries = deriveSnapshotEntries(events)
   const [activeDiffHash, setActiveDiffHash] = useState<string | null>(null)
-  const [diffText, setDiffText] = useState<string>('')
+  const [parsedDiff, setParsedDiff] = useState<GitDiffFile[]>([])
   const [isBusy, setIsBusy] = useState(false)
 
   if (entries.length === 0) return null
@@ -37,7 +40,7 @@ export function SnapshotTimeline({ events = [] }: SnapshotTimelineProps) {
       })
       const payload = (await response.json()) as { diff?: string; error?: string }
       setActiveDiffHash(hash)
-      setDiffText(payload.diff ?? payload.error ?? 'No diff available')
+      setParsedDiff(parseGitDiff(payload.diff ?? ''))
     } finally {
       setIsBusy(false)
     }
@@ -97,10 +100,10 @@ export function SnapshotTimeline({ events = [] }: SnapshotTimelineProps) {
                 Restore
               </Button>
             </div>
-            {activeDiffHash === entry.hash && diffText ? (
-              <pre className="mt-2 overflow-x-auto border border-border bg-muted/20 p-2 font-mono text-[10px]">
-                {diffText}
-              </pre>
+            {activeDiffHash === entry.hash ? (
+              <div className="mt-2">
+                <GitDiffViewer files={parsedDiff} />
+              </div>
             ) : null}
           </div>
         ))}

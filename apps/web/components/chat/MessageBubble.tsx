@@ -12,6 +12,7 @@ import type { ChatMode } from '@/lib/agent/prompt-library'
 import { ReasoningPanel } from './ReasoningPanel'
 import { SuggestedActions } from './SuggestedActions'
 import { extractBrainstormPhase, stripBrainstormPhaseMarker } from '@/lib/chat/brainstorming'
+import { ChatMarkdown } from './ChatMarkdown'
 
 interface MessageBubbleProps {
   message: Message
@@ -406,6 +407,8 @@ export function MessageBubble({
                   return <div key={section.key}>{renderArchitectBody(section.bodyLines)}</div>
                 })}
               </div>
+            ) : isAssistant ? (
+              <ChatMarkdown content={displayContent} />
             ) : (
               <div className="whitespace-pre-wrap break-words">{displayContent}</div>
             )}
