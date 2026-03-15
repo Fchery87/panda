@@ -1,10 +1,10 @@
 'use client'
 
-import { AnimatePresence, motion } from 'framer-motion'
 import type { Id } from '@convex/_generated/dataModel'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
-import { ArtifactPanel } from '@/components/artifacts/ArtifactPanel'
 import { CommandPalette } from '@/components/command-palette/CommandPalette'
+import { RightPanel } from '@/components/panels/RightPanel'
+import { PreviewPanel } from '@/components/preview/PreviewPanel'
 import { SpecDrawer } from '@/components/chat/SpecDrawer'
 import { StatusBar } from '@/components/workbench/StatusBar'
 import { Workbench } from '@/components/workbench/Workbench'
@@ -53,8 +53,8 @@ interface ProjectWorkspaceLayoutProps {
   isMobileKeyboardOpen: boolean
   chatPanel: React.ReactNode
   isChatPanelOpen: boolean
-  isArtifactPanelOpen: boolean
-  onArtifactPanelOpenChange: (open: boolean) => void
+  automationMode: 'manual' | 'auto'
+  onAutomationModeChange: (mode: 'manual' | 'auto') => void
   pendingArtifactPreview?: WorkspaceArtifactPreview | null
   onApplyPendingArtifact: (artifactId: string) => void
   onRejectPendingArtifact: (artifactId: string) => void
@@ -89,8 +89,8 @@ export function ProjectWorkspaceLayout({
   isMobileKeyboardOpen,
   chatPanel,
   isChatPanelOpen,
-  isArtifactPanelOpen,
-  onArtifactPanelOpenChange,
+  automationMode,
+  onAutomationModeChange,
   pendingArtifactPreview,
   onApplyPendingArtifact,
   onRejectPendingArtifact,
@@ -121,7 +121,7 @@ export function ProjectWorkspaceLayout({
       pendingArtifactPreview={pendingArtifactPreview}
       onApplyPendingArtifact={onApplyPendingArtifact}
       onRejectPendingArtifact={onRejectPendingArtifact}
-      onOpenArtifacts={() => onArtifactPanelOpenChange(true)}
+      onOpenArtifacts={() => {}}
       onEditorDirtyChange={onEditorDirtyChange}
       sidebarActiveSection={activeSection}
       isSidebarFlyoutOpen={isFlyoutOpen}
@@ -192,32 +192,24 @@ export function ProjectWorkspaceLayout({
                   maxSize={isCompactDesktopLayout ? 45 : 50}
                   className="flex flex-col"
                 >
-                  {chatPanel}
+                  <RightPanel
+                    chatContent={chatPanel}
+                    previewContent={
+                      <PreviewPanel
+                        projectId={projectId}
+                        chatId={activeChatId}
+                      />
+                    }
+                    chatInput={null}
+                    automationMode={automationMode}
+                    onAutomationModeChange={onAutomationModeChange}
+                    isStreaming={isStreaming}
+                  />
                 </Panel>
               </>
             )}
           </PanelGroup>
         )}
-
-        <AnimatePresence>
-          {isArtifactPanelOpen && (
-            <motion.div
-              initial={{ opacity: 0, x: 300 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 300 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              className="shadow-sharp-lg absolute bottom-0 right-0 top-0 z-40 w-72 border-l border-border bg-background xl:w-80"
-            >
-              <ArtifactPanel
-                projectId={projectId}
-                chatId={activeChatId}
-                isOpen={true}
-                onClose={() => onArtifactPanelOpenChange(false)}
-                position="right"
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         <CommandPalette
           files={files.map((file) => ({ path: file.path }))}

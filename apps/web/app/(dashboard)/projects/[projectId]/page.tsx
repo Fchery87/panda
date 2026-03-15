@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useConvex, useQuery, useMutation } from 'convex/react'
 import { api } from '@convex/_generated/api'
@@ -28,7 +28,6 @@ import {
   PanelRightClose,
   ChevronLeft,
   RotateCcw,
-  Layers,
   MoreHorizontal,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -135,8 +134,6 @@ export default function ProjectPage() {
   const projectId = params.projectId as Id<'projects'>
 
   const {
-    isArtifactPanelOpen,
-    setIsArtifactPanelOpen,
     isChatPanelOpen,
     setIsChatPanelOpen,
     selectedFilePath,
@@ -166,6 +163,7 @@ export default function ProjectPage() {
     isShareDialogOpen,
     setIsShareDialogOpen,
   } = useProjectWorkspaceUi()
+  const [automationMode, setAutomationMode] = useState<'manual' | 'auto'>('manual')
   const lastAssistantMessageIdRef = useRef<string | null>(null)
   const seenPendingArtifactIdsRef = useRef<Set<string>>(new Set())
 
@@ -272,7 +270,6 @@ export default function ProjectPage() {
     api.artifacts.list,
     activeChat ? { chatId: activeChat._id } : 'skip'
   ) as ArtifactRecord[] | undefined
-  const pendingArtifactCount = (artifactRecords || []).filter((a) => a.status === 'pending').length
   const pendingArtifactPreviews = useMemo(
     () => deriveWorkspaceArtifactPreviews((artifactRecords ?? []).map((record) => ({ ...record }))),
     [artifactRecords]
@@ -294,21 +291,11 @@ export default function ProjectPage() {
     setPlanDraft('')
     // Reset mode to architect
     setChatMode('architect')
-    // Close artifact panel
-    setIsArtifactPanelOpen(false)
     // Show confirmation
     toast.success('Workspace reset', {
       description: 'Chat, artifacts, and plan draft have been cleared',
     })
-  }, [agent, setChatMode, setIsArtifactPanelOpen, setPlanDraft])
-
-  // Auto-open artifact panel when there are pending artifacts in build/code mode
-  useEffect(() => {
-    const isWriteMode = chatMode === 'build' || chatMode === 'code'
-    if (isWriteMode && pendingArtifactCount > 0 && !isArtifactPanelOpen) {
-      setIsArtifactPanelOpen(true)
-    }
-  }, [pendingArtifactCount, chatMode, isArtifactPanelOpen, setIsArtifactPanelOpen])
+  }, [agent, setChatMode, setPlanDraft])
 
   // Fetch messages for active chat (fallback when not streaming)
   const convexMessages = useQuery(
@@ -671,7 +658,7 @@ export default function ProjectPage() {
       liveSteps={liveRunSteps}
       tracePersistenceStatus={agent.tracePersistenceStatus}
       onOpenFile={handleFileSelect}
-      onOpenArtifacts={() => setIsArtifactPanelOpen(true)}
+      onOpenArtifacts={() => {}}
       currentSpec={agent.currentSpec}
       onSpecClick={() => setIsSpecDrawerOpen(true)}
       onPlanClick={() => {
@@ -793,40 +780,6 @@ export default function ProjectPage() {
               )}
               <span className="hidden lg:inline">Chat</span>
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className={cn(
-                'h-8 gap-1.5 rounded-none font-mono text-xs transition-colors',
-                isArtifactPanelOpen
-                  ? 'border border-primary/30 bg-primary/10 text-primary'
-                  : pendingArtifactCount > 0
-                    ? 'border border-primary/30 text-primary'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              )}
-              onClick={() => setIsArtifactPanelOpen(!isArtifactPanelOpen)}
-              title="Toggle artifacts panel (Ctrl+Shift+A)"
-              aria-label="Toggle artifacts panel"
-            >
-              {isArtifactPanelOpen ? (
-                <PanelRightClose className="h-4 w-4" />
-              ) : (
-                <Layers className="h-4 w-4" />
-              )}
-              <span className="hidden lg:inline">Artifacts</span>
-              {pendingArtifactCount > 0 && (
-                <span
-                  className={cn(
-                    'ml-0.5 flex h-4 min-w-4 items-center justify-center px-1 text-[10px]',
-                    isArtifactPanelOpen
-                      ? 'bg-primary/20 text-primary'
-                      : 'bg-primary text-primary-foreground'
-                  )}
-                >
-                  {pendingArtifactCount}
-                </span>
-              )}
-            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -876,8 +829,8 @@ export default function ProjectPage() {
         isMobileKeyboardOpen={isMobileKeyboardOpen}
         chatPanel={chatPanelContent}
         isChatPanelOpen={isChatPanelOpen}
-        isArtifactPanelOpen={isArtifactPanelOpen}
-        onArtifactPanelOpenChange={setIsArtifactPanelOpen}
+        automationMode={automationMode}
+        onAutomationModeChange={setAutomationMode}
         pendingArtifactPreview={pendingArtifactPreview}
         onApplyPendingArtifact={handleApplyPendingArtifact}
         onRejectPendingArtifact={handleRejectPendingArtifact}
