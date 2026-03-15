@@ -377,6 +377,14 @@
   .hover-accent-border:hover {
     border-color: hsl(var(--primary));
   }
+
+  /* Layout transition utilities */
+  .transition-sidebar {
+    transition: width 200ms ease-out, opacity 200ms ease-out;
+  }
+  .transition-tab {
+    transition: opacity 150ms ease-in-out;
+  }
 }
 
 /* Reduced motion support for accessibility */
