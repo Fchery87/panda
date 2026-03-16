@@ -119,7 +119,7 @@ export function ChatInput({
         return prev + separator + contextualPrompt
       })
       onContextualPromptHandled?.()
-      
+
       // Auto-resize
       setTimeout(() => {
         if (textareaRef.current) {
@@ -359,7 +359,7 @@ export function ChatInput({
   ]
 
   return (
-    <div className="surface-2 border-t border-border p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:p-3 sm:pb-3">
+    <div className="surface-2 shrink-0 border-t border-border p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:p-3 sm:pb-3">
       <div className="relative">
         {/* @-mention picker */}
         {mentionQuery !== null && (
@@ -475,7 +475,7 @@ export function ChatInput({
       </div>
 
       {/* Bottom toolbar: single row always */}
-      <div className="mt-2 flex items-center gap-2">
+      <div className="mt-2 flex flex-wrap items-center gap-2">
         <AttachmentButton
           attachments={attachments}
           onAttach={handleAttach}
@@ -596,7 +596,7 @@ export function ChatInput({
           </Popover>
         )}
 
-        <div className="ml-auto flex items-center gap-2 font-mono text-xs text-muted-foreground">
+        <div className="ml-auto flex items-center gap-2 font-mono text-xs text-muted-foreground max-sm:w-full max-sm:justify-end">
           <span className="hidden 2xl:inline">
             {filePaths.length > 0 ? '@ to mention a file · ' : ''}Enter to send
           </span>

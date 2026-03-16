@@ -141,11 +141,11 @@ export function ProjectWorkspaceLayout({
   )
 
   return (
-    <div className="relative flex flex-1 flex-col overflow-hidden">
-      <div className="relative flex-1 overflow-hidden">
+    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
         {isMobileLayout ? (
-          <div className="relative flex h-full flex-col">
-            <div className="flex-1 overflow-hidden">
+          <div className="relative flex h-full min-h-0 min-w-0 flex-col">
+            <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
               {mobilePrimaryPanel === 'workspace'
                 ? workbench
                 : mobilePrimaryPanel === 'chat'
@@ -254,7 +254,7 @@ export function ProjectWorkspaceLayout({
           <PanelGroup
             key={`${isReviewPanelOpen ? 'with-review' : 'without-review'}-${isChatPanelOpen ? 'with-chat' : 'without-chat'}`}
             direction="horizontal"
-            className="h-full"
+            className="h-full min-h-0 min-w-0"
             autoSaveId="panda-workbench-outer"
           >
             {isReviewPanelOpen && (
@@ -263,9 +263,9 @@ export function ProjectWorkspaceLayout({
                   defaultSize={30}
                   minSize={25}
                   maxSize={45}
-                  className="flex flex-col"
+                  className="flex min-h-0 min-w-0 flex-col"
                 >
-                  <div className="flex h-full flex-col bg-background">
+                  <div className="flex h-full min-h-0 min-w-0 flex-col bg-background">
                     <div className="surface-1 flex min-h-11 items-center justify-between border-b border-border px-4 font-mono text-xs uppercase tracking-wide">
                       <span>Review</span>
                       <button
@@ -275,9 +275,7 @@ export function ProjectWorkspaceLayout({
                         ✕
                       </button>
                     </div>
-                    <div className="flex-1 overflow-hidden">
-                      {reviewPanel}
-                    </div>
+                    <div className="min-h-0 min-w-0 flex-1 overflow-hidden">{reviewPanel}</div>
                   </div>
                 </Panel>
                 <PanelResizeHandle className="h-full w-px bg-border transition-colors hover:bg-primary" />
@@ -289,11 +287,13 @@ export function ProjectWorkspaceLayout({
                 isChatPanelOpen && isReviewPanelOpen
                   ? 40
                   : isChatPanelOpen || isReviewPanelOpen
-                    ? (isCompactDesktopLayout && !isReviewPanelOpen ? 64 : 70)
+                    ? isCompactDesktopLayout && !isReviewPanelOpen
+                      ? 64
+                      : 70
                     : 100
               }
               minSize={30}
-              className="flex flex-col"
+              className="flex min-h-0 min-w-0 flex-col"
             >
               {workbench}
             </Panel>
@@ -306,7 +306,7 @@ export function ProjectWorkspaceLayout({
                   defaultSize={isCompactDesktopLayout ? 36 : 30}
                   minSize={isCompactDesktopLayout ? 30 : 25}
                   maxSize={isCompactDesktopLayout ? 45 : 50}
-                  className="flex flex-col"
+                  className="flex min-h-0 min-w-0 flex-col"
                 >
                   <RightPanel
                     chatContent={chatPanel}

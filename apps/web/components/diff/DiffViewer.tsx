@@ -39,19 +39,19 @@ export function DiffViewer({
   const removedCount = diff.filter((l) => l.type === 'removed').length
 
   return (
-    <div className="flex flex-col rounded-none border border-border bg-background">
+    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-none border border-border bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border bg-muted/50 px-4 py-2">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border bg-muted/50 px-4 py-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           <FileIcon className="h-4 w-4 text-muted-foreground" />
-          <span className="max-w-[200px] truncate font-mono text-sm">{fileName}</span>
-          <div className="ml-2 flex items-center gap-2">
+          <span className="truncate font-mono text-sm">{fileName}</span>
+          <div className="ml-2 flex shrink-0 items-center gap-2">
             <span className="font-mono text-xs text-green-600">+{addedCount}</span>
             <span className="font-mono text-xs text-red-600">-{removedCount}</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center justify-end gap-2 lg:w-auto">
           <div className="flex items-center overflow-hidden rounded-none border border-border">
             <button
               onClick={() => setViewMode('side-by-side')}
@@ -75,7 +75,7 @@ export function DiffViewer({
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <Button variant="outline" size="sm" className="h-8 rounded-none" onClick={onReject}>
               <X className="mr-1 h-3.5 w-3.5" />
               Reject
@@ -89,7 +89,7 @@ export function DiffViewer({
       </div>
 
       {/* Diff Content */}
-      <div className="max-h-[400px] flex-1 overflow-auto font-mono text-xs">
+      <div className="min-h-0 min-w-0 flex-1 overflow-auto font-mono text-xs">
         {viewMode === 'side-by-side' ? <SideBySideView diff={diff} /> : <UnifiedView diff={diff} />}
       </div>
     </div>
@@ -98,9 +98,9 @@ export function DiffViewer({
 
 function SideBySideView({ diff }: { diff: DiffLine[] }) {
   return (
-    <div className="flex min-w-full">
+    <div className="grid min-w-[44rem] grid-cols-[minmax(22rem,1fr)_minmax(22rem,1fr)]">
       {/* Original */}
-      <div className="min-w-[300px] flex-1 border-r border-border">
+      <div className="min-w-0 border-r border-border">
         <div className="sticky top-0 border-b border-border bg-muted/80 px-3 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur">
           Original
         </div>
@@ -117,7 +117,7 @@ function SideBySideView({ diff }: { diff: DiffLine[] }) {
               <span className="w-10 shrink-0 select-none text-right text-muted-foreground/50">
                 {line.oldLineNumber || ' '}
               </span>
-              <span className="ml-4 whitespace-pre">
+              <span className="ml-4 min-w-0 overflow-x-auto whitespace-pre">
                 {line.type === 'added' ? '' : line.content}
               </span>
             </div>
@@ -126,7 +126,7 @@ function SideBySideView({ diff }: { diff: DiffLine[] }) {
       </div>
 
       {/* Modified */}
-      <div className="min-w-[300px] flex-1">
+      <div className="min-w-0">
         <div className="sticky top-0 border-b border-border bg-muted/80 px-3 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur">
           Modified
         </div>
@@ -143,7 +143,7 @@ function SideBySideView({ diff }: { diff: DiffLine[] }) {
               <span className="w-10 shrink-0 select-none text-right text-muted-foreground/50">
                 {line.newLineNumber || ' '}
               </span>
-              <span className="ml-4 whitespace-pre">
+              <span className="ml-4 min-w-0 overflow-x-auto whitespace-pre">
                 {line.type === 'removed' ? '' : line.content}
               </span>
             </div>
@@ -156,7 +156,7 @@ function SideBySideView({ diff }: { diff: DiffLine[] }) {
 
 function UnifiedView({ diff }: { diff: DiffLine[] }) {
   return (
-    <div className="min-w-full">
+    <div className="min-w-[38rem]">
       <div className="sticky top-0 flex border-b border-border bg-muted/80 px-3 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur">
         <span className="w-10">Old</span>
         <span className="w-10">New</span>
@@ -181,7 +181,7 @@ function UnifiedView({ diff }: { diff: DiffLine[] }) {
             </span>
             <span
               className={cn(
-                'ml-4 whitespace-pre',
+                'ml-4 min-w-0 overflow-x-auto whitespace-pre',
                 line.type === 'added' && 'text-green-700 dark:text-green-300',
                 line.type === 'removed' && 'text-red-700 dark:text-red-300'
               )}

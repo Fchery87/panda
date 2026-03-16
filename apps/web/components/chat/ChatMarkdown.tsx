@@ -97,12 +97,16 @@ export function ChatMarkdown({ content, className }: ChatMarkdownProps) {
     },
 
     p({ children }) {
-      return <p className="mb-2 last:mb-0 leading-6 tracking-[0.01em]">{children}</p>
+      return (
+        <p className="mb-2 min-w-0 leading-6 tracking-[0.01em] [overflow-wrap:anywhere] last:mb-0">
+          {children}
+        </p>
+      )
     },
 
     ul({ children }) {
       return (
-        <ul className="mb-2 space-y-1 pl-4 text-[13px] leading-6 last:mb-0 xl:text-sm">
+        <ul className="mb-2 min-w-0 space-y-1 pl-4 text-[13px] leading-6 last:mb-0 xl:text-sm">
           {children}
         </ul>
       )
@@ -110,7 +114,7 @@ export function ChatMarkdown({ content, className }: ChatMarkdownProps) {
 
     ol({ children }) {
       return (
-        <ol className="mb-2 space-y-1 pl-4 text-[13px] leading-6 last:mb-0 xl:text-sm">
+        <ol className="mb-2 min-w-0 space-y-1 pl-4 text-[13px] leading-6 last:mb-0 xl:text-sm">
           {children}
         </ol>
       )
@@ -163,7 +167,12 @@ export function ChatMarkdown({ content, className }: ChatMarkdownProps) {
   }
 
   return (
-    <div className={cn('break-words text-[13px] leading-relaxed xl:text-sm', className)}>
+    <div
+      className={cn(
+        'min-w-0 break-words text-[13px] leading-relaxed [overflow-wrap:anywhere] xl:text-sm',
+        className
+      )}
+    >
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
         {content}
       </ReactMarkdown>

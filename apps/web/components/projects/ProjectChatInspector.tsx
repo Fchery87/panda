@@ -243,38 +243,40 @@ export function ProjectChatInspector({
       onValueChange={(value) => onTabChange(value as InspectorTab)}
       className="gap-2"
     >
-      <TabsList className="h-8 w-full justify-start rounded-none border border-border bg-background p-0 font-mono text-xs">
-        <TabsTrigger
-          value="run"
-          className="h-full rounded-none border-r border-border px-3 font-mono text-xs uppercase tracking-wide data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-        >
-          Run
-        </TabsTrigger>
-        <TabsTrigger
-          value="plan"
-          className="h-full rounded-none border-r border-border px-3 font-mono text-xs uppercase tracking-wide data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-        >
-          Plan
-        </TabsTrigger>
-        <TabsTrigger
-          value="artifacts"
-          className="h-full rounded-none border-r border-border px-3 font-mono text-xs uppercase tracking-wide data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-        >
-          Artifacts
-        </TabsTrigger>
-        <TabsTrigger
-          value="memory"
-          className="h-full rounded-none border-r border-border px-3 font-mono text-xs uppercase tracking-wide data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-        >
-          Memory
-        </TabsTrigger>
-        <TabsTrigger
-          value="evals"
-          className="h-full rounded-none px-3 font-mono text-xs uppercase tracking-wide data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-        >
-          Evals
-        </TabsTrigger>
-      </TabsList>
+      <div className="overflow-x-auto pb-1">
+        <TabsList className="shadow-sharp-sm h-9 min-w-max justify-start rounded-none border border-border bg-background/90 p-0 font-mono text-xs">
+          <TabsTrigger
+            value="run"
+            className="h-full rounded-none border-r border-border px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Run
+          </TabsTrigger>
+          <TabsTrigger
+            value="plan"
+            className="h-full rounded-none border-r border-border px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Plan
+          </TabsTrigger>
+          <TabsTrigger
+            value="artifacts"
+            className="h-full rounded-none border-r border-border px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Artifacts
+          </TabsTrigger>
+          <TabsTrigger
+            value="memory"
+            className="h-full rounded-none border-r border-border px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Memory
+          </TabsTrigger>
+          <TabsTrigger
+            value="evals"
+            className="h-full rounded-none px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Evals
+          </TabsTrigger>
+        </TabsList>
+      </div>
 
       <TabsContent value="run" className="m-0">
         <InspectorRunContent
@@ -351,9 +353,9 @@ export function ProjectChatInspector({
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-            className="shadow-sharp-lg absolute inset-x-0 bottom-0 z-30 max-h-[85vh] border-t border-border bg-background sm:inset-x-3 sm:bottom-3 sm:max-h-[75vh] sm:border"
+            className="shadow-sharp-lg absolute inset-x-0 bottom-0 z-30 max-h-[85vh] border-t border-border bg-[linear-gradient(180deg,rgba(245,158,11,0.07),transparent_24%),var(--background)] sm:inset-x-3 sm:bottom-3 sm:max-h-[75vh] sm:border"
           >
-            <div className="flex items-center justify-between border-b border-border px-3 py-2">
+            <div className="flex items-center justify-between border-b border-border bg-background/90 px-3 py-2">
               <div className="flex items-center gap-2">
                 <div className="h-1 w-8 bg-border sm:hidden" />
                 <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-wide">
@@ -395,9 +397,9 @@ export function ProjectChatInspector({
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-            className="shadow-sharp-lg absolute inset-x-0 bottom-0 z-30 max-h-[60vh] border-t border-border bg-background"
+            className="shadow-sharp-lg absolute inset-x-0 bottom-0 z-30 max-h-[60vh] border-t border-border bg-[linear-gradient(180deg,rgba(245,158,11,0.07),transparent_24%),var(--background)]"
           >
-            <div className="flex items-center justify-between border-b border-border px-3 py-2">
+            <div className="flex items-center justify-between border-b border-border bg-background/90 px-3 py-2">
               <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-wide">
                 <Settings2 className="h-3.5 w-3.5 text-primary" />
                 Review

@@ -225,7 +225,7 @@ function renderArchitectBody(lines: string[]) {
         return (
           <p
             key={`p-${blockIndex}`}
-            className="whitespace-pre-wrap break-words leading-6 tracking-[0.01em]"
+            className="whitespace-pre-wrap break-words leading-6 tracking-[0.01em] [overflow-wrap:anywhere]"
           >
             {block.lines.map((line, i) => (
               <Fragment key={i}>
@@ -292,7 +292,12 @@ export function MessageBubble({
   }
 
   return (
-    <div className={cn('flex gap-3 lg:gap-4 xl:gap-5', isUser ? 'flex-row-reverse' : 'flex-row')}>
+    <div
+      className={cn(
+        'flex w-full min-w-0 gap-3 lg:gap-4 xl:gap-5',
+        isUser ? 'flex-row-reverse' : 'flex-row'
+      )}
+    >
       {/* Avatar */}
       <motion.div
         initial={{ scale: 0.8, opacity: 0 }}
@@ -314,10 +319,7 @@ export function MessageBubble({
 
       {/* Message Content */}
       <div
-        className={cn(
-          'flex max-w-[94%] flex-col gap-1.5 xl:max-w-[88%] 2xl:max-w-[78%]',
-          isUser ? 'items-end' : 'items-start'
-        )}
+        className={cn('flex min-w-0 flex-1 flex-col gap-1.5', isUser ? 'items-end' : 'items-start')}
       >
         {isAssistant && message.reasoningContent && (
           <ReasoningPanel content={message.reasoningContent} isStreaming={isStreaming} />
@@ -372,14 +374,16 @@ export function MessageBubble({
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.2, delay: 0.05 }}
           className={cn(
-            'relative rounded-none border px-4 py-2.5 text-sm leading-relaxed',
+            'relative min-w-0 rounded-none border px-4 py-2.5 text-sm leading-relaxed',
             'px-3 py-2 text-[13px] xl:px-4 xl:py-2.5 xl:text-sm',
-            isUser ? 'max-w-[85%] bg-primary text-primary-foreground' : 'bg-muted text-foreground'
+            isUser
+              ? 'max-w-[85%] self-end bg-primary text-primary-foreground'
+              : 'w-full self-stretch bg-muted text-foreground'
           )}
         >
           <div
             className={cn(
-              'leading-6 tracking-[0.01em]',
+              'min-w-0 leading-6 tracking-[0.01em] [overflow-wrap:anywhere]',
               'selection:bg-primary/20 selection:text-foreground',
               isUser && 'selection:bg-primary-foreground/20 selection:text-primary-foreground'
             )}

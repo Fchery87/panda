@@ -83,14 +83,14 @@ export function ChatActionBar({
           transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
           className={cn('border-y border-border bg-muted/30 px-3 py-2', className)}
         >
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex min-w-0 flex-1 items-center gap-2">
               <Lightbulb className="h-4 w-4 shrink-0 text-primary" />
               <div className="min-w-0">
                 <p className="font-mono text-xs font-medium uppercase tracking-wide">
                   Plan {planStatus?.replace('_', ' ')}
                 </p>
-                <p className="truncate font-mono text-[10px] text-muted-foreground">
+                <p className="font-mono text-[10px] text-muted-foreground [overflow-wrap:anywhere]">
                   {planStatus === 'awaiting_review' && 'Review before building'}
                   {planStatus === 'stale' && 'Plan changed, needs review'}
                   {planStatus === 'approved' && 'Ready for execution'}
@@ -98,7 +98,7 @@ export function ChatActionBar({
                 </p>
               </div>
             </div>
-            <div className="flex shrink-0 items-center gap-1.5">
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 max-sm:w-full">
               {onPlanReview && planStatus !== 'executing' && (
                 <Button
                   variant="outline"
@@ -144,7 +144,7 @@ export function ChatActionBar({
           transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
           className={cn('border-y border-primary/30 bg-primary/5 px-3 py-2', className)}
         >
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex min-w-0 flex-1 items-center gap-2">
               {specTier === 'explicit' ? (
                 <Target className="h-4 w-4 shrink-0 text-primary" />
@@ -153,13 +153,13 @@ export function ChatActionBar({
               )}
               <div className="min-w-0">
                 <p className="font-mono text-xs font-medium uppercase tracking-wide">Spec Ready</p>
-                <p className="truncate font-mono text-[10px] text-muted-foreground">
+                <p className="font-mono text-[10px] text-muted-foreground [overflow-wrap:anywhere]">
                   {pendingSpec.intent.goal.slice(0, 60)}
                   {pendingSpec.intent.goal.length > 60 ? '...' : ''}
                 </p>
               </div>
             </div>
-            <div className="flex shrink-0 items-center gap-1.5">
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 max-sm:w-full">
               <Button
                 variant="outline"
                 size="sm"

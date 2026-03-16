@@ -244,11 +244,11 @@ export function ProjectChatPanel({
   return (
     <div
       className={cn(
-        'surface-1 relative flex h-full flex-col border-border',
+        'surface-1 relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden border-border',
         isMobileLayout ? 'border-t' : 'border-l'
       )}
     >
-      <div className="panel-header-compact flex items-center gap-2">
+      <div className="panel-header-compact flex shrink-0 items-center gap-2">
         <div className="flex items-center gap-1.5">
           <Bot className="h-3 w-3 text-primary" />
           <span>Chat</span>
@@ -352,7 +352,7 @@ export function ProjectChatPanel({
                 <History className="h-3.5 w-3.5" />
                 <span>Resume Available</span>
               </div>
-              <div className="text-muted-foreground">
+              <div className="text-muted-foreground [overflow-wrap:anywhere]">
                 {latestRecoverableCheckpoint.savedAt
                   ? `Recover the latest paused run from ${new Date(
                       latestRecoverableCheckpoint.savedAt
@@ -402,7 +402,7 @@ export function ProjectChatPanel({
         </div>
       ) : null}
 
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <MessageList
           messages={chatMessages}
           isStreaming={isStreaming}

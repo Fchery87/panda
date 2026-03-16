@@ -11,15 +11,12 @@ import { PendingArtifactOverlay } from './PendingArtifactOverlay'
 import { EditorContainer } from '../editor/EditorContainer'
 import { cn } from '@/lib/utils'
 import {
-  Code2,
   FileCode,
   Plus,
   Search,
-  History,
   Terminal as TerminalIcon,
   Minimize2,
   TerminalSquare,
-  Eye,
   ChevronUp,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -228,7 +225,7 @@ export function Workbench({
 
   if (isMobile) {
     return (
-      <div className="surface-0 h-full w-full">
+      <div className="surface-0 h-full min-h-0 w-full min-w-0">
         <div className="surface-1 flex h-11 shrink-0 border-b border-border font-mono text-xs uppercase tracking-widest">
           <button
             type="button"
@@ -268,7 +265,7 @@ export function Workbench({
           </button>
         </div>
 
-        <div className="h-[calc(100%-2.75rem)]">
+        <div className="h-[calc(100%-2.75rem)] min-h-0 min-w-0">
           {mobilePanel === 'files' && (
             <div className="surface-1 flex h-full flex-col">
               <div className="flex border-b border-border">
@@ -338,10 +335,10 @@ export function Workbench({
           )}
 
           {mobilePanel === 'editor' && (
-            <div className="surface-0 flex h-full flex-col">
-              <div className="flex-1 overflow-hidden">
+            <div className="surface-0 flex h-full min-h-0 min-w-0 flex-col">
+              <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
                 {selectedFile ? (
-                  <div className="flex h-full flex-col">
+                  <div className="flex h-full min-h-0 min-w-0 flex-col">
                     {pendingArtifactPreview ? (
                       <PendingArtifactOverlay
                         preview={pendingArtifactPreview}
@@ -376,11 +373,11 @@ export function Workbench({
           )}
 
           {mobilePanel === 'terminal' && (
-            <div className="surface-1 flex h-full flex-col border-t border-border">
+            <div className="surface-1 flex h-full min-h-0 min-w-0 flex-col border-t border-border">
               <div className="panel-header flex items-center justify-between" data-number="03">
                 <span>Terminal</span>
               </div>
-              <div className="flex-1 overflow-hidden">
+              <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
                 <Terminal projectId={projectId} />
               </div>
             </div>
@@ -391,10 +388,14 @@ export function Workbench({
   }
 
   return (
-    <div className="surface-0 h-full w-full">
-      <PanelGroup direction="horizontal" className="h-full" autoSaveId="panda-workbench-inner">
+    <div className="surface-0 h-full min-h-0 w-full min-w-0 overflow-hidden">
+      <PanelGroup
+        direction="horizontal"
+        className="h-full min-h-0 min-w-0"
+        autoSaveId="panda-workbench-inner"
+      >
         {/* Sidebar Rail + Flyout */}
-        <div className="flex h-full">
+        <div className="flex h-full min-h-0 shrink-0">
           <SidebarRail
             activeSection={sidebarActiveSection}
             isFlyoutOpen={isSidebarFlyoutOpen}
@@ -454,13 +455,16 @@ export function Workbench({
         </div>
 
         {/* Main content area - Editor with tabs */}
-        <Panel defaultSize={isCompactDesktop ? 84 : 82}>
-          <PanelGroup direction="vertical" className="h-full">
+        <Panel defaultSize={isCompactDesktop ? 84 : 82} className="min-h-0 min-w-0">
+          <PanelGroup direction="vertical" className="h-full min-h-0 min-w-0">
             {/* Editor + Timeline (tabbed) */}
-            <Panel defaultSize={isCompactDesktop ? 76 : isTerminalExpanded ? 70 : 100}>
-              <PanelGroup direction="horizontal" className="h-full">
-                <Panel>
-                  <div className="surface-0 flex h-full flex-col">
+            <Panel
+              defaultSize={isCompactDesktop ? 76 : isTerminalExpanded ? 70 : 100}
+              className="min-h-0 min-w-0"
+            >
+              <PanelGroup direction="horizontal" className="h-full min-h-0 min-w-0">
+                <Panel className="min-h-0 min-w-0">
+                  <div className="surface-0 flex h-full min-h-0 min-w-0 flex-col">
                     {/* File Tabs */}
                     {openTabs.length > 0 && (
                       <FileTabs
@@ -472,9 +476,9 @@ export function Workbench({
                     )}
 
                     {/* Tab Content */}
-                    <div className="flex-1 overflow-hidden">
+                    <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
                       {selectedFile ? (
-                        <div className="flex h-full flex-col">
+                        <div className="flex h-full min-h-0 min-w-0 flex-col">
                           {pendingArtifactPreview ? (
                             <PendingArtifactOverlay
                               preview={pendingArtifactPreview}
@@ -482,7 +486,7 @@ export function Workbench({
                               onReject={onRejectPendingArtifact}
                             />
                           ) : (
-                            <div className="min-h-0 flex-1">
+                            <div className="min-h-0 min-w-0 flex-1">
                               <EditorContainer
                                 filePath={selectedFile.path}
                                 content={selectedFile.content ?? ''}
@@ -517,9 +521,9 @@ export function Workbench({
                 <Panel
                   defaultSize={isCompactDesktop ? 24 : 30}
                   minSize={isCompactDesktop ? 12 : 15}
-                  className="border-t border-border"
+                  className="min-h-0 min-w-0 border-t border-border"
                 >
-                  <div className="flex h-full flex-col">
+                  <div className="flex h-full min-h-0 min-w-0 flex-col">
                     {/* Terminal Header with Minimize Button */}
                     <div className="surface-1 flex h-8 shrink-0 items-center justify-between border-b border-border px-3">
                       <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
@@ -536,7 +540,7 @@ export function Workbench({
                         <Minimize2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
-                    <div className="flex-1 overflow-hidden">
+                    <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
                       <Terminal projectId={projectId} />
                     </div>
                   </div>

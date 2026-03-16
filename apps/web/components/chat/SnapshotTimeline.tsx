@@ -60,31 +60,36 @@ export function SnapshotTimeline({ events = [] }: SnapshotTimelineProps) {
   }
 
   return (
-    <div className="surface-2 border border-border p-3">
-      <div className="mb-2 flex items-center gap-2 font-mono text-xs uppercase tracking-wide text-muted-foreground">
+    <div className="surface-2 shadow-sharp-sm border border-border bg-[linear-gradient(180deg,rgba(245,158,11,0.05),transparent_48%)] p-3">
+      <div className="mb-2 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
         <GitBranch className="h-3.5 w-3.5" />
         <span>Snapshots</span>
       </div>
       <div className="space-y-2">
         {entries.map((entry) => (
-          <div key={entry.id} className="border border-border bg-background p-2">
+          <div
+            key={entry.id}
+            className="shadow-sharp-sm border border-border bg-background/85 p-2.5"
+          >
             <div className="flex items-center gap-2 font-mono text-xs">
-              <span>{entry.label}</span>
-              <span className="ml-auto text-muted-foreground">{entry.hash.slice(0, 8)}</span>
+              <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{entry.label}</span>
+              <span className="ml-auto shrink-0 text-muted-foreground">
+                {entry.hash.slice(0, 8)}
+              </span>
             </div>
             {entry.files.length > 0 ? (
               <p className="mt-1 line-clamp-2 font-mono text-[10px] text-muted-foreground">
                 {entry.files.join(', ')}
               </p>
             ) : null}
-            <div className="mt-2 flex items-center gap-2">
+            <div className="mt-2 flex flex-wrap items-center gap-2">
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
                 disabled={isBusy}
                 onClick={() => void handleViewDiff(entry.hash)}
-                className="h-6 rounded-none px-2 font-mono text-[10px] uppercase"
+                className="h-6 rounded-none bg-background/80 px-2 font-mono text-[10px] uppercase tracking-[0.16em]"
               >
                 View Diff
               </Button>
@@ -94,7 +99,7 @@ export function SnapshotTimeline({ events = [] }: SnapshotTimelineProps) {
                 variant="outline"
                 disabled={isBusy}
                 onClick={() => void handleRestore(entry.hash)}
-                className="h-6 rounded-none px-2 font-mono text-[10px] uppercase"
+                className="h-6 rounded-none bg-background/80 px-2 font-mono text-[10px] uppercase tracking-[0.16em]"
               >
                 <RotateCcw className="mr-1 h-3 w-3" />
                 Restore

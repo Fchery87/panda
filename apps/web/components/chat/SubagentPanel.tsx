@@ -14,17 +14,24 @@ export function SubagentPanel({ toolCalls = [] }: SubagentPanelProps) {
   if (entries.length === 0) return null
 
   return (
-    <div className="surface-2 border border-border p-3">
-      <div className="mb-2 flex items-center gap-2 font-mono text-xs uppercase tracking-wide text-muted-foreground">
+    <div className="surface-2 shadow-sharp-sm border border-border bg-[linear-gradient(180deg,rgba(245,158,11,0.05),transparent_48%)] p-3">
+      <div className="mb-2 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
         <Bot className="h-3.5 w-3.5" />
         <span>Subagents</span>
       </div>
       <div className="space-y-2">
         {entries.map((entry) => (
-          <div key={entry.id} className="border border-border bg-background p-2">
+          <div
+            key={entry.id}
+            className="shadow-sharp-sm border border-border bg-background/85 p-2.5"
+          >
             <div className="flex items-center gap-2 font-mono text-xs">
-              <span className="text-foreground">{entry.agent}</span>
-              <span className="ml-auto uppercase text-muted-foreground">{entry.status}</span>
+              <span className="min-w-0 flex-1 text-foreground [overflow-wrap:anywhere]">
+                {entry.agent}
+              </span>
+              <span className="ml-auto shrink-0 uppercase text-muted-foreground">
+                {entry.status}
+              </span>
             </div>
             <p className="mt-1 line-clamp-2 font-mono text-xs text-muted-foreground">
               {entry.prompt}

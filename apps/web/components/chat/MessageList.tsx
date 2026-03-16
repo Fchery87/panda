@@ -29,7 +29,7 @@ export function MessageList({
 
   if (messages.length === 0) {
     return (
-      <ScrollArea className="h-full">
+      <ScrollArea className="h-full min-h-0 min-w-0">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -51,9 +51,9 @@ export function MessageList({
   }
 
   return (
-    <ScrollArea className="h-full">
+    <ScrollArea className="h-full min-h-0 min-w-0">
       <div
-        className={cn('flex min-h-full flex-col gap-4 p-3 xl:gap-5 xl:p-4')}
+        className={cn('flex min-h-full min-w-0 flex-col gap-4 p-3 xl:gap-5 xl:p-4')}
         role="log"
         aria-live="polite"
         aria-label="Chat messages"

@@ -169,11 +169,11 @@ export function RunProgressPanel({
   }
 
   return (
-    <div className="surface-2 border-b border-border px-3 py-2">
+    <div className="surface-2 border-b border-border bg-[linear-gradient(180deg,rgba(245,158,11,0.08),transparent_42%)] px-3 py-2.5">
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex w-full items-center gap-2 text-left"
+        className="flex w-full flex-wrap items-center gap-x-2 gap-y-1 text-left"
       >
         {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         <span className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-muted-foreground">
@@ -189,7 +189,7 @@ export function RunProgressPanel({
             </>
           )}
         </span>
-        <span className="ml-auto font-mono text-xs text-muted-foreground/70">
+        <span className="ml-auto max-w-full font-mono text-[11px] text-muted-foreground/70 [overflow-wrap:anywhere] max-sm:ml-0 max-sm:w-full">
           {startedAt ? formatElapsed(elapsedMs) : '0s'}
           {isStreaming ? ' • live' : ` • ${steps.length} events`}
           {toolCount > 0 && ` • ${toolCount} tools`}
@@ -197,29 +197,29 @@ export function RunProgressPanel({
         </span>
       </button>
 
-      <div className="mt-2 flex flex-wrap items-center gap-2">
+      <div className="mt-2.5 flex flex-wrap items-center gap-2">
         <span
           className={cn(
-            'border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide',
+            'shadow-sharp-sm border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.22em]',
             tracePersistenceStatus === 'degraded'
               ? 'border-destructive/60 bg-destructive/5 text-destructive'
-              : 'border-border text-muted-foreground'
+              : 'border-border bg-background/70 text-muted-foreground'
           )}
         >
           Trace {tracePersistenceStatus}
         </span>
         {tracePersistenceStatus === 'degraded' ? (
-          <span className="font-mono text-[10px] text-muted-foreground">
+          <span className="font-mono text-[10px] text-muted-foreground [overflow-wrap:anywhere]">
             Live UI still works, but durable run timeline may be incomplete.
           </span>
         ) : null}
         {runtimeCheckpoints ? (
           <span
             className={cn(
-              'border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide',
+              'shadow-sharp-sm border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.22em]',
               hasRecoverableCheckpoint
                 ? 'border-primary/50 bg-primary/5 text-primary'
-                : 'border-border text-muted-foreground'
+                : 'border-border bg-background/70 text-muted-foreground'
             )}
             title={
               latestRuntimeCheckpoint?.savedAt
@@ -235,10 +235,10 @@ export function RunProgressPanel({
         {planProgress && (
           <span
             className={cn(
-              'border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide',
+              'shadow-sharp-sm border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.22em]',
               planProgress.completedSteps === planProgress.totalSteps && planProgress.totalSteps > 0
                 ? 'border-primary/50 bg-primary/5 text-primary'
-                : 'border-border text-muted-foreground'
+                : 'border-border bg-background/70 text-muted-foreground'
             )}
           >
             Plan {planProgress.completedSteps}/{planProgress.totalSteps}
@@ -254,7 +254,7 @@ export function RunProgressPanel({
             variant="outline"
             disabled={isStreaming}
             onClick={() => onResumeRuntimeSession(latestRuntimeCheckpoint.sessionID!)}
-            className="h-6 rounded-none border-primary/40 px-2 font-mono text-[10px] uppercase tracking-wide"
+            className="h-7 rounded-none border-primary/40 bg-background/80 px-2.5 font-mono text-[10px] uppercase tracking-[0.2em]"
           >
             Resume Run
           </Button>
@@ -264,7 +264,7 @@ export function RunProgressPanel({
             type="button"
             onClick={onSpecClick}
             className={cn(
-              'flex items-center gap-1.5 border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide transition-colors hover:bg-muted/50',
+              'shadow-sharp-sm flex flex-wrap items-center gap-1.5 border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.2em] transition-colors hover:bg-muted/50',
               currentSpec.status === 'verified' && 'border-success/50 bg-success/5 text-success',
               currentSpec.status === 'failed' &&
                 'border-destructive/50 bg-destructive/5 text-destructive',
@@ -289,7 +289,7 @@ export function RunProgressPanel({
             type="button"
             onClick={onPlanClick}
             className={cn(
-              'flex items-center gap-1.5 border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide transition-colors hover:bg-muted/50',
+              'shadow-sharp-sm flex flex-wrap items-center gap-1.5 border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.2em] transition-colors hover:bg-muted/50',
               planStatus === 'approved' && 'border-primary/50 bg-primary/5 text-primary',
               planStatus === 'executing' && 'border-primary/50 bg-primary/5 text-primary',
               planStatus === 'awaiting_review' && 'border-border bg-muted/50 text-muted-foreground',
@@ -316,10 +316,13 @@ export function RunProgressPanel({
             const latestStatus = hasError ? 'error' : hasRunning ? 'running' : 'completed'
 
             return (
-              <div key={group.key} className="border border-border bg-background/70">
+              <div
+                key={group.key}
+                className="shadow-sharp-sm overflow-hidden border border-border bg-background/80"
+              >
                 <button
                   type="button"
-                  className="flex w-full items-center gap-2 px-2 py-1 text-left font-mono text-xs"
+                  className="flex w-full items-center gap-2 px-2.5 py-1.5 text-left font-mono text-[11px] uppercase tracking-[0.18em]"
                   onClick={() =>
                     setExpandedGroups((prev) => ({
                       ...prev,
@@ -333,17 +336,17 @@ export function RunProgressPanel({
                     <ChevronRight className="h-3 w-3" />
                   )}
                   <span>{group.label}</span>
-                  <span className="ml-1 text-muted-foreground">({group.steps.length})</span>
+                  <span className="ml-1 text-muted-foreground/80">({group.steps.length})</span>
                   <span className="ml-auto uppercase text-muted-foreground">{latestStatus}</span>
                 </button>
 
                 {expanded && (
-                  <div className="space-y-1 border-t border-border px-2 py-1">
+                  <div className="space-y-1.5 border-t border-border/80 bg-muted/20 px-2.5 py-2">
                     {group.steps.slice(-maxStepsPerGroup).map((step) => (
                       <div
                         key={step.id}
                         className={cn(
-                          'flex items-start gap-2 px-1 py-0.5 font-mono text-xs',
+                          'shadow-sharp-sm flex items-start gap-2 border border-border/70 bg-background/85 px-2 py-1.5 font-mono text-xs',
                           step.status === 'error' && 'text-destructive'
                         )}
                       >
@@ -355,21 +358,27 @@ export function RunProgressPanel({
                           <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
                         )}
                         <div className="min-w-0 flex-1">
-                          <div className="leading-relaxed">{step.content}</div>
+                          <div className="leading-relaxed [overflow-wrap:anywhere]">
+                            {step.content}
+                          </div>
                           {(() => {
                             const meta = describeStepMeta(step)
                             return (
                               <>
                                 {meta.primary ? (
-                                  <div className="text-muted-foreground/80">{meta.primary}</div>
+                                  <div className="text-muted-foreground/80 [overflow-wrap:anywhere]">
+                                    {meta.primary}
+                                  </div>
                                 ) : null}
                                 {meta.secondary ? (
-                                  <div className="truncate text-muted-foreground/80">
+                                  <div className="text-muted-foreground/80 [overflow-wrap:anywhere]">
                                     args: {meta.secondary}
                                   </div>
                                 ) : null}
                                 {meta.error ? (
-                                  <div className="truncate text-destructive/90">{meta.error}</div>
+                                  <div className="text-destructive/90 [overflow-wrap:anywhere]">
+                                    {meta.error}
+                                  </div>
                                 ) : null}
                                 {step.details?.targetFilePaths &&
                                 step.details.targetFilePaths.length > 0 ? (
