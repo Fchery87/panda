@@ -1512,13 +1512,40 @@ describe('harness Runtime', () => {
     const specVerificationEvents = events.filter((event) => event.type === 'spec_verification')
     expect(specVerificationEvents.length).toBeGreaterThan(0)
 
-    // Should NOT emit successful complete when verification fails
-    // (Current behavior: verification is informational, so this test documents
-    // the current state before enforcement is implemented)
+    // When verification fails, should emit error instead of complete
     const completeEvents = events.filter((event) => event.type === 'complete')
-    // Note: This assertion will pass initially because current implementation
-    // emits complete unconditionally. After Task 3, this test should be updated
-    // to expect completeEvents.length === 0 when verification fails.
-    expect(completeEvents.length).toBeGreaterThanOrEqual(0)
+    const errorEvents = events.filter((event) => event.type === 'error')
+
+    // Should NOT emit complete when verification fails
+    expect(completeEvents.length).toBe(0)
+
+    // Should emit error with verification failure message
+    expect(errorEvents.length).toBeGreaterThan(0)
+    expect(errorEvents[0].error).toContain('Specification verification failed')
+  })
+
+  test('emits complete when there is no active spec (no verification needed)', async () => {
+    resetHarnessTestState()
+    const provider = createProvider(() => {})
+    const runtime = new Runtime(provider, new Map())
+
+    const userMessage = createUserMessage({
+      id: 'msg-user-no-spec',
+      sessionID: 'session-no-spec',
+      text: 'Simple query without spec',
+      agent: 'ask',
+    })
+
+    const events = []
+    for await (const event of runtime.run('session-no-spec', userMessage)) {
+      events.push(event)
+    }
+
+    // Should emit complete when no spec is active
+    const completeEvents = events.filter((event) => event.type === 'complete')
+    const errorEvents = events.filter((event) => event.type === 'error')
+
+    expect(completeEvents.length).toBe(1)
+    expect(errorEvents.length).toBe(0)
   })
 })

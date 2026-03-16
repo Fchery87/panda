@@ -558,14 +558,26 @@ export class Runtime {
       await this.saveCheckpoint(agent.name, 'complete')
 
       // SpecNative: Post-execution verification
+      let verificationOutcome: { passed: boolean; summary: string } = { passed: true, summary: '' }
       if (this.state.activeSpec) {
-        yield* this.verifyAndFinalizeSpec(sessionID, agent)
+        verificationOutcome = yield* this.verifyAndFinalizeSpec(sessionID, agent)
       }
 
-      yield {
-        type: 'complete',
-        usage: this.state.tokens,
-        cost: this.state.cost,
+      // Gate completion on successful verification
+      // Only emit 'complete' if verification passed or there's no active spec
+      // If verification failed, emit 'error' instead
+      if (verificationOutcome.passed) {
+        yield {
+          type: 'complete',
+          usage: this.state.tokens,
+          cost: this.state.cost,
+        }
+      } else {
+        yield {
+          type: 'error',
+          error: `Specification verification failed: ${verificationOutcome.summary}`,
+        }
+        return
       }
 
       await this.executeHook(
@@ -2482,12 +2494,15 @@ export class Runtime {
 
   /**
    * Verify and finalize the active specification
+   * @returns The verification outcome - whether it passed or failed
    */
   private async *verifyAndFinalizeSpec(
     sessionID: Identifier,
     agent: AgentConfig
-  ): AsyncGenerator<RuntimeEvent> {
-    if (!this.state?.activeSpec) return
+  ): AsyncGenerator<RuntimeEvent, { passed: boolean; summary: string }> {
+    if (!this.state?.activeSpec) {
+      return { passed: true, summary: 'No active spec to verify' }
+    }
 
     const spec = this.state.activeSpec
 
@@ -2534,6 +2549,8 @@ export class Runtime {
         })),
       },
     }
+
+    return { passed: verification.passed, summary: verification.summary }
   }
 
   /**

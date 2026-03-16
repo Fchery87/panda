@@ -236,3 +236,122 @@ describe('getStatusFromVerification', () => {
     expect(getStatusFromVerification(report)).toBe('drifted')
   })
 })
+
+describe('Verification terminal semantics', () => {
+  test('passed verification is considered terminal success', () => {
+    const report = {
+      passed: true,
+      status: 'passed' as const,
+      criterionResults: [{ criterionId: 'ac1', passed: true }],
+      constraintResults: [],
+      summary: 'All passed',
+      recommendations: [],
+      timestamp: Date.now(),
+    }
+
+    // passed status should result in verified
+    expect(getStatusFromVerification(report)).toBe('verified')
+    expect(canMarkAsVerified(report)).toBe(true)
+  })
+
+  test('failed verification is not considered terminal success', () => {
+    const report = {
+      passed: false,
+      status: 'failed' as const,
+      criterionResults: [{ criterionId: 'ac1', passed: false, message: 'Failed' }],
+      constraintResults: [],
+      summary: 'Failed',
+      recommendations: ['Fix issues'],
+      timestamp: Date.now(),
+    }
+
+    // failed status should result in failed
+    expect(getStatusFromVerification(report)).toBe('failed')
+    expect(canMarkAsVerified(report)).toBe(false)
+  })
+
+  test('inconclusive verification is not considered terminal success', () => {
+    const report = {
+      passed: false,
+      status: 'inconclusive' as const,
+      criterionResults: [],
+      constraintResults: [],
+      summary: 'Inconclusive',
+      recommendations: [],
+      timestamp: Date.now(),
+    }
+
+    // inconclusive status should result in drifted, not verified
+    expect(getStatusFromVerification(report)).toBe('drifted')
+    // Note: canMarkAsVerified returns false for inconclusive
+    expect(canMarkAsVerified(report)).toBe(false)
+  })
+
+  test('partial verification is informational but may not auto-green strict flows', () => {
+    const report = {
+      passed: false,
+      status: 'partial' as const,
+      criterionResults: [
+        { criterionId: 'ac1', passed: true },
+        { criterionId: 'ac2', passed: false },
+      ],
+      constraintResults: [],
+      summary: 'Partial',
+      recommendations: [],
+      timestamp: Date.now(),
+    }
+
+    // Current behavior: partial is considered verified by canMarkAsVerified
+    // This documents the current state. In strict build flows, this may need
+    // to be tightened to require 'passed' status only.
+    expect(canMarkAsVerified(report)).toBe(true)
+
+    // However, partial results in drifted status, not verified
+    expect(getStatusFromVerification(report)).toBe('drifted')
+  })
+
+  test('manual verification criteria require explicit resolution', async () => {
+    const spec: FormalSpecification = {
+      id: 'spec_manual_test',
+      version: 1,
+      tier: 'ambient',
+      status: 'executing',
+      intent: {
+        goal: 'Test manual criteria',
+        rawMessage: 'Test',
+        constraints: [],
+        acceptanceCriteria: [
+          {
+            id: 'ac-manual',
+            trigger: 'manual review',
+            behavior: 'expert approves',
+            verificationMethod: 'manual',
+            status: 'pending',
+          },
+        ],
+      },
+      plan: { steps: [], dependencies: [], risks: [], estimatedTools: [] },
+      validation: { preConditions: [], postConditions: [], invariants: [] },
+      provenance: {
+        model: 'gpt-4o',
+        promptHash: 'test',
+        timestamp: Date.now(),
+        chatId: 'chat_123',
+      },
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }
+
+    const results = {
+      filesModified: ['src/test.ts'],
+      errors: [],
+      output: 'Done',
+    }
+
+    const report = await verifySpec(spec, results)
+
+    // Manual criteria should not auto-pass without explicit approval
+    // The verification should remain pending (not passed)
+    expect(report.criterionResults[0].passed).toBe(false)
+  })
+})
