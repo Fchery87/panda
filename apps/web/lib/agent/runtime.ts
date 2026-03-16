@@ -1392,6 +1392,13 @@ function mapHarnessEventToAgentEvent(event: HarnessRuntimeEvent): AgentEvent | n
         spec: event.spec,
         verification: event.verification,
       }
+    case 'compaction':
+      return {
+        type: 'progress_step',
+        content: event.content ?? 'Compacting context...',
+        progressStatus: event.compaction?.phase === 'start' ? 'running' : 'completed',
+        progressCategory: 'analysis',
+      }
     case 'permission_request':
     case 'permission_decision':
     case 'interrupt_request':

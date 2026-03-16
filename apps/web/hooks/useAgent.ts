@@ -47,6 +47,8 @@ import {
   buildAgentRuntimeConfig,
   createAgentCheckpointStore,
 } from '../lib/agent/session-controller'
+import { buildPromptMessagesWithModeSummary } from '../lib/agent/context/session-summary'
+import { reduceTerminalAgentEvent } from './useAgent-terminal-events'
 import { useRunEventBuffer, type TracePersistenceStatus } from './useRunEventBuffer'
 import type {
   MessageAnnotationInfo,
@@ -146,6 +148,12 @@ interface UseAgentOptions {
     runId: Id<'agentRuns'>
     approvedPlanExecution: boolean
   }) => void | Promise<void>
+  onRunCompleted?: (args: {
+    runId: Id<'agentRuns'>
+    outcome: 'completed' | 'failed' | 'stopped'
+    completedPlanStepIndexes: number[]
+    planTotalSteps: number
+  }) => void | Promise<void>
 }
 
 /**
@@ -244,6 +252,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     planDraft,
     automationPolicy,
     onRunCreated,
+    onRunCompleted,
   } = options
 
   const convex = useConvex()
@@ -659,9 +668,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       // IMPORTANT: Claude Code-style mode separation.
       // When in Plan mode, don't include Build messages in context (and vice versa),
       // otherwise the model continues implementation even after switching modes.
-      const previousMessagesSnapshot = messages
-        .filter((m) => (m.role === 'user' || m.role === 'assistant') && m.mode === mode)
-        .map((m) => ({ role: m.role, content: m.content }))
+      const previousMessagesSnapshot = buildPromptMessagesWithModeSummary({
+        currentMode: mode,
+        messages,
+      })
 
       const estimatedPromptTokens = estimatePromptTokens({
         providerType,
@@ -739,38 +749,66 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           })
         }
         let runFinalized = false
+        let terminalAgentStatus: 'complete' | 'error' | null = null
 
         const finalizeRunCompleted = async (summary?: string, usage?: RunEventInput['usage']) => {
           if (!runIdRef.current || runFinalized) return
+          const currentRunId = runIdRef.current
           runFinalized = true
           await flushRunEventBuffer({ force: true, reason: 'complete' })
           await completeRun({
-            runId: runIdRef.current,
+            runId: currentRunId,
             summary,
             usage,
           })
           clearRun()
+          if (onRunCompleted) {
+            await onRunCompleted({
+              runId: currentRunId,
+              outcome: 'completed',
+              completedPlanStepIndexes: [...completedPlanStepIndexesRef.current],
+              planTotalSteps: planSteps.length,
+            })
+          }
         }
 
         const finalizeRunFailed = async (message: string) => {
           if (!runIdRef.current || runFinalized) return
+          const currentRunId = runIdRef.current
           runFinalized = true
           await flushRunEventBuffer({ force: true, reason: 'fail' })
           await failRun({
-            runId: runIdRef.current,
+            runId: currentRunId,
             error: message,
           })
           clearRun()
+          if (onRunCompleted) {
+            await onRunCompleted({
+              runId: currentRunId,
+              outcome: 'failed',
+              completedPlanStepIndexes: [...completedPlanStepIndexesRef.current],
+              planTotalSteps: planSteps.length,
+            })
+          }
         }
 
         const finalizeRunStopped = async () => {
           if (!runIdRef.current || runFinalized) return
+          const currentRunId = runIdRef.current
           runFinalized = true
           await flushRunEventBuffer({ force: true, reason: 'stop' })
           await stopRun({
-            runId: runIdRef.current,
+            runId: currentRunId,
           })
           clearRun()
+          if (onRunCompleted) {
+            await onRunCompleted({
+              runId: currentRunId,
+              outcome: 'stopped',
+              completedPlanStepIndexes: [...completedPlanStepIndexesRef.current],
+              planTotalSteps: planSteps.length,
+            })
+          }
         }
 
         await appendRunEvent({
@@ -1268,6 +1306,19 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               break
 
             case 'complete':
+              {
+                const terminalEvent = reduceTerminalAgentEvent(
+                  {
+                    runFinalized,
+                    terminalStatus: terminalAgentStatus,
+                  },
+                  'complete'
+                )
+                if (!terminalEvent.shouldProcess) {
+                  break
+                }
+                terminalAgentStatus = terminalEvent.terminalStatus
+              }
               setPendingSpec(null)
               setStatus('complete')
               isRunningRef.current = false
@@ -1339,6 +1390,19 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               break
 
             case 'error': {
+              {
+                const terminalEvent = reduceTerminalAgentEvent(
+                  {
+                    runFinalized,
+                    terminalStatus: terminalAgentStatus,
+                  },
+                  'error'
+                )
+                if (!terminalEvent.shouldProcess) {
+                  break
+                }
+                terminalAgentStatus = terminalEvent.terminalStatus
+              }
               if (event.error === 'Specification approval cancelled') {
                 setStatus('idle')
                 setError(null)
@@ -1469,6 +1533,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       planSteps,
       automationPolicy,
       onRunCreated,
+      onRunCompleted,
     ]
   )
 

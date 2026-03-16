@@ -26,6 +26,36 @@ export interface PlanProgressMetadata {
   completedPlanStepIndexes: number[]
 }
 
+export type PlanExecutionOutcome = 'completed' | 'failed' | 'stopped'
+
+export type DerivedPlanCompletionStatus = 'completed' | 'partial' | 'failed'
+
+export function derivePlanCompletionStatus(args: {
+  planTotalSteps: number
+  completedPlanStepIndexes: number[]
+  runOutcome: PlanExecutionOutcome
+}): DerivedPlanCompletionStatus {
+  if (args.runOutcome === 'failed') {
+    return 'failed'
+  }
+
+  if (args.runOutcome === 'stopped') {
+    return 'partial'
+  }
+
+  if (args.planTotalSteps <= 0) {
+    return args.runOutcome === 'completed' ? 'completed' : 'partial'
+  }
+
+  const completedCount = new Set(
+    args.completedPlanStepIndexes.filter(
+      (index) => Number.isInteger(index) && index >= 0 && index < args.planTotalSteps
+    )
+  ).size
+
+  return completedCount >= args.planTotalSteps ? 'completed' : 'partial'
+}
+
 export function parsePlanSteps(planDraft: string | null | undefined): string[] {
   const content = planDraft?.trim()
   if (!content) return []

@@ -11,7 +11,16 @@ import remarkGfm from 'remark-gfm'
 
 interface PlanPanelProps {
   planDraft: string
-  planStatus?: 'idle' | 'drafting' | 'awaiting_review' | 'approved' | 'stale' | 'executing'
+  planStatus?:
+    | 'idle'
+    | 'drafting'
+    | 'awaiting_review'
+    | 'approved'
+    | 'stale'
+    | 'executing'
+    | 'partial'
+    | 'completed'
+    | 'failed'
   onChange: (value: string) => void
   onSave: () => void
   onApprove?: () => void
@@ -30,6 +39,9 @@ const STATUS_LABELS: Record<NonNullable<PlanPanelProps['planStatus']>, string> =
   approved: 'Approved',
   stale: 'Stale',
   executing: 'Executing',
+  partial: 'Partial',
+  completed: 'Completed',
+  failed: 'Failed',
 }
 
 export function PlanPanel({

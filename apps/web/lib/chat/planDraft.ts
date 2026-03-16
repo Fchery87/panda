@@ -16,6 +16,9 @@ export type PlanStatus =
   | 'approved'
   | 'stale'
   | 'executing'
+  | 'partial'
+  | 'completed'
+  | 'failed'
 
 function normalizePlanDraft(value: string | null | undefined): string {
   return value?.trim() ?? ''
@@ -125,7 +128,13 @@ export function getNextPlanStatusAfterDraftChange(args: {
     return currentStatus
   }
 
-  if (currentStatus === 'approved' || currentStatus === 'executing') {
+  if (
+    currentStatus === 'approved' ||
+    currentStatus === 'executing' ||
+    currentStatus === 'partial' ||
+    currentStatus === 'completed' ||
+    currentStatus === 'failed'
+  ) {
     return 'stale'
   }
 
@@ -161,5 +170,7 @@ export function canBuildFromPlan(
 ): boolean {
   const normalizedDraft = normalizePlanDraft(planDraft)
   if (!normalizedDraft) return false
-  return status === 'approved' || status === 'executing'
+  return (
+    status === 'approved' || status === 'executing' || status === 'partial' || status === 'failed'
+  )
 }

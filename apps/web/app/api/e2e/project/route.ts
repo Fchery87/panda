@@ -144,9 +144,9 @@ async function listFixtureProjects(convex: ConvexHttpClient): Promise<E2EFixture
 }
 
 async function getMaxProjectsPerUser(convex: ConvexHttpClient): Promise<number> {
-  const defaults = (await convex.query(api.settings.getAdminDefaults, {})) as
-    | { maxProjectsPerUser?: number }
-    | null
+  const defaults = (await convex.query(api.settings.getAdminDefaults, {})) as {
+    maxProjectsPerUser?: number
+  } | null
   return defaults?.maxProjectsPerUser ?? 100
 }
 

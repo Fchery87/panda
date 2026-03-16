@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { Lightbulb, Target, FileText } from 'lucide-react'
+import { Lightbulb, Target, FileText, CheckCircle2, XCircle } from 'lucide-react'
 import type { SpecTier, FormalSpecification } from '@/lib/agent/spec/types'
 import type { PlanStatus } from '@/lib/chat/planDraft'
 
@@ -63,7 +63,10 @@ export function ChatActionBar({
     (planStatus === 'awaiting_review' ||
       planStatus === 'stale' ||
       planStatus === 'approved' ||
-      planStatus === 'executing')
+      planStatus === 'executing' ||
+      planStatus === 'partial' ||
+      planStatus === 'completed' ||
+      planStatus === 'failed')
 
   const showSpecCard = showSpecReview && pendingSpec
 
@@ -81,11 +84,29 @@ export function ChatActionBar({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 8 }}
           transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
-          className={cn('border-y border-border bg-muted/30 px-3 py-2', className)}
+          className={cn(
+            'border-y px-3 py-2',
+            planStatus === 'partial' && 'border-warning/30 bg-warning/5',
+            planStatus === 'completed' && 'border-emerald-500/30 bg-emerald-500/5',
+            planStatus === 'failed' && 'border-destructive/30 bg-destructive/5',
+            planStatus !== 'partial' &&
+              planStatus !== 'completed' &&
+              planStatus !== 'failed' &&
+              'border-border bg-muted/30',
+            className
+          )}
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex min-w-0 flex-1 items-center gap-2">
-              <Lightbulb className="h-4 w-4 shrink-0 text-primary" />
+              {planStatus === 'completed' ? (
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+              ) : planStatus === 'partial' ? (
+                <Target className="h-4 w-4 shrink-0 text-warning" />
+              ) : planStatus === 'failed' ? (
+                <XCircle className="h-4 w-4 shrink-0 text-destructive" />
+              ) : (
+                <Lightbulb className="h-4 w-4 shrink-0 text-primary" />
+              )}
               <div className="min-w-0">
                 <p className="font-mono text-xs font-medium uppercase tracking-wide">
                   Plan {planStatus?.replace('_', ' ')}
@@ -95,20 +116,27 @@ export function ChatActionBar({
                   {planStatus === 'stale' && 'Plan changed, needs review'}
                   {planStatus === 'approved' && 'Ready for execution'}
                   {planStatus === 'executing' && 'Build in progress'}
+                  {planStatus === 'partial' && 'Build stopped before all plan steps completed'}
+                  {planStatus === 'completed' && 'Build completed successfully'}
+                  {planStatus === 'failed' && 'Build failed or was stopped'}
                 </p>
               </div>
             </div>
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 max-sm:w-full">
-              {onPlanReview && planStatus !== 'executing' && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onPlanReview}
-                  className="h-7 rounded-none border-border px-2 font-mono text-[11px] uppercase tracking-wide"
-                >
-                  Review
-                </Button>
-              )}
+              {onPlanReview &&
+                planStatus !== 'executing' &&
+                planStatus !== 'partial' &&
+                planStatus !== 'completed' &&
+                planStatus !== 'failed' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onPlanReview}
+                    className="h-7 rounded-none border-border px-2 font-mono text-[11px] uppercase tracking-wide"
+                  >
+                    Review
+                  </Button>
+                )}
               {onPlanApprove && (planStatus === 'awaiting_review' || planStatus === 'stale') && (
                 <Button
                   variant="outline"
@@ -120,16 +148,20 @@ export function ChatActionBar({
                   Approve
                 </Button>
               )}
-              {onBuildFromPlan && (planStatus === 'approved' || planStatus === 'executing') && (
-                <Button
-                  size="sm"
-                  onClick={onBuildFromPlan}
-                  disabled={planBuildDisabled}
-                  className="h-7 rounded-none px-2 font-mono text-[11px] uppercase tracking-wide"
-                >
-                  Build
-                </Button>
-              )}
+              {onBuildFromPlan &&
+                (planStatus === 'approved' ||
+                  planStatus === 'executing' ||
+                  planStatus === 'partial' ||
+                  planStatus === 'failed') && (
+                  <Button
+                    size="sm"
+                    onClick={onBuildFromPlan}
+                    disabled={planBuildDisabled}
+                    className="h-7 rounded-none px-2 font-mono text-[11px] uppercase tracking-wide"
+                  >
+                    Build
+                  </Button>
+                )}
             </div>
           </div>
         </motion.div>

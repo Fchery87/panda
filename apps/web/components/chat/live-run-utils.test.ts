@@ -275,4 +275,34 @@ Plan auth migration
     expect(progress.activeStepIndex).toBe(1)
     expect(progress.statuses).toEqual(['completed', 'active', 'pending'])
   })
+
+  it('keeps unmatched steps pending when explicit plan progress metadata is partial', () => {
+    const planSteps = ['Step 1', 'Step 2', 'Step 3']
+
+    const progress = derivePlanProgress(planSteps, [
+      {
+        id: '1',
+        content: 'Mapped plan progress explicitly',
+        status: 'completed',
+        category: 'tool',
+        planStepIndex: 0,
+        planStepTitle: 'Step 1',
+        planTotalSteps: 3,
+        completedPlanStepIndexes: [0],
+        createdAt: 1,
+      },
+      {
+        id: '2',
+        content: 'Some unrelated unmatched progress',
+        status: 'running',
+        category: 'analysis',
+        createdAt: 2,
+      },
+    ])
+
+    expect(progress.totalSteps).toBe(3)
+    expect(progress.completedSteps).toBe(1)
+    expect(progress.activeStepIndex).toBe(-1)
+    expect(progress.statuses).toEqual(['completed', 'pending', 'pending'])
+  })
 })

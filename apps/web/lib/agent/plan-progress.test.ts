@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'bun:test'
-import { derivePlanProgressMetadata, parsePlanSteps } from './plan-progress'
+import {
+  derivePlanCompletionStatus,
+  derivePlanProgressMetadata,
+  parsePlanSteps,
+} from './plan-progress'
 
 describe('plan progress helpers', () => {
   it('parses numbered implementation plan steps', () => {
@@ -53,5 +57,43 @@ Ship the feature
       planTotalSteps: 3,
       completedPlanStepIndexes: [0],
     })
+  })
+
+  it('derives partial plan completion when a run finishes without full step coverage', () => {
+    expect(
+      derivePlanCompletionStatus({
+        planTotalSteps: 3,
+        completedPlanStepIndexes: [0, 2],
+        runOutcome: 'completed',
+      })
+    ).toBe('partial')
+
+    expect(
+      derivePlanCompletionStatus({
+        planTotalSteps: 3,
+        completedPlanStepIndexes: [0, 1, 2],
+        runOutcome: 'completed',
+      })
+    ).toBe('completed')
+  })
+
+  it('treats failed runs as failed regardless of plan coverage', () => {
+    expect(
+      derivePlanCompletionStatus({
+        planTotalSteps: 2,
+        completedPlanStepIndexes: [0, 1],
+        runOutcome: 'failed',
+      })
+    ).toBe('failed')
+  })
+
+  it('treats stopped runs as partial even when plan coverage is 100%', () => {
+    expect(
+      derivePlanCompletionStatus({
+        planTotalSteps: 2,
+        completedPlanStepIndexes: [0, 1],
+        runOutcome: 'stopped',
+      })
+    ).toBe('partial')
   })
 })

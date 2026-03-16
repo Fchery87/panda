@@ -24,6 +24,7 @@ export interface SessionSummary {
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'tool'
   content: string
+  mode?: string
   toolCalls?: Array<{
     name: string
     args: Record<string, unknown>
@@ -31,9 +32,19 @@ export interface ChatMessage {
   }>
 }
 
+export interface PromptHistoryMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 export interface GenerateSummaryOptions {
   messages: ChatMessage[]
   maxTokens?: number
+}
+
+export interface BuildPromptMessagesWithModeSummaryOptions {
+  currentMode: string
+  messages: ChatMessage[]
 }
 
 /**
@@ -112,6 +123,42 @@ export function formatSummaryForHandoff(summary: SessionSummary): string {
   }
 
   return output
+}
+
+export function buildPromptMessagesWithModeSummary(
+  options: BuildPromptMessagesWithModeSummaryOptions
+): PromptHistoryMessage[] {
+  const sameModeMessages = options.messages
+    .filter(
+      (message): message is ChatMessage & { role: 'user' | 'assistant' } =>
+        (message.role === 'user' || message.role === 'assistant') &&
+        message.mode === options.currentMode
+    )
+    .map((message) => ({ role: message.role, content: message.content }))
+
+  const crossModeMessages = options.messages.filter(
+    (message): message is ChatMessage & { role: 'user' | 'assistant' } =>
+      (message.role === 'user' || message.role === 'assistant') &&
+      typeof message.mode === 'string' &&
+      message.mode !== options.currentMode
+  )
+
+  if (crossModeMessages.length === 0) {
+    return sameModeMessages
+  }
+
+  const summarySections = buildCrossModeSummarySections(crossModeMessages)
+  if (summarySections.length === 0) {
+    return sameModeMessages
+  }
+
+  return [
+    {
+      role: 'user',
+      content: `[Cross-mode context summary]\n${summarySections.join('\n')}`,
+    },
+    ...sameModeMessages,
+  ]
 }
 
 /**
@@ -326,6 +373,127 @@ function extractKeyContext(messages: ChatMessage[]): string[] {
   }
 
   return context
+}
+
+function buildCrossModeSummarySections(
+  messages: Array<ChatMessage & { role: 'user' | 'assistant' }>
+): string[] {
+  const sections: string[] = []
+  const normalizedSectionItems = new Set<string>()
+  const assistantMessages = messages.filter((message) => message.role === 'assistant')
+  const userMessages = messages.filter(
+    (message): message is ChatMessage & { role: 'user' } => message.role === 'user'
+  )
+
+  const architectDecisions = dedupeSummaryItems(extractDecisions(assistantMessages))
+  if (architectDecisions.length > 0) {
+    architectDecisions.forEach((decision) =>
+      normalizedSectionItems.add(normalizeSummaryItem(decision))
+    )
+    sections.push(
+      `Architect decisions: ${architectDecisions
+        .slice(0, 2)
+        .map((decision) => truncateText(decision, 120))
+        .join('; ')}`
+    )
+  }
+
+  const keyContext = dedupeSummaryItems(
+    extractKeyContext(assistantMessages).filter(
+      (item) => !normalizedSectionItems.has(normalizeSummaryItem(item))
+    )
+  )
+  if (keyContext.length > 0) {
+    keyContext.forEach((item) => normalizedSectionItems.add(normalizeSummaryItem(item)))
+    sections.push(
+      `Key context: ${keyContext
+        .slice(0, 2)
+        .map((item) => truncateText(item, 120))
+        .join('; ')}`
+    )
+  }
+
+  const userConstraints = dedupeSummaryItems(
+    extractUserConstraints(userMessages).filter(
+      (item) => !normalizedSectionItems.has(normalizeSummaryItem(item))
+    )
+  )
+  if (userConstraints.length > 0) {
+    sections.push(
+      `User constraints: ${userConstraints
+        .slice(0, 2)
+        .map((constraint) => truncateText(constraint, 120))
+        .join('; ')}`
+    )
+  }
+
+  return sections.slice(0, 3)
+}
+
+function extractUserConstraints(messages: Array<ChatMessage & { role: 'user' }>): string[] {
+  const constraints: string[] = []
+
+  for (const message of messages) {
+    const sentences = message.content
+      .split(/(?<=[.!?])\s+/)
+      .map((sentence) => sentence.trim())
+      .filter(Boolean)
+
+    for (const sentence of sentences) {
+      if (isExploratoryQuestion(sentence)) {
+        continue
+      }
+
+      if (
+        /(must|should|need|needs|required|constraint|preserve|avoid|keep|support|do not|don't)/i.test(
+          sentence
+        )
+      ) {
+        const normalized = sentence
+          .replace(/^(we\s+)?(must|should|need|needs|required to)\s+/i, '')
+          .replace(/^(please\s+)?/i, '')
+          .replace(/\.$/, '')
+          .replace(/\s+/g, ' ')
+          .trim()
+        if (!constraints.includes(normalized)) {
+          constraints.push(normalized)
+        }
+      }
+    }
+  }
+
+  return constraints
+}
+
+function isExploratoryQuestion(sentence: string): boolean {
+  const trimmed = sentence.trim()
+  if (!trimmed.endsWith('?')) {
+    return false
+  }
+
+  return /^(how|what|why|when|where|should|could|would|can|do|does|is|are)\b/i.test(trimmed)
+}
+
+function dedupeSummaryItems(items: string[]): string[] {
+  const seen = new Set<string>()
+  const deduped: string[] = []
+
+  for (const item of items) {
+    const normalized = normalizeSummaryItem(item)
+    if (seen.has(normalized)) continue
+    seen.add(normalized)
+    deduped.push(item)
+  }
+
+  return deduped
+}
+
+function normalizeSummaryItem(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 /**

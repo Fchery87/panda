@@ -6,6 +6,7 @@
 
 import { describe, test, expect } from 'bun:test'
 import {
+  buildPromptMessagesWithModeSummary,
   generateStructuredSummary,
   formatSummaryForHandoff,
   type ChatMessage,
@@ -333,5 +334,138 @@ describe('formatSummaryForHandoff', () => {
     expect(formatted).toContain('Decisions Made')
     expect(formatted).toContain('Next Steps')
     expect(formatted).toContain('Key Context')
+  })
+})
+
+describe('buildPromptMessagesWithModeSummary', () => {
+  test('injects deterministic cross-mode summary without leaking raw other-mode transcript', () => {
+    const result = buildPromptMessagesWithModeSummary({
+      currentMode: 'build',
+      messages: [
+        {
+          role: 'user',
+          content: 'Need the dashboard to support offline drafts.',
+          mode: 'architect',
+        },
+        {
+          role: 'assistant',
+          content:
+            'We decided to keep the draft store in Convex and important: preserve conflict resolution rules.',
+          mode: 'architect',
+        },
+        {
+          role: 'user',
+          content: 'Implement the draft save button.',
+          mode: 'build',
+        },
+        {
+          role: 'assistant',
+          content: 'I will update the toolbar component next.',
+          mode: 'build',
+        },
+      ],
+    })
+
+    expect(result).toHaveLength(3)
+    expect(result[0]?.role).toBe('user')
+    expect(result[0]?.content).toContain('[Cross-mode context summary]')
+    expect(result[0]?.content).toContain('Architect decisions')
+    expect(result[0]?.content).toContain('keep the draft store in Convex')
+    expect(result[0]?.content).toContain('User constraints')
+    expect(result[0]?.content).toContain('offline drafts')
+    expect(result[0]?.content).not.toContain('Need the dashboard to support offline drafts.')
+    expect(result[1]?.content).toBe('Implement the draft save button.')
+    expect(result[2]?.content).toBe('I will update the toolbar component next.')
+  })
+
+  test('preserves same-mode transcript when no other-mode context exists', () => {
+    const result = buildPromptMessagesWithModeSummary({
+      currentMode: 'build',
+      messages: [
+        {
+          role: 'user',
+          content: 'Implement the settings form.',
+          mode: 'build',
+        },
+        {
+          role: 'assistant',
+          content: 'I will modify the settings page.',
+          mode: 'build',
+        },
+      ],
+    })
+
+    expect(result).toEqual([
+      { role: 'user', content: 'Implement the settings form.' },
+      { role: 'assistant', content: 'I will modify the settings page.' },
+    ])
+  })
+
+  test('does not promote unresolved architect questions into user constraints', () => {
+    const result = buildPromptMessagesWithModeSummary({
+      currentMode: 'build',
+      messages: [
+        {
+          role: 'user',
+          content: 'How should we support offline drafts?',
+          mode: 'architect',
+        },
+        {
+          role: 'user',
+          content: 'Should we keep optimistic sync?',
+          mode: 'architect',
+        },
+        {
+          role: 'assistant',
+          content: 'We decided to keep draft persistence in Convex.',
+          mode: 'architect',
+        },
+      ],
+    })
+
+    expect(result[0]?.content).toContain('Architect decisions')
+    expect(result[0]?.content).not.toContain('User constraints')
+    expect(result[0]?.content).not.toContain('How should we support offline drafts')
+    expect(result[0]?.content).not.toContain('Should we keep optimistic sync')
+  })
+
+  test('deduplicates overlapping assistant summary content across sections', () => {
+    const result = buildPromptMessagesWithModeSummary({
+      currentMode: 'build',
+      messages: [
+        {
+          role: 'assistant',
+          content:
+            'We decided to keep the draft store in Convex. Important: keep the draft store in Convex.',
+          mode: 'architect',
+        },
+      ],
+    })
+
+    expect(result[0]?.content).toContain('Architect decisions')
+    expect(result[0]?.content).not.toContain('Key context:')
+    expect(result[0]?.content?.match(/keep the draft store in Convex/g)?.length).toBe(1)
+  })
+
+  test('deduplicates overlap between key context and later user constraints', () => {
+    const result = buildPromptMessagesWithModeSummary({
+      currentMode: 'build',
+      messages: [
+        {
+          role: 'assistant',
+          content: 'Important: preserve conflict resolution rules.',
+          mode: 'architect',
+        },
+        {
+          role: 'user',
+          content: 'We must preserve conflict resolution rules.',
+          mode: 'architect',
+        },
+      ],
+    })
+
+    expect(result[0]?.content).toContain('Key context: preserve conflict resolution rules')
+    expect(result[0]?.content).not.toContain('User constraints:')
+    expect(result[0]?.content?.match(/preserve conflict resolution rules/g)?.length).toBe(1)
   })
 })

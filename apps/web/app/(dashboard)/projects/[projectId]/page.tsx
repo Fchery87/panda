@@ -53,6 +53,7 @@ import type { Message, MessageAnnotationInfo, PersistedRunEventInfo } from '@/co
 import { canApprovePlan, canBuildFromPlan, type PlanStatus } from '@/lib/chat/planDraft'
 import { isRateLimitError, getUserFacingAgentError } from '@/lib/chat/error-messages'
 import { resolveBackgroundExecutionPolicy } from '@/lib/chat/backgroundExecution'
+import { derivePlanCompletionStatus } from '@/lib/agent/plan-progress'
 import type { AgentPolicy } from '@/lib/agent/automationPolicy'
 import { normalizeChatMode, type ChatMode } from '@/lib/agent/prompt-library'
 import type { LLMProvider } from '@/lib/llm/types'
@@ -180,10 +181,14 @@ export default function ProjectPage() {
   const lastAssistantMessageIdRef = useRef<string | null>(null)
   const seenPendingArtifactIdsRef = useRef<Set<string>>(new Set())
 
-  useHotkeys('mod+i', (e) => {
-    e.preventDefault()
-    setIsComposerOpen(prev => !prev)
-  }, { enableOnFormTags: ['INPUT', 'TEXTAREA'] })
+  useHotkeys(
+    'mod+i',
+    (e) => {
+      e.preventDefault()
+      setIsComposerOpen((prev) => !prev)
+    },
+    { enableOnFormTags: ['INPUT', 'TEXTAREA'] }
+  )
 
   // Fetch project data
   const project = useQuery(api.projects.get, { id: projectId })
@@ -254,6 +259,22 @@ export default function ProjectPage() {
         id: activeChat._id,
         planBuildRunId: runId,
         planStatus: 'executing',
+      })
+    },
+    onRunCompleted: async ({ runId, outcome, completedPlanStepIndexes, planTotalSteps }) => {
+      if (!activeChat?._id || !activeChat.planBuildRunId) return
+      if (activeChat.planBuildRunId !== runId) return
+      if (activeChat.planStatus !== 'executing') return
+
+      const nextPlanStatus = derivePlanCompletionStatus({
+        planTotalSteps,
+        completedPlanStepIndexes,
+        runOutcome: outcome,
+      })
+
+      await updateChatMutation({
+        id: activeChat._id,
+        planStatus: nextPlanStatus,
       })
     },
   })
@@ -979,20 +1000,20 @@ export default function ProjectPage() {
             const prompt = `\`\`\`${ext}\n// ${filePath}\n${selection}\n\`\`\``
             setContextualPrompt(prompt)
             if (!isChatPanelOpen) {
-               setIsChatPanelOpen(true)
+              setIsChatPanelOpen(true)
             }
             if (isMobileLayout) {
-               setMobilePrimaryPanel('chat')
+              setMobilePrimaryPanel('chat')
             }
           }}
           onInlineChat={async (prompt, selection, filePath) => {
             try {
               const result = await agent.runEvalScenario({
                 prompt: `The user wants to edit ${filePath}.\n${selection ? `Selected text:\n\`\`\`\n${selection}\n\`\`\`\n` : ''}User request: ${prompt}\n\nReturn ONLY the new code that should replace the selected text (or be inserted at the cursor). Do NOT wrap it in markdown block quotes. Do NOT add any explanations.`,
-                mode: 'code'
+                mode: 'code',
               })
               if (result.error) throw new Error(result.error)
-              
+
               let output = result.output
               if (output.startsWith('```')) {
                 const lines = output.split('\n')

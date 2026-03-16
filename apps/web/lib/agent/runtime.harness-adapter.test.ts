@@ -149,6 +149,80 @@ describe('Harness adapter guardrail parity', () => {
     ).toBe(true)
   })
 
+  it('surfaces harness compaction events as progress steps', async () => {
+    const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }
+    const provider: LLMProvider = {
+      name: 'fake',
+      config,
+      async listModels() {
+        return []
+      },
+      async complete() {
+        return {
+          message: {
+            role: 'assistant',
+            content: 'Compaction summary',
+          },
+          finishReason: 'stop',
+          usage: {
+            promptTokens: 1,
+            completionTokens: 1,
+            totalTokens: 2,
+          },
+          model: 'fake-model',
+        }
+      },
+      async *completionStream(_options: CompletionOptions): AsyncGenerator<StreamChunk> {
+        yield { type: 'text', content: 'Done after compaction.' }
+        yield makeFinish()
+      },
+    }
+
+    const hugePreviousMessages = Array.from({ length: 8 }, (_, index) => ({
+      role: 'user' as const,
+      content: index < 4 ? 'x'.repeat(180_000) : `small-${index}`,
+    }))
+
+    const events: any[] = []
+    for await (const evt of streamAgent(
+      provider,
+      {
+        projectId: 'p',
+        chatId: 'c',
+        userId: 'u',
+        chatMode: 'build',
+        provider: 'openai',
+        previousMessages: hugePreviousMessages,
+        userMessage: 'Summarize the compacted context and continue',
+      },
+      makeToolContext(),
+      { maxIterations: 3 }
+    )) {
+      events.push(evt)
+    }
+
+    const compactionProgressEvents = events.filter(
+      (event) => event.type === 'progress_step' && event.progressCategory === 'analysis'
+    )
+
+    expect(
+      compactionProgressEvents.some(
+        (event) =>
+          event.progressStatus === 'running' &&
+          typeof event.content === 'string' &&
+          event.content.includes('Compacting context')
+      )
+    ).toBe(true)
+    expect(
+      compactionProgressEvents.some(
+        (event) =>
+          event.progressStatus === 'completed' &&
+          typeof event.content === 'string' &&
+          event.content.includes('Compacted')
+      )
+    ).toBe(true)
+  })
+
   it('executes search_codebase through the harness adapter executor path', async () => {
     let callCount = 0
     const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }

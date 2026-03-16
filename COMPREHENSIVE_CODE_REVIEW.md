@@ -257,13 +257,15 @@ bun update
 
 #### Weaknesses:
 
-❌ **Permission System Implementation Incomplete**
+⚠️ **Permission System Documentation Drift**
 
-- Risk interrupt layer defined but UI never calls `harnessPermissions.respond()`
-- Results in 60-second timeout for write_files and run_command
-- Workaround applied: `harnessEnableRiskInterrupts: false` in useAgent.ts
-- **Recommendation:** Complete the risk interrupt UI or remove the incomplete
-  system
+- The risk interrupt path is now wired through the shared permission manager and
+  `PermissionDialog`
+- `useAgent.ts` currently enables `harnessEnableRiskInterrupts: true`
+- The remaining gap is UX clarity and test/documentation alignment, not missing
+  interrupt plumbing
+- **Recommendation:** Keep the shared interrupt path, document it accurately,
+  and improve approval UX where needed
 
 ❌ **No Specification Drift Detection**
 
@@ -453,12 +455,13 @@ instances):
 
 ### Priority 4: Architecture Improvements (Medium-term)
 
-**P4-1: Complete Risk Interrupt System**
+**P4-1: Tighten Risk Interrupt UX**
 
-- Implement the missing `harnessPermissions.respond()` in UI
-- Remove the `harnessEnableRiskInterrupts: false` workaround
-- Create modal/dialog for user approval of risky operations
-- Test all risk tiers (high, critical)
+- Keep the current shared permission / interrupt path
+- Improve approval UX and copy for risky operations
+- Verify all risk tiers (high, critical) through the existing dialog flow
+- Remove stale documentation that still describes the old disabled-workaround
+  state
 
 **Files Involved:**
 
@@ -833,7 +836,7 @@ Score:** 98-99/100
 - [ ] Review and remove console.log statements in lib/
 - [ ] Configure test coverage reporting
 - [ ] Add gitleaks to security checks
-- [ ] Implement risk interrupt UI
+- [ ] Tighten risk interrupt UX and remove stale documentation
 - [ ] Enable spec engine and add UI for spec drift detection
 - [ ] Write 20-30 component tests for critical UI
 - [ ] Integrate E2E tests into validation pipeline

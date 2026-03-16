@@ -292,6 +292,10 @@ export function RunProgressPanel({
               'shadow-sharp-sm flex flex-wrap items-center gap-1.5 border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.2em] transition-colors hover:bg-muted/50',
               planStatus === 'approved' && 'border-primary/50 bg-primary/5 text-primary',
               planStatus === 'executing' && 'border-primary/50 bg-primary/5 text-primary',
+              planStatus === 'partial' && 'border-warning/50 bg-warning/5 text-warning',
+              planStatus === 'completed' &&
+                'border-emerald-500/50 bg-emerald-500/5 text-emerald-500',
+              planStatus === 'failed' && 'border-destructive/50 bg-destructive/5 text-destructive',
               planStatus === 'awaiting_review' && 'border-border bg-muted/50 text-muted-foreground',
               planStatus === 'stale' && 'border-warning/50 bg-warning/5 text-warning',
               planStatus === 'drafting' && 'border-border bg-muted/50 text-muted-foreground'

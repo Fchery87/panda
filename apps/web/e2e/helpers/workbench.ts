@@ -81,7 +81,7 @@ export async function openWorkbenchProjectFixture(
     autoRunCommands?: boolean
     seedRuntimeCheckpoint?: boolean
     planDraft?: string
-    planStatus?: 'awaiting_review' | 'approved' | 'stale' | 'executing'
+    planStatus?: 'awaiting_review' | 'approved' | 'stale' | 'executing' | 'completed' | 'failed'
   }
 ): Promise<{ projectId: string; chatId?: string; filePath?: string; sessionID?: string }> {
   const params = new URLSearchParams({

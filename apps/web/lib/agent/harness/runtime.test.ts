@@ -873,6 +873,67 @@ describe('harness Runtime', () => {
     ).toBe(false)
   })
 
+  test('does not emit complete after maximum-step exhaustion', async () => {
+    resetHarnessTestState()
+
+    const provider: LLMProvider = {
+      ...createProvider(() => {}, 'tool_calls'),
+      async *completionStream() {
+        yield {
+          type: 'tool_call',
+          toolCall: {
+            id: 'tc-max-steps',
+            type: 'function',
+            function: {
+              name: 'read_files',
+              arguments: JSON.stringify({ paths: ['src/repeat.ts'] }),
+            },
+          },
+        }
+        yield {
+          type: 'finish',
+          finishReason: 'tool_calls',
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        }
+      },
+    }
+
+    const runtime = new Runtime(
+      provider,
+      new Map([
+        [
+          'read_files',
+          async () => {
+            return { output: 'still looping' }
+          },
+        ],
+      ]),
+      { maxSteps: 1 }
+    )
+
+    const userMessage = createUserMessage({
+      id: 'msg-user-max-steps',
+      sessionID: 'session-max-steps',
+      text: 'Keep going forever',
+      agent: 'build',
+    })
+
+    const events = []
+    for await (const event of runtime.run(userMessage.sessionID, userMessage)) {
+      events.push(event)
+    }
+
+    expect(
+      events.some(
+        (event) =>
+          event.type === 'error' &&
+          typeof event.error === 'string' &&
+          event.error.includes('maximum steps')
+      )
+    ).toBe(true)
+    expect(events.some((event) => event.type === 'complete')).toBe(false)
+  })
+
   test('executes task tool via core subtask queue and replays result into next step', async () => {
     resetHarnessTestState()
     let streamCalls = 0

@@ -39,7 +39,7 @@ export function ComposerOverlay({ isOpen, onClose, onSubmit, isStreaming }: Comp
             className="fixed inset-0 z-50 bg-background/40 backdrop-blur-sm"
             onClick={onClose}
           />
-          
+
           {/* Composer floating window */}
           <motion.div
             ref={containerRef}
@@ -52,7 +52,9 @@ export function ComposerOverlay({ isOpen, onClose, onSubmit, isStreaming }: Comp
             <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
               <div className="flex items-center gap-2">
                 <Blocks className="h-4 w-4 text-primary" />
-                <span className="font-mono text-xs uppercase tracking-wider">Multi-File Composer</span>
+                <span className="font-mono text-xs uppercase tracking-wider">
+                  Multi-File Composer
+                </span>
               </div>
               <Button
                 variant="ghost"
@@ -63,8 +65,8 @@ export function ComposerOverlay({ isOpen, onClose, onSubmit, isStreaming }: Comp
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            
-            <div className="p-4 bg-background">
+
+            <div className="bg-background p-4">
               <ChatInput
                 onSendMessage={(msg, mode, ctx) => {
                   onSubmit(msg, ctx)

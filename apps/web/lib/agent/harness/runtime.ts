@@ -157,6 +157,9 @@ export type RuntimeEventType =
 export interface RuntimeEvent {
   type: RuntimeEventType
   content?: string
+  compaction?: {
+    phase: 'start' | 'deferred' | 'complete'
+  }
   reasoningContent?: string
   toolCall?: ToolCall
   toolResult?: {
@@ -543,20 +546,16 @@ export class Runtime {
         )
       }
 
-      let completedSuccessfully = this.state.isComplete
       if (!this.state.isComplete) {
         await this.saveCheckpoint(agent.name, 'error')
         yield {
           type: 'error',
           error: `Agent reached maximum steps (${maxSteps}) without completing`,
         }
-      } else {
-        completedSuccessfully = true
+        return
       }
 
-      if (completedSuccessfully) {
-        await this.saveCheckpoint(agent.name, 'complete')
-      }
+      await this.saveCheckpoint(agent.name, 'complete')
 
       // SpecNative: Post-execution verification
       if (this.state.activeSpec) {
@@ -1771,7 +1770,11 @@ export class Runtime {
   private async *performCompaction(_agent: AgentConfig): AsyncGenerator<RuntimeEvent, boolean> {
     if (!this.state) return false
 
-    yield { type: 'compaction', content: 'Compacting context...' }
+    yield {
+      type: 'compaction',
+      content: 'Compacting context...',
+      compaction: { phase: 'start' },
+    }
 
     const compactionPromise = compaction.compact(
       this.state.sessionID,
@@ -1823,6 +1826,7 @@ export class Runtime {
         content:
           `Compaction budget exceeded (${compactionBudgetMs}ms); ` +
           'deferring compaction and continuing step',
+        compaction: { phase: 'deferred' },
       }
       return false
     }
@@ -1836,6 +1840,7 @@ export class Runtime {
       yield {
         type: 'compaction',
         content: `Compacted ${result.messagesCompacted} messages (${result.tokensBefore} → ${result.tokensAfter} tokens)`,
+        compaction: { phase: 'complete' },
       }
     }
 

@@ -27,7 +27,10 @@ export const PlanStatus = v.union(
   v.literal('awaiting_review'),
   v.literal('approved'),
   v.literal('stale'),
-  v.literal('executing')
+  v.literal('executing'),
+  v.literal('partial'),
+  v.literal('completed'),
+  v.literal('failed')
 )
 
 export const TokenUsage = v.object({

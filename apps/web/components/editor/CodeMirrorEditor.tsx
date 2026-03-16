@@ -76,7 +76,7 @@ export function CodeMirrorEditor({
     selectedText: string
     position: { top: number; left: number }
   } | null>(null)
-  
+
   const [diffState, setDiffState] = useState<{
     originalContent: string
     isPending: boolean
@@ -123,13 +123,13 @@ export function CodeMirrorEditor({
       if (result !== null && editorViewRef.current) {
         const view = editorViewRef.current
         const selection = view.state.selection.main
-        
+
         // Save original document for the merge view
         setDiffState({
           originalContent: view.state.doc.toString(),
-          isPending: true
+          isPending: true,
         })
-        
+
         view.dispatch({
           changes: { from: selection.from, to: selection.to, insert: result },
         })
@@ -148,18 +148,22 @@ export function CodeMirrorEditor({
     }
   })
 
-  useHotkeys('mod+l', (e) => {
-    e.preventDefault()
-    if (!onContextualChat) return
-    const view = editorViewRef.current
-    if (!view) return
+  useHotkeys(
+    'mod+l',
+    (e) => {
+      e.preventDefault()
+      if (!onContextualChat) return
+      const view = editorViewRef.current
+      if (!view) return
 
-    const selection = view.state.selection.main
-    if (selection.from === selection.to) return
+      const selection = view.state.selection.main
+      if (selection.from === selection.to) return
 
-    const selectedText = view.state.doc.sliceString(selection.from, selection.to)
-    onContextualChat(selectedText, filePath)
-  }, { enableOnFormTags: ['INPUT', 'TEXTAREA'] })
+      const selectedText = view.state.doc.sliceString(selection.from, selection.to)
+      onContextualChat(selectedText, filePath)
+    },
+    { enableOnFormTags: ['INPUT', 'TEXTAREA'] }
+  )
 
   useEffect(() => {
     if (!jumpTo) return
@@ -209,7 +213,7 @@ export function CodeMirrorEditor({
     if (diffState && editorViewRef.current) {
       const view = editorViewRef.current
       view.dispatch({
-        changes: { from: 0, to: view.state.doc.length, insert: diffState.originalContent }
+        changes: { from: 0, to: view.state.doc.length, insert: diffState.originalContent },
       })
       setDiffState(null)
     }
@@ -226,7 +230,7 @@ export function CodeMirrorEditor({
       EditorView.theme({
         '.cm-deletedChunk': { backgroundColor: 'rgba(255, 0, 0, 0.1) !important' },
         '.cm-insertedChunk': { backgroundColor: 'rgba(0, 255, 0, 0.1) !important' },
-      })
+      }),
     ]
   }, [diffState])
 
@@ -275,13 +279,25 @@ export function CodeMirrorEditor({
         />
       )}
       {diffState?.isPending && (
-        <div className="absolute top-4 right-6 z-10 flex items-center gap-2 rounded-md border border-border bg-background p-1.5 shadow-lg">
-          <span className="px-2 font-mono text-xs font-semibold text-muted-foreground">Review Inline Diff</span>
-          <Button variant="ghost" size="sm" onClick={handleRejectDiff} className="h-7 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive">
+        <div className="absolute right-6 top-4 z-10 flex items-center gap-2 rounded-md border border-border bg-background p-1.5 shadow-lg">
+          <span className="px-2 font-mono text-xs font-semibold text-muted-foreground">
+            Review Inline Diff
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleRejectDiff}
+            className="h-7 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+          >
             <X className="mr-1.5 h-3.5 w-3.5" />
             Reject
           </Button>
-          <Button variant="default" size="sm" onClick={handleAcceptDiff} className="h-7 bg-primary text-xs text-primary-foreground hover:bg-primary/90">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleAcceptDiff}
+            className="h-7 bg-primary text-xs text-primary-foreground hover:bg-primary/90"
+          >
             <Check className="mr-1.5 h-3.5 w-3.5" />
             Accept
           </Button>
