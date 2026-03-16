@@ -29,6 +29,13 @@ import {
   type ConvexClient as AgentConvexClient,
 } from '../lib/agent'
 import type { FormalSpecification } from '../lib/agent/spec/types'
+import {
+  specToCreateInput,
+  specToUpdateInput,
+  resolveSpecStatus,
+  SpecPersistenceState,
+  createVerificationUpdateInput,
+} from '../lib/agent/spec/persistence'
 import { getUserFacingAgentError } from '../lib/chat/error-messages'
 import { extractTargetFilePaths } from '../components/chat/live-run-utils'
 import { buildHarnessSessionPermissions, type AgentPolicy } from '../lib/agent/automationPolicy'
@@ -272,6 +279,11 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const completeRun = useMutation(api.agentRuns.complete)
   const failRun = useMutation(api.agentRuns.fail)
   const stopRun = useMutation(api.agentRuns.stop)
+
+  // Specification persistence
+  const createSpecMutation = useMutation(api.specifications.create)
+  const updateSpecMutation = useMutation(api.specifications.update)
+  const specPersistenceRef = useRef(new SpecPersistenceState())
 
   // Memory bank
   const memoryBankContent = useQuery(
@@ -1146,6 +1158,22 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                   content: event.spec.intent.goal,
                   status: event.spec.status,
                 })
+
+                // Persist spec to Convex if not already persisted
+                if (projectId && chatId && !specPersistenceRef.current.has(event.spec.id)) {
+                  const specInput = specToCreateInput(event.spec, {
+                    projectId: projectId as Id<'projects'>,
+                    chatId: chatId as Id<'chats'>,
+                    runId: runIdRef.current ?? undefined,
+                  })
+                  void createSpecMutation(specInput)
+                    .then((specId) => {
+                      specPersistenceRef.current.set(event.spec!.id, specId)
+                    })
+                    .catch((err) => {
+                      appLog.error('[useAgent] Failed to persist spec_pending_approval:', err)
+                    })
+                }
               }
               break
             case 'spec_generated': {
@@ -1157,6 +1185,34 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                   content: event.spec.intent.goal,
                   status: event.spec.status,
                 })
+
+                // Persist spec to Convex if not already persisted
+                if (projectId && chatId && !specPersistenceRef.current.has(event.spec.id)) {
+                  const specInput = specToCreateInput(event.spec, {
+                    projectId: projectId as Id<'projects'>,
+                    chatId: chatId as Id<'chats'>,
+                    runId: runIdRef.current ?? undefined,
+                  })
+                  void createSpecMutation(specInput)
+                    .then((specId) => {
+                      specPersistenceRef.current.set(event.spec!.id, specId)
+                    })
+                    .catch((err) => {
+                      appLog.error('[useAgent] Failed to persist spec_generated:', err)
+                    })
+                } else if (specPersistenceRef.current.has(event.spec.id)) {
+                  // Update status if already persisted
+                  const convexId = specPersistenceRef.current.get(event.spec.id)
+                  if (convexId) {
+                    const newStatus = resolveSpecStatus(event.spec, 'spec_generated')
+                    void updateSpecMutation({
+                      specId: convexId,
+                      updates: { status: newStatus },
+                    }).catch((err) => {
+                      appLog.error('[useAgent] Failed to update spec_generated status:', err)
+                    })
+                  }
+                }
               }
               break
             }
@@ -1164,6 +1220,19 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               setPendingSpec(null)
               if (event.spec) {
                 setCurrentSpec(event.spec)
+
+                // Update spec with verification results
+                const convexId = specPersistenceRef.current.get(event.spec.id)
+                if (convexId) {
+                  const verificationResults = event.verification?.results || []
+                  const updates = createVerificationUpdateInput(event.spec, verificationResults)
+                  void updateSpecMutation({
+                    specId: convexId,
+                    updates,
+                  }).catch((err) => {
+                    appLog.error('[useAgent] Failed to update spec_verification:', err)
+                  })
+                }
               }
               void appendRunEvent({
                 type: 'spec_verification',
@@ -1322,6 +1391,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               setPendingSpec(null)
               setStatus('complete')
               isRunningRef.current = false
+              specPersistenceRef.current.clear()
               if (event.usage) {
                 runUsage = {
                   promptTokens: toFiniteNumber(event.usage.promptTokens),
@@ -1424,6 +1494,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               setStatus('error')
               setError(userFacing.description)
               isRunningRef.current = false
+              specPersistenceRef.current.clear()
               await appendRunEvent(
                 {
                   type: 'error',
@@ -1455,6 +1526,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           setPendingSpec(null)
           setCurrentSpec(null)
           isRunningRef.current = false
+          specPersistenceRef.current.clear()
           await appendRunEvent(
             {
               type: 'spec_cancelled',
@@ -1476,6 +1548,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         setStatus('error')
         setError(userFacing.description)
         isRunningRef.current = false
+        specPersistenceRef.current.clear()
         await appendRunEvent(
           {
             type: 'error',
@@ -1534,6 +1607,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       automationPolicy,
       onRunCreated,
       onRunCompleted,
+      createSpecMutation,
+      updateSpecMutation,
     ]
   )
 
