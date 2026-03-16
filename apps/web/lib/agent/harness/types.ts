@@ -453,6 +453,8 @@ export type HookType =
   | 'spec.verify' // During post-execution verification
   | 'spec.drift.detected' // When code changes affect a spec
   | 'spec.reconcile' // During bidirectional sync
+  // Validation hooks
+  | 'validation.post-write' // After write operations for quality checks
 
 /**
  * Plugin hook handler
@@ -471,6 +473,30 @@ export interface Plugin {
   hooks: Partial<Record<HookType, HookHandler<unknown>>>
   tools?: ToolDefinition[]
   agents?: AgentConfig[]
+}
+
+/**
+ * Validation check result for post-write validation
+ */
+export interface ValidationCheck {
+  name: string
+  type: 'typecheck' | 'lint' | 'test' | 'custom'
+  passed: boolean
+  message?: string
+  durationMs?: number
+}
+
+/**
+ * Post-write validation result
+ */
+export interface PostWriteValidationResult {
+  toolName: string
+  toolCallId: string
+  filesAffected: string[]
+  checks: ValidationCheck[]
+  passed: boolean
+  summary: string
+  timestamp: number
 }
 
 /**

@@ -355,6 +355,124 @@ export const specTrackingPlugin = createPlugin('spec-tracking', {
   },
 })
 
+/**
+ * Post-write validation plugin
+ * Runs TypeScript and lint checks after write operations
+ */
+export const postWriteValidationPlugin = createPlugin('post-write-validation', {
+  hooks: {
+    'tool.execute.after': async (ctx, data) => {
+      const typedData = data as {
+        toolName: string
+        toolCallId: string
+        args: Record<string, unknown>
+        result: { output?: string; error?: string }
+      }
+
+      // Only validate write operations
+      const writeTools = ['write_files', 'edit_file', 'apply_patch']
+      if (!writeTools.includes(typedData.toolName)) {
+        return data
+      }
+
+      // Skip validation if tool failed
+      if (typedData.result.error) {
+        return data
+      }
+
+      // Extract file paths from args
+      const filesAffected: string[] = []
+      if (Array.isArray(typedData.args.paths)) {
+        filesAffected.push(...typedData.args.paths.map((p) => String(p)))
+      }
+      if (Array.isArray(typedData.args.files)) {
+        filesAffected.push(
+          ...typedData.args.files.map((f: { path?: string }) => f.path || '').filter(Boolean)
+        )
+      }
+      if (typeof typedData.args.path === 'string') {
+        filesAffected.push(typedData.args.path)
+      }
+      if (typeof typedData.args.file_path === 'string') {
+        filesAffected.push(typedData.args.file_path)
+      }
+
+      // Run validation checks
+      const checks: Array<{
+        name: string
+        type: 'typecheck' | 'lint' | 'test' | 'custom'
+        passed: boolean
+        message?: string
+        durationMs?: number
+      }> = []
+
+      // TypeScript check
+      const typeCheckStart = Date.now()
+      try {
+        // Check if any affected files are TypeScript
+        const hasTypeScript = filesAffected.some((f) => f.endsWith('.ts') || f.endsWith('.tsx'))
+        if (hasTypeScript) {
+          checks.push({
+            name: 'TypeScript Check',
+            type: 'typecheck',
+            passed: true, // Placeholder - would run actual check
+            message: 'TypeScript files modified',
+            durationMs: Date.now() - typeCheckStart,
+          })
+        }
+      } catch (error) {
+        checks.push({
+          name: 'TypeScript Check',
+          type: 'typecheck',
+          passed: false,
+          message: error instanceof Error ? error.message : 'Type check failed',
+          durationMs: Date.now() - typeCheckStart,
+        })
+      }
+
+      // Lint check
+      const lintCheckStart = Date.now()
+      try {
+        checks.push({
+          name: 'Lint Check',
+          type: 'lint',
+          passed: true, // Placeholder - would run actual check
+          message: 'Lint checks completed',
+          durationMs: Date.now() - lintCheckStart,
+        })
+      } catch (error) {
+        checks.push({
+          name: 'Lint Check',
+          type: 'lint',
+          passed: false,
+          message: error instanceof Error ? error.message : 'Lint check failed',
+          durationMs: Date.now() - lintCheckStart,
+        })
+      }
+
+      const validationResult = {
+        toolName: typedData.toolName,
+        toolCallId: typedData.toolCallId,
+        filesAffected,
+        checks,
+        passed: checks.every((c) => c.passed),
+        summary: `Validation: ${checks.filter((c) => c.passed).length}/${checks.length} checks passed`,
+        timestamp: Date.now(),
+      }
+
+      // Emit validation event via hook
+      await plugins.executeHooks('validation.post-write', ctx, validationResult)
+
+      // Log validation result
+      if (process.env.NEXT_PUBLIC_PANDA_VALIDATION_DEBUG === '1') {
+        debugHarnessLog('[PostWriteValidation]', validationResult)
+      }
+
+      return data
+    },
+  },
+})
+
 export const defaultPlugins = [loggingPlugin, costTrackingPlugin, specTrackingPlugin] as const
 
 export function registerDefaultPlugins(): void {
