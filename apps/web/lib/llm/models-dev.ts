@@ -20,18 +20,32 @@ export interface ModelsDevModel {
   pricing?: {
     input: number
     output: number
+    cache_read?: number
+    cache_write?: number
   }
   capabilities?: string[]
   top_provider?: {
     max_completion_tokens?: number
     context_length?: number
   }
+  tool_call?: boolean
+  reasoning?: boolean
+  structured_output?: boolean
+  vision?: boolean
+  attachment?: boolean
+  temperature?: boolean
+  knowledge?: string
+  release_date?: string
+  status?: 'alpha' | 'beta' | 'deprecated'
 }
 
 export interface ModelsDevProvider {
   provider_id: string
   provider_name: string
   base_url?: string
+  env?: string[]
+  npm?: string
+  doc?: string
   models: Record<string, ModelsDevModel>
 }
 
