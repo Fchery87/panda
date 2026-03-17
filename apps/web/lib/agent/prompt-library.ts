@@ -88,6 +88,34 @@ export interface PromptContext {
     | 'custom'
   /** Model name for token estimation */
   model?: string
+  /** Active specification for execution awareness */
+  activeSpec?: {
+    id: string
+    version: number
+    tier: string
+    status: string
+    intent: {
+      goal: string
+      userMessage: string
+    }
+    constraints: Array<{
+      type: string
+      description: string
+    }>
+    acceptanceCriteria: Array<{
+      id: string
+      description: string
+      priority: 'high' | 'medium' | 'low'
+    }>
+    plan: {
+      steps: Array<{
+        id: string
+        description: string
+        files: string[]
+      }>
+      files: string[]
+    }
+  }
 }
 
 const ASK_SYSTEM_PROMPT = `You are Panda.ai, a senior engineer helping a teammate understand their codebase.
@@ -262,6 +290,28 @@ export function getPromptForMode(context: PromptContext): CompletionMessage[] {
 
   if (brainstormEnabled) {
     systemPrompt = `${systemPrompt}${ARCHITECT_BRAINSTORM_PROTOCOL}`
+  }
+
+  // Inject active spec context if available
+  if (context.activeSpec) {
+    const spec = context.activeSpec
+    const specSection = [
+      '\n## Active Specification',
+      `**Goal:** ${spec.intent.goal}`,
+      `**Status:** ${spec.status} (Tier: ${spec.tier})`,
+      '',
+      '**Constraints:**',
+      ...spec.constraints.map((c) => `- [${c.type}] ${c.description}`),
+      '',
+      '**Acceptance Criteria:**',
+      ...spec.acceptanceCriteria.map((a) => `- ${a.description} (${a.priority} priority)`),
+      '',
+      '**Execution Plan:**',
+      ...spec.plan.steps.map((s, i) => `${i + 1}. ${s.description}`),
+      '',
+      '**Scope:** Only modify files listed in the execution plan. Out-of-scope writes will be blocked.',
+    ].join('\n')
+    systemPrompt = `${systemPrompt}\n${specSection}`
   }
 
   let contextContent = ''
