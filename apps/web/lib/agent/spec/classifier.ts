@@ -10,6 +10,7 @@
  */
 
 import type { SpecTier } from './types'
+import type { LLMProvider } from '../../llm/types'
 
 /**
  * Context for intent classification
@@ -27,6 +28,8 @@ export interface ClassificationContext {
   conversationDepth?: number
   /** Whether this is a follow-up to a previous request */
   isFollowUp?: boolean
+  /** Optional LLM provider for classification */
+  provider?: LLMProvider
 }
 
 /**
@@ -316,15 +319,130 @@ function analyzeComplexity(
 }
 
 /**
+ * Build classification prompt for LLM
+ */
+function buildClassificationPrompt(
+  message: string,
+  context: ClassificationContext,
+  heuristicResult: ClassificationResult
+): string {
+  return `You are an expert software engineering intent classifier. Your job is to analyze user messages and classify them into one of three tiers based on scope, risk, and complexity.
+
+## Classification Tiers
+
+**instant**: No specification needed
+- Simple Q&A, explanations, understanding code
+- Single typo fixes, small variable renames
+- Read-only operations
+
+**ambient**: Specification generated silently
+- Refactoring, error handling improvements
+- Multi-file changes with clear patterns
+- Low-risk modifications
+
+**explicit**: Full specification surfaced for approval
+- Complex features, system architecture changes
+- Database migrations, API changes
+- High-risk or destructive operations
+
+## User Message
+"""${message}"""
+
+## Context
+- Mode: ${context.mode || 'unknown'}
+- Conversation depth: ${context.conversationDepth || 0}
+- Is follow-up: ${context.isFollowUp ? 'yes' : 'no'}
+${context.projectContext ? `- Project: ${context.projectContext.fileCount || 'unknown'} files, ${context.projectContext.primaryLanguage || 'unknown'} language` : ''}
+
+## Initial Heuristic Analysis
+- Scope: ${heuristicResult.factors.scope}
+- Risk: ${heuristicResult.factors.risk}
+- Complexity: ${heuristicResult.factors.complexity}
+
+## Response Format
+Respond with a JSON object containing:
+{
+  "tier": "instant" | "ambient" | "explicit",
+  "confidence": 0.0-1.0,
+  "reasoning": "Brief explanation of why this tier was chosen",
+  "factors": {
+    "scope": "single-file" | "multi-file" | "system-wide",
+    "risk": "read-only" | "write" | "destructive",
+    "complexity": "simple" | "medium" | "complex"
+  }
+}
+
+Analyze carefully and provide your classification:`
+}
+
+/**
  * Perform LLM-based classification for ambiguous cases
  *
- * In production, this would call an LLM. For now, we use enhanced heuristics.
+ * Uses LLM when provider is available, falls back to enhanced heuristics.
  */
 async function performLLMClassification(
   message: string,
   context: ClassificationContext,
   heuristicResult: ClassificationResult
 ): Promise<ClassificationResult> {
+  // If no provider available, fall back to heuristic scoring
+  if (!context.provider) {
+    return performHeuristicScoring(message, context, heuristicResult)
+  }
+
+  try {
+    const prompt = buildClassificationPrompt(message, context, heuristicResult)
+
+    // Call LLM for classification
+    const response = await context.provider.complete({
+      model: context.provider.config.defaultModel || 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.1, // Low temperature for consistent results
+      maxTokens: 500,
+    })
+
+    // Parse JSON response
+    const content = response.message.content?.trim() || ''
+    const jsonMatch = content.match(/\{[\s\S]*\}/)
+
+    if (jsonMatch) {
+      const result = JSON.parse(jsonMatch[0]) as ClassificationResult
+
+      // Validate the result
+      if (
+        result.tier &&
+        ['instant', 'ambient', 'explicit'].includes(result.tier) &&
+        typeof result.confidence === 'number' &&
+        result.confidence >= 0 &&
+        result.confidence <= 1
+      ) {
+        return {
+          tier: result.tier,
+          confidence: result.confidence,
+          reasoning: result.reasoning || `LLM classified as ${result.tier} tier`,
+          factors: result.factors || heuristicResult.factors,
+        }
+      }
+    }
+
+    // If parsing fails, fall back to heuristics
+    console.warn('[Classifier] Failed to parse LLM response, falling back to heuristics')
+    return performHeuristicScoring(message, context, heuristicResult)
+  } catch (error) {
+    console.warn('[Classifier] LLM classification failed:', error)
+    // Fall back to heuristic scoring on any error
+    return performHeuristicScoring(message, context, heuristicResult)
+  }
+}
+
+/**
+ * Perform heuristic scoring when LLM is unavailable
+ */
+function performHeuristicScoring(
+  message: string,
+  context: ClassificationContext,
+  heuristicResult: ClassificationResult
+): ClassificationResult {
   // Enhanced analysis based on combined factors
   const factors = heuristicResult.factors
 

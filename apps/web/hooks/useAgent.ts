@@ -966,10 +966,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                     runId: runIdRef.current ?? undefined,
                   })
                   void createSpecMutation(specInput)
-                    .then((specId) => {
+                    .then((specId: Id<'specifications'>) => {
                       specPersistenceRef.current.set(event.spec!.id, specId)
                     })
-                    .catch((err) => {
+                    .catch((err: unknown) => {
                       appLog.error('[useAgent] Failed to persist spec_pending_approval:', err)
                     })
                 }
@@ -993,10 +993,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                     runId: runIdRef.current ?? undefined,
                   })
                   void createSpecMutation(specInput)
-                    .then((specId) => {
+                    .then((specId: Id<'specifications'>) => {
                       specPersistenceRef.current.set(event.spec!.id, specId)
                     })
-                    .catch((err) => {
+                    .catch((err: unknown) => {
                       appLog.error('[useAgent] Failed to persist spec_generated:', err)
                     })
                 } else if (specPersistenceRef.current.has(event.spec.id)) {
@@ -1007,7 +1007,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                     void updateSpecMutation({
                       specId: convexId,
                       updates: { status: newStatus },
-                    }).catch((err) => {
+                    }).catch((err: unknown) => {
                       appLog.error('[useAgent] Failed to update spec_generated status:', err)
                     })
                   }
@@ -1028,7 +1028,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                   void updateSpecMutation({
                     specId: convexId,
                     updates,
-                  }).catch((err) => {
+                  }).catch((err: unknown) => {
                     appLog.error('[useAgent] Failed to update spec_verification:', err)
                   })
                 }
