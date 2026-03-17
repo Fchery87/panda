@@ -568,16 +568,6 @@ describe('SpecNative Integration', () => {
 
       registerActiveSpec(spec)
 
-      // Create a mock tool execution that modifies a watched file
-      const mockToolResult = {
-        toolName: 'write_files',
-        toolCallId: 'tc-test',
-        args: {
-          files: [{ path: 'src/components/Test.tsx', content: 'modified' }],
-        },
-        result: { output: 'written' },
-      }
-
       // Execute the drift detection plugin hook
       const driftPlugin = plugins.getPlugin('drift-detection')
       expect(driftPlugin).toBeDefined()
