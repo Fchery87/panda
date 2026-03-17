@@ -109,7 +109,7 @@ export function SidebarRail({
           <Tooltip>
             <TooltipTrigger asChild>
               <Link
-                href={projectId ? `/projects/${projectId}/settings` : '/settings'}
+                href="/settings"
                 className="hover:bg-surface-2 flex h-12 w-12 items-center justify-center text-muted-foreground transition-colors duration-150 hover:text-foreground"
                 aria-label="Settings"
               >
