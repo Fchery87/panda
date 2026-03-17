@@ -413,6 +413,12 @@ export class Runtime {
     // Store active spec
     this.state.activeSpec = finalSpec
 
+    // Register with drift detection system
+    const { registerActiveSpec } = await import('../spec/drift-detection')
+    if (finalSpec.status === 'executing' || finalSpec.status === 'approved') {
+      registerActiveSpec(finalSpec)
+    }
+
     // Yield spec generated event
     yield { type: 'spec_generated', spec: finalSpec, tier }
 
