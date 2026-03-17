@@ -1013,6 +1013,7 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
   private pendingSpecApprovalResolver:
     | ((value: { decision: 'approve' | 'edit' | 'cancel'; spec?: FormalSpecification }) => void)
     | null = null
+  private abortController: AbortController | null = null
 
   constructor(
     private options: RuntimeOptions,
@@ -1026,8 +1027,7 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
   }
 
   abort(): void {
-    // Abort is handled by the harness runtime's internal abortController
-    // This is called when the component unmounts or user clicks stop
+    this.abortController?.abort()
   }
 
   async *run(promptContext: PromptContext, config?: RuntimeConfig): AsyncGenerator<AgentEvent> {
@@ -1039,6 +1039,7 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
     const specApprovalMode = config?.harnessSpecApprovalMode ?? 'auto_approve'
     const sessionPermissions = this.options.harnessSessionPermissions
     this.pendingSpecApprovalResolver = null
+    this.abortController = new AbortController()
 
     if (sessionPermissions && Object.keys(sessionPermissions).length > 0) {
       harnessPermissions.setSessionPermissions(sessionID, sessionPermissions)
@@ -1161,6 +1162,11 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
       : harnessRuntime.run(sessionID, userMessage, initialMessages)
 
     for await (const event of source) {
+      // Check if abort was requested
+      if (this.abortController?.signal.aborted) {
+        return
+      }
+
       const mapped = mapHarnessEventToAgentEvent(event)
 
       if (!mapped) continue
