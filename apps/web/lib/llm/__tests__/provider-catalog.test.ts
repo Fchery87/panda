@@ -4,9 +4,9 @@ import type { ModelsDevResponse } from '../models-dev'
 
 const mockData: ModelsDevResponse = {
   openai: {
-    provider_id: 'openai',
-    provider_name: 'OpenAI',
-    base_url: 'https://api.openai.com/v1',
+    id: 'openai',
+    name: 'OpenAI',
+    api: 'https://api.openai.com/v1',
     models: {
       'gpt-4o': {
         id: 'gpt-4o',
@@ -18,9 +18,9 @@ const mockData: ModelsDevResponse = {
     },
   },
   mistral: {
-    provider_id: 'mistral',
-    provider_name: 'Mistral AI',
-    base_url: 'https://api.mistral.ai/v1',
+    id: 'mistral',
+    name: 'Mistral AI',
+    api: 'https://api.mistral.ai/v1',
     models: {
       'mistral-large': {
         id: 'mistral-large',
@@ -31,8 +31,8 @@ const mockData: ModelsDevResponse = {
     },
   },
   'empty-provider': {
-    provider_id: 'empty-provider',
-    provider_name: 'Empty',
+    id: 'empty-provider',
+    name: 'Empty',
     models: {},
   },
 }

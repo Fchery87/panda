@@ -113,14 +113,17 @@ export function buildCatalogFromResponse(data: ModelsDevResponse): ProviderCatal
 
     if (models.length === 0) continue
 
+    const providerName = providerData.name || providerData.provider_name || rawId
+    const baseUrl = providerData.api || providerData.base_url
+
     const entry: ProviderCatalogEntry = {
       id: resolvedId,
-      name: providerData.provider_name || rawId,
-      description: `${providerData.provider_name || rawId} — ${models.length} model${models.length !== 1 ? 's' : ''} available`,
-      baseUrl: providerData.base_url,
-      envVars: (providerData as ModelsDevProvider).env,
-      docUrl: (providerData as ModelsDevProvider).doc,
-      npmPackage: (providerData as ModelsDevProvider).npm,
+      name: providerName,
+      description: `${providerName} — ${models.length} model${models.length !== 1 ? 's' : ''} available`,
+      baseUrl,
+      envVars: providerData.env,
+      docUrl: providerData.doc,
+      npmPackage: providerData.npm,
       logoUrl: `https://models.dev/logos/${rawId}.svg`,
       models,
       defaultModel: models[0]?.id,

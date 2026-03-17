@@ -15,7 +15,28 @@ const MODELS_DEV_URL = 'https://models.dev/api/models.json'
 export interface ModelsDevModel {
   id: string
   name: string
-  context_length: number
+  family?: string
+  attachment?: boolean
+  reasoning?: boolean
+  tool_call?: boolean
+  release_date?: string
+  last_updated?: string
+  modalities?: {
+    input?: string[]
+    output?: string[]
+  }
+  open_weights?: boolean
+  cost?: {
+    input?: number
+    output?: number
+    cache_read?: number
+    cache_write?: number
+  }
+  limit?: {
+    context?: number
+    output?: number
+  }
+  context_length?: number
   max_output_tokens?: number
   pricing?: {
     input: number
@@ -28,25 +49,25 @@ export interface ModelsDevModel {
     max_completion_tokens?: number
     context_length?: number
   }
-  tool_call?: boolean
-  reasoning?: boolean
   structured_output?: boolean
   vision?: boolean
-  attachment?: boolean
   temperature?: boolean
   knowledge?: string
-  release_date?: string
   status?: 'alpha' | 'beta' | 'deprecated'
 }
 
 export interface ModelsDevProvider {
-  provider_id: string
-  provider_name: string
+  id: string
+  name: string
+  api?: string
   base_url?: string
   env?: string[]
   npm?: string
   doc?: string
   models: Record<string, ModelsDevModel>
+  // Legacy field support
+  provider_id?: string
+  provider_name?: string
 }
 
 export interface ModelsDevResponse {
@@ -97,31 +118,48 @@ export function mapModelsDevToModelInfo(providerId: string, data: ModelsDevRespo
   if (!provider || !provider.models) return []
 
   const pandaProviderId = PROVIDER_ID_MAP[providerId] || (providerId as ProviderType)
+  const providerName = provider.name || provider.provider_name || providerId
 
   return Object.values(provider.models).map((model) => {
+    // Support both new API format (cost, limit) and old format (pricing, context_length)
+    const contextWindow =
+      model.limit?.context || model.context_length || model.top_provider?.context_length || 8192
+    const maxTokens =
+      model.limit?.output ||
+      model.max_output_tokens ||
+      model.top_provider?.max_completion_tokens ||
+      4096
+    const inputCost = model.cost?.input || model.pricing?.input
+    const outputCost = model.cost?.output || model.pricing?.output
+
+    // Determine capabilities from boolean flags or capabilities array
+    const hasToolCall = model.tool_call || false
+    const hasReasoning = model.reasoning || false
+    const hasVision = model.vision || model.modalities?.input?.includes('image') || false
     const capabilities = parseCapabilities(model.capabilities || [])
 
     return {
       id: model.id,
       name: model.name || model.id,
       provider: pandaProviderId,
-      description: `${model.name || model.id} via ${provider.provider_name}`,
-      maxTokens: model.max_output_tokens || model.top_provider?.max_completion_tokens || 4096,
-      contextWindow: model.context_length || model.top_provider?.context_length || 8192,
+      description: `${model.name || model.id} via ${providerName}`,
+      maxTokens,
+      contextWindow,
       capabilities: {
         streaming: true,
-        functionCalling: capabilities.functionCalling,
-        vision: capabilities.vision,
+        functionCalling: hasToolCall || capabilities.functionCalling,
+        vision: hasVision || capabilities.vision,
         jsonMode: true,
-        toolUse: capabilities.toolUse,
-        supportsReasoning: capabilities.supportsReasoning,
+        toolUse: hasToolCall || capabilities.toolUse,
+        supportsReasoning: hasReasoning || capabilities.supportsReasoning,
       },
-      pricing: model.pricing
-        ? {
-            inputPerToken: model.pricing.input,
-            outputPerToken: model.pricing.output,
-          }
-        : undefined,
+      pricing:
+        inputCost !== undefined
+          ? {
+              inputPerToken: inputCost,
+              outputPerToken: outputCost || 0,
+            }
+          : undefined,
     }
   })
 }
@@ -164,7 +202,7 @@ export function getProviderBaseUrl(
   data: ModelsDevResponse
 ): string | undefined {
   const provider = data[providerId]
-  return provider?.base_url
+  return provider?.api || provider?.base_url
 }
 
 export function getSupportedProviders(data: ModelsDevResponse): string[] {
