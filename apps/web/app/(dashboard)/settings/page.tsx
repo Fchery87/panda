@@ -26,10 +26,12 @@ import { AgentDefaultsEditor } from '@/components/settings/AgentDefaultsEditor'
 import { MCPServerEditor } from '@/components/settings/MCPServerEditor'
 import { SubagentEditor } from '@/components/settings/SubagentEditor'
 import { UserLLMConfig } from '@/components/settings/UserLLMConfig'
+import { ProviderCatalogModal } from '@/components/settings/ProviderCatalogModal'
 import { getDefaultPolicyForMode, type AgentPolicy } from '@/lib/agent/automationPolicy'
-import { User, Palette, Bot, Save, Loader2, ArrowLeft, Settings2 } from 'lucide-react'
+import { User, Palette, Bot, Save, Loader2, ArrowLeft, Settings2, Plus, X } from 'lucide-react'
 import { getDefaultProviderCapabilities, type ProviderType } from '@/lib/llm/types'
 import { extractOpenRouterFreeCodingModelIds } from '@/lib/llm/openrouter-free-models'
+import type { ProviderCatalogEntry } from '@/lib/llm/provider-catalog'
 
 interface ProviderConfig {
   provider?: string
@@ -232,6 +234,7 @@ export default function SettingsPage() {
   )
   const allowUserMcp = adminDefaults?.allowUserMCP !== false
   const allowUserSubagents = adminDefaults?.allowUserSubagents !== false
+  const [catalogModalOpen, setCatalogModalOpen] = React.useState(false)
 
   // Local state for form
   const [formState, setFormState] = React.useState<SettingsState>({
@@ -282,8 +285,18 @@ export default function SettingsPage() {
             ...defaultProviders,
             ...Object.fromEntries(
               Object.entries(latestSettings.providerConfigs).map(([key, config]) => {
+                const base = defaultProviders[key] ?? {
+                  provider: key,
+                  name: (config as StoredProviderConfig).name || key,
+                  description: (config as StoredProviderConfig).description || '',
+                  apiKey: '',
+                  enabled: false,
+                  defaultModel: '',
+                  availableModels: [],
+                  testStatus: 'idle' as const,
+                }
                 const mergedConfig = {
-                  ...(defaultProviders[key] ?? {}),
+                  ...base,
                   ...(config as StoredProviderConfig),
                   testStatus: 'idle' as const,
                 }
@@ -371,6 +384,51 @@ export default function SettingsPage() {
 
       if (providerKey === prev.defaultProvider && typeof updates.defaultModel === 'string') {
         nextState.defaultModel = updates.defaultModel
+      }
+
+      return nextState
+    })
+  }
+
+  const addProviderFromCatalog = (entry: ProviderCatalogEntry) => {
+    setFormState((prev) => {
+      if (prev.providers[entry.id]) {
+        return prev
+      }
+
+      const newProvider: ProviderConfig = {
+        provider: entry.id,
+        name: entry.name,
+        description: entry.description,
+        apiKey: '',
+        enabled: false,
+        defaultModel: entry.defaultModel || entry.models[0]?.id || '',
+        availableModels: entry.models.map((m) => m.id),
+        baseUrl: entry.baseUrl,
+        testStatus: 'idle',
+      }
+
+      return {
+        ...prev,
+        providers: {
+          ...prev.providers,
+          [entry.id]: newProvider,
+        },
+      }
+    })
+  }
+
+  const removeProvider = (providerKey: string) => {
+    if (defaultProviders[providerKey]) return
+
+    setFormState((prev) => {
+      const { [providerKey]: _, ...remainingProviders } = prev.providers
+      const nextState = { ...prev, providers: remainingProviders }
+
+      if (prev.defaultProvider === providerKey) {
+        const firstEnabled = Object.entries(remainingProviders).find(([, p]) => p.enabled)
+        nextState.defaultProvider = firstEnabled?.[0] || 'openai'
+        nextState.defaultModel = firstEnabled?.[1]?.defaultModel || 'gpt-4o-mini'
       }
 
       return nextState
@@ -673,24 +731,53 @@ export default function SettingsPage() {
 
           {/* LLM Providers Tab */}
           <TabsContent value="providers" className="space-y-6">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium">LLM Providers</h3>
+                <p className="text-sm text-muted-foreground">
+                  Configure API keys for your preferred providers
+                </p>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setCatalogModalOpen(true)}>
+                <Plus className="mr-1.5 h-4 w-4" />
+                Add Provider
+              </Button>
+            </div>
+
+            <ProviderCatalogModal
+              open={catalogModalOpen}
+              onOpenChange={setCatalogModalOpen}
+              configuredProviderIds={Object.keys(formState.providers)}
+              onSelectProvider={addProviderFromCatalog}
+            />
+
             <div className="grid gap-6">
               {Object.entries(formState.providers).map(([key, provider]) => {
-                // Capability-gated controls: only render reasoning controls where supported.
-                // This keeps settings consistent regardless of provider selection.
                 const providerType = (provider.provider || key) as ProviderType
                 const supportsReasoning =
                   getDefaultProviderCapabilities(providerType).supportsReasoning
                 return (
-                  <ProviderCard
-                    key={key}
-                    provider={provider}
-                    supportsReasoning={supportsReasoning}
-                    onChange={(updates) => updateProvider(key, updates)}
-                    onTest={() => testProvider(key)}
-                    onTestCompletion={
-                      key === 'chutes' ? () => testProviderCompletion(key) : undefined
-                    }
-                  />
+                  <div key={key} className="relative">
+                    <ProviderCard
+                      provider={provider}
+                      supportsReasoning={supportsReasoning}
+                      onChange={(updates) => updateProvider(key, updates)}
+                      onTest={() => testProvider(key)}
+                      onTestCompletion={
+                        key === 'chutes' ? () => testProviderCompletion(key) : undefined
+                      }
+                    />
+                    {!defaultProviders[key] && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-2 top-2"
+                        onClick={() => removeProvider(key)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
                 )
               })}
             </div>
