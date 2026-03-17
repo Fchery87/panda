@@ -235,6 +235,7 @@ export default function SettingsPage() {
   const allowUserMcp = adminDefaults?.allowUserMCP !== false
   const allowUserSubagents = adminDefaults?.allowUserSubagents !== false
   const [catalogModalOpen, setCatalogModalOpen] = React.useState(false)
+  const [refreshingModels, setRefreshingModels] = React.useState<string | null>(null)
 
   // Local state for form
   const [formState, setFormState] = React.useState<SettingsState>({
@@ -433,6 +434,46 @@ export default function SettingsPage() {
 
       return nextState
     })
+  }
+
+  const refreshModelsFromApi = async (providerKey: string) => {
+    const provider = formState.providers[providerKey]
+    if (!provider?.apiKey || !provider?.baseUrl) return
+
+    setRefreshingModels(providerKey)
+    try {
+      const response = await fetch('/api/providers/openai-compatible/refresh-models', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: provider.apiKey,
+          baseUrl: provider.baseUrl,
+        }),
+      })
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+
+      const payload = await response.json()
+      const modelIds: string[] = (payload.data || payload || [])
+        .map((m: { id?: string }) => m.id)
+        .filter(Boolean)
+
+      if (modelIds.length > 0) {
+        const existingSet = new Set(provider.availableModels)
+        const merged = [
+          ...provider.availableModels,
+          ...modelIds.filter((id) => !existingSet.has(id)),
+        ]
+        updateProvider(providerKey, { availableModels: merged })
+        toast.success(`Found ${modelIds.length} models from API (${merged.length} total)`)
+      } else {
+        toast.info('No additional models found from API')
+      }
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : 'Unknown error'
+      toast.error('Failed to refresh models', { description: detail })
+    } finally {
+      setRefreshingModels(null)
+    }
   }
 
   // Test provider connection
@@ -766,6 +807,10 @@ export default function SettingsPage() {
                       onTestCompletion={
                         key === 'chutes' ? () => testProviderCompletion(key) : undefined
                       }
+                      onRefreshModels={
+                        provider.baseUrl ? () => refreshModelsFromApi(key) : undefined
+                      }
+                      refreshingModels={refreshingModels === key}
                     />
                     {!defaultProviders[key] && (
                       <Button

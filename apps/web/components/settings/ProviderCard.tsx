@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { Check, X, Loader2, Key, TestTube } from 'lucide-react'
+import { Check, X, Loader2, Key, TestTube, RefreshCw } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -42,6 +42,8 @@ interface ProviderCardProps {
   onChange: (updates: Partial<ProviderConfig>) => void
   onTest: () => void
   onTestCompletion?: () => void
+  onRefreshModels?: () => void
+  refreshingModels?: boolean
   className?: string
 }
 
@@ -51,6 +53,8 @@ export function ProviderCard({
   onChange,
   onTest,
   onTestCompletion,
+  onRefreshModels,
+  refreshingModels,
   className,
 }: ProviderCardProps) {
   const [showApiKey, setShowApiKey] = React.useState(false)
@@ -151,7 +155,24 @@ export function ProviderCard({
 
         {/* Model Selection */}
         <div className="space-y-2">
-          <Label>Default Model</Label>
+          <div className="flex items-center justify-between">
+            <Label>Default Model</Label>
+            {onRefreshModels && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onRefreshModels}
+                disabled={!provider.enabled || !provider.apiKey || refreshingModels}
+              >
+                {refreshingModels ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3.5 w-3.5" />
+                )}
+                <span className="ml-1.5 text-xs">Refresh</span>
+              </Button>
+            )}
+          </div>
           <Select
             value={provider.defaultModel}
             onValueChange={(value) => onChange({ defaultModel: value })}
