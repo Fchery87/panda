@@ -151,6 +151,7 @@ export type RuntimeEventType =
   | 'interrupt_decision'
   | 'snapshot'
   | 'error'
+  | 'warning'
   | 'complete'
   // SpecNative events
   | 'spec_pending_approval'
@@ -195,6 +196,10 @@ export interface RuntimeEvent {
   usage?: { input: number; output: number; reasoning: number }
   cost?: number
   error?: string
+  // Warning event fields
+  message?: string
+  pluginName?: string
+  hookType?: string
   // SpecNative event fields
   spec?: FormalSpecification
   tier?: SpecTier
@@ -256,6 +261,7 @@ export class Runtime {
     }
   >()
   private specEngine: SpecEngine
+  private pendingPluginErrors: RuntimeEvent[] = []
 
   constructor(
     provider: LLMProvider,
@@ -499,6 +505,14 @@ export class Runtime {
 
     try {
       while (!this.state.isComplete && this.state.step < maxSteps) {
+        // Yield any pending plugin errors
+        while (this.pendingPluginErrors.length > 0) {
+          const errorEvent = this.pendingPluginErrors.shift()
+          if (errorEvent) {
+            yield errorEvent
+          }
+        }
+
         this.state.step++
 
         const isLastStep = this.state.step >= maxSteps - 1
@@ -2586,6 +2600,16 @@ export class Runtime {
     if (errors.length > 0) {
       for (const { plugin, error } of errors) {
         appLog.warn(`[Runtime] Plugin hook error in ${plugin} for ${hookType}:`, error)
+        // Emit warning event to runtime event stream for UI visibility
+        const warningEvent: RuntimeEvent = {
+          type: 'warning',
+          step: context.step,
+          message: `Plugin '${plugin}' hook '${hookType}' failed: ${error.message}`,
+          pluginName: plugin,
+          hookType: hookType,
+        }
+        // We can't yield from here, but we can store for next event cycle
+        this.pendingPluginErrors.push(warningEvent)
       }
     }
 
