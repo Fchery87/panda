@@ -555,6 +555,7 @@ export class Runtime {
 
       if (!this.state.isComplete) {
         await this.saveCheckpoint(agent.name, 'error')
+        this.cleanupSessionSingletons(sessionID)
         yield {
           type: 'error',
           error: `Agent reached maximum steps (${maxSteps}) without completing`,
@@ -592,13 +593,27 @@ export class Runtime {
         { sessionID, step: this.state.step, agent, messageID: '' },
         {}
       )
+
+      // Cleanup singletons after successful session completion
+      this.cleanupSessionSingletons(sessionID)
     } catch (error) {
       await this.saveCheckpoint(agent.name, 'error')
       yield {
         type: 'error',
         error: error instanceof Error ? error.message : 'Unknown error',
       }
+      // Cleanup singletons even on error
+      this.cleanupSessionSingletons(sessionID)
     }
+  }
+
+  /**
+   * Clean up module-level singletons for a session
+   */
+  private cleanupSessionSingletons(sessionID: Identifier): void {
+    snapshots.clear(sessionID)
+    compaction.clearSummary(sessionID)
+    permissions.clearSession(sessionID)
   }
 
   /**

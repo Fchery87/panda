@@ -300,6 +300,19 @@ export class PermissionManager {
   }
 
   /**
+   * Clear all state for a session
+   */
+  clearSession(sessionID: Identifier): void {
+    this.sessionPermissions.delete(sessionID)
+    // Also clear decisions scoped to this session
+    for (const key of this.userDecisions.keys()) {
+      if (key.startsWith(`${sessionID}:`)) {
+        this.userDecisions.delete(key)
+      }
+    }
+  }
+
+  /**
    * Get pending requests
    */
   getPendingRequests(): PermissionRequest[] {

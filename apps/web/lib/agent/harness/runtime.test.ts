@@ -1613,6 +1613,40 @@ describe('harness Runtime', () => {
     // the test would still pass but performance would degrade
   })
 
+  test('should clear singleton session state after run completes', async () => {
+    resetHarnessTestState()
+    const checkpointStore = new InMemoryCheckpointStore()
+
+    // Set up some singleton state before the run
+    const sessionID = 'session-cleanup-test'
+    snapshots.track(sessionID, 'msg-1', 1) // Add snapshot
+    compaction.clearSummary(sessionID) // Just ensure the map exists
+
+    const runtime = new Runtime(
+      createProvider(() => {}),
+      new Map(),
+      {
+        checkpointStore,
+      }
+    )
+
+    const userMessage = createUserMessage({
+      id: 'msg-user-cleanup',
+      sessionID,
+      text: 'test message for cleanup',
+      agent: 'ask',
+    })
+
+    const events = []
+    for await (const event of runtime.run(sessionID, userMessage)) {
+      events.push(event)
+    }
+
+    // After run completes, singleton state for this session should be cleared
+    expect(snapshots.getSnapshots(sessionID)).toEqual([])
+    expect(compaction.getSummary(sessionID)).toBeUndefined()
+  })
+
   test('emits spec_verification but not complete when spec verification fails', async () => {
     resetHarnessTestState()
     let streamCalls = 0
