@@ -1,9 +1,21 @@
 /**
- * Classifier Tests - Tests for intent classification
+ * Classifier Tests - Tests for intent classification with LLM provider mocks
  */
 
 import { describe, test, expect } from 'bun:test'
-import { classifyIntent, classifyBatch, getClassificationStats } from '../classifier'
+import {
+  classifyIntent,
+  classifyBatch,
+  getClassificationStats,
+  type ClassificationContext,
+} from '../classifier'
+import type {
+  LLMProvider,
+  ModelInfo,
+  CompletionOptions,
+  CompletionResponse,
+} from '../../../llm/types'
+import type { SpecTier } from '../types'
 
 describe('classifyIntent', () => {
   test('classifies questions as instant', async () => {
@@ -36,7 +48,6 @@ describe('classifyIntent', () => {
 
     for (const change of changes) {
       const result = await classifyIntent(change)
-      // Code changes can be instant or ambient depending on complexity
       expect(['instant', 'ambient', 'explicit']).toContain(result.tier)
       expect(result.confidence).toBeGreaterThan(0)
     }
@@ -74,7 +85,6 @@ describe('classifyIntent', () => {
       mode: 'build',
       conversationDepth: 5,
     })
-    // Context influences classification but doesn't guarantee explicit tier
     expect(['instant', 'ambient', 'explicit']).toContain(result.tier)
     expect(result.factors).toBeDefined()
   })
@@ -112,5 +122,134 @@ describe('getClassificationStats', () => {
     expect(stats.explicit).toBeGreaterThanOrEqual(0)
     expect(stats.averageConfidence).toBeGreaterThan(0)
     expect(stats.averageConfidence).toBeLessThanOrEqual(1)
+  })
+})
+
+describe('classifyIntent with LLM provider', () => {
+  const createMockProvider = (response: {
+    tier: SpecTier
+    confidence: number
+    reasoning: string
+    factors: {
+      scope: 'single-file' | 'multi-file' | 'system-wide'
+      risk: 'read-only' | 'write' | 'destructive'
+      complexity: 'simple' | 'medium' | 'complex'
+    }
+  }): LLMProvider => {
+    const mockComplete = async (_options: CompletionOptions): Promise<CompletionResponse> => ({
+      message: { content: JSON.stringify(response), role: 'assistant' },
+      finishReason: 'stop',
+      usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
+      model: 'gpt-4o-mini',
+    })
+
+    const mockListModels = async (): Promise<ModelInfo[]> => []
+    const mockStream = async function* () {}
+
+    return {
+      name: 'mock-provider',
+      config: {
+        provider: 'openai',
+        auth: { apiKey: 'test-key' },
+        defaultModel: 'gpt-4o-mini',
+      },
+      listModels: mockListModels,
+      complete: mockComplete,
+      completionStream: mockStream,
+    }
+  }
+
+  test('uses LLM provider when confidence is low', async () => {
+    const mockProvider = createMockProvider({
+      tier: 'ambient',
+      confidence: 0.75,
+      reasoning: 'Moderate complexity task',
+      factors: {
+        scope: 'multi-file',
+        risk: 'write',
+        complexity: 'medium',
+      },
+    })
+
+    const context: ClassificationContext = { provider: mockProvider }
+    const result = await classifyIntent('Refactor the utils module', context)
+
+    expect(result.tier).toBe('ambient')
+    expect(result.confidence).toBe(0.75)
+  })
+
+  test('falls back to heuristics when LLM fails', async () => {
+    const failingProvider: LLMProvider = {
+      name: 'failing-provider',
+      config: {
+        provider: 'openai',
+        auth: { apiKey: 'test-key' },
+        defaultModel: 'gpt-4o-mini',
+      },
+      listModels: async (): Promise<ModelInfo[]> => [],
+      complete: async (_options: CompletionOptions): Promise<CompletionResponse> => {
+        throw new Error('LLM service unavailable')
+      },
+      completionStream: async function* () {},
+    }
+
+    const context: ClassificationContext = { provider: failingProvider }
+    const result = await classifyIntent('What is TypeScript?', context)
+
+    // Should still return valid result from heuristics
+    expect(result.tier).toBe('instant')
+    expect(result.confidence).toBeGreaterThan(0)
+  })
+
+  test('falls back to heuristics when LLM returns invalid JSON', async () => {
+    const badJsonProvider: LLMProvider = {
+      name: 'bad-json-provider',
+      config: {
+        provider: 'openai',
+        auth: { apiKey: 'test-key' },
+        defaultModel: 'gpt-4o-mini',
+      },
+      listModels: async (): Promise<ModelInfo[]> => [],
+      complete: async (_options: CompletionOptions): Promise<CompletionResponse> => ({
+        message: { content: 'This is not valid JSON', role: 'assistant' },
+        finishReason: 'stop',
+        usage: { promptTokens: 100, completionTokens: 10, totalTokens: 110 },
+        model: 'gpt-4o-mini',
+      }),
+      completionStream: async function* () {},
+    }
+
+    const context: ClassificationContext = { provider: badJsonProvider }
+    const result = await classifyIntent('How does React work?', context)
+
+    // Should fall back to heuristics
+    expect(result.tier).toBeDefined()
+    expect(result.confidence).toBeGreaterThan(0)
+  })
+
+  test('validates LLM response structure', async () => {
+    const invalidProvider: LLMProvider = {
+      name: 'invalid-provider',
+      config: {
+        provider: 'openai',
+        auth: { apiKey: 'test-key' },
+        defaultModel: 'gpt-4o-mini',
+      },
+      listModels: async (): Promise<ModelInfo[]> => [],
+      complete: async (_options: CompletionOptions): Promise<CompletionResponse> => ({
+        message: { content: JSON.stringify({ invalid: 'response' }), role: 'assistant' },
+        finishReason: 'stop',
+        usage: { promptTokens: 100, completionTokens: 20, totalTokens: 120 },
+        model: 'gpt-4o-mini',
+      }),
+      completionStream: async function* () {},
+    }
+
+    const context: ClassificationContext = { provider: invalidProvider }
+    const result = await classifyIntent('Test message', context)
+
+    // Should still return valid result
+    expect(result.tier).toBeDefined()
+    expect(result.confidence).toBeGreaterThan(0)
   })
 })
