@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { motion } from 'framer-motion'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { MessageBubble } from './MessageBubble'
 import { cn } from '@/lib/utils'
 import type { Message } from './types'
@@ -19,21 +18,26 @@ export function MessageList({
   isStreaming = false,
   onSuggestedAction,
 }: MessageListProps) {
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const parentRef = useRef<HTMLDivElement>(null)
 
+  const virtualizer = useVirtualizer({
+    count: messages.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 120,
+    overscan: 5,
+  })
+
+  // Auto-scroll to bottom on new messages
   useEffect(() => {
-    if (bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: 'smooth' })
+    if (messages.length > 0) {
+      virtualizer.scrollToIndex(messages.length - 1, { align: 'end', behavior: 'smooth' })
     }
-  }, [messages, isStreaming])
+  }, [messages.length, isStreaming, virtualizer])
 
   if (messages.length === 0) {
     return (
-      <ScrollArea className="h-full min-h-0 min-w-0">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+      <div className="h-full min-h-0 min-w-0 overflow-auto">
+        <div
           className={cn(
             'flex h-full min-h-[300px] flex-col items-center justify-center',
             'px-6 text-center sm:px-8'
@@ -45,44 +49,44 @@ export function MessageList({
               Start a conversation to begin chatting with the AI assistant.
             </p>
           </div>
-        </motion.div>
-      </ScrollArea>
+        </div>
+      </div>
     )
   }
 
   return (
-    <ScrollArea className="h-full min-h-0 min-w-0">
+    <div ref={parentRef} className="h-full min-h-0 min-w-0 overflow-auto">
       <div
-        className={cn('flex min-h-full min-w-0 flex-col gap-4 p-3 xl:gap-5 xl:p-4')}
+        className="relative w-full"
+        style={{ height: `${virtualizer.getTotalSize()}px` }}
         role="log"
         aria-live="polite"
         aria-label="Chat messages"
       >
-        {messages.map((message, index) => {
+        {virtualizer.getVirtualItems().map((virtualRow) => {
+          const message = messages[virtualRow.index]
           return (
-            <motion.div
+            <div
               key={message._id}
-              initial={{ opacity: 0, x: message.role === 'user' ? 20 : -20, y: 10 }}
-              animate={{ opacity: 1, x: 0, y: 0 }}
-              transition={{
-                duration: 0.3,
-                delay: index * 0.05,
-                ease: [0.25, 0.46, 0.45, 0.94],
-              }}
+              data-index={virtualRow.index}
+              ref={virtualizer.measureElement}
+              className="absolute left-0 top-0 w-full px-3 py-2 xl:px-4"
+              style={{ transform: `translateY(${virtualRow.start}px)` }}
             >
               <MessageBubble
                 message={message}
                 isStreaming={
-                  isStreaming && index === messages.length - 1 && message.role === 'assistant'
+                  isStreaming &&
+                  virtualRow.index === messages.length - 1 &&
+                  message.role === 'assistant'
                 }
                 onSuggestedAction={onSuggestedAction}
                 disableActions={isStreaming}
               />
-            </motion.div>
+            </div>
           )
         })}
-        <div ref={bottomRef} className="h-1" />
       </div>
-    </ScrollArea>
+    </div>
   )
 }
