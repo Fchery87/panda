@@ -1443,6 +1443,25 @@ export class Runtime {
           result,
         })
 
+        // Check for drift after tool execution
+        if (this.state.activeSpec && this.config.specEngine?.enableDriftDetection) {
+          const { getPendingDrifts, clearPendingDrift } = await import('../spec/drift-detection')
+          const drifts = getPendingDrifts()
+          for (const drift of drifts) {
+            if (drift.specId === this.state.activeSpec.id) {
+              // Emit drift events for each finding
+              for (const finding of drift.findings) {
+                await this.executeHook(
+                  'spec.drift.detected',
+                  { sessionID: this.state.sessionID, step: this.state.step, agent, messageID: '' },
+                  { specId: drift.specId, filePath: finding.filePath, reason: finding.description }
+                )
+              }
+              clearPendingDrift(drift.specId)
+            }
+          }
+        }
+
         return { ...result, argsUsed: args }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Tool execution failed'
