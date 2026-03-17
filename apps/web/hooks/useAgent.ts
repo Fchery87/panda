@@ -58,6 +58,7 @@ import { useTokenUsageMetrics, type UsageTotals, type UsageMetrics } from './use
 import { useMemoryBank } from './useMemoryBank'
 import { useProjectContext } from './useProjectContext'
 import { useMessageHistory, type Message as HistoryMessage } from './useMessageHistory'
+import { useSpecManagement } from './useSpecManagement'
 import type {
   MessageAnnotationInfo,
   PersistedRunEventInfo,
@@ -257,11 +258,6 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const failRun = useMutation(api.agentRuns.fail)
   const stopRun = useMutation(api.agentRuns.stop)
 
-  // Specification persistence
-  const createSpecMutation = useMutation(api.specifications.create)
-  const updateSpecMutation = useMutation(api.specifications.update)
-  const specPersistenceRef = useRef(new SpecPersistenceState())
-
   // Memory bank hook
   const { memoryBankContent, updateMemoryBank } = useMemoryBank(projectId)
 
@@ -295,8 +291,6 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const completedPlanStepIndexesRef = useRef<number[]>([])
   const [error, setError] = useState<string | null>(null)
   const [currentRunUsage, setCurrentRunUsage] = useState<UsageTotals & { source: TokenSource }>()
-  const [currentSpec, setCurrentSpec] = useState<FormalSpecification | null>(null)
-  const [pendingSpec, setPendingSpec] = useState<FormalSpecification | null>(null)
 
   // Provider settings hook
   const { providerModels, contextWindowResolution, getReasoningRuntimeSettings } =
@@ -308,6 +302,20 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const toolContextRef = useRef<ReturnType<typeof createToolContext> | null>(null)
   const rafFlushRef = useRef<number | null>(null)
   const runtimeRef = useRef<AgentRuntimeLike | null>(null)
+
+  // Spec management hook
+  const {
+    currentSpec,
+    pendingSpec,
+    setCurrentSpec,
+    setPendingSpec,
+    approvePendingSpec,
+    updatePendingSpecDraft,
+    cancelPendingSpec,
+    createSpecMutation,
+    updateSpecMutation,
+    specPersistenceRef,
+  } = useSpecManagement(projectId, chatId, runtimeRef, setStatus)
 
   // Message history hook
   const { messages, setMessages, persistedMessages, messagesPaginationStatus } = useMessageHistory(
@@ -440,30 +448,6 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     setCurrentSpec(null)
     setPendingSpec(null)
   }, [projectId, chatId, messages, saveSessionSummaryMutation])
-
-  const approvePendingSpec = useCallback(
-    (spec?: FormalSpecification) => {
-      const nextSpec = spec ?? pendingSpec
-      if (!nextSpec) return
-      setPendingSpec(null)
-      setCurrentSpec(nextSpec)
-      setStatus('thinking')
-      runtimeRef.current?.resolveSpecApproval?.('approve', nextSpec)
-    },
-    [pendingSpec]
-  )
-
-  const updatePendingSpecDraft = useCallback((spec: FormalSpecification) => {
-    setPendingSpec(spec)
-    setCurrentSpec(spec)
-  }, [])
-
-  const cancelPendingSpec = useCallback(() => {
-    setPendingSpec(null)
-    setCurrentSpec(null)
-    runtimeRef.current?.resolveSpecApproval?.('cancel')
-    setStatus('idle')
-  }, [])
 
   // Handle input change
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
