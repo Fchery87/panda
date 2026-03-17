@@ -6,7 +6,14 @@
  */
 
 import { appLog } from '@/lib/logger'
-import type { LLMProvider, ProviderConfig, ModelInfo, ProviderType } from './types'
+import type {
+  LLMProvider,
+  ProviderConfig,
+  ModelInfo,
+  ProviderType,
+  KnownProviderType,
+} from './types'
+import { isKnownProvider } from './types'
 import { OpenAICompatibleProvider } from './providers/openai-compatible'
 import { AnthropicProvider } from './providers/anthropic'
 import { ChutesProvider } from './providers/chutes'
@@ -46,32 +53,35 @@ export class ProviderRegistry {
   createProvider(id: string, config: ProviderConfig, setAsDefault = false): LLMProvider {
     let provider: LLMProvider
 
-    // Create appropriate provider based on type
-    switch (config.provider) {
-      case 'openai':
-      case 'openrouter':
-      case 'together':
-      case 'zai':
-      case 'custom':
-        provider = new OpenAICompatibleProvider(config)
-        break
-      case 'anthropic':
-        provider = new AnthropicProvider(config)
-        break
-      case 'chutes':
-        provider = new ChutesProvider(config)
-        break
-      case 'deepseek':
-        provider = new DeepSeekProvider(config)
-        break
-      case 'groq':
-        provider = new GroqProvider(config)
-        break
-      case 'fireworks':
-        provider = new FireworksProvider(config)
-        break
-      default:
-        throw new Error(`Unsupported provider type: ${config.provider}`)
+    if (isKnownProvider(config.provider)) {
+      switch (config.provider as KnownProviderType) {
+        case 'openai':
+        case 'openrouter':
+        case 'together':
+        case 'zai':
+        case 'custom':
+          provider = new OpenAICompatibleProvider(config)
+          break
+        case 'anthropic':
+          provider = new AnthropicProvider(config)
+          break
+        case 'chutes':
+          provider = new ChutesProvider(config)
+          break
+        case 'deepseek':
+          provider = new DeepSeekProvider(config)
+          break
+        case 'groq':
+          provider = new GroqProvider(config)
+          break
+        case 'fireworks':
+          provider = new FireworksProvider(config)
+          break
+        default:
+          provider = new OpenAICompatibleProvider(config)
+      }
+    } else {
+      provider = new OpenAICompatibleProvider(config)
     }
 
     // Store provider instance
