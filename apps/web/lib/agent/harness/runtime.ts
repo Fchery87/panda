@@ -51,6 +51,7 @@ import { compaction, needsCompaction, SUMMARIZATION_PROMPT } from './compaction'
 import { withTimeoutAndRetry, isContextOverflowError } from '../../llm/stream-resilience'
 import { snapshots } from './snapshots'
 import { createSubtaskPart, executeTaskTool, getTaskToolDefinitions } from './task-tool'
+import { extractFilePaths, isFileCoveredBySpec } from '../spec/drift-detection'
 import type {
   RuntimeCheckpoint,
   RuntimeCheckpointPendingSubtask,
@@ -88,6 +89,10 @@ interface RuntimeState {
   lastInterventionStep: number
   /** Active specification being executed against */
   activeSpec?: FormalSpecification
+  /** Incremental checkpoint optimization: cached message snapshot */
+  checkpointMessageSnapshot: Message[] | null
+  /** Whether messages array has changed since last checkpoint snapshot */
+  messagesDirtySinceCheckpoint: boolean
 }
 
 function normalizeCheckpointToolCallFrequency(
@@ -460,6 +465,8 @@ export class Runtime {
       toolCallFrequency: new Map(),
       cyclicPatternDetected: false,
       lastInterventionStep: 0,
+      checkpointMessageSnapshot: null,
+      messagesDirtySinceCheckpoint: true,
     }
   }
 
@@ -1102,6 +1109,7 @@ export class Runtime {
     }
 
     this.state.messages.push(assistantMessage)
+    this.state.messagesDirtySinceCheckpoint = true
 
     await this.executeHook(
       'llm.response',
@@ -1264,6 +1272,19 @@ export class Runtime {
           return { output: '', error: `Permission denied: ${result.reason}`, argsUsed: args }
         }
       }
+    }
+
+    const scopeViolation = this.getSpecScopeViolation(toolName, args)
+    if (scopeViolation) {
+      yield this.createToolResultEvent({
+        toolCallId: toolCall.id,
+        toolName,
+        args,
+        output: '',
+        error: scopeViolation,
+        startedAt,
+      })
+      return { output: '', error: scopeViolation, argsUsed: args }
     }
 
     if (toolName === 'task') {
@@ -1848,6 +1869,7 @@ export class Runtime {
     if (!result.error) {
       if (result.messages) {
         this.state.messages = result.messages
+        this.state.messagesDirtySinceCheckpoint = true
       }
       yield {
         type: 'compaction',
@@ -2091,6 +2113,26 @@ export class Runtime {
     }
 
     return 'medium'
+  }
+
+  private getSpecScopeViolation(toolName: string, args: Record<string, unknown>): string | null {
+    if (!this.state?.activeSpec) return null
+    if (toolName !== 'write_files') return null
+
+    const spec = this.state.activeSpec
+    const shouldEnforceStrictScope = spec.tier === 'explicit' || spec.status === 'executing'
+    if (!shouldEnforceStrictScope) return null
+
+    const targetPaths = extractFilePaths(toolName, args)
+    if (targetPaths.length === 0) return null
+
+    const outOfScopePaths = targetPaths.filter((path) => !isFileCoveredBySpec(path, spec))
+    if (outOfScopePaths.length === 0) return null
+
+    return (
+      `Write target is outside the active spec scope: ${outOfScopePaths.join(', ')}. ` +
+      'Update the specification first or restrict changes to declared files.'
+    )
   }
 
   private resolveRiskPolicyDecision(
@@ -2396,9 +2438,15 @@ export class Runtime {
   private serializeStateForCheckpoint(): RuntimeCheckpointState | null {
     if (!this.state) return null
 
+    // Only clone messages when they've actually changed since last checkpoint
+    if (this.state.messagesDirtySinceCheckpoint || !this.state.checkpointMessageSnapshot) {
+      this.state.checkpointMessageSnapshot = structuredClone(this.state.messages)
+      this.state.messagesDirtySinceCheckpoint = false
+    }
+
     return {
       sessionID: this.state.sessionID,
-      messages: structuredClone(this.state.messages),
+      messages: this.state.checkpointMessageSnapshot,
       step: this.state.step,
       isComplete: this.state.isComplete,
       isLastStep: this.state.isLastStep,
@@ -2438,6 +2486,8 @@ export class Runtime {
       ),
       cyclicPatternDetected: checkpointState.cyclicPatternDetected ?? false,
       lastInterventionStep: checkpointState.lastInterventionStep ?? 0,
+      checkpointMessageSnapshot: structuredClone(checkpointState.messages),
+      messagesDirtySinceCheckpoint: false,
     }
   }
 

@@ -104,7 +104,7 @@ export function clearPendingDrift(specId: string): void {
 /**
  * Check if a file is covered by a specification
  */
-function isFileCoveredBySpec(filePath: string, spec: FormalSpecification): boolean {
+export function isFileCoveredBySpec(filePath: string, spec: FormalSpecification): boolean {
   // Check dependencies
   for (const dep of spec.plan.dependencies) {
     if (fileMatches(filePath, dep.path)) {
@@ -134,7 +134,7 @@ function isFileCoveredBySpec(filePath: string, spec: FormalSpecification): boole
 /**
  * File pattern matching
  */
-function fileMatches(file: string, pattern: string): boolean {
+export function fileMatches(file: string, pattern: string): boolean {
   // Exact match
   if (file === pattern) return true
 
@@ -149,19 +149,13 @@ function fileMatches(file: string, pattern: string): boolean {
     return file.startsWith(pattern)
   }
 
-  // Check if file is in the pattern directory
-  const patternDir = pattern.includes('/') ? pattern.slice(0, pattern.lastIndexOf('/') + 1) : ''
-  if (patternDir && file.startsWith(patternDir)) {
-    return true
-  }
-
   return false
 }
 
 /**
  * Extract file paths from tool arguments
  */
-function extractFilePaths(toolName: string, args: Record<string, unknown>): string[] {
+export function extractFilePaths(toolName: string, args: Record<string, unknown>): string[] {
   const paths: string[] = []
 
   switch (toolName) {
