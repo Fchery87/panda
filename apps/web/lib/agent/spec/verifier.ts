@@ -15,6 +15,8 @@ import type {
   SpecStatus,
 } from './types'
 
+import type { LLMProvider } from '../../llm/types'
+
 /**
  * Execution results for verification
  */
@@ -34,6 +36,14 @@ export interface ExecutionResults {
     result?: string
     error?: string
   }>
+}
+
+/**
+ * Context for verification operations
+ */
+export interface VerificationContext {
+  /** Optional LLM provider for LLM-judge verification */
+  provider?: LLMProvider
 }
 
 /**
@@ -65,16 +75,22 @@ export interface SpecVerificationReport {
  *
  * @param spec - The specification to verify against
  * @param results - Execution results
+ * @param context - Optional verification context with LLM provider
  * @returns Verification report
  */
 export async function verifySpec(
   spec: FormalSpecification,
-  results: ExecutionResults
+  results: ExecutionResults,
+  context?: VerificationContext
 ): Promise<SpecVerificationReport> {
   const timestamp = Date.now()
 
   // Verify acceptance criteria
-  const criterionResults = await verifyAcceptanceCriteria(spec.intent.acceptanceCriteria, results)
+  const criterionResults = await verifyAcceptanceCriteria(
+    spec.intent.acceptanceCriteria,
+    results,
+    context
+  )
 
   // Verify constraints
   const constraintResults = await verifyConstraints(spec.intent.constraints, results)
@@ -121,12 +137,13 @@ export async function verifySpec(
  */
 async function verifyAcceptanceCriteria(
   criteria: AcceptanceCriterion[],
-  results: ExecutionResults
+  results: ExecutionResults,
+  context?: VerificationContext
 ): Promise<VerificationResult[]> {
   const results_array: VerificationResult[] = []
 
   for (const criterion of criteria) {
-    const result = await verifySingleCriterion(criterion, results)
+    const result = await verifySingleCriterion(criterion, results, context)
     results_array.push(result)
   }
 
@@ -138,7 +155,8 @@ async function verifyAcceptanceCriteria(
  */
 async function verifySingleCriterion(
   criterion: AcceptanceCriterion,
-  results: ExecutionResults
+  results: ExecutionResults,
+  context?: VerificationContext
 ): Promise<VerificationResult> {
   const { trigger, behavior, verificationMethod } = criterion
 
@@ -147,7 +165,7 @@ async function verifySingleCriterion(
       return verifyAutomatedCriterion(criterion, results)
 
     case 'llm-judge':
-      return verifyLLMJudgeCriterion(criterion, results)
+      return verifyLLMJudgeCriterion(criterion, results, context)
 
     case 'manual':
       return {
@@ -262,17 +280,103 @@ function verifyAutomatedCriterion(
 }
 
 /**
- * Verify criterion using LLM judgment (simulated)
+ * Verify criterion using LLM judgment
  *
- * In production, this would call an LLM to evaluate the criterion
+ * Uses LLM to evaluate whether the execution satisfies the criterion.
+ * Falls back to heuristic scoring if LLM is unavailable.
  */
-function verifyLLMJudgeCriterion(
+async function verifyLLMJudgeCriterion(
+  criterion: AcceptanceCriterion,
+  results: ExecutionResults,
+  context?: VerificationContext
+): Promise<VerificationResult> {
+  const { trigger, behavior } = criterion
+
+  // If no provider available, fall back to heuristic scoring
+  if (!context?.provider) {
+    return performHeuristicLLMJudge(criterion, results)
+  }
+
+  try {
+    const prompt = buildLLMJudgePrompt(criterion, results)
+
+    const response = await context.provider.complete({
+      model: context.provider.config.defaultModel || 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.1,
+      maxTokens: 500,
+    })
+
+    // Parse LLM response
+    const content = response.message.content?.trim() || ''
+    const jsonMatch = content.match(/\{[\s\S]*\}/)
+
+    if (jsonMatch) {
+      const llmResult = JSON.parse(jsonMatch[0]) as {
+        passed: boolean
+        confidence: number
+        reasoning: string
+      }
+
+      return {
+        criterionId: criterion.id,
+        passed: llmResult.passed,
+        message: llmResult.reasoning || `LLM judge: ${llmResult.passed ? 'Passed' : 'Failed'}`,
+        details: {
+          trigger,
+          behavior,
+          confidence: llmResult.confidence,
+          llmResponse: content.slice(0, 500),
+        },
+      }
+    }
+
+    // If parsing fails, fall back to heuristics
+    console.warn('[Verifier] Failed to parse LLM judge response, falling back to heuristics')
+    return performHeuristicLLMJudge(criterion, results)
+  } catch (error) {
+    console.warn('[Verifier] LLM judge verification failed:', error)
+    return performHeuristicLLMJudge(criterion, results)
+  }
+}
+
+/**
+ * Build LLM judge prompt
+ */
+function buildLLMJudgePrompt(criterion: AcceptanceCriterion, results: ExecutionResults): string {
+  return `You are an expert software engineering verifier. Your task is to evaluate whether the execution results satisfy the given acceptance criterion.
+
+## Acceptance Criterion
+WHEN: ${criterion.trigger}
+THE SYSTEM SHALL: ${criterion.behavior}
+
+## Execution Results
+${results.output ? `Output:\n${results.output.slice(0, 2000)}\n\n` : ''}
+${results.filesModified?.length ? `Files Modified: ${results.filesModified.join(', ')}\n\n` : ''}
+${results.commandsRun?.length ? `Commands Run: ${results.commandsRun.join(', ')}\n\n` : ''}
+${results.errors?.length ? `Errors: ${results.errors.join(', ')}\n\n` : ''}
+${results.toolCalls?.length ? `Tool Calls:\n${results.toolCalls.map((tc) => `- ${tc.tool}: ${tc.result || tc.error || 'No result'}`).join('\n')}\n\n` : ''}
+
+## Response Format
+Respond with a JSON object:
+{
+  "passed": true | false,
+  "confidence": 0.0-1.0,
+  "reasoning": "Brief explanation of why the criterion passed or failed"
+}
+
+Evaluate carefully and provide your judgment:`
+}
+
+/**
+ * Heuristic fallback for LLM judge when provider unavailable
+ */
+function performHeuristicLLMJudge(
   criterion: AcceptanceCriterion,
   results: ExecutionResults
 ): VerificationResult {
   const { trigger, behavior } = criterion
 
-  // Simulate LLM judgment with heuristics
   const output = results.output || ''
   const outputLower = output.toLowerCase()
   const behaviorLower = behavior.toLowerCase()
@@ -294,8 +398,8 @@ function verifyLLMJudgeCriterion(
     criterionId: criterion.id,
     passed,
     message: passed
-      ? `LLM judge: Output appears to satisfy "${behavior}"`
-      : `LLM judge: Output may not fully satisfy "${behavior}"`,
+      ? `Heuristic: Output appears to satisfy "${behavior}"`
+      : `Heuristic: Output may not fully satisfy "${behavior}"`,
     details: {
       trigger,
       behavior,
