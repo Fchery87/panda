@@ -383,9 +383,9 @@ export function createDriftDetectionPlugin(config: Partial<DriftDetectionConfig>
           // Update throttle state
           updateThrottleState(specId)
 
-          // Emit drift detected event via plugin system
-          // This will be picked up by the UI
-          await plugins.executeHooks('spec.drift.detected', ctx, driftReport)
+          // Note: Drift detection event is emitted by the runtime
+          // The plugin stores the drift report, and the runtime
+          // will emit the spec.drift.detected event when processing tool results
         }
 
         return data
@@ -433,6 +433,3 @@ export function createDriftReport(
     severity,
   }
 }
-
-// Import plugins for hook execution
-import { plugins } from '../harness/plugins'

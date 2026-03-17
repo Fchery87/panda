@@ -173,6 +173,13 @@ class PluginManager {
   has(name: string): boolean {
     return this.plugins.has(name)
   }
+
+  /**
+   * Get a specific plugin by name
+   */
+  getPlugin(name: string): Plugin | undefined {
+    return this.plugins.get(name)
+  }
 }
 
 export const plugins = new PluginManager()
@@ -257,7 +264,9 @@ function calculateCost(modelID: string, tokens: number): number {
  * Hooks into tool execution to:
  * - Mark completed spec steps
  * - Track constraint satisfaction
- * - Check for drift between spec and execution
+ * - Log spec execution events
+ *
+ * Note: Drift detection is handled by the dedicated drift-detection plugin
  */
 export const specTrackingPlugin = createPlugin('spec-tracking', {
   hooks: {
@@ -277,33 +286,8 @@ export const specTrackingPlugin = createPlugin('spec-tracking', {
         })
       }
 
-      // Check for drift detection if enabled
-      if (typedData.toolName === 'write_files' || typedData.toolName === 'edit_file') {
-        // Extract file paths from args
-        const filePaths: string[] = []
-        if (Array.isArray(typedData.args.paths)) {
-          filePaths.push(...typedData.args.paths.map((p) => String(p)))
-        }
-        if (Array.isArray(typedData.args.files)) {
-          filePaths.push(
-            ...typedData.args.files.map((f: { path?: string }) => f.path || '').filter(Boolean)
-          )
-        }
-        if (typeof typedData.args.path === 'string') {
-          filePaths.push(typedData.args.path)
-        }
-
-        // Drift detection would check if these files are covered by an active spec
-        // and if the changes align with the spec constraints
-        if (filePaths.length > 0) {
-          // This is a placeholder for drift detection logic
-          // In a full implementation, this would:
-          // 1. Check if there's an active spec
-          // 2. Verify the modified files are in the spec's dependencies
-          // 3. Check if the changes align with spec constraints
-          // 4. Emit drift detection event if misaligned
-        }
-      }
+      // Note: Drift detection is handled by the drift-detection plugin
+      // which runs separately and monitors all write operations
 
       return data
     },
@@ -473,7 +457,22 @@ export const postWriteValidationPlugin = createPlugin('post-write-validation', {
   },
 })
 
-export const defaultPlugins = [loggingPlugin, costTrackingPlugin, specTrackingPlugin] as const
+import { createDriftDetectionPlugin } from '../spec/drift-detection'
+
+/**
+ * Drift detection plugin - monitors specs for code drift
+ */
+export const driftDetectionPlugin = createDriftDetectionPlugin({
+  enabled: true,
+  minSeverity: 'low',
+})
+
+export const defaultPlugins = [
+  loggingPlugin,
+  costTrackingPlugin,
+  specTrackingPlugin,
+  driftDetectionPlugin,
+] as const
 
 export function registerDefaultPlugins(): void {
   for (const plugin of defaultPlugins) {
