@@ -57,6 +57,7 @@ import { useProviderSettings } from './useProviderSettings'
 import { useTokenUsageMetrics, type UsageTotals, type UsageMetrics } from './useTokenUsageMetrics'
 import { useMemoryBank } from './useMemoryBank'
 import { useProjectContext } from './useProjectContext'
+import { useMessageHistory, type Message as HistoryMessage } from './useMessageHistory'
 import type {
   MessageAnnotationInfo,
   PersistedRunEventInfo,
@@ -244,11 +245,6 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
 
   // Convex queries & mutations
   const currentUser = useQuery(api.users.getCurrent)
-  const { results: persistedMessages, status: messagesPaginationStatus } = usePaginatedQuery(
-    api.messages.listPaginated,
-    chatId ? { chatId } : 'skip',
-    { initialNumItems: 50 }
-  )
   const settings = useQuery(api.settings.get)
   const persistedModeUsage = useQuery(
     api.agentRuns.usageByChatMode,
@@ -289,8 +285,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     [pendingArtifactRecords]
   )
 
-  // Local state
-  const [messages, setMessages] = useState<UseAgentReturn['messages']>([])
+  // Local state (non-message related)
   const [input, setInput] = useState('')
   const [status, setStatus] = useState<AgentStatus>('idle')
   const [currentIteration, setCurrentIteration] = useState(0)
@@ -313,6 +308,14 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const toolContextRef = useRef<ReturnType<typeof createToolContext> | null>(null)
   const rafFlushRef = useRef<number | null>(null)
   const runtimeRef = useRef<AgentRuntimeLike | null>(null)
+
+  // Message history hook
+  const { messages, setMessages, persistedMessages, messagesPaginationStatus } = useMessageHistory(
+    chatId,
+    mode,
+    getReasoningRuntimeSettings,
+    isRunningRef
+  )
 
   // Create artifact queue helpers
   const artifactQueue = useRef({
@@ -466,68 +469,6 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value)
   }, [])
-
-  // Hydrate local chat state from Convex when chat changes.
-  useEffect(() => {
-    if (!persistedMessages || isRunningRef.current) return
-    const runtimeSettings = getReasoningRuntimeSettings()
-    setCurrentRunUsage(undefined)
-
-    const hydrated: UseAgentReturn['messages'] = persistedMessages
-      .filter((msg) => msg.role === 'user' || msg.role === 'assistant')
-      .map((msg) => {
-        const firstAnnotation = Array.isArray(msg.annotations)
-          ? (msg.annotations[0] as MessageAnnotationInfo | undefined)
-          : undefined
-
-        // Map stored and legacy modes consistently to the current 4-mode model.
-        const hydratedMode = normalizeChatMode(firstAnnotation?.mode, mode)
-
-        return {
-          id: msg._id,
-          role: msg.role as 'user' | 'assistant' | 'tool',
-          content: msg.content,
-          createdAt: msg.createdAt,
-          reasoningContent:
-            runtimeSettings.showReasoningPanel &&
-            typeof firstAnnotation?.reasoningSummary === 'string'
-              ? firstAnnotation.reasoningSummary
-              : '',
-          mode: hydratedMode,
-          toolCalls: Array.isArray(firstAnnotation?.toolCalls)
-            ? (firstAnnotation?.toolCalls as ToolCallInfo[])
-            : ([] as ToolCallInfo[]),
-          annotations: {
-            mode: hydratedMode,
-            model: typeof firstAnnotation?.model === 'string' ? firstAnnotation.model : undefined,
-            provider:
-              typeof firstAnnotation?.provider === 'string' ? firstAnnotation.provider : undefined,
-            tokenCount: toOptionalFiniteNumber(firstAnnotation?.tokenCount),
-            promptTokens: toOptionalFiniteNumber(firstAnnotation?.promptTokens),
-            completionTokens: toOptionalFiniteNumber(firstAnnotation?.completionTokens),
-            totalTokens: toOptionalFiniteNumber(firstAnnotation?.totalTokens),
-            tokenSource:
-              firstAnnotation?.tokenSource === 'exact' ||
-              firstAnnotation?.tokenSource === 'estimated'
-                ? firstAnnotation.tokenSource
-                : undefined,
-            reasoningTokens: toOptionalFiniteNumber(firstAnnotation?.reasoningTokens),
-            contextWindow: toOptionalFiniteNumber(firstAnnotation?.contextWindow),
-            contextUsedTokens: toOptionalFiniteNumber(firstAnnotation?.contextUsedTokens),
-            contextRemainingTokens: toOptionalFiniteNumber(firstAnnotation?.contextRemainingTokens),
-            contextUsagePct: toOptionalFiniteNumber(firstAnnotation?.contextUsagePct),
-            contextSource:
-              firstAnnotation?.contextSource === 'map' ||
-              firstAnnotation?.contextSource === 'provider' ||
-              firstAnnotation?.contextSource === 'fallback'
-                ? firstAnnotation.contextSource
-                : undefined,
-          },
-        }
-      })
-
-    setMessages(hydrated)
-  }, [chatId, persistedMessages, getReasoningRuntimeSettings, mode])
 
   // Main submit handler
   const sendMessageInternal = useCallback(
