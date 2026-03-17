@@ -24,7 +24,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Only HTTPS URLs allowed' }, { status: 400 })
     }
 
-    const modelsPath = baseUrl.endsWith('/models') ? baseUrl : `${baseUrl.replace(/\/+$/, '')}/models`
+    const modelsPath = baseUrl.endsWith('/models')
+      ? baseUrl
+      : `${baseUrl.replace(/\/+$/, '')}/models`
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 15000)
