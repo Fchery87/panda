@@ -112,10 +112,15 @@ class PluginManager {
   /**
    * Execute hooks for a given type
    */
-  async executeHooks<T>(hookType: HookType, context: HookContext, data: T): Promise<T> {
+  async executeHooks<T>(
+    hookType: HookType,
+    context: HookContext,
+    data: T
+  ): Promise<{ result: T; errors: Array<{ plugin: string; error: Error }> }> {
     const entries = this.hooks.get(hookType)
-    if (!entries || entries.length === 0) return data
+    if (!entries || entries.length === 0) return { result: data, errors: [] }
 
+    const errors: Array<{ plugin: string; error: Error }> = []
     let result = data
 
     for (const entry of entries) {
@@ -125,11 +130,13 @@ class PluginManager {
           result = hookResult as T
         }
       } catch (error) {
-        appLog.error(`[PluginManager] Hook error in ${entry.plugin}:`, error)
+        const err = error instanceof Error ? error : new Error(String(error))
+        appLog.error(`[PluginManager] Hook error in ${entry.plugin}:`, err)
+        errors.push({ plugin: entry.plugin, error: err })
       }
     }
 
-    return result
+    return { result, errors }
   }
 
   /**

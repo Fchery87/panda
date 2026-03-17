@@ -52,6 +52,7 @@ import { withTimeoutAndRetry, isContextOverflowError } from '../../llm/stream-re
 import { snapshots } from './snapshots'
 import { createSubtaskPart, executeTaskTool, getTaskToolDefinitions } from './task-tool'
 import { extractFilePaths, isFileCoveredBySpec } from '../spec/drift-detection'
+import { appLog } from '@/lib/logger'
 import type {
   RuntimeCheckpoint,
   RuntimeCheckpointPendingSubtask,
@@ -2579,7 +2580,16 @@ export class Runtime {
     context: { sessionID: Identifier; step: number; agent: AgentConfig; messageID: Identifier },
     data: T
   ): Promise<T> {
-    return plugins.executeHooks(hookType, context, data)
+    const { result, errors } = await plugins.executeHooks(hookType, context, data)
+
+    // Surface plugin hook errors as warning events
+    if (errors.length > 0) {
+      for (const { plugin, error } of errors) {
+        appLog.warn(`[Runtime] Plugin hook error in ${plugin} for ${hookType}:`, error)
+      }
+    }
+
+    return result
   }
 
   /**
