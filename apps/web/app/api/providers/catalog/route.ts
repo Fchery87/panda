@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(_request: NextRequest) {
   try {
-    const response = await fetch('https://models.dev/api/models.json', {
+    const response = await fetch('https://models.dev/api.json', {
       method: 'GET',
       headers: {
         Accept: 'application/json',
