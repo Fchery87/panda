@@ -44,7 +44,7 @@ interface ResolveContextWindowArgs {
   providerModels?: ModelInfo[]
 }
 
-interface ContextWindowResult {
+export interface ContextWindowResult {
   contextWindow: number
   source: ContextWindowSource
 }

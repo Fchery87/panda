@@ -57,6 +57,7 @@ import {
 import { buildPromptMessagesWithModeSummary } from '../lib/agent/context/session-summary'
 import { reduceTerminalAgentEvent } from './useAgent-terminal-events'
 import { useRunEventBuffer, type TracePersistenceStatus } from './useRunEventBuffer'
+import { useProviderSettings } from './useProviderSettings'
 import type {
   MessageAnnotationInfo,
   PersistedRunEventInfo,
@@ -89,13 +90,6 @@ interface ProgressStep {
   planTotalSteps?: number
   completedPlanStepIndexes?: number[]
   createdAt: number
-}
-
-interface ReasoningProviderConfig {
-  showReasoningPanel?: boolean
-  reasoningEnabled?: boolean
-  reasoningBudget?: number
-  reasoningMode?: 'auto' | 'low' | 'medium' | 'high'
 }
 
 type RunEventInput = PersistedRunEventInfo
@@ -348,10 +342,13 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const planSteps = useMemo(() => parsePlanSteps(planDraft), [planDraft])
   const completedPlanStepIndexesRef = useRef<number[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [providerModels, setProviderModels] = useState<ModelInfo[]>([])
   const [currentRunUsage, setCurrentRunUsage] = useState<UsageTotals & { source: TokenSource }>()
   const [currentSpec, setCurrentSpec] = useState<FormalSpecification | null>(null)
   const [pendingSpec, setPendingSpec] = useState<FormalSpecification | null>(null)
+
+  // Provider settings hook
+  const { providerModels, contextWindowResolution, getReasoningRuntimeSettings } =
+    useProviderSettings(provider, model, settings as Record<string, unknown> | undefined)
 
   // Refs for controlling the agent
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -399,74 +396,6 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       }
     )
   }, [projectId, chatId, convexClient, userId])
-
-  // Stop the agent
-  const getReasoningRuntimeSettings = useCallback(() => {
-    const providerType = (provider?.config?.provider || 'openai') as ProviderType
-    const capabilities =
-      provider?.config?.capabilities ?? getDefaultProviderCapabilities(providerType)
-
-    const providerKey = settings?.defaultProvider || providerType
-    const providerConfig = (settings?.providerConfigs?.[providerKey] ??
-      {}) as ReasoningProviderConfig
-
-    const showReasoningPanel = providerConfig.showReasoningPanel !== false
-    const reasoningEnabled = Boolean(providerConfig.reasoningEnabled)
-    const reasoningBudget = Number(providerConfig.reasoningBudget ?? 6000)
-    const reasoningMode = String(providerConfig.reasoningMode ?? 'auto')
-
-    let reasoning: ReasoningOptions | undefined
-    if (capabilities.supportsReasoning && reasoningEnabled) {
-      reasoning = {
-        enabled: true,
-        ...(Number.isFinite(reasoningBudget) && reasoningBudget > 0
-          ? { budgetTokens: reasoningBudget }
-          : {}),
-      }
-      if (reasoningMode === 'low' || reasoningMode === 'medium' || reasoningMode === 'high') {
-        reasoning.effort = reasoningMode
-      }
-    }
-
-    return {
-      showReasoningPanel,
-      reasoning,
-    }
-  }, [provider, settings])
-
-  useEffect(() => {
-    let cancelled = false
-
-    const loadProviderModels = async () => {
-      if (!provider || typeof provider.listModels !== 'function') {
-        setProviderModels([])
-        return
-      }
-      try {
-        const models = await provider.listModels()
-        if (!cancelled) {
-          setProviderModels(Array.isArray(models) ? models : [])
-        }
-      } catch (error) {
-        void error
-        if (!cancelled) {
-          setProviderModels([])
-        }
-      }
-    }
-
-    void loadProviderModels()
-
-    return () => {
-      cancelled = true
-    }
-  }, [provider])
-
-  const providerType = (provider?.config?.provider || 'openai') as ProviderType
-  const contextWindowResolution = useMemo(
-    () => resolveContextWindow({ providerType, model, providerModels }),
-    [providerType, model, providerModels]
-  )
 
   const sessionUsage = useMemo<UsageTotals>(
     () => ({
@@ -696,7 +625,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       })
 
       const estimatedPromptTokens = estimatePromptTokens({
-        providerType,
+        providerType: (provider?.config?.provider || 'openai') as ProviderType,
         model,
         messages: [...previousMessagesSnapshot, { role: 'user', content: userContent }],
       })
@@ -1089,7 +1018,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                 runUsage = {
                   ...runUsage,
                   completionTokens: estimateCompletionTokens({
-                    providerType,
+                    providerType: (provider?.config?.provider || 'openai') as ProviderType,
                     model,
                     content: assistantContent,
                   }),
@@ -1618,7 +1547,6 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       mode,
       provider,
       model,
-      providerType,
       architectBrainstormEnabled,
       addMessage,
       beginRun,
