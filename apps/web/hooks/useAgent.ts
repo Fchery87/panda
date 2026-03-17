@@ -11,7 +11,7 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
-import { useMutation, useConvex, useQuery } from 'convex/react'
+import { useMutation, useConvex, useQuery, usePaginatedQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import type { LLMProvider, ModelInfo, ProviderType, ReasoningOptions } from '../lib/llm/types'
@@ -267,7 +267,11 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
 
   // Convex queries & mutations
   const currentUser = useQuery(api.users.getCurrent)
-  const persistedMessages = useQuery(api.messages.list, chatId ? { chatId } : 'skip')
+  const { results: persistedMessages, status: messagesPaginationStatus } = usePaginatedQuery(
+    api.messages.listPaginated,
+    chatId ? { chatId } : 'skip',
+    { initialNumItems: 50 }
+  )
   const settings = useQuery(api.settings.get)
   const persistedModeUsage = useQuery(
     api.agentRuns.usageByChatMode,
@@ -1234,6 +1238,22 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                   })
                 }
               }
+              const verificationStep: ProgressStep = {
+                id: `progress-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                content: event.verification?.passed
+                  ? 'Specification verified'
+                  : 'Specification failed',
+                status: event.verification?.passed ? 'completed' : 'error',
+                category: 'complete',
+                details: event.verification?.passed
+                  ? undefined
+                  : {
+                      errorExcerpt:
+                        'Specification verification failed. Review unmet checks in the run history.',
+                    },
+                createdAt: Date.now(),
+              }
+              setProgressSteps((prev) => [...prev, verificationStep].slice(-30))
               void appendRunEvent({
                 type: 'spec_verification',
                 content: event.verification?.passed
@@ -1493,6 +1513,17 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               const userFacing = getUserFacingAgentError(event.error)
               setStatus('error')
               setError(userFacing.description)
+              const errorStep: ProgressStep = {
+                id: `progress-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                content: userFacing.title,
+                status: 'error',
+                category: 'complete',
+                details: {
+                  errorExcerpt: userFacing.description,
+                },
+                createdAt: Date.now(),
+              }
+              setProgressSteps((prev) => [...prev, errorStep].slice(-30))
               isRunningRef.current = false
               specPersistenceRef.current.clear()
               await appendRunEvent(

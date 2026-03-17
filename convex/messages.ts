@@ -1,4 +1,5 @@
 import { query, mutation } from './_generated/server'
+import { paginationOptsValidator } from 'convex/server'
 import { v } from 'convex/values'
 import { MessageAnnotation } from './schema'
 import { requireChatOwner, requireMessageOwner } from './lib/authz'
@@ -14,6 +15,22 @@ export const list = query({
       .withIndex('by_created', (q) => q.eq('chatId', args.chatId))
       .order('asc')
       .collect()
+  },
+})
+
+// listPaginated (query) - paginated list of messages by chatId
+export const listPaginated = query({
+  args: {
+    chatId: v.id('chats'),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    await requireChatOwner(ctx, args.chatId)
+    return await ctx.db
+      .query('messages')
+      .withIndex('by_created', (q) => q.eq('chatId', args.chatId))
+      .order('asc')
+      .paginate(args.paginationOpts)
   },
 })
 
