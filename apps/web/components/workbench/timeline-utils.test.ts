@@ -87,4 +87,29 @@ describe('selectTimelineEvents', () => {
     expect(result.hasSnapshots).toBe(true)
     expect(result.title).toBe('History Checkpoints')
   })
+
+  it('uses failure-focused labels for failed tool and spec events', () => {
+    const result = selectTimelineEvents([
+      {
+        _id: 'tool-error',
+        type: 'tool_result',
+        toolName: 'write_files',
+        error: 'lint failed',
+        status: 'error',
+        createdAt: 1,
+      },
+      {
+        _id: 'spec-error',
+        type: 'spec_verification',
+        content: 'Specification failed',
+        status: 'failed',
+        createdAt: 2,
+      },
+    ])
+
+    expect(result.items[0]?.label).toBe('Tool Failed: write_files')
+    expect(result.items[0]?.isError).toBe(true)
+    expect(result.items[1]?.label).toBe('Spec Verification Failed')
+    expect(result.items[1]?.specStatus).toBe('failed')
+  })
 })

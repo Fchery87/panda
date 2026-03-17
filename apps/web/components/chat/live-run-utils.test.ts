@@ -117,6 +117,39 @@ describe('live run utils', () => {
     expect(steps[1]?.details?.durationMs).toBe(820)
   })
 
+  it('includes persisted verification and error events as readable progress failures', () => {
+    const steps = mapRunEventsToProgressSteps([
+      {
+        _id: 'spec-fail',
+        type: 'spec_verification',
+        content: 'Specification failed',
+        status: 'failed',
+        createdAt: 100,
+      },
+      {
+        _id: 'run-error',
+        type: 'error',
+        error: 'Specification verification failed: test evidence missing',
+        createdAt: 200,
+      },
+    ])
+
+    expect(steps).toHaveLength(2)
+    expect(steps[0]).toMatchObject({
+      content: 'Specification failed',
+      status: 'error',
+      category: 'complete',
+    })
+    expect(steps[1]).toMatchObject({
+      content: 'Run failed',
+      status: 'error',
+      category: 'complete',
+      details: {
+        errorExcerpt: 'Specification verification failed: test evidence missing',
+      },
+    })
+  })
+
   it('maps only latest run progress steps when multiple runs exist', () => {
     const steps = mapLatestRunProgressSteps([
       {

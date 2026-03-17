@@ -139,6 +139,58 @@ describe('/api/e2e/project route', () => {
     }
   })
 
+  test('can reclaim one fixture slot without creating a project when ensureCapacity is requested', async () => {
+    setTestEnv()
+    const projectsAtLimit = Array.from({ length: 100 }, (_, index) => ({
+      _id: `fixture-${index}`,
+      name: `Workbench Smoke ${index}`,
+      description: 'Deterministic browser E2E fixture project',
+      createdAt: index + 1,
+      lastOpenedAt: index + 1,
+    }))
+
+    queryImpl = () => {
+      const queryIndex = queryCalls.length
+      if (queryIndex === 1) {
+        return projectsAtLimit
+      }
+      if (queryIndex === 2) {
+        return { maxProjectsPerUser: 100 }
+      }
+      if (queryIndex === 3) {
+        return projectsAtLimit.filter((project) => project._id !== 'fixture-0')
+      }
+      return []
+    }
+
+    mutationImpl = (_func, args) => {
+      if ('id' in args) {
+        expect(args).toEqual({ id: 'fixture-0' })
+        return 'fixture-0'
+      }
+      throw new Error(`Unexpected mutation call: ${JSON.stringify(args)}`)
+    }
+
+    try {
+      const { GET } = await import('./route')
+
+      const response = await GET(
+        new Request('http://localhost:3000/api/e2e/project?ensureCapacity=1')
+      )
+
+      expect(response.status).toBe(200)
+      await expect(response.json()).resolves.toEqual({
+        ensuredCapacity: true,
+        cleanedUpProjectId: 'fixture-0',
+      })
+      expect(
+        mutationCalls.filter((call) => 'name' in call.args && 'description' in call.args)
+      ).toHaveLength(0)
+    } finally {
+      restoreEnv()
+    }
+  })
+
   test('seeds a chat, file, and runtime checkpoint when requested', async () => {
     setTestEnv()
     queryResult = [{ _id: 'project-existing', name: 'Workbench E2E Fixture' }]

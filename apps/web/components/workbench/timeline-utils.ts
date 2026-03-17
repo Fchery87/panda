@@ -71,7 +71,7 @@ function getTimelineLabel(event: TimelineEventRecord): string {
     case 'spec_generated':
       return 'Spec Generated'
     case 'spec_verification':
-      return 'Spec Verification'
+      return event.status === 'failed' ? 'Spec Verification Failed' : 'Spec Verification'
     case 'progress_step': {
       const category = event.progressCategory ? toTitleCase(event.progressCategory) : 'Progress'
       if (event.progressCategory === 'tool' && event.progressToolName) {
@@ -82,7 +82,9 @@ function getTimelineLabel(event: TimelineEventRecord): string {
     case 'tool_call':
       return `Tool Call: ${event.toolName ?? 'unknown'}`
     case 'tool_result':
-      return `Tool Result: ${event.toolName ?? 'unknown'}`
+      return `${event.error || event.status === 'error' ? 'Tool Failed' : 'Tool Result'}: ${
+        event.toolName ?? 'unknown'
+      }`
     case 'error':
       return 'Error'
     default:
@@ -100,7 +102,7 @@ export function selectTimelineEvents(events: TimelineEventRecord[]): TimelineSel
       const specStatus: import('./timeline-utils').SpecTimelineStatus | undefined = isSpec
         ? event.type === 'spec_generated'
           ? 'generated'
-          : event.status === 'error'
+          : event.status === 'error' || event.status === 'failed'
             ? 'failed'
             : 'verified'
         : undefined

@@ -163,6 +163,7 @@ export async function GET(request: Request) {
 
     const url = new URL(request.url)
     const fixtureName = url.searchParams.get('name')?.trim() || DEFAULT_FIXTURE_NAME
+    const ensureCapacityOnly = url.searchParams.get('ensureCapacity') === '1'
     const filePath = url.searchParams.get('filePath')?.trim() || null
     const fileContent = url.searchParams.get('fileContent') ?? ''
     const artifactContent = url.searchParams.get('artifactContent') ?? null
@@ -179,6 +180,28 @@ export async function GET(request: Request) {
     const convex = new ConvexHttpClient(convexUrl)
     let projects = await listFixtureProjects(convex)
     const maxProjectsPerUser = await getMaxProjectsPerUser(convex)
+
+    if (ensureCapacityOnly) {
+      let cleanedUpProjectId: string | null = null
+
+      if (projects.length >= maxProjectsPerUser) {
+        const cleanupCandidate = getFixtureCleanupCandidate(projects, new Set<string>(), fixtureName)
+        if (!cleanupCandidate) {
+          throw new Error(
+            `Project limit reached. You have ${projects.length} projects (maximum: ${maxProjectsPerUser}). Please delete an existing project before creating a new one.`
+          )
+        }
+
+        await convex.mutation(api.projects.remove, { id: cleanupCandidate._id })
+        cleanedUpProjectId = cleanupCandidate._id
+      }
+
+      return NextResponse.json({
+        ensuredCapacity: true,
+        cleanedUpProjectId,
+      })
+    }
+
     const existing = projects.find((project) => project.name === fixtureName)
 
     let projectId = existing?._id

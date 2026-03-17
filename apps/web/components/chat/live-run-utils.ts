@@ -253,42 +253,81 @@ export function extractTargetFilePaths(
 
 export function mapRunEventsToProgressSteps(events: PersistedRunEventInfo[]): LiveProgressStep[] {
   return events
-    .filter((event) => event.type === 'progress_step' && typeof event.content === 'string')
-    .map((event, index) => ({
-      id: event._id ?? `progress-replay-${index}`,
-      content: event.content!,
-      status: event.status === 'completed' || event.status === 'error' ? event.status : 'running',
-      category:
-        event.progressCategory === 'analysis' ||
-        event.progressCategory === 'rewrite' ||
-        event.progressCategory === 'tool' ||
-        event.progressCategory === 'complete'
-          ? event.progressCategory
-          : 'other',
-      details:
-        event.progressToolName ||
-        event.toolCallId ||
-        event.args ||
-        event.durationMs !== undefined ||
-        event.error ||
-        event.targetFilePaths ||
-        event.progressHasArtifactTarget !== undefined
-          ? {
-              toolName: event.progressToolName,
-              toolCallId: event.toolCallId,
-              argsSummary: summarizeArgs(event.args),
-              durationMs: event.durationMs,
-              errorExcerpt: event.error,
-              targetFilePaths: event.targetFilePaths,
-              hasArtifactTarget: event.progressHasArtifactTarget,
-            }
-          : undefined,
-      planStepIndex: event.planStepIndex,
-      planStepTitle: event.planStepTitle,
-      planTotalSteps: event.planTotalSteps,
-      completedPlanStepIndexes: event.completedPlanStepIndexes,
-      createdAt: event.createdAt ?? Date.now(),
-    }))
+    .flatMap((event, index) => {
+      if (event.type === 'progress_step' && typeof event.content === 'string') {
+        const step: LiveProgressStep = {
+          id: event._id ?? `progress-replay-${index}`,
+          content: event.content,
+          status:
+            event.status === 'completed' || event.status === 'error' ? event.status : 'running',
+          category:
+            event.progressCategory === 'analysis' ||
+            event.progressCategory === 'rewrite' ||
+            event.progressCategory === 'tool' ||
+            event.progressCategory === 'complete'
+              ? event.progressCategory
+              : 'other',
+          details:
+            event.progressToolName ||
+            event.toolCallId ||
+            event.args ||
+            event.durationMs !== undefined ||
+            event.error ||
+            event.targetFilePaths ||
+            event.progressHasArtifactTarget !== undefined
+              ? {
+                  toolName: event.progressToolName,
+                  toolCallId: event.toolCallId,
+                  argsSummary: summarizeArgs(event.args),
+                  durationMs: event.durationMs,
+                  errorExcerpt: event.error,
+                  targetFilePaths: event.targetFilePaths,
+                  hasArtifactTarget: event.progressHasArtifactTarget,
+                }
+              : undefined,
+          planStepIndex: event.planStepIndex,
+          planStepTitle: event.planStepTitle,
+          planTotalSteps: event.planTotalSteps,
+          completedPlanStepIndexes: event.completedPlanStepIndexes,
+          createdAt: event.createdAt ?? Date.now(),
+        }
+        return [step]
+      }
+
+      if (event.type === 'spec_verification') {
+        const step: LiveProgressStep = {
+          id: event._id ?? `spec-verification-${index}`,
+          content: event.content ?? 'Specification verification completed',
+          status: event.status === 'verified' ? 'completed' : 'error',
+          category: 'complete',
+          details: event.error
+            ? {
+                errorExcerpt: event.error,
+              }
+            : undefined,
+          createdAt: event.createdAt ?? Date.now(),
+        }
+        return [step]
+      }
+
+      if (event.type === 'error') {
+        const step: LiveProgressStep = {
+          id: event._id ?? `run-error-${index}`,
+          content: 'Run failed',
+          status: 'error',
+          category: 'complete',
+          details: event.error
+            ? {
+                errorExcerpt: event.error,
+              }
+            : undefined,
+          createdAt: event.createdAt ?? Date.now(),
+        }
+        return [step]
+      }
+
+      return []
+    })
 }
 
 export function mapLatestRunProgressSteps(events: PersistedRunEventInfo[]): LiveProgressStep[] {

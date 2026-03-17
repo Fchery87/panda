@@ -7,6 +7,7 @@ import type { Id } from '@convex/_generated/dataModel'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { FolderGit2, Plus, Trash2, Clock, Search, ArrowRight } from 'lucide-react'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -20,6 +21,10 @@ import {
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import {
+  getCreateProjectErrorDisplay,
+  type CreateProjectErrorDisplay,
+} from './create-project-errors'
 
 interface Project {
   _id: Id<'projects'>
@@ -40,21 +45,26 @@ function CreateProjectDialog({
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [isCreating, setIsCreating] = useState(false)
+  const [submitError, setSubmitError] = useState<CreateProjectErrorDisplay | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return
 
     setIsCreating(true)
+    setSubmitError(null)
     try {
       await onCreate(name.trim(), description.trim() || undefined)
       setOpen(false)
       setName('')
       setDescription('')
+      setSubmitError(null)
       toast.success('Project created successfully')
     } catch (error) {
-      toast.error('Failed to create project', {
-        description: error instanceof Error ? error.message : 'Unknown error',
+      const display = getCreateProjectErrorDisplay(error)
+      setSubmitError(display)
+      toast.error(display.title, {
+        description: display.description,
       })
     } finally {
       setIsCreating(false)
@@ -62,7 +72,15 @@ function CreateProjectDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen)
+        if (!nextOpen) {
+          setSubmitError(null)
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button className="gap-2 rounded-none font-mono">
           <Plus className="h-4 w-4" />
@@ -76,6 +94,17 @@ function CreateProjectDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
+            {submitError ? (
+              <Alert variant="destructive" className="rounded-none border">
+                <AlertTitle className="font-mono text-xs uppercase tracking-[0.18em]">
+                  {submitError.title}
+                </AlertTitle>
+                <AlertDescription className="space-y-1 font-mono text-xs">
+                  <p>{submitError.description}</p>
+                  {submitError.recoveryHint ? <p>{submitError.recoveryHint}</p> : null}
+                </AlertDescription>
+              </Alert>
+            ) : null}
             <div className="grid gap-2">
               <label htmlFor="name" className="font-mono text-sm text-muted-foreground">
                 Project Name
@@ -84,7 +113,10 @@ function CreateProjectDialog({
                 id="name"
                 placeholder="my-awesome-project"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  setName(e.target.value)
+                  if (submitError) setSubmitError(null)
+                }}
                 autoFocus
                 className="rounded-none font-mono"
               />
@@ -97,7 +129,10 @@ function CreateProjectDialog({
                 id="description"
                 placeholder="A brief description of your project"
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => {
+                  setDescription(e.target.value)
+                  if (submitError) setSubmitError(null)
+                }}
                 className="rounded-none"
               />
             </div>

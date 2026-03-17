@@ -1,5 +1,10 @@
 import { test, expect, Page } from '@playwright/test'
 
+async function ensureProjectCapacity(page: Page) {
+  const response = await page.request.get('/api/e2e/project?ensureCapacity=1')
+  expect(response.ok()).toBe(true)
+}
+
 async function openCreateProjectDialog(page: Page) {
   const newProjectButton = page
     .getByRole('main')
@@ -16,6 +21,7 @@ async function openCreateProjectDialog(page: Page) {
 }
 
 async function createProject(page: Page, name: string, description?: string) {
+  await ensureProjectCapacity(page)
   await openCreateProjectDialog(page)
 
   const nameInput = page.locator('input#name').or(page.getByPlaceholder(/my-awesome-project/i))
