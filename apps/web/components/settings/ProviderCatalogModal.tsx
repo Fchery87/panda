@@ -45,9 +45,17 @@ export function ProviderCatalogModal({
       setError(null)
       try {
         const entries = await getProviderCatalog()
-        if (!cancelled) setCatalog(entries)
-      } catch {
-        if (!cancelled) setError('Failed to load provider catalog')
+        if (!cancelled) {
+          setCatalog(entries)
+          if (entries.length === 0) {
+            setError('No providers found. Please check your connection and try again.')
+          }
+        }
+      } catch (err) {
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : 'Unknown error'
+          setError(`Failed to load provider catalog: ${message}`)
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }

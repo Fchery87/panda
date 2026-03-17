@@ -78,9 +78,9 @@ export async function fetchModelsDevMetadata(): Promise<ModelsDevResponse> {
   }
 
   try {
-    const response = await fetch(MODELS_DEV_URL)
+    const response = await fetch('/api/providers/catalog')
     if (!response.ok) {
-      throw new Error(`Failed to fetch from models.dev: ${response.statusText}`)
+      throw new Error(`Failed to fetch provider catalog: ${response.statusText}`)
     }
 
     cachedMetadata = await response.json()
