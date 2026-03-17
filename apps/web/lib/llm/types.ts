@@ -9,19 +9,32 @@
  */
 
 /**
- * Provider type - supported LLM providers
+ * Well-known provider IDs with specialized implementations.
+ * Any string is valid as a ProviderType for dynamic models.dev providers.
  */
-export type ProviderType =
-  | 'openai'
-  | 'openrouter'
-  | 'together'
-  | 'anthropic'
-  | 'zai'
-  | 'chutes'
-  | 'deepseek'
-  | 'groq'
-  | 'fireworks'
-  | 'custom'
+export const KNOWN_PROVIDERS = [
+  'openai',
+  'openrouter',
+  'together',
+  'anthropic',
+  'zai',
+  'chutes',
+  'deepseek',
+  'groq',
+  'fireworks',
+  'custom',
+] as const
+
+export type KnownProviderType = (typeof KNOWN_PROVIDERS)[number]
+
+/**
+ * Provider type - known providers or any dynamic models.dev provider ID.
+ */
+export type ProviderType = KnownProviderType | (string & {})
+
+export function isKnownProvider(type: string): type is KnownProviderType {
+  return (KNOWN_PROVIDERS as readonly string[]).includes(type)
+}
 
 /**
  * Model variant for different reasoning/effort levels
@@ -263,13 +276,6 @@ export function getDefaultProviderCapabilities(type: ProviderType): ProviderCapa
         supportsToolStreaming: true,
         reasoningControl: 'effort',
       }
-    case 'openai':
-    case 'openrouter':
-    case 'together':
-    case 'chutes':
-    case 'groq':
-    case 'fireworks':
-    case 'custom':
     default:
       return {
         supportsReasoning: false,

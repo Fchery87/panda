@@ -108,14 +108,7 @@ export function useProjectChatSession<TChat extends ChatSessionChat>(args: {
           apiKey?: string
           baseUrl?: string
           defaultModel?: string
-          provider?:
-            | 'openai'
-            | 'openrouter'
-            | 'together'
-            | 'anthropic'
-            | 'zai'
-            | 'chutes'
-            | 'custom'
+          provider?: string
         }
       | undefined
 
@@ -125,7 +118,9 @@ export function useProjectChatSession<TChat extends ChatSessionChat>(args: {
     }
 
     const nextProviderConfig = {
-      provider: providerConfig.provider || 'openai',
+      provider: (providerConfig.provider || defaultProviderId) as Parameters<
+        typeof getDefaultProviderCapabilities
+      >[0],
       auth: {
         apiKey: providerConfig.apiKey || '',
         baseUrl: providerConfig.baseUrl,

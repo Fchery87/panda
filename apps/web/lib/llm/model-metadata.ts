@@ -23,7 +23,7 @@ const KNOWN_MODEL_CONTEXT_WINDOWS: Record<string, number> = {
   'meta-llama/Llama-3.1-70B-Instruct-Turbo': 128000,
 }
 
-const PROVIDER_FALLBACK_CONTEXT_WINDOWS: Record<ProviderType, number> = {
+const PROVIDER_FALLBACK_CONTEXT_WINDOWS: Record<string, number> = {
   openai: 128000,
   openrouter: 128000,
   together: 128000,
@@ -67,7 +67,7 @@ export function resolveContextWindow(args: ResolveContextWindowArgs): ContextWin
   }
 
   return {
-    contextWindow: PROVIDER_FALLBACK_CONTEXT_WINDOWS[args.providerType] ?? 32000,
+    contextWindow: PROVIDER_FALLBACK_CONTEXT_WINDOWS[args.providerType] ?? 128000,
     source: 'fallback',
   }
 }
