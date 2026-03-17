@@ -506,6 +506,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     clearRun,
     appendRunEvent,
     flushRunEventBuffer,
+    cleanup: runEventBufferCleanup,
   } = useRunEventBuffer<RunEventInput>({
     appendRunEvents,
     onError: logUseAgentError,
@@ -1781,8 +1782,9 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   useEffect(() => {
     return () => {
       stop()
+      runEventBufferCleanup()
     }
-  }, [stop])
+  }, [stop, runEventBufferCleanup])
 
   return {
     messages,

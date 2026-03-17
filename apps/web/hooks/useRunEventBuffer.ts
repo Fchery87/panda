@@ -177,6 +177,13 @@ export function useRunEventBuffer<TEvent extends object>({
     [flushRunEventBuffer, flushThreshold, scheduleRunEventFlush]
   )
 
+  const cleanup = useCallback(() => {
+    if (runEventFlushTimerRef.current !== null) {
+      clearTimeout(runEventFlushTimerRef.current)
+      runEventFlushTimerRef.current = null
+    }
+  }, [])
+
   return {
     tracePersistenceStatus,
     runIdRef,
@@ -184,5 +191,6 @@ export function useRunEventBuffer<TEvent extends object>({
     clearRun,
     appendRunEvent,
     flushRunEventBuffer,
+    cleanup,
   }
 }
