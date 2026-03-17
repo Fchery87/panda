@@ -214,6 +214,22 @@ export const listByChat = query({
   },
 })
 
+export const listRecentByProject = query({
+  args: {
+    projectId: v.id('projects'),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const { project } = await requireProjectOwner(ctx, args.projectId)
+    const limit = Math.max(1, Math.min(args.limit ?? 5, 50))
+    return await ctx.db
+      .query('agentRuns')
+      .withIndex('by_project_started', (q) => q.eq('projectId', args.projectId))
+      .order('desc')
+      .take(limit)
+  },
+})
+
 export const usageByChatMode = query({
   args: {
     chatId: v.id('chats'),

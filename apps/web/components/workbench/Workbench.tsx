@@ -25,6 +25,7 @@ import { SidebarRail } from '@/components/sidebar/SidebarRail'
 import { SidebarFlyout } from '@/components/sidebar/SidebarFlyout'
 import { SidebarHistoryPanel } from '@/components/sidebar/SidebarHistoryPanel'
 import { SidebarGitPanel } from '@/components/sidebar/SidebarGitPanel'
+import { ExplorerOutline } from '@/components/sidebar/ExplorerOutline'
 import { useWorkspace } from '@/contexts/WorkspaceContext'
 import { useShortcuts } from '@/hooks/useShortcuts'
 import type { WorkspaceArtifactPreview } from './artifact-preview'
@@ -405,20 +406,33 @@ export function Workbench({
           />
           <SidebarFlyout isOpen={isSidebarFlyoutOpen} activeSection={sidebarActiveSection}>
             {sidebarActiveSection === 'explorer' && (
-              <FileTree
-                files={files.map((f) => ({
-                  _id: f._id,
-                  path: f.path,
-                  content: f.content ?? '',
-                  isBinary: f.isBinary,
-                  updatedAt: f.updatedAt,
-                }))}
-                selectedPath={selectedFilePath}
-                onSelect={onSelectFile}
-                onCreate={onCreateFile}
-                onRename={onRenameFile}
-                onDelete={onDeleteFile}
-              />
+              <div className="flex h-full flex-col overflow-hidden">
+                <div className="flex-1 overflow-auto">
+                  <FileTree
+                    files={files.map((f) => ({
+                      _id: f._id,
+                      path: f.path,
+                      content: f.content ?? '',
+                      isBinary: f.isBinary,
+                      updatedAt: f.updatedAt,
+                    }))}
+                    selectedPath={selectedFilePath}
+                    onSelect={onSelectFile}
+                    onCreate={onCreateFile}
+                    onRename={onRenameFile}
+                    onDelete={onDeleteFile}
+                  />
+                </div>
+                <ExplorerOutline
+                  fileContent={files.find((f) => f.path === selectedFilePath)?.content}
+                  filePath={selectedFilePath}
+                  onSelectSymbol={(line) => {
+                    if (selectedFilePath) {
+                      onSelectFile(selectedFilePath, { line, column: 0 })
+                    }
+                  }}
+                />
+              </div>
             )}
             {sidebarActiveSection === 'search' && (
               <ProjectSearchPanel onSelectFile={onSelectFile} />

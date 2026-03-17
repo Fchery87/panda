@@ -921,6 +921,12 @@ export default function ProjectPage() {
               projectName={project.name}
               projectId={projectId}
               items={buildBreadcrumbItems(selectedFilePath)}
+              onRevealInExplorer={(folderPath) => {
+                handleSectionChange('explorer')
+                if (!isFlyoutOpen) toggleFlyout()
+                // TODO: Expand FileTree to folderPath (requires FileTree component update)
+                console.log('Reveal in explorer:', folderPath)
+              }}
             />
 
             {isAnyJobRunning && (

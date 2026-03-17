@@ -4,24 +4,13 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
-import {
-  ArrowUp,
-  Square,
-  Lightbulb,
-  SlidersHorizontal,
-  ChevronDown,
-  Target,
-  Zap,
-  Eye,
-  Sparkles,
-  Undo2,
-} from 'lucide-react'
+import { IconSend, IconStop, IconEnhance, IconRevert } from '@/components/ui/icons'
+
 import { useAction, useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import { toast } from 'sonner'
-import { AgentSelector, MODE_OPTIONS } from './AgentSelector'
+import { AgentSelector } from './AgentSelector'
 import { AttachmentButton, type Attachment } from './AttachmentButton'
 import { MentionPicker } from './MentionPicker'
 import { ModelSelector, type AvailableModel } from './ModelSelector'
@@ -106,7 +95,6 @@ export function ChatInput({
   // @-mention picker state
   const [mentionQuery, setMentionQuery] = useState<string | null>(null)
   const [mentionStart, setMentionStart] = useState<number>(-1)
-  const [optionsOpen, setOptionsOpen] = useState(false)
 
   // Enhance prompt state
   const [enhanceState, setEnhanceState] = useState<EnhanceState>('idle')
@@ -313,51 +301,6 @@ export function ChatInput({
     }
   }, [isStreaming])
 
-  const currentModeOption = MODE_OPTIONS.find((m) => m.value === mode)
-  const placeholderText = currentModeOption
-    ? `${currentModeOption.description}...`
-    : 'Type your message...'
-
-  const showBrainstormToggle = mode === 'architect'
-  const hasAdvancedControls =
-    Boolean(onModelChange) ||
-    (supportsReasoning && Boolean(onVariantChange)) ||
-    showBrainstormToggle ||
-    Boolean(onSpecTierChange)
-
-  // Spec tier configuration
-  const tierOptions: {
-    value: SpecTier | 'auto'
-    label: string
-    icon: React.ReactNode
-    description: string
-  }[] = [
-    {
-      value: 'auto',
-      label: 'Auto',
-      icon: <Zap className="h-3 w-3" />,
-      description: 'Auto-detect tier',
-    },
-    {
-      value: 'instant',
-      label: 'Instant',
-      icon: <Target className="h-3 w-3" />,
-      description: 'Direct response',
-    },
-    {
-      value: 'ambient',
-      label: 'Ambient',
-      icon: <Eye className="h-3 w-3" />,
-      description: 'Silent spec',
-    },
-    {
-      value: 'explicit',
-      label: 'Explicit',
-      icon: <Target className="h-3 w-3" />,
-      description: 'Full spec review',
-    },
-  ]
-
   return (
     <div className="surface-2 shrink-0 border-t border-border p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:p-3 sm:pb-3">
       <div className="relative">
@@ -376,10 +319,10 @@ export function ChatInput({
           value={input}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          placeholder={placeholderText}
+          placeholder="Ask anything, @ to mention, / for workflows"
           disabled={isStreaming}
           className={cn(
-            'max-h-[200px] min-h-[68px] resize-none pr-12 sm:min-h-[80px]',
+            'max-h-[200px] min-h-[68px] resize-none pr-10 sm:min-h-[80px]',
             'rounded-none border border-border bg-background',
             'focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary',
             'font-mono text-sm placeholder:text-muted-foreground/50'
@@ -404,7 +347,7 @@ export function ChatInput({
                 aria-label="Stop generation"
                 className="h-7 w-7 rounded-none border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
               >
-                <Square className="h-3 w-3 fill-current" />
+                <IconStop className="h-3 w-3" weight="fill" />
               </Button>
             </motion.div>
           ) : (
@@ -418,7 +361,7 @@ export function ChatInput({
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.8, opacity: 0 }}
                     transition={{ duration: 0.1 }}
-                    className="absolute bottom-3 right-12"
+                    className="absolute bottom-3 right-3"
                   >
                     <Button
                       size="icon"
@@ -437,171 +380,61 @@ export function ChatInput({
                       )}
                     >
                       {enhanceState === 'enhanced' ? (
-                        <Undo2 className="h-3 w-3" />
+                        <IconRevert className="h-3 w-3" />
                       ) : (
-                        <Sparkles className="h-3 w-3" />
+                        <IconEnhance className="h-3 w-3" weight="duotone" />
                       )}
                     </Button>
                   </motion.div>
                 )}
               </AnimatePresence>
-
-              <motion.div
-                key="send"
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.8, opacity: 0 }}
-                transition={{ duration: 0.1 }}
-                className="absolute bottom-3 right-3"
-              >
-                <Button
-                  size="icon"
-                  onClick={handleSendWithReset}
-                  disabled={!input.trim()}
-                  aria-label="Send message"
-                  className={cn(
-                    'transition-sharp h-7 w-7 rounded-none',
-                    input.trim()
-                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                      : 'bg-secondary text-muted-foreground'
-                  )}
-                >
-                  <ArrowUp className="h-3 w-3" />
-                </Button>
-              </motion.div>
             </>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Bottom toolbar: single row always */}
-      <div className="mt-2 flex flex-wrap items-center gap-2">
+      {/* Inline controls row */}
+      <div className="mt-2 flex items-center gap-2">
         <AttachmentButton
           attachments={attachments}
           onAttach={handleAttach}
           onRemove={handleRemoveAttachment}
           disabled={isStreaming}
         />
+
         <AgentSelector mode={mode} onModeChange={setMode} disabled={isStreaming} />
 
-        {hasAdvancedControls && (
-          <Popover open={optionsOpen} onOpenChange={setOptionsOpen}>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                disabled={isStreaming}
-                className={cn(
-                  'transition-sharp flex items-center gap-1 border px-2 py-1 font-mono text-xs uppercase tracking-wide',
-                  optionsOpen
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
-                )}
-              >
-                <SlidersHorizontal className="h-3 w-3" />
-                Options
-                <ChevronDown
-                  className={cn('h-3 w-3 transition-transform', optionsOpen && 'rotate-180')}
-                />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent
-              align="start"
-              side="top"
-              sideOffset={8}
-              className="w-auto min-w-[280px] rounded-none border-border p-3"
-            >
-              <div className="space-y-3">
-                {onModelChange && (
-                  <div className="space-y-1.5">
-                    <label className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-                      Model
-                    </label>
-                    <ModelSelector
-                      value={model || 'claude-sonnet-4-5'}
-                      onChange={onModelChange}
-                      disabled={isStreaming}
-                      availableModels={availableModels}
-                    />
-                  </div>
-                )}
-
-                {supportsReasoning && onVariantChange && (
-                  <div className="space-y-1.5">
-                    <label className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-                      Reasoning
-                    </label>
-                    <VariantSelector currentVariant={variant} onVariantChange={onVariantChange} />
-                  </div>
-                )}
-
-                {showBrainstormToggle && (
-                  <div className="space-y-1.5">
-                    <label className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-                      Brainstorm
-                    </label>
-                    <button
-                      type="button"
-                      disabled={isStreaming}
-                      onClick={() =>
-                        onArchitectBrainstormEnabledChange?.(!architectBrainstormEnabled)
-                      }
-                      className={cn(
-                        'transition-sharp flex w-full items-center justify-between border px-2 py-1.5 font-mono text-xs uppercase tracking-wide',
-                        architectBrainstormEnabled
-                          ? 'border-primary bg-primary text-primary-foreground'
-                          : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
-                      )}
-                    >
-                      <span className="flex items-center gap-1.5">
-                        <Lightbulb className="h-3 w-3" />
-                        Enable
-                      </span>
-                      {architectBrainstormEnabled && (
-                        <span className="text-[10px] opacity-80">Active</span>
-                      )}
-                    </button>
-                  </div>
-                )}
-
-                {onSpecTierChange && (
-                  <div className="space-y-1.5">
-                    <label className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-                      Spec Tier
-                    </label>
-                    <div className="flex border border-border">
-                      {tierOptions.map((tier, index) => (
-                        <button
-                          key={tier.value}
-                          type="button"
-                          disabled={isStreaming}
-                          onClick={() => onSpecTierChange(tier.value)}
-                          title={tier.description}
-                          className={cn(
-                            'transition-sharp flex flex-1 items-center justify-center gap-1 py-1.5 font-mono text-[10px] uppercase tracking-wide',
-                            specTier === tier.value
-                              ? 'bg-primary text-primary-foreground'
-                              : 'text-muted-foreground hover:text-foreground',
-                            index !== tierOptions.length - 1 && 'border-r border-border'
-                          )}
-                        >
-                          {tier.icon}
-                          {tier.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </PopoverContent>
-          </Popover>
+        {onModelChange && (
+          <ModelSelector
+            value={model || 'claude-sonnet-4-5'}
+            onChange={onModelChange}
+            disabled={isStreaming}
+            availableModels={availableModels}
+          />
         )}
 
-        <div className="ml-auto flex items-center gap-2 font-mono text-xs text-muted-foreground max-sm:w-full max-sm:justify-end">
-          <span className="hidden 2xl:inline">
-            {filePaths.length > 0 ? '@ to mention a file · ' : ''}Enter to send
-          </span>
-          <span className="2xl:hidden">{filePaths.length > 0 ? '@ file' : 'Enter'}</span>
-        </div>
+        {supportsReasoning && onVariantChange && (
+          <VariantSelector currentVariant={variant} onVariantChange={onVariantChange} />
+        )}
+
+        <div className="flex-1" />
+
+        {!isStreaming && (
+          <Button
+            size="icon"
+            onClick={handleSendWithReset}
+            disabled={!input.trim()}
+            aria-label="Send message"
+            className={cn(
+              'transition-sharp h-7 w-7 rounded-none',
+              input.trim()
+                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                : 'bg-secondary text-muted-foreground'
+            )}
+          >
+            <IconSend className="h-3 w-3" weight="fill" />
+          </Button>
+        )}
       </div>
     </div>
   )

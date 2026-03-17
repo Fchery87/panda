@@ -1,9 +1,20 @@
 'use client'
 
-import { Wifi, WifiOff, GitBranch, FileCode, Loader2 } from 'lucide-react'
+import { GitBranch } from 'lucide-react'
+import {
+  IconFile,
+  IconConnected,
+  IconDisconnected,
+  IconStreaming,
+  IconCheck,
+  IconError,
+  IconSpinner,
+} from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 import { SpecBadge } from './SpecBadge'
 import type { SpecStatus } from '@/lib/agent/spec/types'
+
+export type AgentStatus = 'idle' | 'running' | 'completed' | 'failed'
 
 interface StatusBarProps {
   filePath?: string | null
@@ -23,6 +34,12 @@ interface StatusBarProps {
   specConstraintsTotal?: number
   /** Callback when spec badge is clicked */
   onSpecClick?: () => void
+  /** Currently active model display name */
+  activeModel?: string
+  /** Agent run status for persistent indicator */
+  agentStatus?: AgentStatus
+  /** Callback when agent status badge is clicked (focus chat panel) */
+  onAgentStatusClick?: () => void
 }
 
 function getLanguageFromPath(path: string | null | undefined): string {
@@ -46,6 +63,19 @@ function getLanguageFromPath(path: string | null | undefined): string {
   return languages[ext || ''] || 'Plain Text'
 }
 
+function AgentStatusIcon({ status }: { status: AgentStatus }) {
+  switch (status) {
+    case 'running':
+      return <IconSpinner className="h-3 w-3 animate-spin" />
+    case 'completed':
+      return <IconCheck className="h-3 w-3 text-green-500" weight="bold" />
+    case 'failed':
+      return <IconError className="h-3 w-3 text-destructive" weight="bold" />
+    default:
+      return <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
+  }
+}
+
 export function StatusBar({
   filePath,
   cursorPosition,
@@ -59,6 +89,9 @@ export function StatusBar({
   specConstraintsMet,
   specConstraintsTotal,
   onSpecClick,
+  activeModel,
+  agentStatus = 'idle',
+  onAgentStatusClick,
 }: StatusBarProps) {
   const displayLanguage = language || getLanguageFromPath(filePath)
   const filename = filePath?.split('/').pop() || 'No file'
@@ -74,12 +107,12 @@ export function StatusBar({
       <div className="flex items-center gap-3">
         {isStreaming ? (
           <span className="flex items-center gap-1.5 text-primary">
-            <Loader2 className="h-3 w-3 animate-spin" />
+            <IconStreaming className="h-3 w-3 animate-spin" />
             AI thinking...
           </span>
         ) : (
           <span className="flex items-center gap-1.5">
-            <FileCode className="h-3 w-3" />
+            <IconFile className="h-3 w-3" weight="duotone" />
             <span className="max-w-[200px] truncate">{filename}</span>
           </span>
         )}
@@ -91,9 +124,28 @@ export function StatusBar({
         )}
 
         <span className="text-muted-foreground/70">{displayLanguage}</span>
+
+        <span className="text-muted-foreground/70">UTF-8</span>
       </div>
 
       <div className="flex items-center gap-3">
+        {activeModel && (
+          <span className="hidden text-muted-foreground/70 sm:inline">{activeModel}</span>
+        )}
+
+        <button
+          type="button"
+          onClick={onAgentStatusClick}
+          className={cn(
+            'flex items-center gap-1.5 transition-colors hover:text-foreground',
+            agentStatus === 'running' && 'text-primary'
+          )}
+          aria-label={`Agent: ${agentStatus}`}
+        >
+          <AgentStatusIcon status={agentStatus} />
+          <span className="hidden sm:inline">Agent: {agentStatus}</span>
+        </button>
+
         {specEngineEnabled && specStatus && (
           <SpecBadge
             status={specStatus}
@@ -115,21 +167,16 @@ export function StatusBar({
         )}
 
         <span
-          className={cn(
-            'flex items-center gap-1',
-            isConnected ? 'text-primary' : 'text-destructive'
-          )}
+          className={cn('flex items-center', isConnected ? 'text-primary' : 'text-destructive')}
           aria-live="polite"
+          title={isConnected ? 'Connected' : 'Disconnected'}
         >
           {isConnected ? (
-            <>
-              <Wifi className="h-3 w-3" />
-              Connected
-            </>
+            <IconConnected className="h-3 w-3" />
           ) : (
             <>
-              <WifiOff className="h-3 w-3" />
-              Disconnected
+              <IconDisconnected className="h-3 w-3" />
+              <span className="ml-1">Disconnected</span>
             </>
           )}
         </span>

@@ -3,15 +3,15 @@
 import type { ComponentType } from 'react'
 import Link from 'next/link'
 import {
-  FolderTree,
-  Search,
-  Clock,
-  FileCheck,
-  GitBranch,
-  TerminalSquare,
-  Settings,
-  BookOpen,
-} from 'lucide-react'
+  IconExplorer,
+  IconSearch,
+  IconHistory,
+  IconSpecs,
+  IconGit,
+  IconTerminal,
+  IconSettings,
+  IconDocs,
+} from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -33,12 +33,12 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'explorer', icon: FolderTree, label: 'Explorer', shortcut: 'Ctrl+Shift+E' },
-  { id: 'search', icon: Search, label: 'Search', shortcut: 'Ctrl+Shift+F' },
-  { id: 'history', icon: Clock, label: 'History', shortcut: 'Ctrl+Shift+H' },
-  { id: 'specs', icon: FileCheck, label: 'Specs', shortcut: 'Ctrl+Shift+S' },
-  { id: 'git', icon: GitBranch, label: 'Source Control', shortcut: 'Ctrl+Shift+G' },
-  { id: 'terminal', icon: TerminalSquare, label: 'Terminal', shortcut: 'Ctrl+`' },
+  { id: 'explorer', icon: IconExplorer, label: 'Explorer', shortcut: 'Ctrl+Shift+E' },
+  { id: 'search', icon: IconSearch, label: 'Search', shortcut: 'Ctrl+Shift+F' },
+  { id: 'history', icon: IconHistory, label: 'History', shortcut: 'Ctrl+Shift+H' },
+  { id: 'specs', icon: IconSpecs, label: 'Specs', shortcut: 'Ctrl+Shift+S' },
+  { id: 'git', icon: IconGit, label: 'Source Control', shortcut: 'Ctrl+Shift+G' },
+  { id: 'terminal', icon: IconTerminal, label: 'Terminal', shortcut: 'Ctrl+`' },
 ]
 
 export function SidebarRail({
@@ -113,7 +113,7 @@ export function SidebarRail({
                 className="hover:bg-surface-2 flex h-12 w-12 items-center justify-center text-muted-foreground transition-colors duration-150 hover:text-foreground"
                 aria-label="Settings"
               >
-                <Settings className="h-5 w-5" />
+                <IconSettings className="h-5 w-5" />
               </Link>
             </TooltipTrigger>
             <TooltipContent side="right" className="font-mono text-xs">
@@ -128,7 +128,7 @@ export function SidebarRail({
                 className="hover:bg-surface-2 flex h-12 w-12 items-center justify-center text-muted-foreground transition-colors duration-150 hover:text-foreground"
                 aria-label="Documentation"
               >
-                <BookOpen className="h-5 w-5" />
+                <IconDocs className="h-5 w-5" />
               </Link>
             </TooltipTrigger>
             <TooltipContent side="right" className="font-mono text-xs">

@@ -4,9 +4,9 @@ import { useState } from 'react'
 import { useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
-import { MessageSquare, Search, MessageSquarePlus } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useWorkspace } from '@/contexts/WorkspaceContext'
+import { IconNewChat, IconSearch, IconList } from '@/components/ui/icons'
 
 interface SidebarHistoryPanelProps {
   projectId: Id<'projects'>
@@ -15,6 +15,19 @@ interface SidebarHistoryPanelProps {
 }
 
 type Scope = 'project' | 'all'
+
+function formatRelativeTime(timestamp: number): string {
+  const now = Date.now()
+  const diff = now - timestamp
+  const minutes = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+
+  if (days > 0) return `${days}d`
+  if (hours > 0) return `${hours}h`
+  if (minutes > 0) return `${minutes}m`
+  return 'now'
+}
 
 export function SidebarHistoryPanel({
   projectId,
@@ -61,7 +74,7 @@ export function SidebarHistoryPanel({
       {/* Search input */}
       <div className="border-b border-border p-2">
         <div className="flex items-center gap-2 border border-border bg-background px-2 py-1.5">
-          <Search className="h-3 w-3 text-muted-foreground" />
+          <IconSearch className="h-3 w-3 text-muted-foreground" />
           <input
             type="text"
             value={search}
@@ -78,7 +91,7 @@ export function SidebarHistoryPanel({
           onClick={onNewChat}
           className="flex w-full items-center justify-center gap-2 border border-border bg-primary px-3 py-2 font-mono text-xs text-primary-foreground transition-colors hover:bg-primary/90"
         >
-          <MessageSquarePlus className="h-3.5 w-3.5" />
+          <IconNewChat className="h-3.5 w-3.5" weight="duotone" />
           New Chat
         </button>
       </div>
@@ -94,10 +107,7 @@ export function SidebarHistoryPanel({
             filteredChats.map((chat) => {
               const isActive = chat._id === activeChatId
               const title = chat.title ?? 'Untitled'
-              const date = new Date(chat.createdAt).toLocaleDateString(undefined, {
-                month: 'short',
-                day: 'numeric',
-              })
+              const relativeTime = formatRelativeTime(chat.updatedAt)
 
               return (
                 <button
@@ -109,11 +119,13 @@ export function SidebarHistoryPanel({
                       : 'hover:bg-surface-2 text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  <MessageSquare className="h-3.5 w-3.5 flex-shrink-0" />
+                  <IconList className="h-3.5 w-3.5 flex-shrink-0" weight="duotone" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-mono text-xs">{title}</p>
-                    <p className="font-mono text-[10px] text-muted-foreground">{date}</p>
                   </div>
+                  <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+                    {relativeTime}
+                  </span>
                 </button>
               )
             })
