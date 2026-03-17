@@ -312,9 +312,11 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     }
 
     try {
+      // Note: projectFiles now only contains metadata (no content)
+      // Content is loaded on-demand via batchGet when needed
       const fileInfos: FileInfo[] = projectFiles.map((f) => ({
         path: f.path,
-        content: f.content,
+        content: '', // Content loaded on-demand
         updatedAt: f.updatedAt,
       }))
 
@@ -519,6 +521,9 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     const runId = runIdRef.current
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
+    }
+    if (runtimeRef.current?.abort) {
+      runtimeRef.current.abort()
     }
     if (rafFlushRef.current !== null) {
       cancelAnimationFrame(rafFlushRef.current)
@@ -846,9 +851,11 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             content: message.content,
           })),
           projectOverviewContent,
+          // Note: projectFiles now only contains metadata (no content)
+          // Content is loaded on-demand via batchGet when needed
           projectFiles: projectFiles?.map((file) => ({
             path: file.path,
-            content: file.content,
+            content: '', // Content loaded on-demand
             updatedAt: file.updatedAt,
           })),
           memoryBankContent,
@@ -1732,9 +1739,11 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         provider: provider.config?.provider || 'openai',
         previousMessages: [],
         projectOverviewContent,
+        // Note: projectFiles now only contains metadata (no content)
+        // Content is loaded on-demand via batchGet when needed
         projectFiles: projectFiles?.map((file) => ({
           path: file.path,
-          content: file.content,
+          content: '', // Content loaded on-demand
           updatedAt: file.updatedAt,
         })),
         memoryBankContent,

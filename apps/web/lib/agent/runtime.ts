@@ -128,6 +128,7 @@ export interface AgentRuntimeLike {
     decision: 'approve' | 'edit' | 'cancel',
     spec?: FormalSpecification
   ) => void
+  abort?: () => void
 }
 
 /**
@@ -1022,6 +1023,11 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
     if (!this.pendingSpecApprovalResolver) return
     this.pendingSpecApprovalResolver({ decision, spec })
     this.pendingSpecApprovalResolver = null
+  }
+
+  abort(): void {
+    // Abort is handled by the harness runtime's internal abortController
+    // This is called when the component unmounts or user clicks stop
   }
 
   async *run(promptContext: PromptContext, config?: RuntimeConfig): AsyncGenerator<AgentEvent> {
