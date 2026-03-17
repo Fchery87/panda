@@ -4,7 +4,7 @@ import { v } from 'convex/values'
 import JSZip from 'jszip'
 import { requireFileOwner, requireProjectOwner } from './lib/authz'
 
-// list (query) - list files by projectId
+// list (query) - list files by projectId (includes content)
 export const list = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
@@ -13,6 +13,20 @@ export const list = query({
       .query('files')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .collect()
+  },
+})
+
+// listMetadata (query) - list file metadata without content
+export const listMetadata = query({
+  args: { projectId: v.id('projects') },
+  handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
+    const files = await ctx.db
+      .query('files')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .collect()
+    // Exclude content field to reduce payload size
+    return files.map(({ content, ...meta }) => meta)
   },
 })
 

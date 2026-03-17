@@ -299,9 +299,9 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   // Session summaries for context handoffs
   const saveSessionSummaryMutation = useMutation(api.sessionSummaries.save)
 
-  // Project files for overview generation
+  // Project files for overview generation (metadata only, no content)
   const projectFiles = useQuery(
-    api.files.list,
+    api.files.listMetadata,
     projectId ? { projectId: projectId as Id<'projects'> } : 'skip'
   )
 
