@@ -59,6 +59,7 @@ import { reduceTerminalAgentEvent } from './useAgent-terminal-events'
 import { useRunEventBuffer, type TracePersistenceStatus } from './useRunEventBuffer'
 import { useProviderSettings } from './useProviderSettings'
 import { useTokenUsageMetrics, type UsageTotals, type UsageMetrics } from './useTokenUsageMetrics'
+import { useMemoryBank } from './useMemoryBank'
 import type {
   MessageAnnotationInfo,
   PersistedRunEventInfo,
@@ -268,12 +269,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const updateSpecMutation = useMutation(api.specifications.update)
   const specPersistenceRef = useRef(new SpecPersistenceState())
 
-  // Memory bank
-  const memoryBankContent = useQuery(
-    api.memoryBank.get,
-    projectId ? { projectId: projectId as Id<'projects'> } : 'skip'
-  )
-  const updateMemoryBankMutation = useMutation(api.memoryBank.update)
+  // Memory bank hook
+  const { memoryBankContent, updateMemoryBank } = useMemoryBank(projectId)
 
   // Session summaries for context handoffs
   const saveSessionSummaryMutation = useMutation(api.sessionSummaries.save)
@@ -1689,10 +1686,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     pendingSpec,
     pendingArtifacts,
     memoryBank: memoryBankContent,
-    updateMemoryBank: async (content: string) => {
-      if (!projectId) return
-      await updateMemoryBankMutation({ projectId: projectId as Id<'projects'>, content })
-    },
+    updateMemoryBank,
     projectOverview: projectOverviewContent,
     sendMessage,
     runEvalScenario,
