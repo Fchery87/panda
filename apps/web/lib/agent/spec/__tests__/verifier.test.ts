@@ -237,6 +237,190 @@ describe('getStatusFromVerification', () => {
   })
 })
 
+describe('verifySpec with LLM provider', () => {
+  const createMockProvider = (judgment: {
+    passed: boolean
+    confidence: number
+    reasoning: string
+  }) => {
+    return {
+      name: 'mock-provider',
+      config: {
+        provider: 'openai' as const,
+        auth: { apiKey: 'test-key' },
+        defaultModel: 'gpt-4o-mini',
+      },
+      listModels: async () => [],
+      complete: async () => ({
+        message: {
+          content: JSON.stringify(judgment),
+          role: 'assistant' as const,
+        },
+        finishReason: 'stop' as const,
+        usage: { promptTokens: 100, completionTokens: 50, totalTokens: 150 },
+        model: 'gpt-4o-mini',
+      }),
+      completionStream: async function* () {},
+    }
+  }
+
+  test('uses LLM judge for llm-judge verification method', async () => {
+    const spec: FormalSpecification = {
+      id: 'spec_llm_judge_test',
+      version: 1,
+      tier: 'ambient',
+      status: 'executing',
+      intent: {
+        goal: 'Test LLM judge',
+        rawMessage: 'Test',
+        constraints: [],
+        acceptanceCriteria: [
+          {
+            id: 'ac-llm',
+            trigger: 'the code is reviewed',
+            behavior: 'the system follows best practices',
+            verificationMethod: 'llm-judge',
+            status: 'pending',
+          },
+        ],
+      },
+      plan: { steps: [], dependencies: [], risks: [], estimatedTools: [] },
+      validation: { preConditions: [], postConditions: [], invariants: [] },
+      provenance: {
+        model: 'gpt-4o',
+        promptHash: 'test',
+        timestamp: Date.now(),
+        chatId: 'chat_123',
+      },
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }
+
+    const mockProvider = createMockProvider({
+      passed: true,
+      confidence: 0.9,
+      reasoning: 'Code follows TypeScript best practices',
+    })
+
+    const results = {
+      filesModified: ['src/test.ts'],
+      output: 'export function test() { return 42; }',
+      errors: [],
+    }
+
+    const report = await verifySpec(spec, results, { provider: mockProvider })
+
+    expect(report.criterionResults).toHaveLength(1)
+    expect(report.criterionResults[0].passed).toBe(true)
+    expect(report.criterionResults[0].message).toContain('best practices')
+  })
+
+  test('falls back to heuristics when LLM judge fails', async () => {
+    const spec: FormalSpecification = {
+      id: 'spec_fallback_test',
+      version: 1,
+      tier: 'ambient',
+      status: 'executing',
+      intent: {
+        goal: 'Test fallback',
+        rawMessage: 'Test',
+        constraints: [],
+        acceptanceCriteria: [
+          {
+            id: 'ac-fallback',
+            trigger: 'the code runs',
+            behavior: 'the system works correctly',
+            verificationMethod: 'llm-judge',
+            status: 'pending',
+          },
+        ],
+      },
+      plan: { steps: [], dependencies: [], risks: [], estimatedTools: [] },
+      validation: { preConditions: [], postConditions: [], invariants: [] },
+      provenance: {
+        model: 'gpt-4o',
+        promptHash: 'test',
+        timestamp: Date.now(),
+        chatId: 'chat_123',
+      },
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }
+
+    const failingProvider = {
+      name: 'failing-provider',
+      config: {
+        provider: 'openai' as const,
+        auth: { apiKey: 'test-key' },
+        defaultModel: 'gpt-4o-mini',
+      },
+      listModels: async () => [],
+      complete: async () => {
+        throw new Error('LLM service unavailable')
+      },
+      completionStream: async function* () {},
+    }
+
+    const results = {
+      filesModified: ['src/test.ts'],
+      output: 'Test output',
+      errors: [],
+    }
+
+    const report = await verifySpec(spec, results, { provider: failingProvider })
+
+    // Should still return valid result from heuristic fallback
+    expect(report.criterionResults).toHaveLength(1)
+    expect(report.criterionResults[0].passed).toBeDefined()
+  })
+
+  test('handles missing LLM provider gracefully', async () => {
+    const spec: FormalSpecification = {
+      id: 'spec_no_provider_test',
+      version: 1,
+      tier: 'ambient',
+      status: 'executing',
+      intent: {
+        goal: 'Test without provider',
+        rawMessage: 'Test',
+        constraints: [],
+        acceptanceCriteria: [
+          {
+            id: 'ac-no-provider',
+            trigger: 'the code is reviewed',
+            behavior: 'the system works',
+            verificationMethod: 'llm-judge',
+            status: 'pending',
+          },
+        ],
+      },
+      plan: { steps: [], dependencies: [], risks: [], estimatedTools: [] },
+      validation: { preConditions: [], postConditions: [], invariants: [] },
+      provenance: {
+        model: 'gpt-4o',
+        promptHash: 'test',
+        timestamp: Date.now(),
+        chatId: 'chat_123',
+      },
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }
+
+    const results = {
+      filesModified: ['src/test.ts'],
+      output: 'Test output with expected behavior',
+      errors: [],
+    }
+
+    // Call without provider context
+    const report = await verifySpec(spec, results)
+
+    // Should use heuristic fallback
+    expect(report.criterionResults).toHaveLength(1)
+    expect(report.criterionResults[0].passed).toBeDefined()
+  })
+})
+
 describe('Verification terminal semantics', () => {
   test('passed verification is considered terminal success', () => {
     const report = {
