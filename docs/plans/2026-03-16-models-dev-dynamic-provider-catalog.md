@@ -1,21 +1,49 @@
 # Models.dev Dynamic Provider Catalog Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to
+> implement this plan task-by-task.
 
-**Goal:** Enable users to browse all 130+ providers from models.dev, add any provider with their own API key, and use dynamic providers safely in Panda's primary web runtime path while preserving specialized implementations for the 9 existing providers.
+**Goal:** Enable users to browse all 130+ providers from models.dev, add any
+provider with their own API key, and use dynamic providers safely in Panda's
+primary web runtime path while preserving specialized implementations for the 9
+existing providers.
 
-**Architecture:** Replace the hardcoded provider list with a dynamic catalog sourced from models.dev. The existing 9 providers merge into the catalog with their specialized implementations (Anthropic SDK, DeepSeek reasoning, Chutes OAuth). All other providers instantiate via `OpenAICompatibleProvider` using base URLs from models.dev. Provider probing and model refresh must go through Panda-owned server routes, not direct browser calls to third-party APIs, to avoid CORS and credential handling problems.
+**Architecture:** Replace the hardcoded provider list with a dynamic catalog
+sourced from models.dev. The existing 9 providers merge into the catalog with
+their specialized implementations (Anthropic SDK, DeepSeek reasoning, Chutes
+OAuth). All other providers instantiate via `OpenAICompatibleProvider` using
+base URLs from models.dev. Provider probing and model refresh must go through
+Panda-owned server routes, not direct browser calls to third-party APIs, to
+avoid CORS and credential handling problems.
 
-**Scope Decision:** Before implementation, explicitly choose whether dynamic providers are supported only in the web runtime/settings flow for this phase, or whether Convex HTTP/action endpoints (`convex/http.ts`, `convex/llm.ts`, `convex/enhancePrompt.ts`) must also accept dynamic providers in the same release. Do not imply "works everywhere" unless both paths are updated and tested.
+**Scope Decision:** Before implementation, explicitly choose whether dynamic
+providers are supported only in the web runtime/settings flow for this phase, or
+whether Convex HTTP/action endpoints (`convex/http.ts`, `convex/llm.ts`,
+`convex/enhancePrompt.ts`) must also accept dynamic providers in the same
+release. Do not imply "works everywhere" unless both paths are updated and
+tested.
 
-**Tech Stack:** Next.js (React), Convex (backend), existing LLM provider abstraction (`apps/web/lib/llm/`), models.dev REST API (`https://models.dev/api/models.json`)
+**Tech Stack:** Next.js (React), Convex (backend), existing LLM provider
+abstraction (`apps/web/lib/llm/`), models.dev REST API
+(`https://models.dev/api/models.json`)
+
+**Scope Decision (2026-03-17):** Primary web runtime only. Dynamic providers are
+supported in settings + `useProjectChatSession` + the `apps/web/lib/llm/*`
+provider registry path. Convex HTTP/action endpoints remain limited to current
+built-in providers for now.
+
+**Non-goal (Phase 1):** Dynamic providers are not yet supported through legacy
+Convex HTTP/action endpoints. Those paths remain restricted to the current
+built-in provider set until a follow-up migration lands.
 
 ---
 
 ## Task 0: Lock Phase Scope and Runtime Boundaries
 
 **Files:**
-- Modify: `docs/plans/2026-03-16-models-dev-dynamic-provider-catalog.md` (record decision)
+
+- Modify: `docs/plans/2026-03-16-models-dev-dynamic-provider-catalog.md` (record
+  decision)
 - Review: `apps/web/hooks/useProjectChatSession.ts`
 - Review: `convex/http.ts`
 - Review: `convex/llm.ts`
@@ -25,15 +53,21 @@
 
 Pick one of these two options and record it in the plan before touching code:
 
-1. **Primary web runtime only**: dynamic providers are supported in settings + `useProjectChatSession` + the `apps/web/lib/llm/*` provider registry path. Convex HTTP/action endpoints remain limited to current built-in providers for now.
-2. **Full stack support**: dynamic providers are supported in both the primary web runtime and existing Convex HTTP/action endpoints.
+1. **Primary web runtime only**: dynamic providers are supported in settings +
+   `useProjectChatSession` + the `apps/web/lib/llm/*` provider registry path.
+   Convex HTTP/action endpoints remain limited to current built-in providers for
+   now.
+2. **Full stack support**: dynamic providers are supported in both the primary
+   web runtime and existing Convex HTTP/action endpoints.
 
 **Step 2: If choosing primary web runtime only, add an explicit non-goal**
 
 Add this note to the plan and PR description:
 
 ```markdown
-**Non-goal (Phase 1):** Dynamic providers are not yet supported through legacy Convex HTTP/action endpoints. Those paths remain restricted to the current built-in provider set until a follow-up migration lands.
+**Non-goal (Phase 1):** Dynamic providers are not yet supported through legacy
+Convex HTTP/action endpoints. Those paths remain restricted to the current
+built-in provider set until a follow-up migration lands.
 ```
 
 **Step 3: If choosing full stack support, add a backend task before UI work**
@@ -63,9 +97,11 @@ git commit -m "docs: clarify models.dev dynamic provider rollout scope"
 ## Task 1: Widen `ProviderType` to Accept Dynamic Provider IDs
 
 **Files:**
+
 - Modify: `apps/web/lib/llm/types.ts:14-24` (ProviderType union)
 - Modify: `apps/web/lib/llm/types.ts:240-282` (getDefaultProviderCapabilities)
-- Modify: `apps/web/lib/llm/model-metadata.ts:26-37` (PROVIDER_FALLBACK_CONTEXT_WINDOWS)
+- Modify: `apps/web/lib/llm/model-metadata.ts:26-37`
+  (PROVIDER_FALLBACK_CONTEXT_WINDOWS)
 
 **Step 1: Change `ProviderType` from strict union to branded string**
 
@@ -106,7 +142,9 @@ export function isKnownProvider(type: string): type is KnownProviderType {
 In the same file, update the default case at line 273 to handle any string:
 
 ```typescript
-export function getDefaultProviderCapabilities(type: ProviderType): ProviderCapabilities {
+export function getDefaultProviderCapabilities(
+  type: ProviderType
+): ProviderCapabilities {
   switch (type) {
     case 'anthropic':
       return {
@@ -144,7 +182,8 @@ export function getDefaultProviderCapabilities(type: ProviderType): ProviderCapa
 }
 ```
 
-**Step 3: Update `PROVIDER_FALLBACK_CONTEXT_WINDOWS` to use a Map with fallback**
+**Step 3: Update `PROVIDER_FALLBACK_CONTEXT_WINDOWS` to use a Map with
+fallback**
 
 In `apps/web/lib/llm/model-metadata.ts`, replace lines 26-37:
 
@@ -176,9 +215,13 @@ return {
 
 **Step 4: Fix TypeScript errors across codebase**
 
-Search for all files that use `ProviderType` as a discriminated union in switch statements or type guards. Key locations:
-- `apps/web/lib/llm/registry.ts:50-75` — `createProvider` switch (handled in Task 3)
-- `apps/web/lib/llm/reasoning-transform.ts` — provider-specific reasoning mapping
+Search for all files that use `ProviderType` as a discriminated union in switch
+statements or type guards. Key locations:
+
+- `apps/web/lib/llm/registry.ts:50-75` — `createProvider` switch (handled in
+  Task 3)
+- `apps/web/lib/llm/reasoning-transform.ts` — provider-specific reasoning
+  mapping
 - `apps/web/hooks/useProjectChatSession.ts:111-119` — provider type annotation
 
 For `useProjectChatSession.ts`, change the inline type at line 111:
@@ -190,15 +233,15 @@ const providerConfig = latestSettings.providerConfigs?.[defaultProviderId] as
       apiKey?: string
       baseUrl?: string
       defaultModel?: string
-      provider?: string  // was strict union, now any string
+      provider?: string // was strict union, now any string
     }
   | undefined
 ```
 
 **Step 5: Run TypeScript compilation to verify**
 
-Run: `cd apps/web && npx tsc --noEmit 2>&1 | head -50`
-Expected: No errors related to ProviderType changes (may have pre-existing errors)
+Run: `cd apps/web && npx tsc --noEmit 2>&1 | head -50` Expected: No errors
+related to ProviderType changes (may have pre-existing errors)
 
 **Step 6: Commit**
 
@@ -212,12 +255,15 @@ git commit -m "refactor: widen ProviderType to support dynamic models.dev provid
 ## Task 2: Build the Provider Catalog Module
 
 **Files:**
+
 - Create: `apps/web/lib/llm/provider-catalog.ts`
 - Modify: `apps/web/lib/llm/models-dev.ts:15-40` (update interfaces)
 
 **Step 1: Update models-dev.ts interfaces to match actual API shape**
 
-The current `ModelsDevModel` interface needs updating to match the real models.dev API response which uses TOML-derived fields. Update `apps/web/lib/llm/models-dev.ts` — add these fields to the existing interface:
+The current `ModelsDevModel` interface needs updating to match the real
+models.dev API response which uses TOML-derived fields. Update
+`apps/web/lib/llm/models-dev.ts` — add these fields to the existing interface:
 
 ```typescript
 export interface ModelsDevModel {
@@ -252,9 +298,9 @@ export interface ModelsDevProvider {
   provider_id: string
   provider_name: string
   base_url?: string
-  env?: string[]          // Expected env var names, e.g. ["OPENAI_API_KEY"]
-  npm?: string            // AI SDK npm package
-  doc?: string            // Documentation URL
+  env?: string[] // Expected env var names, e.g. ["OPENAI_API_KEY"]
+  npm?: string // AI SDK npm package
+  doc?: string // Documentation URL
   models: Record<string, ModelsDevModel>
 }
 ```
@@ -367,14 +413,17 @@ export async function getProviderCatalog(): Promise<ProviderCatalogEntry[]> {
 /**
  * Build catalog entries from a models.dev API response.
  */
-export function buildCatalogFromResponse(data: ModelsDevResponse): ProviderCatalogEntry[] {
+export function buildCatalogFromResponse(
+  data: ModelsDevResponse
+): ProviderCatalogEntry[] {
   const entries: ProviderCatalogEntry[] = []
 
   for (const [rawId, providerData] of Object.entries(data)) {
     if (!providerData || !providerData.models) continue
 
     const resolvedId = PROVIDER_ID_ALIASES[rawId] || rawId
-    const isSpecial = isKnownProvider(resolvedId) && SPECIAL_PROVIDER_IDS.has(resolvedId)
+    const isSpecial =
+      isKnownProvider(resolvedId) && SPECIAL_PROVIDER_IDS.has(resolvedId)
     const models = mapModelsDevToModelInfo(rawId, data)
 
     // Skip providers with no models
@@ -419,8 +468,7 @@ export function searchCatalog(
   const q = query.toLowerCase().trim()
   return catalog.filter(
     (entry) =>
-      entry.id.toLowerCase().includes(q) ||
-      entry.name.toLowerCase().includes(q)
+      entry.id.toLowerCase().includes(q) || entry.name.toLowerCase().includes(q)
   )
 }
 
@@ -446,8 +494,7 @@ export function clearCatalogCache(): void {
 
 **Step 3: Run TypeScript compilation**
 
-Run: `cd apps/web && npx tsc --noEmit 2>&1 | head -30`
-Expected: No new errors
+Run: `cd apps/web && npx tsc --noEmit 2>&1 | head -30` Expected: No new errors
 
 **Step 4: Commit**
 
@@ -461,12 +508,14 @@ git commit -m "feat: add provider catalog module powered by models.dev"
 ## Task 3: Update Provider Registry to Support Dynamic Providers
 
 **Files:**
+
 - Modify: `apps/web/lib/llm/registry.ts:46-91` (createProvider switch)
 - Modify: `apps/web/lib/llm/registry.ts:256-407` (createProviderFromEnv)
 
 **Step 1: Update `createProvider` to handle unknown provider types**
 
-In `apps/web/lib/llm/registry.ts`, update the `createProvider` method. Replace the switch statement (lines 50-75) with:
+In `apps/web/lib/llm/registry.ts`, update the `createProvider` method. Replace
+the switch statement (lines 50-75) with:
 
 ```typescript
 import { isKnownProvider } from './types'
@@ -534,8 +583,7 @@ import { isKnownProvider, type KnownProviderType } from './types'
 
 **Step 3: Run TypeScript compilation**
 
-Run: `cd apps/web && npx tsc --noEmit 2>&1 | head -30`
-Expected: No new errors
+Run: `cd apps/web && npx tsc --noEmit 2>&1 | head -30` Expected: No new errors
 
 **Step 4: Commit**
 
@@ -549,11 +597,14 @@ git commit -m "feat: registry supports dynamic provider instantiation via OpenAI
 ## Task 4: Create "Add Provider" Catalog Modal Component
 
 **Files:**
+
 - Create: `apps/web/components/settings/ProviderCatalogModal.tsx`
 
 **Step 1: Create the modal component**
 
-This component shows when the user clicks "Add Provider". It fetches the catalog, displays a searchable grid, and lets the user pick a provider to configure.
+This component shows when the user clicks "Add Provider". It fetches the
+catalog, displays a searchable grid, and lets the user pick a provider to
+configure.
 
 Create `apps/web/components/settings/ProviderCatalogModal.tsx`:
 
@@ -720,8 +771,7 @@ export function ProviderCatalogModal({
 
 **Step 2: Run TypeScript compilation**
 
-Run: `cd apps/web && npx tsc --noEmit 2>&1 | head -30`
-Expected: No new errors
+Run: `cd apps/web && npx tsc --noEmit 2>&1 | head -30` Expected: No new errors
 
 **Step 3: Commit**
 
@@ -735,6 +785,7 @@ git commit -m "feat: add provider catalog modal with search for models.dev provi
 ## Task 5: Integrate Catalog Modal into Settings Page
 
 **Files:**
+
 - Modify: `apps/web/app/settings/page.tsx:67-204` (defaultProviders object)
 - Modify: `apps/web/app/settings/page.tsx:215-550` (SettingsPage component)
 - Modify: `apps/web/components/settings/index.ts` (add export)
@@ -812,7 +863,9 @@ const removeProvider = (providerKey: string) => {
 
     // If removing the default provider, reset to first enabled
     if (prev.defaultProvider === providerKey) {
-      const firstEnabled = Object.entries(remainingProviders).find(([, p]) => p.enabled)
+      const firstEnabled = Object.entries(remainingProviders).find(
+        ([, p]) => p.enabled
+      )
       nextState.defaultProvider = firstEnabled?.[0] || 'openai'
       nextState.defaultModel = firstEnabled?.[1]?.defaultModel || 'gpt-4o-mini'
     }
@@ -824,7 +877,8 @@ const removeProvider = (providerKey: string) => {
 
 **Step 5: Add the "Add Provider" button and modal to the LLM Providers tab**
 
-In the JSX, find the LLM Providers tab content section where provider cards are rendered. Add before the provider cards grid:
+In the JSX, find the LLM Providers tab content section where provider cards are
+rendered. Add before the provider cards grid:
 
 ```tsx
 <div className="flex items-center justify-between mb-4">
@@ -854,37 +908,44 @@ In the JSX, find the LLM Providers tab content section where provider cards are 
 
 **Step 6: Add remove button to ProviderCard for dynamic providers**
 
-In the provider cards rendering loop, pass a remove handler for non-built-in providers. The exact JSX depends on the existing rendering pattern — wrap each card:
+In the provider cards rendering loop, pass a remove handler for non-built-in
+providers. The exact JSX depends on the existing rendering pattern — wrap each
+card:
 
 ```tsx
-{Object.entries(formState.providers).map(([key, config]) => (
-  <div key={key} className="relative">
-    <ProviderCard
-      provider={config}
-      supportsReasoning={
-        key === 'anthropic' || key === 'deepseek' || key === 'zai'
-      }
-      onChange={(updates) => updateProvider(key, updates)}
-      onTest={() => testProvider(key)}
-      onTestCompletion={key === 'chutes' ? () => testProviderCompletion(key) : undefined}
-    />
-    {!defaultProviders[key] && (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="absolute top-2 right-2"
-        onClick={() => removeProvider(key)}
-      >
-        <X className="h-4 w-4" />
-      </Button>
-    )}
-  </div>
-))}
+{
+  Object.entries(formState.providers).map(([key, config]) => (
+    <div key={key} className="relative">
+      <ProviderCard
+        provider={config}
+        supportsReasoning={
+          key === 'anthropic' || key === 'deepseek' || key === 'zai'
+        }
+        onChange={(updates) => updateProvider(key, updates)}
+        onTest={() => testProvider(key)}
+        onTestCompletion={
+          key === 'chutes' ? () => testProviderCompletion(key) : undefined
+        }
+      />
+      {!defaultProviders[key] && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="absolute top-2 right-2"
+          onClick={() => removeProvider(key)}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      )}
+    </div>
+  ))
+}
 ```
 
 **Step 7: Update the `handleSave` function to handle dynamic providers**
 
-In the `handleSave` function (around line 520), update the `providersForSave` construction to not assume `defaultProviders[key]` exists:
+In the `handleSave` function (around line 520), update the `providersForSave`
+construction to not assume `defaultProviders[key]` exists:
 
 ```typescript
 const providersForSave = Object.fromEntries(
@@ -898,9 +959,10 @@ const providersForSave = Object.fromEntries(
       enabled: config.enabled,
       defaultModel: config.defaultModel,
       availableModels: config.availableModels,
-      baseUrl: key === 'zai' && config.useCodingPlan
-        ? 'https://api.z.ai/api/coding/paas/v4'
-        : config.baseUrl || defaultProviders[key]?.baseUrl,
+      baseUrl:
+        key === 'zai' && config.useCodingPlan
+          ? 'https://api.z.ai/api/coding/paas/v4'
+          : config.baseUrl || defaultProviders[key]?.baseUrl,
       useCodingPlan: config.useCodingPlan,
       reasoningEnabled: config.reasoningEnabled,
       reasoningMode: config.reasoningMode,
@@ -913,7 +975,9 @@ const providersForSave = Object.fromEntries(
 
 **Step 8: Update the settings sync effect to preserve dynamic providers**
 
-In the `React.useEffect` that syncs Convex data (around line 280-294), update the provider merge to handle dynamic providers that aren't in `defaultProviders`:
+In the `React.useEffect` that syncs Convex data (around line 280-294), update
+the provider merge to handle dynamic providers that aren't in
+`defaultProviders`:
 
 ```typescript
 providers: latestSettings.providerConfigs
@@ -949,13 +1013,23 @@ providers: latestSettings.providerConfigs
 Ensure `Plus` and `X` are in the lucide-react import at the top of the file:
 
 ```typescript
-import { User, Palette, Bot, Save, Loader2, ArrowLeft, Settings2, Plus, X } from 'lucide-react'
+import {
+  User,
+  Palette,
+  Bot,
+  Save,
+  Loader2,
+  ArrowLeft,
+  Settings2,
+  Plus,
+  X,
+} from 'lucide-react'
 ```
 
 **Step 10: Run TypeScript compilation and dev server**
 
-Run: `cd apps/web && npx tsc --noEmit 2>&1 | head -50`
-Run: `cd apps/web && npm run dev` (verify the page loads and the modal opens)
+Run: `cd apps/web && npx tsc --noEmit 2>&1 | head -50` Run:
+`cd apps/web && npm run dev` (verify the page loads and the modal opens)
 
 **Step 11: Commit**
 
@@ -969,11 +1043,14 @@ git commit -m "feat: integrate provider catalog modal into settings page with ad
 ## Task 6: Wire Dynamic Providers into useProjectChatSession
 
 **Files:**
+
 - Modify: `apps/web/hooks/useProjectChatSession.ts:94-157` (provider creation)
 
 **Step 1: Update provider instantiation to handle dynamic providers**
 
-The current code at line 128 hardcodes `provider: providerConfig.provider || 'openai'`. For dynamic providers, the provider type IS the provider ID. Update:
+The current code at line 128 hardcodes
+`provider: providerConfig.provider || 'openai'`. For dynamic providers, the
+provider type IS the provider ID. Update:
 
 ```typescript
 const nextProviderConfig = {
@@ -986,7 +1063,8 @@ const nextProviderConfig = {
 }
 ```
 
-Also update the type annotation at line 105-120 — remove the strict union for `provider`:
+Also update the type annotation at line 105-120 — remove the strict union for
+`provider`:
 
 ```typescript
 const providerConfig = latestSettings.providerConfigs?.[defaultProviderId] as
@@ -1016,7 +1094,9 @@ git commit -m "feat: useProjectChatSession supports dynamic provider types"
 ## Task 7: Add "Refresh Models" Button to ProviderCard
 
 **Files:**
-- Modify: `apps/web/components/settings/ProviderCard.tsx` (add refresh button + handler)
+
+- Modify: `apps/web/components/settings/ProviderCard.tsx` (add refresh button +
+  handler)
 - Modify: `apps/web/app/settings/page.tsx` (add refresh handler)
 - Create: `apps/web/app/api/providers/openai-compatible/models/route.ts`
 
@@ -1041,21 +1121,23 @@ interface ProviderCardProps {
 Add a "Refresh Models" button in the card, next to the model selector:
 
 ```tsx
-{onRefreshModels && (
-  <Button
-    variant="ghost"
-    size="sm"
-    onClick={onRefreshModels}
-    disabled={!provider.enabled || !provider.apiKey || refreshingModels}
-  >
-    {refreshingModels ? (
-      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-    ) : (
-      <RefreshCw className="h-3.5 w-3.5" />
-    )}
-    <span className="ml-1.5 text-xs">Refresh</span>
-  </Button>
-)}
+{
+  onRefreshModels && (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={onRefreshModels}
+      disabled={!provider.enabled || !provider.apiKey || refreshingModels}
+    >
+      {refreshingModels ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      ) : (
+        <RefreshCw className="h-3.5 w-3.5" />
+      )}
+      <span className="ml-1.5 text-xs">Refresh</span>
+    </Button>
+  )
+}
 ```
 
 Add `RefreshCw` to the lucide-react imports.
@@ -1068,19 +1150,23 @@ This route should:
 
 - accept `apiKey`, `baseUrl`, and optional headers in the POST body,
 - validate that `baseUrl` is an absolute `https:` URL,
-- normalize the target endpoint to `${baseUrl}/models` or `${baseUrl}/v1/models` without producing malformed URLs,
+- normalize the target endpoint to `${baseUrl}/models` or `${baseUrl}/v1/models`
+  without producing malformed URLs,
 - forward the authenticated request server-side,
 - return only the minimal response shape needed by the settings UI,
 - redact sensitive details from logs and error responses.
 
-This exists specifically to avoid browser CORS failures and to keep third-party API probing behind a Panda-owned boundary.
+This exists specifically to avoid browser CORS failures and to keep third-party
+API probing behind a Panda-owned boundary.
 
 **Step 3: Add refresh handler in SettingsPage**
 
 In `apps/web/app/settings/page.tsx`, add a refresh handler:
 
 ```typescript
-const [refreshingModels, setRefreshingModels] = React.useState<string | null>(null)
+const [refreshingModels, setRefreshingModels] = React.useState<string | null>(
+  null
+)
 
 const refreshModelsFromApi = async (providerKey: string) => {
   const provider = formState.providers[providerKey]
@@ -1108,9 +1194,14 @@ const refreshModelsFromApi = async (providerKey: string) => {
     if (modelIds.length > 0) {
       // Merge with existing models.dev models (keep models.dev as base, add API-fetched)
       const existingSet = new Set(provider.availableModels)
-      const merged = [...provider.availableModels, ...modelIds.filter((id) => !existingSet.has(id))]
+      const merged = [
+        ...provider.availableModels,
+        ...modelIds.filter((id) => !existingSet.has(id)),
+      ]
       updateProvider(providerKey, { availableModels: merged })
-      toast.success(`Found ${modelIds.length} models from API (${merged.length} total)`)
+      toast.success(
+        `Found ${modelIds.length} models from API (${merged.length} total)`
+      )
     } else {
       toast.info('No additional models found from API')
     }
@@ -1132,7 +1223,9 @@ const refreshModelsFromApi = async (providerKey: string) => {
   supportsReasoning={key === 'anthropic' || key === 'deepseek' || key === 'zai'}
   onChange={(updates) => updateProvider(key, updates)}
   onTest={() => testProvider(key)}
-  onTestCompletion={key === 'chutes' ? () => testProviderCompletion(key) : undefined}
+  onTestCompletion={
+    key === 'chutes' ? () => testProviderCompletion(key) : undefined
+  }
   onRefreshModels={() => refreshModelsFromApi(key)}
   refreshingModels={refreshingModels === key}
 />
@@ -1154,12 +1247,15 @@ git commit -m "feat: proxy dynamic provider model refresh through server route"
 ## Task 8: Improve Test Connection for Dynamic Providers
 
 **Files:**
+
 - Modify: `apps/web/app/settings/page.tsx:409-463` (testProvider function)
 - Create: `apps/web/app/api/providers/openai-compatible/test/route.ts`
 
 **Step 1: Replace the simulated test with a proxied server-side API test**
 
-The current `testProvider` function (line 442-446) simulates a test for non-Chutes providers by just checking API key length. Replace it with a POST to a Panda-owned route that probes the provider server-side.
+The current `testProvider` function (line 442-446) simulates a test for
+non-Chutes providers by just checking API key length. Replace it with a POST to
+a Panda-owned route that probes the provider server-side.
 
 Create `apps/web/app/api/providers/openai-compatible/test/route.ts`.
 
@@ -1182,7 +1278,10 @@ const testProvider = async (providerKey: string) => {
     return
   }
 
-  updateProvider(providerKey, { testStatus: 'testing', testStatusMessage: undefined })
+  updateProvider(providerKey, {
+    testStatus: 'testing',
+    testStatusMessage: undefined,
+  })
 
   try {
     let success = false
@@ -1199,16 +1298,21 @@ const testProvider = async (providerKey: string) => {
       if (models.length > 0) {
         updateProvider(providerKey, {
           availableModels: models,
-          defaultModel: models.includes(provider.defaultModel) ? provider.defaultModel : models[0],
+          defaultModel: models.includes(provider.defaultModel)
+            ? provider.defaultModel
+            : models[0],
           testStatusMessage: undefined,
         })
-        toast.success(`${provider.name} connection successful! Found ${models.length} models.`)
+        toast.success(
+          `${provider.name} connection successful! Found ${models.length} models.`
+        )
       } else {
         toast.success(`${provider.name} connection successful!`)
       }
     } else if (providerKey === 'anthropic') {
       // Anthropic uses a different API shape — just validate key format
-      success = provider.apiKey.startsWith('sk-ant-') && provider.apiKey.length > 20
+      success =
+        provider.apiKey.startsWith('sk-ant-') && provider.apiKey.length > 20
       if (success) {
         toast.success(`${provider.name} API key looks valid`)
       } else {
@@ -1233,9 +1337,14 @@ const testProvider = async (providerKey: string) => {
           .filter(Boolean)
         if (modelIds.length > 0) {
           const existingSet = new Set(provider.availableModels)
-          const merged = [...provider.availableModels, ...modelIds.filter((id) => !existingSet.has(id))]
+          const merged = [
+            ...provider.availableModels,
+            ...modelIds.filter((id) => !existingSet.has(id)),
+          ]
           updateProvider(providerKey, { availableModels: merged })
-          toast.success(`${provider.name} connected! Found ${modelIds.length} models.`)
+          toast.success(
+            `${provider.name} connected! Found ${modelIds.length} models.`
+          )
         } else {
           toast.success(`${provider.name} connection successful!`)
         }
@@ -1259,13 +1368,17 @@ const testProvider = async (providerKey: string) => {
     })
   } catch (error) {
     const detail = error instanceof Error ? error.message : 'Unknown error'
-    updateProvider(providerKey, { testStatus: 'error', testStatusMessage: detail })
+    updateProvider(providerKey, {
+      testStatus: 'error',
+      testStatusMessage: detail,
+    })
     toast.error(`${provider.name} connection failed`, { description: detail })
   }
 }
 ```
 
-Do not make direct browser requests to third-party `baseUrl` values from the settings page.
+Do not make direct browser requests to third-party `baseUrl` values from the
+settings page.
 
 **Step 2: Run TypeScript compilation**
 
@@ -1283,41 +1396,52 @@ git commit -m "feat: proxy dynamic provider connection tests through server rout
 ## Task 9: Add Integration Tests for Settings Persistence and Runtime Wiring
 
 **Files:**
+
 - Create: `apps/web/app/settings/page.test.tsx`
 - Create: `apps/web/hooks/useProjectChatSession.test.ts`
 - Review: `apps/web/components/settings/UserLLMConfig.tsx`
 
 **Step 1: Remove the no-op `UserLLMConfig` assumption**
 
-`UserLLMConfig` already receives `availableProviders` from `formState.providers`, so dynamic providers should already appear if the parent state is correct. Do not spend a dedicated implementation task on this unless you find an actual exclusion bug.
+`UserLLMConfig` already receives `availableProviders` from
+`formState.providers`, so dynamic providers should already appear if the parent
+state is correct. Do not spend a dedicated implementation task on this unless
+you find an actual exclusion bug.
 
 Verify the current data flow first:
 
 - `apps/web/app/settings/page.tsx`
 - `apps/web/components/settings/UserLLMConfig.tsx`
 
-If there is no exclusion bug, leave `UserLLMConfig` unchanged and focus testing effort elsewhere.
+If there is no exclusion bug, leave `UserLLMConfig` unchanged and focus testing
+effort elsewhere.
 
 **Step 2: Add a settings-page test for dynamic provider persistence**
 
 Write a test that covers this sequence:
 
 1. settings hydrate from Convex with a dynamic provider in `providerConfigs`,
-2. the dynamic provider card is reconstructed with stored `name`, `baseUrl`, `defaultModel`, and `availableModels`,
-3. save logic preserves that provider instead of dropping it because it is not in `defaultProviders`.
+2. the dynamic provider card is reconstructed with stored `name`, `baseUrl`,
+   `defaultModel`, and `availableModels`,
+3. save logic preserves that provider instead of dropping it because it is not
+   in `defaultProviders`.
 
 **Step 3: Add a `useProjectChatSession` test for dynamic provider creation**
 
 Write a test that covers this sequence:
 
 1. `defaultProvider` is set to a dynamic provider ID,
-2. `providerConfigs[dynamicId]` contains `enabled`, `apiKey`, `baseUrl`, and `defaultModel`,
+2. `providerConfigs[dynamicId]` contains `enabled`, `apiKey`, `baseUrl`, and
+   `defaultModel`,
 3. the registry creates an `OpenAICompatibleProvider`,
-4. changing the config updates the registry entry instead of leaving stale config behind.
+4. changing the config updates the registry entry instead of leaving stale
+   config behind.
 
 **Step 4: Add a regression test for known providers**
 
-Keep one focused test proving a built-in provider such as `anthropic` or `chutes` still uses its special handling path after the dynamic-provider refactor.
+Keep one focused test proving a built-in provider such as `anthropic` or
+`chutes` still uses its special handling path after the dynamic-provider
+refactor.
 
 **Step 5: Commit**
 
@@ -1331,6 +1455,7 @@ git commit -m "test: cover dynamic provider persistence and runtime wiring"
 ## Task 10: Write Tests for Provider Catalog
 
 **Files:**
+
 - Create: `apps/web/lib/llm/__tests__/provider-catalog.test.ts`
 - Create: `apps/web/app/api/providers/openai-compatible/models/route.test.ts`
 - Create: `apps/web/app/api/providers/openai-compatible/test/route.test.ts`
@@ -1452,7 +1577,8 @@ describe('getCatalogEntry', () => {
 
 **Step 2: Run the tests**
 
-Run: `cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/lib/llm/__tests__/provider-catalog.test.ts`
+Run:
+`cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/lib/llm/__tests__/provider-catalog.test.ts`
 Expected: All tests pass
 
 **Step 3: Add route tests for URL normalization and sanitized failures**
@@ -1466,7 +1592,8 @@ Add focused tests for the two new API routes covering:
 
 **Step 4: Run the tests**
 
-Run: `cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/lib/llm/__tests__/provider-catalog.test.ts apps/web/app/api/providers/openai-compatible/models/route.test.ts apps/web/app/api/providers/openai-compatible/test/route.test.ts`
+Run:
+`cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/lib/llm/__tests__/provider-catalog.test.ts apps/web/app/api/providers/openai-compatible/models/route.test.ts apps/web/app/api/providers/openai-compatible/test/route.test.ts`
 Expected: All tests pass
 
 **Step 5: Commit**
@@ -1495,13 +1622,17 @@ Run: `cd apps/web && npm run dev`
 5. Search for "Mistral" — verify it appears
 6. Click Mistral — verify a new ProviderCard appears in settings
 7. Enter a Mistral API key, click Test Connection
-8. Verify the settings page calls Panda's internal test route, not the provider directly from the browser
-9. Verify the server route successfully probes the provider and returns model IDs
-10. Click "Refresh Models" — verify the settings page calls Panda's internal models route
+8. Verify the settings page calls Panda's internal test route, not the provider
+   directly from the browser
+9. Verify the server route successfully probes the provider and returns model
+   IDs
+10. Click "Refresh Models" — verify the settings page calls Panda's internal
+    models route
 11. Verify model list populates
 12. Save settings
 13. Navigate away and back — verify Mistral persists
-14. Select Mistral as default provider — verify it appears in chat model selector
+14. Select Mistral as default provider — verify it appears in chat model
+    selector
 15. Remove Mistral — verify card disappears
 
 **Step 3: Verify backward compatibility**
@@ -1510,7 +1641,8 @@ Run: `cd apps/web && npm run dev`
 2. Reasoning controls still appear for Anthropic/DeepSeek/Z.ai
 3. Chutes OAuth flow still works
 4. OpenRouter free models still auto-populate
-5. Built-in providers still use their specialized classes instead of falling back to `OpenAICompatibleProvider`
+5. Built-in providers still use their specialized classes instead of falling
+   back to `OpenAICompatibleProvider`
 
 **Step 4: Run repo-standard verification**
 
@@ -1532,7 +1664,8 @@ Expected:
 - all tests pass,
 - Next.js production build succeeds.
 
-If this phase explicitly includes Convex HTTP/action support, also manually verify the relevant Convex endpoint path after these checks.
+If this phase explicitly includes Convex HTTP/action support, also manually
+verify the relevant Convex endpoint path after these checks.
 
 **Step 5: Final commit**
 
@@ -1545,17 +1678,17 @@ git commit -m "feat: models.dev dynamic provider catalog — full integration"
 
 ## Summary
 
-| Task | Description | Key Files |
-|------|-------------|-----------|
-| 0 | Lock runtime scope | `plan`, `useProjectChatSession.ts`, `convex/http.ts`, `convex/llm.ts`, `convex/enhancePrompt.ts` |
-| 1 | Widen ProviderType | `types.ts`, `model-metadata.ts` |
-| 2 | Provider catalog module | `provider-catalog.ts`, `models-dev.ts` |
-| 3 | Registry dynamic support | `registry.ts` |
-| 4 | Catalog modal component | `ProviderCatalogModal.tsx` |
-| 5 | Settings page integration | `page.tsx`, `index.ts` |
-| 6 | useProjectChatSession wiring | `useProjectChatSession.ts` |
-| 7 | Refresh models via server route | `ProviderCard.tsx`, `page.tsx`, `api/providers/openai-compatible/models/route.ts` |
-| 8 | Connection testing via server route | `page.tsx`, `api/providers/openai-compatible/test/route.ts` |
-| 9 | Integration tests for settings/runtime | `page.test.tsx`, `useProjectChatSession.test.ts` |
-| 10 | Catalog and route tests | `provider-catalog.test.ts`, route tests |
-| 11 | Smoke test + repo verification | Manual + full quality checks |
+| Task | Description                            | Key Files                                                                                        |
+| ---- | -------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 0    | Lock runtime scope                     | `plan`, `useProjectChatSession.ts`, `convex/http.ts`, `convex/llm.ts`, `convex/enhancePrompt.ts` |
+| 1    | Widen ProviderType                     | `types.ts`, `model-metadata.ts`                                                                  |
+| 2    | Provider catalog module                | `provider-catalog.ts`, `models-dev.ts`                                                           |
+| 3    | Registry dynamic support               | `registry.ts`                                                                                    |
+| 4    | Catalog modal component                | `ProviderCatalogModal.tsx`                                                                       |
+| 5    | Settings page integration              | `page.tsx`, `index.ts`                                                                           |
+| 6    | useProjectChatSession wiring           | `useProjectChatSession.ts`                                                                       |
+| 7    | Refresh models via server route        | `ProviderCard.tsx`, `page.tsx`, `api/providers/openai-compatible/models/route.ts`                |
+| 8    | Connection testing via server route    | `page.tsx`, `api/providers/openai-compatible/test/route.ts`                                      |
+| 9    | Integration tests for settings/runtime | `page.test.tsx`, `useProjectChatSession.test.ts`                                                 |
+| 10   | Catalog and route tests                | `provider-catalog.test.ts`, route tests                                                          |
+| 11   | Smoke test + repo verification         | Manual + full quality checks                                                                     |
