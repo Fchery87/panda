@@ -1036,7 +1036,7 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
     const riskInterruptsEnabled =
       config?.harnessEnableRiskInterrupts ?? this.options.harnessEnableRiskInterrupts ?? true
     const harnessEvalMode = config?.harnessEvalMode ?? this.options.harnessEvalMode
-    const specApprovalMode = config?.harnessSpecApprovalMode ?? 'auto_approve'
+    const specApprovalMode = config?.harnessSpecApprovalMode ?? 'interactive'
     const sessionPermissions = this.options.harnessSessionPermissions
     this.pendingSpecApprovalResolver = null
     this.abortController = new AbortController()

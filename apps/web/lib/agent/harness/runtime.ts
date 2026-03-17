@@ -229,7 +229,7 @@ const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = {
     enabled: true,
     autoApproveAmbient: true,
     maxSpecsPerProject: 100,
-    enableDriftDetection: false,
+    enableDriftDetection: true,
   },
   // Stream resilience configuration
   streamIdleTimeoutMs: 120000,

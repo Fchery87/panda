@@ -80,7 +80,7 @@ export class SpecEngine {
     this.config = {
       autoApproveAmbient: true,
       maxSpecsPerProject: 100,
-      enableDriftDetection: false,
+      enableDriftDetection: true,
       ...config,
     }
   }
@@ -725,7 +725,7 @@ export function createSpecEngine(config?: Partial<SpecEngineConfig>): SpecEngine
     enabled: true,
     autoApproveAmbient: true,
     maxSpecsPerProject: 100,
-    enableDriftDetection: false,
+    enableDriftDetection: true,
     ...config,
   })
 }
