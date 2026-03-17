@@ -158,14 +158,19 @@ export const DEFAULT_PERMISSIONS: Record<string, Permission> = {
  */
 export class PermissionManager {
   private timeoutMs: number
-  private pollIntervalMs: number
   private pendingRequests: Map<Identifier, PermissionRequest> = new Map()
+  private pendingResolvers: Map<
+    Identifier,
+    {
+      resolve: (result: PermissionResult) => void
+      timeoutId: ReturnType<typeof setTimeout>
+    }
+  > = new Map()
   private sessionPermissions: Map<Identifier, Permission> = new Map()
   private userDecisions: Map<string, PermissionDecision> = new Map()
 
   constructor(options?: { timeoutMs?: number; pollIntervalMs?: number }) {
     this.timeoutMs = options?.timeoutMs ?? 60000
-    this.pollIntervalMs = options?.pollIntervalMs ?? 100
   }
 
   /**
@@ -217,40 +222,8 @@ export class PermissionManager {
     })
 
     return new Promise((resolve) => {
-      let resolved = false
-
-      const checkInterval = setInterval(() => {
-        const req = this.pendingRequests.get(id)
-        if (resolved || !req?.decision) {
-          return
-        }
-        resolved = true
-        clearInterval(checkInterval)
-        this.pendingRequests.delete(id)
-
-        const granted = req.decision === 'allow'
-
-        if (req.reason === 'always') {
-          this.userDecisions.set(decisionKey, req.decision)
-        }
-
-        bus.emitPermission(sessionID, 'decided', {
-          id,
-          decision: req.decision,
-          reason: req.reason,
-        })
-
-        resolve({
-          granted,
-          decision: req.decision,
-          reason: req.reason,
-        })
-      }, this.pollIntervalMs)
-
-      setTimeout(() => {
-        if (resolved) return
-        resolved = true
-        clearInterval(checkInterval)
+      const timeoutId = setTimeout(() => {
+        this.pendingResolvers.delete(id)
         this.pendingRequests.delete(id)
         bus.emitPermission(sessionID, 'decided', {
           id,
@@ -263,6 +236,27 @@ export class PermissionManager {
           reason: 'Timeout',
         })
       }, this.timeoutMs)
+
+      this.pendingResolvers.set(id, {
+        resolve: (result: PermissionResult) => {
+          clearTimeout(timeoutId)
+          this.pendingResolvers.delete(id)
+          this.pendingRequests.delete(id)
+
+          if (result.decision === 'allow' && result.reason === 'always') {
+            this.userDecisions.set(decisionKey, 'allow')
+          }
+
+          bus.emitPermission(sessionID, 'decided', {
+            id,
+            decision: result.decision,
+            reason: result.reason,
+          })
+
+          resolve(result)
+        },
+        timeoutId,
+      })
     })
   }
 
@@ -270,11 +264,14 @@ export class PermissionManager {
    * Respond to a permission request
    */
   respond(requestID: Identifier, decision: PermissionDecision, reason?: string): boolean {
-    const request = this.pendingRequests.get(requestID)
-    if (!request) return false
+    const resolver = this.pendingResolvers.get(requestID)
+    if (!resolver) return false
 
-    request.decision = decision
-    request.reason = reason
+    resolver.resolve({
+      granted: decision === 'allow',
+      decision,
+      reason,
+    })
     return true
   }
 
