@@ -58,6 +58,7 @@ import { buildPromptMessagesWithModeSummary } from '../lib/agent/context/session
 import { reduceTerminalAgentEvent } from './useAgent-terminal-events'
 import { useRunEventBuffer, type TracePersistenceStatus } from './useRunEventBuffer'
 import { useProviderSettings } from './useProviderSettings'
+import { useTokenUsageMetrics, type UsageTotals, type UsageMetrics } from './useTokenUsageMetrics'
 import type {
   MessageAnnotationInfo,
   PersistedRunEventInfo,
@@ -93,22 +94,6 @@ interface ProgressStep {
 }
 
 type RunEventInput = PersistedRunEventInfo
-interface UsageTotals {
-  promptTokens: number
-  completionTokens: number
-  totalTokens: number
-}
-
-interface UsageMetrics {
-  mode: ChatMode
-  session: UsageTotals
-  currentRun?: UsageTotals & { source: TokenSource }
-  contextWindow: number
-  usedTokens: number
-  remainingTokens: number
-  usagePct: number
-  contextSource: ContextWindowSource
-}
 
 function summarizeArgs(args: Record<string, unknown> | undefined): string | undefined {
   if (!args) return undefined
@@ -397,37 +382,13 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     )
   }, [projectId, chatId, convexClient, userId])
 
-  const sessionUsage = useMemo<UsageTotals>(
-    () => ({
-      promptTokens: toFiniteNumber(persistedModeUsage?.promptTokens),
-      completionTokens: toFiniteNumber(persistedModeUsage?.completionTokens),
-      totalTokens: toFiniteNumber(persistedModeUsage?.totalTokens),
-    }),
-    [persistedModeUsage]
-  )
+  const usageMetrics = useTokenUsageMetrics({
+    mode,
+    persistedModeUsage,
+    currentRunUsage,
+    contextWindowResolution,
+  })
 
-  const usageMetrics = useMemo<UsageMetrics>(() => {
-    const sessionWithCurrent: UsageTotals = {
-      promptTokens: sessionUsage.promptTokens + (currentRunUsage?.promptTokens ?? 0),
-      completionTokens: sessionUsage.completionTokens + (currentRunUsage?.completionTokens ?? 0),
-      totalTokens: sessionUsage.totalTokens + (currentRunUsage?.totalTokens ?? 0),
-    }
-    const context = computeContextMetrics({
-      usedTokens: sessionWithCurrent.totalTokens,
-      contextWindow: contextWindowResolution.contextWindow,
-    })
-
-    return {
-      mode,
-      session: sessionUsage,
-      ...(currentRunUsage ? { currentRun: currentRunUsage } : {}),
-      contextWindow: contextWindowResolution.contextWindow,
-      usedTokens: context.usedTokens,
-      remainingTokens: context.remainingTokens,
-      usagePct: context.usagePct,
-      contextSource: contextWindowResolution.source,
-    }
-  }, [mode, sessionUsage, currentRunUsage, contextWindowResolution])
   const {
     tracePersistenceStatus,
     runIdRef,
@@ -857,7 +818,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         let rewriteNoticeShown = false
         const buildUsageAnnotations = () => {
           const context = computeContextMetrics({
-            usedTokens: sessionUsage.totalTokens + runUsage.totalTokens,
+            usedTokens: usageMetrics.session.totalTokens + runUsage.totalTokens,
             contextWindow: contextWindowResolution.contextWindow,
           })
           return {
@@ -1366,7 +1327,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               // Persist assistant message to Convex
               try {
                 const context = computeContextMetrics({
-                  usedTokens: sessionUsage.totalTokens + runUsage.totalTokens,
+                  usedTokens: usageMetrics.session.totalTokens + runUsage.totalTokens,
                   contextWindow: contextWindowResolution.contextWindow,
                 })
                 const annotations: MessageAnnotationInfo = {
@@ -1562,7 +1523,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       userId,
       runIdRef,
       getReasoningRuntimeSettings,
-      sessionUsage.totalTokens,
+      usageMetrics.session.totalTokens,
       contextWindowResolution.contextWindow,
       contextWindowResolution.source,
       memoryBankContent,
