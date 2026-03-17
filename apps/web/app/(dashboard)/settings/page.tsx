@@ -538,15 +538,49 @@ export default function SettingsPage() {
         } else {
           toast.success(`${provider.name} connection successful!`)
         }
-      } else {
-        // Simulate API test for other providers
-        await new Promise((resolve) => setTimeout(resolve, 1500))
-        success = provider.apiKey.length > 10
-
+      } else if (providerKey === 'anthropic') {
+        success = provider.apiKey.startsWith('sk-ant-') && provider.apiKey.length > 20
         if (success) {
-          toast.success(`${provider.name} connection successful!`)
+          toast.success(`${provider.name} API key looks valid`)
         } else {
-          toast.error(`${provider.name} connection failed`)
+          toast.error(`${provider.name}: API key format looks incorrect`)
+        }
+      } else if (provider.baseUrl) {
+        const response = await fetch('/api/providers/openai-compatible/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            apiKey: provider.apiKey,
+            baseUrl: provider.baseUrl,
+          }),
+        })
+        success = response.ok
+        if (success) {
+          const payload = await response.json()
+          const modelIds: string[] = (payload.data || [])
+            .map((m: { id?: string }) => m.id)
+            .filter(Boolean)
+          if (modelIds.length > 0) {
+            const existingSet = new Set(provider.availableModels)
+            const merged = [
+              ...provider.availableModels,
+              ...modelIds.filter((id) => !existingSet.has(id)),
+            ]
+            updateProvider(providerKey, { availableModels: merged })
+            toast.success(`${provider.name} connected! Found ${modelIds.length} models.`)
+          } else {
+            toast.success(`${provider.name} connection successful!`)
+          }
+        } else {
+          const errBody = await response.text().catch(() => '')
+          throw new Error(`HTTP ${response.status}: ${errBody.slice(0, 200)}`)
+        }
+      } else {
+        success = provider.apiKey.length > 10
+        if (success) {
+          toast.success(`${provider.name} API key saved (no endpoint to test)`)
+        } else {
+          toast.error(`${provider.name}: API key looks too short`)
         }
       }
 
