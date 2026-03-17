@@ -44,11 +44,7 @@ import { derivePlanProgressMetadata, parsePlanSteps } from '../lib/agent/plan-pr
 import { registerDefaultPlugins } from '../lib/agent/harness/plugins'
 import { appLog } from '@/lib/logger'
 import { toast } from 'sonner'
-import {
-  generateRepoOverview,
-  formatOverviewForPrompt,
-  type FileInfo,
-} from '../lib/agent/context/repo-overview'
+
 import {
   buildAgentPromptContext,
   buildAgentRuntimeConfig,
@@ -60,6 +56,7 @@ import { useRunEventBuffer, type TracePersistenceStatus } from './useRunEventBuf
 import { useProviderSettings } from './useProviderSettings'
 import { useTokenUsageMetrics, type UsageTotals, type UsageMetrics } from './useTokenUsageMetrics'
 import { useMemoryBank } from './useMemoryBank'
+import { useProjectContext } from './useProjectContext'
 import type {
   MessageAnnotationInfo,
   PersistedRunEventInfo,
@@ -275,34 +272,12 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   // Session summaries for context handoffs
   const saveSessionSummaryMutation = useMutation(api.sessionSummaries.save)
 
-  // Project files for overview generation (metadata only, no content)
-  const projectFiles = useQuery(
-    api.files.listMetadata,
-    projectId ? { projectId: projectId as Id<'projects'> } : 'skip'
+  // Project context hook
+  const { projectFiles, projectOverviewContent } = useProjectContext(
+    projectId,
+    projectName,
+    projectDescription
   )
-
-  // Project overview - computed on-demand, not stored as file
-  const projectOverviewContent = useMemo(() => {
-    if (!projectFiles || !projectName || projectFiles.length === 0) {
-      return null
-    }
-
-    try {
-      // Note: projectFiles now only contains metadata (no content)
-      // Content is loaded on-demand via batchGet when needed
-      const fileInfos: FileInfo[] = projectFiles.map((f) => ({
-        path: f.path,
-        content: '', // Content loaded on-demand
-        updatedAt: f.updatedAt,
-      }))
-
-      const overview = generateRepoOverview(fileInfos, projectName, projectDescription)
-      return formatOverviewForPrompt(overview)
-    } catch (err) {
-      appLog.warn('[useAgent] Failed to generate project overview:', err)
-      return null
-    }
-  }, [projectFiles, projectName, projectDescription])
 
   // Artifact store
   const pendingArtifactRecords = useQuery(api.artifacts.list, chatId ? { chatId } : 'skip')
