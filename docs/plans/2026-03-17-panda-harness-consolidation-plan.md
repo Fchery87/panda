@@ -1,12 +1,22 @@
 # Panda Harness Consolidation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to
+> implement this plan task-by-task.
 
-**Goal:** Consolidate Panda's agentic harness, spec system, chat panel, and hook architecture into a clean, organized, production-grade system by fixing dead code, wiring incomplete integrations, decomposing oversized files, and eliminating prop drilling.
+**Goal:** Consolidate Panda's agentic harness, spec system, chat panel, and hook
+architecture into a clean, organized, production-grade system by fixing dead
+code, wiring incomplete integrations, decomposing oversized files, and
+eliminating prop drilling.
 
-**Architecture:** Six phases executed sequentially. Phase 1 removes dead code and fixes broken wiring. Phase 2 decomposes the 1823-line useAgent God hook into focused sub-hooks. Phase 3 makes the spec system functional end-to-end. Phase 4 fixes the harness runtime's incomplete subsystems. Phase 5 eliminates prop drilling with React Context. Phase 6 adds missing test coverage. Each phase is independently shippable and testable.
+**Architecture:** Six phases executed sequentially. Phase 1 removes dead code
+and fixes broken wiring. Phase 2 decomposes the 1823-line useAgent God hook into
+focused sub-hooks. Phase 3 makes the spec system functional end-to-end. Phase 4
+fixes the harness runtime's incomplete subsystems. Phase 5 eliminates prop
+drilling with React Context. Phase 6 adds missing test coverage. Each phase is
+independently shippable and testable.
 
-**Tech Stack:** Next.js (App Router), React 19, Convex (real-time DB), TypeScript, Bun (test runner), custom LLM agent harness
+**Tech Stack:** Next.js (App Router), React 19, Convex (real-time DB),
+TypeScript, Bun (test runner), custom LLM agent harness
 
 **Codebase totals:** ~42,000 lines across 93 files in the agent system
 
@@ -14,30 +24,40 @@
 
 ## Phase 1: Dead Code Removal & Broken Wiring Fixes
 
-> Remove unused code, fix misconfigured plugins, and correct stale documentation. Low risk, immediate cleanup.
+> Remove unused code, fix misconfigured plugins, and correct stale
+> documentation. Low risk, immediate cleanup.
 
 ---
 
 ### Task 1.1: Remove postWriteValidationPlugin Dead Code
 
 **Files:**
+
 - Modify: `apps/web/lib/agent/harness/plugins.ts:346-458`
 
-**Context:** `postWriteValidationPlugin` is defined at line 346 but never registered in `defaultPlugins` (line 470). Its TypeScript and lint checks are also hardcoded to `passed: true` (lines 402, 421). It is double-dead: stubbed AND unused.
+**Context:** `postWriteValidationPlugin` is defined at line 346 but never
+registered in `defaultPlugins` (line 470). Its TypeScript and lint checks are
+also hardcoded to `passed: true` (lines 402, 421). It is double-dead: stubbed
+AND unused.
 
 **Step 1: Delete the postWriteValidationPlugin definition**
 
-Remove lines 346-458 entirely (the `postWriteValidationPlugin` const and all its hooks). This code is never registered, never imported, and does nothing.
+Remove lines 346-458 entirely (the `postWriteValidationPlugin` const and all its
+hooks). This code is never registered, never imported, and does nothing.
 
 **Step 2: Verify no imports reference postWriteValidationPlugin**
 
-Run: `cd "/home/nochaserz/Documents/Coding Projects/panda" && grep -r "postWriteValidationPlugin" --include="*.ts" --include="*.tsx" apps/`
-Expected: Only the definition in `plugins.ts` (which you just removed). Zero imports elsewhere.
+Run:
+`cd "/home/nochaserz/Documents/Coding Projects/panda" && grep -r "postWriteValidationPlugin" --include="*.ts" --include="*.tsx" apps/`
+Expected: Only the definition in `plugins.ts` (which you just removed). Zero
+imports elsewhere.
 
 **Step 3: Run existing harness tests**
 
-Run: `cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/lib/agent/harness/`
-Expected: All tests pass (this plugin was never tested because it was never used).
+Run:
+`cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/lib/agent/harness/`
+Expected: All tests pass (this plugin was never tested because it was never
+used).
 
 **Step 4: Commit**
 
@@ -51,10 +71,15 @@ git commit -m "chore: remove dead postWriteValidationPlugin (stubbed + unregiste
 ### Task 1.2: Fix HarnessAgentRuntimeAdapter abort() No-Op
 
 **Files:**
+
 - Modify: `apps/web/lib/agent/runtime.ts:1028-1031`
 - Test: `apps/web/lib/agent/runtime.harness-adapter.test.ts`
 
-**Context:** The `abort()` method on `HarnessAgentRuntimeAdapter` (line 1028) is an empty function body. The comment says "abort is handled by internal abortController" but there's no external way to trigger it from the adapter. The `useAgent` hook calls `runtimeRef.current?.abort?.()` in its `stop()` function (useAgent.ts:525).
+**Context:** The `abort()` method on `HarnessAgentRuntimeAdapter` (line 1028) is
+an empty function body. The comment says "abort is handled by internal
+abortController" but there's no external way to trigger it from the adapter. The
+`useAgent` hook calls `runtimeRef.current?.abort?.()` in its `stop()` function
+(useAgent.ts:525).
 
 **Step 1: Write failing test for abort behavior**
 
@@ -73,8 +98,10 @@ it('abort() should signal the runtime to stop', async () => {
 
 **Step 2: Run test to verify it exposes the gap**
 
-Run: `cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/lib/agent/runtime.harness-adapter.test.ts -t "abort"`
-Expected: Test passes trivially (abort is callable but does nothing) OR fails if we assert behavior.
+Run:
+`cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/lib/agent/runtime.harness-adapter.test.ts -t "abort"`
+Expected: Test passes trivially (abort is callable but does nothing) OR fails if
+we assert behavior.
 
 **Step 3: Implement abort by exposing an AbortController on the adapter**
 
@@ -89,13 +116,16 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
     this.abortController?.abort()
   }
 
-  async *run(promptContext: PromptContext, config?: RuntimeConfig): AsyncGenerator<AgentEvent> {
+  async *run(
+    promptContext: PromptContext,
+    config?: RuntimeConfig
+  ): AsyncGenerator<AgentEvent> {
     this.abortController = new AbortController()
     // ... existing setup code ...
     // Pass abort signal to harness runtime or check it in the event loop
     for await (const event of source) {
       if (this.abortController.signal.aborted) {
-        return  // Stop processing events
+        return // Stop processing events
       }
       // ... existing event mapping ...
     }
@@ -105,7 +135,8 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
 
 **Step 4: Run all runtime tests**
 
-Run: `cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/lib/agent/runtime.harness-adapter.test.ts`
+Run:
+`cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/lib/agent/runtime.harness-adapter.test.ts`
 Expected: All tests pass including the new abort test.
 
 **Step 5: Commit**
@@ -120,16 +151,25 @@ git commit -m "fix: wire HarnessAgentRuntimeAdapter.abort() to stop event proces
 ### Task 1.3: Update MEMORY.md to Remove Stale Bug Claims
 
 **Files:**
-- Modify: `/home/nochaserz/.claude/projects/-home-nochaserz-Documents-Coding-Projects-panda/memory/MEMORY.md`
+
+- Modify:
+  `/home/nochaserz/.claude/projects/-home-nochaserz-Documents-Coding-Projects-panda/memory/MEMORY.md`
 
 **Context:** The memory doc claims several bugs that have been fixed:
-- "max-step exhaustion yields error then unconditionally yields complete" -- FIXED: line 563 has `return` after error yield
-- "UI state flips: setStatus('error') -> setStatus('complete')" -- FIXED: `reduceTerminalAgentEvent` guards this
-- "Verification is informational only" -- PARTIALLY WRONG: verification gates completion at runtime.ts:577-589
+
+- "max-step exhaustion yields error then unconditionally yields complete" --
+  FIXED: line 563 has `return` after error yield
+- "UI state flips: setStatus('error') -> setStatus('complete')" -- FIXED:
+  `reduceTerminalAgentEvent` guards this
+- "Verification is informational only" -- PARTIALLY WRONG: verification gates
+  completion at runtime.ts:577-589
 
 **Step 1: Update the Known Bug section in MEMORY.md**
 
-Replace the "Known Bug: Run Lifecycle State Machine" section with accurate information reflecting current code state. Remove claims about bugs that are fixed. Add accurate gaps (drift detection unwired, post-write validation removed, classifier LLM stubbed).
+Replace the "Known Bug: Run Lifecycle State Machine" section with accurate
+information reflecting current code state. Remove claims about bugs that are
+fixed. Add accurate gaps (drift detection unwired, post-write validation
+removed, classifier LLM stubbed).
 
 **Step 2: Commit**
 
@@ -142,18 +182,23 @@ git commit -m "docs: update memory with accurate harness state after code review
 
 ## Phase 2: useAgent Hook Decomposition
 
-> Break the 1823-line God hook into focused, testable sub-hooks. Execute in dependency order: leaf hooks first, then hooks that depend on them.
+> Break the 1823-line God hook into focused, testable sub-hooks. Execute in
+> dependency order: leaf hooks first, then hooks that depend on them.
 
 ---
 
 ### Task 2.1: Extract useProviderSettings Hook
 
 **Files:**
+
 - Create: `apps/web/hooks/useProviderSettings.ts`
 - Create: `apps/web/hooks/useProviderSettings.test.ts`
 - Modify: `apps/web/hooks/useAgent.ts` (lines 404-469)
 
-**Context:** Lines 404-469 of useAgent.ts handle: loading provider capabilities, building reasoning config, async loading available models, and computing context window resolution. These are read-only derived values with no coupling to the agent execution loop.
+**Context:** Lines 404-469 of useAgent.ts handle: loading provider capabilities,
+building reasoning config, async loading available models, and computing context
+window resolution. These are read-only derived values with no coupling to the
+agent execution loop.
 
 **Step 1: Write failing test for useProviderSettings**
 
@@ -172,7 +217,8 @@ describe('useProviderSettings', () => {
 
 **Step 2: Run test to verify it fails**
 
-Run: `cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/hooks/useProviderSettings.test.ts`
+Run:
+`cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/hooks/useProviderSettings.test.ts`
 Expected: FAIL - module not found
 
 **Step 3: Create useProviderSettings.ts**
@@ -182,7 +228,10 @@ Extract from useAgent.ts lines 404-469 into a new hook:
 ```typescript
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import type { LLMProvider, ModelInfo, ReasoningOptions } from '../lib/llm/types'
-import { getDefaultProviderCapabilities, type ProviderType } from '../lib/llm/types'
+import {
+  getDefaultProviderCapabilities,
+  type ProviderType,
+} from '../lib/llm/types'
 import { resolveContextWindow } from '../lib/agent/session-controller'
 
 interface ReasoningProviderConfig {
@@ -209,14 +258,16 @@ export function useProviderSettings(
   const [providerModels, setProviderModels] = useState<ModelInfo[]>([])
 
   const getReasoningRuntimeSettings = useCallback(() => {
-    const providerType = (provider?.config?.provider || 'openai') as ProviderType
+    const providerType = (provider?.config?.provider ||
+      'openai') as ProviderType
     const capabilities =
-      provider?.config?.capabilities ?? getDefaultProviderCapabilities(providerType)
+      provider?.config?.capabilities ??
+      getDefaultProviderCapabilities(providerType)
 
     const providerKey = settings?.defaultProvider || providerType
-    const providerConfig = ((settings?.providerConfigs as Record<string, unknown>)?.[
-      providerKey as string
-    ] ?? {}) as ReasoningProviderConfig
+    const providerConfig = ((
+      settings?.providerConfigs as Record<string, unknown>
+    )?.[providerKey as string] ?? {}) as ReasoningProviderConfig
 
     const showReasoningPanel = providerConfig.showReasoningPanel !== false
     const reasoningEnabled = Boolean(providerConfig.reasoningEnabled)
@@ -231,7 +282,11 @@ export function useProviderSettings(
           ? { budgetTokens: reasoningBudget }
           : {}),
       }
-      if (reasoningMode === 'low' || reasoningMode === 'medium' || reasoningMode === 'high') {
+      if (
+        reasoningMode === 'low' ||
+        reasoningMode === 'medium' ||
+        reasoningMode === 'high'
+      ) {
         reasoning.effort = reasoningMode
       }
     }
@@ -242,13 +297,18 @@ export function useProviderSettings(
   useEffect(() => {
     let cancelled = false
     if (provider?.listModels) {
-      provider.listModels().then((models) => {
-        if (!cancelled) setProviderModels(models)
-      }).catch(() => {
-        if (!cancelled) setProviderModels([])
-      })
+      provider
+        .listModels()
+        .then((models) => {
+          if (!cancelled) setProviderModels(models)
+        })
+        .catch(() => {
+          if (!cancelled) setProviderModels([])
+        })
     }
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [provider])
 
   const providerType = (provider?.config?.provider || 'openai') as ProviderType
@@ -257,7 +317,11 @@ export function useProviderSettings(
     [providerType, model, providerModels]
   )
 
-  return { providerModels, contextWindowResolution, getReasoningRuntimeSettings }
+  return {
+    providerModels,
+    contextWindowResolution,
+    getReasoningRuntimeSettings,
+  }
 }
 ```
 
@@ -274,7 +338,8 @@ Remove the now-unused local state, effects, and callbacks that were extracted.
 
 **Step 5: Run all tests**
 
-Run: `cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/hooks/`
+Run:
+`cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/hooks/`
 Expected: All pass
 
 **Step 6: Commit**
@@ -289,20 +354,25 @@ git commit -m "refactor: extract useProviderSettings from useAgent (lines 404-46
 ### Task 2.2: Extract useTokenUsageMetrics Hook
 
 **Files:**
+
 - Create: `apps/web/hooks/useTokenUsageMetrics.ts`
 - Modify: `apps/web/hooks/useAgent.ts` (lines 471-501)
 
-**Context:** Lines 471-501 are pure computation: combine session usage + current run usage, compute context metrics. Zero coupling to the execution loop.
+**Context:** Lines 471-501 are pure computation: combine session usage + current
+run usage, compute context metrics. Zero coupling to the execution loop.
 
 **Step 1: Create useTokenUsageMetrics.ts**
 
-Extract from useAgent.ts lines 471-501. The hook takes `persistedModeUsage`, `currentRunUsage`, and `contextWindowResolution` as inputs and returns `sessionUsage` and `usageMetrics`.
+Extract from useAgent.ts lines 471-501. The hook takes `persistedModeUsage`,
+`currentRunUsage`, and `contextWindowResolution` as inputs and returns
+`sessionUsage` and `usageMetrics`.
 
 **Step 2: Replace lines 471-501 in useAgent.ts with hook call**
 
 **Step 3: Run tests**
 
-Run: `cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/hooks/`
+Run:
+`cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/hooks/`
 Expected: All pass
 
 **Step 4: Commit**
@@ -317,10 +387,12 @@ git commit -m "refactor: extract useTokenUsageMetrics from useAgent (lines 471-5
 ### Task 2.3: Extract useMemoryBank Hook
 
 **Files:**
+
 - Create: `apps/web/hooks/useMemoryBank.ts`
 - Modify: `apps/web/hooks/useAgent.ts` (lines 293-297)
 
-**Context:** Simple Convex query + mutation wrapper for memory bank content. Only needs projectId.
+**Context:** Simple Convex query + mutation wrapper for memory bank content.
+Only needs projectId.
 
 **Step 1: Create useMemoryBank.ts**
 
@@ -364,14 +436,17 @@ git commit -m "refactor: extract useMemoryBank from useAgent (lines 293-297)"
 ### Task 2.4: Extract useProjectContext Hook
 
 **Files:**
+
 - Create: `apps/web/hooks/useProjectContext.ts`
 - Modify: `apps/web/hooks/useAgent.ts` (lines 303-329)
 
-**Context:** Convex files query + project overview generation. Used for prompt context building. Low coupling.
+**Context:** Convex files query + project overview generation. Used for prompt
+context building. Low coupling.
 
 **Step 1: Create useProjectContext.ts**
 
-Extract the `projectFiles` query (lines 303-306) and `projectOverviewContent` useMemo (lines 309-329) into a new hook.
+Extract the `projectFiles` query (lines 303-306) and `projectOverviewContent`
+useMemo (lines 309-329) into a new hook.
 
 **Step 2: Replace in useAgent.ts and run tests**
 
@@ -387,25 +462,32 @@ git commit -m "refactor: extract useProjectContext from useAgent (lines 303-329)
 ### Task 2.5: Extract useMessageHistory Hook
 
 **Files:**
+
 - Create: `apps/web/hooks/useMessageHistory.ts`
 - Modify: `apps/web/hooks/useAgent.ts` (lines 270-274, 342, 609-668)
 
-**Context:** Convex paginated messages query, local messages state, and the hydration effect that normalizes persisted messages on load. Medium coupling (needs `mode` for normalization).
+**Context:** Convex paginated messages query, local messages state, and the
+hydration effect that normalizes persisted messages on load. Medium coupling
+(needs `mode` for normalization).
 
 **Step 1: Create useMessageHistory.ts**
 
 Extract:
+
 - `persistedMessages` paginated query (lines 270-274)
 - `messages` useState (line 342)
-- Message hydration effect (lines 609-668) including mode normalization and annotation extraction
+- Message hydration effect (lines 609-668) including mode normalization and
+  annotation extraction
 
-The hook takes `chatId` and `mode` and returns `{ messages, setMessages, persistedMessages, messagesPaginationStatus }`.
+The hook takes `chatId` and `mode` and returns
+`{ messages, setMessages, persistedMessages, messagesPaginationStatus }`.
 
 **Step 2: Replace in useAgent.ts**
 
 **Step 3: Run all tests**
 
-Run: `cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/hooks/`
+Run:
+`cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/hooks/`
 Expected: All pass
 
 **Step 4: Commit**
@@ -420,20 +502,28 @@ git commit -m "refactor: extract useMessageHistory from useAgent (lines 270-274,
 ### Task 2.6: Extract useSpecManagement Hook
 
 **Files:**
+
 - Create: `apps/web/hooks/useSpecManagement.ts`
 - Modify: `apps/web/hooks/useAgent.ts` (lines 288-290, 353-354, 579-601)
 
-**Context:** Spec-related state (currentSpec, pendingSpec), Convex mutations (createSpec, updateSpec), persistence ref, and approval/cancel/edit functions. Medium coupling: the event handlers in sendMessageInternal (lines 1163-1272) also modify spec state, but those stay in useAgent and call the setters from this hook.
+**Context:** Spec-related state (currentSpec, pendingSpec), Convex mutations
+(createSpec, updateSpec), persistence ref, and approval/cancel/edit functions.
+Medium coupling: the event handlers in sendMessageInternal (lines 1163-1272)
+also modify spec state, but those stay in useAgent and call the setters from
+this hook.
 
 **Step 1: Create useSpecManagement.ts**
 
 Extract:
+
 - `createSpecMutation`, `updateSpecMutation` (lines 288-289)
 - `specPersistenceRef` (line 290)
 - `currentSpec`, `pendingSpec` state (lines 353-354)
-- `approvePendingSpec`, `updatePendingSpecDraft`, `cancelPendingSpec` (lines 579-601)
+- `approvePendingSpec`, `updatePendingSpecDraft`, `cancelPendingSpec` (lines
+  579-601)
 
-The hook takes `{ projectId, chatId, runtimeRef }` and returns all spec state + mutation functions.
+The hook takes `{ projectId, chatId, runtimeRef }` and returns all spec state +
+mutation functions.
 
 **Step 2: Replace in useAgent.ts**
 
@@ -451,18 +541,26 @@ git commit -m "refactor: extract useSpecManagement from useAgent (spec state + a
 ### Task 2.7: Extract useRunLifecycle Hook
 
 **Files:**
+
 - Create: `apps/web/hooks/useRunLifecycle.ts`
 - Modify: `apps/web/hooks/useAgent.ts` (lines 773-834)
 
-**Context:** The three finalization functions (`finalizeRunCompleted`, `finalizeRunFailed`, `finalizeRunStopped`) plus terminal event reduction. Currently defined inside sendMessageInternal as closures. They share `runFinalized` and `terminalAgentStatus` local variables.
+**Context:** The three finalization functions (`finalizeRunCompleted`,
+`finalizeRunFailed`, `finalizeRunStopped`) plus terminal event reduction.
+Currently defined inside sendMessageInternal as closures. They share
+`runFinalized` and `terminalAgentStatus` local variables.
 
 **Step 1: Create useRunLifecycle.ts**
 
 Extract the finalization pattern into a reusable hook that returns:
-- `createRunFinalizer()` — returns an object with `{ finalizeCompleted, finalizeFailed, finalizeStopped, shouldProcessTerminalEvent }` bound to a specific run
+
+- `createRunFinalizer()` — returns an object with
+  `{ finalizeCompleted, finalizeFailed, finalizeStopped, shouldProcessTerminalEvent }`
+  bound to a specific run
 - Uses `reduceTerminalAgentEvent` from `useAgent-terminal-events.ts`
 
-**Step 2: Replace the closure definitions in sendMessageInternal with the hook's returned functions**
+**Step 2: Replace the closure definitions in sendMessageInternal with the hook's
+returned functions**
 
 **Step 3: Run all tests**
 
@@ -478,21 +576,25 @@ git commit -m "refactor: extract useRunLifecycle from useAgent (run finalization
 ### Task 2.8: Verify useAgent Reduction and Run Full Test Suite
 
 **Files:**
+
 - Read: `apps/web/hooks/useAgent.ts`
 
 **Step 1: Count remaining lines**
 
-Run: `wc -l "/home/nochaserz/Documents/Coding Projects/panda/apps/web/hooks/useAgent.ts"`
+Run:
+`wc -l "/home/nochaserz/Documents/Coding Projects/panda/apps/web/hooks/useAgent.ts"`
 Expected: ~1000-1100 lines (reduced from 1823)
 
 **Step 2: Run full test suite**
 
-Run: `cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/`
+Run:
+`cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/`
 Expected: All tests pass
 
 **Step 3: Run TypeScript type check**
 
-Run: `cd "/home/nochaserz/Documents/Coding Projects/panda" && npx tsc --noEmit --project apps/web/tsconfig.json 2>&1 | head -50`
+Run:
+`cd "/home/nochaserz/Documents/Coding Projects/panda" && npx tsc --noEmit --project apps/web/tsconfig.json 2>&1 | head -50`
 Expected: No new type errors
 
 **Step 4: Commit with verification note**
@@ -505,26 +607,34 @@ git commit --allow-empty -m "chore: verify useAgent decomposition complete - red
 
 ## Phase 3: Make Spec System Functional End-to-End
 
-> Wire the spec system's disconnected pieces so specs actually constrain, verify, and detect drift during execution.
+> Wire the spec system's disconnected pieces so specs actually constrain,
+> verify, and detect drift during execution.
 
 ---
 
 ### Task 3.1: Wire Active Spec Registration for Drift Detection
 
 **Files:**
+
 - Modify: `apps/web/lib/agent/harness/runtime.ts` (after line 414)
-- Modify: `apps/web/lib/agent/spec/drift-detection.ts` (verify registerActiveSpec API)
+- Modify: `apps/web/lib/agent/spec/drift-detection.ts` (verify
+  registerActiveSpec API)
 - Test: `apps/web/lib/agent/harness/runtime.test.ts`
 
-**Context:** When a spec is approved and set as `activeSpec` (runtime.ts line 414), drift detection's `registerActiveSpec()` is never called. The drift detection plugin IS registered in defaultPlugins (plugins.ts:474), but it has no specs to monitor because registration never happens.
+**Context:** When a spec is approved and set as `activeSpec` (runtime.ts line
+414), drift detection's `registerActiveSpec()` is never called. The drift
+detection plugin IS registered in defaultPlugins (plugins.ts:474), but it has no
+specs to monitor because registration never happens.
 
 **Step 1: Write failing test**
 
-Add test to `runtime.test.ts` that verifies: when a spec reaches 'executing' status, it is registered with drift detection.
+Add test to `runtime.test.ts` that verifies: when a spec reaches 'executing'
+status, it is registered with drift detection.
 
 **Step 2: Run test to verify failure**
 
-Run: `cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/lib/agent/harness/runtime.test.ts -t "drift"`
+Run:
+`cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/lib/agent/harness/runtime.test.ts -t "drift"`
 Expected: FAIL
 
 **Step 3: Wire registerActiveSpec in runtime.ts**
@@ -555,20 +665,26 @@ git commit -m "fix: wire registerActiveSpec when spec becomes active for drift d
 ### Task 3.2: Enable Drift Detection in Default Config
 
 **Files:**
+
 - Modify: `apps/web/lib/agent/harness/runtime.ts` (line 232)
 - Modify: `apps/web/lib/agent/spec/engine.ts` (line 83)
 
-**Context:** `enableDriftDetection` is `false` in both the harness runtime default config (runtime.ts:232) and the spec engine defaults (engine.ts:83). The plugin is registered and wired (Task 3.1), but config-disabled.
+**Context:** `enableDriftDetection` is `false` in both the harness runtime
+default config (runtime.ts:232) and the spec engine defaults (engine.ts:83). The
+plugin is registered and wired (Task 3.1), but config-disabled.
 
 **Step 1: Set enableDriftDetection to true in both defaults**
 
-In `runtime.ts` line 232, change `enableDriftDetection: false` to `enableDriftDetection: true`.
-In `engine.ts` line 83, change `enableDriftDetection: false` to `enableDriftDetection: true`.
+In `runtime.ts` line 232, change `enableDriftDetection: false` to
+`enableDriftDetection: true`. In `engine.ts` line 83, change
+`enableDriftDetection: false` to `enableDriftDetection: true`.
 
 **Step 2: Run tests to check for regressions**
 
-Run: `cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/lib/agent/`
-Expected: All pass (drift detection was already a no-op, enabling it just lets the plugin's hooks fire)
+Run:
+`cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/lib/agent/`
+Expected: All pass (drift detection was already a no-op, enabling it just lets
+the plugin's hooks fire)
 
 **Step 3: Commit**
 
@@ -582,18 +698,25 @@ git commit -m "feat: enable drift detection by default in harness and spec engin
 ### Task 3.3: Emit Drift Events from Runtime After Tool Execution
 
 **Files:**
-- Modify: `apps/web/lib/agent/harness/runtime.ts` (after tool result processing, ~line 700+)
+
+- Modify: `apps/web/lib/agent/harness/runtime.ts` (after tool result processing,
+  ~line 700+)
 - Test: `apps/web/lib/agent/harness/runtime.test.ts`
 
-**Context:** The drift detection plugin creates drift reports and stores them in `state.pendingDrifts`, but the runtime never retrieves them or emits them as events. The `spec.drift.detected` hook exists (plugins.ts:327) but is never triggered from runtime code.
+**Context:** The drift detection plugin creates drift reports and stores them in
+`state.pendingDrifts`, but the runtime never retrieves them or emits them as
+events. The `spec.drift.detected` hook exists (plugins.ts:327) but is never
+triggered from runtime code.
 
 **Step 1: Write failing test**
 
-Test that after a write_files tool call modifies a file outside spec scope, a drift-related event or hook is fired.
+Test that after a write_files tool call modifies a file outside spec scope, a
+drift-related event or hook is fired.
 
 **Step 2: Add drift check after tool execution**
 
-After tool results are processed in the runtime's step execution, check for pending drifts:
+After tool results are processed in the runtime's step execution, check for
+pending drifts:
 
 ```typescript
 import { getPendingDrifts, clearPendingDrifts } from '../spec/drift-detection'
@@ -628,14 +751,21 @@ git commit -m "feat: emit drift detection events from runtime after tool executi
 ### Task 3.4: Replace Stubbed LLM Classification with Real Provider Call
 
 **Files:**
-- Modify: `apps/web/lib/agent/spec/classifier.ts` (lines 319-433, `performLLMClassification`)
+
+- Modify: `apps/web/lib/agent/spec/classifier.ts` (lines 319-433,
+  `performLLMClassification`)
 - Test: `apps/web/lib/agent/spec/__tests__/classifier.test.ts`
 
-**Context:** `performLLMClassification()` at line 319 says "In production, this would call an LLM. For now, we use enhanced heuristics." It never calls an LLM. The spec engine has access to the LLM provider through the harness runtime.
+**Context:** `performLLMClassification()` at line 319 says "In production, this
+would call an LLM. For now, we use enhanced heuristics." It never calls an LLM.
+The spec engine has access to the LLM provider through the harness runtime.
 
 **Step 1: Design the LLM classification interface**
 
-The classifier needs to accept an optional LLM provider. When available, it sends a structured prompt asking the LLM to classify intent tier (instant/ambient/explicit) with reasoning. When unavailable, falls back to existing heuristics.
+The classifier needs to accept an optional LLM provider. When available, it
+sends a structured prompt asking the LLM to classify intent tier
+(instant/ambient/explicit) with reasoning. When unavailable, falls back to
+existing heuristics.
 
 **Step 2: Write test for LLM classification path**
 
@@ -644,6 +774,7 @@ Test with a mock provider that returns a structured JSON response.
 **Step 3: Implement LLM classification**
 
 Update `performLLMClassification` to:
+
 1. Accept an optional `provider` parameter
 2. Build a classification prompt with the user message and scoring context
 3. Call the provider for a structured response
@@ -652,11 +783,13 @@ Update `performLLMClassification` to:
 
 **Step 4: Thread the provider through from runtime**
 
-The `SpecEngine.classify()` method needs access to the LLM provider. Pass it from the harness runtime's constructor.
+The `SpecEngine.classify()` method needs access to the LLM provider. Pass it
+from the harness runtime's constructor.
 
 **Step 5: Run tests**
 
-Run: `cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/lib/agent/spec/`
+Run:
+`cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/lib/agent/spec/`
 Expected: All pass
 
 **Step 6: Commit**
@@ -671,10 +804,14 @@ git commit -m "feat: replace stubbed LLM classification with real provider call 
 ### Task 3.5: Replace Stubbed LLM Judge Verification with Real Provider Call
 
 **Files:**
-- Modify: `apps/web/lib/agent/spec/verifier.ts` (lines 269-306, `verifyLLMJudgeCriterion`)
+
+- Modify: `apps/web/lib/agent/spec/verifier.ts` (lines 269-306,
+  `verifyLLMJudgeCriterion`)
 - Test: `apps/web/lib/agent/spec/__tests__/verifier.test.ts`
 
-**Context:** `verifyLLMJudgeCriterion` at line 269 does keyword matching instead of actual LLM evaluation. It splits the behavior description into 4+ letter words and checks if they appear in the output. This is not verification.
+**Context:** `verifyLLMJudgeCriterion` at line 269 does keyword matching instead
+of actual LLM evaluation. It splits the behavior description into 4+ letter
+words and checks if they appear in the output. This is not verification.
 
 **Step 1: Write test for LLM judge verification**
 
@@ -683,18 +820,24 @@ Test with a mock provider that evaluates a criterion against execution output.
 **Step 2: Implement real LLM judge**
 
 Update `verifyLLMJudgeCriterion` to:
+
 1. Accept an optional LLM provider
-2. Build a verification prompt: "Given this acceptance criterion: [criterion]. And this execution output: [output]. Did the execution satisfy the criterion? Respond with JSON: { passed: boolean, confidence: number, reasoning: string }"
+2. Build a verification prompt: "Given this acceptance criterion: [criterion].
+   And this execution output: [output]. Did the execution satisfy the criterion?
+   Respond with JSON: { passed: boolean, confidence: number, reasoning: string
+   }"
 3. Parse the structured response
 4. Fall back to keyword heuristics if LLM unavailable
 
 **Step 3: Thread provider through verifier**
 
-Update `verifySpec()` to accept an optional provider parameter, passed from the spec engine.
+Update `verifySpec()` to accept an optional provider parameter, passed from the
+spec engine.
 
 **Step 4: Run tests**
 
-Run: `cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/lib/agent/spec/__tests__/verifier.test.ts`
+Run:
+`cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/lib/agent/spec/__tests__/verifier.test.ts`
 Expected: All pass
 
 **Step 5: Commit**
@@ -709,14 +852,20 @@ git commit -m "feat: replace stubbed LLM judge verification with real provider c
 ### Task 3.6: Inject Active Spec into Agent Prompt
 
 **Files:**
+
 - Modify: `apps/web/lib/agent/prompt-library.ts` (around line 252)
 - Test: `apps/web/lib/agent/prompt-library.test.ts` (if exists) or create one
 
-**Context:** Specs are generated and approved, but never injected into the agent's system prompt. The agent doesn't know it's operating under a specification. The spec scope enforcement (getSpecScopeViolation) blocks out-of-scope writes, but the agent has no prompt-level awareness of what it should or shouldn't do.
+**Context:** Specs are generated and approved, but never injected into the
+agent's system prompt. The agent doesn't know it's operating under a
+specification. The spec scope enforcement (getSpecScopeViolation) blocks
+out-of-scope writes, but the agent has no prompt-level awareness of what it
+should or shouldn't do.
 
 **Step 1: Add spec context to prompt construction**
 
-In `prompt-library.ts`, modify the prompt builder to include active spec information when available:
+In `prompt-library.ts`, modify the prompt builder to include active spec
+information when available:
 
 ```typescript
 // After existing system prompt construction:
@@ -726,9 +875,9 @@ if (promptContext.activeSpec) {
     `\n## Active Specification`,
     `**Goal:** ${spec.intent.goal}`,
     `**Constraints:**`,
-    ...spec.constraints.map(c => `- [${c.type}] ${c.description}`),
+    ...spec.constraints.map((c) => `- [${c.type}] ${c.description}`),
     `**Acceptance Criteria:**`,
-    ...spec.acceptanceCriteria.map(a => `- ${a.description}`),
+    ...spec.acceptanceCriteria.map((a) => `- ${a.description}`),
     `**Scope:** Only modify files listed in the execution plan. Out-of-scope writes will be blocked.`,
   ].join('\n')
   // Append to system message
@@ -741,7 +890,8 @@ Add `activeSpec?: FormalSpecification` to the `PromptContext` interface.
 
 **Step 3: Pass activeSpec from runtime when building prompt context**
 
-In `runtime.ts` or `session-controller.ts`, include the active spec in prompt context construction.
+In `runtime.ts` or `session-controller.ts`, include the active spec in prompt
+context construction.
 
 **Step 4: Run tests**
 
@@ -756,17 +906,22 @@ git commit -m "feat: inject active spec into agent system prompt for execution a
 
 ## Phase 4: Harness Runtime Fixes
 
-> Fix the remaining harness issues: permission system modernization, plugin error surfacing, and specApprovalMode default.
+> Fix the remaining harness issues: permission system modernization, plugin
+> error surfacing, and specApprovalMode default.
 
 ---
 
 ### Task 4.1: Modernize Permission Polling to Promise-Based
 
 **Files:**
-- Modify: `apps/web/lib/agent/harness/permissions.ts` (lines 166+, the polling section)
+
+- Modify: `apps/web/lib/agent/harness/permissions.ts` (lines 166+, the polling
+  section)
 - Test: `apps/web/lib/agent/harness/permissions.test.ts` (if exists)
 
-**Context:** The permission `request()` method uses `setInterval` at 100ms polling + `setTimeout` for timeout. This can leak timers. Replace with a Promise that resolves when `respond()` is called, with AbortController for timeout.
+**Context:** The permission `request()` method uses `setInterval` at 100ms
+polling + `setTimeout` for timeout. This can leak timers. Replace with a Promise
+that resolves when `respond()` is called, with AbortController for timeout.
 
 **Step 1: Refactor request() to use Promise + resolve pattern**
 
@@ -834,10 +989,13 @@ git commit -m "refactor: replace permission polling with Promise-based resolutio
 ### Task 4.2: Surface Plugin Hook Errors to Runtime Events
 
 **Files:**
+
 - Modify: `apps/web/lib/agent/harness/plugins.ts` (lines 121-129)
 - Modify: `apps/web/lib/agent/harness/runtime.ts` (executeHook calls)
 
-**Context:** Plugin hook errors are caught and logged (plugins.ts:127-129) but never surfaced to the user or the runtime event stream. A silently failing plugin gives zero feedback.
+**Context:** Plugin hook errors are caught and logged (plugins.ts:127-129) but
+never surfaced to the user or the runtime event stream. A silently failing
+plugin gives zero feedback.
 
 **Step 1: Modify executeHooks to collect and return errors**
 
@@ -860,9 +1018,11 @@ async executeHooks<T>(hookType: HookType, context: HookContext, data: T): Promis
 }
 ```
 
-**Step 2: Update all `executeHook` call sites in runtime.ts to handle returned errors**
+**Step 2: Update all `executeHook` call sites in runtime.ts to handle returned
+errors**
 
-Log them as warnings in the runtime event stream so they're visible in the UI progress panel.
+Log them as warnings in the runtime event stream so they're visible in the UI
+progress panel.
 
 **Step 3: Run tests**
 
@@ -878,29 +1038,40 @@ git commit -m "fix: surface plugin hook errors in runtime event stream instead o
 ### Task 4.3: Change specApprovalMode Default to 'interactive'
 
 **Files:**
+
 - Modify: `apps/web/lib/agent/runtime.ts` (line 1039)
 
-**Context:** `specApprovalMode` defaults to `'auto_approve'` (line 1039), meaning the spec approval UI path is never exercised unless explicitly configured. The SpecPanel approval UI exists but is bypassed by default.
+**Context:** `specApprovalMode` defaults to `'auto_approve'` (line 1039),
+meaning the spec approval UI path is never exercised unless explicitly
+configured. The SpecPanel approval UI exists but is bypassed by default.
 
 **Step 1: Change default**
 
 Change line 1039 from:
+
 ```typescript
 const specApprovalMode = config?.harnessSpecApprovalMode ?? 'auto_approve'
 ```
+
 to:
+
 ```typescript
 const specApprovalMode = config?.harnessSpecApprovalMode ?? 'interactive'
 ```
 
 **Step 2: Verify spec approval UI works**
 
-The `spec_pending_approval` event handler in useAgent.ts (line 1163) already sets `pendingSpec` and shows the SpecPanel. With interactive mode, the `onSpecApproval` callback in runtime.ts (line 1111) will create a Promise that waits for user action instead of auto-approving.
+The `spec_pending_approval` event handler in useAgent.ts (line 1163) already
+sets `pendingSpec` and shows the SpecPanel. With interactive mode, the
+`onSpecApproval` callback in runtime.ts (line 1111) will create a Promise that
+waits for user action instead of auto-approving.
 
 **Step 3: Run tests**
 
-Run: `cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/lib/agent/`
-Expected: Some tests may need updating if they assumed auto-approve. Fix those to explicitly set the mode.
+Run:
+`cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/lib/agent/`
+Expected: Some tests may need updating if they assumed auto-approve. Fix those
+to explicitly set the mode.
 
 **Step 4: Commit**
 
@@ -913,16 +1084,20 @@ git commit -m "feat: default specApprovalMode to interactive so spec approval UI
 
 ## Phase 5: Chat Panel Prop Drilling Elimination
 
-> Introduce React Context to eliminate the 44-prop ProjectChatPanel and reduce coupling.
+> Introduce React Context to eliminate the 44-prop ProjectChatPanel and reduce
+> coupling.
 
 ---
 
 ### Task 5.1: Create ChatStateContext for Core Chat State
 
 **Files:**
+
 - Create: `apps/web/components/chat/ChatStateContext.tsx`
 
-**Context:** `ProjectChatPanel` receives 44+ props, many of which are passed through to children. The core chat state (messages, status, mode, streaming, spec state, plan state) should be provided via context.
+**Context:** `ProjectChatPanel` receives 44+ props, many of which are passed
+through to children. The core chat state (messages, status, mode, streaming,
+spec state, plan state) should be provided via context.
 
 **Step 1: Define the context**
 
@@ -981,22 +1156,28 @@ git commit -m "feat: add ChatStateContext to eliminate prop drilling in chat pan
 ### Task 5.2: Wrap ProjectChatPanel with ChatStateProvider
 
 **Files:**
+
 - Modify: `apps/web/components/projects/ProjectChatPanel.tsx`
 - Modify: Parent component that renders ProjectChatPanel (likely ProjectPage)
 
-**Context:** The parent creates the `ChatStateProvider` with values from useAgent, and ProjectChatPanel consumes them via `useChatState()` instead of props.
+**Context:** The parent creates the `ChatStateProvider` with values from
+useAgent, and ProjectChatPanel consumes them via `useChatState()` instead of
+props.
 
 **Step 1: Add ChatStateProvider in the parent**
 
-Wrap `<ProjectChatPanel>` with `<ChatStateProvider value={{...}}>` using values from useAgent.
+Wrap `<ProjectChatPanel>` with `<ChatStateProvider value={{...}}>` using values
+from useAgent.
 
 **Step 2: Remove matching props from ProjectChatPanel's interface**
 
-Replace the 15-20 props that are now in context with `useChatState()` calls inside the component.
+Replace the 15-20 props that are now in context with `useChatState()` calls
+inside the component.
 
 **Step 3: Run TypeScript check**
 
-Run: `cd "/home/nochaserz/Documents/Coding Projects/panda" && npx tsc --noEmit --project apps/web/tsconfig.json 2>&1 | head -50`
+Run:
+`cd "/home/nochaserz/Documents/Coding Projects/panda" && npx tsc --noEmit --project apps/web/tsconfig.json 2>&1 | head -50`
 Expected: No type errors (or fix any that appear)
 
 **Step 4: Commit**
@@ -1011,18 +1192,23 @@ git commit -m "refactor: ProjectChatPanel consumes ChatStateContext, reducing pr
 ### Task 5.3: Propagate Context to ChatActionBar and ChatInput
 
 **Files:**
+
 - Modify: `apps/web/components/chat/ChatActionBar.tsx` (23 props)
 - Modify: `apps/web/components/chat/ChatInput.tsx` (18 props)
 
-**Context:** Both components receive many props that are now available via context. ChatActionBar has 23 props (plan + spec state). ChatInput has 18 props (mode, model, spec tier).
+**Context:** Both components receive many props that are now available via
+context. ChatActionBar has 23 props (plan + spec state). ChatInput has 18 props
+(mode, model, spec tier).
 
 **Step 1: Update ChatActionBar to use useChatState()**
 
-Replace plan and spec props with context consumption. The component should go from 23 props to ~5 (className, custom callbacks not in context).
+Replace plan and spec props with context consumption. The component should go
+from 23 props to ~5 (className, custom callbacks not in context).
 
 **Step 2: Update ChatInput to use useChatState()**
 
-Replace mode, specTier, isStreaming props with context consumption. Reduce from 18 to ~8 props.
+Replace mode, specTier, isStreaming props with context consumption. Reduce from
+18 to ~8 props.
 
 **Step 3: Run TypeScript check and verify UI works**
 
@@ -1037,20 +1223,25 @@ git commit -m "refactor: ChatActionBar and ChatInput consume ChatStateContext"
 
 ## Phase 6: Test Coverage for Critical Gaps
 
-> Add tests for the systems most likely to regress: spec lifecycle, drift detection, permission resolution, and terminal event handling.
+> Add tests for the systems most likely to regress: spec lifecycle, drift
+> detection, permission resolution, and terminal event handling.
 
 ---
 
 ### Task 6.1: Add Spec Lifecycle Integration Test
 
 **Files:**
+
 - Create or modify: `apps/web/lib/agent/spec/__tests__/lifecycle.test.ts`
 
-**Context:** Test the full spec lifecycle: classify -> generate -> validate -> approve -> execute -> verify. The existing integration test (580 lines) doesn't cover the end-to-end path with the runtime.
+**Context:** Test the full spec lifecycle: classify -> generate -> validate ->
+approve -> execute -> verify. The existing integration test (580 lines) doesn't
+cover the end-to-end path with the runtime.
 
 **Step 1: Write integration test**
 
 Test: given a user message, verify that:
+
 1. Classifier determines correct tier
 2. Spec is generated with constraints and acceptance criteria
 3. Validation passes
@@ -1059,7 +1250,8 @@ Test: given a user message, verify that:
 
 **Step 2: Run test**
 
-Run: `cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/lib/agent/spec/__tests__/lifecycle.test.ts`
+Run:
+`cd "/home/nochaserz/Documents/Coding Projects/panda" && bun test apps/web/lib/agent/spec/__tests__/lifecycle.test.ts`
 Expected: PASS
 
 **Step 3: Commit**
@@ -1074,9 +1266,12 @@ git commit -m "test: add spec lifecycle integration test covering classify->veri
 ### Task 6.2: Add Drift Detection Wiring Test
 
 **Files:**
+
 - Create: `apps/web/lib/agent/spec/__tests__/drift-wiring.test.ts`
 
-**Context:** Test that after Task 3.1-3.3, the drift detection pipeline works end-to-end: active spec registered -> write outside scope -> drift detected -> event emitted.
+**Context:** Test that after Task 3.1-3.3, the drift detection pipeline works
+end-to-end: active spec registered -> write outside scope -> drift detected ->
+event emitted.
 
 **Step 1: Write test**
 
@@ -1105,16 +1300,20 @@ git commit -m "test: add drift detection wiring test for end-to-end pipeline"
 ### Task 6.3: Add Permission Promise Resolution Test
 
 **Files:**
+
 - Create or modify: `apps/web/lib/agent/harness/permissions.test.ts`
 
-**Context:** After Task 4.1, test the new Promise-based permission system: request -> respond -> resolve, and request -> timeout -> deny.
+**Context:** After Task 4.1, test the new Promise-based permission system:
+request -> respond -> resolve, and request -> timeout -> deny.
 
 **Step 1: Write tests**
 
 ```typescript
 describe('Promise-based permission resolution', () => {
   it('resolves when respond() is called', async () => {
-    const result = permissions.request(sessionID, msgID, 'write_files', '*', { interrupt: true })
+    const result = permissions.request(sessionID, msgID, 'write_files', '*', {
+      interrupt: true,
+    })
     permissions.respond(requestId, 'allow')
     expect(await result).toEqual({ granted: true })
   })
@@ -1125,7 +1324,10 @@ describe('Promise-based permission resolution', () => {
       timeoutMs: 100,
     })
     // Don't call respond()
-    expect(await result).toEqual({ granted: false, reason: expect.stringContaining('timed out') })
+    expect(await result).toEqual({
+      granted: false,
+      reason: expect.stringContaining('timed out'),
+    })
   })
 
   it('cleans up timeout when respond() is called before timeout', async () => {
@@ -1148,9 +1350,11 @@ git commit -m "test: add Promise-based permission resolution tests"
 ### Task 6.4: Add Terminal Event Guard Tests
 
 **Files:**
+
 - Modify: `apps/web/hooks/useAgent-terminal-events.test.ts`
 
-**Context:** The existing test file (58 lines) tests `reduceTerminalAgentEvent`. Add tests for the new `useRunLifecycle` hook from Task 2.7.
+**Context:** The existing test file (58 lines) tests `reduceTerminalAgentEvent`.
+Add tests for the new `useRunLifecycle` hook from Task 2.7.
 
 **Step 1: Add tests for double-fire prevention**
 
@@ -1181,15 +1385,17 @@ git commit -m "test: add terminal event double-fire guard tests"
 
 ## Phase Summary
 
-| Phase | Tasks | Lines Changed | Risk | Outcome |
-|-------|-------|---------------|------|---------|
-| 1. Dead Code & Fixes | 3 | ~150 removed, ~50 modified | Low | Clean foundation |
-| 2. useAgent Decomposition | 8 | ~700 extracted to 6 new hooks | Medium | 1823 -> ~1100 lines |
-| 3. Spec System E2E | 6 | ~400 new/modified | Medium | Specs classify, constrain, verify, detect drift |
-| 4. Harness Fixes | 3 | ~200 modified | Low | Permissions modernized, errors surfaced, approval interactive |
-| 5. Prop Drilling | 3 | ~300 modified | Low | 44-prop component -> context-based |
-| 6. Test Coverage | 4 | ~400 new tests | Low | Critical paths covered |
+| Phase                     | Tasks | Lines Changed                 | Risk   | Outcome                                                       |
+| ------------------------- | ----- | ----------------------------- | ------ | ------------------------------------------------------------- |
+| 1. Dead Code & Fixes      | 3     | ~150 removed, ~50 modified    | Low    | Clean foundation                                              |
+| 2. useAgent Decomposition | 8     | ~700 extracted to 6 new hooks | Medium | 1823 -> ~1100 lines                                           |
+| 3. Spec System E2E        | 6     | ~400 new/modified             | Medium | Specs classify, constrain, verify, detect drift               |
+| 4. Harness Fixes          | 3     | ~200 modified                 | Low    | Permissions modernized, errors surfaced, approval interactive |
+| 5. Prop Drilling          | 3     | ~300 modified                 | Low    | 44-prop component -> context-based                            |
+| 6. Test Coverage          | 4     | ~400 new tests                | Low    | Critical paths covered                                        |
 
 **Total: 27 tasks across 6 phases**
 
-**Dependency order:** Phase 1 first (cleanup), then Phase 2 (decomposition) and Phase 4 (harness fixes) can run in parallel, Phase 3 depends on Phase 4.3, Phase 5 is independent, Phase 6 depends on Phases 3-4.
+**Dependency order:** Phase 1 first (cleanup), then Phase 2 (decomposition) and
+Phase 4 (harness fixes) can run in parallel, Phase 3 depends on Phase 4.3, Phase
+5 is independent, Phase 6 depends on Phases 3-4.

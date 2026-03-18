@@ -185,7 +185,11 @@ export async function GET(request: Request) {
       let cleanedUpProjectId: string | null = null
 
       if (projects.length >= maxProjectsPerUser) {
-        const cleanupCandidate = getFixtureCleanupCandidate(projects, new Set<string>(), fixtureName)
+        const cleanupCandidate = getFixtureCleanupCandidate(
+          projects,
+          new Set<string>(),
+          fixtureName
+        )
         if (!cleanupCandidate) {
           throw new Error(
             `Project limit reached. You have ${projects.length} projects (maximum: ${maxProjectsPerUser}). Please delete an existing project before creating a new one.`

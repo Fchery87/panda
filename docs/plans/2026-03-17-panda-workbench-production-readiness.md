@@ -1,12 +1,21 @@
 # Panda Workbench IDE — Production Readiness Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to
+> implement this plan task-by-task.
 
-**Goal:** Close the three P0 gaps (multi-language editor, find & replace, git backend + panel) and two P1 gaps (per-hunk diff accept/reject, symbol-level breadcrumbs) to bring the Panda workbench to production parity with modern IDE standards.
+**Goal:** Close the three P0 gaps (multi-language editor, find & replace, git
+backend + panel) and two P1 gaps (per-hunk diff accept/reject, symbol-level
+breadcrumbs) to bring the Panda workbench to production parity with modern IDE
+standards.
 
-**Architecture:** Each task is self-contained with its own tests and commit. Language support uses dynamic lazy-loading to avoid bloating the bundle. Git backend extends the existing `/api/git/` route with new commands. Find & replace extends `ProjectSearchPanel` with a replace mode. Per-hunk diff and symbol breadcrumbs add to existing components.
+**Architecture:** Each task is self-contained with its own tests and commit.
+Language support uses dynamic lazy-loading to avoid bloating the bundle. Git
+backend extends the existing `/api/git/` route with new commands. Find & replace
+extends `ProjectSearchPanel` with a replace mode. Per-hunk diff and symbol
+breadcrumbs add to existing components.
 
-**Tech Stack:** CodeMirror 6 language packages, Next.js API routes, `simple-git` (or raw `execFile`), Bun test runner, React, TypeScript.
+**Tech Stack:** CodeMirror 6 language packages, Next.js API routes, `simple-git`
+(or raw `execFile`), Bun test runner, React, TypeScript.
 
 ---
 
@@ -15,19 +24,21 @@
 ### Task 1: Install CodeMirror language packages
 
 **Files:**
-- Modify: `apps/web/package.json:24-29` (add new @codemirror/lang-* deps)
+
+- Modify: `apps/web/package.json:24-29` (add new @codemirror/lang-\* deps)
 
 **Step 1: Install language packages**
 
 Run:
+
 ```bash
 cd apps/web && bun add @codemirror/lang-python @codemirror/lang-html @codemirror/lang-css @codemirror/lang-json @codemirror/lang-markdown @codemirror/lang-rust @codemirror/lang-cpp @codemirror/lang-java @codemirror/lang-sql @codemirror/lang-xml @codemirror/lang-go @codemirror/lang-yaml @codemirror/lang-php
 ```
 
 **Step 2: Verify installation**
 
-Run: `cd apps/web && bun pm ls | grep @codemirror/lang`
-Expected: All 14 language packages listed (javascript + 13 new ones).
+Run: `cd apps/web && bun pm ls | grep @codemirror/lang` Expected: All 14
+language packages listed (javascript + 13 new ones).
 
 **Step 3: Commit**
 
@@ -41,6 +52,7 @@ git commit -m "deps: install CodeMirror language packages for multi-language hig
 ### Task 2: Create language resolver utility
 
 **Files:**
+
 - Create: `apps/web/components/editor/language-support.ts`
 - Test: `apps/web/components/editor/language-support.test.ts`
 
@@ -49,7 +61,10 @@ git commit -m "deps: install CodeMirror language packages for multi-language hig
 ```typescript
 // apps/web/components/editor/language-support.test.ts
 import { describe, it, expect } from 'bun:test'
-import { getLanguageExtension, getSupportedExtensions } from './language-support'
+import {
+  getLanguageExtension,
+  getSupportedExtensions,
+} from './language-support'
 
 describe('getLanguageExtension', () => {
   it('returns javascript for .js files', async () => {
@@ -182,18 +197,38 @@ import type { Extension } from '@codemirror/state'
  */
 const LANGUAGE_MAP: Record<string, () => Promise<Extension>> = {
   // JavaScript / TypeScript
-  '.js': () => import('@codemirror/lang-javascript').then((m) => m.javascript({ jsx: false })),
-  '.jsx': () => import('@codemirror/lang-javascript').then((m) => m.javascript({ jsx: true })),
-  '.mjs': () => import('@codemirror/lang-javascript').then((m) => m.javascript({ jsx: false })),
-  '.cjs': () => import('@codemirror/lang-javascript').then((m) => m.javascript({ jsx: false })),
+  '.js': () =>
+    import('@codemirror/lang-javascript').then((m) =>
+      m.javascript({ jsx: false })
+    ),
+  '.jsx': () =>
+    import('@codemirror/lang-javascript').then((m) =>
+      m.javascript({ jsx: true })
+    ),
+  '.mjs': () =>
+    import('@codemirror/lang-javascript').then((m) =>
+      m.javascript({ jsx: false })
+    ),
+  '.cjs': () =>
+    import('@codemirror/lang-javascript').then((m) =>
+      m.javascript({ jsx: false })
+    ),
   '.ts': () =>
-    import('@codemirror/lang-javascript').then((m) => m.javascript({ jsx: false, typescript: true })),
+    import('@codemirror/lang-javascript').then((m) =>
+      m.javascript({ jsx: false, typescript: true })
+    ),
   '.tsx': () =>
-    import('@codemirror/lang-javascript').then((m) => m.javascript({ jsx: true, typescript: true })),
+    import('@codemirror/lang-javascript').then((m) =>
+      m.javascript({ jsx: true, typescript: true })
+    ),
   '.mts': () =>
-    import('@codemirror/lang-javascript').then((m) => m.javascript({ jsx: false, typescript: true })),
+    import('@codemirror/lang-javascript').then((m) =>
+      m.javascript({ jsx: false, typescript: true })
+    ),
   '.cts': () =>
-    import('@codemirror/lang-javascript').then((m) => m.javascript({ jsx: false, typescript: true })),
+    import('@codemirror/lang-javascript').then((m) =>
+      m.javascript({ jsx: false, typescript: true })
+    ),
 
   // Python
   '.py': () => import('@codemirror/lang-python').then((m) => m.python()),
@@ -219,7 +254,8 @@ const LANGUAGE_MAP: Record<string, () => Promise<Extension>> = {
 
   // Documentation
   '.md': () => import('@codemirror/lang-markdown').then((m) => m.markdown()),
-  '.markdown': () => import('@codemirror/lang-markdown').then((m) => m.markdown()),
+  '.markdown': () =>
+    import('@codemirror/lang-markdown').then((m) => m.markdown()),
   '.mdx': () => import('@codemirror/lang-markdown').then((m) => m.markdown()),
 
   // Systems
@@ -242,7 +278,9 @@ const LANGUAGE_MAP: Record<string, () => Promise<Extension>> = {
  * Resolves the appropriate CodeMirror language extension for a given filename.
  * Returns an empty array if the language is not supported (safe to spread into extensions).
  */
-export async function getLanguageExtension(filePath: string): Promise<Extension | Extension[]> {
+export async function getLanguageExtension(
+  filePath: string
+): Promise<Extension | Extension[]> {
   const dotIdx = filePath.lastIndexOf('.')
   if (dotIdx === -1) return []
 
@@ -283,6 +321,7 @@ git commit -m "feat(editor): add language resolver with lazy-loaded CodeMirror s
 ### Task 3: Integrate language resolver into CodeMirrorEditor
 
 **Files:**
+
 - Modify: `apps/web/components/editor/CodeMirrorEditor.tsx:7,86-90,244-252`
 
 **Step 1: Replace static javascript import with dynamic language loading**
@@ -290,25 +329,32 @@ git commit -m "feat(editor): add language resolver with lazy-loaded CodeMirror s
 In `CodeMirrorEditor.tsx`, make these changes:
 
 1. Remove the static import on line 7:
+
    ```typescript
    // REMOVE: import { javascript } from '@codemirror/lang-javascript'
    ```
 
 2. Add the new import:
+
    ```typescript
    import { getLanguageExtension } from './language-support'
    ```
 
 3. Add state and effect for dynamic language loading. Inside the component, add:
+
    ```typescript
-   const [langExtension, setLangExtension] = useState<Extension | Extension[]>([])
+   const [langExtension, setLangExtension] = useState<Extension | Extension[]>(
+     []
+   )
 
    useEffect(() => {
      let cancelled = false
      getLanguageExtension(filePath).then((ext) => {
        if (!cancelled) setLangExtension(ext)
      })
-     return () => { cancelled = true }
+     return () => {
+       cancelled = true
+     }
    }, [filePath])
    ```
 
@@ -338,14 +384,14 @@ In `CodeMirrorEditor.tsx`, make these changes:
 
 **Step 2: Verify manually**
 
-Run: `cd apps/web && bun dev`
-Open the app, create or view files with `.py`, `.css`, `.json`, `.html`, `.go` extensions.
-Expected: Each file shows appropriate syntax highlighting.
+Run: `cd apps/web && bun dev` Open the app, create or view files with `.py`,
+`.css`, `.json`, `.html`, `.go` extensions. Expected: Each file shows
+appropriate syntax highlighting.
 
 **Step 3: Run existing tests to confirm no regressions**
 
-Run: `cd apps/web && bun test components/`
-Expected: All existing component tests PASS.
+Run: `cd apps/web && bun test components/` Expected: All existing component
+tests PASS.
 
 **Step 4: Commit**
 
@@ -361,6 +407,7 @@ git commit -m "feat(editor): integrate dynamic language detection — all 20+ la
 ### Task 4: Add replace API endpoint
 
 **Files:**
+
 - Create: `apps/web/app/api/search/replace/route.ts`
 - Test: `apps/web/app/api/search/replace/route.test.ts`
 
@@ -385,7 +432,11 @@ describe('POST /api/search/replace', () => {
     const req = new Request('http://localhost/api/search/replace', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filePath: 'test.ts', searchText: 'a', replaceText: 'b' }),
+      body: JSON.stringify({
+        filePath: 'test.ts',
+        searchText: 'a',
+        replaceText: 'b',
+      }),
     })
     const res = await POST(req)
     expect(res.status).toBe(401)
@@ -410,8 +461,8 @@ describe('POST /api/search/replace', () => {
 
 **Step 2: Run test to verify it fails**
 
-Run: `cd apps/web && bun test app/api/search/replace/route.test.ts`
-Expected: FAIL — module not found.
+Run: `cd apps/web && bun test app/api/search/replace/route.test.ts` Expected:
+FAIL — module not found.
 
 **Step 3: Write the implementation**
 
@@ -442,7 +493,11 @@ export async function POST(req: Request) {
 
   const body = (await req.json()) as ReplaceRequest
 
-  if (!body.filePath || body.searchText === undefined || body.replaceText === undefined) {
+  if (
+    !body.filePath ||
+    body.searchText === undefined ||
+    body.replaceText === undefined
+  ) {
     return Response.json(
       { error: 'filePath, searchText, and replaceText are required' },
       { status: 400 }
@@ -453,7 +508,10 @@ export async function POST(req: Request) {
   const cwd = process.cwd()
   const absPath = resolve(cwd, body.filePath)
   if (!absPath.startsWith(cwd)) {
-    return Response.json({ error: 'Path traversal not allowed' }, { status: 400 })
+    return Response.json(
+      { error: 'Path traversal not allowed' },
+      { status: 400 }
+    )
   }
 
   try {
@@ -464,7 +522,10 @@ export async function POST(req: Request) {
 
     const pattern = body.isRegex
       ? new RegExp(body.searchText, flags)
-      : new RegExp(body.searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags)
+      : new RegExp(
+          body.searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+          flags
+        )
 
     let replacements = 0
     const newContent = content.replace(pattern, (...args) => {
@@ -489,8 +550,8 @@ export async function POST(req: Request) {
 
 **Step 4: Run test to verify it passes**
 
-Run: `cd apps/web && bun test app/api/search/replace/route.test.ts`
-Expected: PASS.
+Run: `cd apps/web && bun test app/api/search/replace/route.test.ts` Expected:
+PASS.
 
 **Step 5: Commit**
 
@@ -504,6 +565,7 @@ git commit -m "feat(search): add server-side replace API with regex support and 
 ### Task 5: Add replace UI to ProjectSearchPanel
 
 **Files:**
+
 - Modify: `apps/web/components/workbench/ProjectSearchPanel.tsx`
 
 **Step 1: Add replace mode toggle and replace input**
@@ -511,13 +573,16 @@ git commit -m "feat(search): add server-side replace API with regex support and 
 In `ProjectSearchPanel.tsx`, make these changes:
 
 1. Add new state variables after existing state (after line ~48):
+
    ```typescript
    const [replaceText, setReplaceText] = useState('')
    const [isReplaceMode, setIsReplaceMode] = useState(false)
    const [replaceStatus, setReplaceStatus] = useState<string | null>(null)
    ```
 
-2. Add a replace toggle button in the toolbar area (near the mode toggles around line 71). Add a chevron toggle button:
+2. Add a replace toggle button in the toolbar area (near the mode toggles around
+   line 71). Add a chevron toggle button:
+
    ```typescript
    <button
      type="button"
@@ -533,6 +598,7 @@ In `ProjectSearchPanel.tsx`, make these changes:
    ```
 
 3. Add replace input field below the search input (conditionally rendered):
+
    ```typescript
    {isReplaceMode && (
      <div className="flex items-center gap-1 px-3 pb-2">
@@ -557,6 +623,7 @@ In `ProjectSearchPanel.tsx`, make these changes:
    ```
 
 4. Add replace handler function:
+
    ```typescript
    const handleReplaceInFile = async (filePath: string | null) => {
      const targetFiles = filePath
@@ -591,7 +658,9 @@ In `ProjectSearchPanel.tsx`, make these changes:
    }
    ```
 
-5. Add per-file replace button in the results group header (around line 159-182, next to the file name):
+5. Add per-file replace button in the results group header (around line 159-182,
+   next to the file name):
+
    ```typescript
    {isReplaceMode && (
      <button
@@ -609,9 +678,9 @@ In `ProjectSearchPanel.tsx`, make these changes:
 
 **Step 2: Verify manually**
 
-Run: `cd apps/web && bun dev`
-Open search panel → toggle replace mode → enter search/replace text → click "All" or per-file "Replace".
-Expected: Files are modified, results update.
+Run: `cd apps/web && bun dev` Open search panel → toggle replace mode → enter
+search/replace text → click "All" or per-file "Replace". Expected: Files are
+modified, results update.
 
 **Step 3: Commit**
 
@@ -627,6 +696,7 @@ git commit -m "feat(search): add find & replace UI with per-file and project-wid
 ### Task 6: Build git API surface
 
 **Files:**
+
 - Modify: `apps/web/app/api/git/route.ts:25-59`
 - Test: `apps/web/app/api/git/route.test.ts` (create if not exists)
 
@@ -700,12 +770,14 @@ describe('POST /api/git', () => {
 
 **Step 2: Run test to verify it fails**
 
-Run: `cd apps/web && bun test app/api/git/route.test.ts`
-Expected: FAIL — "status" command not supported.
+Run: `cd apps/web && bun test app/api/git/route.test.ts` Expected: FAIL —
+"status" command not supported.
 
 **Step 3: Extend the git route**
 
-Replace the body of `POST` in `apps/web/app/api/git/route.ts` with an expanded command set. Keep the existing `restore`, `diff --name-only`, and `write-tree` commands, and add:
+Replace the body of `POST` in `apps/web/app/api/git/route.ts` with an expanded
+command set. Keep the existing `restore`, `diff --name-only`, and `write-tree`
+commands, and add:
 
 ```typescript
 // apps/web/app/api/git/route.ts
@@ -761,7 +833,10 @@ export async function POST(req: Request) {
     // --- Existing: snapshot restore ---
     if (body.action === 'restore') {
       if (!body.hash || !isValidHash(body.hash)) {
-        return Response.json({ error: 'Invalid snapshot hash' }, { status: 400 })
+        return Response.json(
+          { error: 'Invalid snapshot hash' },
+          { status: 400 }
+        )
       }
       const readTree = await runGit(['read-tree', body.hash])
       const checkout = await runGit(['checkout-index', '-a', '-f'])
@@ -798,8 +873,8 @@ export async function POST(req: Request) {
         const untracked: string[] = []
 
         for (const line of lines) {
-          const x = line[0]  // index status
-          const y = line[1]  // worktree status
+          const x = line[0] // index status
+          const y = line[1] // worktree status
           const file = line.slice(3)
 
           if (x === '?' && y === '?') {
@@ -834,10 +909,17 @@ export async function POST(req: Request) {
 
       // --- New: branch-list ---
       case 'branch-list': {
-        const currentResult = await runGit(['rev-parse', '--abbrev-ref', 'HEAD'])
+        const currentResult = await runGit([
+          'rev-parse',
+          '--abbrev-ref',
+          'HEAD',
+        ])
         const current = currentResult.stdout.trim()
 
-        const branchesResult = await runGit(['branch', '--format=%(refname:short)'])
+        const branchesResult = await runGit([
+          'branch',
+          '--format=%(refname:short)',
+        ])
         const branches = branchesResult.stdout.split('\n').filter(Boolean)
 
         return Response.json({ current, branches })
@@ -846,7 +928,10 @@ export async function POST(req: Request) {
       // --- New: stage ---
       case 'stage': {
         if (!body.paths?.length || !body.paths.every(isValidPath)) {
-          return Response.json({ error: 'Valid paths[] required' }, { status: 400 })
+          return Response.json(
+            { error: 'Valid paths[] required' },
+            { status: 400 }
+          )
         }
         return Response.json(await runGit(['add', '--', ...body.paths]))
       }
@@ -854,15 +939,23 @@ export async function POST(req: Request) {
       // --- New: unstage ---
       case 'unstage': {
         if (!body.paths?.length || !body.paths.every(isValidPath)) {
-          return Response.json({ error: 'Valid paths[] required' }, { status: 400 })
+          return Response.json(
+            { error: 'Valid paths[] required' },
+            { status: 400 }
+          )
         }
-        return Response.json(await runGit(['reset', 'HEAD', '--', ...body.paths]))
+        return Response.json(
+          await runGit(['reset', 'HEAD', '--', ...body.paths])
+        )
       }
 
       // --- New: commit ---
       case 'commit': {
         if (!body.message || body.message.length > 1000) {
-          return Response.json({ error: 'message required (max 1000 chars)' }, { status: 400 })
+          return Response.json(
+            { error: 'message required (max 1000 chars)' },
+            { status: 400 }
+          )
         }
         return Response.json(await runGit(['commit', '-m', body.message]))
       }
@@ -870,7 +963,10 @@ export async function POST(req: Request) {
       // --- New: checkout branch ---
       case 'checkout': {
         if (!body.branch || !isValidBranchName(body.branch)) {
-          return Response.json({ error: 'Valid branch name required' }, { status: 400 })
+          return Response.json(
+            { error: 'Valid branch name required' },
+            { status: 400 }
+          )
         }
         return Response.json(await runGit(['checkout', body.branch]))
       }
@@ -884,7 +980,10 @@ export async function POST(req: Request) {
         return Response.json(await runGit(['diff']))
 
       default:
-        return Response.json({ error: 'Unsupported git command' }, { status: 400 })
+        return Response.json(
+          { error: 'Unsupported git command' },
+          { status: 400 }
+        )
     }
   } catch (error) {
     return Response.json(
@@ -897,8 +996,8 @@ export async function POST(req: Request) {
 
 **Step 4: Run test to verify it passes**
 
-Run: `cd apps/web && bun test app/api/git/route.test.ts`
-Expected: All tests PASS.
+Run: `cd apps/web && bun test app/api/git/route.test.ts` Expected: All tests
+PASS.
 
 **Step 5: Commit**
 
@@ -912,6 +1011,7 @@ git commit -m "feat(git): expand API with status, log, branch-list, stage, unsta
 ### Task 7: Create useGit hook
 
 **Files:**
+
 - Create: `apps/web/hooks/useGit.ts`
 - Test: `apps/web/hooks/useGit.test.ts`
 
@@ -959,8 +1059,8 @@ describe('git API client functions', () => {
 
 **Step 2: Run test to verify it fails**
 
-Run: `cd apps/web && bun test hooks/useGit.test.ts`
-Expected: FAIL — module not found.
+Run: `cd apps/web && bun test hooks/useGit.test.ts` Expected: FAIL — module not
+found.
 
 **Step 3: Write the implementation**
 
@@ -1004,11 +1104,16 @@ export async function gitStatus(): Promise<GitStatusResult> {
   return gitCommand({ command: 'status' })
 }
 
-export async function gitLog(limit = 20): Promise<{ commits: GitCommitEntry[] }> {
+export async function gitLog(
+  limit = 20
+): Promise<{ commits: GitCommitEntry[] }> {
   return gitCommand({ command: 'log', limit })
 }
 
-export async function gitBranches(): Promise<{ current: string; branches: string[] }> {
+export async function gitBranches(): Promise<{
+  current: string
+  branches: string[]
+}> {
   return gitCommand({ command: 'branch-list' })
 }
 
@@ -1043,7 +1148,10 @@ export async function gitDiffUnstaged(): Promise<string> {
 export function useGit() {
   const [status, setStatus] = useState<GitStatusResult | null>(null)
   const [log, setLog] = useState<GitCommitEntry[]>([])
-  const [branches, setBranches] = useState<{ current: string; branches: string[] } | null>(null)
+  const [branches, setBranches] = useState<{
+    current: string
+    branches: string[]
+  } | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -1078,27 +1186,39 @@ export function useGit() {
     }
   }, [])
 
-  const stage = useCallback(async (paths: string[]) => {
-    await gitStage(paths)
-    await refreshStatus()
-  }, [refreshStatus])
+  const stage = useCallback(
+    async (paths: string[]) => {
+      await gitStage(paths)
+      await refreshStatus()
+    },
+    [refreshStatus]
+  )
 
-  const unstage = useCallback(async (paths: string[]) => {
-    await gitUnstage(paths)
-    await refreshStatus()
-  }, [refreshStatus])
+  const unstage = useCallback(
+    async (paths: string[]) => {
+      await gitUnstage(paths)
+      await refreshStatus()
+    },
+    [refreshStatus]
+  )
 
-  const commit = useCallback(async (message: string) => {
-    await gitCommit(message)
-    await refreshStatus()
-    await refreshLog()
-  }, [refreshStatus, refreshLog])
+  const commit = useCallback(
+    async (message: string) => {
+      await gitCommit(message)
+      await refreshStatus()
+      await refreshLog()
+    },
+    [refreshStatus, refreshLog]
+  )
 
-  const checkout = useCallback(async (branch: string) => {
-    await gitCheckout(branch)
-    await refreshStatus()
-    await refreshBranches()
-  }, [refreshStatus, refreshBranches])
+  const checkout = useCallback(
+    async (branch: string) => {
+      await gitCheckout(branch)
+      await refreshStatus()
+      await refreshBranches()
+    },
+    [refreshStatus, refreshBranches]
+  )
 
   return {
     status,
@@ -1119,8 +1239,7 @@ export function useGit() {
 
 **Step 4: Run test to verify it passes**
 
-Run: `cd apps/web && bun test hooks/useGit.test.ts`
-Expected: All tests PASS.
+Run: `cd apps/web && bun test hooks/useGit.test.ts` Expected: All tests PASS.
 
 **Step 5: Commit**
 
@@ -1134,11 +1253,13 @@ git commit -m "feat(git): add useGit hook with status, log, stage, unstage, comm
 ### Task 8: Rewrite SidebarGitPanel with real git integration
 
 **Files:**
+
 - Modify: `apps/web/components/sidebar/SidebarGitPanel.tsx:1-69` (full rewrite)
 
 **Step 1: Rewrite the component**
 
-Replace the entire `SidebarGitPanel.tsx` with a component that uses the `useGit` hook:
+Replace the entire `SidebarGitPanel.tsx` with a component that uses the `useGit`
+hook:
 
 ```typescript
 // apps/web/components/sidebar/SidebarGitPanel.tsx
@@ -1454,15 +1575,20 @@ function FileSection({
 
 **Step 2: Wire branch to StatusBar**
 
-In the parent component that renders `StatusBar`, pass the `status.branch` from `useGit` instead of a hardcoded value. The `StatusBar` component already accepts a `branch?: string` prop (line 23 of StatusBar.tsx). Find where `StatusBar` is rendered (in the project page or workspace layout) and wire it.
+In the parent component that renders `StatusBar`, pass the `status.branch` from
+`useGit` instead of a hardcoded value. The `StatusBar` component already accepts
+a `branch?: string` prop (line 23 of StatusBar.tsx). Find where `StatusBar` is
+rendered (in the project page or workspace layout) and wire it.
 
-Look in `apps/web/app/(dashboard)/projects/[projectId]/page.tsx` or `apps/web/components/projects/ProjectWorkspaceLayout.tsx` for where `StatusBar` is rendered, and pass the live branch from `useGit().status?.branch`.
+Look in `apps/web/app/(dashboard)/projects/[projectId]/page.tsx` or
+`apps/web/components/projects/ProjectWorkspaceLayout.tsx` for where `StatusBar`
+is rendered, and pass the live branch from `useGit().status?.branch`.
 
 **Step 3: Verify manually**
 
-Run: `cd apps/web && bun dev`
-Open the app → navigate to a project → click Git icon in sidebar rail.
-Expected: Real branch name, real staged/unstaged/untracked files, stage/unstage buttons, commit message box, recent commits log.
+Run: `cd apps/web && bun dev` Open the app → navigate to a project → click Git
+icon in sidebar rail. Expected: Real branch name, real staged/unstaged/untracked
+files, stage/unstage buttons, commit message box, recent commits log.
 
 **Step 4: Commit**
 
@@ -1478,16 +1604,22 @@ git commit -m "feat(git): rewrite SidebarGitPanel with real git integration — 
 ### Task 9: Add hunk-level controls to DiffViewer
 
 **Files:**
+
 - Modify: `apps/web/components/diff/DiffViewer.tsx`
 - Reference: `apps/web/lib/chat/parseGitDiff.ts` (existing hunk parser)
 
 **Step 1: Read the existing DiffViewer**
 
-Read `apps/web/components/diff/DiffViewer.tsx` to understand the current implementation. The existing component shows Apply/Reject for the entire diff. The task is to add per-hunk Accept/Reject buttons.
+Read `apps/web/components/diff/DiffViewer.tsx` to understand the current
+implementation. The existing component shows Apply/Reject for the entire diff.
+The task is to add per-hunk Accept/Reject buttons.
 
 **Step 2: Modify DiffViewer to render per-hunk controls**
 
-Add an `onAcceptHunk?: (hunkIndex: number) => void` and `onRejectHunk?: (hunkIndex: number) => void` prop. For each hunk section in the diff display, render Accept/Reject buttons in the hunk header row (the `@@ ... @@` line). Example:
+Add an `onAcceptHunk?: (hunkIndex: number) => void` and
+`onRejectHunk?: (hunkIndex: number) => void` prop. For each hunk section in the
+diff display, render Accept/Reject buttons in the hunk header row (the
+`@@ ... @@` line). Example:
 
 ```typescript
 // In the hunk header rendering:
@@ -1524,7 +1656,8 @@ Add an `onAcceptHunk?: (hunkIndex: number) => void` and `onRejectHunk?: (hunkInd
 
 **Step 3: Add hunk application logic**
 
-Create a utility function that applies a single hunk from a parsed diff to file content:
+Create a utility function that applies a single hunk from a parsed diff to file
+content:
 
 ```typescript
 // apps/web/lib/chat/applyHunk.ts
@@ -1584,9 +1717,7 @@ describe('applyHunk', () => {
       oldCount: 1,
       newStart: 2,
       newCount: 0,
-      lines: [
-        { type: 'remove', content: 'line2' },
-      ],
+      lines: [{ type: 'remove', content: 'line2' }],
     }
     const result = applyHunk(content, hunk)
     expect(result).toBe('line1\nline3')
@@ -1596,8 +1727,7 @@ describe('applyHunk', () => {
 
 **Step 5: Run tests**
 
-Run: `cd apps/web && bun test lib/chat/applyHunk.test.ts`
-Expected: PASS.
+Run: `cd apps/web && bun test lib/chat/applyHunk.test.ts` Expected: PASS.
 
 **Step 6: Commit**
 
@@ -1613,6 +1743,7 @@ git commit -m "feat(diff): add per-hunk accept/reject controls and hunk applicat
 ### Task 10: Add symbol extraction utility
 
 **Files:**
+
 - Create: `apps/web/lib/editor/symbol-extractor.ts`
 - Test: `apps/web/lib/editor/symbol-extractor.test.ts`
 
@@ -1684,8 +1815,8 @@ export class UserService {
 
 **Step 2: Run test to verify it fails**
 
-Run: `cd apps/web && bun test lib/editor/symbol-extractor.test.ts`
-Expected: FAIL — module not found.
+Run: `cd apps/web && bun test lib/editor/symbol-extractor.test.ts` Expected:
+FAIL — module not found.
 
 **Step 3: Write the implementation**
 
@@ -1694,7 +1825,14 @@ Expected: FAIL — module not found.
 
 export interface SymbolInfo {
   name: string
-  kind: 'function' | 'class' | 'interface' | 'type' | 'enum' | 'method' | 'variable'
+  kind:
+    | 'function'
+    | 'class'
+    | 'interface'
+    | 'type'
+    | 'enum'
+    | 'method'
+    | 'variable'
   startLine: number
   endLine: number
 }
@@ -1717,7 +1855,7 @@ export function extractSymbolAtLine(
   // Find all symbols that contain this line, return innermost (most specific)
   const containing = symbols
     .filter((s) => line >= s.startLine && line <= s.endLine)
-    .sort((a, b) => (b.startLine - a.startLine) || (a.endLine - b.endLine))
+    .sort((a, b) => b.startLine - a.startLine || a.endLine - b.endLine)
 
   return containing[0] ?? null
 }
@@ -1727,13 +1865,25 @@ export function extractSymbolAtLine(
  */
 function extractSymbols(lines: string[]): SymbolInfo[] {
   const symbols: SymbolInfo[] = []
-  const braceStack: Array<{ name: string; kind: SymbolInfo['kind']; startLine: number; depth: number }> = []
+  const braceStack: Array<{
+    name: string
+    kind: SymbolInfo['kind']
+    startLine: number
+    depth: number
+  }> = []
   let braceDepth = 0
 
   const patterns: Array<{ regex: RegExp; kind: SymbolInfo['kind'] }> = [
     { regex: /(?:export\s+)?(?:async\s+)?function\s+(\w+)/, kind: 'function' },
-    { regex: /(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?\(/, kind: 'function' },
-    { regex: /(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:\([^)]*\)|[a-zA-Z_]\w*)\s*=>/, kind: 'function' },
+    {
+      regex: /(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?\(/,
+      kind: 'function',
+    },
+    {
+      regex:
+        /(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:\([^)]*\)|[a-zA-Z_]\w*)\s*=>/,
+      kind: 'function',
+    },
     { regex: /(?:export\s+)?class\s+(\w+)/, kind: 'class' },
     { regex: /(?:export\s+)?interface\s+(\w+)/, kind: 'interface' },
     { regex: /(?:export\s+)?type\s+(\w+)\s*=/, kind: 'type' },
@@ -1751,7 +1901,12 @@ function extractSymbols(lines: string[]): SymbolInfo[] {
       if (match && match[1]) {
         // If line also opens a brace, we'll track it
         if (lineText.includes('{')) {
-          braceStack.push({ name: match[1], kind, startLine: lineNum, depth: braceDepth })
+          braceStack.push({
+            name: match[1],
+            kind,
+            startLine: lineNum,
+            depth: braceDepth,
+          })
         }
       }
     }
@@ -1782,15 +1937,18 @@ function extractSymbols(lines: string[]): SymbolInfo[] {
 /**
  * Extract all symbols from code (for outline view).
  */
-export function extractAllSymbols(code: string, _language: string): SymbolInfo[] {
+export function extractAllSymbols(
+  code: string,
+  _language: string
+): SymbolInfo[] {
   return extractSymbols(code.split('\n'))
 }
 ```
 
 **Step 4: Run test to verify it passes**
 
-Run: `cd apps/web && bun test lib/editor/symbol-extractor.test.ts`
-Expected: All tests PASS.
+Run: `cd apps/web && bun test lib/editor/symbol-extractor.test.ts` Expected: All
+tests PASS.
 
 **Step 5: Commit**
 
@@ -1804,12 +1962,15 @@ git commit -m "feat(editor): add regex-based symbol extractor for breadcrumb dis
 ### Task 11: Wire symbol breadcrumb into the editor area
 
 **Files:**
+
 - Modify: `apps/web/components/workbench/Breadcrumb.tsx:7-12,85-107`
-- Modify: Parent component that renders `Breadcrumb` (the project page or `EditorContainer`)
+- Modify: Parent component that renders `Breadcrumb` (the project page or
+  `EditorContainer`)
 
 **Step 1: Add symbol prop to BreadcrumbItem**
 
-In `Breadcrumb.tsx`, the `BreadcrumbItem` interface (line 7) already has `label`, `path`, `isFile`, `folderPath`. Add:
+In `Breadcrumb.tsx`, the `BreadcrumbItem` interface (line 7) already has
+`label`, `path`, `isFile`, `folderPath`. Add:
 
 ```typescript
 export interface BreadcrumbItem {
@@ -1817,11 +1978,13 @@ export interface BreadcrumbItem {
   path?: string
   isFile?: boolean
   folderPath?: string
-  isSymbol?: boolean  // NEW
+  isSymbol?: boolean // NEW
 }
 ```
 
-In the rendering loop (around line 49-80), add a special case for symbol items — render them with a different icon (e.g., a code bracket or hash icon) and styling:
+In the rendering loop (around line 49-80), add a special case for symbol items —
+render them with a different icon (e.g., a code bracket or hash icon) and
+styling:
 
 ```typescript
 // After the existing file/folder rendering:
@@ -1868,7 +2031,9 @@ export function buildBreadcrumbItems(
 
 **Step 3: Wire symbol extraction to cursor position changes**
 
-In the parent component that renders `Breadcrumb` (the project page), use the `extractSymbolAtLine` function with the current cursor position and file content:
+In the parent component that renders `Breadcrumb` (the project page), use the
+`extractSymbolAtLine` function with the current cursor position and file
+content:
 
 ```typescript
 import { extractSymbolAtLine } from '@/lib/editor/symbol-extractor'
@@ -1876,18 +2041,26 @@ import { extractSymbolAtLine } from '@/lib/editor/symbol-extractor'
 // Inside the component, derive the current symbol:
 const currentSymbol = useMemo(() => {
   if (!cursorPosition || !fileContent || !selectedFilePath) return null
-  return extractSymbolAtLine(fileContent, cursorPosition.line, selectedFilePath.split('.').pop() || '')
+  return extractSymbolAtLine(
+    fileContent,
+    cursorPosition.line,
+    selectedFilePath.split('.').pop() || ''
+  )
 }, [cursorPosition?.line, fileContent, selectedFilePath])
 
 // Pass to buildBreadcrumbItems:
-const breadcrumbItems = buildBreadcrumbItems(selectedFilePath, '', currentSymbol)
+const breadcrumbItems = buildBreadcrumbItems(
+  selectedFilePath,
+  '',
+  currentSymbol
+)
 ```
 
 **Step 4: Verify manually**
 
-Run: `cd apps/web && bun dev`
-Open a TypeScript file → move cursor inside a function.
-Expected: Breadcrumb shows `project > folder > file.tsx > FunctionName`.
+Run: `cd apps/web && bun dev` Open a TypeScript file → move cursor inside a
+function. Expected: Breadcrumb shows
+`project > folder > file.tsx > FunctionName`.
 
 **Step 5: Commit**
 
@@ -1919,4 +2092,5 @@ After all tasks are complete, verify:
 - [ ] StatusBar → shows real branch name
 - [ ] Diff viewer → per-hunk Accept/Reject buttons appear on each `@@` header
 - [ ] Breadcrumb → shows symbol name when cursor is inside a function/class
-- [ ] All existing tests pass: `cd apps/web && bun test app components hooks lib`
+- [ ] All existing tests pass:
+      `cd apps/web && bun test app components hooks lib`

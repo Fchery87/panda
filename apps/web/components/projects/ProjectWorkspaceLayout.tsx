@@ -304,10 +304,7 @@ export function ProjectWorkspaceLayout({
                   maxSize={isCompactDesktopLayout ? 45 : 50}
                   className="flex min-h-0 min-w-0 flex-col"
                 >
-                  <RightPanel
-                    chatContent={chatPanel}
-                    chatInput={null}
-                  />
+                  <RightPanel chatContent={chatPanel} chatInput={null} />
                 </Panel>
               </>
             )}

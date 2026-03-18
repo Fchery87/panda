@@ -8,7 +8,9 @@ const PROJECT_LIMIT_PREFIX = 'Project limit reached'
 
 export function getCreateProjectErrorDisplay(error: unknown): CreateProjectErrorDisplay {
   const description =
-    error instanceof Error && error.message.trim().length > 0 ? error.message.trim() : 'Unknown error'
+    error instanceof Error && error.message.trim().length > 0
+      ? error.message.trim()
+      : 'Unknown error'
 
   if (description.startsWith(PROJECT_LIMIT_PREFIX)) {
     return {

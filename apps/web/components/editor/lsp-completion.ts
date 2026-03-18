@@ -1,7 +1,11 @@
 // apps/web/components/editor/lsp-completion.ts
-import { CompletionContext, CompletionResult, Completion } from '@codemirror/autocomplete'
+import {
+  autocompletion,
+  CompletionContext,
+  CompletionResult,
+  Completion,
+} from '@codemirror/autocomplete'
 import { EditorView, ViewPlugin, ViewUpdate } from '@codemirror/view'
-import { Text } from '@codemirror/state'
 import type {
   CompletionItem,
   CompletionList,
@@ -28,7 +32,7 @@ function lspCompletionToCodeMirror(item: CompletionItem): Completion {
         ? item.documentation
         : item.documentation.value
       : undefined,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- cross-version EditorView type incompatibility
     apply: (item.textEdit
       ? (view: EditorView, _completion: Completion, from: number, to: number) => {
           if (item.textEdit && 'range' in item.textEdit) {
@@ -169,7 +173,7 @@ export function lspCompletion({ client, filePath, enabled = true }: LSPCompletio
   return [
     syncPlugin,
     // Autocompletion extension with LSP source
-    require('@codemirror/autocomplete').autocompletion({
+    autocompletion({
       override: [completionSource],
       defaultKeymap: true,
       closeOnBlur: true,

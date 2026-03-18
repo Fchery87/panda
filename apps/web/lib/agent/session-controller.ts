@@ -86,7 +86,8 @@ export function buildAgentRuntimeConfig(args: {
     toolLoopThreshold: 3,
     harnessSessionID: args.harnessSessionID ?? `harness_run_${args.runId}`,
     harnessAutoResume: true,
-    harnessSpecApprovalMode: args.specApprovalMode ?? resolveBackgroundExecutionPolicy(args.mode).harnessSpecApprovalMode,
+    harnessSpecApprovalMode:
+      args.specApprovalMode ?? resolveBackgroundExecutionPolicy(args.mode).harnessSpecApprovalMode,
   }
 }
 

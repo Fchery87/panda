@@ -1,6 +1,6 @@
 // apps/web/lib/lsp/client.test.ts
 import { describe, it, expect } from 'bun:test'
-import { LSPClient } from './client'
+import { LSPClient, getLSPClient, resetLSPClient } from './client'
 
 describe('LSPClient', () => {
   it('creates an LSP client instance', () => {
@@ -10,12 +10,10 @@ describe('LSPClient', () => {
   })
 
   it('exports getLSPClient function', () => {
-    const { getLSPClient } = require('./client')
     expect(typeof getLSPClient).toBe('function')
   })
 
   it('exports resetLSPClient function', () => {
-    const { resetLSPClient } = require('./client')
     expect(typeof resetLSPClient).toBe('function')
   })
 })
