@@ -10,6 +10,11 @@
  */
 
 import { httpAction } from './_generated/server'
+import {
+  getApiKeyFromAuthorizationHeader,
+  sanitizeInternalErrorMessage,
+  sanitizeUpstreamLlmError,
+} from './lib/http-security'
 
 /**
  * Message type for chat requests
@@ -144,11 +149,24 @@ export const streamChat = httpAction(async (ctx, request): Promise<Response> => 
     })
 
     if (!response.ok) {
-      const error = await response.text()
-      return new Response(JSON.stringify({ error: `LLM API error: ${error}` }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
+      const errorText = await response.text()
+      console.error('[convex/llm] upstream error', {
+        provider,
+        status: response.status,
+        bodyPreview: errorText.slice(0, 500),
       })
+      return new Response(
+        JSON.stringify({
+          error: sanitizeUpstreamLlmError({
+            status: response.status,
+            bodyPreview: errorText.slice(0, 500),
+          }),
+        }),
+        {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      )
     }
 
     // Create SSE response
@@ -207,9 +225,10 @@ export const streamChat = httpAction(async (ctx, request): Promise<Response> => 
       },
     })
   } catch (error) {
+    console.error('[convex/llm] request failed', error)
     return new Response(
       JSON.stringify({
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: sanitizeInternalErrorMessage(error),
       }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
@@ -232,7 +251,9 @@ export const listModels = httpAction(async (ctx, request): Promise<Response> => 
   try {
     const url = new URL(request.url)
     const provider = url.searchParams.get('provider') || 'openai'
-    const apiKey = url.searchParams.get('apiKey') || process.env.OPENAI_API_KEY
+    const apiKey =
+      getApiKeyFromAuthorizationHeader(request.headers.get('Authorization')) ||
+      process.env.OPENAI_API_KEY
 
     const config = getProviderConfig(provider, apiKey || undefined)
 
@@ -258,9 +279,10 @@ export const listModels = httpAction(async (ctx, request): Promise<Response> => 
     const data = await response.json()
     return new Response(JSON.stringify(data), { headers: { 'Content-Type': 'application/json' } })
   } catch (error) {
+    console.error('[convex/llm] listModels failed', error)
     return new Response(
       JSON.stringify({
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: sanitizeInternalErrorMessage(error),
       }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     )

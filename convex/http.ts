@@ -12,6 +12,11 @@
 import { httpRouter } from 'convex/server'
 import { httpAction } from './_generated/server'
 import { auth } from './auth'
+import {
+  getApiKeyFromAuthorizationHeader,
+  sanitizeInternalErrorMessage,
+  sanitizeUpstreamLlmError,
+} from './lib/http-security'
 import { serverLog } from './lib/logger'
 
 /**
@@ -321,10 +326,18 @@ http.route({
           status: response.status,
           bodyPreview: errorText.slice(0, 500),
         })
-        return new Response(JSON.stringify({ error: 'Failed to process LLM request' }), {
-          status: 502,
-          headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' },
-        })
+        return new Response(
+          JSON.stringify({
+            error: sanitizeUpstreamLlmError({
+              status: response.status,
+              bodyPreview: errorText.slice(0, 500),
+            }),
+          }),
+          {
+            status: 502,
+            headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' },
+          }
+        )
       }
 
       // Create SSE response
@@ -454,9 +467,10 @@ http.route({
       if (abortUpstream) {
         request.signal.removeEventListener('abort', abortUpstream)
       }
+      serverLog.error('LLM stream request failed', { error })
       return new Response(
         JSON.stringify({
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: sanitizeInternalErrorMessage(error),
         }),
         { status: 500, headers: { ...getCorsHeaders(request), 'Content-Type': 'application/json' } }
       )
@@ -498,8 +512,7 @@ http.route({
 
       const url = new URL(request.url)
       const provider = url.searchParams.get('provider') || 'openai'
-      const authHeader = request.headers.get('Authorization')
-      const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : ''
+      const bearerToken = getApiKeyFromAuthorizationHeader(request.headers.get('Authorization'))
       const apiKey = bearerToken || process.env.OPENAI_API_KEY
 
       const config = getProviderConfig(provider, apiKey || undefined)
@@ -528,9 +541,10 @@ http.route({
         headers: { ...responseCorsHeaders, 'Content-Type': 'application/json' },
       })
     } catch (error) {
+      serverLog.error('listModels request failed', { error })
       return new Response(
         JSON.stringify({
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: sanitizeInternalErrorMessage(error),
         }),
         { status: 500, headers: { ...getCorsHeaders(request), 'Content-Type': 'application/json' } }
       )

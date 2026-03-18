@@ -13,6 +13,18 @@ function isMutationAuthCtx(ctx: AuthCtx): ctx is AuthWriteCtx {
   return 'insert' in ctx.db
 }
 
+function isLocalUrl(value: string | undefined): boolean {
+  if (!value) return false
+
+  try {
+    const normalized = value.includes('://') ? value : `http://${value}`
+    const { hostname } = new URL(normalized)
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0'
+  } catch {
+    return false
+  }
+}
+
 async function getE2EBypassUserId(ctx: AuthCtx): Promise<Id<'users'> | null> {
   const existing = await ctx.db
     .query('users')
@@ -38,10 +50,16 @@ async function getOrCreateE2EBypassUserId(ctx: AuthWriteCtx): Promise<Id<'users'
   })) as Id<'users'>
 }
 
+export function isE2EAuthBypassAllowedForEnv(env: NodeJS.ProcessEnv = process.env): boolean {
+  if (env.E2E_AUTH_BYPASS !== 'true') {
+    return false
+  }
+
+  return isLocalUrl(env.CONVEX_SITE_URL) || isLocalUrl(env.NEXT_PUBLIC_APP_URL)
+}
+
 function isE2EAuthBypassEnabled(): boolean {
-  // Convex cloud dev deployments may run with NODE_ENV="production", so the
-  // bypass must key off the explicit deployment env var instead.
-  return process.env.E2E_AUTH_BYPASS === 'true'
+  return isE2EAuthBypassAllowedForEnv()
 }
 
 export async function getCurrentUserId(ctx: AuthCtx): Promise<Id<'users'> | null> {
