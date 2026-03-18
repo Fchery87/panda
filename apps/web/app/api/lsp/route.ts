@@ -1,14 +1,18 @@
 // apps/web/app/api/lsp/route.ts
 import { spawn } from 'node:child_process'
-import { Socket } from 'node:net'
+import type { WebSocket } from 'ws'
 
 export const dynamic = 'force-dynamic'
+
+export function GET() {
+  return new Response('WebSocket upgrade required', { status: 426 })
+}
 
 /**
  * WebSocket handler for Language Server Protocol
  * Spawns typescript-language-server and proxies messages between WebSocket and LSP process
  */
-export async function SOCKET(socket: Socket) {
+export function SOCKET(client: WebSocket) {
   console.log('[LSP] WebSocket connection established')
 
   // Spawn TypeScript language server
@@ -55,9 +59,9 @@ export async function SOCKET(socket: Socket) {
 
       // Send to WebSocket
       try {
-        socket.write(message)
+        client.send(message)
       } catch (err) {
-        console.error('[LSP] Failed to write to WebSocket:', err)
+        console.error('[LSP] Failed to send to WebSocket:', err)
       }
     }
   })
@@ -74,15 +78,15 @@ export async function SOCKET(socket: Socket) {
   lspProcess.on('exit', (code) => {
     console.log(`[LSP] Language server exited with code ${code}`)
     try {
-      socket.end()
+      client.close()
     } catch {
       // Socket might already be closed
     }
   })
 
-  // Handle WebSocket data
-  socket.on('data', (data: Buffer) => {
-    const message = data.toString('utf8')
+  // Handle WebSocket messages from client
+  client.on('message', (data) => {
+    const message = data.toString()
 
     // Send to LSP process with Content-Length header
     const content = Buffer.from(message, 'utf8')
@@ -97,7 +101,7 @@ export async function SOCKET(socket: Socket) {
   })
 
   // Handle WebSocket close
-  socket.on('close', () => {
+  client.on('close', () => {
     console.log('[LSP] WebSocket connection closed')
     try {
       lspProcess.kill()
@@ -107,7 +111,7 @@ export async function SOCKET(socket: Socket) {
   })
 
   // Handle WebSocket errors
-  socket.on('error', (err) => {
+  client.on('error', (err) => {
     console.error('[LSP] WebSocket error:', err)
     try {
       lspProcess.kill()
