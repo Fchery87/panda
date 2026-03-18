@@ -12,6 +12,9 @@ import { InlineChat } from './InlineChat'
 import { Button } from '@/components/ui/button'
 import { Check, X } from 'lucide-react'
 import { getLanguageExtension } from './language-support'
+import { useLSP } from '@/hooks/useLSP'
+import { lspCompletion } from './lsp-completion'
+import type { Diagnostic } from 'vscode-languageserver-protocol'
 
 interface CodeMirrorEditorProps {
   filePath: string
@@ -24,6 +27,7 @@ interface CodeMirrorEditorProps {
   onSave?: (content: string) => void
   onInlineChat?: (prompt: string, selectedText: string, filePath: string) => Promise<string | null>
   onContextualChat?: (selectedText: string, filePath: string) => void
+  enableLSP?: boolean
 }
 
 const addJumpHighlightEffect = StateEffect.define<{ from: number; to: number }>()
@@ -70,6 +74,7 @@ export function CodeMirrorEditor({
   onSave,
   onInlineChat,
   onContextualChat,
+  enableLSP = true,
 }: CodeMirrorEditorProps) {
   const editorViewRef = useRef<EditorView | null>(null)
   const clearHighlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -85,6 +90,23 @@ export function CodeMirrorEditor({
   } | null>(null)
 
   const [langExtension, setLangExtension] = useState<Extension | Extension[]>([])
+
+  // Determine language ID for LSP
+  const languageId = useMemo(() => {
+    if (filePath.endsWith('.tsx')) return 'typescript'
+    if (filePath.endsWith('.ts')) return 'typescript'
+    if (filePath.endsWith('.jsx')) return 'javascript'
+    if (filePath.endsWith('.js')) return 'javascript'
+    return 'typescript'
+  }, [filePath])
+
+  // Initialize LSP connection
+  const { client, diagnostics, changeDocument } = useLSP({
+    filePath,
+    content,
+    languageId,
+    enabled: enableLSP && (languageId === 'typescript' || languageId === 'javascript'),
+  })
 
   useEffect(() => {
     let cancelled = false
@@ -242,6 +264,15 @@ export function CodeMirrorEditor({
     ]
   }, [diffState])
 
+  // LSP completion extensions
+  const lspExtensions = useMemo(() => {
+    return lspCompletion({
+      client,
+      filePath,
+      enabled: enableLSP && !!client,
+    })
+  }, [client, filePath, enableLSP])
+
   return (
     <div className="relative h-full w-full">
       <CodeMirror
@@ -253,6 +284,7 @@ export function CodeMirrorEditor({
           jumpHighlightTheme,
           ...(Array.isArray(langExtension) ? langExtension : [langExtension]),
           ...mergeExtensions,
+          ...lspExtensions,
         ]}
         basicSetup={{
           lineNumbers: true,
