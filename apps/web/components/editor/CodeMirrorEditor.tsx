@@ -42,7 +42,8 @@ const jumpHighlightField = StateField.define({
             class: 'cm-jump-highlight',
           },
         })
-        return Decoration.set([marker.range(effect.value.from, effect.value.to)])
+        // Line decorations must have zero-length ranges (from === to)
+        return Decoration.set([marker.range(effect.value.from)])
       }
       if (effect.is(clearJumpHighlightEffect)) {
         return Decoration.none
