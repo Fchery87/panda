@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, Loader2, AlertCircle } from 'lucide-react'
+import { Search, Loader2, AlertCircle, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useProjectSearch } from '@/hooks/useProjectSearch'
 
@@ -13,6 +13,9 @@ export function ProjectSearchPanel({ onSelectFile }: ProjectSearchPanelProps) {
   const [query, setQuery] = useState('')
   const [mode, setMode] = useState<'literal' | 'regex'>('literal')
   const [caseSensitive, setCaseSensitive] = useState(false)
+  const [replaceText, setReplaceText] = useState('')
+  const [isReplaceMode, setIsReplaceMode] = useState(false)
+  const [replaceStatus, setReplaceStatus] = useState<string | null>(null)
   const { state, search, clearSearch } = useProjectSearch()
 
   const groupedMatches = (() => {
@@ -43,6 +46,37 @@ export function ProjectSearchPanel({ onSelectFile }: ProjectSearchPanelProps) {
   const clear = () => {
     setQuery('')
     clearSearch()
+  }
+
+  const handleReplaceInFile = async (filePath: string | null) => {
+    const targetFiles = filePath ? [filePath] : [...new Set(state.matches.map((r) => r.file))]
+
+    let totalReplacements = 0
+    for (const file of targetFiles) {
+      try {
+        const res = await fetch('/api/search/replace', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filePath: file,
+            searchText: query,
+            replaceText,
+            isRegex: mode === 'regex',
+            caseSensitive,
+            replaceAll: true,
+          }),
+        })
+        const data = await res.json()
+        totalReplacements += data.replacements ?? 0
+      } catch {
+        // skip failed files
+      }
+    }
+    setReplaceStatus(`Replaced ${totalReplacements} occurrence(s)`)
+    // Re-trigger search to update results
+    if (query.trim()) {
+      void search(query, { mode, caseSensitive })
+    }
   }
 
   return (
@@ -120,7 +154,43 @@ export function ProjectSearchPanel({ onSelectFile }: ProjectSearchPanelProps) {
           >
             Case
           </button>
+          <button
+            type="button"
+            onClick={() => setIsReplaceMode((v) => !v)}
+            className={cn(
+              'flex h-6 w-6 items-center justify-center rounded-none border border-transparent transition-colors',
+              isReplaceMode
+                ? 'bg-surface-2 text-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+            title="Toggle Replace"
+          >
+            <ChevronDown
+              className={cn('h-3 w-3 transition-transform', isReplaceMode && 'rotate-180')}
+            />
+          </button>
         </div>
+
+        {isReplaceMode && (
+          <div className="flex items-center gap-1 px-3 pb-2">
+            <input
+              type="text"
+              value={replaceText}
+              onChange={(e) => setReplaceText(e.target.value)}
+              placeholder="Replace with..."
+              className="bg-surface-0 flex-1 border border-border px-2 py-1 font-mono text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <button
+              type="button"
+              onClick={() => handleReplaceInFile(null)}
+              disabled={!query || state.matches.length === 0}
+              className="px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground disabled:opacity-40"
+              title="Replace All in All Files"
+            >
+              All
+            </button>
+          </div>
+        )}
 
         {(state.warnings.length > 0 || state.error) && (
           <div className="mt-2 space-y-1">
@@ -158,13 +228,25 @@ export function ProjectSearchPanel({ onSelectFile }: ProjectSearchPanelProps) {
 
             {groupedMatches.map(([file, matches]) => (
               <div key={file} className="border border-border">
-                <button
-                  type="button"
-                  onClick={() => onSelectFile(file)}
-                  className="bg-surface-2 hover:bg-surface-1 w-full border-b border-border px-2 py-1 text-left font-mono text-xs text-foreground"
-                >
-                  {file}
-                </button>
+                <div className="bg-surface-2 flex items-center border-b border-border">
+                  <button
+                    type="button"
+                    onClick={() => onSelectFile(file)}
+                    className="hover:bg-surface-1 flex-1 px-2 py-1 text-left font-mono text-xs text-foreground"
+                  >
+                    {file}
+                  </button>
+                  {isReplaceMode && (
+                    <button
+                      type="button"
+                      onClick={() => handleReplaceInFile(file)}
+                      className="ml-auto px-1 font-mono text-[10px] uppercase text-muted-foreground hover:text-foreground"
+                      title={`Replace all in ${file}`}
+                    >
+                      Replace
+                    </button>
+                  )}
+                </div>
                 <div>
                   {matches.slice(0, 8).map((match) => (
                     <button
