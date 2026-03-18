@@ -10,6 +10,7 @@ export interface BreadcrumbItem {
   isFile?: boolean
   /** Folder path for Explorer reveal (new) */
   folderPath?: string
+  isSymbol?: boolean // NEW: indicates this is a symbol (function/class) breadcrumb
 }
 
 interface BreadcrumbProps {
@@ -49,7 +50,12 @@ export function Breadcrumb({
       {items.map((item, index) => (
         <div key={`${item.label}-${index}`} className="flex items-center gap-1">
           <IconBreadcrumbSeparator className="h-3.5 w-3.5 text-muted-foreground/50" />
-          {item.folderPath && onRevealInExplorer && index < items.length - 1 ? (
+          {item.isSymbol ? (
+            <span className="flex items-center gap-1 font-mono text-xs text-primary/70">
+              <span className="text-[10px]">#</span>
+              {item.label}
+            </span>
+          ) : item.folderPath && onRevealInExplorer && index < items.length - 1 ? (
             <button
               type="button"
               onClick={() => onRevealInExplorer(item.folderPath!)}
@@ -84,12 +90,13 @@ export function Breadcrumb({
 
 export function buildBreadcrumbItems(
   filePath: string | null,
-  basePath: string = ''
+  basePath: string = '',
+  symbol?: { name: string; kind: string } | null
 ): BreadcrumbItem[] {
   if (!filePath) return []
 
   const parts = filePath.split('/')
-  return parts.map((part, index) => {
+  const items: BreadcrumbItem[] = parts.map((part, index) => {
     const isFile = index === parts.length - 1
     // Build folder path for all non-file segments
     const folderPath = isFile
@@ -104,4 +111,11 @@ export function buildBreadcrumbItems(
       folderPath,
     }
   })
+
+  // Append symbol if provided
+  if (symbol) {
+    items.push({ label: symbol.name, isSymbol: true })
+  }
+
+  return items
 }
