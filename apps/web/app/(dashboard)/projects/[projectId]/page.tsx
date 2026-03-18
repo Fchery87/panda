@@ -253,6 +253,7 @@ export default function ProjectPage() {
     model: selectedModel,
     planDraft: persistedPlanDraft,
     automationPolicy: effectiveAutomationPolicy,
+    specApprovalMode: automationMode === 'auto' ? 'auto_approve' : 'interactive',
     onRunCreated: async ({ runId, approvedPlanExecution }) => {
       if (!approvedPlanExecution || !activeChat?._id) return
       await updateChatMutation({
@@ -656,6 +657,8 @@ export default function ProjectPage() {
   const chatPanelContent = (
     <ProjectChatPanel
       projectId={projectId}
+      automationMode={automationMode}
+      onAutomationModeChange={setAutomationMode}
       activeChatId={activeChat?._id}
       activeChatPlanStatus={activeChat?.planStatus}
       activeChatPlanUpdatedAt={activeChat?.planUpdatedAt}
@@ -989,8 +992,6 @@ export default function ProjectPage() {
           isReviewPanelOpen={isChatInspectorOpen}
           onReviewPanelOpenChange={setIsChatInspectorOpen}
           isChatPanelOpen={isChatPanelOpen}
-          automationMode={automationMode}
-          onAutomationModeChange={setAutomationMode}
           pendingArtifactPreview={pendingArtifactPreview}
           onApplyPendingArtifact={handleApplyPendingArtifact}
           onRejectPendingArtifact={handleRejectPendingArtifact}

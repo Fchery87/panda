@@ -58,8 +58,6 @@ interface ProjectWorkspaceLayoutProps {
   isReviewPanelOpen: boolean
   onReviewPanelOpenChange: (open: boolean) => void
   isChatPanelOpen: boolean
-  automationMode: 'manual' | 'auto'
-  onAutomationModeChange: (mode: 'manual' | 'auto') => void
   pendingArtifactPreview?: WorkspaceArtifactPreview | null
   onApplyPendingArtifact: (artifactId: string) => void
   onRejectPendingArtifact: (artifactId: string) => void
@@ -99,8 +97,6 @@ export function ProjectWorkspaceLayout({
   isReviewPanelOpen,
   onReviewPanelOpenChange,
   isChatPanelOpen,
-  automationMode,
-  onAutomationModeChange,
   pendingArtifactPreview,
   onApplyPendingArtifact,
   onRejectPendingArtifact,
@@ -311,9 +307,6 @@ export function ProjectWorkspaceLayout({
                   <RightPanel
                     chatContent={chatPanel}
                     chatInput={null}
-                    automationMode={automationMode}
-                    onAutomationModeChange={onAutomationModeChange}
-                    isStreaming={isStreaming}
                   />
                 </Panel>
               </>

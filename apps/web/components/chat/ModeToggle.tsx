@@ -27,7 +27,7 @@ export function ModeToggle({ mode, onModeChange, disabled, className }: ModeTogg
           mode === 'manual' ? 'text-primary-foreground' : 'text-muted-foreground'
         )}
       >
-        Manual
+        Review
       </button>
       <button
         type="button"

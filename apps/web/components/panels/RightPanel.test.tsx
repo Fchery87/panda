@@ -3,13 +3,11 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { RightPanel } from './RightPanel'
 
 describe('RightPanel', () => {
-  test('renders only the chat rail and mode toggle, not preview tabs', () => {
+  test('renders chat content and input without preview tabs', () => {
     const html = renderToStaticMarkup(
       <RightPanel
         chatContent={<div>chat</div>}
         chatInput={<div>input</div>}
-        automationMode="manual"
-        onAutomationModeChange={() => {}}
       />
     )
 

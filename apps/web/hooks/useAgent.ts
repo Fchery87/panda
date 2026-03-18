@@ -130,6 +130,7 @@ interface UseAgentOptions {
   architectBrainstormEnabled?: boolean
   planDraft?: string
   automationPolicy?: AgentPolicy
+  specApprovalMode?: 'interactive' | 'auto_approve'
   onRunCreated?: (args: {
     runId: Id<'agentRuns'>
     approvedPlanExecution: boolean
@@ -237,6 +238,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     architectBrainstormEnabled = false,
     planDraft,
     automationPolicy,
+    specApprovalMode,
     onRunCreated,
     onRunCompleted,
   } = options
@@ -659,6 +661,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           runId,
           mode,
           harnessSessionID: options?.harnessSessionID,
+          specApprovalMode,
         })
 
         // Get tool context

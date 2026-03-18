@@ -6,6 +6,7 @@ import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { AlertTriangle, History, RotateCcw } from 'lucide-react'
 import { IconBot, IconOverflow, IconNewChat } from '@/components/ui/icons'
+import { ModeToggle } from '@/components/chat/ModeToggle'
 import Link from 'next/link'
 import { ChatActionBar } from '@/components/chat/ChatActionBar'
 import { ChatInput } from '@/components/chat/ChatInput'
@@ -51,7 +52,6 @@ interface InlineRateLimitError {
 
 interface ProjectChatPanelProps {
   projectId: Id<'projects'>
-  projectName?: string
   activeChatId?: Id<'chats'>
   activeChatPlanStatus?: PlanStatus
   activeChatPlanUpdatedAt?: number
@@ -105,6 +105,8 @@ interface ProjectChatPanelProps {
   onCloseSpecPanel: () => void
   onEditPendingSpec: (spec: FormalSpecification) => void
   onExecutePendingSpec: (spec: FormalSpecification) => void
+  automationMode: 'manual' | 'auto'
+  onAutomationModeChange: (mode: 'manual' | 'auto') => void
   isMobileLayout: boolean
   isInspectorOpen: boolean
   inspectorTab: InspectorTab
@@ -145,7 +147,6 @@ interface ProjectChatPanelProps {
 
 export function ProjectChatPanel({
   projectId,
-  projectName = 'panda',
   activeChatId,
   activeChatPlanStatus,
   activeChatPlanUpdatedAt,
@@ -194,6 +195,8 @@ export function ProjectChatPanel({
   onCloseSpecPanel,
   onEditPendingSpec,
   onExecutePendingSpec,
+  automationMode,
+  onAutomationModeChange,
   isMobileLayout,
   isInspectorOpen,
   inspectorTab,
@@ -244,66 +247,75 @@ export function ProjectChatPanel({
         isMobileLayout ? 'border-t' : 'border-l'
       )}
     >
-      <div className="relative flex shrink-0 items-center justify-between border-b border-border px-3 py-2">
-        <span className="font-mono text-sm font-medium tracking-tight">{projectName}</span>
+      <div className="relative flex shrink-0 items-center justify-between border-b border-border bg-muted/30 px-3 py-2">
+        <span className="font-mono text-[11px] font-medium uppercase tracking-[0.24em] text-foreground">
+          Panda
+        </span>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 rounded-none p-0"
-              aria-label="Chat actions"
-            >
-              <IconOverflow className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="rounded-none border-border font-mono">
-            {onNewChat && (
+        <div className="flex items-center gap-1.5">
+          <ModeToggle
+            mode={automationMode}
+            onModeChange={onAutomationModeChange}
+            disabled={isStreaming}
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 rounded-none p-0"
+                aria-label="Chat actions"
+              >
+                <IconOverflow className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="rounded-none border-border font-mono">
+              {onNewChat && (
+                <DropdownMenuItem
+                  onClick={onNewChat}
+                  className="rounded-none text-xs uppercase tracking-wide"
+                >
+                  <IconNewChat className="mr-2 h-3.5 w-3.5" />
+                  New Chat
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
-                onClick={onNewChat}
+                onClick={onToggleInspector}
                 className="rounded-none text-xs uppercase tracking-wide"
               >
-                <IconNewChat className="mr-2 h-3.5 w-3.5" />
-                New Chat
+                Review
               </DropdownMenuItem>
-            )}
-            <DropdownMenuItem
-              onClick={onToggleInspector}
-              className="rounded-none text-xs uppercase tracking-wide"
-            >
-              Review
-            </DropdownMenuItem>
-            {previewUrl && onOpenPreview && (
+              {previewUrl && onOpenPreview && (
+                <DropdownMenuItem
+                  onClick={onOpenPreview}
+                  className="rounded-none text-xs uppercase tracking-wide"
+                >
+                  Preview
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
-                onClick={onOpenPreview}
+                onClick={onOpenShare}
                 className="rounded-none text-xs uppercase tracking-wide"
               >
-                Preview
+                Share
               </DropdownMenuItem>
-            )}
-            <DropdownMenuItem
-              onClick={onOpenShare}
-              className="rounded-none text-xs uppercase tracking-wide"
-            >
-              Share
-            </DropdownMenuItem>
-            {activeChatExists && (
+              {activeChatExists && (
+                <DropdownMenuItem
+                  onClick={onOpenHistory}
+                  className="rounded-none text-xs uppercase tracking-wide"
+                >
+                  History ({chatMessages.length})
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
-                onClick={onOpenHistory}
+                onClick={onResetWorkspace}
                 className="rounded-none text-xs uppercase tracking-wide"
               >
-                History ({chatMessages.length})
+                Reset Workspace
               </DropdownMenuItem>
-            )}
-            <DropdownMenuItem
-              onClick={onResetWorkspace}
-              className="rounded-none text-xs uppercase tracking-wide"
-            >
-              Reset Workspace
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
 
         {/* Streaming accent line */}
         {isStreaming && (
