@@ -14,7 +14,7 @@ import {
   getApiKeyFromAuthorizationHeader,
   sanitizeInternalErrorMessage,
   sanitizeUpstreamLlmError,
-} from './lib/http-security'
+} from './lib/http_security'
 
 /**
  * Message type for chat requests

@@ -3,7 +3,7 @@ import {
   getApiKeyFromAuthorizationHeader,
   sanitizeInternalErrorMessage,
   sanitizeUpstreamLlmError,
-} from './http-security'
+} from './http_security'
 
 describe('LLM HTTP security helpers', () => {
   it('extracts bearer tokens from authorization headers', () => {

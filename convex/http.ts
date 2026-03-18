@@ -16,7 +16,7 @@ import {
   getApiKeyFromAuthorizationHeader,
   sanitizeInternalErrorMessage,
   sanitizeUpstreamLlmError,
-} from './lib/http-security'
+} from './lib/http_security'
 import { serverLog } from './lib/logger'
 
 /**
