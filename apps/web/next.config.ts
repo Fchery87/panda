@@ -1,27 +1,52 @@
 import type { NextConfig } from 'next'
 
-export function buildSecurityHeaders(isDev = process.env.NODE_ENV !== 'production') {
+interface SecurityHeaderOptions {
+  isDev?: boolean
+  isHttpsDeployment?: boolean
+}
+
+function inferHttpsDeployment(): boolean {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (!appUrl) {
+    return process.env.NODE_ENV === 'production'
+  }
+
+  return appUrl.startsWith('https://')
+}
+
+export function buildSecurityHeaders({
+  isDev = process.env.NODE_ENV !== 'production',
+  isHttpsDeployment = inferHttpsDeployment(),
+}: SecurityHeaderOptions = {}) {
   const csp = [
     "default-src 'self'",
-    `script-src 'self'${isDev ? " 'unsafe-eval'" : ''}`,
-    "style-src 'self'",
+    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
+    "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data: https:",
     "connect-src 'self' https: wss:",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
-    'upgrade-insecure-requests',
+    ...(isHttpsDeployment ? ['upgrade-insecure-requests'] : []),
   ].join('; ')
 
-  return [
+  const headers = [
     { key: 'X-Frame-Options', value: 'DENY' },
     { key: 'X-Content-Type-Options', value: 'nosniff' },
     { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
     { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-    { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
     { key: 'Content-Security-Policy', value: csp },
   ]
+
+  if (isHttpsDeployment) {
+    headers.splice(4, 0, {
+      key: 'Strict-Transport-Security',
+      value: 'max-age=31536000; includeSubDomains; preload',
+    })
+  }
+
+  return headers
 }
 
 const nextConfig: NextConfig = {
