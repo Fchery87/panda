@@ -28,8 +28,9 @@ function lspCompletionToCodeMirror(item: CompletionItem): Completion {
         ? item.documentation
         : item.documentation.value
       : undefined,
-    apply: item.textEdit
-      ? (view: EditorView, completion: Completion, from: number, to: number) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    apply: (item.textEdit
+      ? (view: EditorView, _completion: Completion, from: number, to: number) => {
           if (item.textEdit && 'range' in item.textEdit) {
             view.dispatch({
               changes: {
@@ -44,7 +45,7 @@ function lspCompletionToCodeMirror(item: CompletionItem): Completion {
             })
           }
         }
-      : item.insertText || item.label,
+      : item.insertText || item.label) as any,
   }
 
   return completion

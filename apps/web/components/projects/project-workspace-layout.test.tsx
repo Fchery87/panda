@@ -38,8 +38,6 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
         isReviewPanelOpen={false}
         onReviewPanelOpenChange={() => {}}
         isChatPanelOpen={true}
-        automationMode="manual"
-        onAutomationModeChange={() => {}}
         chatMode="code"
         onModeChange={() => {}}
         cursorPosition={null}

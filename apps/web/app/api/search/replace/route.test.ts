@@ -1,5 +1,5 @@
 // apps/web/app/api/search/replace/route.test.ts
-import { describe, it, expect, mock, beforeEach } from 'bun:test'
+import { describe, it, expect, mock } from 'bun:test'
 
 // Mock auth
 mock.module('@convex-dev/auth/nextjs/server', () => ({
