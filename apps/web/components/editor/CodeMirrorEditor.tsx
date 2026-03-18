@@ -1,16 +1,17 @@
 'use client'
 
 import React, { useRef, useCallback, useState, useEffect, useMemo } from 'react'
+import type { Extension } from '@codemirror/state'
 import { EditorSelection, StateEffect, StateField } from '@codemirror/state'
 import { Decoration, EditorView } from '@codemirror/view'
 import CodeMirror from '@uiw/react-codemirror'
-import { javascript } from '@codemirror/lang-javascript'
 import { unifiedMergeView } from '@codemirror/merge'
 import { pandaTheme } from './panda-theme'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { InlineChat } from './InlineChat'
 import { Button } from '@/components/ui/button'
 import { Check, X } from 'lucide-react'
+import { getLanguageExtension } from './language-support'
 
 interface CodeMirrorEditorProps {
   filePath: string
@@ -83,11 +84,17 @@ export function CodeMirrorEditor({
     isPending: boolean
   } | null>(null)
 
-  const isTypeScript =
-    filePath.endsWith('.ts') ||
-    filePath.endsWith('.tsx') ||
-    filePath.endsWith('.mts') ||
-    filePath.endsWith('.cts')
+  const [langExtension, setLangExtension] = useState<Extension | Extension[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    getLanguageExtension(filePath).then((ext) => {
+      if (!cancelled) setLangExtension(ext)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [filePath])
 
   const handleChange = useCallback(
     (value: string) => {
@@ -244,10 +251,7 @@ export function CodeMirrorEditor({
         extensions={[
           jumpHighlightField,
           jumpHighlightTheme,
-          javascript({
-            jsx: true,
-            typescript: isTypeScript,
-          }),
+          ...(Array.isArray(langExtension) ? langExtension : [langExtension]),
           ...mergeExtensions,
         ]}
         basicSetup={{
