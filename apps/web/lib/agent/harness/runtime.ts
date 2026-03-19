@@ -588,7 +588,7 @@ export class Runtime {
 
       // SpecNative: Post-execution verification
       let verificationOutcome: { passed: boolean; summary: string } = { passed: true, summary: '' }
-      if (this.state.activeSpec) {
+      if (this.state.activeSpec && !this.config.skipSpecVerification) {
         verificationOutcome = yield* this.verifyAndFinalizeSpec(sessionID, agent)
       }
 

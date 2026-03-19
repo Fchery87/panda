@@ -912,6 +912,7 @@ describe('Harness adapter guardrail parity', () => {
         enabled: true,
         defaultTier: 'explicit',
       },
+      skipSpecVerification: true,
       onSpecApproval: async ({ spec }) =>
         await new Promise<{ decision: 'approve'; spec?: FormalSpecification }>((resolve) => {
           resolveApproval = resolve

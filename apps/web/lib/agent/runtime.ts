@@ -1292,7 +1292,13 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
       const rewriteRuntime = new HarnessRuntime(
         this.options.provider,
         createHarnessToolExecutors(this.toolContext),
-        harnessRuntimeConfig
+        {
+          ...harnessRuntimeConfig,
+          specEngine: {
+            ...harnessRuntimeConfig.specEngine,
+            enabled: false,
+          },
+        }
       )
 
       // Continue with harness runtime for the rewrite

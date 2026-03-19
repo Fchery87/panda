@@ -400,6 +400,8 @@ export interface RuntimeConfig {
   }>
   /** SpecNative engine configuration */
   specEngine?: SpecEngineConfig
+  /** Skip post-execution spec verification (useful for tests) */
+  skipSpecVerification?: boolean
   /**
    * Stream resilience configuration
    */

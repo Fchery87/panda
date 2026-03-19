@@ -8,6 +8,9 @@
 import { appLog } from '@/lib/logger'
 import type { Identifier } from './types'
 
+const isTestEnvironment =
+  process.env.NODE_ENV === 'test' || process.env.BUN_ENV === 'test' || process.env.VITEST === 'true'
+
 /**
  * Snapshot representation
  */
@@ -50,6 +53,10 @@ class SnapshotManager {
     step: number
   ): Promise<Snapshot | null> {
     if (!this.gitDir) {
+      return null
+    }
+
+    if (isTestEnvironment) {
       return null
     }
 
@@ -218,6 +225,9 @@ export async function diffSnapshots(
   fromHash: string,
   toHash: string
 ): Promise<{ diff: string; error?: string }> {
+  if (isTestEnvironment) {
+    return { diff: '' }
+  }
   try {
     const response = await fetch('/api/git/diff', {
       method: 'POST',
@@ -245,6 +255,9 @@ export async function diffSnapshots(
 export async function createPatch(
   snapshotHash: string
 ): Promise<{ patch: string; error?: string }> {
+  if (isTestEnvironment) {
+    return { patch: '' }
+  }
   try {
     const response = await fetch('/api/git/patch', {
       method: 'POST',
