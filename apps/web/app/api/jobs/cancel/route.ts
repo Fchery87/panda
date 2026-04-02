@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { isAuthenticatedNextjs } from '@convex-dev/auth/nextjs/server'
+import { isAuthenticatedNextjs } from '@/lib/auth/nextjs'
 import { cancelJobProcess } from '@/lib/jobs/processRegistry'
 
 export async function POST(req: NextRequest) {

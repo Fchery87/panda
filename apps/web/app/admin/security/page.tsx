@@ -3,13 +3,22 @@
 import * as React from 'react'
 import { useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   ArrowLeft,
   Shield,
@@ -20,7 +29,32 @@ import {
   AlertTriangle,
   Lock,
   Activity,
+  Filter,
 } from 'lucide-react'
+
+import {
+  readAdminDateQueryParam,
+  readAdminEnumQueryParam,
+  readAdminQueryParam,
+  useAdminQueryUpdater,
+} from '@/lib/admin/query-state'
+
+const securityTabs = ['audit', 'admin', 'settings', 'overview'] as const
+const actionOptions = [
+  { value: 'all', label: 'All actions' },
+  { value: 'GRANT_ADMIN', label: 'Grant admin' },
+  { value: 'REVOKE_ADMIN', label: 'Revoke admin' },
+  { value: 'BAN_USER', label: 'Ban user' },
+  { value: 'UNBAN_USER', label: 'Unban user' },
+  { value: 'DELETE_USER', label: 'Delete user' },
+  { value: 'UPDATE_SETTINGS', label: 'Update settings' },
+] as const
+
+const resourceOptions = [
+  { value: 'all', label: 'All resources' },
+  { value: 'user', label: 'Users' },
+  { value: 'adminSettings', label: 'Admin settings' },
+] as const
 
 const actionColors: Record<string, string> = {
   GRANT_ADMIN: 'bg-green-500/10 text-green-500 border-green-500/20',
@@ -40,21 +74,54 @@ const actionIcons: Record<string, React.ReactNode> = {
   UPDATE_SETTINGS: <Lock className="h-4 w-4" />,
 }
 
+function formatActorLabel(actor: string) {
+  return actor.trim().length > 0 ? actor.trim() : 'All actors'
+}
+
 export default function AdminSecurityPage() {
   const router = useRouter()
-  const auditLog = useQuery(api.admin.getAuditLog, { limit: 100 })
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  const activeTab = readAdminEnumQueryParam(searchParams, 'tab', securityTabs, 'audit')
+  const action = readAdminEnumQueryParam(
+    searchParams,
+    'action',
+    actionOptions.map((option) => option.value),
+    'all'
+  )
+  const resource = readAdminEnumQueryParam(
+    searchParams,
+    'resource',
+    resourceOptions.map((option) => option.value),
+    'all'
+  )
+  const actor = readAdminQueryParam(searchParams, 'actor')
+  const fromDate = readAdminDateQueryParam(searchParams, 'from')
+  const toDate = readAdminDateQueryParam(searchParams, 'to')
+
+  const auditLog = useQuery(api.admin.getAuditLog, {
+    limit: 100,
+    action: action === 'all' ? undefined : action,
+    resource: resource === 'all' ? undefined : resource,
+    actor: actor || undefined,
+    fromDate: fromDate || undefined,
+    toDate: toDate || undefined,
+  })
   const systemOverview = useQuery(api.admin.getSystemOverview)
+
+  const updateQuery = useAdminQueryUpdater(pathname, router, searchParams)
 
   const adminActions =
     auditLog?.filter((log) =>
       ['GRANT_ADMIN', 'REVOKE_ADMIN', 'BAN_USER', 'UNBAN_USER', 'DELETE_USER'].includes(log.action)
     ) || []
-
   const settingsChanges = auditLog?.filter((log) => log.action === 'UPDATE_SETTINGS') || []
+
+  const hasFilters = Boolean(actor || fromDate || toDate || action !== 'all' || resource !== 'all')
 
   return (
     <div className="container mx-auto p-8">
-      {/* Header */}
       <div className="mb-8">
         <Button
           variant="ghost"
@@ -74,7 +141,119 @@ export default function AdminSecurityPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="audit" className="space-y-6">
+      <Card className="mb-6 rounded-none">
+        <CardContent className="pt-6">
+          <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr_1fr_1fr_1fr_auto]">
+            <div className="space-y-2">
+              <Label htmlFor="security-actor-filter" className="font-mono text-sm">
+                Actor
+              </Label>
+              <div className="relative">
+                <Filter className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="security-actor-filter"
+                  placeholder="Search by user name or email..."
+                  value={actor}
+                  onChange={(e) => updateQuery({ actor: e.target.value || null })}
+                  className="rounded-none pl-10"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="security-action-filter" className="font-mono text-sm">
+                Action
+              </Label>
+              <Select value={action} onValueChange={(value) => updateQuery({ action: value })}>
+                <SelectTrigger
+                  id="security-action-filter"
+                  className="rounded-none"
+                  aria-label="Action filter"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {actionOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="security-resource-filter" className="font-mono text-sm">
+                Resource
+              </Label>
+              <Select value={resource} onValueChange={(value) => updateQuery({ resource: value })}>
+                <SelectTrigger
+                  id="security-resource-filter"
+                  className="rounded-none"
+                  aria-label="Resource filter"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {resourceOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="security-from-date" className="font-mono text-sm">
+                From date
+              </Label>
+              <Input
+                id="security-from-date"
+                type="date"
+                value={fromDate}
+                max={toDate || undefined}
+                onChange={(e) => updateQuery({ from: e.target.value || null })}
+                className="rounded-none"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="security-to-date" className="font-mono text-sm">
+                To date
+              </Label>
+              <Input
+                id="security-to-date"
+                type="date"
+                value={toDate}
+                min={fromDate || undefined}
+                onChange={(e) => updateQuery({ to: e.target.value || null })}
+                className="rounded-none"
+              />
+            </div>
+
+            <div className="flex items-end">
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-none"
+                onClick={() =>
+                  updateQuery({ action: 'all', resource: 'all', actor: null, from: null, to: null })
+                }
+                disabled={!hasFilters}
+              >
+                Clear Filters
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => updateQuery({ tab: value })}
+        className="space-y-6"
+      >
         <TabsList className="grid w-full grid-cols-4 lg:w-[500px]">
           <TabsTrigger value="audit" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
@@ -94,18 +273,22 @@ export default function AdminSecurityPage() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Audit Log Tab */}
         <TabsContent value="audit">
           <Card className="rounded-none">
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-4">
                 <div>
                   <CardTitle>Full Audit Log</CardTitle>
                   <CardDescription>Complete history of administrative actions</CardDescription>
                 </div>
-                <Badge variant="outline" className="rounded-none">
-                  {auditLog?.length || 0} entries
-                </Badge>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="outline" className="rounded-none">
+                    {auditLog?.length || 0} entries
+                  </Badge>
+                  <Badge variant="outline" className="rounded-none font-mono">
+                    {formatActorLabel(actor)}
+                  </Badge>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -167,7 +350,6 @@ export default function AdminSecurityPage() {
           </Card>
         </TabsContent>
 
-        {/* Admin Actions Tab */}
         <TabsContent value="admin">
           <Card className="rounded-none">
             <CardHeader>
@@ -221,7 +403,6 @@ export default function AdminSecurityPage() {
           </Card>
         </TabsContent>
 
-        {/* Settings Changes Tab */}
         <TabsContent value="settings">
           <Card className="rounded-none">
             <CardHeader>
@@ -272,7 +453,6 @@ export default function AdminSecurityPage() {
           </Card>
         </TabsContent>
 
-        {/* Security Overview Tab */}
         <TabsContent value="overview">
           <div className="grid gap-6 md:grid-cols-2">
             <Card className="rounded-none">

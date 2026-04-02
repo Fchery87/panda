@@ -6,7 +6,6 @@ import type {
   Hover,
   Location,
   Position,
-  TextDocumentIdentifier,
   TextEdit,
 } from 'vscode-languageserver-protocol'
 

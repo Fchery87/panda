@@ -33,6 +33,66 @@ export const PlanStatus = v.union(
   v.literal('failed')
 )
 
+export const PlanningSessionStatus = v.union(
+  v.literal('intake'),
+  v.literal('generating'),
+  v.literal('ready_for_review'),
+  v.literal('accepted'),
+  v.literal('executing'),
+  v.literal('completed'),
+  v.literal('failed'),
+  v.literal('stale')
+)
+
+export const PlanningOption = v.object({
+  id: v.string(),
+  label: v.string(),
+  description: v.optional(v.string()),
+  recommended: v.optional(v.boolean()),
+})
+
+export const PlanningQuestion = v.object({
+  id: v.string(),
+  title: v.string(),
+  prompt: v.string(),
+  suggestions: v.array(PlanningOption),
+  allowFreeform: v.boolean(),
+  order: v.number(),
+})
+
+export const PlanningAnswer = v.object({
+  questionId: v.string(),
+  selectedOptionId: v.optional(v.string()),
+  freeformValue: v.optional(v.string()),
+  source: v.union(v.literal('suggestion'), v.literal('freeform')),
+  answeredAt: v.number(),
+})
+
+export const GeneratedPlanSection = v.object({
+  id: v.string(),
+  title: v.string(),
+  content: v.string(),
+  order: v.number(),
+})
+
+export const GeneratedPlanArtifact = v.object({
+  chatId: v.string(),
+  sessionId: v.string(),
+  title: v.string(),
+  summary: v.string(),
+  markdown: v.string(),
+  sections: v.array(GeneratedPlanSection),
+  acceptanceChecks: v.array(v.string()),
+  status: v.union(
+    v.literal('ready_for_review'),
+    v.literal('accepted'),
+    v.literal('executing'),
+    v.literal('completed'),
+    v.literal('failed')
+  ),
+  generatedAt: v.number(),
+})
+
 export const TokenUsage = v.object({
   promptTokens: v.number(),
   completionTokens: v.number(),
@@ -267,7 +327,25 @@ export default defineSchema({
     .index('by_project', ['projectId'])
     .index('by_updated', ['projectId', 'updatedAt']),
 
-  // 6. Messages table - chat messages
+  // 6. Planning sessions table - structured planning intake and artifacts
+  planningSessions: defineTable({
+    chatId: v.id('chats'),
+    sessionId: v.string(),
+    status: PlanningSessionStatus,
+    questions: v.array(PlanningQuestion),
+    answers: v.array(PlanningAnswer),
+    generatedPlan: v.optional(GeneratedPlanArtifact),
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+    acceptedAt: v.optional(v.number()),
+    updatedAt: v.number(),
+  })
+    .index('by_chat', ['chatId'])
+    .index('by_updated', ['chatId', 'updatedAt'])
+    .index('by_sessionId', ['sessionId'])
+    .index('by_status', ['status']),
+
+  // 7. Messages table - chat messages
   messages: defineTable({
     chatId: v.id('chats'),
     role: v.union(v.literal('user'), v.literal('assistant'), v.literal('system')),
@@ -278,7 +356,7 @@ export default defineSchema({
     .index('by_chat', ['chatId'])
     .index('by_created', ['chatId', 'createdAt']),
 
-  // 7. Artifacts table - AI-generated artifacts from chats
+  // 8. Artifacts table - AI-generated artifacts from chats
   artifacts: defineTable({
     chatId: v.id('chats'),
     messageId: v.optional(v.id('messages')),
@@ -296,7 +374,7 @@ export default defineSchema({
     .index('by_message', ['messageId'])
     .index('by_status', ['chatId', 'status']),
 
-  // 8. Settings table - user preferences and provider configs
+  // 9. Settings table - user preferences and provider configs
   settings: defineTable({
     userId: v.id('users'),
     providerConfigs: v.optional(v.record(v.string(), v.record(v.string(), v.any()))),
@@ -327,7 +405,7 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index('by_user', ['userId']),
 
-  // 9. Jobs table - background task execution (CLI commands, etc.)
+  // 10. Jobs table - background task execution (CLI commands, etc.)
   jobs: defineTable({
     projectId: v.id('projects'),
     type: v.union(

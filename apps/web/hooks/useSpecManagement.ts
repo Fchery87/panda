@@ -5,12 +5,7 @@ import { useMutation } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import type { FormalSpecification } from '../lib/agent/spec/types'
-import {
-  specToCreateInput,
-  specToUpdateInput,
-  SpecPersistenceState,
-  createVerificationUpdateInput,
-} from '../lib/agent/spec/persistence'
+import { SpecPersistenceState } from '../lib/agent/spec/persistence'
 import type { AgentRuntimeLike } from '../lib/agent'
 
 export interface UseSpecManagementResult {
@@ -21,10 +16,8 @@ export interface UseSpecManagementResult {
   approvePendingSpec: (spec?: FormalSpecification) => void
   updatePendingSpecDraft: (spec: FormalSpecification) => void
   cancelPendingSpec: () => void
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createSpecMutation: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  updateSpecMutation: any
+  createSpecMutation: ReturnType<typeof useMutation<typeof api.specifications.create>>
+  updateSpecMutation: ReturnType<typeof useMutation<typeof api.specifications.update>>
   specPersistenceRef: React.RefObject<SpecPersistenceState>
 }
 

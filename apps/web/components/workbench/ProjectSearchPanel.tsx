@@ -15,7 +15,6 @@ export function ProjectSearchPanel({ onSelectFile }: ProjectSearchPanelProps) {
   const [caseSensitive, setCaseSensitive] = useState(false)
   const [replaceText, setReplaceText] = useState('')
   const [isReplaceMode, setIsReplaceMode] = useState(false)
-  const [replaceStatus, setReplaceStatus] = useState<string | null>(null)
   const { state, search, clearSearch } = useProjectSearch()
 
   const groupedMatches = (() => {
@@ -51,7 +50,6 @@ export function ProjectSearchPanel({ onSelectFile }: ProjectSearchPanelProps) {
   const handleReplaceInFile = async (filePath: string | null) => {
     const targetFiles = filePath ? [filePath] : [...new Set(state.matches.map((r) => r.file))]
 
-    let totalReplacements = 0
     for (const file of targetFiles) {
       try {
         const res = await fetch('/api/search/replace', {
@@ -66,13 +64,11 @@ export function ProjectSearchPanel({ onSelectFile }: ProjectSearchPanelProps) {
             replaceAll: true,
           }),
         })
-        const data = await res.json()
-        totalReplacements += data.replacements ?? 0
+        void (await res.json())
       } catch {
         // skip failed files
       }
     }
-    setReplaceStatus(`Replaced ${totalReplacements} occurrence(s)`)
     // Re-trigger search to update results
     if (query.trim()) {
       void search(query, { mode, caseSensitive })

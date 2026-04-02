@@ -12,6 +12,7 @@ import type { Id } from '@convex/_generated/dataModel'
 
 import type { SidebarSection } from '@/components/sidebar/SidebarRail'
 import type { ChatMode } from '@/lib/agent/prompt-library'
+import type { GeneratedPlanArtifact, WorkspacePlanTabRef } from '@/lib/planning/types'
 
 export interface WorkspaceFileLocation {
   line: number
@@ -19,9 +20,21 @@ export interface WorkspaceFileLocation {
   nonce: number
 }
 
-export interface WorkspaceOpenTab {
+export interface WorkspaceFileTab {
+  kind?: 'file'
   path: string
   isDirty?: boolean
+}
+
+export interface WorkspacePlanTab extends WorkspacePlanTabRef {
+  path: string
+  artifact: GeneratedPlanArtifact
+}
+
+export type WorkspaceOpenTab = WorkspaceFileTab | WorkspacePlanTab
+
+export function isWorkspacePlanTab(tab: WorkspaceOpenTab): tab is WorkspacePlanTab {
+  return tab.kind === 'plan'
 }
 
 interface FileState {

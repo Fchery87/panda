@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it, mock } from 'bun:test'
 
 let isAuthenticated = true
 
-mock.module('@convex-dev/auth/nextjs/server', () => ({
+mock.module('@/lib/auth/nextjs', () => ({
   isAuthenticatedNextjs: async () => isAuthenticated,
 }))
 

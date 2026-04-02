@@ -1,7 +1,7 @@
 // apps/web/app/api/git/route.ts
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { isAuthenticatedNextjs } from '@convex-dev/auth/nextjs/server'
+import { isAuthenticatedNextjs } from '@/lib/auth/nextjs'
 
 const execFileAsync = promisify(execFile)
 

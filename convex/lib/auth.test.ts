@@ -2,11 +2,11 @@ import { describe, expect, it } from 'bun:test'
 import { isE2EAuthBypassAllowedForEnv } from './auth'
 
 describe('isE2EAuthBypassAllowedForEnv', () => {
-  it('allows bypass only for explicit local e2e environments', () => {
+  it('allows bypass for explicit non-production E2E environments', () => {
     expect(
       isE2EAuthBypassAllowedForEnv({
         E2E_AUTH_BYPASS: 'true',
-        CONVEX_SITE_URL: 'http://127.0.0.1:3210',
+        NODE_ENV: 'development',
       })
     ).toBe(true)
   })
@@ -20,12 +20,11 @@ describe('isE2EAuthBypassAllowedForEnv', () => {
     ).toBe(false)
   })
 
-  it('rejects bypass for non-local deployments even if enabled', () => {
+  it('rejects bypass in production even if enabled', () => {
     expect(
       isE2EAuthBypassAllowedForEnv({
         E2E_AUTH_BYPASS: 'true',
-        CONVEX_SITE_URL: 'https://prod.convex.site',
-        NEXT_PUBLIC_APP_URL: 'https://panda.ai',
+        NODE_ENV: 'production',
       })
     ).toBe(false)
   })

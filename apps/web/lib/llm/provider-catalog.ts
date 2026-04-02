@@ -10,7 +10,6 @@ import { isKnownProvider } from './types'
 import {
   fetchModelsDevMetadata,
   mapModelsDevToModelInfo,
-  type ModelsDevProvider,
   type ModelsDevResponse,
 } from './models-dev'
 import { appLog } from '@/lib/logger'

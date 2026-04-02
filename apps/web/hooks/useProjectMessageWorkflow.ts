@@ -9,11 +9,26 @@ import {
   type PlanStatus,
 } from '@/lib/chat/planDraft'
 import type { ChatMode } from '@/lib/agent/prompt-library'
+import type { GeneratedPlanArtifact } from '@/lib/planning/types'
 
 type MessageWorkflowChat = {
   _id: Id<'chats'>
   mode: ChatMode
   planStatus?: PlanStatus
+}
+
+type ExecutablePlanArtifact = Pick<GeneratedPlanArtifact, 'status'>
+
+export function isExecutablePlanArtifact(
+  artifact: ExecutablePlanArtifact | null | undefined
+): boolean {
+  if (!artifact) return false
+  return (
+    artifact.status === 'accepted' ||
+    artifact.status === 'executing' ||
+    artifact.status === 'failed' ||
+    artifact.status === 'completed'
+  )
 }
 
 export function useProjectMessageWorkflow(args: {
@@ -22,6 +37,8 @@ export function useProjectMessageWorkflow(args: {
   chatMode: ChatMode
   setChatMode: (mode: ChatMode) => void
   planDraft: string
+  approvedPlanArtifact?: GeneratedPlanArtifact | null
+  activePlanningSessionId?: string | null
   providerAvailable: boolean
   createChatMutation: (args: {
     projectId: Id<'projects'>
@@ -33,6 +50,7 @@ export function useProjectMessageWorkflow(args: {
     mode?: ChatMode
     planStatus?: PlanStatus
   }) => Promise<unknown>
+  markPlanningExecutionState?: (args: { sessionId: string; state: 'executing' }) => Promise<unknown>
   sendAgentMessage: (
     content: string,
     contextFiles?: string[],
@@ -47,9 +65,12 @@ export function useProjectMessageWorkflow(args: {
     chatMode,
     setChatMode,
     planDraft,
+    approvedPlanArtifact,
+    activePlanningSessionId,
     providerAvailable,
     createChatMutation,
     updateChatMutation,
+    markPlanningExecutionState,
     sendAgentMessage,
     setActiveChatId,
     setMobilePrimaryPanel,
@@ -95,9 +116,9 @@ export function useProjectMessageWorkflow(args: {
 
       const finalContent =
         mode === 'build' &&
-        planDraft.trim() &&
+        (approvedPlanArtifact || planDraft.trim()) &&
         (options?.approvedPlanExecution || activeChat?.planStatus === 'executing')
-          ? buildApprovedPlanExecutionMessage(planDraft, trimmed)
+          ? buildApprovedPlanExecutionMessage(approvedPlanArtifact ?? planDraft, trimmed)
           : content
 
       if (!activeChat) {
@@ -140,6 +161,7 @@ export function useProjectMessageWorkflow(args: {
     [
       activeChat,
       createChatMutation,
+      approvedPlanArtifact,
       planDraft,
       projectId,
       providerAvailable,
@@ -167,17 +189,32 @@ export function useProjectMessageWorkflow(args: {
 
   const handleBuildFromPlan = useCallback(async () => {
     if (!activeChat) return
-    if (!canBuildFromPlan(activeChat.planStatus, planDraft)) {
+    const canBuildFromArtifact = isExecutablePlanArtifact(approvedPlanArtifact)
+    const canBuildFromLegacyDraft = canBuildFromPlan(activeChat.planStatus, planDraft)
+    if (!canBuildFromArtifact && !canBuildFromLegacyDraft) {
       toast.error('Approve the current plan before building')
       return
     }
 
     try {
-      await updateChatMutation({
-        id: activeChat._id,
-        mode: 'build',
-        planStatus: 'executing',
-      })
+      if (activePlanningSessionId && canBuildFromArtifact && markPlanningExecutionState) {
+        await markPlanningExecutionState({
+          sessionId: activePlanningSessionId,
+          state: 'executing',
+        })
+        if (activeChat.mode !== 'build') {
+          await updateChatMutation({
+            id: activeChat._id,
+            mode: 'build',
+          })
+        }
+      } else {
+        await updateChatMutation({
+          id: activeChat._id,
+          mode: 'build',
+          planStatus: 'executing',
+        })
+      }
       setChatMode('build')
       await handleSendMessage(
         'Execute the approved plan. Use the plan as the primary contract, follow it step-by-step, and report progress against it.',
@@ -190,7 +227,16 @@ export function useProjectMessageWorkflow(args: {
         description: error instanceof Error ? error.message : 'Unknown error',
       })
     }
-  }, [activeChat, planDraft, setChatMode, updateChatMutation, handleSendMessage])
+  }, [
+    activeChat,
+    activePlanningSessionId,
+    approvedPlanArtifact,
+    planDraft,
+    setChatMode,
+    updateChatMutation,
+    markPlanningExecutionState,
+    handleSendMessage,
+  ])
 
   const handleModeChange = useCallback(
     (nextMode: ChatMode) => {

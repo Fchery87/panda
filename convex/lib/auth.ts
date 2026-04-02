@@ -13,18 +13,6 @@ function isMutationAuthCtx(ctx: AuthCtx): ctx is AuthWriteCtx {
   return 'insert' in ctx.db
 }
 
-function isLocalUrl(value: string | undefined): boolean {
-  if (!value) return false
-
-  try {
-    const normalized = value.includes('://') ? value : `http://${value}`
-    const { hostname } = new URL(normalized)
-    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0'
-  } catch {
-    return false
-  }
-}
-
 async function getE2EBypassUserId(ctx: AuthCtx): Promise<Id<'users'> | null> {
   const existing = await ctx.db
     .query('users')
@@ -55,7 +43,11 @@ export function isE2EAuthBypassAllowedForEnv(env: NodeJS.ProcessEnv = process.en
     return false
   }
 
-  return isLocalUrl(env.CONVEX_SITE_URL) || isLocalUrl(env.NEXT_PUBLIC_APP_URL)
+  if (env.NODE_ENV === 'production') {
+    return false
+  }
+
+  return true
 }
 
 function isE2EAuthBypassEnabled(): boolean {

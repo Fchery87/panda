@@ -1,5 +1,10 @@
 import { extractBrainstormPhase, stripBrainstormPhaseMarker } from './brainstorming'
 import type { ChatMode } from '../agent/prompt-library'
+import {
+  isGeneratedPlanArtifact,
+  serializeGeneratedPlanArtifact,
+  type GeneratedPlanArtifact,
+} from '../planning/types'
 
 export type AgentStatus =
   | 'idle'
@@ -20,16 +25,26 @@ export type PlanStatus =
   | 'completed'
   | 'failed'
 
-function normalizePlanDraft(value: string | null | undefined): string {
-  return value?.trim() ?? ''
+type PlanDraftSource = string | GeneratedPlanArtifact | null | undefined
+
+function normalizePlanDraft(value: PlanDraftSource): string {
+  if (typeof value === 'string') {
+    return value.trim()
+  }
+
+  if (isGeneratedPlanArtifact(value)) {
+    return serializeGeneratedPlanArtifact(value).trim()
+  }
+
+  return ''
 }
 
 export function buildMessageWithPlanDraft(
-  planDraft: string | null | undefined,
+  planDraft: PlanDraftSource,
   userContent: string,
   previousMessages?: Array<{ role: string; content: string }>
 ): string {
-  const plan = planDraft?.trim()
+  const plan = normalizePlanDraft(planDraft)
   if (!plan) return userContent
 
   // Avoid re-prefixing if we already included a plan block.
@@ -51,16 +66,16 @@ export function buildMessageWithPlanDraft(
 }
 
 export function buildApprovedPlanExecutionMessage(
-  planDraft: string | null | undefined,
+  planDraft: PlanDraftSource,
   originalRequest = 'Execute the approved plan.'
 ): string {
-  const plan = planDraft?.trim()
-  if (!plan) return originalRequest
+  const normalizedPlan = normalizePlanDraft(planDraft)
+  if (!normalizedPlan) return originalRequest
 
   return `We are switching from Architect (Plan Mode) to Build (Execute Mode).
 
 Approved plan:
-${plan}
+${normalizedPlan}
 
 Execution contract:
 - Treat the approved plan as the primary execution contract.
@@ -116,8 +131,8 @@ export function deriveNextPlanDraft({
 }
 
 export function getNextPlanStatusAfterDraftChange(args: {
-  previousDraft: string | null | undefined
-  nextDraft: string | null | undefined
+  previousDraft: PlanDraftSource
+  nextDraft: PlanDraftSource
   currentStatus: PlanStatus | null | undefined
 }): PlanStatus {
   const previousDraft = normalizePlanDraft(args.previousDraft)
@@ -142,8 +157,8 @@ export function getNextPlanStatusAfterDraftChange(args: {
 }
 
 export function getNextPlanStatusAfterGeneration(args: {
-  previousDraft: string | null | undefined
-  nextDraft: string | null | undefined
+  previousDraft: PlanDraftSource
+  nextDraft: PlanDraftSource
   currentStatus: PlanStatus | null | undefined
 }): PlanStatus | null {
   const previousDraft = normalizePlanDraft(args.previousDraft)
@@ -157,7 +172,7 @@ export function getNextPlanStatusAfterGeneration(args: {
 
 export function canApprovePlan(
   status: PlanStatus | null | undefined,
-  planDraft: string | null | undefined
+  planDraft: PlanDraftSource
 ): boolean {
   const normalizedDraft = normalizePlanDraft(planDraft)
   if (!normalizedDraft) return false
@@ -166,7 +181,7 @@ export function canApprovePlan(
 
 export function canBuildFromPlan(
   status: PlanStatus | null | undefined,
-  planDraft: string | null | undefined
+  planDraft: PlanDraftSource
 ): boolean {
   const normalizedDraft = normalizePlanDraft(planDraft)
   if (!normalizedDraft) return false

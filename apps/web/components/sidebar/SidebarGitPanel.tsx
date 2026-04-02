@@ -4,7 +4,6 @@
 import { useEffect, useState } from 'react'
 import type { Id } from '@convex/_generated/dataModel'
 import {
-  Check,
   ChevronDown,
   ChevronRight,
   GitBranch,
@@ -12,7 +11,6 @@ import {
   Minus,
   Plus,
   RefreshCw,
-  Undo2,
 } from 'lucide-react'
 
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -24,7 +22,7 @@ interface SidebarGitPanelProps {
   projectId: Id<'projects'>
 }
 
-export function SidebarGitPanel({ projectId }: SidebarGitPanelProps) {
+export function SidebarGitPanel({ projectId: _projectId }: SidebarGitPanelProps) {
   const { status, log, isLoading, error, refreshStatus, refreshLog, stage, unstage, commit } =
     useGit()
 
@@ -63,7 +61,6 @@ export function SidebarGitPanel({ projectId }: SidebarGitPanelProps) {
 
   return (
     <div className="flex h-full flex-col">
-      {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-3 py-2">
         <div className="flex items-center gap-2">
           <GitBranch className="h-3.5 w-3.5 text-muted-foreground" />
@@ -84,7 +81,6 @@ export function SidebarGitPanel({ projectId }: SidebarGitPanelProps) {
         </Button>
       </div>
 
-      {/* Error */}
       {error && (
         <div className="border-b border-destructive/30 bg-destructive/10 px-3 py-1.5 font-mono text-[10px] text-destructive">
           {error}
@@ -93,7 +89,6 @@ export function SidebarGitPanel({ projectId }: SidebarGitPanelProps) {
 
       <ScrollArea className="flex-1">
         <div className="p-1">
-          {/* Staged Changes */}
           {(status?.staged.length ?? 0) > 0 && (
             <FileSection
               title="Staged Changes"
@@ -108,7 +103,6 @@ export function SidebarGitPanel({ projectId }: SidebarGitPanelProps) {
             />
           )}
 
-          {/* Unstaged Changes */}
           {(status?.unstaged.length ?? 0) > 0 && (
             <FileSection
               title="Changes"
@@ -123,7 +117,6 @@ export function SidebarGitPanel({ projectId }: SidebarGitPanelProps) {
             />
           )}
 
-          {/* Untracked */}
           {(status?.untracked.length ?? 0) > 0 && (
             <FileSection
               title="Untracked"
@@ -138,7 +131,6 @@ export function SidebarGitPanel({ projectId }: SidebarGitPanelProps) {
             />
           )}
 
-          {/* Empty state */}
           {totalChanges === 0 && !isLoading && (
             <div className="px-3 py-6 text-center font-mono text-xs text-muted-foreground">
               No changes
@@ -147,7 +139,6 @@ export function SidebarGitPanel({ projectId }: SidebarGitPanelProps) {
         </div>
       </ScrollArea>
 
-      {/* Commit area */}
       {(status?.staged.length ?? 0) > 0 && (
         <div className="border-t border-border p-2">
           <textarea
@@ -178,7 +169,6 @@ export function SidebarGitPanel({ projectId }: SidebarGitPanelProps) {
         </div>
       )}
 
-      {/* Stage All button when there are unstaged changes */}
       {totalChanges > 0 && (status?.staged.length ?? 0) === 0 && (
         <div className="border-t border-border p-2">
           <Button
@@ -193,7 +183,6 @@ export function SidebarGitPanel({ projectId }: SidebarGitPanelProps) {
         </div>
       )}
 
-      {/* Log toggle */}
       <div className="border-t border-border">
         <button
           type="button"

@@ -55,7 +55,7 @@ export function AgentProvider({
   initialMode = 'code',
 }: AgentProviderProps) {
   const [chatMode, setChatMode] = useState<ChatMode>(initialMode)
-  const [state, setState] = useState<AgentState>({
+  const [state] = useState<AgentState>({
     messages: [],
     isLoading: false,
     error: null,

@@ -6,6 +6,7 @@ import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { FolderGit2, Plus, Trash2, Clock, Search, ArrowRight } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -160,17 +161,24 @@ function ProjectRow({
   project,
   index,
   onDelete,
+  onRecordOpen,
+  onNavigate,
 }: {
   project: Project
   index: number
   onDelete: (id: Id<'projects'>) => Promise<void>
+  onRecordOpen: (id: Id<'projects'>) => Promise<void>
+  onNavigate: (id: Id<'projects'>, href: string) => Promise<void>
 }) {
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const projectHref = `/projects/${project._id}`
 
   const handleDelete = async () => {
     setIsDeleting(true)
     try {
       await onDelete(project._id)
+      setIsDeleteDialogOpen(false)
       toast.success('Project deleted')
     } catch (error) {
       void error
@@ -178,6 +186,38 @@ function ProjectRow({
     } finally {
       setIsDeleting(false)
     }
+  }
+
+  const shouldRecordOpenOnMouseDown = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    return (
+      event.button === 1 ||
+      (event.button === 0 && (event.metaKey || event.altKey || event.ctrlKey || event.shiftKey))
+    )
+  }
+
+  const handleMouseDownCapture = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!shouldRecordOpenOnMouseDown(event)) {
+      return
+    }
+
+    void onRecordOpen(project._id).catch(() => {
+      toast.error('Failed to update project recency')
+    })
+  }
+
+  const handleOpen = async (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (event.button !== 0 || event.metaKey || event.altKey || event.ctrlKey || event.shiftKey) {
+      return
+    }
+
+    event.preventDefault()
+    await onNavigate(project._id, projectHref)
+  }
+
+  const handleDeleteRequest = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setIsDeleteDialogOpen(true)
   }
 
   const formatDate = (timestamp: number) => {
@@ -217,15 +257,19 @@ function ProjectRow({
       exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.2, delay: index * 0.05 }}
     >
-      <Link
-        href={`/projects/${project._id}`}
+      <div
         className={cn(
           'group -mx-4 flex items-center justify-between px-4 py-4',
           'border-b border-border',
           'transition-sharp hover:bg-secondary/50'
         )}
       >
-        <div className="flex min-w-0 flex-1 items-center gap-4">
+        <Link
+          href={projectHref}
+          onClick={handleOpen}
+          onMouseDownCapture={handleMouseDownCapture}
+          className="flex min-w-0 flex-1 items-center gap-4"
+        >
           {/* Number */}
           <span className="text-label w-8 shrink-0 text-primary">
             {String(index + 1).padStart(2, '0')}
@@ -243,7 +287,7 @@ function ProjectRow({
               <p className="truncate text-sm text-muted-foreground">{project.description}</p>
             )}
           </div>
-        </div>
+        </Link>
 
         {/* Meta */}
         <div className="flex shrink-0 items-center gap-6">
@@ -256,11 +300,8 @@ function ProjectRow({
             variant="ghost"
             size="icon"
             className="h-7 w-7 rounded-none text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              handleDelete()
-            }}
+            aria-label={`Delete ${project.name}`}
+            onClick={handleDeleteRequest}
             disabled={isDeleting}
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -268,13 +309,45 @@ function ProjectRow({
 
           <ArrowRight className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
         </div>
-      </Link>
+      </div>
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="rounded-none sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="font-mono">Delete project?</DialogTitle>
+            <DialogDescription>
+              Delete <span className="font-mono text-foreground">{project.name}</span>? This action
+              cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-none"
+              onClick={() => setIsDeleteDialogOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              className="rounded-none"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete project'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   )
 }
 
 export default function ProjectsPage() {
   const [searchQuery, setSearchQuery] = useState('')
+  const router = useRouter()
 
   // Fetch projects from Convex
   const projects = useQuery(api.projects.list) as Project[] | undefined
@@ -298,6 +371,17 @@ export default function ProjectsPage() {
       id,
       lastOpenedAt: Date.now(),
     })
+  }
+
+  const handleProjectNavigate = async (id: Id<'projects'>, href: string) => {
+    try {
+      await handleOpenProject(id)
+    } catch (error) {
+      void error
+      toast.error('Failed to update project recency')
+    } finally {
+      router.push(href)
+    }
   }
 
   // Filter projects based on search query
@@ -328,14 +412,23 @@ export default function ProjectsPage() {
       </div>
 
       {/* Search */}
-      <div className="relative mb-8">
-        <Search className="absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search projects..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="rounded-none border-0 border-b border-border bg-transparent pl-7 font-mono focus-visible:border-primary focus-visible:ring-0"
-        />
+      <div className="mb-8 grid gap-2">
+        <label
+          htmlFor="project-search"
+          className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground"
+        >
+          Search projects
+        </label>
+        <div className="relative">
+          <Search className="absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            id="project-search"
+            placeholder="Search projects..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="rounded-none border-0 border-b border-border bg-transparent pl-7 font-mono focus-visible:border-primary focus-visible:ring-0"
+          />
+        </div>
       </div>
 
       {/* Projects List */}
@@ -349,9 +442,14 @@ export default function ProjectsPage() {
         <div>
           <AnimatePresence mode="popLayout">
             {sortedProjects.map((project, index) => (
-              <div key={project._id} onClick={() => handleOpenProject(project._id)}>
-                <ProjectRow project={project} index={index} onDelete={handleDeleteProject} />
-              </div>
+              <ProjectRow
+                key={project._id}
+                project={project}
+                index={index}
+                onDelete={handleDeleteProject}
+                onRecordOpen={handleOpenProject}
+                onNavigate={handleProjectNavigate}
+              />
             ))}
           </AnimatePresence>
         </div>

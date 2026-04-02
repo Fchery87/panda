@@ -2,13 +2,13 @@
 import { describe, it, expect, mock } from 'bun:test'
 
 // Mock auth
-mock.module('@convex-dev/auth/nextjs/server', () => ({
+mock.module('@/lib/auth/nextjs', () => ({
   isAuthenticatedNextjs: () => Promise.resolve(true),
 }))
 
 describe('POST /api/search/replace', () => {
   it('rejects unauthenticated requests', async () => {
-    mock.module('@convex-dev/auth/nextjs/server', () => ({
+    mock.module('@/lib/auth/nextjs', () => ({
       isAuthenticatedNextjs: () => Promise.resolve(false),
     }))
 
@@ -23,7 +23,7 @@ describe('POST /api/search/replace', () => {
   })
 
   it('rejects missing required fields', async () => {
-    mock.module('@convex-dev/auth/nextjs/server', () => ({
+    mock.module('@/lib/auth/nextjs', () => ({
       isAuthenticatedNextjs: () => Promise.resolve(true),
     }))
 

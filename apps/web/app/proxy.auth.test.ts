@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
+import { getMaintenanceRedirectReason } from '@/lib/auth/access-state'
 import { shouldRedirectToLogin } from '@/lib/auth/routeGuards'
 
 describe('auth proxy guard', () => {
@@ -18,5 +19,10 @@ describe('auth proxy guard', () => {
     expect(shouldRedirectToLogin('/login', false)).toBe(false)
     expect(shouldRedirectToLogin('/', false)).toBe(false)
     expect(shouldRedirectToLogin('/api/auth', false)).toBe(false)
+  })
+
+  test('maps redirect reasons from maintenance state', () => {
+    expect(getMaintenanceRedirectReason(true)).toBe('maintenance')
+    expect(getMaintenanceRedirectReason(false)).toBe('registration-closed')
   })
 })

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { isAuthenticatedNextjs } from '@convex-dev/auth/nextjs/server'
+import { isAuthenticatedNextjs } from '@/lib/auth/nextjs'
 import { executeSearch } from '@/lib/agent/search/service'
 import type { SearchRequest } from '@/lib/agent/search/types'
 

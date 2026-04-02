@@ -350,6 +350,94 @@ describe('/api/e2e/project route', () => {
     }
   })
 
+  test('seeds a structured planning session with a generated plan artifact when requested', async () => {
+    setTestEnv()
+    queryImpl = () => {
+      const queryIndex = queryCalls.length
+      if (queryIndex === 1) {
+        return [{ _id: 'project-existing', name: 'Workbench E2E Fixture' }]
+      }
+      if (queryIndex === 2) {
+        return { maxProjectsPerUser: 100 }
+      }
+      if (queryIndex === 3) {
+        return []
+      }
+      return []
+    }
+
+    mutationImpl = (_func, args) => {
+      if ('title' in args && 'mode' in args) {
+        expect(args).toMatchObject({
+          projectId: 'project-existing',
+          title: 'Workbench E2E Chat',
+          mode: 'build',
+        })
+        return 'chat-existing'
+      }
+      if ('questions' in args) {
+        expect(args).toMatchObject({
+          chatId: 'chat-existing',
+          questions: expect.arrayContaining([
+            expect.objectContaining({
+              id: 'outcome',
+              title: 'Outcome',
+            }),
+          ]),
+        })
+        return 'planning-session-123'
+      }
+      if ('questionId' in args) {
+        expect(args).toMatchObject({
+          sessionId: 'planning-session-123',
+          source: 'suggestion',
+        })
+        return 'planning-session-123'
+      }
+      if ('generatedPlan' in args) {
+        expect(args).toMatchObject({
+          sessionId: 'planning-session-123',
+          generatedPlan: expect.objectContaining({
+            chatId: 'chat-existing',
+            sessionId: 'planning-session-123',
+            title: 'Structured Fixture Plan',
+            status: 'ready_for_review',
+          }),
+        })
+        return 'planning-session-123'
+      }
+      throw new Error(`Unexpected mutation call: ${JSON.stringify(args)}`)
+    }
+
+    try {
+      const { GET } = await import('./route')
+
+      const response = await GET(
+        new Request(
+          'http://localhost:3000/api/e2e/project?name=Workbench%20E2E%20Fixture&structuredPlanningSession=1&structuredPlanningSessionPlan=%7B%22title%22%3A%22Structured%20Fixture%20Plan%22%2C%22summary%22%3A%22Seeded%20structured%20plan%22%2C%22acceptanceChecks%22%3A%5B%22Workspace%20plan%20tab%20opens%22%5D%7D'
+        )
+      )
+
+      expect(response.status).toBe(200)
+      await expect(response.json()).resolves.toMatchObject({
+        projectId: 'project-existing',
+        created: false,
+        chatId: 'chat-existing',
+        planningSessionId: 'planning-session-123',
+        generatedPlanTitle: 'Structured Fixture Plan',
+        generatedPlanStatus: 'ready_for_review',
+        planTabPath: 'plan:planning-session-123',
+      })
+
+      expect(
+        mutationCalls.filter((call) => 'questionId' in call.args && 'source' in call.args)
+      ).toHaveLength(4)
+      expect(mutationCalls.some((call) => 'generatedPlan' in call.args)).toBe(true)
+    } finally {
+      restoreEnv()
+    }
+  })
+
   test('returns a structured 500 response when fixture bootstrap fails', async () => {
     setTestEnv()
     mutationError = new Error('Unauthorized: Authentication required')

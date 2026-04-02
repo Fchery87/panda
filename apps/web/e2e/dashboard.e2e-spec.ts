@@ -162,6 +162,64 @@ test.describe('Dashboard', () => {
     await expect(page.getByText(projectName)).toBeVisible()
   })
 
+  test('project search has an accessible label', async ({ page }) => {
+    const searchInput = page.getByLabel(/search projects/i)
+
+    await expect(searchInput).toBeVisible()
+    await expect(searchInput).toBeEditable()
+  })
+
+  test('delete project requires confirmation', async ({ page }) => {
+    const projectName = `Delete Me ${Date.now()}`
+    await createProject(page, projectName)
+
+    const deleteButton = page.getByRole('button', {
+      name: new RegExp(`delete ${projectName}`, 'i'),
+    })
+    await expect(deleteButton).toBeVisible()
+    await deleteButton.click()
+
+    const confirmationDialog = page
+      .getByRole('dialog')
+      .filter({ hasText: /delete project/i })
+      .first()
+    await expect(confirmationDialog).toBeVisible()
+    await expect(confirmationDialog).toContainText(projectName)
+
+    await confirmationDialog.getByRole('button', { name: /cancel/i }).click()
+    await expect(page.getByText(projectName)).toBeVisible()
+
+    await deleteButton.click()
+    await expect(confirmationDialog).toBeVisible()
+    await confirmationDialog.getByRole('button', { name: /delete project/i }).click()
+    await expect(page.locator('a[href^="/projects/"]', { hasText: projectName })).toHaveCount(0)
+  })
+
+  test('opening a project with modifier still updates recency', async ({ page }) => {
+    const olderProject = `Open Order A ${Date.now()}`
+    const newerProject = `Open Order B ${Date.now()}`
+
+    await createProject(page, olderProject)
+    await createProject(page, newerProject)
+
+    await page.goto('/projects')
+
+    const olderProjectLink = page
+      .locator('a[href^="/projects/"]', { hasText: olderProject })
+      .first()
+    await expect(olderProjectLink).toBeVisible({ timeout: 15000 })
+    const [newPage] = await Promise.all([
+      page.context().waitForEvent('page'),
+      olderProjectLink.click({ modifiers: ['Control'] }),
+    ])
+    await newPage.waitForLoadState('domcontentloaded')
+
+    await page.goto('/projects')
+
+    const firstProjectLink = page.locator('a[href^="/projects/"]').first()
+    await expect(firstProjectLink).toContainText(olderProject, { timeout: 15000 })
+  })
+
   test('dashboard header is visible', async ({ page }) => {
     await page.goto('/projects')
 

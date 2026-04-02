@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import { Activity, FileText, LayoutDashboard, Brain, BookOpen } from 'lucide-react'
 import { TabContainer, type TabItem } from '@/components/ui/tab-container'
+import { PlanningIntakeSurface } from '@/components/plan/PlanningIntakePopup'
 
 export type ReviewTab = 'run' | 'plan' | 'artifacts' | 'memory' | 'evals'
 
@@ -59,9 +60,12 @@ export function ReviewPanel({
   ]
 
   return (
-    <div className="surface-1 flex h-full flex-col border-l border-border">
-      <div className="flex items-center justify-between border-b border-border px-3 py-2">
+    <div className="surface-1 relative flex h-full flex-col border-l border-border">
+      <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
         <span className="text-sm font-medium text-foreground">Review</span>
+      </div>
+      <div className="border-b border-border p-3">
+        <PlanningIntakeSurface />
       </div>
       <div className="relative flex-1 overflow-hidden">
         <TabContainer

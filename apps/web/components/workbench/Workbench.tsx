@@ -26,14 +26,11 @@ import { SidebarFlyout } from '@/components/sidebar/SidebarFlyout'
 import { SidebarHistoryPanel } from '@/components/sidebar/SidebarHistoryPanel'
 import { SidebarGitPanel } from '@/components/sidebar/SidebarGitPanel'
 import { ExplorerOutline } from '@/components/sidebar/ExplorerOutline'
-import { useWorkspace } from '@/contexts/WorkspaceContext'
+import { isWorkspacePlanTab, useWorkspace } from '@/contexts/WorkspaceContext'
 import { useShortcuts } from '@/hooks/useShortcuts'
+import { PlanArtifactTab } from './PlanArtifactTab'
 import type { WorkspaceArtifactPreview } from './artifact-preview'
-
-interface OpenFileTab {
-  path: string
-  isDirty?: boolean
-}
+import type { WorkspaceOpenTab } from '@/contexts/WorkspaceContext'
 
 interface WorkbenchProps {
   projectId: Id<'projects'>
@@ -51,7 +48,7 @@ interface WorkbenchProps {
     column: number
     nonce: number
   } | null
-  openTabs?: OpenFileTab[]
+  openTabs?: WorkspaceOpenTab[]
   onSelectFile: (path: string, location?: { line: number; column: number }) => void
   onCloseTab?: (path: string) => void
   onCreateFile: (path: string) => void
@@ -197,6 +194,9 @@ export function Workbench({
     return stored === 'true'
   })
   const selectedFile = selectedFilePath ? files.find((f) => f.path === selectedFilePath) : undefined
+  const selectedWorkspaceTab = openTabs.find((tab) => tab.path === selectedFilePath) ?? null
+  const selectedPlanTab =
+    selectedWorkspaceTab && isWorkspacePlanTab(selectedWorkspaceTab) ? selectedWorkspaceTab : null
 
   // Persist terminal state to localStorage
   useEffect(() => {
@@ -338,7 +338,9 @@ export function Workbench({
           {mobilePanel === 'editor' && (
             <div className="surface-0 flex h-full min-h-0 min-w-0 flex-col">
               <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
-                {selectedFile ? (
+                {selectedPlanTab ? (
+                  <PlanArtifactTab artifact={selectedPlanTab.artifact} />
+                ) : selectedFile ? (
                   <div className="flex h-full min-h-0 min-w-0 flex-col">
                     {pendingArtifactPreview ? (
                       <PendingArtifactOverlay
@@ -491,7 +493,9 @@ export function Workbench({
 
                     {/* Tab Content */}
                     <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
-                      {selectedFile ? (
+                      {selectedPlanTab ? (
+                        <PlanArtifactTab artifact={selectedPlanTab.artifact} />
+                      ) : selectedFile ? (
                         <div className="flex h-full min-h-0 min-w-0 flex-col">
                           {pendingArtifactPreview ? (
                             <PendingArtifactOverlay

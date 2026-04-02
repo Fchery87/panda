@@ -11,12 +11,10 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
-import { useMutation, useConvex, useQuery, usePaginatedQuery } from 'convex/react'
+import { useMutation, useConvex, useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
-import type { LLMProvider, ModelInfo, ProviderType, ReasoningOptions } from '../lib/llm/types'
-import { getDefaultProviderCapabilities } from '../lib/llm/types'
-import { resolveContextWindow, type ContextWindowSource } from '../lib/llm/model-metadata'
+import type { LLMProvider, ProviderType } from '../lib/llm/types'
 import {
   computeContextMetrics,
   estimateCompletionTokens,
@@ -31,9 +29,7 @@ import {
 import type { FormalSpecification } from '../lib/agent/spec/types'
 import {
   specToCreateInput,
-  specToUpdateInput,
   resolveSpecStatus,
-  SpecPersistenceState,
   createVerificationUpdateInput,
 } from '../lib/agent/spec/persistence'
 import { getUserFacingAgentError } from '../lib/chat/error-messages'
@@ -57,7 +53,7 @@ import { useProviderSettings } from './useProviderSettings'
 import { useTokenUsageMetrics, type UsageTotals, type UsageMetrics } from './useTokenUsageMetrics'
 import { useMemoryBank } from './useMemoryBank'
 import { useProjectContext } from './useProjectContext'
-import { useMessageHistory, type Message as HistoryMessage } from './useMessageHistory'
+import { useMessageHistory } from './useMessageHistory'
 import { useSpecManagement } from './useSpecManagement'
 import type {
   MessageAnnotationInfo,
@@ -105,11 +101,6 @@ function summarizeArgs(args: Record<string, unknown> | undefined): string | unde
 function toFiniteNumber(value: unknown, fallback = 0): number {
   const num = Number(value)
   return Number.isFinite(num) ? num : fallback
-}
-
-function toOptionalFiniteNumber(value: unknown): number | undefined {
-  const num = Number(value)
-  return Number.isFinite(num) ? num : undefined
 }
 
 function logUseAgentError(message: string, error: unknown): void {
@@ -295,7 +286,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const [currentRunUsage, setCurrentRunUsage] = useState<UsageTotals & { source: TokenSource }>()
 
   // Provider settings hook
-  const { providerModels, contextWindowResolution, getReasoningRuntimeSettings } =
+  const { contextWindowResolution, getReasoningRuntimeSettings } =
     useProviderSettings(provider, model, settings as Record<string, unknown> | undefined)
 
   // Refs for controlling the agent
@@ -320,7 +311,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   } = useSpecManagement(projectId, chatId, runtimeRef, setStatus)
 
   // Message history hook
-  const { messages, setMessages, persistedMessages, messagesPaginationStatus } = useMessageHistory(
+  const { messages, setMessages } = useMessageHistory(
     chatId,
     mode,
     getReasoningRuntimeSettings,
@@ -411,7 +402,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       void flushRunEventBuffer({ force: true, reason: 'stop' })
     }
     setStatus('idle')
-  }, [flushRunEventBuffer, pendingSpec, runIdRef])
+  }, [flushRunEventBuffer, pendingSpec, runIdRef, setCurrentSpec, setPendingSpec])
 
   // Clear messages
   const clear = useCallback(async () => {
@@ -449,7 +440,15 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     setCurrentRunUsage(undefined)
     setCurrentSpec(null)
     setPendingSpec(null)
-  }, [projectId, chatId, messages, saveSessionSummaryMutation])
+  }, [
+    projectId,
+    chatId,
+    messages,
+    saveSessionSummaryMutation,
+    setCurrentSpec,
+    setMessages,
+    setPendingSpec,
+  ])
 
   // Handle input change
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -1437,6 +1436,11 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       onRunCompleted,
       createSpecMutation,
       updateSpecMutation,
+      setCurrentSpec,
+      setMessages,
+      setPendingSpec,
+      specApprovalMode,
+      specPersistenceRef,
     ]
   )
 

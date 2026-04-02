@@ -25,177 +25,14 @@ import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/settings/ThemeToggle'
 import { PandaLogo } from '@/components/ui/panda-logo'
 import { cn } from '@/lib/utils'
-
-const interfaceMap = [
-  {
-    id: 'explorer',
-    label: '01',
-    title: 'Explorer',
-    icon: PanelLeft,
-    summary:
-      'Browse files, search the project, and choose the exact code context you want to work on.',
-    bullets: [
-      'File tree navigation',
-      'Project search panel',
-      'Fast file selection for editor + chat',
-    ],
-  },
-  {
-    id: 'workspace',
-    label: '02',
-    title: 'Workspace',
-    icon: Monitor,
-    summary: 'Edit files, inspect timeline context, and run terminal commands in one place.',
-    bullets: ['Tabbed editor + timeline', 'Integrated terminal', 'Responsive workbench layout'],
-  },
-  {
-    id: 'chat',
-    label: '03',
-    title: 'Chat Panel',
-    icon: PanelRight,
-    summary:
-      'Talk to the agent, move between planning and build flows, and keep the active run visible while you work.',
-    bullets: [
-      'Message history + streaming input',
-      'Mode, model, and file-context controls',
-      'Plan review and build actions',
-    ],
-  },
-  {
-    id: 'inspector',
-    label: '04',
-    title: 'Inspector',
-    icon: Shield,
-    summary:
-      'Inspect run history, plan state, memory, and eval surfaces without leaving the project session.',
-    bullets: ['Run timeline and history', 'Plan panel with approval state', 'Memory and eval tabs'],
-  },
-]
-
-const explorerDetails = [
-  {
-    name: 'FileTree',
-    role: 'Primary explorer for browsing folders and files.',
-    userValue: 'Select, create, rename, or delete files and send them into the editor quickly.',
-  },
-  {
-    name: 'ProjectSearchPanel',
-    role: 'Project-wide search panel living beside the explorer tab.',
-    userValue: 'Jump to the right file faster when you know what you need but not where it lives.',
-  },
-  {
-    name: 'Selection wiring',
-    role: 'File selection flows into `selectedFilePath` and can include line/column targets.',
-    userValue: 'Clicking from search or AI results can open the right file at the right location.',
-  },
-]
-
-const workspaceDetails = [
-  {
-    name: 'FileTabs',
-    role: 'Tracks open files and tab state, including dirty status.',
-    userValue: 'Work across multiple files without losing place.',
-  },
-  {
-    name: 'EditorContainer',
-    role: 'Main code editing surface for the selected file.',
-    userValue: 'Write and save code directly in the workbench instead of switching tools.',
-  },
-  {
-    name: 'Timeline',
-    role: 'Chat-linked timeline view (`Timeline chatId={currentChatId}`).',
-    userValue: 'Understand what changed and when in the context of the active conversation.',
-  },
-  {
-    name: 'Terminal',
-    role: 'Integrated command execution panel tied to the current project.',
-    userValue: 'Run installs, tests, and scripts without leaving Panda.',
-  },
-]
-
-const chatDetails = [
-  {
-    name: 'MessageList',
-    role: 'Shows the conversation history and streaming assistant output.',
-    userValue: 'Keeps the full reasoning and action context visible while you work.',
-  },
-  {
-    name: 'ChatInput',
-    role: 'Prompt composer with mode selection, model controls, reasoning variant, and `@` file mentions.',
-    userValue: 'You can direct the agent precisely and attach project context inline.',
-  },
-  {
-    name: 'Plan Review Card',
-    role: 'Inline review surface for approved, awaiting-review, and executing plan states.',
-    userValue: 'Move from planning to execution without losing the active chat context.',
-  },
-  {
-    name: 'Permission Requests',
-    role: 'Browser-native approval UI for risky command execution and other gated actions.',
-    userValue: 'Teach Panda how your project works so future runs stay aligned.',
-  },
-  {
-    name: 'Share + History Actions',
-    role: 'Chat actions that open the share dialog and run-history inspector.',
-    userValue: 'Review past execution and share the active chat without leaving the project.',
-  },
-]
-
-const specDetails = [
-  {
-    name: 'Run Tab',
-    role: 'Shows persisted run history and current execution progress.',
-    userValue: 'Use it to inspect what happened, not just what the agent said.',
-  },
-  {
-    name: 'Plan Tab',
-    role: 'Editable plan surface with review, approval, and build-from-plan controls.',
-    userValue: 'This is where planning turns into an execution contract.',
-  },
-  {
-    name: 'Memory Tab',
-    role: 'Persistent project context the agent can reuse across future runs.',
-    userValue: 'Keep repeated instructions out of every prompt.',
-  },
-  {
-    name: 'Evals Tab',
-    role: 'Evaluation surface for checking response quality and scenario behavior.',
-    userValue: 'Use it to validate how Panda behaves on repeated workflows.',
-  },
-]
-
-const workflowSteps = [
-  {
-    title: 'Pick context in Explorer',
-    description:
-      'Use the file tree or search panel to choose the files you want to inspect. This sets up the workspace and gives you precise context to mention in chat.',
-  },
-  {
-    title: 'Edit and inspect in Workspace',
-    description:
-      'Open multiple files as tabs, edit code, inspect the timeline, and run terminal commands while staying in the same project session.',
-  },
-  {
-    title: 'Ask Panda to plan, ask, or build',
-    description:
-      'Use the chat input mode selector and send a request with file mentions, model controls, and the right browser context.',
-  },
-  {
-    title: 'Review and approve the plan',
-    description:
-      'For structured work, review the saved plan in the inspector and approve it before build execution starts.',
-  },
-  {
-    title: 'Inspect or resume the run',
-    description:
-      'Open the inspector to view Run, Plan, Memory, and Evals. Recover a paused run when Panda surfaces a resumable checkpoint.',
-  },
-  {
-    title: 'Share, verify, repeat',
-    description:
-      'Review changes in the workspace, verify the results, and share the active chat or revisit run history when needed.',
-  },
-]
+import {
+  chatDetails,
+  explorerDetails,
+  interfaceMap,
+  specDetails,
+  workspaceDetails,
+  workflowSteps,
+} from '@/lib/product/capabilities'
 
 function DetailCard({
   item,
@@ -225,6 +62,13 @@ function DetailCard({
     </motion.div>
   )
 }
+
+const sectionIcons = {
+  explorer: PanelLeft,
+  workspace: Monitor,
+  chat: PanelRight,
+  inspector: Shield,
+} as const
 
 export default function EducationPage() {
   return (
@@ -377,7 +221,7 @@ export default function EducationPage() {
 
             <div className="grid gap-px bg-border md:grid-cols-2 lg:grid-cols-4">
               {interfaceMap.map((section, index) => {
-                const Icon = section.icon
+                const Icon = sectionIcons[section.iconKey]
                 return (
                   <motion.a
                     key={section.id}

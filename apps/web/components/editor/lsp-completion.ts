@@ -6,11 +6,7 @@ import {
   Completion,
 } from '@codemirror/autocomplete'
 import { EditorView, ViewPlugin, ViewUpdate } from '@codemirror/view'
-import type {
-  CompletionItem,
-  CompletionList,
-  InsertTextFormat,
-} from 'vscode-languageserver-protocol'
+import type { CompletionItem } from 'vscode-languageserver-protocol'
 import { LSPClient } from '@/lib/lsp/client'
 
 interface LSPCompletionOptions {
@@ -32,7 +28,6 @@ function lspCompletionToCodeMirror(item: CompletionItem): Completion {
         ? item.documentation
         : item.documentation.value
       : undefined,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- cross-version EditorView type incompatibility
     apply: (item.textEdit
       ? (view: EditorView, _completion: Completion, from: number, to: number) => {
           if (item.textEdit && 'range' in item.textEdit) {
@@ -119,8 +114,6 @@ function createLSPCompletionSource(client: LSPClient, filePath: string) {
 
       if (items.length === 0) return null
 
-      // Calculate the start position for replacement
-      // This handles cases where we want to replace partial word
       const word = context.matchBefore(/\w*/)
       const from = word ? word.from : pos
 
@@ -150,7 +143,7 @@ export function lspCompletion({ client, filePath, enabled = true }: LSPCompletio
   // Create view plugin to sync document changes with LSP
   const syncPlugin = ViewPlugin.fromClass(
     class {
-      constructor(view: EditorView) {
+      constructor(_view: EditorView) {
         // Initial sync happens in useLSP hook
       }
 

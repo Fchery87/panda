@@ -7,45 +7,18 @@ import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/settings/ThemeToggle'
 import { PandaLogo } from '@/components/ui/panda-logo'
 import { cn } from '@/lib/utils'
+import { landingFeatures } from '@/lib/product/capabilities'
 
-const features = [
-  {
-    number: '01',
-    title: 'Plan Review Before Execution',
-    description:
-      'Move from architecting to building with saved plans, explicit approval gates, and build-from-plan execution.',
-    icon: Bot,
-    size: 'small',
-  },
-  {
-    number: '02',
-    title: 'Files, Diffs, and Artifacts',
-    description:
-      'Open files, edit in place, review generated artifacts, and apply updates from the same browser workspace.',
-    icon: FileCode,
-    size: 'large',
-  },
-  {
-    number: '03',
-    title: 'Runs You Can Resume',
-    description:
-      'Track run progress, inspect history, recover paused execution from checkpoints, and keep work moving.',
-    icon: Terminal,
-    size: 'large',
-  },
-  {
-    number: '04',
-    title: 'Browser-Native Approvals and Sharing',
-    description:
-      'Review risky commands in the browser, keep project state synced live, and share the active chat with one link.',
-    icon: Zap,
-    size: 'small',
-  },
-]
+const featureIcons = {
+  bot: Bot,
+  fileCode: FileCode,
+  terminal: Terminal,
+  zap: Zap,
+} as const
 
 export default function Home() {
   return (
-    <div className="dot-grid min-h-screen bg-background">
+    <main id="main-content" className="dot-grid min-h-screen bg-background">
       {/* Navigation - Minimal, sharp */}
       <nav className="surface-1 fixed left-0 right-0 top-0 z-50 border-b border-border">
         <div className="container flex h-14 items-center justify-between">
@@ -72,7 +45,7 @@ export default function Home() {
       </nav>
 
       {/* Hero - Asymmetric split */}
-      <section id="main-content" className="pb-24 pt-32 lg:pb-32 lg:pt-40">
+      <section className="pb-24 pt-32 lg:pb-32 lg:pt-40">
         <div className="container">
           <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-8">
             {/* Left: Typography */}
@@ -228,8 +201,8 @@ export default function Home() {
 
           {/* Feature grid - offset layout */}
           <div className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-6">
-            {features.map((feature, index) => {
-              const Icon = feature.icon
+            {landingFeatures.map((feature, index) => {
+              const Icon = featureIcons[feature.iconKey]
               const isLarge = feature.size === 'large'
 
               return (
@@ -305,6 +278,6 @@ export default function Home() {
           </div>
         </div>
       </footer>
-    </div>
+    </main>
   )
 }

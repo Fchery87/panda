@@ -44,6 +44,8 @@ interface ChatInputProps {
   onModeChange?: (mode: ChatMode) => void
   architectBrainstormEnabled?: boolean
   onArchitectBrainstormEnabledChange?: (enabled: boolean) => void
+  specTier?: SpecTier | 'auto'
+  onSpecTierChange?: (tier: SpecTier | 'auto') => void
   onSendMessage?: (content: string, mode: ChatMode, contextFiles?: string[]) => void
   isStreaming?: boolean
   onStopStreaming?: () => void
@@ -59,10 +61,6 @@ interface ChatInputProps {
   onVariantChange?: (variant: string) => void
   /** Whether the current model supports reasoning variants */
   supportsReasoning?: boolean
-  /** SpecNative: Current spec tier override (auto-detect if not set) */
-  specTier?: SpecTier | 'auto'
-  /** SpecNative: Callback when user changes spec tier override */
-  onSpecTierChange?: (tier: SpecTier | 'auto') => void
   contextualPrompt?: string | null
   onContextualPromptHandled?: () => void
 }
@@ -70,8 +68,10 @@ interface ChatInputProps {
 export function ChatInput({
   mode: controlledMode,
   onModeChange,
-  architectBrainstormEnabled = false,
-  onArchitectBrainstormEnabledChange,
+  architectBrainstormEnabled: _architectBrainstormEnabled = false,
+  onArchitectBrainstormEnabledChange: _onArchitectBrainstormEnabledChange,
+  specTier: _specTier,
+  onSpecTierChange: _onSpecTierChange,
   onSendMessage,
   isStreaming = false,
   onStopStreaming,
@@ -82,8 +82,6 @@ export function ChatInput({
   variant = 'none',
   onVariantChange,
   supportsReasoning = false,
-  specTier = 'auto',
-  onSpecTierChange,
   contextualPrompt,
   onContextualPromptHandled,
 }: ChatInputProps) {

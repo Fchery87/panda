@@ -4,6 +4,7 @@ import { useRef, useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   IconClose,
+  IconBot,
   IconFileTs,
   IconFileJs,
   IconFileJson,
@@ -11,8 +12,8 @@ import {
   IconFileHtml,
   IconFileMarkdown,
   IconFileCode,
-  IconBot,
 } from '@/components/ui/icons'
+import type { WorkspaceOpenTab } from '@/contexts/WorkspaceContext'
 import { cn } from '@/lib/utils'
 
 function getFileIcon(filename: string) {
@@ -67,13 +68,8 @@ function getLanguageColor(filename: string): string | null {
   return LANGUAGE_COLORS[ext] || null
 }
 
-interface FileTab {
-  path: string
-  isDirty?: boolean
-}
-
 interface FileTabsProps {
-  tabs: FileTab[]
+  tabs: WorkspaceOpenTab[]
   activePath: string | null
   onSelect: (path: string) => void
   onClose: (path: string) => void
@@ -153,7 +149,9 @@ export function FileTabs({
         <AnimatePresence initial={false}>
           {tabs.map((tab) => {
             const isActive = tab.path === activePath
-            const filename = tab.path.split('/').pop() || tab.path
+            const isPlanTab = tab.kind === 'plan'
+            const filename = isPlanTab ? tab.title : tab.path.split('/').pop() || tab.path
+            const ariaLabel = isPlanTab ? `Plan tab ${tab.title}` : `File tab ${filename}`
 
             return (
               <motion.div
@@ -173,10 +171,12 @@ export function FileTabs({
                     onSelect(tab.path)
                   }
                 }}
+                aria-label={ariaLabel}
                 className={cn(
                   'group relative flex cursor-pointer items-center gap-1.5 px-3 py-1.5',
                   'border-r border-border font-mono text-xs',
                   'transition-colors duration-150',
+                  isPlanTab && 'bg-background/95',
                   isActive
                     ? 'bg-background text-foreground'
                     : 'bg-surface-2 hover:bg-surface-1 text-muted-foreground hover:text-foreground'
@@ -193,11 +193,19 @@ export function FileTabs({
                   />
                 )}
 
-                {getFileIcon(filename)}
+                {isPlanTab ? (
+                  <IconBot className="h-3.5 w-3.5 text-primary" weight="duotone" />
+                ) : (
+                  getFileIcon(filename)
+                )}
 
-                <span className="max-w-[120px] truncate">{filename}</span>
+                <span className="max-w-[120px] truncate">
+                  {isPlanTab ? `Plan: ${filename}` : filename}
+                </span>
 
-                {tab.isDirty && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
+                {!isPlanTab && tab.isDirty && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                )}
 
                 <button
                   type="button"
@@ -210,7 +218,7 @@ export function FileTabs({
                     e.stopPropagation()
                     onClose(tab.path)
                   }}
-                  aria-label={`Close ${filename}`}
+                  aria-label={isPlanTab ? `Close plan ${filename}` : `Close ${filename}`}
                 >
                   <IconClose className="h-3 w-3" />
                 </button>

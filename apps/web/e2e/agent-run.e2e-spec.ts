@@ -1,69 +1,63 @@
 import { test, expect } from '@playwright/test'
-import { openWorkbenchProjectFixture } from './helpers/workbench'
+import {
+  clickPlanAcceptControl,
+  clickPlanBuildControl,
+  expectPlanTabPresent,
+  openWorkbenchProjectFixture,
+} from './helpers/workbench'
 
 test.describe('Agent Run Acceptance', () => {
   test('seeded plan workflow can be reviewed, approved, and built from plan', async ({ page }) => {
     test.setTimeout(180_000)
+    const planTitle = 'Agent Run Structured Plan'
     await openWorkbenchProjectFixture(page, {
       name: `Agent Run Plan ${Date.now()}`,
-      planStatus: 'awaiting_review',
-      planDraft: `## Goal
-Ship the seeded plan workflow
+      structuredPlanningSession: {
+        plan: {
+          title: planTitle,
+          summary: 'Seeded structured plan for the agent run acceptance flow.',
+          markdown: `# ${planTitle}
 
-## Clarifications
-- None
-
-## Relevant Files
-- apps/web/components/plan/PlanPanel.tsx
-- apps/web/components/chat/ChatInput.tsx
+## Goal
+Ship the seeded structured planning workflow
 
 ## Implementation Plan
-1. Review the seeded plan in the plan inspector.
-2. Approve the plan from the review controls.
-3. Start build mode from the approved plan.
-
-## Risks
-- Keep the workflow deterministic for E2E.
+1. Seed a real planning session from the fixture API.
+2. Review the generated plan in the workspace.
+3. Approve the plan and start build mode from the accepted artifact.
 
 ## Validation
-- Verify the review card and plan tab update.
-
-## Open Questions
-- None`,
+- Verify the plan tab appears in the workspace.
+- Verify approval and build controls remain available.`,
+          acceptanceChecks: [
+            'The generated plan opens as a workspace tab.',
+            'The review panel exposes approve and build actions.',
+          ],
+        },
+      },
     })
 
     const planReviewCard = page.getByText(/plan awaiting review/i)
     await expect(planReviewCard).toBeVisible({ timeout: 20_000 })
+    await expectPlanTabPresent(page, planTitle)
+    await expect(
+      page.getByRole('region', { name: new RegExp(`Plan artifact ${planTitle}`, 'i') })
+    ).toBeVisible({
+      timeout: 15_000,
+    })
 
-    await page.getByRole('button', { name: /^review$/i }).click()
-    const planInspector = page.getByRole('tabpanel', { name: /^plan$/i })
-    await expect(page.getByRole('tab', { name: /^plan$/i })).toBeVisible({ timeout: 10_000 })
-    await expect(planInspector.getByRole('textbox').first()).toHaveValue(
-      /ship the seeded plan workflow/i,
-      {
-        timeout: 10_000,
-      }
-    )
-
-    await planInspector.getByRole('button', { name: /approve plan/i }).click()
-
-    const buildFromPlanButton = planInspector.getByRole('button', { name: /build from plan/i })
-    await expect(buildFromPlanButton).toBeVisible({ timeout: 20_000 })
-    await expect(buildFromPlanButton).toBeEnabled({ timeout: 20_000 })
-    await buildFromPlanButton.click()
+    await clickPlanAcceptControl(page)
+    await clickPlanBuildControl(page)
 
     await expect(page.getByText(/plan executing/i).first()).toBeVisible({
       timeout: 20_000,
     })
     await expect(page.getByRole('log', { name: /chat messages/i })).toContainText(
-      'E2E agent completed approved specification.',
+      /we are switching from architect \(plan mode\) to build \(execute mode\)/i,
       {
         timeout: 20_000,
       }
     )
-    await expect(planInspector.getByText(/executing/i).first()).toBeVisible({
-      timeout: 20_000,
-    })
   })
 
   test('runtime checkpoint can be resumed from run progress panel', async ({ page }) => {
@@ -73,32 +67,15 @@ Ship the seeded plan workflow
       seedRuntimeCheckpoint: true,
     })
 
-    const resumeReadyBadge = page.getByText(/resume ready/i)
-    if (!(await resumeReadyBadge.isVisible().catch(() => false))) {
-      await page.getByRole('button', { name: /toggle inspector/i }).click()
-    }
+    const resumeReadyBadge = page.getByText(/resume available/i)
     await expect(resumeReadyBadge).toBeVisible({ timeout: 20_000 })
-    await page.getByRole('button', { name: /resume run/i }).click()
+    await page.getByRole('button', { name: /recover run|resume run/i }).click()
 
     await expect(page.getByRole('log', { name: /chat messages/i })).toContainText(
       'Resume previous run',
       { timeout: 20_000 }
     )
-    await expect(page.getByRole('log', { name: /chat messages/i })).toContainText(
-      'E2E agent completed approved specification.',
-      { timeout: 30_000 }
-    )
-
-    await page
-      .getByRole('button', { name: /timeline/i })
-      .first()
-      .click()
-    const timelinePanel = page.locator('div').filter({
-      has: page.getByRole('heading', { name: /run timeline/i }),
-    })
-    await expect(timelinePanel.getByText(/resume previous run/i).first()).toBeVisible({
-      timeout: 20_000,
-    })
+    await expect(resumeReadyBadge).not.toBeVisible({ timeout: 20_000 })
   })
 
   test('history action opens the inspector on the run tab', async ({ page }) => {
@@ -108,11 +85,11 @@ Ship the seeded plan workflow
       planStatus: 'approved',
     })
 
-    await page.getByRole('button', { name: /chat more actions/i }).click()
+    await page.getByRole('button', { name: /chat actions/i }).click()
     await page.getByRole('menuitem', { name: /history/i }).click()
 
-    await expect(page.getByText(/^inspector$/i).first()).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByRole('tab', { name: /^run$/i, selected: true })).toBeVisible({
+    await expect(page.getByText(/^review$/i).first()).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('button', { name: /^run$/i }).first()).toBeVisible({
       timeout: 15_000,
     })
   })

@@ -3,6 +3,12 @@ import { ConvexHttpClient } from 'convex/browser'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import type { PlanStatus } from '@/lib/chat/planDraft'
+import { buildDefaultPlanningQuestions } from '@/lib/planning/question-engine'
+import {
+  serializeGeneratedPlanArtifact,
+  type GeneratedPlanArtifact,
+  type GeneratedPlanSection,
+} from '@/lib/planning/types'
 
 const DEFAULT_FIXTURE_NAME = 'Workbench E2E Fixture'
 const DEFAULT_FIXTURE_DESCRIPTION = 'Deterministic browser E2E fixture project'
@@ -72,6 +78,14 @@ interface E2EFixtureProject {
   lastOpenedAt?: number
 }
 
+interface StructuredPlanningSessionPlanSeed {
+  title?: string
+  summary?: string
+  markdown?: string
+  sections?: GeneratedPlanSection[]
+  acceptanceChecks?: string[]
+}
+
 function isE2EFixtureModeEnabled(): boolean {
   return process.env.NODE_ENV !== 'production' && process.env.E2E_AUTH_BYPASS === 'true'
 }
@@ -113,6 +127,152 @@ function buildSeededRuntimeCheckpoint(sessionID: string): RuntimeCheckpointEnvel
       tokens: { input: 0, output: 0, reasoning: 0 },
       lastToolLoopSignature: null,
       toolLoopStreak: 0,
+    },
+  }
+}
+
+function parseStructuredPlanningSessionPlan(
+  rawValue: string | null
+): StructuredPlanningSessionPlanSeed | null {
+  if (!rawValue) return null
+
+  const parsed = JSON.parse(rawValue) as Partial<StructuredPlanningSessionPlanSeed> & {
+    sections?: unknown
+    acceptanceChecks?: unknown
+  }
+
+  if (parsed.sections !== undefined && !Array.isArray(parsed.sections)) {
+    throw new Error('Structured planning fixture sections must be an array')
+  }
+  if (parsed.acceptanceChecks !== undefined && !Array.isArray(parsed.acceptanceChecks)) {
+    throw new Error('Structured planning fixture acceptance checks must be an array')
+  }
+
+  return {
+    title: typeof parsed.title === 'string' ? parsed.title : undefined,
+    summary: typeof parsed.summary === 'string' ? parsed.summary : undefined,
+    markdown: typeof parsed.markdown === 'string' ? parsed.markdown : undefined,
+    sections: Array.isArray(parsed.sections)
+      ? (parsed.sections as GeneratedPlanSection[])
+      : undefined,
+    acceptanceChecks: Array.isArray(parsed.acceptanceChecks)
+      ? (parsed.acceptanceChecks as string[])
+      : undefined,
+  }
+}
+
+function buildStructuredGeneratedPlan(args: {
+  chatId: Id<'chats'>
+  sessionId: string
+  fixtureName: string
+  planSeed: StructuredPlanningSessionPlanSeed | null
+}): GeneratedPlanArtifact {
+  const generatedAt = Date.now()
+  const sections: GeneratedPlanSection[] =
+    args.planSeed?.sections?.length && args.planSeed.sections.length > 0
+      ? args.planSeed.sections
+      : [
+          {
+            id: 'goal',
+            title: 'Goal',
+            content: `Seed a real structured planning session for ${args.fixtureName}.`,
+            order: 10,
+          },
+          {
+            id: 'implementation',
+            title: 'Implementation Plan',
+            content:
+              '1. Create the planning session through the E2E fixture API.\n2. Generate a workspace plan artifact from the planning session.\n3. Verify the workspace plan tab and approval controls.',
+            order: 20,
+          },
+          {
+            id: 'validation',
+            title: 'Validation',
+            content:
+              '- Open the plan tab in the workspace.\n- Approve the plan.\n- Start build from plan.',
+            order: 30,
+          },
+        ]
+
+  const acceptanceChecks =
+    args.planSeed?.acceptanceChecks?.length && args.planSeed.acceptanceChecks.length > 0
+      ? args.planSeed.acceptanceChecks
+      : [
+          'Planning session exists in Convex.',
+          'Workspace opens a real plan tab from the generated artifact.',
+          'Approve and build controls remain available in the review flow.',
+        ]
+
+  const generatedPlan: GeneratedPlanArtifact = {
+    chatId: args.chatId,
+    sessionId: args.sessionId,
+    title: args.planSeed?.title?.trim() || `${args.fixtureName} Structured Plan`,
+    summary:
+      args.planSeed?.summary?.trim() ||
+      `Seeded structured planning session for ${args.fixtureName}.`,
+    markdown: args.planSeed?.markdown?.trim() || '',
+    sections,
+    acceptanceChecks,
+    status: 'ready_for_review',
+    generatedAt,
+  }
+
+  return {
+    ...generatedPlan,
+    markdown: generatedPlan.markdown.trim() || serializeGeneratedPlanArtifact(generatedPlan),
+  }
+}
+
+async function seedStructuredPlanningSession(args: {
+  convex: ConvexHttpClient
+  chatId: Id<'chats'>
+  fixtureName: string
+  planSeed: StructuredPlanningSessionPlanSeed | null
+  acceptPlan: boolean
+}) {
+  const planningQuestions = buildDefaultPlanningQuestions({ projectName: args.fixtureName })
+  const sessionId = (await args.convex.mutation(api.planningSessions.startIntake, {
+    chatId: args.chatId,
+    questions: planningQuestions,
+  })) as string
+
+  for (const question of planningQuestions) {
+    const selectedOptionId = question.suggestions[0]?.id
+    if (!selectedOptionId) continue
+
+    await args.convex.mutation(api.planningSessions.answerQuestion, {
+      sessionId,
+      questionId: question.id,
+      selectedOptionId,
+      source: 'suggestion',
+    })
+  }
+
+  const generatedPlan = buildStructuredGeneratedPlan({
+    chatId: args.chatId,
+    sessionId,
+    fixtureName: args.fixtureName,
+    planSeed: args.planSeed,
+  })
+
+  await args.convex.mutation(api.planningSessions.completeIntake, {
+    sessionId,
+    generatedPlan,
+  })
+
+  let effectivePlanStatus: GeneratedPlanArtifact['status'] = generatedPlan.status
+  if (args.acceptPlan) {
+    await args.convex.mutation(api.planningSessions.acceptPlan, {
+      sessionId,
+    })
+    effectivePlanStatus = 'accepted'
+  }
+
+  return {
+    sessionId,
+    generatedPlan: {
+      ...generatedPlan,
+      status: effectivePlanStatus,
     },
   }
 }
@@ -172,6 +332,11 @@ export async function GET(request: Request) {
     const autoRunCommands = url.searchParams.get('autoRunCommands')
     const planDraft = url.searchParams.get('planDraft')?.trim() || null
     const requestedPlanStatus = url.searchParams.get('planStatus')?.trim() || null
+    const structuredPlanningSession = url.searchParams.get('structuredPlanningSession') === '1'
+    const structuredPlanningSessionPlan = parseStructuredPlanningSessionPlan(
+      url.searchParams.get('structuredPlanningSessionPlan')
+    )
+    const acceptStructuredPlan = url.searchParams.get('acceptStructuredPlan') === '1'
     const planStatus =
       requestedPlanStatus && PLAN_STATUSES.includes(requestedPlanStatus as PlanStatus)
         ? (requestedPlanStatus as PlanStatus)
@@ -272,7 +437,15 @@ export async function GET(request: Request) {
       })
     }
 
-    if (filePath || artifactContent || seedRuntimeCheckpoint || planDraft || planStatus) {
+    if (
+      filePath ||
+      artifactContent ||
+      seedRuntimeCheckpoint ||
+      planDraft ||
+      planStatus ||
+      structuredPlanningSession ||
+      structuredPlanningSessionPlan
+    ) {
       const chats = await convex.query(api.chats.list, { projectId })
       const existingChat = chats[0]
       chatId =
@@ -291,6 +464,20 @@ export async function GET(request: Request) {
         ...(planStatus ? { planStatus } : {}),
         ...(planDraft ? { planLastGeneratedAt: Date.now() } : {}),
       })
+    }
+
+    let planningSessionId: string | undefined
+    let structuredGeneratedPlan: GeneratedPlanArtifact | undefined
+    if (chatId && (structuredPlanningSession || structuredPlanningSessionPlan)) {
+      const seededStructuredSession = await seedStructuredPlanningSession({
+        convex,
+        chatId,
+        fixtureName,
+        planSeed: structuredPlanningSessionPlan,
+        acceptPlan: acceptStructuredPlan,
+      })
+      planningSessionId = seededStructuredSession.sessionId
+      structuredGeneratedPlan = seededStructuredSession.generatedPlan
     }
 
     if (filePath) {
@@ -337,6 +524,14 @@ export async function GET(request: Request) {
       ...(filePath ? { filePath } : {}),
       ...(artifactContent !== null && filePath ? { artifactPath: filePath } : {}),
       ...(planStatus ? { planStatus } : {}),
+      ...(planningSessionId ? { planningSessionId } : {}),
+      ...(structuredGeneratedPlan
+        ? {
+            generatedPlanTitle: structuredGeneratedPlan.title,
+            generatedPlanStatus: structuredGeneratedPlan.status,
+            planTabPath: `plan:${planningSessionId}`,
+          }
+        : {}),
       ...(sessionID ? { sessionID } : {}),
     })
   } catch (error) {

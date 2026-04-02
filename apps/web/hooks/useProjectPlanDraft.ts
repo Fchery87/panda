@@ -12,6 +12,7 @@ import {
   type PlanStatus,
 } from '@/lib/chat/planDraft'
 import type { ChatMode } from '@/lib/agent/prompt-library'
+import type { GeneratedPlanArtifact } from '@/lib/planning/types'
 
 type ProjectPlanChat = {
   _id: Id<'chats'>
@@ -28,8 +29,15 @@ type ProjectPlanMessage = {
   content: string
 }
 
+type ActivePlanningSession = {
+  sessionId: string
+  status?: string
+  generatedPlan?: GeneratedPlanArtifact
+} | null
+
 export function useProjectPlanDraft(args: {
   activeChat: ProjectPlanChat | null
+  activePlanningSession: ActivePlanningSession
   chatMode: ChatMode
   architectBrainstormEnabled: boolean
   agentStatus: AgentStatus
@@ -42,14 +50,17 @@ export function useProjectPlanDraft(args: {
     planSourceMessageId?: string
     planApprovedAt?: number
   }) => Promise<unknown>
+  acceptPlanningSession?: (args: { sessionId: string }) => Promise<unknown>
 }) {
   const {
     activeChat,
+    activePlanningSession,
     chatMode,
     architectBrainstormEnabled,
     agentStatus,
     agentMessages,
     updateChatMutation,
+    acceptPlanningSession,
   } = args
   const [planDraft, setPlanDraft] = useState('')
   const [isSavingPlanDraft, setIsSavingPlanDraft] = useState(false)
@@ -121,18 +132,28 @@ export function useProjectPlanDraft(args: {
     if (!activeChat || !canApprovePlan(activeChat.planStatus, planDraft)) return
 
     try {
-      await updateChatMutation({
-        id: activeChat._id,
-        planStatus: 'approved',
-        planApprovedAt: Date.now(),
-      })
+      if (
+        activePlanningSession?.sessionId &&
+        activePlanningSession.generatedPlan &&
+        acceptPlanningSession
+      ) {
+        await acceptPlanningSession({
+          sessionId: activePlanningSession.sessionId,
+        })
+      } else {
+        await updateChatMutation({
+          id: activeChat._id,
+          planStatus: 'approved',
+          planApprovedAt: Date.now(),
+        })
+      }
       toast.success('Plan approved')
     } catch (error) {
       toast.error('Failed to approve plan', {
         description: error instanceof Error ? error.message : 'Unknown error',
       })
     }
-  }, [activeChat, planDraft, updateChatMutation])
+  }, [acceptPlanningSession, activeChat, activePlanningSession, planDraft, updateChatMutation])
 
   useEffect(() => {
     if (!activeChat?._id) return

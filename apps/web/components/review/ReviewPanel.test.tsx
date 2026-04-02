@@ -21,5 +21,7 @@ describe('ReviewPanel', () => {
     expect(html).toContain('Artifacts')
     expect(html).toContain('Memory')
     expect(html).toContain('Evals')
+    expect(html).toContain('Planning intake')
+    expect(html).toContain('Start intake')
   })
 })

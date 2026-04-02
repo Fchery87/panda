@@ -9,17 +9,12 @@ import { RightPanel } from '@/components/panels/RightPanel'
 import { SpecDrawer } from '@/components/chat/SpecDrawer'
 import { StatusBar } from '@/components/workbench/StatusBar'
 import { Workbench } from '@/components/workbench/Workbench'
-import { useWorkspace } from '@/contexts/WorkspaceContext'
+import { useWorkspace, type WorkspaceOpenTab } from '@/contexts/WorkspaceContext'
 import { cn } from '@/lib/utils'
 import type { FormalSpecification } from '@/lib/agent/spec/types'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import type { WorkspaceArtifactPreview } from '@/components/workbench/artifact-preview'
 import type { SidebarSection } from '@/components/sidebar/SidebarRail'
-
-type OpenTab = {
-  path: string
-  isDirty?: boolean
-}
 
 type FileRecord = {
   _id: Id<'files'>
@@ -39,7 +34,7 @@ interface ProjectWorkspaceLayoutProps {
     column: number
     nonce: number
   } | null
-  openTabs: OpenTab[]
+  openTabs: WorkspaceOpenTab[]
   onSelectFile: (path: string, location?: { line: number; column: number }) => void
   onCloseTab: (path: string) => void
   onCreateFile: (path: string) => Promise<void>

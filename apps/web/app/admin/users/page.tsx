@@ -1,16 +1,17 @@
 'use client'
 
 import * as React from 'react'
-import { useQuery, useMutation } from 'convex/react'
+import { useMutation, useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { toast } from 'sonner'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -20,6 +21,14 @@ import {
 } from '@/components/ui/select'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   Search,
   Shield,
@@ -36,14 +45,20 @@ import {
   ChevronDown,
 } from 'lucide-react'
 
+import {
+  readAdminEnumQueryParam,
+  readAdminQueryParam,
+  useAdminQueryUpdater,
+} from '@/lib/admin/query-state'
+
 const filterOptions = [
   { value: 'all', label: 'All Users' },
   { value: 'admins', label: 'Admins' },
   { value: 'banned', label: 'Banned' },
   { value: 'active', label: 'Active' },
-]
+] as const
 
-type AdminUserFilter = 'all' | 'admins' | 'banned' | 'active'
+type AdminUserFilter = (typeof filterOptions)[number]['value']
 type AdminUserId = Id<'users'>
 
 type AdminListUser = NonNullable<
@@ -60,12 +75,21 @@ function mergeUsers(existing: AdminListUser[], incoming: AdminListUser[]): Admin
 
 export default function AdminUsersPage() {
   const router = useRouter()
-  const [search, setSearch] = React.useState('')
-  const [filter, setFilter] = React.useState<AdminUserFilter>('all')
-  const [selectedUserId, setSelectedUserId] = React.useState<AdminUserId | null>(null)
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  const search = readAdminQueryParam(searchParams, 'search')
+  const filter = readAdminEnumQueryParam(
+    searchParams,
+    'filter',
+    filterOptions.map((option) => option.value),
+    'all'
+  ) as AdminUserFilter
   const [isLoading, setIsLoading] = React.useState(false)
   const [cursor, setCursor] = React.useState<string | undefined>(undefined)
   const [loadedUsers, setLoadedUsers] = React.useState<AdminListUser[]>([])
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
+  const [pendingDeleteUserId, setPendingDeleteUserId] = React.useState<AdminUserId | null>(null)
 
   const users = useQuery(api.admin.listUsers, {
     cursor,
@@ -73,11 +97,6 @@ export default function AdminUsersPage() {
     filter,
     limit: 50,
   })
-
-  const selectedUserDetails = useQuery(
-    api.admin.getUserDetails,
-    selectedUserId ? { userId: selectedUserId } : 'skip'
-  )
 
   const updateUserAdmin = useMutation(api.admin.updateUserAdmin)
   const updateUserBan = useMutation(api.admin.updateUserBan)
@@ -92,6 +111,30 @@ export default function AdminUsersPage() {
     if (!users) return
     setLoadedUsers((previous) => (cursor ? mergeUsers(previous, users.users) : users.users))
   }, [users, cursor])
+
+  const selectedUserIdParam = readAdminQueryParam(searchParams, 'selectedUserId')
+  const selectedUserId = useQuery(
+    api.admin.resolveAdminUserIdFromUrl,
+    selectedUserIdParam ? { userId: selectedUserIdParam } : 'skip'
+  )
+
+  const selectedUserDetails = useQuery(
+    api.admin.getUserDetails,
+    selectedUserId ? { userId: selectedUserId } : 'skip'
+  )
+
+  const updateQuery = useAdminQueryUpdater(pathname, router, searchParams)
+
+  const selectUser = React.useCallback(
+    (userId: AdminUserId) => {
+      updateQuery({ selectedUserId: userId })
+    },
+    [updateQuery]
+  )
+
+  const clearSelectedUser = React.useCallback(() => {
+    updateQuery({ selectedUserId: null })
+  }, [updateQuery])
 
   const handleToggleAdmin = async (userId: AdminUserId, isAdmin: boolean) => {
     setIsLoading(true)
@@ -127,16 +170,21 @@ export default function AdminUsersPage() {
     }
   }
 
-  const handleDeleteUser = async (userId: AdminUserId) => {
-    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-      return
-    }
+  const beginDeleteUser = React.useCallback((userId: AdminUserId) => {
+    setPendingDeleteUserId(userId)
+    setDeleteDialogOpen(true)
+  }, [])
 
+  const handleDeleteUser = async (userId: AdminUserId) => {
     setIsLoading(true)
     try {
       await deleteUser({ userId })
       toast.success('User deleted successfully')
-      setSelectedUserId(null)
+      if (selectedUserId === userId) {
+        clearSelectedUser()
+      }
+      setDeleteDialogOpen(false)
+      setPendingDeleteUserId(null)
     } catch (error) {
       void error
       toast.error('Failed to delete user')
@@ -145,9 +193,13 @@ export default function AdminUsersPage() {
     }
   }
 
+  const pendingDeleteUser =
+    pendingDeleteUserId && selectedUserDetails?.user._id === pendingDeleteUserId
+      ? selectedUserDetails
+      : null
+
   return (
     <div className="container mx-auto p-8">
-      {/* Header */}
       <div className="mb-8">
         <Button
           variant="ghost"
@@ -162,58 +214,79 @@ export default function AdminUsersPage() {
           <Users className="h-8 w-8" />
           <div>
             <h1 className="text-3xl font-bold">User Management</h1>
-            <p className="text-muted-foreground">Manage user accounts, permissions, and access</p>
+            <p className="text-muted-foreground">
+              Manage user accounts, permissions, and access with keyboard-friendly selection
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Search and Filter */}
       <Card className="mb-6 rounded-none">
         <CardContent className="pt-6">
-          <div className="flex gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search by name or email..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="rounded-none pl-10"
-              />
+          <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
+            <div className="space-y-2">
+              <Label htmlFor="admin-user-search" className="font-mono text-sm">
+                Search users
+              </Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="admin-user-search"
+                  placeholder="Search by name or email..."
+                  value={search}
+                  onChange={(e) =>
+                    updateQuery({
+                      search: e.target.value || null,
+                    })
+                  }
+                  className="rounded-none pl-10"
+                />
+              </div>
             </div>
-            <Select value={filter} onValueChange={(value) => setFilter(value as AdminUserFilter)}>
-              <SelectTrigger className="w-[180px] rounded-none">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {filterOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+
+            <div className="space-y-2">
+              <Label htmlFor="admin-user-filter" className="font-mono text-sm">
+                User filter
+              </Label>
+              <Select value={filter} onValueChange={(value) => updateQuery({ filter: value })}>
+                <SelectTrigger
+                  id="admin-user-filter"
+                  className="rounded-none"
+                  aria-label="User filter"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {filterOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Users List */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* User List */}
         <Card className="rounded-none lg:col-span-2">
           <CardHeader>
             <CardTitle>Users ({loadedUsers.length || 0})</CardTitle>
             <CardDescription>
-              Click on a user to view details and manage permissions
+              Select a row with keyboard or pointer input to view details and manage permissions
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[600px]">
               <div className="space-y-2">
                 {loadedUsers.map((user) => (
-                  <div
+                  <button
                     key={user._id}
-                    onClick={() => setSelectedUserId(user._id)}
-                    className={`flex cursor-pointer items-center justify-between rounded-none border p-4 transition-colors ${
+                    type="button"
+                    aria-pressed={selectedUserId === user._id}
+                    onClick={() => selectUser(user._id)}
+                    className={`flex w-full items-center justify-between rounded-none border p-4 text-left transition-colors ${
                       selectedUserId === user._id
                         ? 'border-primary bg-primary/5'
                         : 'border-border hover:bg-muted/50'
@@ -251,7 +324,7 @@ export default function AdminUsersPage() {
                         {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Unknown'}
                       </p>
                     </div>
-                  </div>
+                  </button>
                 ))}
 
                 {loadedUsers.length === 0 && (
@@ -275,7 +348,6 @@ export default function AdminUsersPage() {
           </CardContent>
         </Card>
 
-        {/* User Details Panel */}
         <Card className="rounded-none">
           <CardHeader>
             <CardTitle>User Details</CardTitle>
@@ -288,7 +360,6 @@ export default function AdminUsersPage() {
           <CardContent>
             {selectedUserDetails ? (
               <div className="space-y-6">
-                {/* User Info */}
                 <div className="flex items-center gap-4">
                   <div className="flex h-16 w-16 items-center justify-center bg-primary font-mono text-2xl font-bold text-primary-foreground">
                     {selectedUserDetails.user.name?.charAt(0) ||
@@ -307,7 +378,6 @@ export default function AdminUsersPage() {
 
                 <Separator />
 
-                {/* Stats */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="rounded-none border border-border p-3 text-center">
                     <FolderGit className="mx-auto mb-1 h-5 w-5 text-muted-foreground" />
@@ -335,7 +405,6 @@ export default function AdminUsersPage() {
 
                 <Separator />
 
-                {/* Actions */}
                 <div className="space-y-3">
                   <p className="font-mono text-sm uppercase tracking-wider text-muted-foreground">
                     Actions
@@ -398,7 +467,7 @@ export default function AdminUsersPage() {
                   <Button
                     variant="destructive"
                     className="w-full rounded-none"
-                    onClick={() => handleDeleteUser(selectedUserDetails.user._id)}
+                    onClick={() => beginDeleteUser(selectedUserDetails.user._id)}
                     disabled={isLoading}
                   >
                     {isLoading ? (
@@ -421,6 +490,78 @@ export default function AdminUsersPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteDialogOpen(open)
+          if (!open) {
+            setPendingDeleteUserId(null)
+          }
+        }}
+      >
+        <DialogContent className="rounded-none">
+          <DialogHeader>
+            <DialogTitle>Delete user</DialogTitle>
+            <DialogDescription>
+              This permanently removes the user and all associated projects, chats, files, and
+              generated data.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {pendingDeleteUser ? (
+                <>
+                  You are about to delete{' '}
+                  <span className="font-medium text-foreground">
+                    {pendingDeleteUser.user.name || pendingDeleteUser.user.email}
+                  </span>
+                  .
+                </>
+              ) : (
+                'Confirm the deletion before continuing.'
+              )}
+            </p>
+
+            {pendingDeleteUser ? (
+              <div className="rounded-none border border-border p-3">
+                <p className="font-medium">{pendingDeleteUser.user.name || 'Unnamed User'}</p>
+                <p className="font-mono text-sm text-muted-foreground">
+                  {pendingDeleteUser.user.email}
+                </p>
+              </div>
+            ) : null}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-none"
+              onClick={() => {
+                setDeleteDialogOpen(false)
+                setPendingDeleteUserId(null)
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              className="rounded-none"
+              onClick={() => {
+                if (pendingDeleteUserId) {
+                  void handleDeleteUser(pendingDeleteUserId)
+                }
+              }}
+              disabled={isLoading || !pendingDeleteUserId}
+            >
+              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Delete User'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

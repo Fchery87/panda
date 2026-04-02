@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { isAuthenticatedNextjs } from '@convex-dev/auth/nextjs/server'
+import { isAuthenticatedNextjs } from '@/lib/auth/nextjs'
 
 function normalizeBaseUrl(baseUrl?: string): string {
   return (baseUrl || 'https://llm.chutes.ai/v1').replace(/\/+$/, '')

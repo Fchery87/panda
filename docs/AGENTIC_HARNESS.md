@@ -96,18 +96,25 @@ harness instead of only as a chat prompt style.
 
 ### Plan Workflow
 
-Plan state is stored on the active chat and currently supports:
+Structured planning now has a dedicated planning-session layer in Convex in
+addition to the legacy chat-level compatibility fields.
 
-- `idle`
-- `drafting`
-- `awaiting_review`
-- `approved`
-- `stale`
+The planning session state machine is:
+
+- `intake`
+- `generating`
+- `ready_for_review`
+- `accepted`
 - `executing`
+- `completed`
+- `failed`
+- `stale`
 
-The current chat also stores plan metadata including:
+The active chat still mirrors compatibility fields for the existing product
+surfaces:
 
 - `planDraft`
+- `planStatus`
 - `planSourceMessageId`
 - `planLastGeneratedAt`
 - `planApprovedAt`
@@ -129,19 +136,59 @@ these sections:
 This artifact is the canonical plan surface used by the UI. The previous
 assistant-message extraction path remains only as a compatibility fallback.
 
+### Guided Intake
+
+Planning intake now starts in the right-side review surface rather than as an
+unstructured chat turn.
+
+- The user gets one question at a time
+- Suggested answers are shown as numbered options
+- Freeform fallback remains available when the question allows it
+- After the final answer, Panda generates the plan artifact and promotes it into
+  the main workspace
+
+This keeps intake lightweight while making the resulting plan a first-class
+workspace document instead of transient popup state.
+
+### Workspace Plan Artifact Tabs
+
+Generated plans are now rendered as virtual workspace tabs, not file tabs.
+
+- Plan tabs use a synthetic workspace path of `plan:<sessionId>`
+- They live beside file tabs in the existing workbench tab strip
+- The selected plan tab renders a dedicated plan artifact view instead of the
+  file editor
+- When the active planning session produces a new generated plan revision, Panda
+  updates the existing tab in place rather than duplicating it
+
 ### Build From Plan
 
 When the user approves a plan and triggers **Build from Plan**:
 
 - the chat is switched to build mode
-- the plan status becomes `executing`
-- the new run id is linked back to the chat via `planBuildRunId`
+- the accepted planning session is marked `accepted`, then `executing`
+- the new run id is linked back through planning-session execution state and
+  mirrored into the chat compatibility fields
 - the build prompt receives an explicit execution contract that treats the
-  approved plan as primary context instead of relying on conversation memory
+  accepted generated plan artifact as primary context instead of relying on
+  conversation memory
 
 Normal build messages do not automatically inherit the plan forever. Approved
 plan injection only happens for explicit build-from-plan runs or while the chat
 is still tied to an active approved-plan execution.
+
+### Planning Diagnostics
+
+In development, Panda exposes a compact planning debug card in the run progress
+surface when an active planning session exists. It shows:
+
+- active planning session id
+- answered questions vs total questions
+- current unanswered question
+- last answer source (`suggestion` or `freeform`)
+- generated plan tab id and artifact status
+- whether the workspace plan tab is open
+- whether the accepted plan is currently executing
 
 ### Planning Context Grounding
 

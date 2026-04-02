@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { extractBrainstormPhase } from './brainstorming'
+import { type GeneratedPlanArtifact } from '../planning/types'
 import {
   buildApprovedPlanExecutionMessage,
   buildMessageWithPlanDraft,
@@ -45,6 +46,31 @@ describe('planDraft helpers', () => {
 
   it('buildApprovedPlanExecutionMessage returns the original request when no approved plan exists', () => {
     expect(buildApprovedPlanExecutionMessage('   ')).toBe('Execute the approved plan.')
+  })
+
+  it('build helpers accept generated plan artifacts as input', () => {
+    const artifact: GeneratedPlanArtifact = {
+      chatId: 'chat-1',
+      sessionId: 'session-1',
+      title: 'Generated Plan',
+      summary: 'Typed plan summary',
+      markdown: '',
+      sections: [
+        { id: 'goal', title: 'Goal', content: 'Ship the feature', order: 1 },
+        { id: 'plan', title: 'Implementation Plan', content: '1. Build it', order: 2 },
+      ],
+      acceptanceChecks: ['Review the plan', 'Build from the plan'],
+      status: 'ready_for_review',
+      generatedAt: 123,
+    }
+
+    const prefixed = buildMessageWithPlanDraft(artifact, 'Implement the plan')
+    expect(prefixed).toContain('# Generated Plan')
+    expect(prefixed).toContain('## Implementation Plan')
+
+    const executionMessage = buildApprovedPlanExecutionMessage(artifact)
+    expect(executionMessage).toContain('# Generated Plan')
+    expect(executionMessage).toContain('Original request:')
   })
 
   it('pickLatestArchitectAssistantPlan returns latest architect assistant content', () => {

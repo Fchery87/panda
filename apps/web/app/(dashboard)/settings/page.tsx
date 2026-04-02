@@ -2,7 +2,7 @@
 
 import { appLog } from '@/lib/logger'
 import * as React from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import { toast } from 'sonner'
@@ -32,6 +32,13 @@ import { User, Palette, Bot, Save, Loader2, ArrowLeft, Settings2, Plus, X } from
 import { getDefaultProviderCapabilities, type ProviderType } from '@/lib/llm/types'
 import { extractOpenRouterFreeCodingModelIds } from '@/lib/llm/openrouter-free-models'
 import type { ProviderCatalogEntry } from '@/lib/llm/provider-catalog'
+import {
+  buildSettingsTabHref,
+  createSettingsSignature,
+  getSettingsTabFromSearchParams,
+  type SettingsSnapshotInput,
+  type SettingsTab,
+} from '@/lib/settings-navigation'
 
 interface ProviderConfig {
   provider?: string
@@ -62,6 +69,18 @@ interface SettingsState {
   // Admin override tracking
   overrideGlobalProvider: boolean
   overrideGlobalModel: boolean
+}
+
+type SettingsQueryRecord = {
+  theme: 'light' | 'dark' | 'system'
+  language?: string | null
+  defaultProvider?: string | null
+  defaultModel?: string | null
+  providerConfigs?: Record<string, unknown> | null
+  overrideGlobalProvider?: boolean | null
+  overrideGlobalModel?: boolean | null
+  agentDefaults?: AgentPolicy | null
+  updatedAt: number
 }
 
 type StoredProviderConfig = Partial<ProviderConfig> & Record<string, unknown>
@@ -214,12 +233,103 @@ const languages = [
   { value: 'ja', label: 'Japanese' },
 ]
 
+function buildSettingsStateFromQuery(latestSettings: SettingsQueryRecord | null): {
+  agentDefaults: AgentPolicy
+  formState: SettingsState
+} {
+  if (latestSettings === null) {
+    return {
+      agentDefaults: getDefaultPolicyForMode('code'),
+      formState: {
+        theme: 'system',
+        language: 'en',
+        defaultProvider: 'openai',
+        defaultModel: 'gpt-4o-mini',
+        providers: defaultProviders,
+        overrideGlobalProvider: false,
+        overrideGlobalModel: false,
+      },
+    }
+  }
+
+  return {
+    agentDefaults: latestSettings.agentDefaults ?? getDefaultPolicyForMode('code'),
+    formState: {
+      theme: latestSettings.theme,
+      language: latestSettings.language || 'en',
+      defaultProvider: latestSettings.defaultProvider || 'openai',
+      defaultModel: latestSettings.defaultModel || 'gpt-4o-mini',
+      providers: latestSettings.providerConfigs
+        ? {
+            ...defaultProviders,
+            ...Object.fromEntries(
+              Object.entries(latestSettings.providerConfigs).map(([key, config]) => {
+                const base = defaultProviders[key] ?? {
+                  provider: key,
+                  name: (config as StoredProviderConfig).name || key,
+                  description: (config as StoredProviderConfig).description || '',
+                  apiKey: '',
+                  enabled: false,
+                  defaultModel: '',
+                  availableModels: [],
+                  testStatus: 'idle' as const,
+                }
+                const mergedConfig = {
+                  ...base,
+                  ...(config as StoredProviderConfig),
+                  testStatus: 'idle' as const,
+                }
+                return [key, mergedConfig]
+              })
+            ),
+          }
+        : defaultProviders,
+      overrideGlobalProvider: latestSettings.overrideGlobalProvider ?? false,
+      overrideGlobalModel: latestSettings.overrideGlobalModel ?? false,
+    },
+  }
+}
+
+function buildSettingsSignatureInput(
+  formState: SettingsState,
+  agentDefaults: AgentPolicy
+): SettingsSnapshotInput {
+  return {
+    theme: formState.theme,
+    language: formState.language,
+    defaultProvider: formState.defaultProvider,
+    defaultModel: formState.defaultModel,
+    providers: Object.fromEntries(
+      Object.entries(formState.providers).map(([key, provider]) => [
+        key,
+        {
+          apiKey: provider.apiKey,
+          enabled: provider.enabled,
+          defaultModel: provider.defaultModel,
+          baseUrl: provider.baseUrl,
+          useCodingPlan: provider.useCodingPlan,
+          reasoningEnabled: provider.reasoningEnabled,
+          reasoningMode: provider.reasoningMode,
+          reasoningBudget: provider.reasoningBudget,
+          showReasoningPanel: provider.showReasoningPanel,
+        },
+      ])
+    ),
+    overrideGlobalProvider: formState.overrideGlobalProvider,
+    overrideGlobalModel: formState.overrideGlobalModel,
+    agentDefaults,
+  }
+}
+
 export default function SettingsPage() {
   const router = useRouter()
-  const settings = useQuery(api.settings.get)
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const settings = useQuery(api.settings.get) as SettingsQueryRecord | null | undefined
   const adminDefaults = useQuery(api.settings.getAdminDefaults)
   const updateSettings = useMutation(api.settings.update)
   const [isSaving, setIsSaving] = React.useState(false)
+  const initialSettingsSignatureRef = React.useRef<string | null>(null)
 
   // Convex `useQuery` results are not guaranteed to be referentially stable.
   // Use a version key so our "sync from server" effect doesn't loop.
@@ -253,63 +363,41 @@ export default function SettingsPage() {
     const latestSettings = settingsRef.current
     if (latestSettings === undefined) return
 
-    if (latestSettings === null) {
-      setAgentDefaults(getDefaultPolicyForMode('code'))
-      setFormState((prev) => ({
-        ...prev,
-        theme: 'system',
-        language: 'en',
-        defaultProvider: 'openai',
-        defaultModel: 'gpt-4o-mini',
-        providers: defaultProviders,
-        overrideGlobalProvider: false,
-        overrideGlobalModel: false,
-      }))
-      return
+    const nextSettings = buildSettingsStateFromQuery(latestSettings)
+    setAgentDefaults(nextSettings.agentDefaults)
+    setFormState(nextSettings.formState)
+    initialSettingsSignatureRef.current = createSettingsSignature(
+      buildSettingsSignatureInput(nextSettings.formState, nextSettings.agentDefaults)
+    )
+  }, [settingsSyncKey])
+
+  const currentSettingsSignature = React.useMemo(
+    () => createSettingsSignature(buildSettingsSignatureInput(formState, agentDefaults)),
+    [agentDefaults, formState]
+  )
+  const activeTab = React.useMemo(
+    () => getSettingsTabFromSearchParams(new URLSearchParams(searchParams.toString())),
+    [searchParams]
+  )
+  const isDirty =
+    settings !== undefined &&
+    initialSettingsSignatureRef.current !== null &&
+    currentSettingsSignature !== initialSettingsSignatureRef.current
+
+  React.useEffect(() => {
+    if (!isDirty) return
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
     }
 
-    setAgentDefaults(
-      ((latestSettings as Record<string, unknown>).agentDefaults as
-        | AgentPolicy
-        | null
-        | undefined) ?? getDefaultPolicyForMode('code')
-    )
+    window.addEventListener('beforeunload', handleBeforeUnload)
 
-    setFormState((prev) => ({
-      ...prev,
-      theme: latestSettings.theme,
-      language: latestSettings.language || 'en',
-      defaultProvider: latestSettings.defaultProvider || 'openai',
-      defaultModel: latestSettings.defaultModel || 'gpt-4o-mini',
-      providers: latestSettings.providerConfigs
-        ? {
-            ...defaultProviders,
-            ...Object.fromEntries(
-              Object.entries(latestSettings.providerConfigs).map(([key, config]) => {
-                const base = defaultProviders[key] ?? {
-                  provider: key,
-                  name: (config as StoredProviderConfig).name || key,
-                  description: (config as StoredProviderConfig).description || '',
-                  apiKey: '',
-                  enabled: false,
-                  defaultModel: '',
-                  availableModels: [],
-                  testStatus: 'idle' as const,
-                }
-                const mergedConfig = {
-                  ...base,
-                  ...(config as StoredProviderConfig),
-                  testStatus: 'idle' as const,
-                }
-                return [key, mergedConfig]
-              })
-            ),
-          }
-        : defaultProviders,
-      overrideGlobalProvider: latestSettings.overrideGlobalProvider ?? false,
-      overrideGlobalModel: latestSettings.overrideGlobalModel ?? false,
-    }))
-  }, [settingsSyncKey])
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
+  }, [isDirty])
 
   const openRouterApiKey = formState.providers.openrouter?.apiKey ?? ''
 
@@ -423,7 +511,8 @@ export default function SettingsPage() {
     if (defaultProviders[providerKey]) return
 
     setFormState((prev) => {
-      const { [providerKey]: _, ...remainingProviders } = prev.providers
+      const remainingProviders = { ...prev.providers }
+      delete remainingProviders[providerKey]
       const nextState = { ...prev, providers: remainingProviders }
 
       if (prev.defaultProvider === providerKey) {
@@ -685,6 +774,7 @@ export default function SettingsPage() {
         overrideGlobalModel: formState.overrideGlobalModel,
       } as Parameters<typeof updateSettings>[0])
 
+      initialSettingsSignatureRef.current = currentSettingsSignature
       toast.success('Settings saved successfully!')
     } catch (error) {
       toast.error('Failed to save settings')
@@ -694,15 +784,24 @@ export default function SettingsPage() {
     }
   }
 
+  const handleBackToProjects = () => {
+    if (isDirty) {
+      const shouldLeave = window.confirm('You have unsaved changes. Leave without saving?')
+      if (!shouldLeave) return
+    }
+
+    router.push('/projects')
+  }
+
   return (
     <>
-      <div id="main-content" className="container mx-auto max-w-4xl px-4 py-8">
+      <div className="container mx-auto max-w-4xl px-4 py-8">
         <div className="mb-8">
           <Button
             variant="ghost"
             size="sm"
             className="-ml-2 mb-4 text-muted-foreground hover:text-foreground"
-            onClick={() => router.push('/')}
+            onClick={handleBackToProjects}
           >
             <ArrowLeft className="mr-1 h-4 w-4" />
             Back to Projects
@@ -713,7 +812,26 @@ export default function SettingsPage() {
           </p>
         </div>
 
-        <Tabs defaultValue="general" className="space-y-6">
+        {isDirty ? (
+          <div className="mb-4 border border-border bg-muted/20 px-3 py-2 font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">
+            Unsaved changes
+          </div>
+        ) : null}
+
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => {
+            router.replace(
+              buildSettingsTabHref(
+                pathname,
+                new URLSearchParams(searchParams.toString()),
+                value as SettingsTab
+              ),
+              { scroll: false }
+            )
+          }}
+          className="space-y-6"
+        >
           <TabsList className="grid w-full grid-cols-4 lg:w-[520px]">
             <TabsTrigger value="general" className="flex items-center gap-2">
               <User className="h-4 w-4" />
@@ -936,7 +1054,12 @@ export default function SettingsPage() {
 
         {/* Save Button */}
         <div className="mt-8 flex justify-end">
-          <Button onClick={handleSave} disabled={isSaving} size="lg" className="min-w-[140px]">
+          <Button
+            onClick={handleSave}
+            disabled={isSaving || !isDirty}
+            size="lg"
+            className="min-w-[140px]"
+          >
             {isSaving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

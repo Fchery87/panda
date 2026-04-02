@@ -8,8 +8,6 @@ import {
   IconBracketsAngle,
   IconText,
   IconHash,
-  IconChevronRight,
-  IconChevronDown,
 } from '@/components/ui/icons'
 
 export interface OutlineSymbol {

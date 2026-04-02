@@ -4,8 +4,9 @@ import { Authenticated, AuthLoading, Unauthenticated } from 'convex/react'
 import { useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import { SignInButton } from './SignInButton'
-import { shouldAllowRegistration, shouldBlockForMaintenance } from '@/lib/auth/routeGuards'
+import { shouldBlockForMaintenance } from '@/lib/auth/routeGuards'
 import { usePathname } from 'next/navigation'
+import { getLoginPageAccessState, getMaintenancePageAccessState } from '@/lib/auth/access-state'
 
 function isE2EAuthBypassEnabled(): boolean {
   return process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_E2E_AUTH_BYPASS === 'true'
@@ -20,7 +21,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <>{children}</>
   }
 
-  const registrationEnabled = shouldAllowRegistration(adminDefaults?.registrationEnabled !== false)
+  const registrationEnabled = adminDefaults?.registrationEnabled !== false
   const systemMaintenance = adminDefaults?.systemMaintenance === true
   const isAdmin = adminCheck?.isAdmin === true
   const showMaintenanceState = shouldBlockForMaintenance(
@@ -29,6 +30,11 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     isAdmin,
     systemMaintenance
   )
+  const loginState = getLoginPageAccessState({
+    registrationEnabled,
+    systemMaintenance,
+  })
+  const maintenanceState = getMaintenancePageAccessState('maintenance')
 
   return (
     <>
@@ -44,14 +50,8 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
         <div className="flex min-h-screen items-center justify-center bg-background">
           <div className="flex flex-col items-center gap-6">
             <h1 className="text-display text-2xl">Authentication Required</h1>
-            <p className="text-muted-foreground">
-              {systemMaintenance
-                ? 'System maintenance is active. Only admins can access the dashboard.'
-                : registrationEnabled
-                  ? 'Please sign in to access the dashboard.'
-                  : 'Registration is currently closed by an administrator.'}
-            </p>
-            <SignInButton disabled={!registrationEnabled || systemMaintenance} />
+            <p className="text-muted-foreground">{loginState.message}</p>
+            <SignInButton disabled={loginState.signInDisabled} />
           </div>
         </div>
       </Unauthenticated>
@@ -59,10 +59,8 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
         {showMaintenanceState ? (
           <div className="flex min-h-screen items-center justify-center bg-background">
             <div className="flex max-w-md flex-col items-center gap-4 text-center">
-              <h1 className="text-display text-2xl">Maintenance Mode</h1>
-              <p className="text-muted-foreground">
-                The platform is temporarily restricted to administrators.
-              </p>
+              <h1 className="text-display text-2xl">{maintenanceState.title}</h1>
+              <p className="text-muted-foreground">{maintenanceState.message}</p>
             </div>
           </div>
         ) : (

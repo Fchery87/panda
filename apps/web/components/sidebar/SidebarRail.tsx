@@ -46,7 +46,7 @@ export function SidebarRail({
   isFlyoutOpen,
   onSectionChange,
   onToggleFlyout,
-  projectId,
+  projectId: _projectId,
 }: SidebarRailProps) {
   const handleItemClick = (section: SidebarSection) => {
     if (section === activeSection && isFlyoutOpen) {

@@ -1,5 +1,5 @@
 // apps/web/hooks/useGit.test.ts
-import { describe, it, expect, mock } from 'bun:test'
+import { describe, it, expect } from 'bun:test'
 
 // We test the raw fetch functions, not the React hook
 // (React hook testing requires a component harness)

@@ -2,13 +2,14 @@
 
 import * as React from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
+import { cn } from '@/lib/utils'
 import {
   LayoutDashboard,
   Users,
@@ -48,12 +49,21 @@ const adminNavItems = [
   },
 ]
 
+function isActiveAdminRoute(pathname: string, href: string): boolean {
+  if (href === '/admin') {
+    return pathname === href
+  }
+
+  return pathname === href || pathname.startsWith(`${href}/`)
+}
+
 interface AdminLayoutProps {
   children: React.ReactNode
 }
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter()
+  const pathname = usePathname() ?? '/admin'
   const result = useQuery(api.admin.checkIsAdmin)
 
   // Loading state - don't make any decisions yet
@@ -112,7 +122,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className="flex items-center gap-3 rounded-none px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    aria-current={isActiveAdminRoute(pathname, item.href) ? 'page' : undefined}
+                    className={cn(
+                      'flex items-center gap-3 rounded-none border-l-2 border-transparent px-3 py-2 text-sm font-medium transition-colors',
+                      isActiveAdminRoute(pathname, item.href)
+                        ? 'border-primary bg-muted text-foreground'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    )}
                   >
                     <item.icon className="h-4 w-4" />
                     {item.title}

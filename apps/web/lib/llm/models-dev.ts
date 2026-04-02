@@ -10,8 +10,6 @@
 import { appLog } from '@/lib/logger'
 import type { ModelInfo, ProviderType } from './types'
 
-const MODELS_DEV_URL = 'https://models.dev/api/models.json'
-
 export interface ModelsDevModel {
   id: string
   name: string

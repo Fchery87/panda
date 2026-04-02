@@ -1057,22 +1057,6 @@ describe('Harness adapter guardrail parity', () => {
       },
     }
 
-    const events: any[] = []
-    const generator = streamAgent(
-      provider,
-      {
-        projectId: 'p',
-        chatId: 'c',
-        userId: 'u',
-        chatMode: 'ask',
-        provider: 'openai',
-        userMessage: 'test',
-      },
-      makeToolContext(),
-      {},
-      {}
-    )
-
     // Get the runtime from the generator's internal state is not possible,
     // so we'll verify the abort method exists and is callable on the runtime adapter
     // by checking the return type of createAgentRuntime

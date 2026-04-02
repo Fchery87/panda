@@ -70,6 +70,17 @@ import {
   InspectorPlanContent,
   InspectorRunContent,
 } from '@/components/projects/ProjectChatInspector'
+import {
+  createPlanArtifactWorkspaceTab,
+  upsertPlanArtifactWorkspaceTab,
+} from '@/components/workbench/PlanArtifactTab'
+import { derivePlanningSessionDebugSummary } from '@/components/plan/PlanningSessionDebugCard'
+import type { GeneratedPlanArtifact } from '@/lib/planning/types'
+import { appLog } from '@/lib/logger'
+import {
+  buildInlineChatFailureDisplay,
+  resolveExplorerRevealTarget,
+} from '@/lib/workbench-navigation'
 
 interface File {
   _id: Id<'files'>
@@ -180,6 +191,9 @@ export default function ProjectPage() {
   const [isComposerOpen, setIsComposerOpen] = useState(false)
   const lastAssistantMessageIdRef = useRef<string | null>(null)
   const seenPendingArtifactIdsRef = useRef<Set<string>>(new Set())
+  const lastOpenedPlanArtifactRef = useRef<string | null>(null)
+  const lastSyncedPlanArtifactRef = useRef<string | null>(null)
+  const approvedPlanRunSessionsRef = useRef(new Map<string, string>())
 
   useHotkeys(
     'mod+i',
@@ -210,6 +224,8 @@ export default function ProjectPage() {
   const projectAgentPolicy = readAgentPolicyField(project, 'agentPolicy')
   const createChatMutation = useMutation(api.chats.create)
   const updateChatMutation = useMutation(api.chats.update)
+  const acceptPlanningSessionMutation = useMutation(api.planningSessions.acceptPlan)
+  const markPlanningExecutionStateMutation = useMutation(api.planningSessions.markExecutionState)
   const upsertFileMutation = useMutation(api.files.upsert)
   const createAndExecuteJobMutation = useMutation(api.jobs.createAndExecute)
   const updateJobStatusMutation = useMutation(api.jobs.updateStatus)
@@ -237,6 +253,35 @@ export default function ProjectPage() {
     chats,
     projectAgentPolicy,
   })
+  const activePlanningSession = useQuery(
+    api.planningSessions.getActiveByChat,
+    activeChat ? { chatId: activeChat._id } : 'skip'
+  ) as {
+    sessionId: string
+    chatId: Id<'chats'>
+    status: string
+    questions: Array<{
+      id: string
+      title: string
+      prompt: string
+      suggestions: Array<{
+        id: string
+        label: string
+        description?: string
+        recommended?: boolean
+      }>
+      allowFreeform: boolean
+      order: number
+    }>
+    answers: Array<{
+      questionId: string
+      selectedOptionId?: string
+      freeformValue?: string
+      source: 'suggestion' | 'freeform'
+      answeredAt: number
+    }>
+    generatedPlan?: GeneratedPlanArtifact
+  } | null
   useShortcutListener()
   const persistedPlanDraft = activeChat?.planDraft ?? ''
 
@@ -255,7 +300,20 @@ export default function ProjectPage() {
     automationPolicy: effectiveAutomationPolicy,
     specApprovalMode: automationMode === 'auto' ? 'auto_approve' : 'interactive',
     onRunCreated: async ({ runId, approvedPlanExecution }) => {
-      if (!approvedPlanExecution || !activeChat?._id) return
+      if (!approvedPlanExecution) return
+
+      const planningSessionId = activePlanningSession?.sessionId ?? null
+      if (planningSessionId) {
+        approvedPlanRunSessionsRef.current.set(String(runId), planningSessionId)
+        await markPlanningExecutionStateMutation({
+          sessionId: planningSessionId,
+          state: 'executing',
+          runId,
+        })
+        return
+      }
+
+      if (!activeChat?._id) return
       await updateChatMutation({
         id: activeChat._id,
         planBuildRunId: runId,
@@ -263,15 +321,25 @@ export default function ProjectPage() {
       })
     },
     onRunCompleted: async ({ runId, outcome, completedPlanStepIndexes, planTotalSteps }) => {
-      if (!activeChat?._id || !activeChat.planBuildRunId) return
-      if (activeChat.planBuildRunId !== runId) return
-      if (activeChat.planStatus !== 'executing') return
-
       const nextPlanStatus = derivePlanCompletionStatus({
         planTotalSteps,
         completedPlanStepIndexes,
         runOutcome: outcome,
       })
+
+      const planningSessionId = approvedPlanRunSessionsRef.current.get(String(runId))
+      if (planningSessionId) {
+        approvedPlanRunSessionsRef.current.delete(String(runId))
+        await markPlanningExecutionStateMutation({
+          sessionId: planningSessionId,
+          state: nextPlanStatus,
+        })
+        return
+      }
+
+      if (!activeChat?._id || !activeChat.planBuildRunId) return
+      if (activeChat.planBuildRunId !== runId) return
+      if (activeChat.planStatus !== 'executing') return
 
       await updateChatMutation({
         id: activeChat._id,
@@ -284,11 +352,13 @@ export default function ProjectPage() {
   const { planDraft, setPlanDraft, isSavingPlanDraft, handleSavePlanDraft, handleApprovePlan } =
     useProjectPlanDraft({
       activeChat,
+      activePlanningSession,
       chatMode,
       architectBrainstormEnabled,
       agentStatus: agent.status,
       agentMessages: agent.messages,
       updateChatMutation,
+      acceptPlanningSession: acceptPlanningSessionMutation,
     })
 
   const { handleSendMessage, handleSuggestedAction, handleBuildFromPlan, handleModeChange } =
@@ -298,9 +368,13 @@ export default function ProjectPage() {
       chatMode,
       setChatMode,
       planDraft,
+      approvedPlanArtifact: activePlanningSession?.generatedPlan ?? null,
+      activePlanningSessionId: activePlanningSession?.sessionId ?? null,
       providerAvailable: Boolean(provider),
       createChatMutation,
       updateChatMutation,
+      markPlanningExecutionState: ({ sessionId, state }) =>
+        markPlanningExecutionStateMutation({ sessionId, state }),
       sendAgentMessage,
       setActiveChatId,
       setMobilePrimaryPanel,
@@ -318,6 +392,51 @@ export default function ProjectPage() {
     if (!selectedFilePath) return null
     return pendingArtifactPreviews.find((preview) => preview.filePath === selectedFilePath) ?? null
   }, [pendingArtifactPreviews, selectedFilePath])
+
+  const activePlanArtifact = activePlanningSession?.generatedPlan ?? null
+  const planningDebug = useMemo(() => {
+    if (!activePlanningSession) return null
+    return derivePlanningSessionDebugSummary({
+      sessionId: activePlanningSession.sessionId,
+      questions: activePlanningSession.questions,
+      answers: activePlanningSession.answers,
+      generatedPlan: activePlanningSession.generatedPlan ?? null,
+      openTabPaths: openTabs.map((tab) => tab.path),
+    })
+  }, [activePlanningSession, openTabs])
+  const activePlanArtifactOpenKey = activePlanArtifact
+    ? `${activePlanArtifact.sessionId}:${activePlanArtifact.generatedAt}`
+    : null
+  const activePlanArtifactRevisionKey = activePlanArtifact
+    ? `${activePlanArtifact.sessionId}:${activePlanArtifact.generatedAt}:${activePlanArtifact.status}`
+    : null
+
+  useEffect(() => {
+    if (!activePlanArtifact || !activePlanArtifactOpenKey || !activePlanArtifactRevisionKey) return
+    if (lastSyncedPlanArtifactRef.current === activePlanArtifactRevisionKey) return
+
+    const nextPlanTab = createPlanArtifactWorkspaceTab(activePlanArtifact)
+
+    setOpenTabs((prev) => upsertPlanArtifactWorkspaceTab(prev, activePlanArtifact))
+    lastSyncedPlanArtifactRef.current = activePlanArtifactRevisionKey
+
+    if (lastOpenedPlanArtifactRef.current !== activePlanArtifactOpenKey) {
+      setSelectedFilePath(nextPlanTab.path)
+      setSelectedFileLocation(null)
+      setCursorPosition(null)
+      setMobilePrimaryPanel('workspace')
+      lastOpenedPlanArtifactRef.current = activePlanArtifactOpenKey
+    }
+  }, [
+    activePlanArtifact,
+    activePlanArtifactOpenKey,
+    activePlanArtifactRevisionKey,
+    setCursorPosition,
+    setMobilePrimaryPanel,
+    setOpenTabs,
+    setSelectedFileLocation,
+    setSelectedFilePath,
+  ])
 
   // Reset workspace handler
   const handleSelectChat = useCallback(
@@ -776,6 +895,7 @@ export default function ProjectPage() {
           onSpecClick={() => setIsSpecDrawerOpen(true)}
           onPlanClick={() => openReviewTab('plan')}
           onResumeRuntimeSession={agent.resumeRuntimeSession}
+          planningDebug={planningDebug}
           snapshotEvents={snapshotRunEvents}
           subagentToolCalls={subagentToolCalls}
         />
@@ -925,10 +1045,18 @@ export default function ProjectPage() {
               projectId={projectId}
               items={buildBreadcrumbItems(selectedFilePath)}
               onRevealInExplorer={(folderPath) => {
+                const revealTarget = resolveExplorerRevealTarget({
+                  folderPath,
+                  files: files ?? [],
+                })
+
+                if (!revealTarget) return
+
                 handleSectionChange('explorer')
                 if (!isFlyoutOpen) toggleFlyout()
-                // TODO: Expand FileTree to folderPath (requires FileTree component update)
-                console.log('Reveal in explorer:', folderPath)
+                setSelectedFilePath(revealTarget)
+                setSelectedFileLocation(null)
+                setCursorPosition(null)
               }}
             />
 
@@ -1030,7 +1158,22 @@ export default function ProjectPage() {
               }
               return output
             } catch (err) {
-              console.error('Inline chat error:', err)
+              const failure = buildInlineChatFailureDisplay(err)
+              appLog.error('[projects/[projectId]] Inline chat failed', {
+                projectId,
+                filePath,
+                error:
+                  err instanceof Error
+                    ? {
+                        name: err.name,
+                        message: err.message,
+                        stack: err.stack,
+                      }
+                    : err,
+              })
+              toast.error(failure.title, {
+                description: failure.description,
+              })
               return null
             }
           }}

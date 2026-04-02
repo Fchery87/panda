@@ -28,6 +28,8 @@ import {
 import type { FormalSpecification } from '@/lib/agent/spec/types'
 import type { PlanStatus } from '@/lib/chat/planDraft'
 import { SpecBadgeMini } from '../workbench/SpecBadge'
+import type { PlanningSessionDebugSummary } from '@/components/plan/PlanningSessionDebugCard'
+import { PlanningSessionDebugCard } from '@/components/plan/PlanningSessionDebugCard'
 
 interface RunProgressPanelProps {
   chatId?: Id<'chats'> | null
@@ -53,6 +55,8 @@ interface RunProgressPanelProps {
   maxTotalSteps?: number
   /** Maximum steps per group to display (default: 8) */
   maxStepsPerGroup?: number
+  /** Structured planning debug summary for operational inspection */
+  planningDebug?: PlanningSessionDebugSummary | null
 }
 
 const STORAGE_KEY = 'panda.runProgress.isOpen'
@@ -73,6 +77,7 @@ export function RunProgressPanel({
   onResumeRuntimeSession,
   maxTotalSteps = 24,
   maxStepsPerGroup = 8,
+  planningDebug = null,
 }: RunProgressPanelProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen)
   const [hasLoadedPreference, setHasLoadedPreference] = useState(false)
@@ -423,6 +428,12 @@ export function RunProgressPanel({
           })}
         </div>
       )}
+
+      {process.env.NODE_ENV !== 'production' && planningDebug ? (
+        <div className="mt-2">
+          <PlanningSessionDebugCard summary={planningDebug} />
+        </div>
+      ) : null}
     </div>
   )
 }

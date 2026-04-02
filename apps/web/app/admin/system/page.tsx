@@ -2,10 +2,10 @@
 
 import { appLog } from '@/lib/logger'
 import * as React from 'react'
-import { useQuery, useMutation } from 'convex/react'
+import { useMutation, useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import { toast } from 'sonner'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -19,8 +19,17 @@ import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Settings, Save, AlertCircle, Bot, Server, Lock, Sparkles } from 'lucide-react'
 import { EnhancementLLMConfig } from '@/components/settings/EnhancementLLMConfig'
 
+import { readAdminEnumQueryParam, useAdminQueryUpdater } from '@/lib/admin/query-state'
+import { getEnhancementProviderOptions } from '@/lib/admin/enhancement-provider-options'
+
+const systemTabs = ['features', 'llm', 'access', 'limits'] as const
+
 export default function AdminSystemPage() {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  const activeTab = readAdminEnumQueryParam(searchParams, 'tab', systemTabs, 'features')
   const settings = useQuery(api.admin.getSettings)
   const updateSettings = useMutation(api.admin.updateSettings)
   const [isSaving, setIsSaving] = React.useState(false)
@@ -58,6 +67,8 @@ export default function AdminSystemPage() {
     }
   }, [settings])
 
+  const updateQuery = useAdminQueryUpdater(pathname, router, searchParams)
+
   const handleSave = async () => {
     setIsSaving(true)
     try {
@@ -83,7 +94,6 @@ export default function AdminSystemPage() {
 
   return (
     <div className="container mx-auto p-8">
-      {/* Header */}
       <div className="mb-8">
         <Button
           variant="ghost"
@@ -126,7 +136,11 @@ export default function AdminSystemPage() {
         </Alert>
       )}
 
-      <Tabs defaultValue="features" className="space-y-6">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => updateQuery({ tab: value })}
+        className="space-y-6"
+      >
         <TabsList className="grid w-full grid-cols-4 lg:w-[500px]">
           <TabsTrigger value="features" className="flex items-center gap-2">
             <Bot className="h-4 w-4" />
@@ -146,7 +160,6 @@ export default function AdminSystemPage() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Features Tab */}
         <TabsContent value="features" className="space-y-6">
           <Card className="rounded-none">
             <CardHeader>
@@ -226,7 +239,6 @@ export default function AdminSystemPage() {
           </Card>
         </TabsContent>
 
-        {/* LLM Configuration Tab */}
         <TabsContent value="llm" className="space-y-6">
           <EnhancementLLMConfig
             enhancementProvider={enhancementConfig.enhancementProvider}
@@ -237,73 +249,10 @@ export default function AdminSystemPage() {
                 enhancementModel: config.enhancementModel,
               })
             }
-            availableProviders={{
-              openai: {
-                name: 'OpenAI',
-                availableModels: ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
-                enabled: true,
-              },
-              anthropic: {
-                name: 'Anthropic',
-                availableModels: ['claude-sonnet-4-5', 'claude-opus-4-6', 'claude-3-haiku'],
-                enabled: true,
-              },
-              openrouter: {
-                name: 'OpenRouter',
-                availableModels: [
-                  'qwen/qwen3-coder:free',
-                  'moonshotai/kimi-dev-72b:free',
-                  'deepseek/deepseek-coder:free',
-                  'openai/gpt-4o-mini',
-                  'meta-llama/llama-3.1-8b-instruct',
-                ],
-                enabled: true,
-              },
-              together: {
-                name: 'Together.ai',
-                availableModels: [
-                  'meta-llama/Llama-3.1-70B-Instruct-Turbo',
-                  'meta-llama/Llama-3.1-8B-Instruct-Turbo',
-                  'mistralai/Mixtral-8x22B-Instruct-v0.1',
-                  'Qwen/Qwen2.5-72B-Instruct-Turbo',
-                ],
-                enabled: true,
-              },
-              deepseek: {
-                name: 'DeepSeek',
-                availableModels: ['deepseek-chat', 'deepseek-coder', 'deepseek-reasoner'],
-                enabled: true,
-              },
-              groq: {
-                name: 'Groq',
-                availableModels: [
-                  'llama-3.3-70b-versatile',
-                  'llama-3.1-70b-versatile',
-                  'llama-3.1-8b-instant',
-                  'mixtral-8x7b-32768',
-                ],
-                enabled: true,
-              },
-              zai: {
-                name: 'Z.ai',
-                availableModels: ['glm-4.7', 'glm-4.7-flashx', 'glm-4.7-flash'],
-                enabled: true,
-              },
-              chutes: {
-                name: 'Chutes.ai',
-                availableModels: [
-                  'meta-llama/Meta-Llama-3.1-8B-Instruct',
-                  'meta-llama/Meta-Llama-3.1-70B-Instruct',
-                  'deepseek-ai/DeepSeek-V3',
-                  'Qwen/Qwen2.5-72B-Instruct',
-                ],
-                enabled: true,
-              },
-            }}
+            availableProviders={getEnhancementProviderOptions()}
           />
         </TabsContent>
 
-        {/* Access Control Tab */}
         <TabsContent value="access" className="space-y-6">
           <Card className="rounded-none border-destructive">
             <CardHeader>
@@ -376,7 +325,6 @@ export default function AdminSystemPage() {
           </Card>
         </TabsContent>
 
-        {/* Limits Tab */}
         <TabsContent value="limits" className="space-y-6">
           <Card className="rounded-none">
             <CardHeader>

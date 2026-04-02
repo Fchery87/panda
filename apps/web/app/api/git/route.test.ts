@@ -1,7 +1,7 @@
 // apps/web/app/api/git/route.test.ts
 import { describe, it, expect, mock } from 'bun:test'
 
-mock.module('@convex-dev/auth/nextjs/server', () => ({
+mock.module('@/lib/auth/nextjs', () => ({
   isAuthenticatedNextjs: () => Promise.resolve(true),
 }))
 

@@ -14,7 +14,6 @@ import { Check, X } from 'lucide-react'
 import { getLanguageExtension } from './language-support'
 import { useLSP } from '@/hooks/useLSP'
 import { lspCompletion } from './lsp-completion'
-import type { Diagnostic } from 'vscode-languageserver-protocol'
 
 interface CodeMirrorEditorProps {
   filePath: string
@@ -101,7 +100,7 @@ export function CodeMirrorEditor({
   }, [filePath])
 
   // Initialize LSP connection
-  const { client, diagnostics, changeDocument } = useLSP({
+  const { client } = useLSP({
     filePath,
     content,
     languageId,

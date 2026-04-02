@@ -1,7 +1,7 @@
 // apps/web/app/api/search/replace/route.ts
 import { readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { isAuthenticatedNextjs } from '@convex-dev/auth/nextjs/server'
+import { isAuthenticatedNextjs } from '@/lib/auth/nextjs'
 
 interface ReplaceRequest {
   filePath: string
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
       : new RegExp(body.searchText.replace(/[.*+?^${}()|[\]\\]/g, '\\$\u0026'), flags)
 
     let replacements = 0
-    const newContent = content.replace(pattern, (...args) => {
+    const newContent = content.replace(pattern, (_match) => {
       replacements++
       return body.replaceText
     })

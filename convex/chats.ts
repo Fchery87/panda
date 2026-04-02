@@ -156,6 +156,16 @@ export const remove = mutation({
       await ctx.db.delete(artifact._id)
     }
 
+    // Delete planning sessions tied to this chat so the new planning state does not orphan
+    const planningSessions = await ctx.db
+      .query('planningSessions')
+      .withIndex('by_chat', (q) => q.eq('chatId', args.id))
+      .collect()
+
+    for (const planningSession of planningSessions) {
+      await ctx.db.delete(planningSession._id)
+    }
+
     // Delete all checkpoints associated with this chat
     const chatCheckpoints = await ctx.db
       .query('checkpoints')

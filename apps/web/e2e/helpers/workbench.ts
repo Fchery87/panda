@@ -1,4 +1,5 @@
-import { expect, type Page } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
+import type { GeneratedPlanArtifact, GeneratedPlanSection } from '@/lib/planning/types'
 
 async function ensureProjectCapacity(page: Page) {
   const response = await page.request.get('/api/e2e/project?ensureCapacity=1')
@@ -42,21 +43,47 @@ export async function createAndOpenProject(page: Page): Promise<string> {
   await expect(createButton).toBeEnabled()
   await createButton.click()
 
-  await expect(page.locator('[role="dialog"]:visible')).toHaveCount(0)
+  await expect(page.locator('[role="dialog"]:visible')).toHaveCount(0, {
+    timeout: 15_000,
+  })
 
   const projectLink = page.locator('a[href^="/projects/"]', { hasText: projectName }).first()
   await expect(projectLink).toBeVisible({ timeout: 15000 })
   const href = await projectLink.getAttribute('href')
   expect(href).toMatch(/^\/projects\/.+/)
-  await page.goto(href!, { waitUntil: 'domcontentloaded' })
-  await expect(page).toHaveURL(/\/projects\/.+/, { timeout: 30000 })
+  const projectUrl = href!
+  const navigationDeadline = Date.now() + 120_000
+  let lastNavigationError: unknown = null
+
+  while (Date.now() < navigationDeadline) {
+    try {
+      await page.goto(projectUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 })
+      lastNavigationError = null
+      break
+    } catch (error) {
+      lastNavigationError = error
+      await page.waitForTimeout(500)
+    }
+  }
+
+  if (lastNavigationError) {
+    throw lastNavigationError
+  }
+
+  await expect(page).toHaveURL(/\/projects\/.+/, { timeout: 30_000 })
+  await expect(page.getByText(/loading project/i)).not.toBeVisible({
+    timeout: 30_000,
+  })
+  await expect(page.getByRole('navigation', { name: /breadcrumb/i })).toBeVisible({
+    timeout: 30_000,
+  })
+  await expect(page.getByRole('button', { name: /^review$/i })).toBeVisible({
+    timeout: 30_000,
+  })
   await expect(
-    page
-      .getByRole('main')
-      .getByRole('button', { name: /^reset$/i })
-      .first()
+    page.getByRole('textbox', { name: /ask anything, @ to mention, \/ for workflows/i })
   ).toBeVisible({
-    timeout: 30000,
+    timeout: 30_000,
   })
 
   return projectName
@@ -67,13 +94,101 @@ export async function openWorkbenchProject(page: Page): Promise<void> {
 }
 
 export async function openChatActionsMenu(page: Page) {
-  const actionsButton = page.getByRole('button', { name: /chat more actions/i })
+  const actionsButton = page.getByRole('button', { name: /chat actions/i })
   await expect(actionsButton).toBeVisible({ timeout: 15000 })
   await actionsButton.click()
 
   const menu = page.locator('[role="menu"]').last()
   await expect(menu).toBeVisible({ timeout: 15000 })
   return menu
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function getPlanningPopup(page: Page | Locator) {
+  return page.locator('section[aria-label="Planning intake popup"]')
+}
+
+export async function openPlanningPopup(page: Page) {
+  const popup = getPlanningPopup(page)
+  if (await popup.isVisible().catch(() => false)) {
+    return popup
+  }
+
+  const startButton = page.getByRole('button', { name: /start intake/i })
+  if (await startButton.isVisible().catch(() => false)) {
+    await startButton.click()
+    await expect(popup).toBeVisible({ timeout: 15_000 })
+    return popup
+  }
+
+  const reviewButton = page.getByRole('button', { name: /^review$/i }).first()
+  if (await reviewButton.isVisible().catch(() => false)) {
+    await reviewButton.click()
+    if (await startButton.isVisible().catch(() => false)) {
+      await startButton.click()
+      await expect(popup).toBeVisible({ timeout: 15_000 })
+      return popup
+    }
+  }
+
+  const menu = await openChatActionsMenu(page)
+  await menu.getByRole('menuitem', { name: /^review$/i }).click()
+
+  await expect(startButton).toBeVisible({ timeout: 15_000 })
+  await startButton.click()
+  await expect(popup).toBeVisible({ timeout: 15_000 })
+  return popup
+}
+
+export async function selectPlanningAnswer(page: Page, choice: number | string) {
+  const popup = getPlanningPopup(page)
+  await expect(popup).toBeVisible({ timeout: 15_000 })
+
+  const choiceLabel =
+    typeof choice === 'number'
+      ? new RegExp(`^${choice}\\.\\s`)
+      : new RegExp(`^${escapeRegExp(choice)}$`)
+  const button = popup.getByRole('button', { name: choiceLabel }).first()
+  await expect(button).toBeVisible({ timeout: 15_000 })
+  await button.click()
+}
+
+export async function typePlanningAnswer(page: Page, answer: string) {
+  const popup = getPlanningPopup(page)
+  await expect(popup).toBeVisible({ timeout: 15_000 })
+
+  const input = popup.getByPlaceholder(/type your own answer/i)
+  await expect(input).toBeVisible({ timeout: 15_000 })
+  await input.fill(answer)
+
+  const submitButton = popup.getByRole('button', { name: /submit answer/i })
+  await expect(submitButton).toBeEnabled({ timeout: 15_000 })
+  await submitButton.click()
+}
+
+export async function expectPlanTabPresent(page: Page, title?: string) {
+  const planTab = title
+    ? page.getByRole('tab', { name: new RegExp(`^Plan tab ${escapeRegExp(title)}$`) })
+    : page.getByRole('tab', { name: /^Plan tab /i }).first()
+
+  await expect(planTab).toBeVisible({ timeout: 15_000 })
+  return planTab
+}
+
+export async function clickPlanAcceptControl(page: Page | Locator) {
+  const approveButton = page.getByRole('button', { name: /^approve(?: plan)?$/i }).first()
+  await expect(approveButton).toBeVisible({ timeout: 15_000 })
+  await approveButton.click()
+}
+
+export async function clickPlanBuildControl(page: Page | Locator) {
+  const buildButton = page.getByRole('button', { name: /^(?:Build|Build from Plan)$/ }).first()
+  await expect(buildButton).toBeVisible({ timeout: 15_000 })
+  await expect(buildButton).toBeEnabled({ timeout: 15_000 })
+  await buildButton.click()
 }
 
 export async function openWorkbenchProjectFixture(
@@ -88,8 +203,27 @@ export async function openWorkbenchProjectFixture(
     seedRuntimeCheckpoint?: boolean
     planDraft?: string
     planStatus?: 'awaiting_review' | 'approved' | 'stale' | 'executing' | 'completed' | 'failed'
+    structuredPlanningSession?: {
+      plan?: {
+        title?: string
+        summary?: string
+        markdown?: string
+        sections?: GeneratedPlanSection[]
+        acceptanceChecks?: string[]
+      }
+      acceptPlan?: boolean
+    }
   }
-): Promise<{ projectId: string; chatId?: string; filePath?: string; sessionID?: string }> {
+): Promise<{
+  projectId: string
+  chatId?: string
+  filePath?: string
+  sessionID?: string
+  planningSessionId?: string
+  generatedPlanTitle?: string
+  generatedPlanStatus?: GeneratedPlanArtifact['status']
+  planTabPath?: string
+}> {
   const params = new URLSearchParams({
     name: options?.name ?? `Workbench E2E Fixture ${Date.now()}`,
   })
@@ -117,6 +251,18 @@ export async function openWorkbenchProjectFixture(
   if (options?.planStatus) {
     params.set('planStatus', options.planStatus)
   }
+  if (options?.structuredPlanningSession) {
+    params.set('structuredPlanningSession', '1')
+    if (options.structuredPlanningSession.plan) {
+      params.set(
+        'structuredPlanningSessionPlan',
+        JSON.stringify(options.structuredPlanningSession.plan)
+      )
+    }
+    if (options.structuredPlanningSession.acceptPlan) {
+      params.set('acceptStructuredPlan', '1')
+    }
+  }
 
   let response = await page.request.get(`/api/e2e/project?${params.toString()}`)
   const deadline = Date.now() + 60_000
@@ -137,6 +283,10 @@ export async function openWorkbenchProjectFixture(
     chatId?: string
     filePath?: string
     sessionID?: string
+    planningSessionId?: string
+    generatedPlanTitle?: string
+    generatedPlanStatus?: GeneratedPlanArtifact['status']
+    planTabPath?: string
   }
   expect(body.projectId).toBeTruthy()
 

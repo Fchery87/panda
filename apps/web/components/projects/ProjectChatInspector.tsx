@@ -9,6 +9,7 @@ import { RunProgressPanel } from '@/components/chat/RunProgressPanel'
 import { SnapshotTimeline } from '@/components/chat/SnapshotTimeline'
 import { SubagentPanel } from '@/components/chat/SubagentPanel'
 import type { ToolCallInfo } from '@/components/chat/types'
+import { PlanningIntakeSurface } from '@/components/plan/PlanningIntakePopup'
 import { PlanPanel } from '@/components/plan/PlanPanel'
 import { ArtifactPanel } from '@/components/artifacts/ArtifactPanel'
 import { Button } from '@/components/ui/button'
@@ -17,6 +18,7 @@ import type { LiveProgressStep } from '@/components/chat/live-run-utils'
 import type { FormalSpecification } from '@/lib/agent/spec/types'
 import type { PlanStatus } from '@/lib/chat/planDraft'
 import type { TracePersistenceStatus } from '@/hooks/useRunEventBuffer'
+import type { PlanningSessionDebugSummary } from '@/components/plan/PlanningSessionDebugCard'
 
 export type InspectorTab = 'run' | 'plan' | 'artifacts' | 'memory' | 'evals'
 export type ReviewTab = InspectorTab
@@ -48,6 +50,7 @@ export interface InspectorRunContentProps {
   onResumeRuntimeSession: (sessionID: string) => Promise<void>
   snapshotEvents: SnapshotEvent[]
   subagentToolCalls: ToolCallInfo[]
+  planningDebug?: PlanningSessionDebugSummary | null
 }
 
 export function InspectorRunContent({
@@ -65,6 +68,7 @@ export function InspectorRunContent({
   onResumeRuntimeSession,
   snapshotEvents,
   subagentToolCalls,
+  planningDebug,
 }: InspectorRunContentProps) {
   return (
     <div className="m-0 space-y-3">
@@ -81,6 +85,7 @@ export function InspectorRunContent({
         onSpecClick={onSpecClick}
         onPlanClick={onPlanClick}
         onResumeRuntimeSession={onResumeRuntimeSession}
+        planningDebug={planningDebug}
       />
       <SnapshotTimeline events={snapshotEvents} />
       <SubagentPanel toolCalls={subagentToolCalls} />
@@ -222,6 +227,7 @@ export function ProjectChatInspector({
   onResumeRuntimeSession,
   snapshotEvents,
   subagentToolCalls,
+  planningDebug,
   onPlanDraftChange,
   onSavePlanDraft,
   onApprovePlan,
@@ -238,101 +244,105 @@ export function ProjectChatInspector({
   onRunEvalScenario,
 }: ProjectChatInspectorProps) {
   const tabs = (
-    <Tabs
-      value={tab}
-      onValueChange={(value) => onTabChange(value as InspectorTab)}
-      className="gap-2"
-    >
-      <div className="overflow-x-auto pb-1">
-        <TabsList className="shadow-sharp-sm h-9 min-w-max justify-start rounded-none border border-border bg-background/90 p-0 font-mono text-xs">
-          <TabsTrigger
-            value="run"
-            className="h-full rounded-none border-r border-border px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-          >
-            Run
-          </TabsTrigger>
-          <TabsTrigger
-            value="plan"
-            className="h-full rounded-none border-r border-border px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-          >
-            Plan
-          </TabsTrigger>
-          <TabsTrigger
-            value="artifacts"
-            className="h-full rounded-none border-r border-border px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-          >
-            Artifacts
-          </TabsTrigger>
-          <TabsTrigger
-            value="memory"
-            className="h-full rounded-none border-r border-border px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-          >
-            Memory
-          </TabsTrigger>
-          <TabsTrigger
-            value="evals"
-            className="h-full rounded-none px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-          >
-            Evals
-          </TabsTrigger>
-        </TabsList>
-      </div>
-
-      <TabsContent value="run" className="m-0">
-        <InspectorRunContent
-          chatId={chatId}
-          liveSteps={liveSteps}
-          isStreaming={isStreaming}
-          tracePersistenceStatus={tracePersistenceStatus}
-          onOpenFile={onOpenFile}
-          onOpenArtifacts={onOpenArtifacts}
-          currentSpec={currentSpec}
-          planStatus={planStatus}
-          planDraft={planDraft}
-          onSpecClick={onSpecClick}
-          onPlanClick={onPlanClick}
-          onResumeRuntimeSession={onResumeRuntimeSession}
-          snapshotEvents={snapshotEvents}
-          subagentToolCalls={subagentToolCalls}
-        />
-      </TabsContent>
-
-      <TabsContent value="plan" className="m-0">
-        <InspectorPlanContent
-          planDraft={planDraft}
-          planStatus={planStatus}
-          onPlanDraftChange={onPlanDraftChange}
-          onSavePlanDraft={onSavePlanDraft}
-          onApprovePlan={onApprovePlan}
-          onBuildFromPlan={onBuildFromPlan}
-          isSavingPlanDraft={isSavingPlanDraft}
-          lastSavedAt={lastSavedAt}
-          lastGeneratedAt={lastGeneratedAt}
-          approveDisabled={approveDisabled}
-          buildDisabled={buildDisabled}
-        />
-      </TabsContent>
-
-      <TabsContent value="artifacts" className="m-0">
-        <div className="m-0 h-[420px] border border-border bg-background">
-          <ArtifactPanel projectId={projectId} chatId={chatId} position="right" />
+    <div className="space-y-3">
+      <PlanningIntakeSurface />
+      <Tabs
+        value={tab}
+        onValueChange={(value) => onTabChange(value as InspectorTab)}
+        className="gap-2"
+      >
+        <div className="overflow-x-auto pb-1">
+          <TabsList className="shadow-sharp-sm h-9 min-w-max justify-start rounded-none border border-border bg-background/90 p-0 font-mono text-xs">
+            <TabsTrigger
+              value="run"
+              className="h-full rounded-none border-r border-border px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              Run
+            </TabsTrigger>
+            <TabsTrigger
+              value="plan"
+              className="h-full rounded-none border-r border-border px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              Plan
+            </TabsTrigger>
+            <TabsTrigger
+              value="artifacts"
+              className="h-full rounded-none border-r border-border px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              Artifacts
+            </TabsTrigger>
+            <TabsTrigger
+              value="memory"
+              className="h-full rounded-none border-r border-border px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              Memory
+            </TabsTrigger>
+            <TabsTrigger
+              value="evals"
+              className="h-full rounded-none px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              Evals
+            </TabsTrigger>
+          </TabsList>
         </div>
-      </TabsContent>
 
-      <TabsContent value="memory" className="m-0">
-        <InspectorMemoryContent memoryBank={memoryBank} onSaveMemoryBank={onSaveMemoryBank} />
-      </TabsContent>
+        <TabsContent value="run" className="m-0">
+          <InspectorRunContent
+            chatId={chatId}
+            liveSteps={liveSteps}
+            isStreaming={isStreaming}
+            tracePersistenceStatus={tracePersistenceStatus}
+            onOpenFile={onOpenFile}
+            onOpenArtifacts={onOpenArtifacts}
+            currentSpec={currentSpec}
+            planStatus={planStatus}
+            planDraft={planDraft}
+            onSpecClick={onSpecClick}
+            onPlanClick={onPlanClick}
+            onResumeRuntimeSession={onResumeRuntimeSession}
+            planningDebug={planningDebug}
+            snapshotEvents={snapshotEvents}
+            subagentToolCalls={subagentToolCalls}
+          />
+        </TabsContent>
 
-      <TabsContent value="evals" className="m-0">
-        <InspectorEvalsContent
-          projectId={projectId}
-          chatId={chatId}
-          lastUserPrompt={lastUserPrompt}
-          lastAssistantReply={lastAssistantReply}
-          onRunEvalScenario={onRunEvalScenario}
-        />
-      </TabsContent>
-    </Tabs>
+        <TabsContent value="plan" className="m-0">
+          <InspectorPlanContent
+            planDraft={planDraft}
+            planStatus={planStatus}
+            onPlanDraftChange={onPlanDraftChange}
+            onSavePlanDraft={onSavePlanDraft}
+            onApprovePlan={onApprovePlan}
+            onBuildFromPlan={onBuildFromPlan}
+            isSavingPlanDraft={isSavingPlanDraft}
+            lastSavedAt={lastSavedAt}
+            lastGeneratedAt={lastGeneratedAt}
+            approveDisabled={approveDisabled}
+            buildDisabled={buildDisabled}
+          />
+        </TabsContent>
+
+        <TabsContent value="artifacts" className="m-0">
+          <div className="m-0 h-[420px] border border-border bg-background">
+            <ArtifactPanel projectId={projectId} chatId={chatId} position="right" />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="memory" className="m-0">
+          <InspectorMemoryContent memoryBank={memoryBank} onSaveMemoryBank={onSaveMemoryBank} />
+        </TabsContent>
+
+        <TabsContent value="evals" className="m-0">
+          <InspectorEvalsContent
+            projectId={projectId}
+            chatId={chatId}
+            lastUserPrompt={lastUserPrompt}
+            lastAssistantReply={lastAssistantReply}
+            onRunEvalScenario={onRunEvalScenario}
+          />
+        </TabsContent>
+      </Tabs>
+    </div>
   )
 
   return (

@@ -8,7 +8,7 @@
 import { appLog } from '@/lib/logger'
 import { NextRequest, NextResponse } from 'next/server'
 import { ConvexHttpClient } from 'convex/browser'
-import { convexAuthNextjsToken } from '@convex-dev/auth/nextjs/server'
+import { convexAuthNextjsToken } from '@/lib/auth/nextjs'
 import { api } from '@convex/_generated/api'
 
 const CHUTES_TOKEN_URL = 'https://chutes.ai/idp/token'

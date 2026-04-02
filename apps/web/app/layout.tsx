@@ -16,7 +16,10 @@ const firaCode = Fira_Code({
 })
 
 export const metadata: Metadata = {
-  title: 'Panda.ai - AI Coding Workbench',
+  title: {
+    default: 'Panda.ai',
+    template: '%s | Panda.ai',
+  },
   description: 'Build software with AI assistance',
 }
 
@@ -28,6 +31,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${firaCode.variable} antialiased`}>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:border focus:border-border focus:bg-background focus:px-3 focus:py-2 focus:font-mono focus:text-sm"
+        >
+          Skip to main content
+        </a>
         <ConvexAuthNextjsServerProvider>
           <Providers>{children}</Providers>
         </ConvexAuthNextjsServerProvider>

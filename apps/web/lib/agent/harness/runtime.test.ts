@@ -1,4 +1,4 @@
-import { describe, expect, mock, test } from 'bun:test'
+import { describe, expect, test } from 'bun:test'
 import type { CompletionOptions, CompletionResponse, LLMProvider, ModelInfo } from '../../llm/types'
 import { bus } from './event-bus'
 import { createPlugin, plugins } from './plugins'

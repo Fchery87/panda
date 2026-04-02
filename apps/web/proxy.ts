@@ -12,6 +12,7 @@ import {
   shouldRedirectToMaintenance,
   shouldRedirectToProjects,
 } from '@/lib/auth/routeGuards'
+import { getMaintenanceRedirectReason } from '@/lib/auth/access-state'
 
 const isProtectedRoute = createRouteMatcher(['/projects(.*)', '/settings(.*)', '/admin(.*)'])
 const isLoginRoute = createRouteMatcher(['/login'])
@@ -43,10 +44,11 @@ const authProxy = convexAuthNextjsMiddleware(async (request, { convexAuth }) => 
   const adminDefaults = await getAdminDefaults()
   const registrationEnabled = adminDefaults?.registrationEnabled !== false
   const systemMaintenance = adminDefaults?.systemMaintenance === true
+  const maintenanceReason = getMaintenanceRedirectReason(systemMaintenance)
   const response =
     isProtectedRoute(request) &&
     shouldRedirectToMaintenance(request.nextUrl.pathname, authenticated, systemMaintenance)
-      ? nextjsMiddlewareRedirect(request, '/maintenance')
+      ? nextjsMiddlewareRedirect(request, `/maintenance?reason=${maintenanceReason}`)
       : isLoginRoute(request) &&
           shouldRedirectToLoginDisabled(
             request.nextUrl.pathname,
@@ -54,10 +56,7 @@ const authProxy = convexAuthNextjsMiddleware(async (request, { convexAuth }) => 
             registrationEnabled,
             systemMaintenance
           )
-        ? nextjsMiddlewareRedirect(
-            request,
-            systemMaintenance ? '/maintenance' : '/maintenance?reason=registration-closed'
-          )
+        ? nextjsMiddlewareRedirect(request, `/maintenance?reason=${maintenanceReason}`)
         : isProtectedRoute(request) &&
             shouldRedirectToLogin(request.nextUrl.pathname, authenticated)
           ? nextjsMiddlewareRedirect(request, '/login')

@@ -203,6 +203,8 @@ Use this tool when:
 - You need the user to make a decision
 - You need more information to proceed
 
+For planning intake, ask one question at a time, present numbered suggested answers when available, and always allow a freeform fallback when the question supports it.
+
 The user's response will be provided in the next turn.`,
     parameters: {
       type: 'object',

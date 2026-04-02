@@ -81,7 +81,7 @@ export default defineConfig({
   /* Run your local dev server before starting the tests */
   webServer: {
     command:
-      'cd ../.. && bunx concurrently "E2E_AUTH_BYPASS=true bunx convex dev" "cd apps/web && E2E_AUTH_BYPASS=true NEXT_PUBLIC_E2E_AUTH_BYPASS=true NEXT_PUBLIC_E2E_AGENT_MODE=spec-approval bun run dev"',
+      'cd ../.. && bunx concurrently "E2E_AUTH_BYPASS=true E2E_AUTH_BYPASS_CONTEXT=playwright CONVEX_SITE_URL=http://localhost:3000 NEXT_PUBLIC_APP_URL=http://localhost:3000 bunx convex dev" "cd apps/web && E2E_AUTH_BYPASS=true E2E_AUTH_BYPASS_CONTEXT=playwright NEXT_PUBLIC_APP_URL=http://localhost:3000 NEXT_PUBLIC_E2E_AUTH_BYPASS=true NEXT_PUBLIC_E2E_AGENT_MODE=spec-approval bun run dev"',
     url: 'http://localhost:3000',
     reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === 'true',
     timeout: 120 * 1000,

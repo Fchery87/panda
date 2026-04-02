@@ -1,7 +1,7 @@
 import { query, mutation, type MutationCtx, type QueryCtx } from './_generated/server'
 import { v } from 'convex/values'
-import { getAuthUserId } from '@convex-dev/auth/server'
 import type { Id } from './_generated/dataModel'
+import { getCurrentUserId } from './lib/auth'
 
 /**
  * Check if the current user is an admin
@@ -9,7 +9,7 @@ import type { Id } from './_generated/dataModel'
 type AdminCtx = QueryCtx | MutationCtx
 
 async function requireAdmin(ctx: AdminCtx) {
-  const userId = await getAuthUserId(ctx)
+  const userId = await getCurrentUserId(ctx)
   if (!userId) {
     throw new Error('Unauthorized: Not authenticated')
   }
@@ -21,6 +21,34 @@ async function requireAdmin(ctx: AdminCtx) {
 
   return { userId, user }
 }
+
+export async function resolveAdminUserIdFromUrlValue(
+  ctx: Pick<AdminCtx, 'db'>,
+  urlUserId: string | null | undefined
+): Promise<Id<'users'> | null> {
+  const value = urlUserId?.trim()
+  if (!value) return null
+
+  const normalizedUserId = ctx.db.normalizeId('users', value)
+  if (!normalizedUserId) return null
+
+  const user = await ctx.db.get(normalizedUserId)
+  return user ? normalizedUserId : null
+}
+
+export function sortAuditLogsNewestFirst<T extends { createdAt: number }>(logs: T[]): T[] {
+  return [...logs].sort((a, b) => b.createdAt - a.createdAt)
+}
+
+export const resolveAdminUserIdFromUrl = query({
+  args: {
+    userId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx)
+    return await resolveAdminUserIdFromUrlValue(ctx, args.userId)
+  },
+})
 
 async function countProjectsByUser(ctx: AdminCtx, userId: string) {
   const userIdAsId = ctx.db.normalizeId('users', userId)
@@ -589,16 +617,36 @@ export const getSystemOverview = query({
  * Get provider usage analytics
  */
 export const getProviderAnalytics = query({
-  handler: async (ctx) => {
+  args: {
+    fromDate: v.optional(v.string()),
+    toDate: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
     await requireAdmin(ctx)
 
     const agentRuns = await ctx.db.query('agentRuns').collect()
+    const parseDateBoundary = (value: string, endOfDay: boolean) => {
+      const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+      if (!match) return null
+      const [, year, month, day] = match
+      return endOfDay
+        ? Date.UTC(Number(year), Number(month) - 1, Number(day), 23, 59, 59, 999)
+        : Date.UTC(Number(year), Number(month) - 1, Number(day), 0, 0, 0, 0)
+    }
+
+    const fromTimestamp = args.fromDate ? parseDateBoundary(args.fromDate, false) : null
+    const toTimestamp = args.toDate ? parseDateBoundary(args.toDate, true) : null
+    const filteredRuns = agentRuns.filter((run) => {
+      if (fromTimestamp !== null && run.startedAt < fromTimestamp) return false
+      if (toTimestamp !== null && run.startedAt > toTimestamp) return false
+      return true
+    })
 
     // Aggregate provider usage
     const providerUsage: Record<string, number> = {}
     const modelUsage: Record<string, number> = {}
 
-    for (const run of agentRuns) {
+    for (const run of filteredRuns) {
       if (run.provider) {
         providerUsage[run.provider] = (providerUsage[run.provider] || 0) + 1
       }
@@ -618,9 +666,13 @@ export const getProviderAnalytics = query({
       .map(([name, count]) => ({ name, count }))
 
     return {
-      totalRuns: agentRuns.length,
+      totalRuns: filteredRuns.length,
       providers: sortedProviders,
       models: sortedModels,
+      dateRange: {
+        fromDate: args.fromDate || null,
+        toDate: args.toDate || null,
+      },
     }
   },
 })
@@ -631,17 +683,55 @@ export const getProviderAnalytics = query({
 export const getAuditLog = query({
   args: {
     limit: v.optional(v.number()),
+    action: v.optional(v.string()),
+    resource: v.optional(v.string()),
+    actor: v.optional(v.string()),
+    fromDate: v.optional(v.string()),
+    toDate: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx)
 
     const limit = args.limit ?? 100
+    const parseDateBoundary = (value: string, endOfDay: boolean) => {
+      const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+      if (!match) return null
+      const [, year, month, day] = match
+      return endOfDay
+        ? Date.UTC(Number(year), Number(month) - 1, Number(day), 23, 59, 59, 999)
+        : Date.UTC(Number(year), Number(month) - 1, Number(day), 0, 0, 0, 0)
+    }
 
-    const logs = await ctx.db.query('auditLog').order('desc').take(limit)
+    const fromTimestamp = args.fromDate ? parseDateBoundary(args.fromDate, false) : null
+    const toTimestamp = args.toDate ? parseDateBoundary(args.toDate, true) : null
+
+    const actionFilter = args.action
+    const resourceFilter = args.resource
+    const logs = actionFilter
+      ? await ctx.db
+          .query('auditLog')
+          .withIndex('by_action', (q) => q.eq('action', actionFilter))
+          .order('desc')
+          .collect()
+      : resourceFilter
+        ? await ctx.db
+            .query('auditLog')
+            .withIndex('by_resource', (q) => q.eq('resource', resourceFilter))
+            .order('desc')
+            .collect()
+        : await ctx.db.query('auditLog').withIndex('by_created').order('desc').collect()
+
+    const filteredLogs = logs.filter((log) => {
+      if (args.action && log.action !== args.action) return false
+      if (args.resource && log.resource !== args.resource) return false
+      if (fromTimestamp !== null && log.createdAt < fromTimestamp) return false
+      if (toTimestamp !== null && log.createdAt > toTimestamp) return false
+      return true
+    })
 
     // Get user info for each log entry
     const logsWithUsers = await Promise.all(
-      logs.map(async (log) => {
+      filteredLogs.map(async (log) => {
         if (log.userId) {
           const user = await ctx.db.get(log.userId)
           return {
@@ -653,7 +743,19 @@ export const getAuditLog = query({
       })
     )
 
-    return logsWithUsers
+    const actorQuery = args.actor?.trim().toLowerCase()
+    const actorFilteredLogs = actorQuery
+      ? logsWithUsers.filter((log) => {
+          if (!log.user) return 'system'.includes(actorQuery)
+          const actorFields = [log.user.name, log.user.email]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase()
+          return actorFields.includes(actorQuery)
+        })
+      : logsWithUsers
+
+    return sortAuditLogsNewestFirst(actorFilteredLogs).slice(0, limit)
   },
 })
 
@@ -662,7 +764,7 @@ export const getAuditLog = query({
  */
 export const checkIsAdmin = query({
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx)
+    const userId = await getCurrentUserId(ctx)
     if (!userId) {
       return { isAdmin: false }
     }

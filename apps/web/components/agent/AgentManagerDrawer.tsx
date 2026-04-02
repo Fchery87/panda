@@ -5,17 +5,16 @@ import { useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { motion, AnimatePresence } from 'framer-motion'
-import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   IconBot,
   IconCheck,
+  IconChevronDown,
+  IconChevronRight,
   IconError,
   IconSpinner,
   IconX,
   IconStop,
-  IconChevronRight,
-  IconChevronDown,
 } from '@/components/ui/icons'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import type { LiveProgressStep } from '@/components/chat/live-run-utils'
