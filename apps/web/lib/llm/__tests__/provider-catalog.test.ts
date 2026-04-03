@@ -62,6 +62,33 @@ describe('buildCatalogFromResponse', () => {
     expect(mistral?.baseUrl).toBe('https://api.mistral.ai/v1')
     expect(mistral?.logoUrl).toBe('https://models.dev/logos/mistral.svg')
   })
+
+  it('orders provider models newest-first when release metadata is available', () => {
+    const catalog = buildCatalogFromResponse({
+      openai: {
+        id: 'openai',
+        name: 'OpenAI',
+        api: 'https://api.openai.com/v1',
+        models: {
+          'gpt-4o': {
+            id: 'gpt-4o',
+            name: 'GPT-4o',
+            release_date: '2024-05-01',
+            context_length: 128000,
+          },
+          'gpt-5.5': {
+            id: 'gpt-5.5',
+            name: 'GPT-5.5',
+            release_date: '2026-03-20',
+            context_length: 256000,
+          },
+        },
+      },
+    })
+
+    expect(catalog[0]?.models.map((model) => model.id)).toEqual(['gpt-5.5', 'gpt-4o'])
+    expect(catalog[0]?.defaultModel).toBe('gpt-5.5')
+  })
 })
 
 describe('searchCatalog', () => {

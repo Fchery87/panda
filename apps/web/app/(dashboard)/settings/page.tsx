@@ -32,6 +32,8 @@ import { User, Palette, Bot, Save, Loader2, ArrowLeft, Settings2, Plus, X } from
 import { getDefaultProviderCapabilities, type ProviderType } from '@/lib/llm/types'
 import { extractOpenRouterFreeCodingModelIds } from '@/lib/llm/openrouter-free-models'
 import type { ProviderCatalogEntry } from '@/lib/llm/provider-catalog'
+import { normalizeModelIds } from '@/lib/llm/model-sync'
+import { useFreshProviderConfigs } from '@/hooks/useFreshProviderConfigs'
 import {
   buildSettingsTabHref,
   createSettingsSignature,
@@ -94,6 +96,7 @@ const defaultProviders: Record<string, ProviderConfig> = {
     enabled: false,
     defaultModel: 'gpt-4o-mini',
     availableModels: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+    baseUrl: 'https://api.openai.com/v1',
     testStatus: 'idle',
   },
   openrouter: {
@@ -357,6 +360,24 @@ export default function SettingsPage() {
     overrideGlobalProvider: false,
     overrideGlobalModel: false,
   })
+  const freshProviders = useFreshProviderConfigs(formState.providers)
+
+  React.useEffect(() => {
+    const selectedProvider = freshProviders[formState.defaultProvider]
+    const availableModels = selectedProvider?.availableModels ?? []
+    if (availableModels.length === 0 || availableModels.includes(formState.defaultModel)) {
+      return
+    }
+
+    setFormState((prev) => {
+      if (prev.defaultProvider !== formState.defaultProvider) return prev
+      if (availableModels.includes(prev.defaultModel)) return prev
+      return {
+        ...prev,
+        defaultModel: availableModels[0] ?? prev.defaultModel,
+      }
+    })
+  }, [freshProviders, formState.defaultProvider, formState.defaultModel])
 
   // Sync with Convex data
   React.useEffect(() => {
@@ -547,11 +568,7 @@ export default function SettingsPage() {
         .filter(Boolean)
 
       if (modelIds.length > 0) {
-        const existingSet = new Set(provider.availableModels)
-        const merged = [
-          ...provider.availableModels,
-          ...modelIds.filter((id) => !existingSet.has(id)),
-        ]
+        const merged = normalizeModelIds([...provider.availableModels, ...modelIds])
         updateProvider(providerKey, { availableModels: merged })
         toast.success(`Found ${modelIds.length} models from API (${merged.length} total)`)
       } else {
@@ -740,7 +757,7 @@ export default function SettingsPage() {
     try {
       // Strip testStatus before saving to Convex
       const providersForSave = Object.fromEntries(
-        Object.entries(formState.providers).map(([key, config]) => [
+        Object.entries(freshProviders).map(([key, config]) => [
           key,
           {
             provider: config.provider || key,
@@ -900,9 +917,13 @@ export default function SettingsPage() {
                     }))
                   }}
                   availableProviders={Object.fromEntries(
-                    Object.entries(formState.providers).map(([key, p]) => [
+                    Object.entries(freshProviders).map(([key, p]) => [
                       key,
-                      { name: p.name, availableModels: p.availableModels, enabled: p.enabled },
+                      {
+                        name: p.name || key,
+                        availableModels: p.availableModels || [],
+                        enabled: p.enabled === true,
+                      },
                     ])
                   )}
                 />
@@ -945,14 +966,32 @@ export default function SettingsPage() {
             />
 
             <div className="grid gap-6">
-              {Object.entries(formState.providers).map(([key, provider]) => {
+              {Object.entries(freshProviders).map(([key, provider]) => {
+                const resolvedProvider: ProviderConfig = {
+                  ...defaultProviders[key],
+                  ...provider,
+                  name: provider.name || defaultProviders[key]?.name || key,
+                  description:
+                    provider.description ||
+                    defaultProviders[key]?.description ||
+                    provider.name ||
+                    key,
+                  enabled: provider.enabled === true,
+                  availableModels: provider.availableModels || [],
+                  apiKey: provider.apiKey || '',
+                  defaultModel:
+                    provider.defaultModel ||
+                    provider.availableModels?.[0] ||
+                    defaultProviders[key]?.defaultModel ||
+                    '',
+                }
                 const providerType = (provider.provider || key) as ProviderType
                 const supportsReasoning =
                   getDefaultProviderCapabilities(providerType).supportsReasoning
                 return (
                   <div key={key} className="relative">
                     <ProviderCard
-                      provider={provider}
+                      provider={resolvedProvider}
                       supportsReasoning={supportsReasoning}
                       onChange={(updates) => updateProvider(key, updates)}
                       onTest={() => testProvider(key)}

@@ -10,10 +10,12 @@ import { resolveEffectiveAgentPolicy, type AgentPolicy } from '@/lib/agent/autom
 import { normalizeChatMode, type ChatMode } from '@/lib/agent/prompt-library'
 import type { SpecTier } from '@/lib/agent/spec/types'
 import { getGlobalRegistry } from '@/lib/llm/registry'
+import { buildAvailableModelsFromProviderConfigs } from '@/lib/llm/model-sync'
 import type { LLMProvider } from '@/lib/llm/types'
 import { getDefaultProviderCapabilities } from '@/lib/llm/types'
 import { createE2EProvider, isE2ESpecApprovalModeEnabled } from '@/lib/llm/e2e-provider'
 import { appLog } from '@/lib/logger'
+import { useFreshProviderConfigs } from './useFreshProviderConfigs'
 
 type ChatSessionChat = {
   _id: Id<'chats'>
@@ -53,6 +55,7 @@ export function useProjectChatSession<TChat extends ChatSessionChat>(args: {
   const effectiveSettings = useQuery(api.settings.getEffective) as
     | (ProviderSettings & { effectiveModel?: string })
     | undefined
+  const freshProviderConfigs = useFreshProviderConfigs(effectiveSettings?.providerConfigs)
 
   const settingsRef = useRef(settings)
   settingsRef.current = settings
@@ -152,13 +155,29 @@ export function useProjectChatSession<TChat extends ChatSessionChat>(args: {
   }, [settingsProviderVersion])
 
   const selectedModel = useMemo(() => {
-    if (effectiveSettings?.effectiveModel) return effectiveSettings.effectiveModel
     const selectedProviderId = settings?.defaultProvider || 'openai'
+    const freshProviderConfig = freshProviderConfigs[selectedProviderId] as
+      | { availableModels?: string[]; defaultModel?: string }
+      | undefined
+    const freshAvailableModels = freshProviderConfig?.availableModels ?? []
+
+    if (effectiveSettings?.effectiveModel) return effectiveSettings.effectiveModel
     const providerDefaultModel = (
       settings?.providerConfigs?.[selectedProviderId] as Record<string, unknown> | undefined
     )?.defaultModel as string | undefined
-    if (providerDefaultModel) return providerDefaultModel
-    if (settings?.defaultModel) return settings.defaultModel
+    if (providerDefaultModel && freshAvailableModels.includes(providerDefaultModel)) {
+      return providerDefaultModel
+    }
+    if (settings?.defaultModel && freshAvailableModels.includes(settings.defaultModel)) {
+      return settings.defaultModel
+    }
+    if (
+      freshProviderConfig?.defaultModel &&
+      freshAvailableModels.includes(freshProviderConfig.defaultModel)
+    ) {
+      return freshProviderConfig.defaultModel
+    }
+    if (freshAvailableModels.length > 0) return freshAvailableModels[0]
     if (provider?.config?.defaultModel) return provider.config.defaultModel
     return 'gpt-4o'
   }, [
@@ -166,6 +185,7 @@ export function useProjectChatSession<TChat extends ChatSessionChat>(args: {
     settings?.defaultProvider,
     settings?.defaultModel,
     settings?.providerConfigs,
+    freshProviderConfigs,
     provider,
   ])
 
@@ -181,26 +201,8 @@ export function useProjectChatSession<TChat extends ChatSessionChat>(args: {
       ]
     }
 
-    const providerConfigs = effectiveSettings?.providerConfigs
-    if (!providerConfigs) return []
-
-    const models: AvailableModel[] = []
-    for (const [key, rawConfig] of Object.entries(providerConfigs)) {
-      const config = rawConfig as {
-        enabled?: boolean
-        name?: string
-        availableModels?: string[]
-      }
-      if (!config?.enabled) continue
-      const providerName = config.name || key
-      for (const modelId of config.availableModels ?? []) {
-        const withoutOrg = modelId.includes('/') ? modelId.split('/').slice(1).join('/') : modelId
-        const displayName = withoutOrg.split(':')[0]
-        models.push({ id: modelId, name: displayName, provider: providerName, providerKey: key })
-      }
-    }
-    return models
-  }, [effectiveSettings?.providerConfigs])
+    return buildAvailableModelsFromProviderConfigs(freshProviderConfigs)
+  }, [freshProviderConfigs])
 
   const supportsReasoning = useMemo(() => {
     const providerType = (settings?.defaultProvider || 'openai') as Parameters<

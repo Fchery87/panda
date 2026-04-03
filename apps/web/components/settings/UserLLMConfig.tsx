@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { AlertCircle, Bot, Lock } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { normalizeModelIds } from '@/lib/llm/model-sync'
 
 interface UserLLMConfigProps {
   // Admin defaults
@@ -73,7 +74,10 @@ export function UserLLMConfig({
     : adminDefaults?.globalDefaultModel || userSettings.defaultModel
 
   const selectedProvider = availableProviders[effectiveProvider || '']
-  const availableModels = selectedProvider?.availableModels || []
+  const availableModels = React.useMemo(
+    () => normalizeModelIds(selectedProvider?.availableModels || []),
+    [selectedProvider?.availableModels]
+  )
 
   const handleToggleOverrideProvider = (checked: boolean) => {
     onUpdate({

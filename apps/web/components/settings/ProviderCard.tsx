@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { normalizeModelIds } from '@/lib/llm/model-sync'
 import { cn } from '@/lib/utils'
 
 interface ProviderConfig {
@@ -58,6 +59,10 @@ export function ProviderCard({
   className,
 }: ProviderCardProps) {
   const [showApiKey, setShowApiKey] = React.useState(false)
+  const availableModels = React.useMemo(
+    () => normalizeModelIds(provider.availableModels),
+    [provider.availableModels]
+  )
 
   const copyToClipboard = React.useCallback((value: string) => {
     if (typeof navigator === 'undefined' || !navigator.clipboard) return
@@ -182,7 +187,7 @@ export function ProviderCard({
               <SelectValue placeholder="Select a model" />
             </SelectTrigger>
             <SelectContent>
-              {provider.availableModels.map((model) => (
+              {availableModels.map((model) => (
                 <SelectItem key={model} value={model}>
                   {model}
                 </SelectItem>

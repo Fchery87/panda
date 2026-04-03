@@ -16,6 +16,7 @@ interface RenderModel {
   id: string
   name: string
   provider: string
+  providerKey?: string
   icon: React.ReactNode
 }
 
@@ -74,12 +75,22 @@ export function ModelSelector({ value, onChange, disabled, availableModels }: Mo
 
   const renderModels: RenderModel[] =
     availableModels && availableModels.length > 0
-      ? availableModels.map((m) => ({
-          id: m.id,
-          name: m.name,
-          provider: m.provider,
-          icon: PROVIDER_ICONS[m.providerKey] ?? <Bot className="h-3.5 w-3.5" />,
-        }))
+      ? availableModels.reduce<RenderModel[]>((acc, model) => {
+          const dedupeKey = `${model.providerKey}:${model.id}`
+          if (
+            acc.some((entry) => `${entry.providerKey ?? entry.provider}:${entry.id}` === dedupeKey)
+          ) {
+            return acc
+          }
+          acc.push({
+            id: model.id,
+            name: model.name,
+            provider: model.provider,
+            providerKey: model.providerKey,
+            icon: PROVIDER_ICONS[model.providerKey] ?? <Bot className="h-3.5 w-3.5" />,
+          })
+          return acc
+        }, [])
       : FALLBACK_MODELS
 
   const updateFadeVisibility = useCallback(() => {
@@ -164,7 +175,7 @@ export function ModelSelector({ value, onChange, disabled, availableModels }: Mo
             >
               {renderModels.map((model) => (
                 <SelectPrimitive.Item
-                  key={model.id}
+                  key={`${model.providerKey ?? model.provider}:${model.id}`}
                   value={model.id}
                   className={cn(
                     'relative flex w-full min-w-0 cursor-default select-none items-center gap-2',

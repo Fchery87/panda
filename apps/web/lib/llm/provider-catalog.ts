@@ -10,6 +10,7 @@ import { isKnownProvider } from './types'
 import {
   fetchModelsDevMetadata,
   mapModelsDevToModelInfo,
+  type ModelsDevModel,
   type ModelsDevResponse,
 } from './models-dev'
 import { appLog } from '@/lib/logger'
@@ -108,7 +109,9 @@ export function buildCatalogFromResponse(data: ModelsDevResponse): ProviderCatal
 
     const resolvedId = PROVIDER_ID_ALIASES[rawId] || rawId
     const isSpecial = isKnownProvider(resolvedId) && SPECIAL_PROVIDER_IDS.has(resolvedId)
-    const models = mapModelsDevToModelInfo(rawId, data)
+    const models = mapModelsDevToModelInfo(rawId, data).sort((a, b) =>
+      compareModelsForDisplay(providerData.models[a.id], providerData.models[b.id], a.id, b.id)
+    )
 
     if (models.length === 0) continue
 
@@ -140,6 +143,37 @@ export function buildCatalogFromResponse(data: ModelsDevResponse): ProviderCatal
   })
 
   return entries
+}
+
+function compareModelsForDisplay(
+  left: ModelsDevModel | undefined,
+  right: ModelsDevModel | undefined,
+  leftId: string,
+  rightId: string
+): number {
+  const leftDeprecated = left?.status === 'deprecated'
+  const rightDeprecated = right?.status === 'deprecated'
+  if (leftDeprecated !== rightDeprecated) {
+    return leftDeprecated ? 1 : -1
+  }
+
+  const leftTimestamp = getModelTimestamp(left)
+  const rightTimestamp = getModelTimestamp(right)
+  if (leftTimestamp !== rightTimestamp) {
+    return rightTimestamp - leftTimestamp
+  }
+
+  return leftId.localeCompare(rightId)
+}
+
+function getModelTimestamp(model: ModelsDevModel | undefined): number {
+  if (!model) return 0
+
+  const rawValue = model.last_updated || model.release_date
+  if (!rawValue) return 0
+
+  const timestamp = Date.parse(rawValue)
+  return Number.isFinite(timestamp) ? timestamp : 0
 }
 
 /**
