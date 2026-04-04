@@ -942,8 +942,33 @@ export default function ProjectPage() {
     />
   )
 
-  // Loading state
-  if (!project || !files) {
+  // Invalid project — Convex returned null (not found)
+  if (project === null) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="space-y-6 text-center"
+        >
+          <h1 className="font-mono text-2xl font-bold">Project not found</h1>
+          <p className="font-mono text-sm text-muted-foreground">
+            The project you're looking for doesn't exist or has been deleted.
+          </p>
+          <Button
+            variant="outline"
+            className="rounded-none font-mono"
+            onClick={() => { window.location.href = '/projects' }}
+          >
+            Back to Projects
+          </Button>
+        </motion.div>
+      </div>
+    )
+  }
+
+  // Loading state — project is undefined (still loading) or files not yet fetched
+  if (project === undefined || !files) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <motion.div
