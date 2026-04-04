@@ -16,6 +16,14 @@ import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { ArrowLeft, Settings, Save, AlertCircle, Bot, Server, Lock, Sparkles } from 'lucide-react'
 import { EnhancementLLMConfig } from '@/components/settings/EnhancementLLMConfig'
 
@@ -49,9 +57,13 @@ export default function AdminSystemPage() {
     enhancementModel: 'gpt-4o-mini',
   })
 
+  const [pendingMaintenance, setPendingMaintenance] = React.useState<boolean | null>(null)
+
+  const serverStateRef = React.useRef<{ controls: typeof controls; enhancementConfig: typeof enhancementConfig } | null>(null)
+
   React.useEffect(() => {
     if (settings) {
-      setControls({
+      const newControls = {
         allowUserOverrides: settings.allowUserOverrides !== false,
         allowUserMCP: settings.allowUserMCP !== false,
         allowUserSubagents: settings.allowUserSubagents !== false,
@@ -59,13 +71,34 @@ export default function AdminSystemPage() {
         registrationEnabled: settings.registrationEnabled !== false,
         maxProjectsPerUser: settings.maxProjectsPerUser || 100,
         maxChatsPerProject: settings.maxChatsPerProject || 50,
-      })
-      setEnhancementConfig({
+      }
+      const newEnhancementConfig = {
         enhancementProvider: settings.enhancementProvider || 'openai',
         enhancementModel: settings.enhancementModel || 'gpt-4o-mini',
-      })
+      }
+      setControls(newControls)
+      setEnhancementConfig(newEnhancementConfig)
+      serverStateRef.current = { controls: newControls, enhancementConfig: newEnhancementConfig }
     }
   }, [settings])
+
+  const isDirty = React.useMemo(() => {
+    if (!serverStateRef.current) return false
+    return (
+      JSON.stringify(controls) !== JSON.stringify(serverStateRef.current.controls) ||
+      JSON.stringify(enhancementConfig) !== JSON.stringify(serverStateRef.current.enhancementConfig)
+    )
+  }, [controls, enhancementConfig])
+
+  React.useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault()
+      }
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [isDirty])
 
   const updateQuery = useAdminQueryUpdater(pathname, router, searchParams)
 
@@ -83,6 +116,7 @@ export default function AdminSystemPage() {
         enhancementProvider: enhancementConfig.enhancementProvider,
         enhancementModel: enhancementConfig.enhancementModel,
       })
+      serverStateRef.current = { controls: { ...controls }, enhancementConfig: { ...enhancementConfig } }
       toast.success('System settings saved successfully')
     } catch (error) {
       toast.error('Failed to save settings')
@@ -114,13 +148,13 @@ export default function AdminSystemPage() {
               </p>
             </div>
           </div>
-          <Button onClick={handleSave} disabled={isSaving} className="rounded-none">
+          <Button onClick={handleSave} disabled={isSaving || !isDirty} className="rounded-none">
             {isSaving ? (
               <>Saving...</>
             ) : (
               <>
                 <Save className="mr-2 h-4 w-4" />
-                Save Changes
+                {isDirty ? 'Save Changes' : 'Saved'}
               </>
             )}
           </Button>
@@ -274,9 +308,13 @@ export default function AdminSystemPage() {
                 </div>
                 <Switch
                   checked={controls.systemMaintenance}
-                  onCheckedChange={(checked) =>
-                    setControls((prev) => ({ ...prev, systemMaintenance: checked }))
-                  }
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setPendingMaintenance(true)
+                    } else {
+                      setControls((prev) => ({ ...prev, systemMaintenance: false }))
+                    }
+                  }}
                 />
               </div>
 
@@ -397,6 +435,36 @@ export default function AdminSystemPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={pendingMaintenance !== null} onOpenChange={(open) => { if (!open) setPendingMaintenance(null) }}>
+        <DialogContent className="rounded-none font-mono">
+          <DialogHeader>
+            <DialogTitle>Enable Maintenance Mode?</DialogTitle>
+            <DialogDescription>
+              All non-admin users will be immediately locked out of the platform. This takes effect when you save changes.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              className="rounded-none"
+              onClick={() => setPendingMaintenance(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              className="rounded-none"
+              onClick={() => {
+                setControls((prev) => ({ ...prev, systemMaintenance: true }))
+                setPendingMaintenance(null)
+              }}
+            >
+              Enable Maintenance Mode
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
