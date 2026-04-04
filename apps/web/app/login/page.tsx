@@ -11,10 +11,12 @@ import { getLoginPageAccessState } from '@/lib/auth/access-state'
 
 function AuthenticatedRedirect() {
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   useEffect(() => {
-    router.replace('/projects')
-  }, [router])
+    const redirect = searchParams.get('redirect') || '/projects'
+    router.replace(redirect)
+  }, [router, searchParams])
 
   return null
 }

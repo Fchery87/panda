@@ -3,10 +3,30 @@
 import { Authenticated, AuthLoading, Unauthenticated } from 'convex/react'
 import { useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
-import { SignInButton } from './SignInButton'
 import { shouldBlockForMaintenance } from '@/lib/auth/routeGuards'
-import { usePathname } from 'next/navigation'
-import { getLoginPageAccessState, getMaintenancePageAccessState } from '@/lib/auth/access-state'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { getMaintenancePageAccessState } from '@/lib/auth/access-state'
+import { useEffect } from 'react'
+
+function UnauthenticatedRedirect() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const currentPath = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '')
+    router.replace(`/login?redirect=${encodeURIComponent(currentPath)}`)
+  }, [router, pathname, searchParams])
+
+  return (
+    <div className="flex h-screen items-center justify-center bg-background">
+      <div className="flex items-center gap-2 font-mono text-sm text-muted-foreground">
+        <div className="h-4 w-4 animate-spin border-2 border-primary border-t-transparent" />
+        Redirecting to login...
+      </div>
+    </div>
+  )
+}
 
 function isE2EAuthBypassEnabled(): boolean {
   return process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_E2E_AUTH_BYPASS === 'true'
@@ -21,7 +41,6 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <>{children}</>
   }
 
-  const registrationEnabled = adminDefaults?.registrationEnabled !== false
   const systemMaintenance = adminDefaults?.systemMaintenance === true
   const isAdmin = adminCheck?.isAdmin === true
   const showMaintenanceState = shouldBlockForMaintenance(
@@ -30,10 +49,6 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     isAdmin,
     systemMaintenance
   )
-  const loginState = getLoginPageAccessState({
-    registrationEnabled,
-    systemMaintenance,
-  })
   const maintenanceState = getMaintenancePageAccessState('maintenance')
 
   return (
@@ -47,13 +62,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
         </div>
       </AuthLoading>
       <Unauthenticated>
-        <div className="flex min-h-screen items-center justify-center bg-background">
-          <div className="flex flex-col items-center gap-6">
-            <h1 className="text-display text-2xl">Authentication Required</h1>
-            <p className="text-muted-foreground">{loginState.message}</p>
-            <SignInButton disabled={loginState.signInDisabled} />
-          </div>
-        </div>
+        <UnauthenticatedRedirect />
       </Unauthenticated>
       <Authenticated>
         {showMaintenanceState ? (
