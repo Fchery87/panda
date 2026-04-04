@@ -18,6 +18,7 @@ import type { PromptContext } from './prompt-library'
 import type { ToolContext, ToolExecutionResult } from './tools'
 import { getPromptForMode } from './prompt-library'
 import { getToolsForMode, executeTool } from './tools'
+import { resolveAgentSkillsForPromptContext } from './skills/resolver'
 import {
   Runtime as HarnessRuntime,
   type ToolExecutor as HarnessToolExecutor,
@@ -308,6 +309,8 @@ export class AgentRuntime {
    * This is a generator that yields events as they occur
    */
   async *run(promptContext: PromptContext, config?: RuntimeConfig): AsyncGenerator<AgentEvent> {
+    const resolvedSkills = resolveAgentSkillsForPromptContext(promptContext)
+
     // Initialize state
     const state: RuntimeState = {
       messages: getPromptForMode(promptContext),
@@ -324,6 +327,15 @@ export class AgentRuntime {
         error: 'Invalid prompt: messages must not be empty (no user message provided).',
       }
       return
+    }
+
+    for (const match of resolvedSkills.matches) {
+      yield {
+        type: 'progress_step',
+        content: `Skill matched: ${match.skill.name}`,
+        progressStatus: 'completed',
+        progressCategory: 'analysis',
+      }
     }
 
     const maxIterations = this.options.maxIterations ?? config?.maxIterations ?? 10

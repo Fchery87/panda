@@ -14,6 +14,7 @@ import {
   type BudgetAllocationOptions,
   type FileBudgetInfo,
 } from './context/context-budget'
+import { resolveAgentSkillsForPromptContext } from './skills/resolver'
 
 export type ChatMode = 'ask' | 'architect' | 'code' | 'build'
 type LegacyChatMode = ChatMode | 'discuss' | 'debug' | 'review'
@@ -88,6 +89,8 @@ export interface PromptContext {
     | 'custom'
   /** Model name for token estimation */
   model?: string
+  /** Optional workflow skill profile */
+  skillProfile?: 'off' | 'soft_guidance' | 'strict_workflow'
   /** Active specification for execution awareness */
   activeSpec?: {
     id: string
@@ -283,6 +286,7 @@ export function getPromptForMode(context: PromptContext): CompletionMessage[] {
   const messages: CompletionMessage[] = []
 
   let systemPrompt = getSystemPromptForMode(context.chatMode)
+  const resolvedSkills = resolveAgentSkillsForPromptContext(context)
 
   const brainstormEnabled =
     context.chatMode === 'architect' &&
@@ -290,6 +294,13 @@ export function getPromptForMode(context: PromptContext): CompletionMessage[] {
 
   if (brainstormEnabled) {
     systemPrompt = `${systemPrompt}${ARCHITECT_BRAINSTORM_PROTOCOL}`
+  }
+
+  if (resolvedSkills.matches.length > 0) {
+    const skillSection = resolvedSkills.matches
+      .map((match) => match.skill.buildInstruction(context))
+      .join('\n\n')
+    systemPrompt = `${systemPrompt}\n\n## Panda Workflow Skills\n${skillSection}`
   }
 
   // Inject active spec context if available

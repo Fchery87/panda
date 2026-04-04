@@ -151,4 +151,114 @@ describe('AgentRuntime progress steps', () => {
       )
     ).toBe(true)
   })
+
+  it('emits a progress step when ai-slop-cleaner is matched', async () => {
+    const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }
+
+    const provider: LLMProvider = {
+      name: 'fake',
+      config,
+      async listModels() {
+        return []
+      },
+      async complete() {
+        throw new Error('not used')
+      },
+      async *completionStream(_options: CompletionOptions): AsyncGenerator<StreamChunk> {
+        yield { type: 'text', content: 'Cleanup report ready.' }
+        yield {
+          type: 'finish',
+          finishReason: 'stop',
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        }
+      },
+    }
+
+    const runtime = new AgentRuntime(
+      { provider, model: 'fake-model' },
+      {
+        projectId: 'p',
+        chatId: 'c',
+        userId: 'u',
+        readFiles: async () => [],
+        applyPatch: async () => ({ success: true, appliedHunks: 1, fuzzyMatches: 0 }),
+        writeFiles: async () => [],
+        runCommand: async () => ({ stdout: '', stderr: '', exitCode: 0, durationMs: 0 }),
+        updateMemoryBank: async () => ({ success: true }),
+      }
+    )
+
+    const events: Array<{ type: string; content?: string; progressCategory?: string }> = []
+    for await (const evt of runtime.run({
+      projectId: 'p',
+      chatId: 'c',
+      userId: 'u',
+      chatMode: 'build',
+      provider: 'openai',
+      userMessage: 'Please refactor and deslop this duplicated AI-generated code.',
+    })) {
+      events.push(evt as { type: string; content?: string; progressCategory?: string })
+    }
+
+    expect(
+      events.some(
+        (e) =>
+          e.type === 'progress_step' &&
+          e.progressCategory === 'analysis' &&
+          e.content?.includes('Skill matched: ai-slop-cleaner')
+      )
+    ).toBe(true)
+  })
+
+  it('does not emit a skill progress step when skillProfile is off', async () => {
+    const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }
+
+    const provider: LLMProvider = {
+      name: 'fake',
+      config,
+      async listModels() {
+        return []
+      },
+      async complete() {
+        throw new Error('not used')
+      },
+      async *completionStream(_options: CompletionOptions): AsyncGenerator<StreamChunk> {
+        yield { type: 'text', content: 'Cleanup report ready.' }
+        yield {
+          type: 'finish',
+          finishReason: 'stop',
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        }
+      },
+    }
+
+    const runtime = new AgentRuntime(
+      { provider, model: 'fake-model' },
+      {
+        projectId: 'p',
+        chatId: 'c',
+        userId: 'u',
+        readFiles: async () => [],
+        applyPatch: async () => ({ success: true, appliedHunks: 1, fuzzyMatches: 0 }),
+        writeFiles: async () => [],
+        runCommand: async () => ({ stdout: '', stderr: '', exitCode: 0, durationMs: 0 }),
+        updateMemoryBank: async () => ({ success: true }),
+      }
+    )
+
+    const events: Array<{ type: string; content?: string; progressCategory?: string }> = []
+    for await (const evt of runtime.run({
+      projectId: 'p',
+      chatId: 'c',
+      userId: 'u',
+      chatMode: 'build',
+      provider: 'openai',
+      userMessage: 'Please refactor and deslop this duplicated AI-generated code.',
+      skillProfile: 'off',
+    })) {
+      events.push(evt as { type: string; content?: string; progressCategory?: string })
+    }
+
+    expect(events.some((e) => e.content?.includes('Skill matched: ai-slop-cleaner'))).toBe(false)
+  })
 })

@@ -124,6 +124,47 @@ describe('prompt-library — architect brainstorming protocol', () => {
   })
 })
 
+describe('prompt-library — Panda skill injection', () => {
+  it('injects ai-slop-cleaner guidance for cleanup requests', () => {
+    const systemText = getSystemText('build', {
+      userMessage: 'Cleanup this bloated AI-generated code path and remove dead code.',
+    })
+
+    expect(systemText).toContain('Activated Panda workflow skill: ai-slop-cleaner')
+    expect(systemText).toContain(
+      'Lock behavior with targeted regression tests before cleanup edits'
+    )
+    expect(systemText).toContain('Pass order')
+  })
+
+  it('does not inject ai-slop-cleaner guidance for unrelated build requests', () => {
+    const systemText = getSystemText('build', {
+      userMessage: 'Implement a new project switcher component.',
+    })
+
+    expect(systemText).not.toContain('Activated Panda workflow skill: ai-slop-cleaner')
+  })
+
+  it('does not inject Panda skills when skillProfile is off', () => {
+    const systemText = getSystemText('build', {
+      userMessage: 'Cleanup this bloated AI-generated code path and remove dead code.',
+      skillProfile: 'off',
+    })
+
+    expect(systemText).not.toContain('Activated Panda workflow skill: ai-slop-cleaner')
+  })
+
+  it('injects stricter workflow wording under strict_workflow', () => {
+    const systemText = getSystemText('build', {
+      userMessage: 'Cleanup this bloated AI-generated code path and remove dead code.',
+      skillProfile: 'strict_workflow',
+    })
+
+    expect(systemText).toContain('Profile: strict_workflow')
+    expect(systemText).toContain('Do not start cleanup edits until behavior is protected')
+  })
+})
+
 describe('prompt-library — project overview integration', () => {
   it('includes project overview when provided', () => {
     const projectOverview = '## Project Overview\nStack: React, TypeScript\nTotal Files: 42'
