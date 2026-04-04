@@ -28,7 +28,7 @@ import { SubagentEditor } from '@/components/settings/SubagentEditor'
 import { UserLLMConfig } from '@/components/settings/UserLLMConfig'
 import { ProviderCatalogModal } from '@/components/settings/ProviderCatalogModal'
 import { getDefaultPolicyForMode, type AgentPolicy } from '@/lib/agent/automationPolicy'
-import { User, Palette, Bot, Save, Loader2, ArrowLeft, Settings2, Plus, X } from 'lucide-react'
+import { User, Palette, Bot, ArrowLeft, Settings2, Plus, X } from 'lucide-react'
 import { getDefaultProviderCapabilities, type ProviderType } from '@/lib/llm/types'
 import { extractOpenRouterFreeCodingModelIds } from '@/lib/llm/openrouter-free-models'
 import type { ProviderCatalogEntry } from '@/lib/llm/provider-catalog'
@@ -801,6 +801,18 @@ export default function SettingsPage() {
     }
   }
 
+  const handleDiscard = () => {
+    const latestSettings = settingsRef.current
+    if (latestSettings === undefined) return
+    const nextSettings = buildSettingsStateFromQuery(latestSettings)
+    setAgentDefaults(nextSettings.agentDefaults)
+    setFormState(nextSettings.formState)
+    initialSettingsSignatureRef.current = createSettingsSignature(
+      buildSettingsSignatureInput(nextSettings.formState, nextSettings.agentDefaults)
+    )
+    toast('Changes discarded')
+  }
+
   const handleBackToProjects = () => {
     if (isDirty) {
       const shouldLeave = window.confirm('You have unsaved changes. Leave without saving?')
@@ -1091,28 +1103,32 @@ export default function SettingsPage() {
           </TabsContent>
         </Tabs>
 
-        {/* Save Button */}
-        <div className="mt-8 flex justify-end">
-          <Button
-            onClick={handleSave}
-            disabled={isSaving || !isDirty}
-            size="lg"
-            className="min-w-[140px]"
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="mr-2 h-4 w-4" />
-                Save Changes
-              </>
-            )}
-          </Button>
-        </div>
       </div>
+
+      {/* Sticky Save Bar */}
+      {isDirty && (
+        <div className="sticky bottom-0 z-10 border-t border-border bg-background/95 px-6 py-3 backdrop-blur">
+          <div className="mx-auto flex max-w-4xl items-center justify-between">
+            <p className="font-mono text-sm text-muted-foreground">You have unsaved changes</p>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="rounded-none font-mono"
+                onClick={handleDiscard}
+              >
+                Discard
+              </Button>
+              <Button
+                className="rounded-none font-mono"
+                onClick={handleSave}
+                disabled={isSaving}
+              >
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
