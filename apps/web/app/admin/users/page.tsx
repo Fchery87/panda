@@ -90,6 +90,12 @@ export default function AdminUsersPage() {
   const [loadedUsers, setLoadedUsers] = React.useState<AdminListUser[]>([])
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [pendingDeleteUserId, setPendingDeleteUserId] = React.useState<AdminUserId | null>(null)
+  const [confirmAction, setConfirmAction] = React.useState<{
+    type: 'admin' | 'ban'
+    userId: AdminUserId
+    newValue: boolean
+    label: string
+  } | null>(null)
 
   const users = useQuery(api.admin.listUsers, {
     cursor,
@@ -136,37 +142,55 @@ export default function AdminUsersPage() {
     updateQuery({ selectedUserId: null })
   }, [updateQuery])
 
-  const handleToggleAdmin = async (userId: AdminUserId, isAdmin: boolean) => {
-    setIsLoading(true)
-    try {
-      await updateUserAdmin({
-        userId,
-        isAdmin,
-        adminRole: isAdmin ? 'admin' : undefined,
-      })
-      toast.success(isAdmin ? 'Admin privileges granted' : 'Admin privileges revoked')
-    } catch (error) {
-      void error
-      toast.error('Failed to update user')
-    } finally {
-      setIsLoading(false)
-    }
+  const requestToggleAdmin = (userId: AdminUserId, isAdmin: boolean) => {
+    setConfirmAction({
+      type: 'admin',
+      userId,
+      newValue: !isAdmin,
+      label: isAdmin
+        ? 'Are you sure you want to revoke admin privileges from this user?'
+        : 'Are you sure you want to grant admin privileges to this user?',
+    })
   }
 
-  const handleToggleBan = async (userId: AdminUserId, isBanned: boolean) => {
+  const requestToggleBan = (userId: AdminUserId, isBanned: boolean) => {
+    setConfirmAction({
+      type: 'ban',
+      userId,
+      newValue: !isBanned,
+      label: isBanned
+        ? 'Are you sure you want to unban this user?'
+        : 'Are you sure you want to ban this user?',
+    })
+  }
+
+  const executeConfirmedAction = async () => {
+    if (!confirmAction) return
     setIsLoading(true)
     try {
-      await updateUserBan({
-        userId,
-        isBanned,
-        reason: isBanned ? 'Administrative action' : undefined,
-      })
-      toast.success(isBanned ? 'User banned' : 'User unbanned')
+      if (confirmAction.type === 'admin') {
+        await updateUserAdmin({
+          userId: confirmAction.userId,
+          isAdmin: confirmAction.newValue,
+          adminRole: confirmAction.newValue ? 'admin' : undefined,
+        })
+        toast.success(
+          confirmAction.newValue ? 'Admin privileges granted' : 'Admin privileges revoked'
+        )
+      } else {
+        await updateUserBan({
+          userId: confirmAction.userId,
+          isBanned: confirmAction.newValue,
+          reason: confirmAction.newValue ? 'Administrative action' : undefined,
+        })
+        toast.success(confirmAction.newValue ? 'User banned' : 'User unbanned')
+      }
     } catch (error) {
       void error
       toast.error('Failed to update user')
     } finally {
       setIsLoading(false)
+      setConfirmAction(null)
     }
   }
 
@@ -414,9 +438,9 @@ export default function AdminUsersPage() {
                     variant={selectedUserDetails.user.isAdmin ? 'destructive' : 'default'}
                     className="w-full rounded-none"
                     onClick={() =>
-                      handleToggleAdmin(
+                      requestToggleAdmin(
                         selectedUserDetails.user._id,
-                        !selectedUserDetails.user.isAdmin
+                        selectedUserDetails.user.isAdmin
                       )
                     }
                     disabled={isLoading}
@@ -440,9 +464,9 @@ export default function AdminUsersPage() {
                     variant={selectedUserDetails.user.isBanned ? 'outline' : 'destructive'}
                     className="w-full rounded-none"
                     onClick={() =>
-                      handleToggleBan(
+                      requestToggleBan(
                         selectedUserDetails.user._id,
-                        !selectedUserDetails.user.isBanned
+                        selectedUserDetails.user.isBanned
                       )
                     }
                     disabled={isLoading}
@@ -558,6 +582,43 @@ export default function AdminUsersPage() {
               disabled={isLoading || !pendingDeleteUserId}
             >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Delete User'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={confirmAction !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setConfirmAction(null)
+          }
+        }}
+      >
+        <DialogContent className="rounded-none font-mono">
+          <DialogHeader>
+            <DialogTitle>
+              {confirmAction?.type === 'admin' ? 'Confirm Admin Change' : 'Confirm Ban Change'}
+            </DialogTitle>
+            <DialogDescription>{confirmAction?.label}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-none"
+              onClick={() => setConfirmAction(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              className="rounded-none"
+              onClick={() => void executeConfirmedAction()}
+              disabled={isLoading}
+            >
+              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Confirm'}
             </Button>
           </DialogFooter>
         </DialogContent>
