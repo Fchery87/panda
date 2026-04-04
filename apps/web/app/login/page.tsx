@@ -5,7 +5,7 @@ import { PandaLogo } from '@/components/ui/panda-logo'
 import { Authenticated, AuthLoading, Unauthenticated } from '@/components/auth/ConvexAuthProvider'
 import { useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect } from 'react'
 import { getLoginPageAccessState } from '@/lib/auth/access-state'
 
@@ -23,6 +23,8 @@ export default function LoginPage() {
   const adminDefaults = useQuery(api.settings.getAdminDefaults)
   const registrationEnabled = adminDefaults?.registrationEnabled !== false
   const systemMaintenance = adminDefaults?.systemMaintenance === true
+  const searchParams = useSearchParams()
+  const authError = searchParams.get('error')
   const accessState = getLoginPageAccessState({
     registrationEnabled,
     systemMaintenance,
@@ -50,6 +52,21 @@ export default function LoginPage() {
           </div>
 
           <SignInButton disabled={accessState.signInDisabled} />
+
+          {authError && (
+            <div className="max-w-sm border border-destructive/50 bg-destructive/10 p-3 text-center">
+              <p className="font-mono text-sm text-destructive">
+                Sign-in failed. Please try again.
+              </p>
+            </div>
+          )}
+
+          <a
+            href="/"
+            className="font-mono text-sm text-muted-foreground underline hover:text-foreground"
+          >
+            Back to Home
+          </a>
         </main>
       </Unauthenticated>
     </>
