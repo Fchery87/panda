@@ -147,7 +147,22 @@ function readAgentPolicyField(
   return (source as Record<string, unknown>)[key] as AgentPolicy | null | undefined
 }
 
-const FALLBACK_PROVIDER = {} as LLMProvider
+const FALLBACK_PROVIDER: LLMProvider = {
+  name: 'No Provider',
+  config: {
+    provider: 'anthropic',
+    auth: { apiKey: '' },
+  },
+  async listModels() {
+    return []
+  },
+  async complete() {
+    throw new Error('No LLM provider configured')
+  },
+  async *completionStream() {
+    throw new Error('No LLM provider configured')
+  },
+}
 
 export default function ProjectPage() {
   const params = useParams()
