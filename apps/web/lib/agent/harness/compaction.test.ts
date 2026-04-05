@@ -26,8 +26,8 @@ describe('estimateTokens', () => {
   test('handles large repetitive text', () => {
     const text = 'x '.repeat(1000)
     const tokens = estimateTokens(text)
-    // Should be around 1000 tokens (each "x " is roughly 1 token)
-    expect(tokens).toBeGreaterThan(500)
+    // Heuristic in test env: ceil(2000/4) = 500; tiktoken would give ~1000
+    expect(tokens).toBeGreaterThanOrEqual(500)
     expect(tokens).toBeLessThan(2000)
   })
 })

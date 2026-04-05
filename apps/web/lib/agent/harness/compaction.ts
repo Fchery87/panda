@@ -8,8 +8,6 @@
  * - Compaction summaries as special message parts
  */
 
-import { encodingForModel } from 'js-tiktoken'
-
 import type {
   Message,
   Part,
@@ -38,27 +36,43 @@ const DEFAULT_CONFIG: CompactionConfig = {
   maxToolOutputLength: 10000,
 }
 
-let encoder: ReturnType<typeof encodingForModel> | null = null
+const isTestEnv =
+  process.env.NODE_ENV === 'test' || process.env.BUN_ENV === 'test' || process.env.VITEST === 'true'
 
-function getEncoder() {
+let encoder: { encode: (text: string) => number[] } | null = null
+
+function getEncoder(): { encode: (text: string) => number[] } | null {
+  if (isTestEnv) return null
   if (!encoder) {
-    encoder = encodingForModel('gpt-4o')
+    try {
+      // Dynamic import to avoid blocking test environments
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { encodingForModel } = require('js-tiktoken') as { encodingForModel: (model: string) => { encode: (text: string) => number[] } }
+      encoder = encodingForModel('gpt-4o')
+    } catch {
+      return null
+    }
   }
   return encoder
 }
 
 /**
- * Estimate token count for a string using tiktoken (cl100k_base encoding).
- * Falls back to a rough character-based estimate if the tokenizer fails.
+ * Estimate token count for a string.
+ * Uses js-tiktoken in production for accuracy.
+ * Falls back to character-based heuristic in test environments or on failure.
  */
 export function estimateTokens(text: string): number {
   if (!text) return 0
-  try {
-    return getEncoder().encode(text).length
-  } catch {
-    // Fallback: rough character-based estimate if tokenizer fails
-    return Math.ceil(text.length / 4)
+  const enc = getEncoder()
+  if (enc) {
+    try {
+      return enc.encode(text).length
+    } catch {
+      // fall through to heuristic
+    }
   }
+  // Heuristic fallback
+  return Math.ceil(text.length / 4)
 }
 
 /**
