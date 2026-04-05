@@ -1535,6 +1535,110 @@ describe('harness Runtime', () => {
     expect(resumedEvents.some((event) => event.type === 'complete')).toBe(true)
   })
 
+  test('resumes from checkpoint after crash recovery cycle', async () => {
+    resetHarnessTestState()
+    const store = new InMemoryCheckpointStore()
+    const sessionID = 'session-crash-recovery'
+
+    // Provider: first call returns a tool_call, second call (after resume) returns stop
+    const crashRecoveryProvider: LLMProvider = {
+      ...createProvider(() => {}, 'tool_calls'),
+      async *completionStream(options: CompletionOptions) {
+        const hasToolResult = options.messages.some((m) => m.role === 'tool')
+
+        if (!hasToolResult) {
+          // First call: issue a read_files tool call
+          yield {
+            type: 'tool_call',
+            toolCall: {
+              id: 'tc-crash-read',
+              type: 'function',
+              function: {
+                name: 'read_files',
+                arguments: JSON.stringify({ paths: ['some/file.ts'] }),
+              },
+            },
+          }
+          yield {
+            type: 'finish',
+            finishReason: 'tool_calls',
+            usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+          }
+          return
+        }
+
+        // Second call (after resume): return text and stop
+        yield { type: 'text', content: 'recovered-output' }
+        yield {
+          type: 'finish',
+          finishReason: 'stop',
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        }
+      },
+    }
+
+    const userMessage = createUserMessage({
+      id: 'msg-crash-recovery',
+      sessionID,
+      text: 'Read a file',
+      agent: 'build',
+    })
+
+    const toolMap = new Map([
+      [
+        'read_files',
+        async () => ({ output: 'file-content-here' }),
+      ],
+    ])
+
+    // --- First runtime: run one step then simulate crash by breaking ---
+    const runtime1 = new Runtime(crashRecoveryProvider, toolMap, {
+      checkpointStore: store,
+      skipSpecVerification: true,
+      onToolInterrupt: async () => ({ decision: 'approve' as const }),
+    })
+
+    const firstRunEvents: Array<{ type: string; [key: string]: unknown }> = []
+    for await (const event of runtime1.run(sessionID, userMessage)) {
+      firstRunEvents.push(event)
+      // Simulate crash: break after the first step completes (checkpoint saved)
+      if (event.type === 'step_finish') {
+        break
+      }
+    }
+
+    // First run should have completed one step with tool processing
+    expect(firstRunEvents.some((e) => e.type === 'step_finish')).toBe(true)
+
+    // Verify a checkpoint was saved with step=1 and not complete
+    const checkpoint = await store.load(sessionID)
+    expect(checkpoint).toBeDefined()
+    expect(checkpoint!.state.step).toBe(1)
+    expect(checkpoint!.state.isComplete).toBe(false)
+
+    // --- Second runtime: NEW instance, same checkpoint store ---
+    const runtime2 = new Runtime(crashRecoveryProvider, toolMap, {
+      checkpointStore: store,
+      skipSpecVerification: true,
+      onToolInterrupt: async () => ({ decision: 'approve' as const }),
+    })
+
+    const resumeEvents: Array<{ type: string; [key: string]: unknown }> = []
+    for await (const event of runtime2.resume(sessionID)) {
+      resumeEvents.push(event)
+    }
+
+    // Verify the resumed session reached completion
+    expect(resumeEvents.some((e) => e.type === 'complete')).toBe(true)
+    expect(
+      resumeEvents.some((e) => e.type === 'text' && e.content === 'recovered-output')
+    ).toBe(true)
+    // Verify it continued from step 2 (not restarted from 0)
+    expect(
+      resumeEvents.some((e) => e.type === 'step_start' && e.step === 2)
+    ).toBe(true)
+  })
+
   test('resumes from checkpoints that still use legacy tuple tool frequency entries', async () => {
     resetHarnessTestState()
     const checkpointStore = new InMemoryCheckpointStore()
