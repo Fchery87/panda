@@ -52,7 +52,7 @@ import { withTimeoutAndRetry, isContextOverflowError } from '../../llm/stream-re
 import { snapshots } from './snapshots'
 import { createSubtaskPart, executeTaskTool, getTaskToolDefinitions } from './task-tool'
 import { extractFilePaths, isFileCoveredBySpec } from '../spec/drift-detection'
-import { appLog } from '@/lib/logger'
+import { appLog, createSessionLogger } from '@/lib/logger'
 import type {
   RuntimeCheckpoint,
   RuntimeCheckpointPendingSubtask,
@@ -508,6 +508,7 @@ export class Runtime {
     }
 
     const sessionID = this.state.sessionID
+    const log = createSessionLogger(sessionID, { agent: agent.name })
     const contextLimit = this.config.contextWindowSize
       ?? (this.provider.config.auth.baseUrl?.includes('anthropic') ? 200000 : 128000)
 
@@ -517,6 +518,7 @@ export class Runtime {
         { sessionID, step: this.state.step, agent, messageID: '' },
         {}
       )
+      log.info('Session started', { maxSteps })
     }
 
     try {
@@ -594,6 +596,7 @@ export class Runtime {
           usage: this.state.tokens,
           cost: this.state.cost,
         }
+        log.debug('Step completed', { step: this.state.step, finishReason: result.finishReason })
 
         await this.executeHook(
           'step.end',
@@ -603,6 +606,7 @@ export class Runtime {
       }
 
       if (!this.state.isComplete) {
+        log.warn('Max steps reached', { maxSteps, step: this.state.step })
         await this.saveCheckpoint(agent.name, 'error')
         this.cleanupSessionSingletons(sessionID)
         yield {
@@ -624,6 +628,7 @@ export class Runtime {
       // Only emit 'complete' if verification passed or there's no active spec
       // If verification failed, emit 'error' instead
       if (verificationOutcome.passed) {
+        log.info('Session completed', { steps: this.state.step, cost: this.state.cost, tokens: this.state.tokens })
         yield {
           type: 'complete',
           usage: this.state.tokens,
@@ -646,6 +651,7 @@ export class Runtime {
       // Cleanup singletons after successful session completion
       this.cleanupSessionSingletons(sessionID)
     } catch (error) {
+      log.error('Session error', { step: this.state.step, error: error instanceof Error ? error.message : String(error) })
       await this.saveCheckpoint(agent.name, 'error')
       yield {
         type: 'error',
@@ -1194,6 +1200,7 @@ export class Runtime {
   ): AsyncGenerator<RuntimeEvent> {
     if (!this.state) throw new Error('Runtime not initialized')
 
+    const log = createSessionLogger(this.state.sessionID, { agent: agent.name })
     const toolName = toolCall.function.name
     const startedAt = Date.now()
     let args: Record<string, unknown>
@@ -1243,6 +1250,7 @@ export class Runtime {
         error,
         startedAt,
       })
+      log.warn('Permission denied', { tool: toolName, step: this.state.step })
       return { output: '', error, argsUsed: args }
     }
 
@@ -1279,6 +1287,7 @@ export class Runtime {
           error: `Permission denied for tool: ${toolName}${pattern ? ` (${pattern})` : ''}`,
           startedAt,
         })
+        log.warn('Permission denied', { tool: toolName, step: this.state.step })
         return { output: '', error: `Permission denied for tool: ${toolName}`, argsUsed: args }
       }
     }
@@ -1333,6 +1342,7 @@ export class Runtime {
         }
 
         if (!result.granted) {
+          log.warn('Permission denied', { tool: toolName, step: this.state.step })
           return { output: '', error: `Permission denied: ${result.reason}`, argsUsed: args }
         }
       }
@@ -1491,6 +1501,7 @@ export class Runtime {
           args,
           result,
         })
+        log.debug('Tool executed', { tool: toolName, step: this.state.step, durationMs: Date.now() - startedAt })
 
         // Check for drift after tool execution
         if (this.state.activeSpec && this.config.specEngine?.enableDriftDetection) {
