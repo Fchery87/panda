@@ -1775,4 +1775,80 @@ describe('harness Runtime', () => {
     }
     expect(threwError).toBe(true)
   })
+
+  test('times out hung tool execution and produces tool_result with error', async () => {
+    resetHarnessTestState()
+    let streamCalls = 0
+
+    const provider: LLMProvider = {
+      ...createProvider(() => {}, 'tool_calls'),
+      async *completionStream() {
+        streamCalls++
+        if (streamCalls === 1) {
+          yield {
+            type: 'tool_call',
+            toolCall: {
+              id: 'tc-timeout-hung',
+              type: 'function',
+              function: {
+                name: 'read_files',
+                arguments: JSON.stringify({ paths: ['hang.ts'] }),
+              },
+            },
+          }
+          yield {
+            type: 'finish',
+            finishReason: 'tool_calls',
+            usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+          }
+          return
+        }
+        yield { type: 'text', content: 'done' }
+        yield {
+          type: 'finish',
+          finishReason: 'stop',
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        }
+      },
+    }
+
+    const runtime = new Runtime(
+      provider,
+      new Map([
+        [
+          'read_files',
+          async () => {
+            // Never resolves — simulates a hung tool
+            return new Promise(() => {})
+          },
+        ],
+      ]),
+      {
+        maxSteps: 3,
+        toolExecutionTimeoutMs: 50,
+        skipSpecVerification: true,
+        specEngine: { enabled: false },
+      }
+    )
+
+    const userMessage = createUserMessage({
+      id: 'msg-timeout',
+      sessionID: 'session-timeout',
+      text: 'read a file that hangs',
+      agent: 'build',
+    })
+
+    const events = []
+    for await (const event of runtime.run(userMessage.sessionID, userMessage)) {
+      events.push(event)
+    }
+
+    const toolResults = events.filter((e) => e.type === 'tool_result')
+    expect(toolResults.length).toBeGreaterThan(0)
+    expect(
+      toolResults.some(
+        (e) => e.toolResult?.error && e.toolResult.error.includes('timed out')
+      )
+    ).toBe(true)
+  })
 })

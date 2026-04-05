@@ -408,6 +408,8 @@ export interface RuntimeConfig {
   streamIdleTimeoutMs?: number
   maxStreamRetries?: number
   streamRetryBackoffMs?: number
+  /** Timeout in ms for individual tool executions (default: 300000 = 5 minutes) */
+  toolExecutionTimeoutMs?: number
 }
 
 export interface RuntimeSnapshotEvent {

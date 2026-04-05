@@ -231,6 +231,7 @@ const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = {
   maxToolExecutionRetries: 0,
   toolRetryBackoffMs: 200,
   enableToolCallIdempotencyCache: false,
+  toolExecutionTimeoutMs: 300000,
   specEngine: {
     enabled: true,
     autoApproveAmbient: true,
@@ -1430,16 +1431,22 @@ export class Runtime {
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        const result = await executor(args, {
-          sessionID: this.state.sessionID,
-          messageID,
-          agent,
-          abortSignal: this.state.abortController.signal,
-          metadata: () => {},
-          ask: async (question: string) => {
-            return `User response: ${question}`
-          },
-        })
+        const timeoutMs = this.config.toolExecutionTimeoutMs ?? 300000
+        const result = await Promise.race([
+          executor(args, {
+            sessionID: this.state.sessionID,
+            messageID,
+            agent,
+            abortSignal: this.state.abortController.signal,
+            metadata: () => {},
+            ask: async (question: string) => {
+              return `User response: ${question}`
+            },
+          }),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error(`Tool "${toolName}" timed out after ${timeoutMs}ms`)), timeoutMs)
+          ),
+        ])
 
         if (
           this.config.enableToolCallIdempotencyCache &&
