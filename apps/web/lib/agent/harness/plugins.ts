@@ -9,6 +9,7 @@
  */
 
 import { appLog } from '@/lib/logger'
+import { AGENT_TOOLS } from '../tools'
 import type {
   Plugin,
   HookType,
@@ -31,7 +32,7 @@ function debugHarnessLog(...args: unknown[]): void {
   console.log(...args)
 }
 
-class PluginManager {
+export class PluginManager {
   private plugins: Map<string, Plugin> = new Map()
   private hooks: Map<HookType, HookEntry[]> = new Map()
   private customTools: Map<string, ToolDefinition> = new Map()
@@ -55,7 +56,14 @@ class PluginManager {
     }
 
     if (plugin.tools) {
+      const builtinNames = new Set(AGENT_TOOLS.map(t => t.function.name))
       for (const tool of plugin.tools) {
+        if (builtinNames.has(tool.function.name)) {
+          throw new Error(
+            `Plugin "${plugin.name}" shadows built-in tool "${tool.function.name}". ` +
+            `Use a unique name to avoid overriding core tools.`
+          )
+        }
         this.customTools.set(tool.function.name, tool)
       }
     }
