@@ -168,9 +168,27 @@ export class PermissionManager {
   > = new Map()
   private sessionPermissions: Map<Identifier, Permission> = new Map()
   private userDecisions: Map<string, PermissionDecision> = new Map()
+  private onAuditLog?: (entry: {
+    sessionID: Identifier
+    tool: string
+    pattern: string
+    decision: PermissionDecision
+    reason?: string
+  }) => void
 
-  constructor(options?: { timeoutMs?: number; pollIntervalMs?: number }) {
+  constructor(options?: {
+    timeoutMs?: number
+    pollIntervalMs?: number
+    onAuditLog?: (entry: {
+      sessionID: Identifier
+      tool: string
+      pattern: string
+      decision: PermissionDecision
+      reason?: string
+    }) => void
+  }) {
     this.timeoutMs = options?.timeoutMs ?? 60000
+    this.onAuditLog = options?.onAuditLog
   }
 
   /**
@@ -197,6 +215,7 @@ export class PermissionManager {
 
     const cachedDecision = this.userDecisions.get(decisionKey)
     if (cachedDecision) {
+      this.onAuditLog?.({ sessionID, tool, pattern, decision: cachedDecision, reason: 'Cached decision' })
       return {
         granted: cachedDecision === 'allow',
         decision: cachedDecision,
@@ -208,6 +227,7 @@ export class PermissionManager {
     const decision = checkPermission(sessionPerms, tool, pattern)
 
     if (decision !== 'ask') {
+      this.onAuditLog?.({ sessionID, tool, pattern, decision })
       return {
         granted: decision === 'allow',
         decision,
@@ -230,6 +250,7 @@ export class PermissionManager {
           decision: 'deny',
           reason: 'Timeout',
         })
+        this.onAuditLog?.({ sessionID, tool, pattern, decision: 'deny', reason: 'Timeout' })
         resolve({
           granted: false,
           decision: 'deny',
@@ -252,6 +273,8 @@ export class PermissionManager {
             decision: result.decision,
             reason: result.reason,
           })
+
+          this.onAuditLog?.({ sessionID, tool, pattern, decision: result.decision, reason: result.reason })
 
           resolve(result)
         },

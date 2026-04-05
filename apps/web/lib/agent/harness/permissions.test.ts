@@ -68,4 +68,17 @@ describe('PermissionManager', () => {
 
     unsubscribe()
   })
+
+  test('calls onAuditLog for each permission decision', async () => {
+    const auditEntries: Array<{ tool: string; decision: string }> = []
+    const manager = new PermissionManager({
+      timeoutMs: 100,
+      onAuditLog: (entry) => auditEntries.push({ tool: entry.tool, decision: entry.decision }),
+    })
+    manager.setSessionPermissions('session-audit', { read_files: 'allow' })
+    await manager.request('session-audit', 'msg-1', 'read_files', '*')
+    expect(auditEntries.length).toBe(1)
+    expect(auditEntries[0].tool).toBe('read_files')
+    expect(auditEntries[0].decision).toBe('allow')
+  })
 })

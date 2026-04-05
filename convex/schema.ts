@@ -800,7 +800,21 @@ export default defineSchema({
     .index('by_suite_created', ['suiteId', 'createdAt'])
     .index('by_project_created', ['projectId', 'createdAt']),
 
-  // 27. Specifications table - SpecNative formal specifications
+  // 27. Permission Audit Log table - persistent permission decision log
+  permissionAuditLog: defineTable({
+    sessionID: v.string(),
+    tool: v.string(),
+    pattern: v.string(),
+    decision: v.string(),
+    reason: v.optional(v.string()),
+    metadata: v.optional(v.any()),
+    timestamp: v.number(),
+    projectId: v.optional(v.id('projects')),
+  })
+    .index('by_session', ['sessionID'])
+    .index('by_session_tool', ['sessionID', 'tool']),
+
+  // 28. Specifications table - SpecNative formal specifications
   specifications: defineTable({
     projectId: v.id('projects'),
     chatId: v.id('chats'),
