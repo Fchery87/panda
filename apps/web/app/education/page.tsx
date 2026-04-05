@@ -22,8 +22,8 @@ import {
   CheckCircle2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { ThemeToggle } from '@/components/settings/ThemeToggle'
-import { PandaLogo } from '@/components/ui/panda-logo'
+import { PublicNav } from '@/components/layout/PublicNav'
+import { PublicFooter } from '@/components/layout/PublicFooter'
 import { cn } from '@/lib/utils'
 import {
   chatDetails,
@@ -73,23 +73,7 @@ const sectionIcons = {
 export default function EducationPage() {
   return (
     <div className="dot-grid min-h-screen bg-background">
-      <nav className="surface-1 fixed left-0 right-0 top-0 z-50 border-b border-border">
-        <div className="container flex h-14 items-center justify-between gap-4">
-          <Link href="/" className="transition-sharp hover:opacity-70">
-            <PandaLogo size="md" variant="full" />
-          </Link>
-
-          <div className="flex items-center gap-2 sm:gap-4">
-            <ThemeToggle />
-            <Link href="/projects">
-              <Button className="rounded-none font-mono text-sm tracking-wide">
-                Launch App
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <PublicNav />
 
       <main id="main-content" className="pb-24 pt-28 lg:pb-32 lg:pt-36">
         <section className="pb-16 lg:pb-20">
@@ -609,6 +593,8 @@ export default function EducationPage() {
           </div>
         </section>
       </main>
+
+      <PublicFooter />
     </div>
   )
 }

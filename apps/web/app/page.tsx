@@ -4,8 +4,9 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { ArrowRight, Terminal, FileCode, Bot, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { ThemeToggle } from '@/components/settings/ThemeToggle'
 import { PandaLogo } from '@/components/ui/panda-logo'
+import { PublicNav } from '@/components/layout/PublicNav'
+import { PublicFooter } from '@/components/layout/PublicFooter'
 import { cn } from '@/lib/utils'
 import { landingFeatures } from '@/lib/product/capabilities'
 
@@ -20,29 +21,7 @@ export default function Home() {
   return (
     <main id="main-content" className="dot-grid min-h-screen bg-background">
       {/* Navigation - Minimal, sharp */}
-      <nav className="surface-1 fixed left-0 right-0 top-0 z-50 border-b border-border">
-        <div className="container flex h-14 items-center justify-between">
-          <Link href="/" className="transition-sharp hover:opacity-70">
-            <PandaLogo size="md" variant="full" />
-          </Link>
-
-          <div className="flex items-center gap-4">
-            <Link
-              href="/education"
-              className="transition-sharp hidden font-mono text-xs uppercase tracking-wide text-muted-foreground hover:text-foreground sm:inline-flex"
-            >
-              How Panda Works
-            </Link>
-            <ThemeToggle />
-            <Link href="/projects">
-              <Button className="rounded-none font-mono text-sm tracking-wide">
-                Launch App
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <PublicNav showEducationLink />
 
       {/* Hero - Asymmetric split */}
       <section className="pb-24 pt-32 lg:pb-32 lg:pt-40">
@@ -269,15 +248,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer - Minimal */}
-      <footer className="border-t border-border py-8">
-        <div className="container">
-          <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-            <PandaLogo size="sm" variant="full" />
-            <p className="font-mono text-sm text-muted-foreground">Built by Studio Eighty7</p>
-          </div>
-        </div>
-      </footer>
+      {/* Footer */}
+      <PublicFooter />
     </main>
   )
 }
