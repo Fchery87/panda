@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { PandaLogo } from '@/components/ui/panda-logo'
 import { PublicNav } from '@/components/layout/PublicNav'
 import { PublicFooter } from '@/components/layout/PublicFooter'
+import { useConvexAuth } from 'convex/react'
 import { cn } from '@/lib/utils'
 import { landingFeatures } from '@/lib/product/capabilities'
 
@@ -18,6 +19,8 @@ const featureIcons = {
 } as const
 
 export default function Home() {
+  const { isAuthenticated } = useConvexAuth()
+
   return (
     <main id="main-content" className="dot-grid min-h-screen bg-background">
       {/* Navigation - Minimal, sharp */}
@@ -62,7 +65,7 @@ export default function Home() {
                       size="lg"
                       className="shadow-sharp-md hover:shadow-sharp-lg transition-sharp rounded-none font-mono tracking-wide"
                     >
-                      Create Your Project
+                      {isAuthenticated ? 'Open Dashboard' : 'Create Your Project'}
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </Link>
@@ -240,7 +243,7 @@ export default function Home() {
 
             <Link href="/projects">
               <Button size="lg" className="shadow-sharp-md rounded-none font-mono tracking-wide">
-                Launch the Workbench
+                {isAuthenticated ? 'Open Dashboard' : 'Launch the Workbench'}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
