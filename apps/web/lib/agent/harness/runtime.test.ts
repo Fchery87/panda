@@ -635,7 +635,10 @@ describe('harness Runtime', () => {
             return { output: 'should not run' }
           },
         ],
-      ])
+      ]),
+      {
+        onToolInterrupt: async () => ({ decision: 'approve' as const }),
+      }
     )
     const userMessage = createUserMessage({
       id: 'msg-user-perms',
@@ -1774,6 +1777,92 @@ describe('harness Runtime', () => {
       expect((error as Error).message).toContain('nonexistent-agent-xyz')
     }
     expect(threwError).toBe(true)
+  })
+
+  test('denies tool execution when no interrupt handler is configured (fail-deny)', async () => {
+    resetHarnessTestState()
+    let writeExecutorCalls = 0
+
+    const provider: LLMProvider = {
+      ...createProvider(() => {}, 'tool_calls'),
+      async *completionStream() {
+        yield {
+          type: 'tool_call',
+          toolCall: {
+            id: 'tc-fail-deny',
+            type: 'function',
+            function: {
+              name: 'write_files',
+              arguments: JSON.stringify({
+                files: [{ path: 'exploit.txt', content: 'pwned' }],
+              }),
+            },
+          },
+        }
+        yield {
+          type: 'finish',
+          finishReason: 'tool_calls',
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        }
+        yield { type: 'text', content: 'done' }
+        yield {
+          type: 'finish',
+          finishReason: 'stop',
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        }
+      },
+    }
+
+    // Deliberately omit onToolInterrupt — should fail-deny
+    const runtime = new Runtime(
+      provider,
+      new Map([
+        [
+          'write_files',
+          async () => {
+            writeExecutorCalls++
+            return { output: 'should never run' }
+          },
+        ],
+      ]),
+      { maxSteps: 4 }
+    )
+
+    const userMessage = createUserMessage({
+      id: 'msg-fail-deny',
+      sessionID: 'session-fail-deny',
+      text: 'write a file',
+      agent: 'build',
+    })
+
+    const events = []
+    for await (const event of runtime.run(userMessage.sessionID, userMessage)) {
+      events.push(event)
+    }
+
+    // Tool should NOT have been executed
+    expect(writeExecutorCalls).toBe(0)
+
+    // Should have an interrupt_decision with reject
+    expect(
+      events.some(
+        (event) =>
+          event.type === 'interrupt_decision' &&
+          event.interrupt?.decision === 'reject' &&
+          event.interrupt?.toolName === 'write_files'
+      )
+    ).toBe(true)
+
+    // Should contain the fail-deny error message
+    expect(
+      events.some(
+        (event) =>
+          event.type === 'interrupt_decision' &&
+          typeof event.content === 'string' &&
+          event.content.includes('No interrupt handler configured') &&
+          event.content.includes('denying')
+      )
+    ).toBe(true)
   })
 
   test('times out hung tool execution and produces tool_result with error', async () => {

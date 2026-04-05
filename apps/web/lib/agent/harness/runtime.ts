@@ -2234,17 +2234,25 @@ export class Runtime {
 
     const handler = this.config.onToolInterrupt
     if (!handler) {
+      const error = `No interrupt handler configured; denying ${request.toolName} (${request.riskTier} risk)`
       yield {
         type: 'interrupt_decision',
-        content: `No interrupt handler configured for ${request.toolName}; proceeding to standard permissions`,
+        content: error,
         interrupt: {
           toolName: request.toolName,
           riskTier: request.riskTier,
-          decision: 'approve',
-          reason: 'No interrupt handler configured',
+          decision: 'reject',
+          reason: 'No interrupt handler configured — fail-deny policy',
         },
       }
-      return { approved: true, args: request.args }
+      yield this.createToolResultEvent({
+        toolCallId: request.toolCallId ?? request.messageID,
+        toolName: request.toolName,
+        args: request.args,
+        output: '',
+        error,
+      })
+      return { approved: false, args: request.args, error }
     }
 
     let result: ToolInterruptResult
