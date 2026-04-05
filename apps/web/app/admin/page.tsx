@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { SystemOverview } from '@/components/admin/SystemOverview'
-import { ArrowRight, BarChart3, Bot, Lock, Settings, Shield, Users } from 'lucide-react'
+import { ArrowRight, BarChart3, Settings, Shield, Users } from 'lucide-react'
 
 type AdminRouteCard = {
   href: string
@@ -48,20 +48,6 @@ const adminRouteCards: AdminRouteCard[] = [
     description: 'Review audit logs and security-sensitive administrative actions.',
     icon: Shield,
     badge: 'Dedicated',
-  },
-  {
-    href: '/admin/system',
-    title: 'Global LLM Defaults',
-    description: 'The global model and provider configuration now lives in the system route.',
-    icon: Bot,
-    badge: 'Relocated',
-  },
-  {
-    href: '/admin/system',
-    title: 'Access Policy',
-    description: 'User overrides, MCP access, and registration controls are managed in system.',
-    icon: Lock,
-    badge: 'Relocated',
   },
 ]
 
