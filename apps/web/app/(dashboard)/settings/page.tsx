@@ -19,6 +19,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { ProviderCard } from '@/components/settings/ProviderCard'
 import { ConnectProvider } from '@/components/settings/ConnectProvider'
 import { ThemeToggleFull } from '@/components/settings/ThemeToggle'
@@ -349,6 +357,7 @@ export default function SettingsPage() {
   const allowUserSubagents = adminDefaults?.allowUserSubagents !== false
   const [catalogModalOpen, setCatalogModalOpen] = React.useState(false)
   const [refreshingModels, setRefreshingModels] = React.useState<string | null>(null)
+  const [showLeaveDialog, setShowLeaveDialog] = React.useState(false)
 
   // Local state for form
   const [formState, setFormState] = React.useState<SettingsState>({
@@ -815,10 +824,9 @@ export default function SettingsPage() {
 
   const handleBackToProjects = () => {
     if (isDirty) {
-      const shouldLeave = window.confirm('You have unsaved changes. Leave without saving?')
-      if (!shouldLeave) return
+      setShowLeaveDialog(true)
+      return
     }
-
     router.push('/projects')
   }
 
@@ -1129,6 +1137,33 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+
+      <Dialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
+        <DialogContent className="rounded-none font-mono">
+          <DialogHeader>
+            <DialogTitle>Unsaved Changes</DialogTitle>
+            <DialogDescription>
+              You have unsaved changes. Are you sure you want to leave?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              className="rounded-none"
+              onClick={() => setShowLeaveDialog(false)}
+            >
+              Stay
+            </Button>
+            <Button
+              variant="destructive"
+              className="rounded-none"
+              onClick={() => router.push('/projects')}
+            >
+              Leave Without Saving
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
