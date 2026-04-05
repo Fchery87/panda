@@ -74,6 +74,7 @@ import {
   createPlanArtifactWorkspaceTab,
   upsertPlanArtifactWorkspaceTab,
 } from '@/components/workbench/PlanArtifactTab'
+import { ShortcutHelpOverlay } from '@/components/workbench/ShortcutHelpOverlay'
 import { derivePlanningSessionDebugSummary } from '@/components/plan/PlanningSessionDebugCard'
 import type { GeneratedPlanArtifact } from '@/lib/planning/types'
 import { appLog } from '@/lib/logger'
@@ -204,6 +205,7 @@ export default function ProjectPage() {
   const [automationMode, setAutomationMode] = useState<'manual' | 'auto'>('manual')
   const [contextualPrompt, setContextualPrompt] = useState<string | null>(null)
   const [isComposerOpen, setIsComposerOpen] = useState(false)
+  const [isShortcutHelpOpen, setIsShortcutHelpOpen] = useState(false)
   const lastAssistantMessageIdRef = useRef<string | null>(null)
   const seenPendingArtifactIdsRef = useRef<Set<string>>(new Set())
   const lastOpenedPlanArtifactRef = useRef<string | null>(null)
@@ -215,6 +217,15 @@ export default function ProjectPage() {
     (e) => {
       e.preventDefault()
       setIsComposerOpen((prev) => !prev)
+    },
+    { enableOnFormTags: ['INPUT', 'TEXTAREA'] }
+  )
+
+  useHotkeys(
+    'mod+/',
+    (e) => {
+      e.preventDefault()
+      setIsShortcutHelpOpen((prev) => !prev)
     },
     { enableOnFormTags: ['INPUT', 'TEXTAREA'] }
   )
@@ -1223,6 +1234,10 @@ export default function ProjectPage() {
           onClose={() => setIsComposerOpen(false)}
           onSubmit={(prompt, ctx) => handleSendMessage(prompt, 'build', ctx)}
           isStreaming={agent.isLoading}
+        />
+        <ShortcutHelpOverlay
+          open={isShortcutHelpOpen}
+          onOpenChange={setIsShortcutHelpOpen}
         />
       </div>
     </WorkspaceProvider>
