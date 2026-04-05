@@ -505,7 +505,8 @@ export class Runtime {
     }
 
     const sessionID = this.state.sessionID
-    const contextLimit = this.provider.config.auth.baseUrl?.includes('anthropic') ? 200000 : 128000
+    const contextLimit = this.config.contextWindowSize
+      ?? (this.provider.config.auth.baseUrl?.includes('anthropic') ? 200000 : 128000)
 
     if (options.emitSessionStart) {
       await this.executeHook(

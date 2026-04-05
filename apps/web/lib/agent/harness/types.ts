@@ -370,6 +370,7 @@ export interface RuntimeConfig {
   maxToolCallsPerStep?: number
   enableToolDeduplication?: boolean
   toolLoopThreshold?: number
+  contextWindowSize?: number
   contextCompactionThreshold?: number
   compactionTimeBudgetMs?: number
   enableSnapshots?: boolean
