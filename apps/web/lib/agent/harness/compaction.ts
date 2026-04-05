@@ -8,6 +8,8 @@
  * - Compaction summaries as special message parts
  */
 
+import { encodingForModel } from 'js-tiktoken'
+
 import type {
   Message,
   Part,
@@ -36,15 +38,27 @@ const DEFAULT_CONFIG: CompactionConfig = {
   maxToolOutputLength: 10000,
 }
 
+let encoder: ReturnType<typeof encodingForModel> | null = null
+
+function getEncoder() {
+  if (!encoder) {
+    encoder = encodingForModel('gpt-4o')
+  }
+  return encoder
+}
+
 /**
- * Estimate token count for a string
+ * Estimate token count for a string using tiktoken (cl100k_base encoding).
+ * Falls back to a rough character-based estimate if the tokenizer fails.
  */
 export function estimateTokens(text: string): number {
   if (!text) return 0
-  const charCount = text.length
-  const wordCount = text.split(/\s+/).filter(Boolean).length
-
-  return Math.ceil(charCount / 4 + wordCount * 0.3)
+  try {
+    return getEncoder().encode(text).length
+  } catch {
+    // Fallback: rough character-based estimate if tokenizer fails
+    return Math.ceil(text.length / 4)
+  }
 }
 
 /**
