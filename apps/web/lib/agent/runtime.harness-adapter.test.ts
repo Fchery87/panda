@@ -8,7 +8,7 @@ import type {
 } from '../llm/types'
 import { streamAgent } from './runtime'
 import type { ToolContext } from './tools'
-import type { CheckpointStore, RuntimeCheckpoint } from './harness/checkpoint-store'
+import { InMemoryCheckpointStore, type CheckpointStore, type RuntimeCheckpoint } from './harness/checkpoint-store'
 import type { Message as HarnessMessage, UserMessage as HarnessUserMessage } from './harness'
 import { Runtime as HarnessRuntime } from './harness/runtime'
 import type { FormalSpecification } from './spec/types'
@@ -125,7 +125,7 @@ describe('Harness adapter guardrail parity', () => {
         userMessage: 'delegate this',
       },
       makeToolContext(),
-      {},
+      { harnessCheckpointStore: new InMemoryCheckpointStore() },
       { harnessEnableRiskInterrupts: false }
     )) {
       events.push(evt)
@@ -196,7 +196,7 @@ describe('Harness adapter guardrail parity', () => {
         userMessage: 'Summarize the compacted context and continue',
       },
       makeToolContext(),
-      { maxIterations: 3 }
+      { maxIterations: 3, harnessCheckpointStore: new InMemoryCheckpointStore() }
     )) {
       events.push(evt)
     }
@@ -291,7 +291,8 @@ describe('Harness adapter guardrail parity', () => {
         provider: 'openai',
         userMessage: 'find timeline code',
       },
-      toolContext
+      toolContext,
+      { harnessCheckpointStore: new InMemoryCheckpointStore() }
     )) {
       events.push(evt)
     }
@@ -351,6 +352,7 @@ describe('Harness adapter guardrail parity', () => {
       },
       makeToolContext(),
       {
+        harnessCheckpointStore: new InMemoryCheckpointStore(),
         harnessEnableRiskInterrupts: true,
         harnessSessionPermissions: {
           'run_command:bun test*': 'allow',
@@ -410,7 +412,7 @@ describe('Harness adapter guardrail parity', () => {
         userMessage: 'run chained commands',
       },
       makeToolContext(),
-      {},
+      { harnessCheckpointStore: new InMemoryCheckpointStore() },
       {
         harnessEnableRiskInterrupts: false,
       }
@@ -490,7 +492,7 @@ describe('Harness adapter guardrail parity', () => {
         userMessage: 'delegate twice',
       },
       makeToolContext(),
-      {},
+      { harnessCheckpointStore: new InMemoryCheckpointStore() },
       { harnessEnableRiskInterrupts: false }
     )) {
       events.push(evt)
@@ -557,7 +559,7 @@ describe('Harness adapter guardrail parity', () => {
         userMessage: 'plan this change',
       },
       makeToolContext(),
-      {},
+      { harnessCheckpointStore: new InMemoryCheckpointStore() },
       { harnessEnableRiskInterrupts: false }
     )) {
       events.push(evt)
@@ -617,7 +619,7 @@ describe('Harness adapter guardrail parity', () => {
         userMessage: 'delegate this',
       },
       makeToolContext(),
-      {},
+      { harnessCheckpointStore: new InMemoryCheckpointStore() },
       { harnessEnableRiskInterrupts: false }
     )) {
       events.push(evt)
@@ -808,7 +810,7 @@ describe('Harness adapter guardrail parity', () => {
         userMessage: 'try writing',
       },
       makeToolContext(),
-      {},
+      { harnessCheckpointStore: new InMemoryCheckpointStore() },
       {
         harnessEvalMode: 'read_only',
       }
@@ -865,7 +867,7 @@ describe('Harness adapter guardrail parity', () => {
         userMessage: 'read the runtime file',
       },
       makeToolContext(),
-      {},
+      { harnessCheckpointStore: new InMemoryCheckpointStore() },
       { harnessEnableRiskInterrupts: false }
     )) {
       events.push(evt)
@@ -908,6 +910,7 @@ describe('Harness adapter guardrail parity', () => {
       | undefined
 
     const runtime = new HarnessRuntime(provider, new Map(), {
+      checkpointStore: new InMemoryCheckpointStore(),
       specEngine: {
         enabled: true,
         defaultTier: 'explicit',
@@ -997,7 +1000,7 @@ describe('Harness adapter guardrail parity', () => {
         userMessage: 'write a file',
       },
       makeToolContext(),
-      {},
+      { harnessCheckpointStore: new InMemoryCheckpointStore() },
       { harnessEnableRiskInterrupts: false }
     )) {
       events.push(evt)

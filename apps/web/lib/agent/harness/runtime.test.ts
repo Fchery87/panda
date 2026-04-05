@@ -106,7 +106,7 @@ describe('harness Runtime', () => {
     })
     plugins.register(plugin)
 
-    const runtime = new Runtime(provider, new Map())
+    const runtime = new Runtime(provider, new Map(), { checkpointStore: new InMemoryCheckpointStore() })
     const userMessage = createUserMessage({
       id: 'msg-user-1',
       sessionID: 'session-1',
@@ -138,7 +138,7 @@ describe('harness Runtime', () => {
       )
     })
 
-    const runtime = new Runtime(provider, new Map(), { maxSteps: 3 })
+    const runtime = new Runtime(provider, new Map(), { maxSteps: 3, checkpointStore: new InMemoryCheckpointStore() })
     const sessionID = 'session-compaction'
     const initialMessages: Message[] = Array.from({ length: 8 }, (_, index) =>
       createUserMessage({
@@ -217,6 +217,7 @@ describe('harness Runtime', () => {
         maxSteps: 3,
         contextCompactionThreshold: 0.9,
         compactionTimeBudgetMs: 1,
+        checkpointStore: new InMemoryCheckpointStore(),
       })
       const sessionID = 'session-compaction-budget'
       const initialMessages: Message[] = Array.from({ length: 8 }, (_, index) =>
@@ -272,6 +273,7 @@ describe('harness Runtime', () => {
         const runtime = new Runtime(provider, new Map(), {
           enableSnapshots: true,
           maxSteps: 3,
+          checkpointStore: new InMemoryCheckpointStore(),
           ...(runtimeConfig as {
             snapshotTimeoutMs?: number
             snapshotFailureMode?: 'warn' | 'error'
@@ -382,6 +384,7 @@ describe('harness Runtime', () => {
       ]),
       {
         maxSteps: 4,
+        checkpointStore: new InMemoryCheckpointStore(),
         onToolInterrupt: async () => ({
           decision: 'edit',
           args: { files: [{ path: 'safe.txt', content: 'hello' }] },
@@ -468,6 +471,7 @@ describe('harness Runtime', () => {
         maxSteps: 4,
         maxToolExecutionRetries: 1,
         toolRetryBackoffMs: 0,
+        checkpointStore: new InMemoryCheckpointStore(),
         specEngine: {
           enabled: false,
         },
@@ -546,7 +550,7 @@ describe('harness Runtime', () => {
           },
         ],
       ]),
-      { maxSteps: 5, enableToolCallIdempotencyCache: true }
+      { maxSteps: 5, enableToolCallIdempotencyCache: true, checkpointStore: new InMemoryCheckpointStore() }
     )
 
     const userMessage = createUserMessage({
@@ -637,6 +641,7 @@ describe('harness Runtime', () => {
         ],
       ]),
       {
+        checkpointStore: new InMemoryCheckpointStore(),
         onToolInterrupt: async () => ({ decision: 'approve' as const }),
       }
     )
@@ -710,6 +715,7 @@ describe('harness Runtime', () => {
       ]),
       {
         maxSteps: 3,
+        checkpointStore: new InMemoryCheckpointStore(),
         toolRiskPolicy: {
           low: 'allow',
           medium: 'allow',
@@ -824,7 +830,7 @@ describe('harness Runtime', () => {
           },
         ],
       ]),
-      { maxSteps: 4, maxToolCallsPerStep: 1 }
+      { maxSteps: 4, maxToolCallsPerStep: 1, checkpointStore: new InMemoryCheckpointStore() }
     )
 
     const userMessage = createUserMessage({
@@ -910,7 +916,7 @@ describe('harness Runtime', () => {
           },
         ],
       ]),
-      { maxSteps: 4, enableToolDeduplication: true }
+      { maxSteps: 4, enableToolDeduplication: true, checkpointStore: new InMemoryCheckpointStore() }
     )
 
     const userMessage = createUserMessage({
@@ -974,7 +980,7 @@ describe('harness Runtime', () => {
           },
         ],
       ]),
-      { maxSteps: 8, toolLoopThreshold: 2 }
+      { maxSteps: 8, toolLoopThreshold: 2, checkpointStore: new InMemoryCheckpointStore() }
     )
 
     const userMessage = createUserMessage({
@@ -1043,7 +1049,7 @@ describe('harness Runtime', () => {
           },
         ],
       ]),
-      { maxSteps: 1 }
+      { maxSteps: 1, checkpointStore: new InMemoryCheckpointStore() }
     )
 
     const userMessage = createUserMessage({
@@ -1120,6 +1126,7 @@ describe('harness Runtime', () => {
 
     const runtime = new Runtime(provider, new Map(), {
       maxSteps: 5,
+      checkpointStore: new InMemoryCheckpointStore(),
       runSubagent: async (_subagent, _prompt, childSessionID) => ({
         sessionID: childSessionID,
         output: 'child-result',
@@ -1174,6 +1181,7 @@ describe('harness Runtime', () => {
       const runtime = new Runtime(provider, new Map(), {
         maxSteps: 2,
         enableSnapshots: true,
+        checkpointStore: new InMemoryCheckpointStore(),
       })
       const userMessage = createUserMessage({
         id: 'msg-user-snapshot',
@@ -1241,6 +1249,7 @@ describe('harness Runtime', () => {
     const runtime = new Runtime(provider, new Map(), {
       maxSteps: 4,
       maxSubagentDepth: 0,
+      checkpointStore: new InMemoryCheckpointStore(),
     })
     const userMessage = createUserMessage({
       id: 'msg-user-depth',
@@ -1348,7 +1357,7 @@ describe('harness Runtime', () => {
             }),
         ],
       ]),
-      { maxSteps: 5 }
+      { maxSteps: 5, checkpointStore: new InMemoryCheckpointStore() }
     )
 
     const userMessage = createUserMessage({
@@ -1696,6 +1705,7 @@ describe('harness Runtime', () => {
       ]),
       {
         maxSteps: 3,
+        checkpointStore: new InMemoryCheckpointStore(),
         specEngine: {
           enabled: true,
           defaultTier: 'ambient',
@@ -1734,7 +1744,7 @@ describe('harness Runtime', () => {
   test('emits complete when there is no active spec (no verification needed)', async () => {
     resetHarnessTestState()
     const provider = createProvider(() => {})
-    const runtime = new Runtime(provider, new Map())
+    const runtime = new Runtime(provider, new Map(), { checkpointStore: new InMemoryCheckpointStore() })
 
     const userMessage = createUserMessage({
       id: 'msg-user-no-spec',
@@ -1759,7 +1769,7 @@ describe('harness Runtime', () => {
   test('throws on unknown agent name instead of falling back to build', async () => {
     resetHarnessTestState()
     const provider = createProvider(() => {})
-    const runtime = new Runtime(provider, new Map())
+    const runtime = new Runtime(provider, new Map(), { checkpointStore: new InMemoryCheckpointStore() })
     const userMessage = createUserMessage({
       id: 'msg-bad-agent',
       sessionID: 'session-bad',
@@ -1825,7 +1835,7 @@ describe('harness Runtime', () => {
           },
         ],
       ]),
-      { maxSteps: 4 }
+      { maxSteps: 4, checkpointStore: new InMemoryCheckpointStore() }
     )
 
     const userMessage = createUserMessage({
@@ -1916,6 +1926,7 @@ describe('harness Runtime', () => {
         maxSteps: 3,
         toolExecutionTimeoutMs: 50,
         skipSpecVerification: true,
+        checkpointStore: new InMemoryCheckpointStore(),
         specEngine: { enabled: false },
       }
     )

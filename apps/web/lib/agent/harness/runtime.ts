@@ -269,6 +269,11 @@ export class Runtime {
     toolExecutors: Map<string, ToolExecutor>,
     config?: Partial<RuntimeConfig>
   ) {
+    if (!config?.checkpointStore) {
+      throw new Error(
+        'Runtime requires a checkpointStore. Use InMemoryCheckpointStore for development or ConvexCheckpointStore for production.'
+      )
+    }
     this.provider = provider
     this.toolExecutors = toolExecutors
     this.config = { ...DEFAULT_RUNTIME_CONFIG, ...config }
