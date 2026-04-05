@@ -1752,4 +1752,27 @@ describe('harness Runtime', () => {
     expect(completeEvents.length).toBe(1)
     expect(errorEvents.length).toBe(0)
   })
+
+  test('throws on unknown agent name instead of falling back to build', async () => {
+    resetHarnessTestState()
+    const provider = createProvider(() => {})
+    const runtime = new Runtime(provider, new Map())
+    const userMessage = createUserMessage({
+      id: 'msg-bad-agent',
+      sessionID: 'session-bad',
+      text: 'hello',
+      agent: 'nonexistent-agent-xyz',
+    })
+
+    let threwError = false
+    try {
+      for await (const _event of runtime.run('session-bad', userMessage)) {
+        // consume
+      }
+    } catch (error) {
+      threwError = true
+      expect((error as Error).message).toContain('nonexistent-agent-xyz')
+    }
+    expect(threwError).toBe(true)
+  })
 })

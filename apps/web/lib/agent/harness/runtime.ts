@@ -283,7 +283,10 @@ export class Runtime {
     initialMessages: Message[] = []
   ): AsyncGenerator<RuntimeEvent> {
     this.toolCallResultCache.clear()
-    const agent = agents.get(userMessage.agent) ?? agents.get('build')!
+    const agent = agents.get(userMessage.agent)
+    if (!agent) {
+      throw new Error(`Unknown agent: "${userMessage.agent}". Available agents: ${agents.list().map(a => a.name).join(', ')}`)
+    }
     const maxSteps = agent.steps ?? this.config.maxSteps ?? 50
     this.state = this.createInitialState(sessionID, [...initialMessages, userMessage])
 
@@ -453,7 +456,10 @@ export class Runtime {
       throw new Error(`No checkpoint found for session: ${sessionID}`)
     }
 
-    const agent = agents.get(checkpoint.agentName) ?? agents.get('build')!
+    const agent = agents.get(checkpoint.agentName)
+    if (!agent) {
+      throw new Error(`Unknown agent: "${checkpoint.agentName}". Available agents: ${agents.list().map(a => a.name).join(', ')}`)
+    }
     const maxSteps = agent.steps ?? this.config.maxSteps ?? 50
 
     this.state = this.restoreStateFromCheckpoint(checkpoint.state)
