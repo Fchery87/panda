@@ -35,6 +35,12 @@ export default async function MaintenancePage({ searchParams }: MaintenancePageP
       <Link href="/">
         <Button className="rounded-none font-mono">Return Home</Button>
       </Link>
+      <Link
+        href="/admin"
+        className="font-mono text-xs text-muted-foreground/50 hover:text-muted-foreground"
+      >
+        Admin Console
+      </Link>
     </main>
   )
 }
