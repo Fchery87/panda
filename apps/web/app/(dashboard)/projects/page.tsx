@@ -34,7 +34,6 @@ interface Project {
   description?: string
   createdAt: number
   lastOpenedAt: number
-  repoUrl?: string
 }
 
 function CreateProjectDialog({
