@@ -14,20 +14,33 @@ type Logger = {
   debug: (...args: unknown[]) => void
 }
 
+function serializeError(err: Error): Record<string, unknown> {
+  return { error: err.name, errorMessage: err.message, stack: err.stack }
+}
+
 function formatEntry(
   level: LogLevel,
   args: unknown[],
   baseContext?: Record<string, unknown>,
 ): string {
-  const msg = typeof args[0] === 'string' ? args[0] : String(args[0])
+  let msg: string
   let context: Record<string, unknown> = {}
+
+  if (args[0] instanceof Error) {
+    msg = args[0].message
+    context = serializeError(args[0])
+  } else {
+    msg = typeof args[0] === 'string' ? args[0] : String(args[0])
+  }
 
   if (args.length > 1) {
     const second = args[1]
-    if (second && typeof second === 'object' && !Array.isArray(second)) {
-      context = second as Record<string, unknown>
+    if (second instanceof Error) {
+      context = { ...context, ...serializeError(second) }
+    } else if (second && typeof second === 'object' && !Array.isArray(second)) {
+      context = { ...context, ...(second as Record<string, unknown>) }
     } else {
-      context = { context: second }
+      context = { ...context, context: second }
     }
   }
 
