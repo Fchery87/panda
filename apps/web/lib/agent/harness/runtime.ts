@@ -94,6 +94,8 @@ interface RuntimeState {
   checkpointMessageSnapshot: Message[] | null
   /** Whether messages array has changed since last checkpoint snapshot */
   messagesDirtySinceCheckpoint: boolean
+  /** Tracks consecutive compaction failures to break death spirals */
+  consecutiveCompactionFailures: number
 }
 
 function normalizeCheckpointToolCallFrequency(
@@ -492,6 +494,7 @@ export class Runtime {
       lastInterventionStep: 0,
       checkpointMessageSnapshot: null,
       messagesDirtySinceCheckpoint: true,
+      consecutiveCompactionFailures: 0,
     }
   }
 
@@ -555,8 +558,20 @@ export class Runtime {
         ) {
           const compacted = yield* this.performCompaction(agent)
           if (compacted) {
+            this.state.consecutiveCompactionFailures = 0
             await this.saveCheckpoint(agent.name, 'step')
             continue
+          } else {
+            this.state.consecutiveCompactionFailures++
+            if (this.state.consecutiveCompactionFailures >= 2) {
+              yield {
+                type: 'error',
+                error: 'Compaction failed repeatedly — context is exhausted and cannot be reduced',
+              }
+              this.state.isComplete = true
+              await this.saveCheckpoint(agent.name, 'error')
+              return
+            }
           }
         }
 
@@ -2544,6 +2559,7 @@ export class Runtime {
       })),
       cyclicPatternDetected: this.state.cyclicPatternDetected,
       lastInterventionStep: this.state.lastInterventionStep,
+      consecutiveCompactionFailures: this.state.consecutiveCompactionFailures,
     }
   }
 
@@ -2570,6 +2586,7 @@ export class Runtime {
       lastInterventionStep: checkpointState.lastInterventionStep ?? 0,
       checkpointMessageSnapshot: structuredClone(checkpointState.messages),
       messagesDirtySinceCheckpoint: false,
+      consecutiveCompactionFailures: checkpointState.consecutiveCompactionFailures ?? 0,
     }
   }
 

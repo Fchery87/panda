@@ -1951,4 +1951,105 @@ describe('harness Runtime', () => {
       )
     ).toBe(true)
   })
+
+  test('breaks compaction death spiral after 2 consecutive failures', async () => {
+    resetHarnessTestState()
+
+    let streamCalls = 0
+
+    // Provider whose complete() never resolves (guarantees compaction timeout),
+    // and whose completionStream always returns tool_calls so the loop continues.
+    const hangingProvider: LLMProvider = {
+      name: 'hanging-compaction-provider',
+      config: {
+        provider: 'openai',
+        auth: { apiKey: 'test' },
+        defaultModel: 'test-model',
+      },
+      async listModels(): Promise<ModelInfo[]> {
+        return []
+      },
+      async complete(_options: CompletionOptions): Promise<CompletionResponse> {
+        // Never resolves — simulates a hung summarization call
+        return new Promise(() => {})
+      },
+      async *completionStream(_options: CompletionOptions) {
+        streamCalls++
+        // Return tool_calls to keep the loop going (not 'stop')
+        yield {
+          type: 'tool_call' as const,
+          toolCall: {
+            id: `tc-${streamCalls}`,
+            type: 'function',
+            function: {
+              name: 'read_files',
+              arguments: JSON.stringify({ paths: ['test.ts'] }),
+            },
+          },
+        }
+        yield {
+          type: 'finish' as const,
+          finishReason: 'tool_calls' as const,
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        }
+      },
+    }
+
+    const sessionID = 'session-compaction-spiral'
+
+    // Tiny context window so needsCompaction always triggers.
+    // Short compaction budget so the hanging complete() always times out.
+    const runtime = new Runtime(
+      hangingProvider,
+      new Map([
+        [
+          'read_files',
+          async () => ({ content: 'file contents' }),
+        ],
+      ]),
+      {
+        maxSteps: 20,
+        checkpointStore: new InMemoryCheckpointStore(),
+        contextWindowSize: 10,
+        contextCompactionThreshold: 0.0001,
+        compactionTimeBudgetMs: 50,
+      }
+    )
+
+    // Small messages that still exceed the 10-token context window
+    const initialMessages: Message[] = Array.from({ length: 4 }, (_, i) =>
+      createUserMessage({
+        id: `msg-big-${i}`,
+        sessionID,
+        text: `This is message number ${i} with enough words to exceed ten tokens easily`,
+        agent: 'build',
+      })
+    )
+
+    const userMessage = createUserMessage({
+      id: 'msg-trigger',
+      sessionID,
+      text: 'Do something please',
+      agent: 'build',
+    })
+
+    const events: Array<{ type: string; error?: string; [key: string]: unknown }> = []
+    for await (const event of runtime.run(sessionID, userMessage, initialMessages)) {
+      events.push(event)
+      // Safety valve to prevent test from hanging
+      if (events.length > 100) break
+    }
+
+    // Should have emitted an error about repeated compaction failure
+    const compactionError = events.find(
+      (e) =>
+        e.type === 'error' &&
+        typeof e.error === 'string' &&
+        e.error.includes('Compaction failed repeatedly')
+    )
+    expect(compactionError).toBeDefined()
+
+    // Should NOT have looped indefinitely (safety valve not hit)
+    expect(events.length).toBeLessThanOrEqual(100)
+  })
 })

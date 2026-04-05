@@ -39,6 +39,7 @@ export interface RuntimeCheckpointState {
   >
   cyclicPatternDetected?: boolean
   lastInterventionStep?: number
+  consecutiveCompactionFailures?: number
 }
 
 export type RuntimeCheckpointReason = 'step' | 'complete' | 'error'
