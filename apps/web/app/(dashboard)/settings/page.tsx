@@ -1110,7 +1110,6 @@ export default function SettingsPage() {
             </Card>
           </TabsContent>
         </Tabs>
-
       </div>
 
       {/* Sticky Save Bar */}
@@ -1119,18 +1118,10 @@ export default function SettingsPage() {
           <div className="mx-auto flex max-w-4xl items-center justify-between">
             <p className="font-mono text-sm text-muted-foreground">You have unsaved changes</p>
             <div className="flex gap-3">
-              <Button
-                variant="outline"
-                className="rounded-none font-mono"
-                onClick={handleDiscard}
-              >
+              <Button variant="outline" className="rounded-none font-mono" onClick={handleDiscard}>
                 Discard
               </Button>
-              <Button
-                className="rounded-none font-mono"
-                onClick={handleSave}
-                disabled={isSaving}
-              >
+              <Button className="rounded-none font-mono" onClick={handleSave} disabled={isSaving}>
                 {isSaving ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>

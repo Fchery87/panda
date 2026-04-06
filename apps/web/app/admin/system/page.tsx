@@ -59,7 +59,10 @@ export default function AdminSystemPage() {
 
   const [pendingMaintenance, setPendingMaintenance] = React.useState<boolean | null>(null)
 
-  const serverStateRef = React.useRef<{ controls: typeof controls; enhancementConfig: typeof enhancementConfig } | null>(null)
+  const serverStateRef = React.useRef<{
+    controls: typeof controls
+    enhancementConfig: typeof enhancementConfig
+  } | null>(null)
 
   React.useEffect(() => {
     if (settings) {
@@ -116,7 +119,10 @@ export default function AdminSystemPage() {
         enhancementProvider: enhancementConfig.enhancementProvider,
         enhancementModel: enhancementConfig.enhancementModel,
       })
-      serverStateRef.current = { controls: { ...controls }, enhancementConfig: { ...enhancementConfig } }
+      serverStateRef.current = {
+        controls: { ...controls },
+        enhancementConfig: { ...enhancementConfig },
+      }
       toast.success('System settings saved successfully')
     } catch (error) {
       toast.error('Failed to save settings')
@@ -436,12 +442,18 @@ export default function AdminSystemPage() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={pendingMaintenance !== null} onOpenChange={(open) => { if (!open) setPendingMaintenance(null) }}>
+      <Dialog
+        open={pendingMaintenance !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingMaintenance(null)
+        }}
+      >
         <DialogContent className="rounded-none font-mono">
           <DialogHeader>
             <DialogTitle>Enable Maintenance Mode?</DialogTitle>
             <DialogDescription>
-              All non-admin users will be immediately locked out of the platform. This takes effect when you save changes.
+              All non-admin users will be immediately locked out of the platform. This takes effect
+              when you save changes.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

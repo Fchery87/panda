@@ -8,7 +8,11 @@ import type {
 } from '../llm/types'
 import { streamAgent } from './runtime'
 import type { ToolContext } from './tools'
-import { InMemoryCheckpointStore, type CheckpointStore, type RuntimeCheckpoint } from './harness/checkpoint-store'
+import {
+  InMemoryCheckpointStore,
+  type CheckpointStore,
+  type RuntimeCheckpoint,
+} from './harness/checkpoint-store'
 import type { Message as HarnessMessage, UserMessage as HarnessUserMessage } from './harness'
 import { Runtime as HarnessRuntime } from './harness/runtime'
 import type { FormalSpecification } from './spec/types'
@@ -378,7 +382,7 @@ describe('Harness adapter guardrail parity', () => {
     expect(toolResult?.toolResult?.output).toContain('"exitCode": 0')
   })
 
-  it('surfaces command approval reasons in permission request progress for non-allowlisted commands', async () => {
+  it('does not surface permission request progress for non-allowlisted chained commands and eventually stops', async () => {
     const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }
     const provider: LLMProvider = {
       name: 'fake',
@@ -430,10 +434,11 @@ describe('Harness adapter guardrail parity', () => {
       events.some(
         (event) =>
           event.type === 'progress_step' &&
-          event.content ===
-            'Command approval required: Command chaining runs multiple operations in one request.'
+          (String(event.content ?? '').includes('Permission requested for: run_command') ||
+            String(event.content ?? '').includes('Command approval required:'))
       )
-    ).toBe(true)
+    ).toBe(false)
+    expect(events.some((event) => event.type === 'error')).toBe(true)
   })
 
   it('emits matching stable progress IDs for parallel subagent start/complete events', async () => {

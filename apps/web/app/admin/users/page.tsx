@@ -440,7 +440,7 @@ export default function AdminUsersPage() {
                     onClick={() =>
                       requestToggleAdmin(
                         selectedUserDetails.user._id,
-                        selectedUserDetails.user.isAdmin
+                        Boolean(selectedUserDetails.user.isAdmin)
                       )
                     }
                     disabled={isLoading}
@@ -466,7 +466,7 @@ export default function AdminUsersPage() {
                     onClick={() =>
                       requestToggleBan(
                         selectedUserDetails.user._id,
-                        selectedUserDetails.user.isBanned
+                        Boolean(selectedUserDetails.user.isBanned)
                       )
                     }
                     disabled={isLoading}

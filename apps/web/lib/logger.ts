@@ -21,7 +21,7 @@ function serializeError(err: Error): Record<string, unknown> {
 function formatEntry(
   level: LogLevel,
   args: unknown[],
-  baseContext?: Record<string, unknown>,
+  baseContext?: Record<string, unknown>
 ): string {
   let msg: string
   let context: Record<string, unknown> = {}
@@ -72,9 +72,6 @@ function createLogger(baseContext?: Record<string, unknown>): Logger {
 
 export const appLog: Logger = createLogger()
 
-export function createSessionLogger(
-  sessionID: string,
-  extra?: Record<string, unknown>,
-): Logger {
+export function createSessionLogger(sessionID: string, extra?: Record<string, unknown>): Logger {
   return createLogger({ sessionID, ...extra })
 }

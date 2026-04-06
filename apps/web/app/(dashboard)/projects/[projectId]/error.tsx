@@ -21,26 +21,26 @@ export default function WorkbenchError({
         <p className="text-sm text-muted-foreground">
           Something went wrong while loading the workbench.
         </p>
-        <p className="text-sm text-muted-foreground">
-          Your project data is safe.
-        </p>
+        <p className="text-sm text-muted-foreground">Your project data is safe.</p>
+        {process.env.NODE_ENV !== 'production' && error.message ? (
+          <pre className="max-w-2xl overflow-auto border border-border bg-muted/40 p-3 text-left font-mono text-xs text-muted-foreground">
+            {error.message}
+          </pre>
+        ) : null}
         {error.digest && (
-          <p className="font-mono text-xs text-muted-foreground">
-            Error digest: {error.digest}
-          </p>
+          <p className="font-mono text-xs text-muted-foreground">Error digest: {error.digest}</p>
         )}
       </div>
       <div className="flex gap-3">
-        <Button
-          onClick={reset}
-          className="rounded-none font-mono"
-        >
+        <Button onClick={reset} className="rounded-none font-mono">
           Reload Workbench
         </Button>
         <Button
           variant="outline"
           className="rounded-none font-mono"
-          onClick={() => { window.location.href = '/projects' }}
+          onClick={() => {
+            window.location.href = '/projects'
+          }}
         >
           Back to Projects
         </Button>

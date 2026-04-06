@@ -22,22 +22,19 @@ export default function DashboardError({
           An error occurred while loading the dashboard.
         </p>
         {error.digest && (
-          <p className="font-mono text-xs text-muted-foreground">
-            Error digest: {error.digest}
-          </p>
+          <p className="font-mono text-xs text-muted-foreground">Error digest: {error.digest}</p>
         )}
       </div>
       <div className="flex gap-3">
-        <Button
-          onClick={reset}
-          className="rounded-none font-mono"
-        >
+        <Button onClick={reset} className="rounded-none font-mono">
           Try Again
         </Button>
         <Button
           variant="outline"
           className="rounded-none font-mono"
-          onClick={() => { window.location.href = '/projects' }}
+          onClick={() => {
+            window.location.href = '/projects'
+          }}
         >
           Back to Projects
         </Button>

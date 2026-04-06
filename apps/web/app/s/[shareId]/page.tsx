@@ -6,7 +6,7 @@ interface SharedChatPageProps {
 }
 
 export async function generateMetadata({ params }: SharedChatPageProps): Promise<Metadata> {
-  const { shareId } = await params
+  await params
   return {
     title: 'Shared Chat',
     description: 'View a shared AI coding conversation on Panda.ai',

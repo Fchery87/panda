@@ -232,6 +232,124 @@ export const ArtifactAction = v.union(
   })
 )
 
+export const DeliveryPhase = v.union(
+  v.literal('intake'),
+  v.literal('plan'),
+  v.literal('execute'),
+  v.literal('review'),
+  v.literal('qa'),
+  v.literal('ship')
+)
+
+export const DeliveryStatus = v.union(
+  v.literal('draft'),
+  v.literal('active'),
+  v.literal('blocked'),
+  v.literal('completed'),
+  v.literal('cancelled'),
+  v.literal('failed')
+)
+
+export const DeliveryRole = v.union(
+  v.literal('builder'),
+  v.literal('manager'),
+  v.literal('executive')
+)
+
+export const GateStatus = v.union(
+  v.literal('not_required'),
+  v.literal('pending'),
+  v.literal('passed'),
+  v.literal('failed'),
+  v.literal('waived')
+)
+
+export const DeliveryStateSummary = v.object({
+  projectName: v.optional(v.string()),
+  goal: v.string(),
+  summary: v.optional(v.string()),
+  currentPhaseSummary: v.optional(v.string()),
+  activeTaskTitle: v.optional(v.string()),
+  nextStepBrief: v.optional(v.string()),
+  recentChangesDigest: v.optional(v.string()),
+  openRisksDigest: v.optional(v.string()),
+  decisionDigest: v.optional(v.string()),
+})
+
+export const DeliveryTaskStatus = v.union(
+  v.literal('draft'),
+  v.literal('planned'),
+  v.literal('ready'),
+  v.literal('in_progress'),
+  v.literal('blocked'),
+  v.literal('in_review'),
+  v.literal('qa_pending'),
+  v.literal('done'),
+  v.literal('rejected')
+)
+
+export const AcceptanceCriterion = v.object({
+  id: v.string(),
+  text: v.string(),
+  status: v.union(
+    v.literal('pending'),
+    v.literal('passed'),
+    v.literal('failed'),
+    v.literal('waived')
+  ),
+  verificationMethod: v.union(
+    v.literal('unit'),
+    v.literal('integration'),
+    v.literal('e2e'),
+    v.literal('manual'),
+    v.literal('review')
+  ),
+})
+
+export const TaskEvidenceLink = v.object({
+  type: v.union(
+    v.literal('agent_run'),
+    v.literal('run_event'),
+    v.literal('job'),
+    v.literal('review_report'),
+    v.literal('qa_report'),
+    v.literal('ship_report'),
+    v.literal('specification'),
+    v.literal('eval_run'),
+    v.literal('artifact'),
+    v.literal('external')
+  ),
+  id: v.optional(v.string()),
+  label: v.string(),
+  href: v.optional(v.string()),
+})
+
+export const ReviewType = v.union(v.literal('architecture'), v.literal('implementation'))
+
+export const ReviewDecision = v.union(v.literal('pass'), v.literal('concerns'), v.literal('reject'))
+
+export const QaDecision = v.union(v.literal('pass'), v.literal('concerns'), v.literal('fail'))
+
+export const QaAssertion = v.object({
+  label: v.string(),
+  status: v.union(v.literal('passed'), v.literal('failed'), v.literal('skipped')),
+  detail: v.optional(v.string()),
+})
+
+export const QaEvidence = v.object({
+  screenshotPath: v.optional(v.string()),
+  consoleErrors: v.array(v.string()),
+  networkFailures: v.array(v.string()),
+  urlsTested: v.array(v.string()),
+  flowNames: v.array(v.string()),
+})
+
+export const ShipDecision = v.union(
+  v.literal('ready'),
+  v.literal('ready_with_risk'),
+  v.literal('not_ready')
+)
+
 export default defineSchema({
   // Auth tables (accounts, sessions, verification codes, etc.)
   ...authTables,
@@ -863,4 +981,122 @@ export default defineSchema({
     .index('by_run', ['runId'])
     .index('by_status', ['projectId', 'status'])
     .index('by_tier', ['projectId', 'tier']),
+
+  // 29. Delivery states table - initiative-scoped delivery source of truth
+  deliveryStates: defineTable({
+    projectId: v.id('projects'),
+    chatId: v.id('chats'),
+    title: v.string(),
+    description: v.optional(v.string()),
+    goal: v.string(),
+    constraints: v.array(v.string()),
+    currentPhase: DeliveryPhase,
+    status: DeliveryStatus,
+    activeRole: DeliveryRole,
+    summary: DeliveryStateSummary,
+    activeTaskIds: v.array(v.id('deliveryTasks')),
+    pendingReviewIds: v.array(v.id('reviewReports')),
+    pendingQaIds: v.array(v.id('qaReports')),
+    latestShipReportId: v.optional(v.id('shipReports')),
+    reviewGateStatus: GateStatus,
+    qaGateStatus: GateStatus,
+    shipGateStatus: GateStatus,
+    affectedFiles: v.array(v.string()),
+    affectedRoutes: v.array(v.string()),
+    openRiskCount: v.number(),
+    unresolvedDefectCount: v.number(),
+    evidenceMissing: v.boolean(),
+    advisoryGateMode: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    lastUpdatedByRole: DeliveryRole,
+  })
+    .index('by_project_updated', ['projectId', 'updatedAt'])
+    .index('by_chat_updated', ['chatId', 'updatedAt'])
+    .index('by_project_status', ['projectId', 'status']),
+
+  // 30. Delivery tasks table - canonical tracked execution units
+  deliveryTasks: defineTable({
+    deliveryStateId: v.id('deliveryStates'),
+    taskKey: v.string(),
+    title: v.string(),
+    description: v.string(),
+    rationale: v.string(),
+    ownerRole: DeliveryRole,
+    dependencies: v.array(v.id('deliveryTasks')),
+    filesInScope: v.array(v.string()),
+    routesInScope: v.array(v.string()),
+    constraints: v.array(v.string()),
+    acceptanceCriteria: v.array(AcceptanceCriterion),
+    testRequirements: v.array(v.string()),
+    reviewRequirements: v.array(v.string()),
+    qaRequirements: v.array(v.string()),
+    blockers: v.array(v.string()),
+    status: DeliveryTaskStatus,
+    evidence: v.array(TaskEvidenceLink),
+    latestRunId: v.optional(v.id('agentRuns')),
+    latestReviewReportId: v.optional(v.id('reviewReports')),
+    latestQaReportId: v.optional(v.id('qaReports')),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_delivery_updated', ['deliveryStateId', 'updatedAt'])
+    .index('by_delivery_status', ['deliveryStateId', 'status'])
+    .index('by_delivery_taskKey', ['deliveryStateId', 'taskKey']),
+
+  // 31. Review reports table - explicit architecture and implementation reviews
+  reviewReports: defineTable({
+    deliveryStateId: v.id('deliveryStates'),
+    taskId: v.id('deliveryTasks'),
+    type: ReviewType,
+    decision: ReviewDecision,
+    summary: v.string(),
+    findings: v.array(
+      v.object({
+        severity: v.union(v.literal('high'), v.literal('medium'), v.literal('low')),
+        title: v.string(),
+        detail: v.string(),
+        filePath: v.optional(v.string()),
+        lineRef: v.optional(v.string()),
+      })
+    ),
+    followUpTaskIds: v.array(v.id('deliveryTasks')),
+    reviewerRole: v.literal('executive'),
+    createdAt: v.number(),
+  })
+    .index('by_delivery_created', ['deliveryStateId', 'createdAt'])
+    .index('by_task_created', ['taskId', 'createdAt']),
+
+  // 32. QA reports table - route-aware QA evidence and outcomes
+  qaReports: defineTable({
+    deliveryStateId: v.id('deliveryStates'),
+    taskId: v.id('deliveryTasks'),
+    browserSessionKey: v.optional(v.string()),
+    decision: QaDecision,
+    summary: v.string(),
+    assertions: v.array(QaAssertion),
+    evidence: QaEvidence,
+    defects: v.array(
+      v.object({
+        severity: v.union(v.literal('high'), v.literal('medium'), v.literal('low')),
+        title: v.string(),
+        detail: v.string(),
+        route: v.optional(v.string()),
+      })
+    ),
+    createdAt: v.number(),
+  })
+    .index('by_delivery_created', ['deliveryStateId', 'createdAt'])
+    .index('by_task_created', ['taskId', 'createdAt']),
+
+  // 33. Ship reports table - explicit final readiness assessments
+  shipReports: defineTable({
+    deliveryStateId: v.id('deliveryStates'),
+    decision: ShipDecision,
+    summary: v.string(),
+    openRisks: v.array(v.string()),
+    unresolvedDefects: v.array(v.string()),
+    evidenceSummary: v.string(),
+    createdAt: v.number(),
+  }).index('by_delivery_created', ['deliveryStateId', 'createdAt']),
 })

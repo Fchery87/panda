@@ -56,12 +56,12 @@ export class PluginManager {
     }
 
     if (plugin.tools) {
-      const builtinNames = new Set(AGENT_TOOLS.map(t => t.function.name))
+      const builtinNames = new Set(AGENT_TOOLS.map((t) => t.function.name))
       for (const tool of plugin.tools) {
         if (builtinNames.has(tool.function.name)) {
           throw new Error(
             `Plugin "${plugin.name}" shadows built-in tool "${tool.function.name}". ` +
-            `Use a unique name to avoid overriding core tools.`
+              `Use a unique name to avoid overriding core tools.`
           )
         }
         this.customTools.set(tool.function.name, tool)

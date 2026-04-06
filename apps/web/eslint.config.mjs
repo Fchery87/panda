@@ -41,7 +41,7 @@ export default [
     },
   },
   {
-    ignores: ['.next/**', '.next-e2e*/**', 'node_modules/**', 'dist/**'],
+    ignores: ['.next/**', '.next-e2e*/**', 'node_modules/**', 'dist/**', 'test-results/**'],
   },
   // Disable ESLint rules that conflict with Prettier
   eslintConfigPrettier,

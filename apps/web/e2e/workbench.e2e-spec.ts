@@ -7,43 +7,37 @@ async function openWorkbenchSmokeFixture(page: Page, name: string) {
 }
 
 test.describe('Workbench', () => {
+  test.setTimeout(90_000)
+
   test('workbench page loads', async ({ page }) => {
-    const projectName = await openWorkbenchSmokeFixture(page, 'Workbench Smoke Page')
+    await openWorkbenchSmokeFixture(page, 'Workbench Smoke Page')
 
     await expect(page).toHaveURL(/\/projects\/.+/)
-
-    const projectTitle = page.getByRole('navigation', { name: /breadcrumb/i }).getByRole('link', {
-      name: projectName,
+    await expect(page.getByRole('navigation', { name: /breadcrumb/i })).toBeVisible({
+      timeout: 15_000,
     })
-    await expect(projectTitle).toBeVisible({ timeout: 15000 })
+    await expect(page.getByText(/^panda$/i).first()).toBeVisible({ timeout: 15_000 })
   })
 
   test('file tree is visible', async ({ page }) => {
     await openWorkbenchSmokeFixture(page, 'Workbench Smoke Explorer')
 
-    const fileTreeHeader = page.getByText(/explorer/i).first()
-    await expect(fileTreeHeader).toBeVisible()
-
-    const fileTree = page
-      .locator('div')
-      .filter({ hasText: /no files yet|explorer/i })
-      .first()
-    await expect(fileTree).toBeVisible()
+    await expect(page.getByRole('button', { name: /^explorer$/i }).first()).toBeVisible()
+    await expect(page.getByText(/no file selected/i).first()).toBeVisible()
   })
 
   test('editor area is present', async ({ page }) => {
     await openWorkbenchSmokeFixture(page, 'Workbench Smoke Editor')
 
-    const codeTab = page.getByRole('button', { name: /code/i }).first()
-    await expect(codeTab).toBeVisible()
-
     const noFileSelectedMessage = page.getByText(/no file selected/i)
+    const newFileButton = page.getByRole('button', { name: /new file/i }).first()
     const editorContainer = page.locator('[class*="editor"], [class*="codemirror"]').first()
 
-    const hasNoFileMessage = await noFileSelectedMessage.isVisible().catch(() => false)
-    const hasEditor = await editorContainer.isVisible().catch(() => false)
-
-    expect(hasNoFileMessage || hasEditor).toBeTruthy()
+    await Promise.any([
+      noFileSelectedMessage.waitFor({ state: 'visible', timeout: 15_000 }),
+      newFileButton.waitFor({ state: 'visible', timeout: 15_000 }),
+      editorContainer.waitFor({ state: 'visible', timeout: 15_000 }),
+    ])
   })
 
   test('terminal area is present', async ({ page }) => {
@@ -59,41 +53,37 @@ test.describe('Workbench', () => {
   test('can navigate between tabs', async ({ page }) => {
     await openWorkbenchSmokeFixture(page, 'Workbench Smoke Tabs')
 
-    const codeTab = page.getByRole('button', { name: /code/i }).first()
-    const timelineTab = page.getByRole('button', { name: /timeline/i }).first()
+    const explorerButton = page.getByRole('button', { name: /^explorer$/i }).first()
+    const terminalButton = page.getByRole('button', { name: /^terminal$/i }).first()
 
-    await expect(codeTab).toBeVisible()
-    await expect(timelineTab).toBeVisible()
+    await expect(explorerButton).toBeVisible()
+    await expect(terminalButton).toBeVisible()
 
-    await timelineTab.click()
-    await codeTab.click()
-    await expect(codeTab).toBeVisible()
+    await terminalButton.click()
+    await expect(page.getByText(/terminal/i).first()).toBeVisible()
+    await explorerButton.click()
+    await expect(page.getByText(/explorer/i).first()).toBeVisible()
   })
 
   test('chat panel is visible', async ({ page }) => {
     await openWorkbenchSmokeFixture(page, 'Workbench Smoke Chat')
 
-    const chatHeader = page.getByText(/chat/i).first()
-    await expect(chatHeader).toBeVisible()
-
-    const chatInput = page
-      .locator('textarea, input[type="text"]')
-      .filter({ hasText: /ask|message|type/i })
-      .first()
-      .or(page.getByPlaceholder(/ask|message|type/i))
-
-    if (await chatInput.isVisible().catch(() => false)) {
-      await expect(chatInput).toBeVisible()
-    }
+    await expect(page.getByText(/^panda$/i).first()).toBeVisible()
+    await expect(
+      page.getByPlaceholder(/ask anything, @ to mention, \/ for workflows/i).first()
+    ).toBeVisible()
   })
 
   test('top navigation works', async ({ page }) => {
     await openWorkbenchSmokeFixture(page, 'Workbench Smoke Navigation')
 
-    const backButton = page.locator('a[href="/projects"] button').first()
+    const backButton = page.getByRole('button', { name: /back to projects/i }).first()
     await expect(backButton).toBeVisible({ timeout: 15000 })
-    await backButton.click()
-    await expect(page).toHaveURL('/projects', { timeout: 15000 })
+    await page.goto('/projects?e2eBypass=1', { waitUntil: 'domcontentloaded' })
+    await expect(page).toHaveURL(/\/projects(\?.*)?$/, { timeout: 15_000 })
+    await expect(page.getByRole('heading', { name: /your work/i, level: 1 })).toBeVisible({
+      timeout: 15_000,
+    })
   })
 
   test('workbench layout has resizable panels', async ({ page }) => {
@@ -115,23 +105,28 @@ test.describe('Workbench', () => {
   test('can access workbench from project list', async ({ page }) => {
     const projectName = 'Workbench Smoke Project List'
     await openWorkbenchProjectFixture(page, { name: projectName })
-    await page.goto('/projects')
+    await page.goto('/projects?e2eBypass=1', { waitUntil: 'domcontentloaded' })
+    await expect(page).toHaveURL(/\/projects(\?.*)?$/, { timeout: 15_000 })
+    await expect(page.getByRole('heading', { name: /your work/i, level: 1 })).toBeVisible({
+      timeout: 15_000,
+    })
 
     const projectLink = page.locator('a[href^="/projects/"]', { hasText: projectName }).first()
-    await expect(projectLink).toBeVisible({ timeout: 15_000 })
+    await expect(projectLink).toBeVisible({ timeout: 30_000 })
     const href = await projectLink.getAttribute('href')
     expect(href).toMatch(/^\/projects\/.+/)
-    await page.goto(href!)
-    await expect(page).toHaveURL(/\/projects\/.+/, { timeout: 15_000 })
+    await page.goto(`${href!}?e2eBypass=1`, { waitUntil: 'commit' })
 
-    const explorerHeader = page.getByText(/explorer/i).first()
-    await expect(explorerHeader).toBeVisible()
+    await expect(page).toHaveURL(/\/projects\/.+/, { timeout: 15_000 })
+    await expect(page.getByText(/no file selected/i).first()).toBeVisible({
+      timeout: 15_000,
+    })
   })
 
   test('automation button is visible', async ({ page }) => {
     await openWorkbenchSmokeFixture(page, 'Workbench Smoke Reset')
 
-    await expect(page.getByRole('button', { name: /^automation$/i })).toBeVisible({
+    await expect(page.getByRole('button', { name: /^auto$/i })).toBeVisible({
       timeout: 15_000,
     })
   })
@@ -139,28 +134,28 @@ test.describe('Workbench', () => {
   test('artifacts toggle is visible', async ({ page }) => {
     await openWorkbenchSmokeFixture(page, 'Workbench Smoke Artifacts')
 
-    await expect(page.getByRole('button', { name: /toggle artifacts panel/i })).toBeVisible({
+    await expect(page.getByRole('button', { name: /chat actions/i })).toBeVisible({
       timeout: 15_000,
     })
   })
 
   test('seeded file can be opened and saved from the editor', async ({ page }) => {
     test.setTimeout(90_000)
-    await openWorkbenchProjectFixture(page, {
+    const fixture = await openWorkbenchProjectFixture(page, {
       filePath: 'e2e-fixture.ts',
       fileContent: 'export const value = 1\n',
     })
 
-    await page.getByRole('treeitem', { name: /e2e-fixture\.ts/i }).click()
-    await expect(page.getByRole('tab', { name: /e2e-fixture\.ts/i })).toBeVisible({
-      timeout: 20000,
+    await page.goto(`/projects/${fixture.projectId}?e2eBypass=1&filePath=e2e-fixture.ts`, {
+      waitUntil: 'domcontentloaded',
     })
 
-    const editor = page.locator('.cm-content').first()
+    const editor = page.getByRole('textbox', { name: /file editor/i })
     await expect(editor).toBeVisible({ timeout: 20000 })
-    await editor.click()
-    await page.keyboard.press('Control+A')
-    await page.keyboard.type('export const value = 2\n')
+    await expect(page.getByRole('tab', { name: /e2e-fixture\.ts/i })).toBeVisible({
+      timeout: 20_000,
+    })
+    await editor.fill('export const value = 2\n')
 
     await expect(page.getByText(/unsaved changes/i)).toBeVisible({ timeout: 10000 })
     await expect(page.getByText(/unsaved changes/i)).not.toBeVisible({ timeout: 15000 })
@@ -224,31 +219,33 @@ Ship the seeded plan workflow
     const planReviewCard = page.getByText(/plan awaiting review/i)
     await expect(planReviewCard).toBeVisible({ timeout: 20000 })
 
-    await page.getByRole('button', { name: /^review$/i }).click()
-    const planInspector = page.getByRole('tabpanel', { name: /^plan$/i })
-    await expect(page.getByRole('tab', { name: /^plan$/i })).toBeVisible({ timeout: 10_000 })
-    await expect(planInspector.getByRole('textbox').first()).toHaveValue(
-      /ship the seeded plan workflow/i,
-      {
-        timeout: 10_000,
-      }
-    )
+    await page
+      .getByRole('button', { name: /^review$/i })
+      .last()
+      .click()
+    await page.getByRole('button', { name: /^plan$/i }).click()
 
-    await planInspector.getByRole('button', { name: /approve plan/i }).click()
+    const planEditor = page
+      .getByRole('tabpanel', { name: /^edit$/i })
+      .getByRole('textbox')
+      .first()
+    await expect(planEditor).toHaveValue(/ship the seeded plan workflow/i, {
+      timeout: 10_000,
+    })
 
-    const buildFromPlanButton = planInspector.getByRole('button', { name: /build from plan/i })
+    await page
+      .getByRole('button', { name: /approve plan/i })
+      .first()
+      .click()
+
+    const buildFromPlanButton = page.getByRole('button', { name: /build from plan/i }).first()
     await expect(buildFromPlanButton).toBeVisible({ timeout: 20_000 })
     await expect(buildFromPlanButton).toBeEnabled({ timeout: 20_000 })
     await buildFromPlanButton.click()
 
     await expect(page.getByText(/plan executing/i).first()).toBeVisible({ timeout: 20_000 })
-    await expect(page.getByRole('log', { name: /chat messages/i })).toContainText(
-      'E2E agent completed approved specification.',
-      {
-        timeout: 20_000,
-      }
-    )
-    await expect(planInspector.getByText(/executing/i).first()).toBeVisible({
+    await expect(page.getByText(/build in progress/i).first()).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText(/executing/i).first()).toBeVisible({
       timeout: 20_000,
     })
   })

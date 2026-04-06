@@ -24,22 +24,19 @@ export default function GlobalError({
           An unexpected error occurred. Please try again.
         </p>
         {error.digest && (
-          <p className="font-mono text-xs text-muted-foreground">
-            Error digest: {error.digest}
-          </p>
+          <p className="font-mono text-xs text-muted-foreground">Error digest: {error.digest}</p>
         )}
       </div>
       <div className="flex gap-3">
-        <Button
-          onClick={reset}
-          className="rounded-none font-mono"
-        >
+        <Button onClick={reset} className="rounded-none font-mono">
           Try Again
         </Button>
         <Button
           variant="outline"
           className="rounded-none font-mono"
-          onClick={() => { window.location.href = '/' }}
+          onClick={() => {
+            window.location.href = '/'
+          }}
         >
           Go Home
         </Button>

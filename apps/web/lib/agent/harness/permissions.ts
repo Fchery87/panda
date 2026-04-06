@@ -215,7 +215,13 @@ export class PermissionManager {
 
     const cachedDecision = this.userDecisions.get(decisionKey)
     if (cachedDecision) {
-      this.onAuditLog?.({ sessionID, tool, pattern, decision: cachedDecision, reason: 'Cached decision' })
+      this.onAuditLog?.({
+        sessionID,
+        tool,
+        pattern,
+        decision: cachedDecision,
+        reason: 'Cached decision',
+      })
       return {
         granted: cachedDecision === 'allow',
         decision: cachedDecision,
@@ -274,7 +280,13 @@ export class PermissionManager {
             reason: result.reason,
           })
 
-          this.onAuditLog?.({ sessionID, tool, pattern, decision: result.decision, reason: result.reason })
+          this.onAuditLog?.({
+            sessionID,
+            tool,
+            pattern,
+            decision: result.decision,
+            reason: result.reason,
+          })
 
           resolve(result)
         },

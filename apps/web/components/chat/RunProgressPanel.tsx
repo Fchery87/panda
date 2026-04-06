@@ -25,6 +25,8 @@ import {
   parsePlanSteps,
   type LiveProgressStep,
 } from './live-run-utils'
+import { DeliveryStatusStrip } from './DeliveryStatusStrip'
+import { mapDeliveryStateToStatusStripProps } from '@/lib/delivery/selectors'
 import type { FormalSpecification } from '@/lib/agent/spec/types'
 import type { PlanStatus } from '@/lib/chat/planDraft'
 import { SpecBadgeMini } from '../workbench/SpecBadge'
@@ -105,6 +107,10 @@ export function RunProgressPanel({
         sessionID?: string
       }>
     | undefined
+  const activeDeliveryState = useQuery(
+    api.deliveryStates.getActiveByChat,
+    chatId ? { chatId } : 'skip'
+  )
 
   useEffect(() => {
     if (!isStreaming) return
@@ -168,6 +174,26 @@ export function RunProgressPanel({
     !!latestRuntimeCheckpoint &&
     latestRuntimeCheckpoint.reason !== 'complete' &&
     typeof latestRuntimeCheckpoint.sessionID === 'string'
+  const deliveryStatus = useMemo(
+    () =>
+      mapDeliveryStateToStatusStripProps(
+        activeDeliveryState
+          ? {
+              currentPhase: activeDeliveryState.currentPhase,
+              activeRole: activeDeliveryState.activeRole,
+              reviewGateStatus: activeDeliveryState.reviewGateStatus,
+              qaGateStatus: activeDeliveryState.qaGateStatus,
+              shipGateStatus: activeDeliveryState.shipGateStatus,
+              evidenceMissing: activeDeliveryState.evidenceMissing,
+              summary: {
+                goal: activeDeliveryState.summary.goal,
+                activeTaskTitle: activeDeliveryState.summary.activeTaskTitle,
+              },
+            }
+          : null
+      ),
+    [activeDeliveryState]
+  )
 
   if (!isStreaming && steps.length === 0 && !runtimeCheckpoints?.length) {
     return null
@@ -311,6 +337,16 @@ export function RunProgressPanel({
           </button>
         )}
       </div>
+
+      <DeliveryStatusStrip
+        currentPhase={deliveryStatus.currentPhase}
+        activeRole={deliveryStatus.activeRole}
+        currentTaskTitle={deliveryStatus.currentTaskTitle}
+        reviewGateStatus={deliveryStatus.reviewGateStatus}
+        qaGateStatus={deliveryStatus.qaGateStatus}
+        shipGateStatus={deliveryStatus.shipGateStatus}
+        evidenceMissing={deliveryStatus.evidenceMissing}
+      />
 
       {!isOpen ? null : groups.length === 0 ? (
         <div className="font-mono text-xs text-muted-foreground">

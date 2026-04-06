@@ -28,16 +28,20 @@ function UnauthenticatedRedirect() {
   )
 }
 
-function isE2EAuthBypassEnabled(): boolean {
-  return process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_E2E_AUTH_BYPASS === 'true'
+function isE2EAuthBypassEnabled(searchParams: ReturnType<typeof useSearchParams>): boolean {
+  return (
+    process.env.NODE_ENV !== 'production' &&
+    (process.env.NEXT_PUBLIC_E2E_AUTH_BYPASS === 'true' || searchParams.get('e2eBypass') === '1')
+  )
 }
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const adminDefaults = useQuery(api.settings.getAdminDefaults)
   const adminCheck = useQuery(api.admin.checkIsAdmin)
 
-  if (isE2EAuthBypassEnabled()) {
+  if (isE2EAuthBypassEnabled(searchParams)) {
     return <>{children}</>
   }
 

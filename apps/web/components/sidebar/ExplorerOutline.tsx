@@ -3,12 +3,7 @@
 import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import {
-  IconBracketsCurly,
-  IconBracketsAngle,
-  IconText,
-  IconHash,
-} from '@/components/ui/icons'
+import { IconBracketsCurly, IconBracketsAngle, IconText, IconHash } from '@/components/ui/icons'
 
 export interface OutlineSymbol {
   name: string

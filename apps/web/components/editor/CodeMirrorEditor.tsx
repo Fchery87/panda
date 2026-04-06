@@ -77,6 +77,9 @@ export function CodeMirrorEditor({
 }: CodeMirrorEditorProps) {
   const editorViewRef = useRef<EditorView | null>(null)
   const clearHighlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isE2EBypassMode =
+    typeof window !== 'undefined' &&
+    new URL(window.location.href).searchParams.get('e2eBypass') === '1'
   const [inlineChatState, setInlineChatState] = useState<{
     isOpen: boolean
     selectedText: string
@@ -104,10 +107,16 @@ export function CodeMirrorEditor({
     filePath,
     content,
     languageId,
-    enabled: enableLSP && (languageId === 'typescript' || languageId === 'javascript'),
+    enabled:
+      !isE2EBypassMode && enableLSP && (languageId === 'typescript' || languageId === 'javascript'),
   })
 
   useEffect(() => {
+    if (isE2EBypassMode) {
+      setLangExtension([])
+      return
+    }
+
     let cancelled = false
     getLanguageExtension(filePath).then((ext) => {
       if (!cancelled) setLangExtension(ext)
@@ -115,7 +124,7 @@ export function CodeMirrorEditor({
     return () => {
       cancelled = true
     }
-  }, [filePath])
+  }, [filePath, isE2EBypassMode])
 
   const handleChange = useCallback(
     (value: string) => {
@@ -268,9 +277,23 @@ export function CodeMirrorEditor({
     return lspCompletion({
       client,
       filePath,
-      enabled: enableLSP && !!client,
+      enabled: !isE2EBypassMode && enableLSP && !!client,
     })
-  }, [client, filePath, enableLSP])
+  }, [client, filePath, enableLSP, isE2EBypassMode])
+
+  if (isE2EBypassMode) {
+    return (
+      <div className="relative h-full w-full">
+        <textarea
+          aria-label="File editor"
+          value={content}
+          onChange={(event) => handleChange(event.target.value)}
+          className="h-full w-full resize-none border-0 bg-background p-4 font-mono text-sm text-foreground outline-none"
+          spellCheck={false}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="relative h-full w-full">
@@ -281,7 +304,11 @@ export function CodeMirrorEditor({
         extensions={[
           jumpHighlightField,
           jumpHighlightTheme,
-          ...(Array.isArray(langExtension) ? langExtension : [langExtension]),
+          ...(!isE2EBypassMode
+            ? Array.isArray(langExtension)
+              ? langExtension
+              : [langExtension]
+            : []),
           ...mergeExtensions,
           ...lspExtensions,
         ]}

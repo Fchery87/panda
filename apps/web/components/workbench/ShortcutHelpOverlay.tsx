@@ -1,12 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { shortcutRegistry, type ShortcutEntry } from '@/lib/shortcuts/registry'
 
 interface ShortcutHelpOverlayProps {
@@ -56,10 +51,7 @@ export function ShortcutHelpOverlay({ open, onOpenChange }: ShortcutHelpOverlayP
               </h3>
               <div className="space-y-1">
                 {entries.map((entry) => (
-                  <div
-                    key={entry.id}
-                    className="flex items-center justify-between py-1"
-                  >
+                  <div key={entry.id} className="flex items-center justify-between py-1">
                     <span className="text-sm text-foreground">{entry.label}</span>
                     <kbd className="border border-border bg-muted px-2 py-0.5 text-xs">
                       {formatKeys(entry.keys)}

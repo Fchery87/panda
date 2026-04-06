@@ -1,23 +1,36 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { Activity, FileText, LayoutDashboard, Brain, BookOpen } from 'lucide-react'
+import {
+  Activity,
+  FileText,
+  LayoutDashboard,
+  Brain,
+  BookOpen,
+  ListTodo,
+  ShieldCheck,
+  Radar,
+} from 'lucide-react'
 import { TabContainer, type TabItem } from '@/components/ui/tab-container'
 import { PlanningIntakeSurface } from '@/components/plan/PlanningIntakePopup'
 
-export type ReviewTab = 'run' | 'plan' | 'artifacts' | 'memory' | 'evals'
+export type ReviewTab = 'tasks' | 'run' | 'plan' | 'artifacts' | 'memory' | 'evals' | 'qa' | 'state'
 
 interface ReviewPanelProps {
   activeTab?: ReviewTab
   onTabChange?: (tab: ReviewTab) => void
+  taskContent: ReactNode
   runContent: ReactNode
   planContent: ReactNode
   artifactsContent: ReactNode
   memoryContent: ReactNode
   evalsContent: ReactNode
+  qaContent: ReactNode
+  stateContent: ReactNode
 }
 
 export function ReviewPanel({
+  taskContent,
   activeTab = 'run',
   onTabChange,
   runContent,
@@ -25,8 +38,16 @@ export function ReviewPanel({
   artifactsContent,
   memoryContent,
   evalsContent,
+  qaContent,
+  stateContent,
 }: ReviewPanelProps) {
   const tabs: TabItem[] = [
+    {
+      id: 'tasks',
+      label: 'Tasks',
+      icon: <ListTodo className="h-3.5 w-3.5" />,
+      content: taskContent,
+    },
     {
       id: 'run',
       label: 'Run',
@@ -56,6 +77,18 @@ export function ReviewPanel({
       label: 'Evals',
       icon: <BookOpen className="h-3.5 w-3.5" />,
       content: evalsContent,
+    },
+    {
+      id: 'qa',
+      label: 'QA',
+      icon: <ShieldCheck className="h-3.5 w-3.5" />,
+      content: qaContent,
+    },
+    {
+      id: 'state',
+      label: 'State',
+      icon: <Radar className="h-3.5 w-3.5" />,
+      content: stateContent,
     },
   ]
 

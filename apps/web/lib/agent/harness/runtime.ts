@@ -293,7 +293,12 @@ export class Runtime {
     this.toolCallResultCache.clear()
     const agent = agents.get(userMessage.agent)
     if (!agent) {
-      throw new Error(`Unknown agent: "${userMessage.agent}". Available agents: ${agents.list().map(a => a.name).join(', ')}`)
+      throw new Error(
+        `Unknown agent: "${userMessage.agent}". Available agents: ${agents
+          .list()
+          .map((a) => a.name)
+          .join(', ')}`
+      )
     }
     const maxSteps = agent.steps ?? this.config.maxSteps ?? 50
     this.state = this.createInitialState(sessionID, [...initialMessages, userMessage])
@@ -466,7 +471,12 @@ export class Runtime {
 
     const agent = agents.get(checkpoint.agentName)
     if (!agent) {
-      throw new Error(`Unknown agent: "${checkpoint.agentName}". Available agents: ${agents.list().map(a => a.name).join(', ')}`)
+      throw new Error(
+        `Unknown agent: "${checkpoint.agentName}". Available agents: ${agents
+          .list()
+          .map((a) => a.name)
+          .join(', ')}`
+      )
     }
     const maxSteps = agent.steps ?? this.config.maxSteps ?? 50
 
@@ -509,8 +519,9 @@ export class Runtime {
 
     const sessionID = this.state.sessionID
     const log = createSessionLogger(sessionID, { agent: agent.name })
-    const contextLimit = this.config.contextWindowSize
-      ?? (this.provider.config.auth.baseUrl?.includes('anthropic') ? 200000 : 128000)
+    const contextLimit =
+      this.config.contextWindowSize ??
+      (this.provider.config.auth.baseUrl?.includes('anthropic') ? 200000 : 128000)
 
     if (options.emitSessionStart) {
       await this.executeHook(
@@ -628,7 +639,11 @@ export class Runtime {
       // Only emit 'complete' if verification passed or there's no active spec
       // If verification failed, emit 'error' instead
       if (verificationOutcome.passed) {
-        log.info('Session completed', { steps: this.state.step, cost: this.state.cost, tokens: this.state.tokens })
+        log.info('Session completed', {
+          steps: this.state.step,
+          cost: this.state.cost,
+          tokens: this.state.tokens,
+        })
         yield {
           type: 'complete',
           usage: this.state.tokens,
@@ -651,7 +666,10 @@ export class Runtime {
       // Cleanup singletons after successful session completion
       this.cleanupSessionSingletons(sessionID)
     } catch (error) {
-      log.error('Session error', { step: this.state.step, error: error instanceof Error ? error.message : String(error) })
+      log.error('Session error', {
+        step: this.state.step,
+        error: error instanceof Error ? error.message : String(error),
+      })
       await this.saveCheckpoint(agent.name, 'error')
       yield {
         type: 'error',
@@ -1475,7 +1493,10 @@ export class Runtime {
             },
           }),
           new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error(`Tool "${toolName}" timed out after ${timeoutMs}ms`)), timeoutMs)
+            setTimeout(
+              () => reject(new Error(`Tool "${toolName}" timed out after ${timeoutMs}ms`)),
+              timeoutMs
+            )
           ),
         ])
 
@@ -1501,7 +1522,11 @@ export class Runtime {
           args,
           result,
         })
-        log.debug('Tool executed', { tool: toolName, step: this.state.step, durationMs: Date.now() - startedAt })
+        log.debug('Tool executed', {
+          tool: toolName,
+          step: this.state.step,
+          durationMs: Date.now() - startedAt,
+        })
 
         // Check for drift after tool execution
         if (this.state.activeSpec && this.config.specEngine?.enableDriftDetection) {

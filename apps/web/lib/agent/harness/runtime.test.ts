@@ -5,6 +5,7 @@ import { createPlugin, plugins } from './plugins'
 import { InMemoryCheckpointStore } from './checkpoint-store'
 import { compaction } from './compaction'
 import { Runtime } from './runtime'
+import type { RuntimeEvent } from './runtime'
 import { snapshots } from './snapshots'
 import type { Message, UserMessage } from './types'
 import { agents } from './agents'
@@ -106,7 +107,9 @@ describe('harness Runtime', () => {
     })
     plugins.register(plugin)
 
-    const runtime = new Runtime(provider, new Map(), { checkpointStore: new InMemoryCheckpointStore() })
+    const runtime = new Runtime(provider, new Map(), {
+      checkpointStore: new InMemoryCheckpointStore(),
+    })
     const userMessage = createUserMessage({
       id: 'msg-user-1',
       sessionID: 'session-1',
@@ -138,7 +141,10 @@ describe('harness Runtime', () => {
       )
     })
 
-    const runtime = new Runtime(provider, new Map(), { maxSteps: 3, checkpointStore: new InMemoryCheckpointStore() })
+    const runtime = new Runtime(provider, new Map(), {
+      maxSteps: 3,
+      checkpointStore: new InMemoryCheckpointStore(),
+    })
     const sessionID = 'session-compaction'
     const initialMessages: Message[] = Array.from({ length: 8 }, (_, index) =>
       createUserMessage({
@@ -550,7 +556,11 @@ describe('harness Runtime', () => {
           },
         ],
       ]),
-      { maxSteps: 5, enableToolCallIdempotencyCache: true, checkpointStore: new InMemoryCheckpointStore() }
+      {
+        maxSteps: 5,
+        enableToolCallIdempotencyCache: true,
+        checkpointStore: new InMemoryCheckpointStore(),
+      }
     )
 
     const userMessage = createUserMessage({
@@ -1584,12 +1594,7 @@ describe('harness Runtime', () => {
       agent: 'build',
     })
 
-    const toolMap = new Map([
-      [
-        'read_files',
-        async () => ({ output: 'file-content-here' }),
-      ],
-    ])
+    const toolMap = new Map([['read_files', async () => ({ output: 'file-content-here' })]])
 
     // --- First runtime: run one step then simulate crash by breaking ---
     const runtime1 = new Runtime(crashRecoveryProvider, toolMap, {
@@ -1598,7 +1603,7 @@ describe('harness Runtime', () => {
       onToolInterrupt: async () => ({ decision: 'approve' as const }),
     })
 
-    const firstRunEvents: Array<{ type: string; [key: string]: unknown }> = []
+    const firstRunEvents: RuntimeEvent[] = []
     for await (const event of runtime1.run(sessionID, userMessage)) {
       firstRunEvents.push(event)
       // Simulate crash: break after the first step completes (checkpoint saved)
@@ -1623,20 +1628,18 @@ describe('harness Runtime', () => {
       onToolInterrupt: async () => ({ decision: 'approve' as const }),
     })
 
-    const resumeEvents: Array<{ type: string; [key: string]: unknown }> = []
+    const resumeEvents: RuntimeEvent[] = []
     for await (const event of runtime2.resume(sessionID)) {
       resumeEvents.push(event)
     }
 
     // Verify the resumed session reached completion
     expect(resumeEvents.some((e) => e.type === 'complete')).toBe(true)
-    expect(
-      resumeEvents.some((e) => e.type === 'text' && e.content === 'recovered-output')
-    ).toBe(true)
+    expect(resumeEvents.some((e) => e.type === 'text' && e.content === 'recovered-output')).toBe(
+      true
+    )
     // Verify it continued from step 2 (not restarted from 0)
-    expect(
-      resumeEvents.some((e) => e.type === 'step_start' && e.step === 2)
-    ).toBe(true)
+    expect(resumeEvents.some((e) => e.type === 'step_start' && e.step === 2)).toBe(true)
   })
 
   test('resumes from checkpoints that still use legacy tuple tool frequency entries', async () => {
@@ -1848,7 +1851,9 @@ describe('harness Runtime', () => {
   test('emits complete when there is no active spec (no verification needed)', async () => {
     resetHarnessTestState()
     const provider = createProvider(() => {})
-    const runtime = new Runtime(provider, new Map(), { checkpointStore: new InMemoryCheckpointStore() })
+    const runtime = new Runtime(provider, new Map(), {
+      checkpointStore: new InMemoryCheckpointStore(),
+    })
 
     const userMessage = createUserMessage({
       id: 'msg-user-no-spec',
@@ -1873,7 +1878,9 @@ describe('harness Runtime', () => {
   test('throws on unknown agent name instead of falling back to build', async () => {
     resetHarnessTestState()
     const provider = createProvider(() => {})
-    const runtime = new Runtime(provider, new Map(), { checkpointStore: new InMemoryCheckpointStore() })
+    const runtime = new Runtime(provider, new Map(), {
+      checkpointStore: new InMemoryCheckpointStore(),
+    })
     const userMessage = createUserMessage({
       id: 'msg-bad-agent',
       sessionID: 'session-bad',
@@ -1883,8 +1890,9 @@ describe('harness Runtime', () => {
 
     let threwError = false
     try {
-      for await (const _event of runtime.run('session-bad', userMessage)) {
+      for await (const _ of runtime.run('session-bad', userMessage)) {
         // consume
+        void _
       }
     } catch (error) {
       threwError = true
@@ -2050,9 +2058,7 @@ describe('harness Runtime', () => {
     const toolResults = events.filter((e) => e.type === 'tool_result')
     expect(toolResults.length).toBeGreaterThan(0)
     expect(
-      toolResults.some(
-        (e) => e.toolResult?.error && e.toolResult.error.includes('timed out')
-      )
+      toolResults.some((e) => e.toolResult?.error && e.toolResult.error.includes('timed out'))
     ).toBe(true)
   })
 
@@ -2105,12 +2111,7 @@ describe('harness Runtime', () => {
     // Short compaction budget so the hanging complete() always times out.
     const runtime = new Runtime(
       hangingProvider,
-      new Map([
-        [
-          'read_files',
-          async () => ({ content: 'file contents' }),
-        ],
-      ]),
+      new Map([['read_files', async () => ({ output: 'file contents' })]]),
       {
         maxSteps: 20,
         checkpointStore: new InMemoryCheckpointStore(),
@@ -2137,7 +2138,7 @@ describe('harness Runtime', () => {
       agent: 'build',
     })
 
-    const events: Array<{ type: string; error?: string; [key: string]: unknown }> = []
+    const events: RuntimeEvent[] = []
     for await (const event of runtime.run(sessionID, userMessage, initialMessages)) {
       events.push(event)
       // Safety valve to prevent test from hanging

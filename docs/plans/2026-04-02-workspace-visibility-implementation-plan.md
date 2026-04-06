@@ -302,7 +302,9 @@ Update settings schema to persist workspace complexity.
 Recommended addition to user settings:
 
 ```ts
-workspaceComplexity: v.optional(v.union(v.literal('simple'), v.literal('advanced')))
+workspaceComplexity: v.optional(
+  v.union(v.literal('simple'), v.literal('advanced'))
+)
 ```
 
 No changes needed for:

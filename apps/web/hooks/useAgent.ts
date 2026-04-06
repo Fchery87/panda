@@ -286,8 +286,11 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const [currentRunUsage, setCurrentRunUsage] = useState<UsageTotals & { source: TokenSource }>()
 
   // Provider settings hook
-  const { contextWindowResolution, getReasoningRuntimeSettings } =
-    useProviderSettings(provider, model, settings as Record<string, unknown> | undefined)
+  const { contextWindowResolution, getReasoningRuntimeSettings } = useProviderSettings(
+    provider,
+    model,
+    settings as Record<string, unknown> | undefined
+  )
 
   // Refs for controlling the agent
   const abortControllerRef = useRef<AbortController | null>(null)

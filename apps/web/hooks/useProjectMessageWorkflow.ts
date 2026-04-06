@@ -10,11 +10,19 @@ import {
 } from '@/lib/chat/planDraft'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import type { GeneratedPlanArtifact } from '@/lib/planning/types'
+import {
+  deriveDeliveryTaskSeed,
+  shouldActivateStructuredDelivery,
+} from '@/lib/agent/delivery/manager'
 
 type MessageWorkflowChat = {
   _id: Id<'chats'>
   mode: ChatMode
   planStatus?: PlanStatus
+}
+
+type DeliveryStateRecord = {
+  _id: Id<'deliveryStates'>
 }
 
 type ExecutablePlanArtifact = Pick<GeneratedPlanArtifact, 'status'>
@@ -50,6 +58,35 @@ export function useProjectMessageWorkflow(args: {
     mode?: ChatMode
     planStatus?: PlanStatus
   }) => Promise<unknown>
+  createDeliveryStateMutation: (args: {
+    projectId: Id<'projects'>
+    chatId: Id<'chats'>
+    title: string
+    goal: string
+    description?: string
+    constraints?: string[]
+  }) => Promise<Id<'deliveryStates'>>
+  createDeliveryTaskMutation: (args: {
+    deliveryStateId: Id<'deliveryStates'>
+    taskKey: string
+    title: string
+    description: string
+    rationale: string
+    ownerRole: 'manager'
+    acceptanceCriteria: Array<{
+      id: string
+      text: string
+      status: 'pending'
+      verificationMethod: 'review'
+    }>
+    status: 'in_progress'
+  }) => Promise<Id<'deliveryTasks'>>
+  updateDeliveryStateSummaryMutation: (args: {
+    id: Id<'deliveryStates'>
+    activeTaskTitle?: string
+    currentPhaseSummary?: string
+  }) => Promise<unknown>
+  getActiveDeliveryState?: (chatId: Id<'chats'>) => Promise<DeliveryStateRecord | null>
   markPlanningExecutionState?: (args: { sessionId: string; state: 'executing' }) => Promise<unknown>
   sendAgentMessage: (
     content: string,
@@ -70,6 +107,10 @@ export function useProjectMessageWorkflow(args: {
     providerAvailable,
     createChatMutation,
     updateChatMutation,
+    createDeliveryStateMutation,
+    createDeliveryTaskMutation,
+    updateDeliveryStateSummaryMutation,
+    getActiveDeliveryState,
     markPlanningExecutionState,
     sendAgentMessage,
     setActiveChatId,
@@ -147,6 +188,49 @@ export function useProjectMessageWorkflow(args: {
         await updateChatMutation({ id: activeChat._id, mode })
       }
 
+      if (
+        shouldActivateStructuredDelivery({
+          mode,
+          content: finalContent,
+          approvedPlanExecution: options?.approvedPlanExecution,
+        })
+      ) {
+        const taskSeed = deriveDeliveryTaskSeed({
+          mode,
+          content: finalContent,
+          approvedPlanExecution: options?.approvedPlanExecution,
+        })
+        const existingDeliveryState = getActiveDeliveryState
+          ? await getActiveDeliveryState(activeChat._id)
+          : null
+        const deliveryStateId =
+          existingDeliveryState?._id ??
+          (await createDeliveryStateMutation({
+            projectId,
+            chatId: activeChat._id,
+            title: taskSeed.title,
+            goal: finalContent,
+            description: taskSeed.description,
+          }))
+
+        await createDeliveryTaskMutation({
+          deliveryStateId,
+          taskKey: `task-${Date.now()}`,
+          title: taskSeed.title,
+          description: taskSeed.description,
+          rationale: taskSeed.rationale,
+          ownerRole: taskSeed.ownerRole,
+          acceptanceCriteria: taskSeed.acceptanceCriteria,
+          status: taskSeed.status,
+        })
+
+        await updateDeliveryStateSummaryMutation({
+          id: deliveryStateId,
+          activeTaskTitle: taskSeed.title,
+          currentPhaseSummary: 'Structured delivery activated for active implementation work.',
+        })
+      }
+
       if (!providerAvailable) {
         toast.error('LLM provider not configured', {
           description: 'Please configure your LLM settings in the settings page.',
@@ -165,6 +249,10 @@ export function useProjectMessageWorkflow(args: {
       planDraft,
       projectId,
       providerAvailable,
+      createDeliveryStateMutation,
+      createDeliveryTaskMutation,
+      updateDeliveryStateSummaryMutation,
+      getActiveDeliveryState,
       sendAgentMessage,
       setActiveChatId,
       setChatMode,

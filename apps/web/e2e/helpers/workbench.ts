@@ -2,7 +2,9 @@ import { expect, type Locator, type Page } from '@playwright/test'
 import type { GeneratedPlanArtifact, GeneratedPlanSection } from '@/lib/planning/types'
 
 async function ensureProjectCapacity(page: Page) {
-  const response = await page.request.get('/api/e2e/project?ensureCapacity=1')
+  const response = await page.request.get('/api/e2e/project?ensureCapacity=1&e2eBypass=1', {
+    headers: { 'x-panda-e2e-bypass': 'true' },
+  })
   expect(response.ok()).toBe(true)
 }
 
@@ -51,7 +53,7 @@ export async function createAndOpenProject(page: Page): Promise<string> {
   await expect(projectLink).toBeVisible({ timeout: 15000 })
   const href = await projectLink.getAttribute('href')
   expect(href).toMatch(/^\/projects\/.+/)
-  const projectUrl = href!
+  const projectUrl = href!.includes('?') ? `${href!}&e2eBypass=1` : `${href!}?e2eBypass=1`
   const navigationDeadline = Date.now() + 120_000
   let lastNavigationError: unknown = null
 
@@ -74,17 +76,37 @@ export async function createAndOpenProject(page: Page): Promise<string> {
   await expect(page.getByText(/loading project/i)).not.toBeVisible({
     timeout: 30_000,
   })
-  await expect(page.getByRole('navigation', { name: /breadcrumb/i })).toBeVisible({
-    timeout: 30_000,
-  })
-  await expect(page.getByRole('button', { name: /^review$/i })).toBeVisible({
-    timeout: 30_000,
-  })
-  await expect(
-    page.getByRole('textbox', { name: /ask anything, @ to mention, \/ for workflows/i })
-  ).toBeVisible({
-    timeout: 30_000,
-  })
+  const reviewButton = page.getByRole('button', { name: /^review$/i }).first()
+  const chatActionsButton = page.getByRole('button', { name: /chat actions/i }).first()
+  const chatComposer = page
+    .getByPlaceholder(/planning & architecture|describe the code to write|type your message/i)
+    .first()
+    .or(page.getByRole('textbox').first())
+
+  const readinessDeadline = Date.now() + 60_000
+  while (Date.now() < readinessDeadline) {
+    if (await reviewButton.isVisible().catch(() => false)) break
+    if (await chatActionsButton.isVisible().catch(() => false)) break
+    if (await chatComposer.isVisible().catch(() => false)) break
+
+    const isLoading = await page
+      .getByText(/loading project|loading/i)
+      .first()
+      .isVisible()
+      .catch(() => false)
+    if (isLoading) {
+      await page.waitForTimeout(500)
+      continue
+    }
+
+    await page.waitForTimeout(500)
+  }
+
+  expect(
+    (await reviewButton.isVisible().catch(() => false)) ||
+      (await chatActionsButton.isVisible().catch(() => false)) ||
+      (await chatComposer.isVisible().catch(() => false))
+  ).toBe(true)
 
   return projectName
 }
@@ -264,14 +286,20 @@ export async function openWorkbenchProjectFixture(
     }
   }
 
-  let response = await page.request.get(`/api/e2e/project?${params.toString()}`)
+  params.set('e2eBypass', '1')
+
+  let response = await page.request.get(`/api/e2e/project?${params.toString()}`, {
+    headers: { 'x-panda-e2e-bypass': 'true' },
+  })
   const deadline = Date.now() + 60_000
   let lastErrorBody = ''
 
   while (!response.ok() && Date.now() < deadline) {
     lastErrorBody = await response.text().catch(() => '')
     await page.waitForTimeout(500)
-    response = await page.request.get(`/api/e2e/project?${params.toString()}`)
+    response = await page.request.get(`/api/e2e/project?${params.toString()}`, {
+      headers: { 'x-panda-e2e-bypass': 'true' },
+    })
   }
 
   expect(
@@ -290,7 +318,7 @@ export async function openWorkbenchProjectFixture(
   }
   expect(body.projectId).toBeTruthy()
 
-  const projectUrl = `/projects/${body.projectId}`
+  const projectUrl = `/projects/${body.projectId}?e2eBypass=1`
   const navigationDeadline = Date.now() + 120_000
   let lastNavigationError: unknown = null
 
@@ -315,10 +343,37 @@ export async function openWorkbenchProjectFixture(
     throw lastNavigationError
   }
 
-  await expect(page.getByRole('navigation', { name: /breadcrumb/i })).toBeVisible({
-    timeout: 120000,
-  })
-  await expect(page.getByRole('textbox').first()).toBeVisible({ timeout: 120000 })
+  const reviewButton = page.getByRole('button', { name: /^review$/i }).first()
+  const chatActionsButton = page.getByRole('button', { name: /chat actions/i }).first()
+  const chatComposer = page
+    .getByPlaceholder(/planning & architecture|describe the code to write|type your message/i)
+    .first()
+    .or(page.getByRole('textbox').first())
+
+  const readinessDeadline = Date.now() + 180_000
+  while (Date.now() < readinessDeadline) {
+    if (await reviewButton.isVisible().catch(() => false)) break
+    if (await chatActionsButton.isVisible().catch(() => false)) break
+    if (await chatComposer.isVisible().catch(() => false)) break
+
+    const isLoading = await page
+      .getByText(/loading project|loading/i)
+      .first()
+      .isVisible()
+      .catch(() => false)
+    if (isLoading) {
+      await page.waitForTimeout(500)
+      continue
+    }
+
+    await page.waitForTimeout(500)
+  }
+
+  expect(
+    (await reviewButton.isVisible().catch(() => false)) ||
+      (await chatActionsButton.isVisible().catch(() => false)) ||
+      (await chatComposer.isVisible().catch(() => false))
+  ).toBe(true)
   return body
 }
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { useConvex, useQuery, useMutation } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
@@ -17,6 +17,9 @@ import { ProjectChatPanel } from '@/components/projects/ProjectChatPanel'
 import { ProjectShareDialog } from '@/components/projects/ProjectShareDialog'
 import { ProjectWorkspaceLayout } from '@/components/projects/ProjectWorkspaceLayout'
 import { ReviewPanel } from '@/components/review/ReviewPanel'
+import { TaskPanel } from '@/components/panels/TaskPanel'
+import { QAPanel } from '@/components/panels/QAPanel'
+import { StatePanel } from '@/components/panels/StatePanel'
 import { Button } from '@/components/ui/button'
 import { WorkspaceProvider, type WorkspaceContextValue } from '@/contexts/WorkspaceContext'
 import {
@@ -56,6 +59,11 @@ import { resolveBackgroundExecutionPolicy } from '@/lib/chat/backgroundExecution
 import { derivePlanCompletionStatus } from '@/lib/agent/plan-progress'
 import type { AgentPolicy } from '@/lib/agent/automationPolicy'
 import { normalizeChatMode, type ChatMode } from '@/lib/agent/prompt-library'
+import {
+  buildQAPanelViewModel,
+  buildStatePanelViewModel,
+  buildTaskPanelViewModel,
+} from '@/lib/delivery/view-models'
 import type { LLMProvider } from '@/lib/llm/types'
 import {
   applyArtifact,
@@ -82,6 +90,12 @@ import {
   buildInlineChatFailureDisplay,
   resolveExplorerRevealTarget,
 } from '@/lib/workbench-navigation'
+import {
+  deriveLifecycleUpdatesForRunCompletion,
+  deriveLifecycleUpdatesForRunStart,
+} from '@/lib/agent/delivery/manager'
+import { buildDeliveryClosureServicePlan } from '@/lib/agent/delivery/service'
+import { deriveQaReportFingerprint } from '@/lib/qa/browser-session'
 
 interface File {
   _id: Id<'files'>
@@ -138,6 +152,74 @@ type ArtifactRecord = {
 
 type ChatInspectorTab = 'run' | 'plan' | 'artifacts' | 'memory' | 'evals'
 
+type DeliveryTask = {
+  _id: Id<'deliveryTasks'>
+  title: string
+  description: string
+  rationale: string
+  status:
+    | 'draft'
+    | 'planned'
+    | 'ready'
+    | 'in_progress'
+    | 'blocked'
+    | 'in_review'
+    | 'qa_pending'
+    | 'done'
+    | 'rejected'
+  ownerRole: 'builder' | 'manager' | 'executive'
+  acceptanceCriteria: Array<{
+    id: string
+    text: string
+    status: 'pending' | 'passed' | 'failed' | 'waived'
+  }>
+  filesInScope: string[]
+  blockers: string[]
+  evidence: Array<{
+    label: string
+    href?: string
+  }>
+  updatedAt: number
+}
+
+type ReviewReport = {
+  _id: Id<'reviewReports'>
+  type: 'architecture' | 'implementation'
+  decision: 'pass' | 'concerns' | 'reject'
+  summary: string
+  createdAt: number
+}
+
+type QaReport = {
+  _id: Id<'qaReports'>
+  decision: 'pass' | 'concerns' | 'fail'
+  summary: string
+  assertions: Array<{
+    label: string
+    status: 'passed' | 'failed' | 'skipped'
+  }>
+  evidence: {
+    urlsTested: string[]
+    flowNames: string[]
+    consoleErrors: string[]
+    networkFailures: string[]
+  }
+  defects: Array<{
+    severity: 'high' | 'medium' | 'low'
+    title: string
+    detail: string
+  }>
+  createdAt: number
+}
+
+type ShipReport = {
+  _id: Id<'shipReports'>
+  decision: 'ready' | 'ready_with_risk' | 'not_ready'
+  summary: string
+  evidenceSummary: string
+  createdAt: number
+}
+
 // Add placeholder function if needed or safely remove usages
 
 function readAgentPolicyField(
@@ -161,12 +243,14 @@ const FALLBACK_PROVIDER: LLMProvider = {
     throw new Error('No LLM provider configured')
   },
   async *completionStream() {
+    yield { type: 'error' as const, error: 'No LLM provider configured' }
     throw new Error('No LLM provider configured')
   },
 }
 
 export default function ProjectPage() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const projectId = params.projectId as Id<'projects'>
 
   const {
@@ -250,6 +334,15 @@ export default function ProjectPage() {
   const projectAgentPolicy = readAgentPolicyField(project, 'agentPolicy')
   const createChatMutation = useMutation(api.chats.create)
   const updateChatMutation = useMutation(api.chats.update)
+  const createDeliveryStateMutation = useMutation(api.deliveryStates.create)
+  const createDeliveryTaskMutation = useMutation(api.deliveryTasks.create)
+  const updateDeliveryStateSummaryMutation = useMutation(api.deliveryStates.updateSummary)
+  const transitionDeliveryStatePhaseMutation = useMutation(api.deliveryStates.transitionPhase)
+  const transitionDeliveryTaskStatusMutation = useMutation(api.deliveryTasks.transitionStatus)
+  const attachDeliveryTaskEvidenceMutation = useMutation(api.deliveryTasks.attachEvidence)
+  const createReviewReportMutation = useMutation(api.reviewReports.create)
+  const createQaReportMutation = useMutation(api.qaReports.create)
+  const createShipReportMutation = useMutation(api.shipReports.create)
   const acceptPlanningSessionMutation = useMutation(api.planningSessions.acceptPlan)
   const markPlanningExecutionStateMutation = useMutation(api.planningSessions.markExecutionState)
   const upsertFileMutation = useMutation(api.files.upsert)
@@ -308,6 +401,14 @@ export default function ProjectPage() {
     }>
     generatedPlan?: GeneratedPlanArtifact
   } | null
+  const activeDeliveryState = useQuery(
+    api.deliveryStates.getActiveByChat,
+    activeChat ? { chatId: activeChat._id } : 'skip'
+  )
+  const deliveryTasks = useQuery(
+    api.deliveryTasks.listByDeliveryState,
+    activeDeliveryState ? { deliveryStateId: activeDeliveryState._id } : 'skip'
+  ) as DeliveryTask[] | undefined
   useShortcutListener()
   const persistedPlanDraft = activeChat?.planDraft ?? ''
 
@@ -326,6 +427,32 @@ export default function ProjectPage() {
     automationPolicy: effectiveAutomationPolicy,
     specApprovalMode: automationMode === 'auto' ? 'auto_approve' : 'interactive',
     onRunCreated: async ({ runId, approvedPlanExecution }) => {
+      if (activeDeliveryState && activeDeliveryTask) {
+        const lifecycle = deriveLifecycleUpdatesForRunStart({
+          activeTaskTitle: activeDeliveryTask.title,
+        })
+
+        if (activeDeliveryTask.status !== lifecycle.taskStatus) {
+          await transitionDeliveryTaskStatusMutation({
+            id: activeDeliveryTask._id,
+            to: lifecycle.taskStatus,
+          })
+        }
+
+        if (activeDeliveryState.currentPhase !== lifecycle.phase) {
+          await transitionDeliveryStatePhaseMutation({
+            id: activeDeliveryState._id,
+            to: lifecycle.phase,
+          })
+        }
+
+        await updateDeliveryStateSummaryMutation({
+          id: activeDeliveryState._id,
+          activeTaskTitle: lifecycle.summary.activeTaskTitle ?? undefined,
+          currentPhaseSummary: lifecycle.summary.currentPhaseSummary,
+        })
+      }
+
       if (!approvedPlanExecution) return
 
       const planningSessionId = activePlanningSession?.sessionId ?? null
@@ -347,6 +474,146 @@ export default function ProjectPage() {
       })
     },
     onRunCompleted: async ({ runId, outcome, completedPlanStepIndexes, planTotalSteps }) => {
+      if (activeDeliveryState && activeDeliveryTask) {
+        await attachDeliveryTaskEvidenceMutation({
+          id: activeDeliveryTask._id,
+          evidence: [
+            {
+              type: 'agent_run',
+              id: runId,
+              label: `Agent run ${runId}`,
+            },
+          ],
+        })
+
+        const lifecycle = deriveLifecycleUpdatesForRunCompletion({
+          outcome,
+          activeTaskTitle: activeDeliveryTask.title,
+        })
+
+        if (activeDeliveryTask.status !== lifecycle.taskStatus) {
+          await transitionDeliveryTaskStatusMutation({
+            id: activeDeliveryTask._id,
+            to: lifecycle.taskStatus,
+          })
+        }
+
+        if (activeDeliveryState.currentPhase !== lifecycle.phase) {
+          await transitionDeliveryStatePhaseMutation({
+            id: activeDeliveryState._id,
+            to: lifecycle.phase,
+          })
+        }
+
+        await updateDeliveryStateSummaryMutation({
+          id: activeDeliveryState._id,
+          activeTaskTitle: lifecycle.summary.activeTaskTitle ?? undefined,
+          currentPhaseSummary: lifecycle.summary.currentPhaseSummary,
+        })
+
+        if (lifecycle.taskStatus === 'in_review') {
+          const latestQaFingerprint = activeTaskQaReport
+            ? deriveQaReportFingerprint({
+                taskId: activeDeliveryTask._id,
+                runId,
+                flowNames: activeTaskQaReport.evidence.flowNames,
+                urlsTested: activeTaskQaReport.evidence.urlsTested,
+              })
+            : null
+          const closurePlan = buildDeliveryClosureServicePlan({
+            taskId: activeDeliveryTask._id,
+            deliveryStateId: activeDeliveryState._id,
+            taskTitle: activeDeliveryTask.title,
+            runId,
+            projectId,
+            chatId: activeChat?._id ?? 'unknown-chat',
+            projectPath: `/projects/${projectId}`,
+            latestQaFingerprint,
+          })
+
+          await createReviewReportMutation(closurePlan.createReviewReport)
+
+          if (closurePlan.shouldRunBrowserQa) {
+            const qaResponse = await fetch('/api/qa/run', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                projectId,
+                chatId: activeChat?._id,
+                taskId: activeDeliveryTask._id,
+                urlsTested: closurePlan.createQaReport.evidence.urlsTested,
+                flowNames: closurePlan.createQaReport.evidence.flowNames,
+              }),
+            })
+
+            if (!qaResponse.ok) {
+              throw new Error('Failed to run browser QA')
+            }
+
+            const qaPayload = (await qaResponse.json()) as {
+              decision: 'pass' | 'concerns' | 'fail'
+              summary: string
+              assertions: Array<{ label: string; status: 'passed' | 'failed' | 'skipped' }>
+              evidence: {
+                screenshotPath?: string
+                urlsTested: string[]
+                flowNames: string[]
+                consoleErrors: string[]
+                networkFailures: string[]
+              }
+              defects: Array<{
+                severity: 'high' | 'medium' | 'low'
+                title: string
+                detail: string
+                route?: string
+              }>
+            }
+
+            await createQaReportMutation({
+              deliveryStateId: closurePlan.createQaReport.deliveryStateId,
+              taskId: closurePlan.createQaReport.taskId,
+              browserSessionKey: closurePlan.createQaReport.browserSessionKey,
+              decision: qaPayload.decision,
+              summary: qaPayload.summary,
+              assertions: qaPayload.assertions,
+              evidence: qaPayload.evidence,
+              defects: qaPayload.defects,
+            })
+          }
+
+          await transitionDeliveryTaskStatusMutation({
+            id: activeDeliveryTask._id,
+            to: closurePlan.qaPendingStatus,
+          })
+
+          const finalLifecycle = closurePlan.finalLifecycle
+
+          if (finalLifecycle.taskStatus === 'done') {
+            await transitionDeliveryTaskStatusMutation({
+              id: activeDeliveryTask._id,
+              to: 'done',
+            })
+          }
+
+          if (activeDeliveryState.currentPhase !== finalLifecycle.phase) {
+            await transitionDeliveryStatePhaseMutation({
+              id: activeDeliveryState._id,
+              to: finalLifecycle.phase,
+            })
+          }
+
+          await updateDeliveryStateSummaryMutation({
+            id: activeDeliveryState._id,
+            activeTaskTitle: finalLifecycle.summary.activeTaskTitle ?? undefined,
+            currentPhaseSummary: finalLifecycle.summary.currentPhaseSummary,
+          })
+
+          if (finalLifecycle.shipDecision) {
+            await createShipReportMutation(closurePlan.shipReport)
+          }
+        }
+      }
+
       const nextPlanStatus = derivePlanCompletionStatus({
         planTotalSteps,
         completedPlanStepIndexes,
@@ -399,6 +666,13 @@ export default function ProjectPage() {
       providerAvailable: Boolean(provider),
       createChatMutation,
       updateChatMutation,
+      createDeliveryStateMutation,
+      createDeliveryTaskMutation,
+      updateDeliveryStateSummaryMutation,
+      getActiveDeliveryState: async (chatId) => {
+        const state = await convex.query(api.deliveryStates.getActiveByChat, { chatId })
+        return state ? { _id: state._id } : null
+      },
       markPlanningExecutionState: ({ sessionId, state }) =>
         markPlanningExecutionStateMutation({ sessionId, state }),
       sendAgentMessage,
@@ -436,6 +710,81 @@ export default function ProjectPage() {
   const activePlanArtifactRevisionKey = activePlanArtifact
     ? `${activePlanArtifact.sessionId}:${activePlanArtifact.generatedAt}:${activePlanArtifact.status}`
     : null
+  const activeDeliveryTask = useMemo(() => {
+    if (!deliveryTasks || deliveryTasks.length === 0) return null
+
+    const matchingSummaryTask = activeDeliveryState?.summary.activeTaskTitle
+      ? deliveryTasks.find((task) => task.title === activeDeliveryState.summary.activeTaskTitle)
+      : null
+
+    if (matchingSummaryTask) return matchingSummaryTask
+
+    const activeTaskId = activeDeliveryState?.activeTaskIds?.[0]
+    if (activeTaskId) {
+      const matchingActiveTask = deliveryTasks.find((task) => task._id === activeTaskId)
+      if (matchingActiveTask) return matchingActiveTask
+    }
+
+    return (
+      deliveryTasks.find((task) => task.status !== 'done' && task.status !== 'rejected') ?? null
+    )
+  }, [activeDeliveryState, deliveryTasks])
+  const activeTaskReviews = useQuery(
+    api.reviewReports.listByTask,
+    activeDeliveryTask ? { taskId: activeDeliveryTask._id } : 'skip'
+  ) as ReviewReport[] | undefined
+  const activeTaskReview = activeTaskReviews?.[0] ?? null
+  const activeTaskQaReports = useQuery(
+    api.qaReports.listByTask,
+    activeDeliveryTask ? { taskId: activeDeliveryTask._id } : 'skip'
+  ) as QaReport[] | undefined
+  const activeTaskQaReport = activeTaskQaReports?.[0] ?? null
+  const shipReports = useQuery(
+    api.shipReports.listByDeliveryState,
+    activeDeliveryState ? { deliveryStateId: activeDeliveryState._id } : 'skip'
+  ) as ShipReport[] | undefined
+  const latestShipReport = shipReports?.[0] ?? null
+  const requestedFilePath = searchParams.get('filePath')
+  const taskPanelViewModel = useMemo(
+    () =>
+      buildTaskPanelViewModel({
+        activeDeliveryTask,
+        activeTaskReview,
+      }),
+    [activeDeliveryTask, activeTaskReview]
+  )
+  const qaPanelViewModel = useMemo(
+    () => buildQAPanelViewModel({ activeTaskQaReport }),
+    [activeTaskQaReport]
+  )
+  const statePanelViewModel = useMemo(
+    () =>
+      buildStatePanelViewModel({
+        activeDeliveryState,
+        deliveryTasks,
+        latestShipReport,
+      }),
+    [activeDeliveryState, deliveryTasks, latestShipReport]
+  )
+
+  useEffect(() => {
+    if (!requestedFilePath || !files?.some((file) => file.path === requestedFilePath)) return
+
+    setSelectedFilePath(requestedFilePath)
+    setSelectedFileLocation(null)
+    setCursorPosition(null)
+    setOpenTabs((prev) => {
+      if (prev.some((tab) => tab.path === requestedFilePath)) return prev
+      return [...prev, { path: requestedFilePath }]
+    })
+  }, [
+    files,
+    requestedFilePath,
+    setCursorPosition,
+    setOpenTabs,
+    setSelectedFileLocation,
+    setSelectedFilePath,
+  ])
 
   useEffect(() => {
     if (!activePlanArtifact || !activePlanArtifactOpenKey || !activePlanArtifactRevisionKey) return
@@ -907,6 +1256,7 @@ export default function ProjectPage() {
     <ReviewPanel
       activeTab={chatInspectorTab}
       onTabChange={(tab) => setChatInspectorTab(tab as ChatInspectorTab)}
+      taskContent={<TaskPanel task={taskPanelViewModel} />}
       runContent={
         <InspectorRunContent
           chatId={activeChat?._id}
@@ -965,6 +1315,8 @@ export default function ProjectPage() {
           onRunEvalScenario={agent.runEvalScenario}
         />
       }
+      qaContent={<QAPanel report={qaPanelViewModel} />}
+      stateContent={<StatePanel state={statePanelViewModel} />}
     />
   )
 
@@ -984,7 +1336,9 @@ export default function ProjectPage() {
           <Button
             variant="outline"
             className="rounded-none font-mono"
-            onClick={() => { window.location.href = '/projects' }}
+            onClick={() => {
+              window.location.href = '/projects'
+            }}
           >
             Back to Projects
           </Button>
@@ -1235,10 +1589,7 @@ export default function ProjectPage() {
           onSubmit={(prompt, ctx) => handleSendMessage(prompt, 'build', ctx)}
           isStreaming={agent.isLoading}
         />
-        <ShortcutHelpOverlay
-          open={isShortcutHelpOpen}
-          onOpenChange={setIsShortcutHelpOpen}
-        />
+        <ShortcutHelpOverlay open={isShortcutHelpOpen} onOpenChange={setIsShortcutHelpOpen} />
       </div>
     </WorkspaceProvider>
   )

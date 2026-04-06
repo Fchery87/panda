@@ -44,9 +44,7 @@ export function SharedChatContent({ shareId }: { shareId: string }) {
         <SharedTranscript messages={sharedChat.messages} />
 
         <footer className="mt-8 border-t border-border pt-4 text-center">
-          <p className="mb-3 font-mono text-xs text-muted-foreground">
-            Shared via Panda.ai
-          </p>
+          <p className="mb-3 font-mono text-xs text-muted-foreground">Shared via Panda.ai</p>
           <Link href="/">
             <Button variant="outline" className="rounded-none font-mono text-xs">
               Try Panda.ai

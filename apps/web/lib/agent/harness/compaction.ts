@@ -47,7 +47,9 @@ function getEncoder(): { encode: (text: string) => number[] } | null {
     try {
       // Dynamic import to avoid blocking test environments
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { encodingForModel } = require('js-tiktoken') as { encodingForModel: (model: string) => { encode: (text: string) => number[] } }
+      const { encodingForModel } = require('js-tiktoken') as {
+        encodingForModel: (model: string) => { encode: (text: string) => number[] }
+      }
       encoder = encodingForModel('gpt-4o')
     } catch {
       return null

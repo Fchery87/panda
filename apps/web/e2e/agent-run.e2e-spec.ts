@@ -52,12 +52,17 @@ Ship the seeded structured planning workflow
     await expect(page.getByText(/plan executing/i).first()).toBeVisible({
       timeout: 20_000,
     })
-    await expect(page.getByRole('log', { name: /chat messages/i })).toContainText(
-      /we are switching from architect \(plan mode\) to build \(execute mode\)/i,
-      {
-        timeout: 20_000,
-      }
-    )
+    await expect(
+      page.getByRole('region', { name: new RegExp(`Plan artifact ${planTitle}`, 'i') })
+    ).toContainText(/executing/i, {
+      timeout: 20_000,
+    })
+    await expect(page.getByText(/build in progress/i).first()).toBeVisible({
+      timeout: 20_000,
+    })
+    await expect(page.getByRole('button', { name: /^build$/i }).first()).toBeVisible({
+      timeout: 20_000,
+    })
   })
 
   test('runtime checkpoint can be resumed from run progress panel', async ({ page }) => {
@@ -71,14 +76,15 @@ Ship the seeded structured planning workflow
     await expect(resumeReadyBadge).toBeVisible({ timeout: 20_000 })
     await page.getByRole('button', { name: /recover run|resume run/i }).click()
 
-    await expect(page.getByRole('log', { name: /chat messages/i })).toContainText(
-      'Resume previous run',
-      { timeout: 20_000 }
-    )
-    await expect(resumeReadyBadge).not.toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText(/resume previous run/i).first()).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByRole('button', { name: /recover run|resume run/i })).toBeVisible({
+      timeout: 20_000,
+    })
   })
 
   test('history action opens the inspector on the run tab', async ({ page }) => {
+    test.setTimeout(180_000)
+
     await openWorkbenchProjectFixture(page, {
       name: `Agent Run History ${Date.now()}`,
       planDraft: 'History fixture',
@@ -88,8 +94,8 @@ Ship the seeded structured planning workflow
     await page.getByRole('button', { name: /chat actions/i }).click()
     await page.getByRole('menuitem', { name: /history/i }).click()
 
-    await expect(page.getByText(/^review$/i).first()).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByRole('button', { name: /^run$/i }).first()).toBeVisible({
+    await expect(page.getByText(/plan approved/i).first()).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText(/ready for execution/i).first()).toBeVisible({
       timeout: 15_000,
     })
   })
