@@ -18,4 +18,15 @@ describe('QA run route wiring', () => {
     expect(source).toContain('baseUrl: body.baseUrl')
     expect(source).toContain('normalizeBrowserQaResult(result)')
   })
+
+  test('passes Forge browser-session and route-impact context into the executor input', () => {
+    const source = fs.readFileSync(path.resolve(import.meta.dir, 'route.ts'), 'utf8')
+
+    expect(source).toContain('filesInScope?: string[]')
+    expect(source).toContain('environment?: string')
+    expect(source).toContain('existingSession?:')
+    expect(source).toContain('filesInScope: body.filesInScope')
+    expect(source).toContain('environment: body.environment')
+    expect(source).toContain('existingSession: body.existingSession')
+  })
 })

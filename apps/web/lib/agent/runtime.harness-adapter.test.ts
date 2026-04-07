@@ -6,7 +6,7 @@ import type {
   StreamChunk,
   ToolCall,
 } from '../llm/types'
-import { streamAgent } from './runtime'
+import { resolveHarnessAgentName, streamAgent } from './runtime'
 import type { ToolContext } from './tools'
 import {
   InMemoryCheckpointStore,
@@ -74,6 +74,19 @@ function makeHarnessUserMessage(
 }
 
 describe('Harness adapter guardrail parity', () => {
+  it('allows explicit Forge role agents to override chat-mode mapping', () => {
+    expect(resolveHarnessAgentName({ chatMode: 'build', harnessAgentName: 'builder' })).toBe(
+      'builder'
+    )
+    expect(resolveHarnessAgentName({ chatMode: 'build', harnessAgentName: 'manager' })).toBe(
+      'manager'
+    )
+    expect(resolveHarnessAgentName({ chatMode: 'architect', harnessAgentName: 'executive' })).toBe(
+      'executive'
+    )
+    expect(resolveHarnessAgentName({ chatMode: 'architect' })).toBe('plan')
+  })
+
   // TODO: Fix harness-internal rewrite test - currently times out due to harness runtime interaction
   // The test was updated from legacy fallback to harness-internal rewrite, but needs further debugging
   it('rewrites within harness when fenced code detected in build mode and does not leak fenced code', async () => {

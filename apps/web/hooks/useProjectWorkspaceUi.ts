@@ -5,7 +5,18 @@ import { useLayoutPersistence } from './useLayoutPersistence'
 import type { WorkspaceOpenTab } from '@/contexts/WorkspaceContext'
 
 type MobilePrimaryPanel = 'workspace' | 'chat' | 'review'
-type ChatInspectorTab = 'run' | 'plan' | 'artifacts' | 'memory' | 'evals'
+type ChatInspectorTab =
+  | 'run'
+  | 'plan'
+  | 'artifacts'
+  | 'memory'
+  | 'evals'
+  | 'tasks'
+  | 'qa'
+  | 'state'
+  | 'browser'
+  | 'activity'
+  | 'decisions'
 
 type PlanningPopupState = {
   isPlanningPopupOpen: boolean

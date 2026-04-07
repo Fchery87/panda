@@ -15,7 +15,7 @@ describe('delivery orchestrator plan builder', () => {
     expect(plan.createReviewReport.type).toBe('implementation')
     expect(plan.createQaReport.decision).toBe('pass')
     expect(plan.createReviewReport.decision).toBe('pass')
-    expect(plan.finalTaskStatus).toBe('done')
+    expect(plan.createQaReport.evidence.urlsTested).toEqual(['/projects/example'])
     expect(plan.shipReport.decision).toBe('ready')
   })
 })

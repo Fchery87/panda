@@ -17,16 +17,6 @@ export function buildSuccessfulRunClosurePlan(args: {
   const shipDecision = deriveShipDecision({ qaDecision })
 
   return {
-    attachEvidence: {
-      id: args.taskId,
-      evidence: [
-        {
-          type: 'agent_run' as const,
-          id: args.runId,
-          label: `Agent run ${args.runId}`,
-        },
-      ],
-    },
     createReviewReport: {
       deliveryStateId: args.deliveryStateId,
       taskId: args.taskId,

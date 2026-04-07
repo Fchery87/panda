@@ -3,11 +3,10 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 describe('Project page delivery task panel wiring', () => {
-  test('queries delivery state and delivery tasks and mounts TaskPanel into ReviewPanel', () => {
+  test('uses the forge snapshot task board and mounts TaskPanel into ReviewPanel', () => {
     const source = fs.readFileSync(path.resolve(import.meta.dir, 'page.tsx'), 'utf8')
 
-    expect(source).toContain('api.deliveryStates.getActiveByChat')
-    expect(source).toContain('api.deliveryTasks.listByDeliveryState')
+    expect(source).toContain('forgeProjectSnapshot?.taskBoard')
     expect(source).toContain('taskContent={')
     expect(source).toContain('<TaskPanel')
   })

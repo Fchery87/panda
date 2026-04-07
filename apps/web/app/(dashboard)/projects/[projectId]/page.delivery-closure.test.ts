@@ -3,12 +3,12 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 describe('Project page delivery closure wiring', () => {
-  test('delegates delivery closure sequencing to the delivery service and still creates ship reports', () => {
+  test('delegates delivery closure sequencing to the delivery service and records ship decisions through Forge', () => {
     const source = fs.readFileSync(path.resolve(import.meta.dir, 'page.tsx'), 'utf8')
 
     expect(source).toContain('buildDeliveryClosureServicePlan(')
-    expect(source).toContain('createShipReportMutation')
-    expect(source).toContain('closurePlan.qaPendingStatus')
-    expect(source).toContain('const finalLifecycle = closurePlan.finalLifecycle')
+    expect(source).toContain('recordForgeShipDecisionMutation')
+    expect(source).toContain('closurePlan.shipReport')
+    expect(source).not.toContain('createShipReportMutation')
   })
 })

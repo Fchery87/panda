@@ -8,7 +8,7 @@ describe('Project page state panel wiring', () => {
 
     expect(source).toContain('<StatePanel')
     expect(source).toContain('stateContent={')
-    expect(source).toContain('buildStatePanelViewModel({')
+    expect(source).toContain('const statePanelViewModel = useMemo(() => {')
     expect(source).toContain('state={statePanelViewModel}')
   })
 })

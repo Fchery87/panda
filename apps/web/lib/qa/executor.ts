@@ -1,22 +1,66 @@
-import { createBrowserSessionKey } from './browser-session'
+import type { Browser, BrowserContext, Page } from '@playwright/test'
 import { chromium } from '@playwright/test'
+import { createBrowserSessionKey } from './browser-session'
+import { createBrowserSessionSupervisor } from '@/lib/forge/browser-session-supervisor'
+import { deriveForgeAffectedRoutes } from '@/lib/forge/route-impact'
 import path from 'node:path'
+
+type QaSessionRecord = {
+  browser: Browser
+  context: BrowserContext
+  page: Page
+}
+
+const qaSessionRegistry = new Map<string, QaSessionRecord>()
 
 export function buildBrowserQaRunInput(args: {
   projectId: string
   chatId: string
   taskId: string
   urlsTested: string[]
+  filesInScope?: string[]
+  flowNames: string[]
+  environment?: string
+  existingSession?: {
+    browserSessionKey: string
+    status: 'ready' | 'stale' | 'leased' | 'failed'
+    leaseExpiresAt?: number
+    updatedAt: number
+  } | null
+  now?: number
+  baseUrl?: string
+}): {
+  browserSessionKey: string
+  sessionStrategy: 'reuse' | 'fresh'
+  environment: string
+  urlsTested: string[]
   flowNames: string[]
   baseUrl?: string
-}) {
+} {
+  const environment = args.environment ?? 'local'
+  const supervisor = createBrowserSessionSupervisor()
+  const sessionPlan = supervisor.resolveRunStrategy({
+    projectId: args.projectId,
+    environment,
+    now: args.now ?? Date.now(),
+    existingSession: args.existingSession ?? null,
+  })
+  const urlsTested =
+    args.urlsTested.length > 0
+      ? args.urlsTested
+      : deriveForgeAffectedRoutes(args.filesInScope ?? [])
+
   return {
-    browserSessionKey: createBrowserSessionKey({
-      projectId: args.projectId,
-      chatId: args.chatId,
-      taskId: args.taskId,
-    }),
-    urlsTested: args.urlsTested,
+    browserSessionKey:
+      sessionPlan.browserSessionKey ||
+      createBrowserSessionKey({
+        projectId: args.projectId,
+        chatId: args.chatId,
+        taskId: args.taskId,
+      }),
+    sessionStrategy: sessionPlan.strategy,
+    environment,
+    urlsTested,
     flowNames: args.flowNames,
     baseUrl: args.baseUrl,
   }
@@ -33,13 +77,17 @@ export function resolveQaBaseUrl(explicitBaseUrl?: string): string {
 
 export async function runBrowserQa(args: {
   browserSessionKey: string
+  sessionStrategy: 'reuse' | 'fresh'
+  environment?: string
   urlsTested: string[]
   flowNames: string[]
   baseUrl?: string
 }) {
-  const browser = await chromium.launch({ headless: true })
-  const context = await browser.newContext()
-  const page = await context.newPage()
+  const session = await getOrCreateQaSession({
+    browserSessionKey: args.browserSessionKey,
+    sessionStrategy: args.sessionStrategy,
+  })
+  const { page } = session
   const consoleErrors: string[] = []
   const networkFailures: string[] = []
   const baseUrl = resolveQaBaseUrl(args.baseUrl)
@@ -84,6 +132,7 @@ export async function runBrowserQa(args: {
 
     return {
       browserSessionKey: args.browserSessionKey,
+      sessionStrategy: args.sessionStrategy,
       urlsTested: args.urlsTested,
       flowNames: args.flowNames,
       assertions,
@@ -92,8 +141,8 @@ export async function runBrowserQa(args: {
       screenshotPath,
     }
   } finally {
-    await context.close()
-    await browser.close()
+    page.removeAllListeners('console')
+    page.removeAllListeners('requestfailed')
   }
 }
 
@@ -154,4 +203,27 @@ export function normalizeBrowserQaResult(args: {
       route?: string
     }>,
   }
+}
+
+async function getOrCreateQaSession(args: {
+  browserSessionKey: string
+  sessionStrategy: 'reuse' | 'fresh'
+}): Promise<QaSessionRecord> {
+  const existingSession = qaSessionRegistry.get(args.browserSessionKey)
+  if (args.sessionStrategy === 'reuse' && existingSession) {
+    return existingSession
+  }
+
+  if (existingSession) {
+    await existingSession.context.close().catch(() => undefined)
+    await existingSession.browser.close().catch(() => undefined)
+    qaSessionRegistry.delete(args.browserSessionKey)
+  }
+
+  const browser = await chromium.launch({ headless: true })
+  const context = await browser.newContext()
+  const page = await context.newPage()
+  const session = { browser, context, page }
+  qaSessionRegistry.set(args.browserSessionKey, session)
+  return session
 }

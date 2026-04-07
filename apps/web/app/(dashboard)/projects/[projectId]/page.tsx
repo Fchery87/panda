@@ -20,6 +20,9 @@ import { ReviewPanel } from '@/components/review/ReviewPanel'
 import { TaskPanel } from '@/components/panels/TaskPanel'
 import { QAPanel } from '@/components/panels/QAPanel'
 import { StatePanel } from '@/components/panels/StatePanel'
+import { BrowserSessionPanel } from '@/components/panels/BrowserSessionPanel'
+import { ActivityTimelinePanel } from '@/components/panels/ActivityTimelinePanel'
+import { DecisionPanel } from '@/components/panels/DecisionPanel'
 import { Button } from '@/components/ui/button'
 import { WorkspaceProvider, type WorkspaceContextValue } from '@/contexts/WorkspaceContext'
 import {
@@ -59,12 +62,8 @@ import { resolveBackgroundExecutionPolicy } from '@/lib/chat/backgroundExecution
 import { derivePlanCompletionStatus } from '@/lib/agent/plan-progress'
 import type { AgentPolicy } from '@/lib/agent/automationPolicy'
 import { normalizeChatMode, type ChatMode } from '@/lib/agent/prompt-library'
-import {
-  buildQAPanelViewModel,
-  buildStatePanelViewModel,
-  buildTaskPanelViewModel,
-} from '@/lib/delivery/view-models'
 import type { LLMProvider } from '@/lib/llm/types'
+import { buildForgeActivityTimeline } from '@/lib/forge/activity'
 import {
   applyArtifact,
   getPrimaryArtifactAction,
@@ -74,6 +73,7 @@ import {
 import { ArtifactPanel } from '@/components/artifacts/ArtifactPanel'
 import {
   InspectorEvalsContent,
+  type InspectorTab,
   InspectorMemoryContent,
   InspectorPlanContent,
   InspectorRunContent,
@@ -90,10 +90,6 @@ import {
   buildInlineChatFailureDisplay,
   resolveExplorerRevealTarget,
 } from '@/lib/workbench-navigation'
-import {
-  deriveLifecycleUpdatesForRunCompletion,
-  deriveLifecycleUpdatesForRunStart,
-} from '@/lib/agent/delivery/manager'
 import { buildDeliveryClosureServicePlan } from '@/lib/agent/delivery/service'
 import { deriveQaReportFingerprint } from '@/lib/qa/browser-session'
 
@@ -150,75 +146,18 @@ type ArtifactRecord = {
   createdAt: number
 }
 
-type ChatInspectorTab = 'run' | 'plan' | 'artifacts' | 'memory' | 'evals'
-
-type DeliveryTask = {
-  _id: Id<'deliveryTasks'>
-  title: string
-  description: string
-  rationale: string
-  status:
-    | 'draft'
-    | 'planned'
-    | 'ready'
-    | 'in_progress'
-    | 'blocked'
-    | 'in_review'
-    | 'qa_pending'
-    | 'done'
-    | 'rejected'
-  ownerRole: 'builder' | 'manager' | 'executive'
-  acceptanceCriteria: Array<{
-    id: string
-    text: string
-    status: 'pending' | 'passed' | 'failed' | 'waived'
-  }>
-  filesInScope: string[]
-  blockers: string[]
-  evidence: Array<{
-    label: string
-    href?: string
-  }>
-  updatedAt: number
-}
-
-type ReviewReport = {
-  _id: Id<'reviewReports'>
-  type: 'architecture' | 'implementation'
-  decision: 'pass' | 'concerns' | 'reject'
-  summary: string
-  createdAt: number
-}
-
-type QaReport = {
-  _id: Id<'qaReports'>
-  decision: 'pass' | 'concerns' | 'fail'
-  summary: string
-  assertions: Array<{
-    label: string
-    status: 'passed' | 'failed' | 'skipped'
-  }>
-  evidence: {
-    urlsTested: string[]
-    flowNames: string[]
-    consoleErrors: string[]
-    networkFailures: string[]
-  }
-  defects: Array<{
-    severity: 'high' | 'medium' | 'low'
-    title: string
-    detail: string
-  }>
-  createdAt: number
-}
-
-type ShipReport = {
-  _id: Id<'shipReports'>
-  decision: 'ready' | 'ready_with_risk' | 'not_ready'
-  summary: string
-  evidenceSummary: string
-  createdAt: number
-}
+type ChatInspectorTab =
+  | 'run'
+  | 'plan'
+  | 'artifacts'
+  | 'memory'
+  | 'evals'
+  | 'tasks'
+  | 'qa'
+  | 'state'
+  | 'browser'
+  | 'activity'
+  | 'decisions'
 
 // Add placeholder function if needed or safely remove usages
 
@@ -334,15 +273,14 @@ export default function ProjectPage() {
   const projectAgentPolicy = readAgentPolicyField(project, 'agentPolicy')
   const createChatMutation = useMutation(api.chats.create)
   const updateChatMutation = useMutation(api.chats.update)
-  const createDeliveryStateMutation = useMutation(api.deliveryStates.create)
-  const createDeliveryTaskMutation = useMutation(api.deliveryTasks.create)
-  const updateDeliveryStateSummaryMutation = useMutation(api.deliveryStates.updateSummary)
-  const transitionDeliveryStatePhaseMutation = useMutation(api.deliveryStates.transitionPhase)
-  const transitionDeliveryTaskStatusMutation = useMutation(api.deliveryTasks.transitionStatus)
-  const attachDeliveryTaskEvidenceMutation = useMutation(api.deliveryTasks.attachEvidence)
-  const createReviewReportMutation = useMutation(api.reviewReports.create)
-  const createQaReportMutation = useMutation(api.qaReports.create)
-  const createShipReportMutation = useMutation(api.shipReports.create)
+  const startForgeIntake = useMutation(api.forge.startIntake)
+  const createForgeTasksFromPlan = useMutation(api.forge.createTasksFromPlan)
+  const acceptForgePlan = useMutation(api.forge.acceptPlan)
+  const startForgeTaskExecutionMutation = useMutation(api.forge.startTaskExecution)
+  const submitForgeWorkerResultMutation = useMutation(api.forge.submitWorkerResult)
+  const recordForgeReviewMutation = useMutation(api.forge.recordReview)
+  const runForgeQaForTaskMutation = useMutation(api.forge.runQaForTask)
+  const recordForgeShipDecisionMutation = useMutation(api.forge.recordShipDecision)
   const acceptPlanningSessionMutation = useMutation(api.planningSessions.acceptPlan)
   const markPlanningExecutionStateMutation = useMutation(api.planningSessions.markExecutionState)
   const upsertFileMutation = useMutation(api.files.upsert)
@@ -401,14 +339,10 @@ export default function ProjectPage() {
     }>
     generatedPlan?: GeneratedPlanArtifact
   } | null
-  const activeDeliveryState = useQuery(
-    api.deliveryStates.getActiveByChat,
+  const forgeProjectSnapshot = useQuery(
+    api.forge.getProjectSnapshot,
     activeChat ? { chatId: activeChat._id } : 'skip'
   )
-  const deliveryTasks = useQuery(
-    api.deliveryTasks.listByDeliveryState,
-    activeDeliveryState ? { deliveryStateId: activeDeliveryState._id } : 'skip'
-  ) as DeliveryTask[] | undefined
   useShortcutListener()
   const persistedPlanDraft = activeChat?.planDraft ?? ''
 
@@ -427,29 +361,10 @@ export default function ProjectPage() {
     automationPolicy: effectiveAutomationPolicy,
     specApprovalMode: automationMode === 'auto' ? 'auto_approve' : 'interactive',
     onRunCreated: async ({ runId, approvedPlanExecution }) => {
-      if (activeDeliveryState && activeDeliveryTask) {
-        const lifecycle = deriveLifecycleUpdatesForRunStart({
-          activeTaskTitle: activeDeliveryTask.title,
-        })
-
-        if (activeDeliveryTask.status !== lifecycle.taskStatus) {
-          await transitionDeliveryTaskStatusMutation({
-            id: activeDeliveryTask._id,
-            to: lifecycle.taskStatus,
-          })
-        }
-
-        if (activeDeliveryState.currentPhase !== lifecycle.phase) {
-          await transitionDeliveryStatePhaseMutation({
-            id: activeDeliveryState._id,
-            to: lifecycle.phase,
-          })
-        }
-
-        await updateDeliveryStateSummaryMutation({
-          id: activeDeliveryState._id,
-          activeTaskTitle: lifecycle.summary.activeTaskTitle ?? undefined,
-          currentPhaseSummary: lifecycle.summary.currentPhaseSummary,
+      void runId
+      if (activeDeliveryTask) {
+        await startForgeTaskExecutionMutation({
+          taskId: activeDeliveryTask._id,
         })
       }
 
@@ -474,44 +389,16 @@ export default function ProjectPage() {
       })
     },
     onRunCompleted: async ({ runId, outcome, completedPlanStepIndexes, planTotalSteps }) => {
-      if (activeDeliveryState && activeDeliveryTask) {
-        await attachDeliveryTaskEvidenceMutation({
-          id: activeDeliveryTask._id,
-          evidence: [
-            {
-              type: 'agent_run',
-              id: runId,
-              label: `Agent run ${runId}`,
-            },
-          ],
-        })
-
-        const lifecycle = deriveLifecycleUpdatesForRunCompletion({
+      if (forgeProjectSnapshot && activeDeliveryTask) {
+        await submitForgeWorkerResultMutation({
+          taskId: activeDeliveryTask._id,
+          summary: `Agent run ${runId} completed for ${activeDeliveryTask.title}.`,
+          evidenceRefs: [String(runId)],
+          verificationLabel: 'Agent run completed',
           outcome,
-          activeTaskTitle: activeDeliveryTask.title,
         })
 
-        if (activeDeliveryTask.status !== lifecycle.taskStatus) {
-          await transitionDeliveryTaskStatusMutation({
-            id: activeDeliveryTask._id,
-            to: lifecycle.taskStatus,
-          })
-        }
-
-        if (activeDeliveryState.currentPhase !== lifecycle.phase) {
-          await transitionDeliveryStatePhaseMutation({
-            id: activeDeliveryState._id,
-            to: lifecycle.phase,
-          })
-        }
-
-        await updateDeliveryStateSummaryMutation({
-          id: activeDeliveryState._id,
-          activeTaskTitle: lifecycle.summary.activeTaskTitle ?? undefined,
-          currentPhaseSummary: lifecycle.summary.currentPhaseSummary,
-        })
-
-        if (lifecycle.taskStatus === 'in_review') {
+        if (outcome === 'completed') {
           const latestQaFingerprint = activeTaskQaReport
             ? deriveQaReportFingerprint({
                 taskId: activeDeliveryTask._id,
@@ -522,7 +409,7 @@ export default function ProjectPage() {
             : null
           const closurePlan = buildDeliveryClosureServicePlan({
             taskId: activeDeliveryTask._id,
-            deliveryStateId: activeDeliveryState._id,
+            deliveryStateId: forgeProjectSnapshot.state.id,
             taskTitle: activeDeliveryTask.title,
             runId,
             projectId,
@@ -531,7 +418,15 @@ export default function ProjectPage() {
             latestQaFingerprint,
           })
 
-          await createReviewReportMutation(closurePlan.createReviewReport)
+          await recordForgeReviewMutation({
+            deliveryStateId: closurePlan.createReviewReport.deliveryStateId,
+            taskId: closurePlan.createReviewReport.taskId,
+            type: closurePlan.createReviewReport.type,
+            decision: closurePlan.createReviewReport.decision,
+            summary: closurePlan.createReviewReport.summary,
+            findings: closurePlan.createReviewReport.findings,
+            followUpTaskIds: closurePlan.createReviewReport.followUpTaskIds,
+          })
 
           if (closurePlan.shouldRunBrowserQa) {
             const qaResponse = await fetch('/api/qa/run', {
@@ -542,7 +437,10 @@ export default function ProjectPage() {
                 chatId: activeChat?._id,
                 taskId: activeDeliveryTask._id,
                 urlsTested: closurePlan.createQaReport.evidence.urlsTested,
+                filesInScope: activeDeliveryTask.filesInScope,
                 flowNames: closurePlan.createQaReport.evidence.flowNames,
+                environment: forgeProjectSnapshot?.browserQa.activeSession?.environment ?? 'local',
+                existingSession: forgeProjectSnapshot?.browserQa.activeSession,
               }),
             })
 
@@ -551,6 +449,7 @@ export default function ProjectPage() {
             }
 
             const qaPayload = (await qaResponse.json()) as {
+              browserSessionKey: string
               decision: 'pass' | 'concerns' | 'fail'
               summary: string
               assertions: Array<{ label: string; status: 'passed' | 'failed' | 'skipped' }>
@@ -569,48 +468,28 @@ export default function ProjectPage() {
               }>
             }
 
-            await createQaReportMutation({
+            await runForgeQaForTaskMutation({
               deliveryStateId: closurePlan.createQaReport.deliveryStateId,
               taskId: closurePlan.createQaReport.taskId,
-              browserSessionKey: closurePlan.createQaReport.browserSessionKey,
+              browserSessionKey: qaPayload.browserSessionKey,
               decision: qaPayload.decision,
               summary: qaPayload.summary,
               assertions: qaPayload.assertions,
-              evidence: qaPayload.evidence,
+              urlsTested: qaPayload.evidence.urlsTested,
+              flowNames: qaPayload.evidence.flowNames,
+              consoleErrors: qaPayload.evidence.consoleErrors,
+              networkFailures: qaPayload.evidence.networkFailures,
+              screenshotPath: qaPayload.evidence.screenshotPath,
               defects: qaPayload.defects,
             })
           }
 
-          await transitionDeliveryTaskStatusMutation({
-            id: activeDeliveryTask._id,
-            to: closurePlan.qaPendingStatus,
+          await recordForgeShipDecisionMutation({
+            deliveryStateId: closurePlan.shipReport.deliveryStateId,
+            decision: closurePlan.shipReport.decision,
+            summary: closurePlan.shipReport.summary,
+            evidenceSummary: closurePlan.shipReport.evidenceSummary,
           })
-
-          const finalLifecycle = closurePlan.finalLifecycle
-
-          if (finalLifecycle.taskStatus === 'done') {
-            await transitionDeliveryTaskStatusMutation({
-              id: activeDeliveryTask._id,
-              to: 'done',
-            })
-          }
-
-          if (activeDeliveryState.currentPhase !== finalLifecycle.phase) {
-            await transitionDeliveryStatePhaseMutation({
-              id: activeDeliveryState._id,
-              to: finalLifecycle.phase,
-            })
-          }
-
-          await updateDeliveryStateSummaryMutation({
-            id: activeDeliveryState._id,
-            activeTaskTitle: finalLifecycle.summary.activeTaskTitle ?? undefined,
-            currentPhaseSummary: finalLifecycle.summary.currentPhaseSummary,
-          })
-
-          if (finalLifecycle.shipDecision) {
-            await createShipReportMutation(closurePlan.shipReport)
-          }
         }
       }
 
@@ -666,12 +545,12 @@ export default function ProjectPage() {
       providerAvailable: Boolean(provider),
       createChatMutation,
       updateChatMutation,
-      createDeliveryStateMutation,
-      createDeliveryTaskMutation,
-      updateDeliveryStateSummaryMutation,
-      getActiveDeliveryState: async (chatId) => {
-        const state = await convex.query(api.deliveryStates.getActiveByChat, { chatId })
-        return state ? { _id: state._id } : null
+      startForgeIntake,
+      createForgeTasksFromPlan,
+      acceptForgePlan,
+      getActiveForgeState: async (chatId) => {
+        const snapshot = await convex.query(api.forge.getProjectSnapshot, { chatId })
+        return snapshot ? { _id: snapshot.state.id } : null
       },
       markPlanningExecutionState: ({ sessionId, state }) =>
         markPlanningExecutionStateMutation({ sessionId, state }),
@@ -711,60 +590,118 @@ export default function ProjectPage() {
     ? `${activePlanArtifact.sessionId}:${activePlanArtifact.generatedAt}:${activePlanArtifact.status}`
     : null
   const activeDeliveryTask = useMemo(() => {
-    if (!deliveryTasks || deliveryTasks.length === 0) return null
+    const forgeTasks = forgeProjectSnapshot?.taskBoard.tasks ?? []
+    if (forgeTasks.length > 0) {
+      const forgeActiveTaskId = forgeProjectSnapshot?.taskBoard.activeTaskId
+      if (forgeActiveTaskId) {
+        const forgeActiveTask = forgeTasks.find((task) => task._id === forgeActiveTaskId)
+        if (forgeActiveTask) return forgeActiveTask
+      }
 
-    const matchingSummaryTask = activeDeliveryState?.summary.activeTaskTitle
-      ? deliveryTasks.find((task) => task.title === activeDeliveryState.summary.activeTaskTitle)
-      : null
-
-    if (matchingSummaryTask) return matchingSummaryTask
-
-    const activeTaskId = activeDeliveryState?.activeTaskIds?.[0]
-    if (activeTaskId) {
-      const matchingActiveTask = deliveryTasks.find((task) => task._id === activeTaskId)
-      if (matchingActiveTask) return matchingActiveTask
+      return forgeTasks.find((task) => task.status !== 'done' && task.status !== 'rejected') ?? null
     }
 
-    return (
-      deliveryTasks.find((task) => task.status !== 'done' && task.status !== 'rejected') ?? null
-    )
-  }, [activeDeliveryState, deliveryTasks])
-  const activeTaskReviews = useQuery(
-    api.reviewReports.listByTask,
-    activeDeliveryTask ? { taskId: activeDeliveryTask._id } : 'skip'
-  ) as ReviewReport[] | undefined
-  const activeTaskReview = activeTaskReviews?.[0] ?? null
-  const activeTaskQaReports = useQuery(
-    api.qaReports.listByTask,
-    activeDeliveryTask ? { taskId: activeDeliveryTask._id } : 'skip'
-  ) as QaReport[] | undefined
-  const activeTaskQaReport = activeTaskQaReports?.[0] ?? null
-  const shipReports = useQuery(
-    api.shipReports.listByDeliveryState,
-    activeDeliveryState ? { deliveryStateId: activeDeliveryState._id } : 'skip'
-  ) as ShipReport[] | undefined
-  const latestShipReport = shipReports?.[0] ?? null
+    return null
+  }, [forgeProjectSnapshot?.taskBoard.activeTaskId, forgeProjectSnapshot?.taskBoard.tasks])
+  const activeTaskReview = forgeProjectSnapshot?.verification.latestReview ?? null
+  const activeTaskQaReport = forgeProjectSnapshot?.verification.latestQa ?? null
+  const latestShipReport = useMemo(() => {
+    const timeline = forgeProjectSnapshot?.timeline ?? []
+    const shipEntry = timeline.find((entry) => entry.kind === 'ship')
+    if (!shipEntry) return null
+
+    return {
+      summary: typeof shipEntry.summary === 'string' ? shipEntry.summary : '',
+    }
+  }, [forgeProjectSnapshot?.timeline])
   const requestedFilePath = searchParams.get('filePath')
   const taskPanelViewModel = useMemo(
     () =>
-      buildTaskPanelViewModel({
-        activeDeliveryTask,
-        activeTaskReview,
-      }),
+      activeDeliveryTask
+        ? {
+            title: activeDeliveryTask.title,
+            description: activeDeliveryTask.description,
+            rationale: activeDeliveryTask.rationale,
+            status: activeDeliveryTask.status,
+            ownerRole: activeDeliveryTask.ownerRole,
+            acceptanceCriteria: activeDeliveryTask.acceptanceCriteria,
+            filesInScope: activeDeliveryTask.filesInScope,
+            blockers: activeDeliveryTask.blockers,
+            evidence: activeDeliveryTask.evidence.map((evidence) => ({
+              label: evidence.label,
+              href: evidence.href,
+            })),
+            latestReview: activeTaskReview
+              ? {
+                  type: activeTaskReview.type,
+                  decision: activeTaskReview.decision,
+                  summary: activeTaskReview.summary,
+                }
+              : null,
+          }
+        : null,
     [activeDeliveryTask, activeTaskReview]
   )
   const qaPanelViewModel = useMemo(
-    () => buildQAPanelViewModel({ activeTaskQaReport }),
+    () =>
+      activeTaskQaReport
+        ? {
+            decision: activeTaskQaReport.decision,
+            summary: activeTaskQaReport.summary,
+            assertions: activeTaskQaReport.assertions,
+            evidence: activeTaskQaReport.evidence,
+            defects: activeTaskQaReport.defects,
+          }
+        : null,
     [activeTaskQaReport]
   )
-  const statePanelViewModel = useMemo(
+  const statePanelViewModel = useMemo(() => {
+    if (!forgeProjectSnapshot) return null
+
+    return {
+      currentPhase: forgeProjectSnapshot.state.phase,
+      openTaskCount: forgeProjectSnapshot.taskBoard.tasks.filter(
+        (task) => task.status !== 'done' && task.status !== 'rejected'
+      ).length,
+      unresolvedRiskCount: forgeProjectSnapshot.state.openRiskCount,
+      reviewGateStatus: forgeProjectSnapshot.state.gates.implementation_review,
+      qaGateStatus: forgeProjectSnapshot.state.gates.qa_review,
+      shipSummary:
+        latestShipReport?.summary ??
+        forgeProjectSnapshot.state.summary.nextStepBrief ??
+        'Ship readiness has not been recorded yet.',
+    }
+  }, [forgeProjectSnapshot, latestShipReport])
+  const browserSessionViewModel = useMemo(
+    () => forgeProjectSnapshot?.browserQa.activeSession ?? null,
+    [forgeProjectSnapshot?.browserQa.activeSession]
+  )
+  const activityTimelineEntries = useMemo(
     () =>
-      buildStatePanelViewModel({
-        activeDeliveryState,
-        deliveryTasks,
-        latestShipReport,
+      buildForgeActivityTimeline({
+        decisions: forgeProjectSnapshot?.decisions,
+        reviews: forgeProjectSnapshot?.verification.latestReview
+          ? [forgeProjectSnapshot.verification.latestReview]
+          : [],
+        qaReports: forgeProjectSnapshot?.verification.latestQa
+          ? [forgeProjectSnapshot.verification.latestQa]
+          : [],
+        shipReports:
+          latestShipReport && forgeProjectSnapshot?.timeline
+            ? forgeProjectSnapshot.timeline
+                .filter((entry) => entry.kind === 'ship')
+                .map((entry) => ({
+                  _id: String(entry.id ?? 'ship'),
+                  summary: typeof entry.summary === 'string' ? entry.summary : '',
+                  createdAt: Number(entry.createdAt ?? 0),
+                }))
+            : [],
       }),
-    [activeDeliveryState, deliveryTasks, latestShipReport]
+    [forgeProjectSnapshot, latestShipReport]
+  )
+  const decisionPanelViewModel = useMemo(
+    () => forgeProjectSnapshot?.decisions ?? [],
+    [forgeProjectSnapshot?.decisions]
   )
 
   useEffect(() => {
@@ -1148,6 +1085,19 @@ export default function ProjectPage() {
   }, [isMobileLayout, setIsMobileKeyboardOpen])
 
   const selectedChatModel = uiSelectedModel || selectedModel
+  const chatInspectorSurfaceTab: InspectorTab = useMemo(() => {
+    if (
+      chatInspectorTab === 'run' ||
+      chatInspectorTab === 'plan' ||
+      chatInspectorTab === 'artifacts' ||
+      chatInspectorTab === 'memory' ||
+      chatInspectorTab === 'evals'
+    ) {
+      return chatInspectorTab
+    }
+
+    return 'run'
+  }, [chatInspectorTab])
   const chatPanelContent = (
     <ProjectChatPanel
       projectId={projectId}
@@ -1179,7 +1129,7 @@ export default function ProjectPage() {
       inlineRateLimitError={inlineRateLimitError}
       onToggleInspector={() => {
         if (isMobileLayout) {
-          openReviewTab(chatInspectorTab as ChatInspectorTab)
+          openReviewTab(chatInspectorSurfaceTab)
           return
         }
         setIsChatInspectorOpen((prev) => !prev)
@@ -1220,7 +1170,7 @@ export default function ProjectPage() {
       }}
       isMobileLayout={isMobileLayout}
       isInspectorOpen={false}
-      inspectorTab={chatInspectorTab as ChatInspectorTab}
+      inspectorTab={chatInspectorSurfaceTab}
       onInspectorOpenChange={() => {}}
       onInspectorTabChange={() => {}}
       liveSteps={liveRunSteps}
@@ -1317,6 +1267,9 @@ export default function ProjectPage() {
       }
       qaContent={<QAPanel report={qaPanelViewModel} />}
       stateContent={<StatePanel state={statePanelViewModel} />}
+      browserContent={<BrowserSessionPanel session={browserSessionViewModel} />}
+      activityContent={<ActivityTimelinePanel entries={activityTimelineEntries} />}
+      decisionsContent={<DecisionPanel decisions={decisionPanelViewModel} />}
     />
   )
 

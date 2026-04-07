@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import {
   Activity,
+  DatabaseZap,
   FileText,
   LayoutDashboard,
   Brain,
@@ -10,11 +11,24 @@ import {
   ListTodo,
   ShieldCheck,
   Radar,
+  ScrollText,
+  MonitorSmartphone,
 } from 'lucide-react'
 import { TabContainer, type TabItem } from '@/components/ui/tab-container'
 import { PlanningIntakeSurface } from '@/components/plan/PlanningIntakePopup'
 
-export type ReviewTab = 'tasks' | 'run' | 'plan' | 'artifacts' | 'memory' | 'evals' | 'qa' | 'state'
+export type ReviewTab =
+  | 'tasks'
+  | 'run'
+  | 'plan'
+  | 'artifacts'
+  | 'memory'
+  | 'evals'
+  | 'qa'
+  | 'state'
+  | 'browser'
+  | 'activity'
+  | 'decisions'
 
 interface ReviewPanelProps {
   activeTab?: ReviewTab
@@ -27,6 +41,9 @@ interface ReviewPanelProps {
   evalsContent: ReactNode
   qaContent: ReactNode
   stateContent: ReactNode
+  browserContent: ReactNode
+  activityContent: ReactNode
+  decisionsContent: ReactNode
 }
 
 export function ReviewPanel({
@@ -40,6 +57,9 @@ export function ReviewPanel({
   evalsContent,
   qaContent,
   stateContent,
+  browserContent,
+  activityContent,
+  decisionsContent,
 }: ReviewPanelProps) {
   const tabs: TabItem[] = [
     {
@@ -89,6 +109,24 @@ export function ReviewPanel({
       label: 'State',
       icon: <Radar className="h-3.5 w-3.5" />,
       content: stateContent,
+    },
+    {
+      id: 'browser',
+      label: 'Browser',
+      icon: <MonitorSmartphone className="h-3.5 w-3.5" />,
+      content: browserContent,
+    },
+    {
+      id: 'activity',
+      label: 'Activity',
+      icon: <ScrollText className="h-3.5 w-3.5" />,
+      content: activityContent,
+    },
+    {
+      id: 'decisions',
+      label: 'Decisions',
+      icon: <DatabaseZap className="h-3.5 w-3.5" />,
+      content: decisionsContent,
     },
   ]
 

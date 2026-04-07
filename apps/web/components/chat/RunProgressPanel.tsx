@@ -107,10 +107,7 @@ export function RunProgressPanel({
         sessionID?: string
       }>
     | undefined
-  const activeDeliveryState = useQuery(
-    api.deliveryStates.getActiveByChat,
-    chatId ? { chatId } : 'skip'
-  )
+  const forgeProjectSnapshot = useQuery(api.forge.getProjectSnapshot, chatId ? { chatId } : 'skip')
 
   useEffect(() => {
     if (!isStreaming) return
@@ -177,22 +174,24 @@ export function RunProgressPanel({
   const deliveryStatus = useMemo(
     () =>
       mapDeliveryStateToStatusStripProps(
-        activeDeliveryState
+        forgeProjectSnapshot
           ? {
-              currentPhase: activeDeliveryState.currentPhase,
-              activeRole: activeDeliveryState.activeRole,
-              reviewGateStatus: activeDeliveryState.reviewGateStatus,
-              qaGateStatus: activeDeliveryState.qaGateStatus,
-              shipGateStatus: activeDeliveryState.shipGateStatus,
-              evidenceMissing: activeDeliveryState.evidenceMissing,
+              currentPhase: forgeProjectSnapshot.state.phase,
+              activeRole: forgeProjectSnapshot.state.activeRole,
+              reviewGateStatus: forgeProjectSnapshot.state.gates.implementation_review,
+              qaGateStatus: forgeProjectSnapshot.state.gates.qa_review,
+              shipGateStatus: forgeProjectSnapshot.state.gates.ship_review,
+              evidenceMissing: false,
               summary: {
-                goal: activeDeliveryState.summary.goal,
-                activeTaskTitle: activeDeliveryState.summary.activeTaskTitle,
+                goal: forgeProjectSnapshot.state.summary.goal,
+                activeTaskTitle: forgeProjectSnapshot.taskBoard.tasks.find(
+                  (task) => task._id === forgeProjectSnapshot.taskBoard.activeTaskId
+                )?.title,
               },
             }
           : null
       ),
-    [activeDeliveryState]
+    [forgeProjectSnapshot]
   )
 
   if (!isStreaming && steps.length === 0 && !runtimeCheckpoints?.length) {

@@ -154,6 +154,7 @@ export interface RuntimeConfig {
   maxToolCallsPerIteration?: number
   enableToolDeduplication?: boolean
   toolLoopThreshold?: number
+  harnessAgentName?: 'build' | 'code' | 'plan' | 'ask' | 'builder' | 'manager' | 'executive'
   harnessSessionID?: string
   harnessAutoResume?: boolean
   harnessCheckpointStore?: HarnessCheckpointStore
@@ -847,6 +848,17 @@ export class AgentRuntime {
   }
 }
 
+export function resolveHarnessAgentName(args: {
+  chatMode: PromptContext['chatMode']
+  harnessAgentName?: RuntimeConfig['harnessAgentName']
+}): string {
+  if (args.harnessAgentName) {
+    return args.harnessAgentName
+  }
+
+  return mapChatModeToHarnessAgent(args.chatMode)
+}
+
 function mapChatModeToHarnessAgent(chatMode: PromptContext['chatMode']): string {
   switch (chatMode) {
     case 'architect':
@@ -1145,9 +1157,12 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
       messages: completionMessages,
     })
 
-    userMessage.agent = harnessAgents.has(mapChatModeToHarnessAgent(promptContext.chatMode))
-      ? mapChatModeToHarnessAgent(promptContext.chatMode)
-      : 'build'
+    const harnessAgentName = resolveHarnessAgentName({
+      chatMode: promptContext.chatMode,
+      harnessAgentName: config?.harnessAgentName,
+    })
+
+    userMessage.agent = harnessAgents.has(harnessAgentName) ? harnessAgentName : 'build'
 
     let attemptText = ''
     let sawToolCall = false

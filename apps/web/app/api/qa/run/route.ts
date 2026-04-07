@@ -9,7 +9,15 @@ export async function POST(request: Request) {
     chatId: string
     taskId: string
     urlsTested: string[]
+    filesInScope?: string[]
     flowNames: string[]
+    environment?: string
+    existingSession?: {
+      browserSessionKey: string
+      status: 'ready' | 'stale' | 'leased' | 'failed'
+      leaseExpiresAt?: number
+      updatedAt: number
+    } | null
     baseUrl?: string
   }
 
@@ -18,7 +26,10 @@ export async function POST(request: Request) {
     chatId: body.chatId,
     taskId: body.taskId,
     urlsTested: body.urlsTested,
+    filesInScope: body.filesInScope,
     flowNames: body.flowNames,
+    environment: body.environment,
+    existingSession: body.existingSession,
     baseUrl: body.baseUrl,
   })
   const result = await runBrowserQa(input)

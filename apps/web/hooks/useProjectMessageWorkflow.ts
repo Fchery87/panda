@@ -21,7 +21,7 @@ type MessageWorkflowChat = {
   planStatus?: PlanStatus
 }
 
-type DeliveryStateRecord = {
+type ForgeStateRecord = {
   _id: Id<'deliveryStates'>
 }
 
@@ -58,7 +58,7 @@ export function useProjectMessageWorkflow(args: {
     mode?: ChatMode
     planStatus?: PlanStatus
   }) => Promise<unknown>
-  createDeliveryStateMutation: (args: {
+  startForgeIntake: (args: {
     projectId: Id<'projects'>
     chatId: Id<'chats'>
     title: string
@@ -66,27 +66,30 @@ export function useProjectMessageWorkflow(args: {
     description?: string
     constraints?: string[]
   }) => Promise<Id<'deliveryStates'>>
-  createDeliveryTaskMutation: (args: {
+  createForgeTasksFromPlan: (args: {
     deliveryStateId: Id<'deliveryStates'>
-    taskKey: string
-    title: string
-    description: string
-    rationale: string
-    ownerRole: 'manager'
-    acceptanceCriteria: Array<{
-      id: string
-      text: string
-      status: 'pending'
-      verificationMethod: 'review'
+    tasks: Array<{
+      taskKey: string
+      title: string
+      description: string
+      rationale: string
+      ownerRole: 'manager'
+      acceptanceCriteria: Array<{
+        id: string
+        text: string
+        status: 'pending'
+        verificationMethod: 'review'
+      }>
+      testRequirements?: string[]
+      reviewRequirements?: string[]
+      qaRequirements?: string[]
     }>
-    status: 'in_progress'
-  }) => Promise<Id<'deliveryTasks'>>
-  updateDeliveryStateSummaryMutation: (args: {
-    id: Id<'deliveryStates'>
-    activeTaskTitle?: string
-    currentPhaseSummary?: string
-  }) => Promise<unknown>
-  getActiveDeliveryState?: (chatId: Id<'chats'>) => Promise<DeliveryStateRecord | null>
+  }) => Promise<Id<'deliveryTasks'>[]>
+  acceptForgePlan: (args: {
+    deliveryStateId: Id<'deliveryStates'>
+    summary?: string
+  }) => Promise<Id<'deliveryStates'>>
+  getActiveForgeState?: (chatId: Id<'chats'>) => Promise<ForgeStateRecord | null>
   markPlanningExecutionState?: (args: { sessionId: string; state: 'executing' }) => Promise<unknown>
   sendAgentMessage: (
     content: string,
@@ -107,10 +110,10 @@ export function useProjectMessageWorkflow(args: {
     providerAvailable,
     createChatMutation,
     updateChatMutation,
-    createDeliveryStateMutation,
-    createDeliveryTaskMutation,
-    updateDeliveryStateSummaryMutation,
-    getActiveDeliveryState,
+    startForgeIntake,
+    createForgeTasksFromPlan,
+    acceptForgePlan,
+    getActiveForgeState,
     markPlanningExecutionState,
     sendAgentMessage,
     setActiveChatId,
@@ -200,12 +203,12 @@ export function useProjectMessageWorkflow(args: {
           content: finalContent,
           approvedPlanExecution: options?.approvedPlanExecution,
         })
-        const existingDeliveryState = getActiveDeliveryState
-          ? await getActiveDeliveryState(activeChat._id)
+        const existingDeliveryState = getActiveForgeState
+          ? await getActiveForgeState(activeChat._id)
           : null
         const deliveryStateId =
           existingDeliveryState?._id ??
-          (await createDeliveryStateMutation({
+          (await startForgeIntake({
             projectId,
             chatId: activeChat._id,
             title: taskSeed.title,
@@ -213,21 +216,26 @@ export function useProjectMessageWorkflow(args: {
             description: taskSeed.description,
           }))
 
-        await createDeliveryTaskMutation({
+        await createForgeTasksFromPlan({
           deliveryStateId,
-          taskKey: `task-${Date.now()}`,
-          title: taskSeed.title,
-          description: taskSeed.description,
-          rationale: taskSeed.rationale,
-          ownerRole: taskSeed.ownerRole,
-          acceptanceCriteria: taskSeed.acceptanceCriteria,
-          status: taskSeed.status,
+          tasks: [
+            {
+              taskKey: `task-${Date.now()}`,
+              title: taskSeed.title,
+              description: taskSeed.description,
+              rationale: taskSeed.rationale,
+              ownerRole: taskSeed.ownerRole,
+              acceptanceCriteria: taskSeed.acceptanceCriteria,
+              testRequirements: ['Run the scoped implementation checks for this task.'],
+              reviewRequirements: ['Executive implementation review is required.'],
+              qaRequirements: ['Browser QA is required for affected routes.'],
+            },
+          ],
         })
 
-        await updateDeliveryStateSummaryMutation({
-          id: deliveryStateId,
-          activeTaskTitle: taskSeed.title,
-          currentPhaseSummary: 'Structured delivery activated for active implementation work.',
+        await acceptForgePlan({
+          deliveryStateId,
+          summary: 'Structured delivery activated for active implementation work.',
         })
       }
 
@@ -249,10 +257,10 @@ export function useProjectMessageWorkflow(args: {
       planDraft,
       projectId,
       providerAvailable,
-      createDeliveryStateMutation,
-      createDeliveryTaskMutation,
-      updateDeliveryStateSummaryMutation,
-      getActiveDeliveryState,
+      startForgeIntake,
+      createForgeTasksFromPlan,
+      acceptForgePlan,
+      getActiveForgeState,
       sendAgentMessage,
       setActiveChatId,
       setChatMode,

@@ -1,11 +1,6 @@
 import type { Id } from '@convex/_generated/dataModel'
-import { deriveFinalLifecycleUpdatesFromQa } from './manager'
 import { buildSuccessfulRunClosurePlan } from './orchestrator'
-import {
-  createBrowserSessionKey,
-  deriveQaReportFingerprint,
-  shouldCreateFreshQaArtifacts,
-} from '@/lib/qa/browser-session'
+import { deriveQaReportFingerprint, shouldCreateFreshQaArtifacts } from '@/lib/qa/browser-session'
 
 export function buildDeliveryClosureServicePlan(args: {
   taskId: Id<'deliveryTasks'>
@@ -25,11 +20,6 @@ export function buildDeliveryClosureServicePlan(args: {
     projectPath: args.projectPath,
   })
 
-  const browserSessionKey = createBrowserSessionKey({
-    projectId: args.projectId,
-    chatId: args.chatId,
-    taskId: args.taskId,
-  })
   const nextQaFingerprint = deriveQaReportFingerprint({
     taskId: args.taskId,
     runId: args.runId,
@@ -39,19 +29,10 @@ export function buildDeliveryClosureServicePlan(args: {
 
   return {
     ...closurePlan,
-    createQaReport: {
-      ...closurePlan.createQaReport,
-      browserSessionKey,
-    },
-    browserSessionKey,
     nextQaFingerprint,
     shouldRunBrowserQa: shouldCreateFreshQaArtifacts({
       latestFingerprint: args.latestQaFingerprint,
       nextFingerprint: nextQaFingerprint,
-    }),
-    finalLifecycle: deriveFinalLifecycleUpdatesFromQa({
-      qaDecision: closurePlan.createQaReport.decision,
-      activeTaskTitle: args.taskTitle,
     }),
   }
 }

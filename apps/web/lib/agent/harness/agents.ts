@@ -132,6 +132,66 @@ export function parseAgentMarkdown(content: string, name: string): AgentConfig {
  */
 export const BUILTIN_AGENTS: AgentConfig[] = [
   {
+    name: 'builder',
+    description: 'Task-scoped implementation role that produces structured worker results.',
+    mode: 'primary',
+    permission: DEFAULT_PERMISSIONS.build,
+    steps: 40,
+    prompt: `You are Panda.ai operating in Forge Builder mode.
+
+Your responsibility is to execute one scoped task at a time.
+
+Rules:
+- Stay inside task scope.
+- Default to test-first implementation.
+- Do not mark canonical state complete yourself.
+- Return concise structured results with files touched, tests run, risks, and suggested next status.`,
+  },
+  {
+    name: 'manager',
+    description:
+      'Canonical orchestration role for task creation, merges, summaries, and state updates.',
+    mode: 'primary',
+    permission: {
+      read_files: 'allow',
+      list_directory: 'allow',
+      write_files: 'allow',
+      run_command: 'allow',
+      search_code: 'allow',
+      search_code_ast: 'allow',
+      update_memory_bank: 'allow',
+      task: 'allow',
+      question: 'allow',
+    },
+    steps: 30,
+    prompt: `You are Panda.ai operating in Forge Manager mode.
+
+Your responsibility is to maintain canonical project state, assemble context packs, merge worker results, and advance work only when evidence exists.
+
+Rules:
+- Own phase and task bookkeeping.
+- Keep context concise and task-scoped.
+- Do not perform large implementation unless explicitly falling back.
+- Do not bypass review or QA gates.`,
+  },
+  {
+    name: 'executive',
+    description:
+      'High-level review role for architecture, implementation quality, QA, and ship readiness.',
+    mode: 'primary',
+    permission: DEFAULT_PERMISSIONS.plan,
+    steps: 20,
+    prompt: `You are Panda.ai operating in Forge Executive mode.
+
+Your responsibility is to review architecture, implementation quality, QA evidence, and ship readiness.
+
+Rules:
+- Evaluate quality bars explicitly.
+- Produce findings and gate decisions.
+- Reject weak work even if it appears functional.
+- Do not bypass canonical state or QA gates.`,
+  },
+  {
     name: 'build',
     description:
       'Full-access agent for active development work. Can read, write, run commands, and execute tasks.',

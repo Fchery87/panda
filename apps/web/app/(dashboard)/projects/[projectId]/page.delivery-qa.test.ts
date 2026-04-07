@@ -3,12 +3,11 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 describe('Project page QA wiring', () => {
-  test('creates QA reports, queries latest QA by task, and renders QA using the panel view-model helper', () => {
+  test('renders QA using forge snapshot verification data', () => {
     const source = fs.readFileSync(path.resolve(import.meta.dir, 'page.tsx'), 'utf8')
 
-    expect(source).toContain('createQaReportMutation')
-    expect(source).toContain('api.qaReports.listByTask')
+    expect(source).toContain('forgeProjectSnapshot?.verification.latestQa')
     expect(source).toContain('<QAPanel')
-    expect(source).toContain('buildQAPanelViewModel({ activeTaskQaReport })')
+    expect(source).toContain('report={qaPanelViewModel}')
   })
 })

@@ -140,6 +140,7 @@ export const RuntimeCheckpointState = v.object({
   isLastStep: v.boolean(),
   pendingSubtasks: v.array(v.any()),
   cost: v.number(),
+  consecutiveCompactionFailures: v.optional(v.number()),
   tokens: v.object({
     input: v.number(),
     output: v.number(),
@@ -348,6 +349,43 @@ export const ShipDecision = v.union(
   v.literal('ready'),
   v.literal('ready_with_risk'),
   v.literal('not_ready')
+)
+
+export const DecisionCategory = v.union(
+  v.literal('architecture'),
+  v.literal('execution'),
+  v.literal('risk'),
+  v.literal('qa'),
+  v.literal('ship')
+)
+
+export const VerificationKind = v.union(
+  v.literal('test'),
+  v.literal('review'),
+  v.literal('qa'),
+  v.literal('ship'),
+  v.literal('manual')
+)
+
+export const VerificationStatus = v.union(
+  v.literal('pending'),
+  v.literal('passed'),
+  v.literal('failed'),
+  v.literal('waived')
+)
+
+export const OrchestrationWaveStatus = v.union(
+  v.literal('planned'),
+  v.literal('active'),
+  v.literal('completed'),
+  v.literal('failed')
+)
+
+export const BrowserSessionStatus = v.union(
+  v.literal('ready'),
+  v.literal('stale'),
+  v.literal('leased'),
+  v.literal('failed')
 )
 
 export default defineSchema({
@@ -1099,4 +1137,67 @@ export default defineSchema({
     evidenceSummary: v.string(),
     createdAt: v.number(),
   }).index('by_delivery_created', ['deliveryStateId', 'createdAt']),
+
+  // 34. Delivery decisions table - canonical architecture/execution/risk log
+  deliveryDecisions: defineTable({
+    deliveryStateId: v.id('deliveryStates'),
+    category: DecisionCategory,
+    summary: v.string(),
+    detail: v.optional(v.string()),
+    relatedTaskIds: v.array(v.id('deliveryTasks')),
+    relatedFilePaths: v.array(v.string()),
+    createdByRole: DeliveryRole,
+    createdAt: v.number(),
+  })
+    .index('by_delivery_created', ['deliveryStateId', 'createdAt'])
+    .index('by_delivery_category', ['deliveryStateId', 'category']),
+
+  // 35. Delivery verifications table - canonical proof records across tests/review/qa/ship
+  deliveryVerifications: defineTable({
+    deliveryStateId: v.id('deliveryStates'),
+    taskId: v.optional(v.id('deliveryTasks')),
+    kind: VerificationKind,
+    label: v.string(),
+    status: VerificationStatus,
+    evidenceRefs: v.array(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_delivery_updated', ['deliveryStateId', 'updatedAt'])
+    .index('by_task_updated', ['taskId', 'updatedAt']),
+
+  // 36. Orchestration waves table - explicit execution and context reset waves
+  orchestrationWaves: defineTable({
+    deliveryStateId: v.id('deliveryStates'),
+    phase: DeliveryPhase,
+    status: OrchestrationWaveStatus,
+    summary: v.string(),
+    taskIds: v.array(v.id('deliveryTasks')),
+    contextResetRequired: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_delivery_updated', ['deliveryStateId', 'updatedAt'])
+    .index('by_delivery_phase', ['deliveryStateId', 'phase']),
+
+  // 37. Browser sessions table - persistent browser QA session metadata
+  browserSessions: defineTable({
+    deliveryStateId: v.id('deliveryStates'),
+    projectId: v.id('projects'),
+    environment: v.string(),
+    status: BrowserSessionStatus,
+    browserSessionKey: v.string(),
+    baseUrl: v.string(),
+    storageStatePath: v.optional(v.string()),
+    lastUsedAt: v.number(),
+    lastVerifiedAt: v.optional(v.number()),
+    lastRoutesTested: v.array(v.string()),
+    leaseOwner: v.optional(v.string()),
+    leaseExpiresAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_delivery_updated', ['deliveryStateId', 'updatedAt'])
+    .index('by_project_updated', ['projectId', 'updatedAt'])
+    .index('by_session_key', ['browserSessionKey']),
 })

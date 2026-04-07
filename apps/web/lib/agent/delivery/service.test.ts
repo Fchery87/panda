@@ -15,14 +15,9 @@ describe('delivery closure service', () => {
       latestQaFingerprint: null,
     })
 
-    expect(plan.attachEvidence.id).toBe('task_1')
     expect(plan.createReviewReport.type).toBe('implementation')
     expect(plan.createQaReport.decision).toBe('pass')
-    expect(plan.createQaReport.browserSessionKey).toContain('project_1')
-    expect(plan.createQaReport.browserSessionKey).toContain('chat_1')
-    expect(plan.qaPendingStatus).toBe('qa_pending')
-    expect(plan.finalLifecycle.phase).toBe('ship')
-    expect(plan.finalLifecycle.taskStatus).toBe('done')
+    expect(plan.createQaReport.evidence.flowNames).toEqual(['task-panel-review-loop'])
     expect(plan.shouldRunBrowserQa).toBe(true)
     expect(plan.shipReport.decision).toBe('ready')
   })

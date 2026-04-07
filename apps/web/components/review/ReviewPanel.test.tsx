@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { ReviewPanel } from './ReviewPanel'
 
 describe('ReviewPanel', () => {
-  test('renders tasks, run, plan, artifacts, memory, evals, qa, and state review tabs', () => {
+  test('renders tasks, run, plan, artifacts, memory, evals, qa, state, browser, activity, and decisions review tabs', () => {
     const html = renderToStaticMarkup(
       <ReviewPanel
         taskContent={<div>tasks</div>}
@@ -16,6 +16,9 @@ describe('ReviewPanel', () => {
         evalsContent={<div>evals</div>}
         qaContent={<div>qa</div>}
         stateContent={<div>state</div>}
+        browserContent={<div>browser</div>}
+        activityContent={<div>activity</div>}
+        decisionsContent={<div>decisions</div>}
       />
     )
 
@@ -27,6 +30,9 @@ describe('ReviewPanel', () => {
     expect(html).toContain('Evals')
     expect(html).toContain('QA')
     expect(html).toContain('State')
+    expect(html).toContain('Browser')
+    expect(html).toContain('Activity')
+    expect(html).toContain('Decisions')
     expect(html).toContain('Planning intake')
     expect(html).toContain('Start intake')
   })

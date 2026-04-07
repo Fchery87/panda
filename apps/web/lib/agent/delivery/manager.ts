@@ -20,16 +20,6 @@ type DeliveryTaskSeed = {
   }>
 }
 
-type DeliveryLifecycleUpdate = {
-  phase: 'execute' | 'review' | 'qa' | 'ship'
-  taskStatus: 'in_progress' | 'in_review' | 'blocked' | 'qa_pending' | 'done'
-  summary: {
-    activeTaskTitle: string | null
-    currentPhaseSummary: string
-  }
-  shipDecision?: 'ready' | 'ready_with_risk' | null
-}
-
 const NON_TRIVIAL_PATTERNS = [
   /implement/i,
   /build/i,
@@ -81,80 +71,5 @@ export function deriveDeliveryTaskSeed(input: DeliveryActivationInput): Delivery
         verificationMethod: 'review',
       },
     ],
-  }
-}
-
-export function deriveLifecycleUpdatesForRunStart(args: {
-  activeTaskTitle: string | null
-}): DeliveryLifecycleUpdate {
-  return {
-    phase: 'execute',
-    taskStatus: 'in_progress',
-    summary: {
-      activeTaskTitle: args.activeTaskTitle,
-      currentPhaseSummary: args.activeTaskTitle
-        ? `Execution in progress for ${args.activeTaskTitle}.`
-        : 'Execution in progress for structured delivery work.',
-    },
-  }
-}
-
-export function deriveLifecycleUpdatesForRunCompletion(args: {
-  outcome: 'completed' | 'failed' | 'stopped'
-  activeTaskTitle: string | null
-}): DeliveryLifecycleUpdate {
-  if (args.outcome === 'completed') {
-    return {
-      phase: 'review',
-      taskStatus: 'in_review',
-      summary: {
-        activeTaskTitle: args.activeTaskTitle,
-        currentPhaseSummary: args.activeTaskTitle
-          ? `${args.activeTaskTitle} is awaiting review.`
-          : 'Latest structured delivery work is awaiting review.',
-      },
-    }
-  }
-
-  return {
-    phase: 'execute',
-    taskStatus: 'blocked',
-    summary: {
-      activeTaskTitle: args.activeTaskTitle,
-      currentPhaseSummary: args.activeTaskTitle
-        ? `${args.activeTaskTitle} needs follow-up before review.`
-        : 'Structured delivery work needs follow-up before review.',
-    },
-  }
-}
-
-export function deriveFinalLifecycleUpdatesFromQa(args: {
-  qaDecision: 'pass' | 'concerns' | 'fail'
-  activeTaskTitle: string | null
-}): DeliveryLifecycleUpdate {
-  if (args.qaDecision === 'pass') {
-    return {
-      phase: 'ship',
-      taskStatus: 'done',
-      shipDecision: 'ready',
-      summary: {
-        activeTaskTitle: args.activeTaskTitle,
-        currentPhaseSummary: args.activeTaskTitle
-          ? `${args.activeTaskTitle} is verified and ready to ship.`
-          : 'Structured delivery work is verified and ready to ship.',
-      },
-    }
-  }
-
-  return {
-    phase: 'qa',
-    taskStatus: 'qa_pending',
-    shipDecision: null,
-    summary: {
-      activeTaskTitle: args.activeTaskTitle,
-      currentPhaseSummary: args.activeTaskTitle
-        ? `${args.activeTaskTitle} requires QA follow-up before ship.`
-        : 'Structured delivery work requires QA follow-up before ship.',
-    },
   }
 }

@@ -11,9 +11,8 @@ describe('browser QA executor helpers', () => {
       flowNames: ['task-panel-review-loop'],
     })
 
-    expect(input.browserSessionKey).toContain('project_1')
-    expect(input.browserSessionKey).toContain('chat_1')
-    expect(input.browserSessionKey).toContain('task_1')
+    expect(input.browserSessionKey).toBe('browser-session::project_1::local')
+    expect(input.sessionStrategy).toBe('fresh')
     expect(input.urlsTested).toEqual(['/projects/example'])
   })
 
@@ -89,5 +88,43 @@ describe('browser QA executor helpers', () => {
   test('resolves a QA base URL from the environment with localhost fallback', () => {
     expect(resolveQaBaseUrl(undefined)).toBe('http://localhost:3000')
     expect(resolveQaBaseUrl('https://example.com')).toBe('https://example.com')
+  })
+
+  test('derives affected routes and environment-aware session metadata when explicit URLs are missing', () => {
+    const input = buildBrowserQaRunInput({
+      projectId: 'project_1',
+      chatId: 'chat_1',
+      taskId: 'task_1',
+      urlsTested: [],
+      filesInScope: ['apps/web/app/(dashboard)/projects/[projectId]/page.tsx'],
+      flowNames: ['task-panel-review-loop'],
+      environment: 'preview',
+    })
+
+    expect(input.urlsTested).toEqual(['/projects/[projectId]'])
+    expect(input.browserSessionKey).toBe('browser-session::project_1::preview')
+    expect(input.sessionStrategy).toBe('fresh')
+    expect(input.environment).toBe('preview')
+  })
+
+  test('reuses an existing healthy browser session when provided', () => {
+    const input = buildBrowserQaRunInput({
+      projectId: 'project_1',
+      chatId: 'chat_1',
+      taskId: 'task_1',
+      urlsTested: ['/projects/example'],
+      flowNames: ['task-panel-review-loop'],
+      environment: 'local',
+      existingSession: {
+        browserSessionKey: 'browser-session::project_1::local',
+        status: 'ready',
+        leaseExpiresAt: 2_000,
+        updatedAt: 900,
+      },
+      now: 1_000,
+    })
+
+    expect(input.browserSessionKey).toBe('browser-session::project_1::local')
+    expect(input.sessionStrategy).toBe('reuse')
   })
 })

@@ -15,6 +15,10 @@ describe('delivery schema', () => {
     expect(schemaSource).toContain('reviewReports: defineTable({')
     expect(schemaSource).toContain('qaReports: defineTable({')
     expect(schemaSource).toContain('shipReports: defineTable({')
+    expect(schemaSource).toContain('deliveryDecisions: defineTable({')
+    expect(schemaSource).toContain('deliveryVerifications: defineTable({')
+    expect(schemaSource).toContain('orchestrationWaves: defineTable({')
+    expect(schemaSource).toContain('browserSessions: defineTable({')
     expect(schemaSource).toContain(
       ".index('by_delivery_updated', ['deliveryStateId', 'updatedAt'])"
     )
