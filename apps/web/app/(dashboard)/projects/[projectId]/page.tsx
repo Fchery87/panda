@@ -1109,6 +1109,7 @@ export default function ProjectPage() {
       activeChatPlanLastGeneratedAt={activeChat?.planLastGeneratedAt}
       activeChatExists={Boolean(activeChat?._id)}
       chatMessages={chatMessages}
+      runEvents={runEvents}
       chatMode={chatMode}
       architectBrainstormEnabled={architectBrainstormEnabled}
       onArchitectBrainstormEnabledChange={setArchitectBrainstormEnabled}

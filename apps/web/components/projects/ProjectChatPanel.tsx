@@ -24,12 +24,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
-import type { ToolCallInfo, Message } from '@/components/chat/types'
+import type { PersistedRunEventInfo, ToolCallInfo, Message } from '@/components/chat/types'
 import type { LiveProgressStep } from '@/components/chat/live-run-utils'
 import type { FormalSpecification, SpecTier } from '@/lib/agent/spec/types'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import type { PlanStatus } from '@/lib/chat/planDraft'
 import type { TracePersistenceStatus } from '@/hooks/useRunEventBuffer'
+import { getChatModeSurfacePresentation } from '@/lib/chat/chat-mode-surface'
 
 // Removed ChatInspectorTab definition
 
@@ -58,6 +59,7 @@ interface ProjectChatPanelProps {
   activeChatPlanLastGeneratedAt?: number
   activeChatExists: boolean
   chatMessages: Message[]
+  runEvents?: PersistedRunEventInfo[]
   chatMode: ChatMode
   architectBrainstormEnabled: boolean
   onArchitectBrainstormEnabledChange: (enabled: boolean) => void
@@ -153,6 +155,7 @@ export function ProjectChatPanel({
   activeChatPlanLastGeneratedAt,
   activeChatExists,
   chatMessages,
+  runEvents,
   chatMode,
   architectBrainstormEnabled,
   onArchitectBrainstormEnabledChange,
@@ -239,6 +242,7 @@ export function ProjectChatPanel({
   const latestRecoverableCheckpoint = (runtimeCheckpoints ?? []).find(
     (checkpoint) => checkpoint.reason !== 'complete' && typeof checkpoint.sessionID === 'string'
   )
+  const activeRole = getChatModeSurfacePresentation(chatMode)
 
   return (
     <div
@@ -249,7 +253,7 @@ export function ProjectChatPanel({
     >
       <div className="relative flex shrink-0 items-center justify-between border-b border-border bg-muted/30 px-3 py-2">
         <span className="font-mono text-[11px] font-medium uppercase tracking-[0.24em] text-foreground">
-          Panda
+          Panda · {activeRole.label}
         </span>
 
         <div className="flex items-center gap-1.5">
@@ -406,6 +410,11 @@ export function ProjectChatPanel({
           messages={chatMessages}
           isStreaming={isStreaming}
           onSuggestedAction={onSuggestedAction}
+          liveSteps={liveSteps}
+          runEvents={runEvents}
+          currentSpec={currentSpec}
+          pendingSpec={pendingSpec}
+          planStatus={activeChatPlanStatus}
         />
       </div>
 

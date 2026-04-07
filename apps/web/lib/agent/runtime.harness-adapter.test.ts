@@ -84,7 +84,10 @@ describe('Harness adapter guardrail parity', () => {
     expect(resolveHarnessAgentName({ chatMode: 'architect', harnessAgentName: 'executive' })).toBe(
       'executive'
     )
+    expect(resolveHarnessAgentName({ chatMode: 'ask' })).toBe('ask')
     expect(resolveHarnessAgentName({ chatMode: 'architect' })).toBe('plan')
+    expect(resolveHarnessAgentName({ chatMode: 'code' })).toBe('code')
+    expect(resolveHarnessAgentName({ chatMode: 'build' })).toBe('build')
   })
 
   // TODO: Fix harness-internal rewrite test - currently times out due to harness runtime interaction

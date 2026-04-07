@@ -1,27 +1,58 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { MessageBubble } from './MessageBubble'
+import { TranscriptEventRow } from './TranscriptEventRow'
 import { cn } from '@/lib/utils'
-import type { Message } from './types'
+import type { Message, PersistedRunEventInfo } from './types'
 import type { ChatMode } from '@/lib/agent/prompt-library'
+import type { LiveProgressStep } from './live-run-utils'
+import type { FormalSpecification } from '@/lib/agent/spec/types'
+import type { PlanStatus } from '@/lib/chat/planDraft'
+import { buildTranscriptFeedItems } from '@/lib/chat/transcript-blocks'
 
 interface MessageListProps {
   messages: Message[]
   isStreaming?: boolean
   onSuggestedAction?: (prompt: string, targetMode?: ChatMode) => void
+  liveSteps?: LiveProgressStep[]
+  runEvents?: PersistedRunEventInfo[]
+  currentSpec?: FormalSpecification | null
+  pendingSpec?: FormalSpecification | null
+  planStatus?: PlanStatus | null
 }
 
 export function MessageList({
   messages,
   isStreaming = false,
   onSuggestedAction,
+  liveSteps,
+  runEvents,
+  currentSpec,
+  pendingSpec,
+  planStatus,
 }: MessageListProps) {
   const parentRef = useRef<HTMLDivElement>(null)
+  const feedItems = useMemo(
+    () =>
+      buildTranscriptFeedItems({
+        messages,
+        liveSteps,
+        runEvents,
+        currentSpec,
+        pendingSpec,
+        planStatus,
+        isStreaming,
+      }),
+    [messages, liveSteps, runEvents, currentSpec, pendingSpec, planStatus, isStreaming]
+  )
+  const lastAssistantMessageId = [...messages]
+    .reverse()
+    .find((message) => message.role === 'assistant')?._id
 
   const virtualizer = useVirtualizer({
-    count: messages.length,
+    count: feedItems.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 120,
     overscan: 5,
@@ -29,12 +60,12 @@ export function MessageList({
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
-    if (messages.length > 0) {
-      virtualizer.scrollToIndex(messages.length - 1, { align: 'end', behavior: 'smooth' })
+    if (feedItems.length > 0) {
+      virtualizer.scrollToIndex(feedItems.length - 1, { align: 'end', behavior: 'smooth' })
     }
-  }, [messages.length, isStreaming, virtualizer])
+  }, [feedItems.length, isStreaming, virtualizer])
 
-  if (messages.length === 0) {
+  if (feedItems.length === 0) {
     return (
       <div className="h-full min-h-0 min-w-0 overflow-auto">
         <div
@@ -64,25 +95,25 @@ export function MessageList({
         aria-label="Chat messages"
       >
         {virtualizer.getVirtualItems().map((virtualRow) => {
-          const message = messages[virtualRow.index]
+          const item = feedItems[virtualRow.index]
           return (
             <div
-              key={message._id}
+              key={item.id}
               data-index={virtualRow.index}
               ref={virtualizer.measureElement}
               className="absolute left-0 top-0 w-full px-3 py-2 xl:px-4"
               style={{ transform: `translateY(${virtualRow.start}px)` }}
             >
-              <MessageBubble
-                message={message}
-                isStreaming={
-                  isStreaming &&
-                  virtualRow.index === messages.length - 1 &&
-                  message.role === 'assistant'
-                }
-                onSuggestedAction={onSuggestedAction}
-                disableActions={isStreaming}
-              />
+              {item.type === 'message' ? (
+                <MessageBubble
+                  message={item.message}
+                  isStreaming={isStreaming && item.message._id === lastAssistantMessageId}
+                  onSuggestedAction={onSuggestedAction}
+                  disableActions={isStreaming}
+                />
+              ) : (
+                <TranscriptEventRow block={item.block} />
+              )}
             </div>
           )
         })}

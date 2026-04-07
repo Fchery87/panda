@@ -860,11 +860,17 @@ export function resolveHarnessAgentName(args: {
 }
 
 function mapChatModeToHarnessAgent(chatMode: PromptContext['chatMode']): string {
+  // Keep the direct chat surface on the legacy conversational agents.
+  // Forge roles are exposed via the UI and explicit harnessAgentName overrides.
   switch (chatMode) {
+    case 'ask':
+      return 'ask'
     case 'architect':
       return 'plan'
     case 'code':
       return 'code'
+    case 'build':
+      return 'build'
     default:
       return chatMode
   }

@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useMemo } from 'react'
-import { HelpCircle, Lightbulb, Code, Hammer, Bot, ChevronDown } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Lightbulb, Code, Hammer, Bot, ChevronDown, Wrench } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
@@ -15,6 +15,11 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { agents } from '@/lib/agent/harness'
 import type { ChatMode } from '@/lib/agent/prompt-library'
+import {
+  getAdvancedChatModeSurfaceOptions,
+  getChatModeSurfacePresentation,
+  getPrimaryChatModeSurfaceOptions,
+} from '@/lib/chat/chat-mode-surface'
 
 interface AgentSelectorProps {
   mode: ChatMode
@@ -23,45 +28,32 @@ interface AgentSelectorProps {
   className?: string
 }
 
-const AGENT_ICONS: Record<string, React.ReactNode> = {
-  ask: <HelpCircle className="h-3.5 w-3.5" />,
+const MODE_ICONS: Partial<Record<ChatMode, React.ReactNode>> = {
+  ask: <Hammer className="h-3.5 w-3.5" />,
   architect: <Lightbulb className="h-3.5 w-3.5" />,
-  plan: <Lightbulb className="h-3.5 w-3.5" />,
-  code: <Code className="h-3.5 w-3.5" />,
-  build: <Hammer className="h-3.5 w-3.5" />,
+  code: <Hammer className="h-3.5 w-3.5" />,
+  build: <Code className="h-3.5 w-3.5" />,
 }
 
-const AGENT_SHORTCUTS: Record<string, string> = {
-  ask: '1',
-  architect: '2',
-  code: '3',
-  build: '4',
-}
-
-function mapAgentToMode(agentName: string): ChatMode {
-  if (agentName === 'plan') return 'architect'
-  return agentName as ChatMode
-}
-
-function mapModeToAgent(mode: ChatMode): string {
-  if (mode === 'architect') return 'plan'
-  return mode
-}
-
-const MODE_DESCRIPTIONS: Record<ChatMode, string> = {
-  ask: 'Read-only Q&A',
-  architect: 'Planning & architecture',
-  code: 'Implementation',
-  build: 'Full implementation',
+const PRIMARY_SHORTCUTS: Partial<Record<ChatMode, string>> = {
+  architect: '1',
+  code: '2',
 }
 
 export function AgentSelector({ mode, onModeChange, disabled, className }: AgentSelectorProps) {
-  const primaryAgents = useMemo(() => agents.listPrimary(), [])
   const subagents = useMemo(() => agents.listSubagents(), [])
+  const primaryOptions = useMemo(() => getPrimaryChatModeSurfaceOptions(), [])
+  const advancedOptions = useMemo(() => getAdvancedChatModeSurfaceOptions(), [])
+  const [showAdvanced, setShowAdvanced] = useState(mode === 'build')
 
-  const currentAgentName = mapModeToAgent(mode)
-  const currentAgent = primaryAgents.find((a) => a.name === currentAgentName) ?? primaryAgents[0]
-  const currentIcon = AGENT_ICONS[currentAgent.name] ?? <Bot className="h-3.5 w-3.5" />
+  const currentPresentation = getChatModeSurfacePresentation(mode)
+  const currentIcon = MODE_ICONS[mode] ?? <Bot className="h-3.5 w-3.5" />
+
+  useEffect(() => {
+    if (mode === 'build') {
+      setShowAdvanced(true)
+    }
+  }, [mode])
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -69,10 +61,10 @@ export function AgentSelector({ mode, onModeChange, disabled, className }: Agent
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       if (!e.altKey && !e.ctrlKey && !e.metaKey) {
         const num = parseInt(e.key)
-        if (num >= 1 && num <= primaryAgents.length) {
-          const agent = primaryAgents[num - 1]
-          if (agent) {
-            onModeChange(mapAgentToMode(agent.name))
+        if (num >= 1 && num <= primaryOptions.length) {
+          const option = primaryOptions[num - 1]
+          if (option) {
+            onModeChange(option.mode)
           }
         }
       }
@@ -80,7 +72,7 @@ export function AgentSelector({ mode, onModeChange, disabled, className }: Agent
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [disabled, primaryAgents, onModeChange])
+  }, [disabled, onModeChange, primaryOptions])
 
   return (
     <DropdownMenu>
@@ -98,9 +90,7 @@ export function AgentSelector({ mode, onModeChange, disabled, className }: Agent
         >
           <span className="flex items-center gap-1.5">
             {currentIcon}
-            <span className="uppercase">
-              {currentAgent.name === 'plan' ? 'Plan' : currentAgent.name}
-            </span>
+            <span className="uppercase">{currentPresentation.label}</span>
           </span>
           <ChevronDown className="h-3 w-3 opacity-50 transition-transform group-data-[state=open]:rotate-180" />
         </button>
@@ -111,34 +101,73 @@ export function AgentSelector({ mode, onModeChange, disabled, className }: Agent
         className="rounded-none border-border bg-background/95 backdrop-blur-sm"
       >
         <DropdownMenuLabel className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
-          Primary Agents
+          Modes
         </DropdownMenuLabel>
         <DropdownMenuRadioGroup
-          value={currentAgentName}
-          onValueChange={(value) => onModeChange(mapAgentToMode(value))}
+          value={mode}
+          onValueChange={(value) => onModeChange(value as ChatMode)}
         >
-          {primaryAgents.map((agent) => {
-            const icon = AGENT_ICONS[agent.name] ?? <Bot className="h-3.5 w-3.5" />
-            const description =
-              MODE_DESCRIPTIONS[mapAgentToMode(agent.name)] ?? agent.description ?? ''
-            const shortcut = AGENT_SHORTCUTS[agent.name]
+          {primaryOptions.map((option) => {
+            const icon = MODE_ICONS[option.mode] ?? <Bot className="h-3.5 w-3.5" />
+            const shortcut = PRIMARY_SHORTCUTS[option.mode]
 
             return (
               <DropdownMenuRadioItem
-                key={agent.name}
-                value={agent.name}
+                key={option.mode}
+                value={option.mode}
                 className="rounded-none font-mono text-xs"
               >
                 <span className="flex items-center gap-2">
                   {icon}
-                  <span className="uppercase">{agent.name === 'plan' ? 'Plan' : agent.name}</span>
+                  <span className="uppercase">{option.label}</span>
                 </span>
-                <span className="ml-2 text-muted-foreground">{description}</span>
+                <span className="ml-2 text-muted-foreground">{option.description}</span>
                 {shortcut && <DropdownMenuShortcut>{shortcut}</DropdownMenuShortcut>}
               </DropdownMenuRadioItem>
             )
           })}
+          {showAdvanced ? (
+            <>
+              <DropdownMenuSeparator className="bg-border" />
+              <DropdownMenuLabel className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
+                Advanced
+              </DropdownMenuLabel>
+              {advancedOptions.map((option) => {
+                const icon = MODE_ICONS[option.mode] ?? <Bot className="h-3.5 w-3.5" />
+
+                return (
+                  <DropdownMenuRadioItem
+                    key={option.mode}
+                    value={option.mode}
+                    className="rounded-none font-mono text-xs"
+                  >
+                    <span className="flex items-center gap-2">
+                      {icon}
+                      <span className="uppercase">{option.label}</span>
+                    </span>
+                    <span className="ml-2 text-muted-foreground">{option.description}</span>
+                    <DropdownMenuShortcut>3</DropdownMenuShortcut>
+                  </DropdownMenuRadioItem>
+                )
+              })}
+            </>
+          ) : null}
         </DropdownMenuRadioGroup>
+
+        {!showAdvanced ? (
+          <>
+            <DropdownMenuSeparator className="bg-border" />
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(true)}
+              className="flex w-full items-center gap-2 px-2 py-1.5 text-left font-mono text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <Wrench className="h-3.5 w-3.5" />
+              <span className="uppercase">Show Advanced</span>
+              <span className="text-xs opacity-80">Reveal Builder</span>
+            </button>
+          </>
+        ) : null}
 
         {subagents.length > 0 && (
           <>
@@ -165,32 +194,25 @@ export function AgentSelector({ mode, onModeChange, disabled, className }: Agent
 
 export const MODE_OPTIONS = [
   {
-    value: 'ask' as ChatMode,
-    label: 'Ask',
-    icon: AGENT_ICONS.ask,
-    description: 'Read-only Q&A',
+    value: 'architect' as ChatMode,
+    label: 'Plan',
+    icon: MODE_ICONS.architect,
+    description: getChatModeSurfacePresentation('architect').description,
     shortcut: '1',
   },
   {
-    value: 'architect' as ChatMode,
-    label: 'Plan',
-    icon: AGENT_ICONS.architect,
-    description: 'Planning & architecture',
+    value: 'code' as ChatMode,
+    label: 'Build',
+    icon: MODE_ICONS.code,
+    description: getChatModeSurfacePresentation('code').description,
     shortcut: '2',
   },
   {
-    value: 'code' as ChatMode,
-    label: 'Code',
-    icon: AGENT_ICONS.code,
-    description: 'Implementation',
-    shortcut: '3',
-  },
-  {
     value: 'build' as ChatMode,
-    label: 'Build',
-    icon: AGENT_ICONS.build,
-    description: 'Full implementation',
-    shortcut: '4',
+    label: 'Builder',
+    icon: MODE_ICONS.build,
+    description: getChatModeSurfacePresentation('build').description,
+    shortcut: '3',
   },
 ]
 

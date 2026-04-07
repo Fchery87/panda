@@ -13,6 +13,8 @@ import { ReasoningPanel } from './ReasoningPanel'
 import { SuggestedActions } from './SuggestedActions'
 import { extractBrainstormPhase, stripBrainstormPhaseMarker } from '@/lib/chat/brainstorming'
 import { ChatMarkdown } from './ChatMarkdown'
+import { buildAssistantMessageTranscriptBlocks } from '@/lib/chat/transcript-blocks'
+import { getChatModeSurfacePresentation } from '@/lib/chat/chat-mode-surface'
 
 interface MessageBubbleProps {
   message: Message
@@ -280,6 +282,16 @@ export function MessageBubble({
     isArchitect &&
     brainstormPhase === 'validated_plan' &&
     architectContent.length > 0
+  const rolePresentation = message.annotations?.mode
+    ? getChatModeSurfacePresentation(message.annotations.mode)
+    : null
+  const assistantBlocks = isAssistant ? buildAssistantMessageTranscriptBlocks(message) : []
+  const reasoningBlock = assistantBlocks.find(
+    (block) => block.kind === 'thinking_teaser' || block.kind === 'thinking_redacted'
+  )
+  const toolBlocks = assistantBlocks.filter(
+    (block) => block.kind === 'tool_use' || block.kind === 'tool_result'
+  )
 
   const handleCopyPlan = async () => {
     if (!canCopyValidatedPlan) return
@@ -321,10 +333,6 @@ export function MessageBubble({
       <div
         className={cn('flex min-w-0 flex-1 flex-col gap-1.5', isUser ? 'items-end' : 'items-start')}
       >
-        {isAssistant && message.reasoningContent && (
-          <ReasoningPanel content={message.reasoningContent} isStreaming={isStreaming} />
-        )}
-
         {brainstormPhaseLabel && (
           <div className="flex w-full items-center gap-2">
             <span className="border border-primary/30 bg-primary/5 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-primary">
@@ -352,7 +360,7 @@ export function MessageBubble({
           )}
         >
           <span className="text-[11px] font-medium text-muted-foreground xl:text-xs">
-            {isUser ? 'You' : 'Assistant'}
+            {isUser ? 'You' : `Panda · ${rolePresentation?.label ?? 'Assistant'}`}
           </span>
           {message.annotations?.model && (
             <Badge
@@ -368,7 +376,17 @@ export function MessageBubble({
           </span>
         </div>
 
-        {/* Message Bubble */}
+        {reasoningBlock?.kind === 'thinking_teaser' ? (
+          <ReasoningPanel
+            content={reasoningBlock.fullContent}
+            teaser={reasoningBlock.content}
+            isStreaming={isStreaming}
+          />
+        ) : null}
+        {reasoningBlock?.kind === 'thinking_redacted' ? (
+          <ReasoningPanel content={reasoningBlock.content} redacted />
+        ) : null}
+
         <motion.div
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -438,33 +456,54 @@ export function MessageBubble({
           </div>
         )}
 
-        {isAssistant && message.toolCalls && message.toolCalls.length > 0 && (
+        {isAssistant && toolBlocks.length > 0 && (
           <div className="w-full space-y-1.5 px-1 pt-1">
-            {message.toolCalls.map((call) => (
-              <div
-                key={call.id}
-                className="border border-border bg-background/70 px-2 py-1.5 font-mono text-[11px]"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="truncate text-foreground/90">{call.name}</span>
-                  <span
-                    className={cn(
-                      'shrink-0 border px-1 py-0 uppercase tracking-wide',
-                      call.status === 'error'
-                        ? 'border-destructive/40 text-destructive'
-                        : 'border-border text-muted-foreground'
-                    )}
-                  >
-                    {call.status}
-                  </span>
-                </div>
-                {call.result?.error && (
-                  <div className="mt-1 whitespace-pre-wrap break-words leading-relaxed text-destructive">
-                    {call.result.error}
+            {toolBlocks.map((block) => {
+              if (block.kind !== 'tool_use' && block.kind !== 'tool_result') {
+                return null
+              }
+
+              const call = block.call
+              const statusLabel = block.kind === 'tool_use' ? 'invoked' : call.status
+
+              return (
+                <div
+                  key={block.id}
+                  className="border border-border bg-background/70 px-2 py-1.5 font-mono text-[11px]"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate text-foreground/90">{call.name}</span>
+                    <span
+                      className={cn(
+                        'shrink-0 border px-1 py-0 uppercase tracking-wide',
+                        call.status === 'error'
+                          ? 'border-destructive/40 text-destructive'
+                          : 'border-border text-muted-foreground'
+                      )}
+                    >
+                      {statusLabel}
+                    </span>
                   </div>
-                )}
-              </div>
-            ))}
+                  {block.kind === 'tool_use' && (
+                    <div className="mt-1 whitespace-pre-wrap break-words leading-relaxed text-muted-foreground/80">
+                      {JSON.stringify(call.args)}
+                    </div>
+                  )}
+                  {call.result?.output && block.kind === 'tool_result' ? (
+                    <div className="mt-1 whitespace-pre-wrap break-words leading-relaxed text-muted-foreground/80">
+                      {call.result.output.length > 220
+                        ? `${call.result.output.slice(0, 217)}...`
+                        : call.result.output}
+                    </div>
+                  ) : null}
+                  {call.result?.error && (
+                    <div className="mt-1 whitespace-pre-wrap break-words leading-relaxed text-destructive">
+                      {call.result.error}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
         {/* Suggested Actions */}
