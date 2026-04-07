@@ -107,6 +107,9 @@ export function ProjectWorkspaceLayout({
 }: ProjectWorkspaceLayoutProps) {
   const { handleSectionChange } = useWorkspace()
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+  const outerLayoutPersistenceKey = `panda-workbench-outer-${
+    isReviewPanelOpen ? 'review-open' : 'review-closed'
+  }-${isChatPanelOpen ? 'chat-open' : 'chat-closed'}`
 
   const workbench = (
     <Workbench
@@ -246,11 +249,13 @@ export function ProjectWorkspaceLayout({
             key={`${isReviewPanelOpen ? 'with-review' : 'without-review'}-${isChatPanelOpen ? 'with-chat' : 'without-chat'}`}
             direction="horizontal"
             className="h-full min-h-0 min-w-0"
-            autoSaveId="panda-workbench-outer"
+            autoSaveId={outerLayoutPersistenceKey}
           >
             {isReviewPanelOpen && (
               <>
                 <Panel
+                  id="review-panel"
+                  order={1}
                   defaultSize={30}
                   minSize={25}
                   maxSize={45}
@@ -274,6 +279,8 @@ export function ProjectWorkspaceLayout({
             )}
 
             <Panel
+              id="workspace-panel"
+              order={2}
               defaultSize={
                 isChatPanelOpen && isReviewPanelOpen
                   ? 40
@@ -294,6 +301,8 @@ export function ProjectWorkspaceLayout({
                 <PanelResizeHandle className="h-full w-px bg-border transition-colors hover:bg-primary" />
 
                 <Panel
+                  id="chat-panel"
+                  order={3}
                   defaultSize={isCompactDesktopLayout ? 36 : 30}
                   minSize={isCompactDesktopLayout ? 30 : 25}
                   maxSize={isCompactDesktopLayout ? 45 : 50}
