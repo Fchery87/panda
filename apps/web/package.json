@@ -95,5 +95,14 @@
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.54.0"
-  }
+  },
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
 }
