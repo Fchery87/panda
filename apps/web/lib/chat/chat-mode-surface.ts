@@ -1,4 +1,9 @@
-import type { ChatMode } from '@/lib/agent/prompt-library'
+import {
+  CHAT_MODE_CONFIGS,
+  getAdvancedChatModes,
+  getPrimaryChatModes,
+  type ChatMode,
+} from '@/lib/agent/chat-modes'
 
 export type ChatModeSurfacePresentation = {
   mode: ChatMode
@@ -8,45 +13,29 @@ export type ChatModeSurfacePresentation = {
   advanced: boolean
 }
 
-const SURFACE_PRESENTATIONS: Record<ChatMode, ChatModeSurfacePresentation> = {
-  ask: {
-    mode: 'ask',
-    label: 'Build',
-    shortLabel: 'Build',
-    description: 'Default delivery coordination for everyday requests.',
-    advanced: false,
-  },
-  architect: {
-    mode: 'architect',
-    label: 'Plan',
-    shortLabel: 'Plan',
-    description: 'Strategy, architecture, and review decisions.',
-    advanced: false,
-  },
-  code: {
-    mode: 'code',
-    label: 'Build',
-    shortLabel: 'Build',
-    description: 'Default delivery coordination for everyday requests.',
-    advanced: false,
-  },
-  build: {
-    mode: 'build',
-    label: 'Builder',
-    shortLabel: 'Bldr',
-    description: 'Direct task-scoped execution for advanced users.',
-    advanced: true,
-  },
-}
+const SURFACE_PRESENTATIONS: Record<ChatMode, ChatModeSurfacePresentation> = Object.fromEntries(
+  (
+    Object.entries(CHAT_MODE_CONFIGS) as Array<[ChatMode, (typeof CHAT_MODE_CONFIGS)[ChatMode]]>
+  ).map(([mode, config]) => [
+    mode,
+    {
+      mode,
+      label: config.surface.label,
+      shortLabel: config.surface.shortLabel,
+      description: config.surface.description,
+      advanced: config.surface.advanced,
+    },
+  ])
+) as Record<ChatMode, ChatModeSurfacePresentation>
 
 export function getChatModeSurfacePresentation(mode: ChatMode): ChatModeSurfacePresentation {
   return SURFACE_PRESENTATIONS[mode]
 }
 
 export function getPrimaryChatModeSurfaceOptions(): ChatModeSurfacePresentation[] {
-  return [SURFACE_PRESENTATIONS.architect, SURFACE_PRESENTATIONS.code]
+  return getPrimaryChatModes().map((mode) => SURFACE_PRESENTATIONS[mode])
 }
 
 export function getAdvancedChatModeSurfaceOptions(): ChatModeSurfacePresentation[] {
-  return [SURFACE_PRESENTATIONS.build]
+  return getAdvancedChatModes().map((mode) => SURFACE_PRESENTATIONS[mode])
 }

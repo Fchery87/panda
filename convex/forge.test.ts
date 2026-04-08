@@ -5,6 +5,8 @@ import {
   buildProjectSnapshot,
   createDecisionLogRecord,
   createOrchestrationWaveRecord,
+  getTaskStatusForReviewDecision,
+  shouldCreateShipReportForQaDecision,
   type BrowserSessionRecord,
   type DecisionLogRecord,
   type ForgeProjectSnapshotRecord,
@@ -224,5 +226,17 @@ describe('forge helpers', () => {
     expect(snapshot.specification?.status).toBe('verified')
     expect(snapshot.decisions).toHaveLength(1)
     expect(snapshot.taskBoard.tasks[0]?.title).toBe('Implement snapshot query')
+  })
+
+  it('advances task status based on the review decision', () => {
+    expect(getTaskStatusForReviewDecision('pass')).toBe('qa_pending')
+    expect(getTaskStatusForReviewDecision('concerns')).toBe('blocked')
+    expect(getTaskStatusForReviewDecision('reject')).toBe('rejected')
+  })
+
+  it('only creates ship approvals after a passing QA decision', () => {
+    expect(shouldCreateShipReportForQaDecision('pass')).toBe(true)
+    expect(shouldCreateShipReportForQaDecision('concerns')).toBe(false)
+    expect(shouldCreateShipReportForQaDecision('fail')).toBe(false)
   })
 })

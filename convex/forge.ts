@@ -250,6 +250,30 @@ export function createBrowserSessionRecord(args: {
   }
 }
 
+function isReusableDeliveryStateStatus(status: Doc<'deliveryStates'>['status']): boolean {
+  return status === 'draft' || status === 'active' || status === 'blocked'
+}
+
+export function getTaskStatusForReviewDecision(
+  decision: Doc<'reviewReports'>['decision']
+): Doc<'deliveryTasks'>['status'] {
+  switch (decision) {
+    case 'pass':
+      return 'qa_pending'
+    case 'concerns':
+      return 'blocked'
+    case 'reject':
+    default:
+      return 'rejected'
+  }
+}
+
+export function shouldCreateShipReportForQaDecision(
+  decision: Doc<'qaReports'>['decision']
+): boolean {
+  return decision === 'pass'
+}
+
 export function buildProjectSnapshot(args: {
   project: Pick<Doc<'projects'>, '_id' | 'name' | 'description'>
   deliveryState: Pick<
@@ -533,6 +557,37 @@ export const getProjectSnapshot = query({
   },
 })
 
+export const getQaRunContext = query({
+  args: {
+    projectId: v.id('projects'),
+    chatId: v.id('chats'),
+    taskId: v.id('deliveryTasks'),
+  },
+  handler: async (ctx, args) => {
+    const { project, chat } = await requireChatOwner(ctx, args.chatId)
+    if (project._id !== args.projectId || chat.projectId !== args.projectId) {
+      throw new Error('Chat does not belong to the specified project')
+    }
+
+    const task = await requireDeliveryTaskOwner(ctx, args.taskId)
+    const deliveryState = await requireDeliveryStateOwner(ctx, task.deliveryStateId)
+    if (deliveryState.projectId !== args.projectId || deliveryState.chatId !== args.chatId) {
+      throw new Error('Delivery task does not belong to the specified project chat')
+    }
+
+    const browserSession = await ctx.db
+      .query('browserSessions')
+      .withIndex('by_delivery_updated', (q) => q.eq('deliveryStateId', deliveryState._id))
+      .order('desc')
+      .first()
+
+    return {
+      deliveryStateId: deliveryState._id,
+      browserSession,
+    }
+  },
+})
+
 export const startIntake = mutation({
   args: {
     projectId: v.id('projects'),
@@ -548,6 +603,16 @@ export const startIntake = mutation({
 
     if (chat.projectId !== project._id) {
       throw new Error('Chat does not belong to the specified project')
+    }
+
+    const existingState = await ctx.db
+      .query('deliveryStates')
+      .withIndex('by_chat_updated', (q) => q.eq('chatId', args.chatId))
+      .order('desc')
+      .first()
+
+    if (existingState && isReusableDeliveryStateStatus(existingState.status)) {
+      return existingState._id
     }
 
     const now = Date.now()
@@ -643,31 +708,62 @@ export const createTasksFromPlan = mutation({
 
     const taskIds: Id<'deliveryTasks'>[] = []
     for (const task of args.tasks) {
-      const taskId = await ctx.db.insert(
-        'deliveryTasks',
-        createDeliveryTaskRecord({
-          deliveryStateId: args.deliveryStateId,
-          taskKey: task.taskKey,
+      const existingTask = await ctx.db
+        .query('deliveryTasks')
+        .withIndex('by_delivery_taskKey', (q) =>
+          q.eq('deliveryStateId', args.deliveryStateId).eq('taskKey', task.taskKey)
+        )
+        .first()
+
+      const taskId = existingTask
+        ? existingTask._id
+        : await ctx.db.insert(
+            'deliveryTasks',
+            createDeliveryTaskRecord({
+              deliveryStateId: args.deliveryStateId,
+              taskKey: task.taskKey,
+              title: task.title,
+              description: task.description,
+              rationale: task.rationale,
+              ownerRole: task.ownerRole,
+              filesInScope: task.filesInScope,
+              routesInScope: task.routesInScope,
+              constraints: task.constraints,
+              acceptanceCriteria: (task.acceptanceCriteria as never) ?? [],
+              testRequirements: task.testRequirements,
+              reviewRequirements: task.reviewRequirements,
+              qaRequirements: task.qaRequirements,
+              status: 'planned',
+              now,
+            })
+          )
+
+      if (existingTask) {
+        await ctx.db.patch(existingTask._id, {
           title: task.title,
           description: task.description,
           rationale: task.rationale,
           ownerRole: task.ownerRole,
-          filesInScope: task.filesInScope,
-          routesInScope: task.routesInScope,
-          constraints: task.constraints,
-          acceptanceCriteria: (task.acceptanceCriteria as never) ?? [],
-          testRequirements: task.testRequirements,
-          reviewRequirements: task.reviewRequirements,
-          qaRequirements: task.qaRequirements,
-          status: 'planned',
-          now,
+          filesInScope: task.filesInScope ?? existingTask.filesInScope,
+          routesInScope: task.routesInScope ?? existingTask.routesInScope,
+          constraints: task.constraints ?? existingTask.constraints,
+          acceptanceCriteria: (task.acceptanceCriteria as never) ?? existingTask.acceptanceCriteria,
+          testRequirements: task.testRequirements ?? existingTask.testRequirements,
+          reviewRequirements: task.reviewRequirements ?? existingTask.reviewRequirements,
+          qaRequirements: task.qaRequirements ?? existingTask.qaRequirements,
+          updatedAt: now,
         })
-      )
+      }
+
       taskIds.push(taskId)
     }
 
+    const mergedActiveTaskIds = Array.from(
+      new Set([...deliveryState.activeTaskIds, ...taskIds].map((value) => String(value)))
+    ).map((value) => value as Id<'deliveryTasks'>)
+
     await ctx.db.patch(args.deliveryStateId, {
-      activeTaskIds: taskIds,
+      activeTaskIds: mergedActiveTaskIds,
       currentPhase: 'plan',
       status: 'active',
       activeRole: 'manager',
@@ -831,16 +927,30 @@ export const recordReview = mutation({
 
     await ctx.db.patch(args.taskId, {
       latestReviewReportId: reviewId,
-      status: args.decision === 'reject' ? 'rejected' : task.status,
+      status: getTaskStatusForReviewDecision(args.decision),
       updatedAt: now,
     })
 
+    await ctx.db.insert(
+      'deliveryVerifications',
+      createVerificationRecord({
+        deliveryStateId: args.deliveryStateId,
+        taskId: args.taskId,
+        kind: 'review',
+        label: `${args.type} review ${args.decision}`,
+        status: args.decision === 'pass' ? 'passed' : 'failed',
+        evidenceRefs: [String(reviewId)],
+        now,
+      })
+    )
+
     const deliveryState = await requireDeliveryStateOwner(ctx, args.deliveryStateId)
     await ctx.db.patch(args.deliveryStateId, {
-      currentPhase: 'review',
+      currentPhase: args.decision === 'pass' ? 'qa' : 'review',
       status: args.decision === 'reject' ? 'blocked' : deliveryState.status,
       activeRole: 'executive',
       reviewGateStatus: args.decision === 'pass' ? 'passed' : 'failed',
+      qaGateStatus: args.decision === 'pass' ? 'pending' : deliveryState.qaGateStatus,
       updatedAt: now,
       lastUpdatedByRole: 'executive',
       summary: {
@@ -919,6 +1029,19 @@ export const runQaForTask = mutation({
       updatedAt: now,
     })
 
+    await ctx.db.insert(
+      'deliveryVerifications',
+      createVerificationRecord({
+        deliveryStateId: args.deliveryStateId,
+        taskId: args.taskId,
+        kind: 'qa',
+        label: `QA ${args.decision}`,
+        status: args.decision === 'pass' ? 'passed' : 'failed',
+        evidenceRefs: [String(qaId)],
+        now,
+      })
+    )
+
     const deliveryState = await requireDeliveryStateOwner(ctx, args.deliveryStateId)
     await ctx.db.patch(args.deliveryStateId, {
       currentPhase: args.decision === 'pass' ? 'ship' : 'qa',
@@ -975,7 +1098,85 @@ export const recordShipDecision = mutation({
       },
     })
 
+    await ctx.db.insert(
+      'deliveryVerifications',
+      createVerificationRecord({
+        deliveryStateId: args.deliveryStateId,
+        kind: 'ship',
+        label: `Ship ${args.decision}`,
+        status: args.decision === 'not_ready' ? 'failed' : 'passed',
+        evidenceRefs: [String(shipId)],
+        now,
+      })
+    )
+
     return shipId
+  },
+})
+
+export const upsertBrowserSession = mutation({
+  args: {
+    deliveryStateId: v.id('deliveryStates'),
+    projectId: v.id('projects'),
+    environment: v.string(),
+    status: BrowserSessionStatus,
+    browserSessionKey: v.string(),
+    baseUrl: v.string(),
+    storageStatePath: v.optional(v.string()),
+    lastUsedAt: v.number(),
+    lastVerifiedAt: v.optional(v.number()),
+    lastRoutesTested: v.array(v.string()),
+    leaseOwner: v.optional(v.string()),
+    leaseExpiresAt: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const deliveryState = await requireDeliveryStateOwner(ctx, args.deliveryStateId)
+    if (deliveryState.projectId !== args.projectId) {
+      throw new Error('Delivery state does not belong to the specified project')
+    }
+
+    const now = Date.now()
+    const existingSession = await ctx.db
+      .query('browserSessions')
+      .withIndex('by_session_key', (q) => q.eq('browserSessionKey', args.browserSessionKey))
+      .first()
+
+    if (existingSession) {
+      await ctx.db.patch(existingSession._id, {
+        deliveryStateId: args.deliveryStateId,
+        projectId: args.projectId,
+        environment: args.environment,
+        status: args.status,
+        baseUrl: args.baseUrl,
+        storageStatePath: args.storageStatePath,
+        lastUsedAt: args.lastUsedAt,
+        lastVerifiedAt: args.lastVerifiedAt,
+        lastRoutesTested: args.lastRoutesTested,
+        leaseOwner: args.leaseOwner,
+        leaseExpiresAt: args.leaseExpiresAt,
+        updatedAt: now,
+      })
+      return existingSession._id
+    }
+
+    return await ctx.db.insert(
+      'browserSessions',
+      createBrowserSessionRecord({
+        deliveryStateId: args.deliveryStateId,
+        projectId: args.projectId,
+        environment: args.environment,
+        status: args.status,
+        browserSessionKey: args.browserSessionKey,
+        baseUrl: args.baseUrl,
+        storageStatePath: args.storageStatePath,
+        lastUsedAt: args.lastUsedAt,
+        lastVerifiedAt: args.lastVerifiedAt,
+        lastRoutesTested: args.lastRoutesTested,
+        leaseOwner: args.leaseOwner,
+        leaseExpiresAt: args.leaseExpiresAt,
+        now,
+      })
+    )
   },
 })
 

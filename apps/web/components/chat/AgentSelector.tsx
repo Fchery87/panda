@@ -14,7 +14,7 @@ import {
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu'
 import { agents } from '@/lib/agent/harness'
-import type { ChatMode } from '@/lib/agent/prompt-library'
+import { CHAT_MODE_CONFIGS, type ChatMode } from '@/lib/agent/chat-modes'
 import {
   getAdvancedChatModeSurfaceOptions,
   getChatModeSurfacePresentation,
@@ -35,10 +35,11 @@ const MODE_ICONS: Partial<Record<ChatMode, React.ReactNode>> = {
   build: <Code className="h-3.5 w-3.5" />,
 }
 
-const PRIMARY_SHORTCUTS: Partial<Record<ChatMode, string>> = {
-  architect: '1',
-  code: '2',
-}
+const PRIMARY_SHORTCUTS: Partial<Record<ChatMode, string>> = Object.fromEntries(
+  (Object.entries(CHAT_MODE_CONFIGS) as Array<[ChatMode, (typeof CHAT_MODE_CONFIGS)[ChatMode]]>)
+    .map(([mode, config]) => [mode, config.surface.primaryShortcut])
+    .filter((entry): entry is [ChatMode, string] => typeof entry[1] === 'string')
+) as Partial<Record<ChatMode, string>>
 
 export function AgentSelector({ mode, onModeChange, disabled, className }: AgentSelectorProps) {
   const subagents = useMemo(() => agents.listSubagents(), [])

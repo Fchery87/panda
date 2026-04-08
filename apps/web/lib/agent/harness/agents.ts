@@ -2,7 +2,8 @@
  * Agent System - Agent definitions with YAML/Markdown support
  *
  * Implements OpenCode-style agent configuration:
- * - Built-in agents: build, plan, ask
+ * - Built-in agents include Forge roles (builder, manager, executive)
+ *   plus legacy/direct modes (build, code, plan, ask)
  * - Custom agents via YAML/Markdown files
  * - Agent modes: primary, subagent, all
  * - Per-agent tool permissions

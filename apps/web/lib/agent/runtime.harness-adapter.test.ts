@@ -6,7 +6,7 @@ import type {
   StreamChunk,
   ToolCall,
 } from '../llm/types'
-import { resolveHarnessAgentName, streamAgent } from './runtime'
+import { resolveHarnessAgentName, resolveLegacyHarnessAgentName, streamAgent } from './runtime'
 import type { ToolContext } from './tools'
 import {
   InMemoryCheckpointStore,
@@ -84,10 +84,17 @@ describe('Harness adapter guardrail parity', () => {
     expect(resolveHarnessAgentName({ chatMode: 'architect', harnessAgentName: 'executive' })).toBe(
       'executive'
     )
-    expect(resolveHarnessAgentName({ chatMode: 'ask' })).toBe('ask')
-    expect(resolveHarnessAgentName({ chatMode: 'architect' })).toBe('plan')
-    expect(resolveHarnessAgentName({ chatMode: 'code' })).toBe('code')
-    expect(resolveHarnessAgentName({ chatMode: 'build' })).toBe('build')
+    expect(resolveHarnessAgentName({ chatMode: 'ask' })).toBe('manager')
+    expect(resolveHarnessAgentName({ chatMode: 'architect' })).toBe('executive')
+    expect(resolveHarnessAgentName({ chatMode: 'code' })).toBe('manager')
+    expect(resolveHarnessAgentName({ chatMode: 'build' })).toBe('builder')
+  })
+
+  it('preserves legacy direct-mode mapping for compatibility checks', () => {
+    expect(resolveLegacyHarnessAgentName({ chatMode: 'ask' })).toBe('ask')
+    expect(resolveLegacyHarnessAgentName({ chatMode: 'architect' })).toBe('plan')
+    expect(resolveLegacyHarnessAgentName({ chatMode: 'code' })).toBe('code')
+    expect(resolveLegacyHarnessAgentName({ chatMode: 'build' })).toBe('build')
   })
 
   // TODO: Fix harness-internal rewrite test - currently times out due to harness runtime interaction

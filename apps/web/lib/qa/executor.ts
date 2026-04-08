@@ -91,6 +91,7 @@ export async function runBrowserQa(args: {
   const consoleErrors: string[] = []
   const networkFailures: string[] = []
   const baseUrl = resolveQaBaseUrl(args.baseUrl)
+  const now = Date.now()
 
   page.on('console', (message) => {
     if (message.type() === 'error') {
@@ -133,12 +134,19 @@ export async function runBrowserQa(args: {
     return {
       browserSessionKey: args.browserSessionKey,
       sessionStrategy: args.sessionStrategy,
+      sessionStatus: 'ready' as const,
+      environment: args.environment ?? 'local',
+      baseUrl,
       urlsTested: args.urlsTested,
       flowNames: args.flowNames,
       assertions,
       consoleErrors,
       networkFailures,
       screenshotPath,
+      lastUsedAt: now,
+      lastVerifiedAt: now,
+      leaseOwner: undefined,
+      leaseExpiresAt: undefined,
     }
   } finally {
     page.removeAllListeners('console')
@@ -148,12 +156,19 @@ export async function runBrowserQa(args: {
 
 export function normalizeBrowserQaResult(args: {
   browserSessionKey: string
+  sessionStatus?: 'ready' | 'stale' | 'leased' | 'failed'
+  environment?: string
+  baseUrl?: string
   urlsTested: string[]
   flowNames: string[]
   assertions: Array<{ label: string; status: 'passed' | 'failed' | 'skipped' }>
   consoleErrors: string[]
   networkFailures: string[]
   screenshotPath?: string
+  lastUsedAt?: number
+  lastVerifiedAt?: number
+  leaseOwner?: string
+  leaseExpiresAt?: number
 }) {
   const failingAssertions = args.assertions.filter((assertion) => assertion.status === 'failed')
   const primaryRoute = args.urlsTested[0]
@@ -186,6 +201,17 @@ export function normalizeBrowserQaResult(args: {
 
   return {
     browserSessionKey: args.browserSessionKey,
+    browserSession: {
+      browserSessionKey: args.browserSessionKey,
+      status: args.sessionStatus ?? ('ready' as const),
+      environment: args.environment ?? 'local',
+      baseUrl: resolveQaBaseUrl(args.baseUrl),
+      lastRoutesTested: args.urlsTested,
+      lastUsedAt: args.lastUsedAt ?? Date.now(),
+      lastVerifiedAt: args.lastVerifiedAt,
+      leaseOwner: args.leaseOwner,
+      leaseExpiresAt: args.leaseExpiresAt,
+    },
     decision: hasFailures ? ('concerns' as const) : ('pass' as const),
     summary,
     assertions: args.assertions,

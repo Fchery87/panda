@@ -1,9 +1,5 @@
 import type { Id } from '@convex/_generated/dataModel'
-import {
-  buildExecutiveSummary,
-  deriveImplementationReviewDecision,
-  deriveShipDecision,
-} from './executive'
+import { buildExecutiveSummary, deriveImplementationReviewDecision } from './executive'
 
 export function buildSuccessfulRunClosurePlan(args: {
   taskId: Id<'deliveryTasks'>
@@ -13,8 +9,6 @@ export function buildSuccessfulRunClosurePlan(args: {
   projectPath: string
 }) {
   const reviewDecision = deriveImplementationReviewDecision({ outcome: 'completed' })
-  const qaDecision = 'pass' as const
-  const shipDecision = deriveShipDecision({ qaDecision })
 
   return {
     createReviewReport: {
@@ -29,7 +23,7 @@ export function buildSuccessfulRunClosurePlan(args: {
     createQaReport: {
       deliveryStateId: args.deliveryStateId,
       taskId: args.taskId,
-      decision: qaDecision,
+      decision: 'pass' as const,
       summary: `${args.taskTitle} passed QA on the affected workbench flow.`,
       assertions: [
         { label: 'Task panel rendered', status: 'passed' as const },
@@ -47,8 +41,7 @@ export function buildSuccessfulRunClosurePlan(args: {
     finalTaskStatus: 'done' as const,
     shipReport: {
       deliveryStateId: args.deliveryStateId,
-      decision: shipDecision,
-      summary: buildExecutiveSummary({ taskTitle: args.taskTitle, qaDecision }),
+      summary: buildExecutiveSummary({ taskTitle: args.taskTitle, qaDecision: 'pass' }),
       evidenceSummary: 'Implementation review and QA passed.',
       openRisks: [],
       unresolvedDefects: [],

@@ -92,6 +92,7 @@ import {
 } from '@/lib/workbench-navigation'
 import { buildDeliveryClosureServicePlan } from '@/lib/agent/delivery/service'
 import { deriveQaReportFingerprint } from '@/lib/qa/browser-session'
+import { deriveShipDecision, buildExecutiveSummary } from '@/lib/agent/delivery/executive'
 
 interface File {
   _id: Id<'files'>
@@ -428,6 +429,8 @@ export default function ProjectPage() {
             followUpTaskIds: closurePlan.createReviewReport.followUpTaskIds,
           })
 
+          let qaDecision: 'pass' | 'concerns' | 'fail' | null = null
+          let qaSummary: string | null = null
           if (closurePlan.shouldRunBrowserQa) {
             const qaResponse = await fetch('/api/qa/run', {
               method: 'POST',
@@ -466,7 +469,21 @@ export default function ProjectPage() {
                 detail: string
                 route?: string
               }>
+              browserSession: {
+                browserSessionKey: string
+                status: 'ready' | 'stale' | 'leased' | 'failed'
+                environment: string
+                baseUrl: string
+                lastRoutesTested: string[]
+                lastUsedAt: number
+                lastVerifiedAt?: number
+                leaseOwner?: string
+                leaseExpiresAt?: number
+              }
             }
+
+            qaDecision = qaPayload.decision
+            qaSummary = qaPayload.summary
 
             await runForgeQaForTaskMutation({
               deliveryStateId: closurePlan.createQaReport.deliveryStateId,
@@ -484,12 +501,18 @@ export default function ProjectPage() {
             })
           }
 
-          await recordForgeShipDecisionMutation({
-            deliveryStateId: closurePlan.shipReport.deliveryStateId,
-            decision: closurePlan.shipReport.decision,
-            summary: closurePlan.shipReport.summary,
-            evidenceSummary: closurePlan.shipReport.evidenceSummary,
-          })
+          if (qaDecision === 'pass') {
+            const shipDecision = deriveShipDecision({ qaDecision })
+            await recordForgeShipDecisionMutation({
+              deliveryStateId: closurePlan.shipReport.deliveryStateId,
+              decision: shipDecision,
+              summary: buildExecutiveSummary({
+                taskTitle: activeDeliveryTask.title,
+                qaDecision,
+              }),
+              evidenceSummary: qaSummary ?? closurePlan.shipReport.evidenceSummary,
+            })
+          }
         }
       }
 

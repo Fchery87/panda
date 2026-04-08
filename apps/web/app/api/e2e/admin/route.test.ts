@@ -35,6 +35,10 @@ function getFunctionLabel(func: unknown): string {
   return 'convex-function'
 }
 
+async function importFreshRoute() {
+  return await import(`./route?test=${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+}
+
 mock.module('convex/browser', () => ({
   ConvexHttpClient: MockConvexHttpClient,
 }))
@@ -67,7 +71,7 @@ describe('/api/e2e/admin route', () => {
     setTestEnv()
     env.E2E_AUTH_BYPASS = 'false'
     try {
-      const { POST } = await import('./route')
+      const { POST } = await importFreshRoute()
 
       const response = await POST(
         new Request('http://localhost:3000/api/e2e/admin', { method: 'POST' })
@@ -82,7 +86,7 @@ describe('/api/e2e/admin route', () => {
   test('promotes the E2E user to admin when bypass is enabled', async () => {
     setTestEnv()
     try {
-      const { POST } = await import('./route')
+      const { POST } = await importFreshRoute()
 
       const response = await POST(
         new Request('http://localhost:3000/api/e2e/admin', { method: 'POST' })

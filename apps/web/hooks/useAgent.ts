@@ -27,16 +27,10 @@ import {
   type ConvexClient as AgentConvexClient,
 } from '../lib/agent'
 import type { FormalSpecification } from '../lib/agent/spec/types'
-import {
-  specToCreateInput,
-  resolveSpecStatus,
-  createVerificationUpdateInput,
-} from '../lib/agent/spec/persistence'
 import { getUserFacingAgentError } from '../lib/chat/error-messages'
-import { extractTargetFilePaths } from '../components/chat/live-run-utils'
 import { buildHarnessSessionPermissions, type AgentPolicy } from '../lib/agent/automationPolicy'
 import { normalizeChatMode, type ChatMode } from '../lib/agent/prompt-library'
-import { derivePlanProgressMetadata, parsePlanSteps } from '../lib/agent/plan-progress'
+import { parsePlanSteps } from '../lib/agent/plan-progress'
 import { registerDefaultPlugins } from '../lib/agent/harness/plugins'
 import { appLog } from '@/lib/logger'
 import { toast } from 'sonner'
@@ -48,6 +42,14 @@ import {
 } from '../lib/agent/session-controller'
 import { buildPromptMessagesWithModeSummary } from '../lib/agent/context/session-summary'
 import { reduceTerminalAgentEvent } from './useAgent-terminal-events'
+import { applyNonTerminalAgentEvent, type EventApplierMutableState } from './useAgent-event-applier'
+import { createRunLifecycle } from './useAgent-run-lifecycle'
+import {
+  buildAssistantAnnotations,
+  buildTerminalErrorProgressStep,
+  normalizeExactRunUsage,
+  type ProgressStep,
+} from './useAgent-event-utils'
 import { useRunEventBuffer, type TracePersistenceStatus } from './useRunEventBuffer'
 import { useProviderSettings } from './useProviderSettings'
 import { useTokenUsageMetrics, type UsageTotals, type UsageMetrics } from './useTokenUsageMetrics'
@@ -68,40 +70,7 @@ import type {
  */
 type AgentStatus = 'idle' | 'thinking' | 'streaming' | 'executing_tools' | 'complete' | 'error'
 
-interface ProgressStep {
-  id: string
-  content: string
-  status: 'running' | 'completed' | 'error'
-  category?: 'analysis' | 'rewrite' | 'tool' | 'complete' | 'other'
-  details?: {
-    toolName?: string
-    toolCallId?: string
-    argsSummary?: string
-    durationMs?: number
-    errorExcerpt?: string
-    targetFilePaths?: string[]
-    hasArtifactTarget?: boolean
-  }
-  planStepIndex?: number
-  planStepTitle?: string
-  planTotalSteps?: number
-  completedPlanStepIndexes?: number[]
-  createdAt: number
-}
-
 type RunEventInput = PersistedRunEventInfo
-
-function summarizeArgs(args: Record<string, unknown> | undefined): string | undefined {
-  if (!args) return undefined
-  const serialized = JSON.stringify(args)
-  if (!serialized) return undefined
-  return serialized.length > 140 ? `${serialized.slice(0, 137)}...` : serialized
-}
-
-function toFiniteNumber(value: unknown, fallback = 0): number {
-  const num = Number(value)
-  return Number.isFinite(num) ? num : fallback
-}
 
 function logUseAgentError(message: string, error: unknown): void {
   appLog.error(`[useAgent] ${message}`, error)
@@ -561,68 +530,18 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             approvedPlanExecution: Boolean(options?.approvedPlanExecution),
           })
         }
-        let runFinalized = false
         let terminalAgentStatus: 'complete' | 'error' | null = null
-
-        const finalizeRunCompleted = async (summary?: string, usage?: RunEventInput['usage']) => {
-          if (!runIdRef.current || runFinalized) return
-          const currentRunId = runIdRef.current
-          runFinalized = true
-          await flushRunEventBuffer({ force: true, reason: 'complete' })
-          await completeRun({
-            runId: currentRunId,
-            summary,
-            usage,
-          })
-          clearRun()
-          if (onRunCompleted) {
-            await onRunCompleted({
-              runId: currentRunId,
-              outcome: 'completed',
-              completedPlanStepIndexes: [...completedPlanStepIndexesRef.current],
-              planTotalSteps: planSteps.length,
-            })
-          }
-        }
-
-        const finalizeRunFailed = async (message: string) => {
-          if (!runIdRef.current || runFinalized) return
-          const currentRunId = runIdRef.current
-          runFinalized = true
-          await flushRunEventBuffer({ force: true, reason: 'fail' })
-          await failRun({
-            runId: currentRunId,
-            error: message,
-          })
-          clearRun()
-          if (onRunCompleted) {
-            await onRunCompleted({
-              runId: currentRunId,
-              outcome: 'failed',
-              completedPlanStepIndexes: [...completedPlanStepIndexesRef.current],
-              planTotalSteps: planSteps.length,
-            })
-          }
-        }
-
-        const finalizeRunStopped = async () => {
-          if (!runIdRef.current || runFinalized) return
-          const currentRunId = runIdRef.current
-          runFinalized = true
-          await flushRunEventBuffer({ force: true, reason: 'stop' })
-          await stopRun({
-            runId: currentRunId,
-          })
-          clearRun()
-          if (onRunCompleted) {
-            await onRunCompleted({
-              runId: currentRunId,
-              outcome: 'stopped',
-              completedPlanStepIndexes: [...completedPlanStepIndexesRef.current],
-              planTotalSteps: planSteps.length,
-            })
-          }
-        }
+        const runLifecycle = createRunLifecycle({
+          runIdRef,
+          clearRun,
+          flushRunEventBuffer,
+          completeRun,
+          failRun,
+          stopRun,
+          onRunCompleted,
+          getCompletedPlanStepIndexes: () => [...completedPlanStepIndexesRef.current],
+          getPlanTotalSteps: () => planSteps.length,
+        })
 
         await appendRunEvent({
           type: 'run_started',
@@ -784,421 +703,63 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             break
           }
 
+          const eventMutableState: EventApplierMutableState = {
+            assistantContent,
+            assistantReasoning,
+            assistantToolCalls,
+            replaceOnNextText,
+            rewriteNoticeShown,
+            runUsage,
+          }
+
+          const handledNonTerminalEvent = applyNonTerminalAgentEvent({
+            event,
+            mode,
+            assistantMessageId,
+            projectId,
+            chatId,
+            runId: runIdRef.current,
+            planSteps,
+            completedPlanStepIndexesRef,
+            specPersistence: specPersistenceRef.current,
+            runtimeSettings,
+            mutable: eventMutableState,
+            estimateCompletionTokens: (content) =>
+              estimateCompletionTokens({
+                providerType: (provider?.config?.provider || 'openai') as ProviderType,
+                model,
+                content,
+              }),
+            appendRunEvent,
+            createSpec: createSpecMutation,
+            updateSpec: updateSpecMutation,
+            setStatus,
+            setCurrentIteration,
+            setCurrentRunUsage,
+            setProgressSteps,
+            setPendingSpec,
+            setCurrentSpec,
+            setToolCalls,
+            setMessages,
+            schedulePaint,
+          })
+
+          if (handledNonTerminalEvent) {
+            assistantContent = eventMutableState.assistantContent
+            assistantReasoning = eventMutableState.assistantReasoning
+            assistantToolCalls = eventMutableState.assistantToolCalls
+            replaceOnNextText = eventMutableState.replaceOnNextText
+            rewriteNoticeShown = eventMutableState.rewriteNoticeShown
+            runUsage = eventMutableState.runUsage
+            continue
+          }
+
           switch (event.type) {
-            case 'thinking':
-            case 'status_thinking': {
-              setStatus('thinking')
-              if (event.content) {
-                void appendRunEvent({
-                  type: 'status',
-                  content: event.content,
-                  status: 'thinking',
-                })
-              }
-              // Extract iteration number from content
-              const iterationMatch = event.content?.match(/Iteration (\d+)/)
-              if (iterationMatch) {
-                setCurrentIteration(parseInt(iterationMatch[1], 10))
-              }
-              break
-            }
-
-            case 'retry': {
-              // Handle stream retry events
-              if (event.content) {
-                void appendRunEvent({
-                  type: 'status',
-                  content: event.content,
-                  status: 'retrying',
-                })
-                // Add a progress step to show retry status
-                const step: ProgressStep = {
-                  id: `progress-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-                  content: event.content,
-                  status: 'running',
-                  category: 'other',
-                  createdAt: Date.now(),
-                }
-                setProgressSteps((prev) => [...prev, step].slice(-30))
-              }
-              break
-            }
-
-            case 'reset': {
-              // Runtime requested that we reset the current assistant message
-              // (e.g. Plan Mode auto-rewrite).
-              // Keep the existing content visible to avoid the message "vanishing".
-              // We’ll replace it cleanly when the first rewrite text chunk arrives.
-              replaceOnNextText = true
-              assistantToolCalls = []
-              void appendRunEvent({
-                type: 'reset',
-                content: event.resetReason ?? 'rewrite',
-              })
-              if (!rewriteNoticeShown) {
-                rewriteNoticeShown = true
-                setMessages((prev) => {
-                  const existingIndex = prev.findIndex((m) => m.id === assistantMessageId)
-                  if (existingIndex < 0) return prev
-                  const updated = [...prev]
-                  const existing = updated[existingIndex]!
-                  updated[existingIndex] = {
-                    ...existing,
-                    mode,
-                    toolCalls: [],
-                    content:
-                      (existing.content ? existing.content + '\n\n' : '') +
-                      '— Rewriting to match mode… —',
-                  }
-                  return updated
-                })
-              }
-              break
-            }
-
-            case 'text':
-              setStatus('streaming')
-              if (event.content) {
-                if (replaceOnNextText) {
-                  replaceOnNextText = false
-                  assistantContent = ''
-                  // Immediately clear the visible content so we replace instead of append.
-                  setMessages((prev) => {
-                    const existingIndex = prev.findIndex((m) => m.id === assistantMessageId)
-                    if (existingIndex < 0) return prev
-                    const updated = [...prev]
-                    updated[existingIndex] = {
-                      ...updated[existingIndex]!,
-                      content: '',
-                      reasoningContent: '',
-                      mode,
-                      toolCalls: [],
-                    }
-                    return updated
-                  })
-                }
-                assistantContent += event.content
-                runUsage = {
-                  ...runUsage,
-                  completionTokens: estimateCompletionTokens({
-                    providerType: (provider?.config?.provider || 'openai') as ProviderType,
-                    model,
-                    content: assistantContent,
-                  }),
-                }
-                runUsage.totalTokens = runUsage.promptTokens + runUsage.completionTokens
-                setCurrentRunUsage(runUsage)
-                // Paint at most once per animation frame to avoid render thrash
-                // while still feeling like true streaming.
-                schedulePaint()
-              }
-              break
-            case 'progress_step': {
-              if (event.content) {
-                const step: ProgressStep = {
-                  id: `progress-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-                  content: event.content,
-                  status: event.progressStatus ?? 'running',
-                  category: event.progressCategory ?? 'other',
-                  details:
-                    event.progressToolName ||
-                    event.progressToolCallId ||
-                    event.progressArgs ||
-                    event.progressDurationMs ||
-                    event.progressError
-                      ? {
-                          toolName: event.progressToolName,
-                          toolCallId: event.progressToolCallId,
-                          argsSummary: summarizeArgs(event.progressArgs),
-                          durationMs: event.progressDurationMs,
-                          errorExcerpt: event.progressError?.slice(0, 160),
-                          targetFilePaths: extractTargetFilePaths(
-                            event.progressToolName,
-                            event.progressArgs
-                          ),
-                          hasArtifactTarget: Boolean(event.progressHasArtifactTarget),
-                        }
-                      : undefined,
-                  ...(derivePlanProgressMetadata(
-                    planSteps,
-                    event.content,
-                    event.progressStatus ?? 'running',
-                    completedPlanStepIndexesRef.current
-                  ) ?? {}),
-                  createdAt: Date.now(),
-                }
-                if (step.completedPlanStepIndexes) {
-                  completedPlanStepIndexesRef.current = step.completedPlanStepIndexes
-                }
-                setProgressSteps((prev) => [...prev, step].slice(-30))
-                void appendRunEvent({
-                  type: 'progress_step',
-                  content: step.content,
-                  status: step.status,
-                  progressCategory: step.category,
-                  progressToolName: step.details?.toolName,
-                  toolCallId: step.details?.toolCallId,
-                  progressHasArtifactTarget: step.details?.hasArtifactTarget,
-                  targetFilePaths: step.details?.targetFilePaths,
-                  toolName: step.details?.toolName,
-                  args: event.progressArgs,
-                  durationMs: step.details?.durationMs,
-                  error: step.details?.errorExcerpt,
-                  planStepIndex: step.planStepIndex,
-                  planStepTitle: step.planStepTitle,
-                  planTotalSteps: step.planTotalSteps,
-                  completedPlanStepIndexes: step.completedPlanStepIndexes,
-                })
-              }
-              break
-            }
-            case 'spec_pending_approval':
-              if (event.spec) {
-                setPendingSpec(event.spec)
-                setCurrentSpec(event.spec)
-                setStatus('idle')
-                void appendRunEvent({
-                  type: event.type,
-                  content: event.spec.intent.goal,
-                  status: event.spec.status,
-                })
-
-                // Persist spec to Convex if not already persisted
-                if (projectId && chatId && !specPersistenceRef.current.has(event.spec.id)) {
-                  const specInput = specToCreateInput(event.spec, {
-                    projectId: projectId as Id<'projects'>,
-                    chatId: chatId as Id<'chats'>,
-                    runId: runIdRef.current ?? undefined,
-                  })
-                  void createSpecMutation(specInput)
-                    .then((specId: Id<'specifications'>) => {
-                      specPersistenceRef.current.set(event.spec!.id, specId)
-                    })
-                    .catch((err: unknown) => {
-                      appLog.error('[useAgent] Failed to persist spec_pending_approval:', err)
-                    })
-                }
-              }
-              break
-            case 'spec_generated': {
-              if (event.spec) {
-                setPendingSpec(null)
-                setCurrentSpec(event.spec)
-                void appendRunEvent({
-                  type: event.type,
-                  content: event.spec.intent.goal,
-                  status: event.spec.status,
-                })
-
-                // Persist spec to Convex if not already persisted
-                if (projectId && chatId && !specPersistenceRef.current.has(event.spec.id)) {
-                  const specInput = specToCreateInput(event.spec, {
-                    projectId: projectId as Id<'projects'>,
-                    chatId: chatId as Id<'chats'>,
-                    runId: runIdRef.current ?? undefined,
-                  })
-                  void createSpecMutation(specInput)
-                    .then((specId: Id<'specifications'>) => {
-                      specPersistenceRef.current.set(event.spec!.id, specId)
-                    })
-                    .catch((err: unknown) => {
-                      appLog.error('[useAgent] Failed to persist spec_generated:', err)
-                    })
-                } else if (specPersistenceRef.current.has(event.spec.id)) {
-                  // Update status if already persisted
-                  const convexId = specPersistenceRef.current.get(event.spec.id)
-                  if (convexId) {
-                    const newStatus = resolveSpecStatus(event.spec, 'spec_generated')
-                    void updateSpecMutation({
-                      specId: convexId,
-                      updates: { status: newStatus },
-                    }).catch((err: unknown) => {
-                      appLog.error('[useAgent] Failed to update spec_generated status:', err)
-                    })
-                  }
-                }
-              }
-              break
-            }
-            case 'spec_verification': {
-              setPendingSpec(null)
-              if (event.spec) {
-                setCurrentSpec(event.spec)
-
-                // Update spec with verification results
-                const convexId = specPersistenceRef.current.get(event.spec.id)
-                if (convexId) {
-                  const verificationResults = event.verification?.results || []
-                  const updates = createVerificationUpdateInput(event.spec, verificationResults)
-                  void updateSpecMutation({
-                    specId: convexId,
-                    updates,
-                  }).catch((err: unknown) => {
-                    appLog.error('[useAgent] Failed to update spec_verification:', err)
-                  })
-                }
-              }
-              const verificationStep: ProgressStep = {
-                id: `progress-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-                content: event.verification?.passed
-                  ? 'Specification verified'
-                  : 'Specification failed',
-                status: event.verification?.passed ? 'completed' : 'error',
-                category: 'complete',
-                details: event.verification?.passed
-                  ? undefined
-                  : {
-                      errorExcerpt:
-                        'Specification verification failed. Review unmet checks in the run history.',
-                    },
-                createdAt: Date.now(),
-              }
-              setProgressSteps((prev) => [...prev, verificationStep].slice(-30))
-              void appendRunEvent({
-                type: 'spec_verification',
-                content: event.verification?.passed
-                  ? 'Specification verified'
-                  : 'Specification failed',
-                status: event.verification?.passed ? 'verified' : 'failed',
-              })
-              break
-            }
-            case 'reasoning':
-              if (runtimeSettings.showReasoningPanel && event.reasoningContent) {
-                assistantReasoning += event.reasoningContent
-                schedulePaint()
-              }
-              break
-
-            case 'tool_call':
-              setStatus('executing_tools')
-              if (event.toolCall) {
-                let parsedArgs: Record<string, unknown>
-                try {
-                  parsedArgs = JSON.parse(event.toolCall.function.arguments)
-                } catch (parseError) {
-                  console.error('Failed to parse tool arguments:', parseError)
-                  parsedArgs = {
-                    error: 'Failed to parse arguments',
-                    raw: event.toolCall.function.arguments,
-                  }
-                }
-                const toolInfo: ToolCallInfo = {
-                  id: event.toolCall.id,
-                  name: event.toolCall.function.name,
-                  args: parsedArgs,
-                  status: 'pending',
-                }
-                assistantToolCalls.push(toolInfo)
-                setToolCalls((prev) => [...prev, toolInfo])
-                void appendRunEvent({
-                  type: 'tool_call',
-                  toolCallId: toolInfo.id,
-                  toolName: toolInfo.name,
-                  args: toolInfo.args,
-                  status: toolInfo.status,
-                })
-
-                // Update assistant message with tool calls
-                setMessages((prev) => {
-                  const existingIndex = prev.findIndex((m) => m.id === assistantMessageId)
-                  if (existingIndex >= 0) {
-                    const updated = [...prev]
-                    updated[existingIndex] = {
-                      ...updated[existingIndex],
-                      mode,
-                      toolCalls: assistantToolCalls,
-                    }
-                    return updated
-                  }
-                  return prev
-                })
-              }
-              break
-
-            case 'tool_result':
-              if (event.toolResult) {
-                // Update tool call status
-                setToolCalls((prev) =>
-                  prev.map((tc) =>
-                    tc.id === event.toolResult!.toolCallId
-                      ? {
-                          ...tc,
-                          status: event.toolResult!.error ? 'error' : 'completed',
-                          result: {
-                            output: event.toolResult!.output,
-                            error: event.toolResult!.error,
-                            durationMs: event.toolResult!.durationMs,
-                          },
-                        }
-                      : tc
-                  )
-                )
-
-                // Update assistant message tool calls
-                assistantToolCalls = assistantToolCalls.map((tc) =>
-                  tc.id === event.toolResult!.toolCallId
-                    ? {
-                        ...tc,
-                        status: event.toolResult!.error ? 'error' : 'completed',
-                        result: {
-                          output: event.toolResult!.output,
-                          error: event.toolResult!.error,
-                          durationMs: event.toolResult!.durationMs,
-                        },
-                      }
-                    : tc
-                )
-
-                setMessages((prev) => {
-                  const existingIndex = prev.findIndex((m) => m.id === assistantMessageId)
-                  if (existingIndex >= 0) {
-                    const updated = [...prev]
-                    updated[existingIndex] = {
-                      ...updated[existingIndex],
-                      toolCalls: assistantToolCalls,
-                    }
-                    return updated
-                  }
-                  return prev
-                })
-
-                void appendRunEvent({
-                  type: 'tool_result',
-                  toolCallId: event.toolResult.toolCallId,
-                  toolName: event.toolResult.toolName,
-                  output: event.toolResult.output,
-                  error: event.toolResult.error,
-                  durationMs: event.toolResult.durationMs,
-                  status: event.toolResult.error ? 'error' : 'completed',
-                })
-              }
-              break
-
-            case 'snapshot':
-              if (event.snapshot) {
-                const step: ProgressStep = {
-                  id: `snapshot-${event.snapshot.hash}`,
-                  content: event.content ?? `Step ${event.snapshot.step} snapshot created`,
-                  status: 'completed',
-                  category: 'other',
-                  createdAt: event.snapshot.timestamp,
-                }
-                setProgressSteps((prev) => [...prev, step].slice(-30))
-                void appendRunEvent({
-                  type: 'snapshot',
-                  content: step.content,
-                  status: 'completed',
-                  snapshot: event.snapshot,
-                })
-              }
-              break
-
             case 'complete':
               {
                 const terminalEvent = reduceTerminalAgentEvent(
                   {
-                    runFinalized,
+                    runFinalized: runLifecycle.isFinalized(),
                     terminalStatus: terminalAgentStatus,
                   },
                   'complete'
@@ -1212,48 +773,22 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               setStatus('complete')
               isRunningRef.current = false
               specPersistenceRef.current.clear()
-              if (event.usage) {
-                runUsage = {
-                  promptTokens: toFiniteNumber(event.usage.promptTokens),
-                  completionTokens: toFiniteNumber(event.usage.completionTokens),
-                  totalTokens: toFiniteNumber(
-                    event.usage.totalTokens,
-                    toFiniteNumber(event.usage.promptTokens) +
-                      toFiniteNumber(event.usage.completionTokens)
-                  ),
-                  source: 'exact',
-                }
-              }
+              runUsage = normalizeExactRunUsage(event.usage, runUsage)
               setCurrentRunUsage(runUsage)
 
               // Persist assistant message to Convex
               try {
-                const context = computeContextMetrics({
-                  usedTokens: usageMetrics.session.totalTokens + runUsage.totalTokens,
-                  contextWindow: contextWindowResolution.contextWindow,
-                })
-                const annotations: MessageAnnotationInfo = {
+                const annotations: MessageAnnotationInfo = buildAssistantAnnotations({
                   mode,
                   model,
                   provider: provider?.config?.provider,
-                  tokenCount: runUsage.totalTokens,
-                  promptTokens: runUsage.promptTokens,
-                  completionTokens: runUsage.completionTokens,
-                  totalTokens: runUsage.totalTokens,
-                  tokenSource: runUsage.source,
+                  toolCalls: assistantToolCalls,
+                  assistantReasoning,
+                  runUsage,
+                  usageSessionTotalTokens: usageMetrics.session.totalTokens,
                   contextWindow: contextWindowResolution.contextWindow,
-                  contextUsedTokens: context.usedTokens,
-                  contextRemainingTokens: context.remainingTokens,
-                  contextUsagePct: context.usagePct,
                   contextSource: contextWindowResolution.source,
-                  ...(assistantToolCalls.length > 0 ? { toolCalls: assistantToolCalls } : {}),
-                }
-                if (assistantReasoning) {
-                  annotations.reasoningSummary = assistantReasoning
-                  if (runUsage.completionTokens) {
-                    annotations.reasoningTokens = runUsage.completionTokens
-                  }
-                }
+                })
 
                 await addMessage({
                   chatId,
@@ -1270,7 +805,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                   },
                   { forceFlush: true }
                 )
-                await finalizeRunCompleted(
+                await runLifecycle.finalizeRunCompleted(
                   assistantContent,
                   event.usage as TokenUsageInfo | undefined
                 )
@@ -1283,7 +818,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               {
                 const terminalEvent = reduceTerminalAgentEvent(
                   {
-                    runFinalized,
+                    runFinalized: runLifecycle.isFinalized(),
                     terminalStatus: terminalAgentStatus,
                   },
                   'error'
@@ -1307,22 +842,16 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                   },
                   { forceFlush: true }
                 )
-                await finalizeRunStopped()
+                await runLifecycle.finalizeRunStopped()
                 break
               }
               const userFacing = getUserFacingAgentError(event.error)
               setStatus('error')
               setError(userFacing.description)
-              const errorStep: ProgressStep = {
-                id: `progress-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-                content: userFacing.title,
-                status: 'error',
-                category: 'complete',
-                details: {
-                  errorExcerpt: userFacing.description,
-                },
-                createdAt: Date.now(),
-              }
+              const errorStep: ProgressStep = buildTerminalErrorProgressStep({
+                title: userFacing.title,
+                description: userFacing.description,
+              })
               setProgressSteps((prev) => [...prev, errorStep].slice(-30))
               isRunningRef.current = false
               specPersistenceRef.current.clear()
@@ -1334,7 +863,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                 },
                 { forceFlush: true }
               )
-              await finalizeRunFailed(event.error || 'Unknown error')
+              await runLifecycle.finalizeRunFailed(event.error || 'Unknown error')
               toast.error(userFacing.title, {
                 description: userFacing.description,
               })
@@ -1347,7 +876,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         if (isRunningRef.current) {
           setStatus('idle')
           isRunningRef.current = false
-          await finalizeRunStopped()
+          await runLifecycle.finalizeRunStopped()
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)

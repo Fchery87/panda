@@ -19,7 +19,7 @@ describe('delivery closure service', () => {
     expect(plan.createQaReport.decision).toBe('pass')
     expect(plan.createQaReport.evidence.flowNames).toEqual(['task-panel-review-loop'])
     expect(plan.shouldRunBrowserQa).toBe(true)
-    expect(plan.shipReport.decision).toBe('ready')
+    expect(plan.shipReport.summary).toContain('ready to ship')
   })
 
   test('skips fresh browser QA when the fingerprint matches the latest QA artifacts', () => {

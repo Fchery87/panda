@@ -1,7 +1,7 @@
 # AGENTIC_HARNESS.md - Panda Agentic Harness
 
-> **Version:** 1.1  
-> **Last Updated:** 2026-03-10  
+> **Version:** 1.2  
+> **Last Updated:** 2026-04-07  
 > **Status:** Implemented
 
 ---
@@ -13,6 +13,11 @@ provider-agnostic execution system for Panda’s web-only workbench. The harness
 is adapted to Panda’s current browser product, Convex-backed persistence model,
 and plan-review/build workflow rather than trying to mirror another interface
 surface one-to-one.
+
+The current runtime is now layered on top of the Forge delivery model. The chat
+surface exposes Forge-aligned roles while Convex remains the canonical state
+store for delivery state, tasks, review gates, QA evidence, ship readiness,
+browser session metadata, and durable runtime checkpoints.
 
 ## Architecture
 
@@ -77,9 +82,59 @@ interface AgentConfig {
 
 **Built-in Agents:**
 
+- `builder` - Task-scoped implementation role for structured execution work
+- `manager` - Default orchestration role for delivery coordination and state
+  progression
+- `executive` - Review and gatekeeping role for architecture, QA, and ship
+  readiness
 - `build` - Full-access for active development
+- `code` - Direct implementation mode without subagent delegation
 - `plan` - Read-only analysis and planning
 - `ask` - Quick Q&A
+
+### Forge Role Mapping
+
+The default runtime mapping now routes chat modes through Forge roles:
+
+- `architect -> executive`
+- `code -> manager`
+- `build -> builder`
+- `ask -> manager`
+
+Legacy `build`, `code`, `plan`, and `ask` agents still exist as explicit runtime
+options, but the default workbench execution path uses the Forge role agents
+above.
+
+## Forge Delivery Control Plane
+
+Forge adds a canonical delivery state machine on top of the harness. The key
+principle is that the harness can execute work, but Convex owns truth for
+delivery lifecycle and gating.
+
+### Canonical Entities
+
+- `deliveryStates` - initiative-level source of truth for phase, status, gates,
+  summary, and active role
+- `deliveryTasks` - tracked execution units with evidence, requirements, and
+  latest run/review/QA links
+- `reviewReports` - executive review findings and decisions
+- `qaReports` - browser QA evidence, assertions, and defects
+- `shipReports` - final readiness decisions
+- `deliveryVerifications` - normalized verification log across review, QA, and
+  ship
+- `browserSessions` - persistent browser-session metadata for QA reuse
+- `harnessRuntimeCheckpoints` - durable runtime resume snapshots tied to chat
+  and run identity
+
+### Control-Plane Rules
+
+- Ship readiness is recorded only from actual QA outcomes, not precomputed
+  optimistic assumptions.
+- Review, QA, and ship transitions create persistent verification records.
+- Browser QA session reuse is persisted in Convex, not only in process memory.
+- Intake and task creation are idempotent by delivery state and task key.
+- Next.js API routes that operate on Forge resources must authenticate the user
+  and validate ownership through Convex before acting.
 
 ## Plan-Mode Productization
 
@@ -329,20 +384,31 @@ Unified component combining live + historical progress:
 
 Dropdown for agent selection:
 
-- Primary agents: build, plan, ask (with keyboard shortcuts 1-4)
+- Primary chat modes: Plan, Build, and Builder
+- These modes route to Forge role agents by default
 - Subagents: Listed with @mention hints
 - Uses harness agent registry
 
 ## Database Schema
 
-New tables for agentic harness:
+Important persistence surfaces used by the harness and Forge control plane:
 
-| Table                | Purpose                  |
-| -------------------- | ------------------------ |
-| `agentSessions`      | Session state management |
-| `messageParts`       | Structured message parts |
-| `permissionRequests` | Pending permissions      |
-| `gitSnapshots`       | Git snapshot storage     |
+| Table                       | Purpose                                   |
+| --------------------------- | ----------------------------------------- |
+| `agentRuns`                 | Canonical run lifecycle per chat turn     |
+| `agentRunEvents`            | Persisted run timeline and progress       |
+| `harnessRuntimeCheckpoints` | Durable runtime resume state              |
+| `deliveryStates`            | Initiative-level delivery source of truth |
+| `deliveryTasks`             | Canonical tracked tasks                   |
+| `reviewReports`             | Implementation and architecture reviews   |
+| `qaReports`                 | Route-aware QA evidence                   |
+| `shipReports`               | Final readiness decisions                 |
+| `deliveryVerifications`     | Normalized verification records           |
+| `browserSessions`           | Persistent browser QA session metadata    |
+| `agentSessions`             | Harness session state management          |
+| `messageParts`              | Structured agentic message parts          |
+| `permissionRequests`        | Pending permission requests               |
+| `gitSnapshots`              | Git snapshot storage                      |
 
 ## Usage Example
 

@@ -1,46 +1,40 @@
 /**
  * Agent Runtime
  *
- * Core runtime for executing agent tasks with streaming support.
- * Manages the conversation loop, tool execution, and response streaming.
+ * Compatibility adapter over the harness runtime.
+ * The harness is the single execution engine; this module preserves the
+ * existing hook/test contract used by the workbench.
  */
 
 import { appLog } from '@/lib/logger'
-import type {
-  LLMProvider,
-  CompletionMessage,
-  CompletionOptions,
-  ToolCall,
-  ReasoningOptions,
-} from '../llm/types'
+import type { LLMProvider, CompletionMessage, ReasoningOptions, ToolCall } from '../llm/types'
 import { getDefaultProviderCapabilities } from '../llm/types'
-import type { PromptContext } from './prompt-library'
-import type { ToolContext, ToolExecutionResult } from './tools'
-import { getPromptForMode } from './prompt-library'
-import { getToolsForMode, executeTool } from './tools'
+import { getDefaultForgeHarnessAgent, getLegacyHarnessAgent } from './chat-modes'
+import { getPromptForMode, type PromptContext } from './prompt-library'
+import { executeTool, type ToolContext, type ToolExecutionResult } from './tools'
 import { resolveAgentSkillsForPromptContext } from './skills/resolver'
 import {
   Runtime as HarnessRuntime,
-  type ToolExecutor as HarnessToolExecutor,
-  type RuntimeEvent as HarnessRuntimeEvent,
-  type UserMessage as HarnessUserMessage,
-  type Message as HarnessMessage,
-  type RuntimeConfig as HarnessRuntimeConfig,
-  type ToolInterruptRequest as HarnessToolInterruptRequest,
-  permissions as harnessPermissions,
   agents as harnessAgents,
   ascending as harnessAscending,
+  permissions as harnessPermissions,
+  type Message as HarnessMessage,
+  type RuntimeConfig as HarnessRuntimeConfig,
+  type RuntimeEvent as HarnessRuntimeEvent,
+  type ToolExecutor as HarnessToolExecutor,
+  type ToolInterruptRequest as HarnessToolInterruptRequest,
+  type UserMessage as HarnessUserMessage,
 } from './harness'
-import type { CheckpointStore as HarnessCheckpointStore } from './harness/checkpoint-store'
+import {
+  InMemoryCheckpointStore,
+  type CheckpointStore as HarnessCheckpointStore,
+} from './harness/checkpoint-store'
 import { safeJSONParse } from './harness/tool-repair'
 import type { Permission as HarnessPermission } from './harness/types'
 import type { FormalSpecification, SpecTier } from './spec/types'
 
 const isE2ESpecApprovalModeEnabled = process.env.NEXT_PUBLIC_E2E_AGENT_MODE === 'spec-approval'
 
-/**
- * Runtime options for agent execution
- */
 export interface RuntimeOptions {
   provider: LLMProvider
   model?: string
@@ -54,13 +48,9 @@ export interface RuntimeOptions {
   harnessSessionPermissions?: HarnessPermission
 }
 
-/**
- * Agent event types for streaming
- */
 export type AgentEventType =
   | 'status_thinking'
   | 'reasoning'
-  // Backward compatibility for existing hook switch statements.
   | 'thinking'
   | 'progress_step'
   | 'snapshot'
@@ -75,9 +65,6 @@ export type AgentEventType =
   | 'spec_verification'
   | 'complete'
 
-/**
- * Agent event for streaming
- */
 export interface AgentEvent {
   type: AgentEventType
   content?: string
@@ -132,23 +119,6 @@ export interface AgentRuntimeLike {
   abort?: () => void
 }
 
-/**
- * Agent runtime state
- */
-interface RuntimeState {
-  messages: CompletionMessage[]
-  iteration: number
-  toolResults: ToolExecutionResult[]
-  isComplete: boolean
-  // Track executed tool calls for deduplication
-  executedToolCalls: Set<string>
-  // Track tool call patterns to prevent loops
-  toolCallHistory: string[]
-}
-
-/**
- * Runtime configuration options
- */
 export interface RuntimeConfig {
   maxIterations?: number
   maxToolCallsPerIteration?: number
@@ -163,36 +133,15 @@ export interface RuntimeConfig {
   harnessSpecApprovalMode?: 'interactive' | 'auto_approve'
 }
 
-/**
- * Generate a hash for a tool call to detect duplicates
- */
-function hashToolCall(toolCall: ToolCall): string {
-  return `${toolCall.function.name}:${toolCall.function.arguments}`
-}
-
-function buildToolCallPattern(toolCalls: ToolCall[]): string {
-  return toolCalls.map((toolCall) => hashToolCall(toolCall)).join('||')
-}
-
-function summarizeToolCallNames(toolCalls: ToolCall[]): string {
-  const names = Array.from(new Set(toolCalls.map((toolCall) => toolCall.function.name)))
-  return names.join(', ')
-}
-
 function logRuntimeError(message: string, error?: unknown): void {
   appLog.error(`[agent-runtime] ${message}`, error)
 }
 
 export function shouldRewriteDiscussResponse(content: string): boolean {
-  // Claude Code Plan Mode expectation: no large code blocks / no fenced implementations.
-  // For now we treat fenced code blocks as a hard violation and trigger a single rewrite pass.
   return content.includes('```')
 }
 
 export function shouldRewriteBuildResponse(content: string): boolean {
-  // Build Mode expectation (Claude Code-style): code changes should go through tools/artifacts,
-  // and the chat panel should not contain large code blocks.
-  // For now we treat fenced code blocks as a hard violation and trigger a single rewrite pass.
   return content.includes('```')
 }
 
@@ -217,663 +166,6 @@ function shouldRetryBuildForToolUse(args: {
     /I will begin by/i.test(args.content)
 
   return looksLikePlanningOutput
-}
-
-function extractInlineToolCalls(content: string): {
-  cleanedContent: string
-  toolCalls: ToolCall[]
-} {
-  const toolCalls: ToolCall[] = []
-  const toolCallIds = new Set<string>()
-
-  const validToolNames = [
-    'read_files',
-    'write_files',
-    'run_command',
-    'search_code',
-    'search_code_ast',
-    'update_memory_bank',
-  ]
-
-  const patterns = [
-    /\{[^{}]*"name"\s*:\s*"([^"]+)"[^{}]*"arguments"\s*:\s*(\{[\s\S]*?\})\s*\}/g,
-    /\{[^{}]*"function"\s*:\s*\{[^{}]*"name"\s*:\s*"([^"]+)"[^{}]*"arguments"\s*:\s*(\{[\s\S]*?\})[^{}]*\}[^{}]*\}/g,
-    /```json\s*\n?\s*(\{[\s\S]*?"name"\s*:\s*"([^"]+)"[\s\S]*?"arguments"\s*:\s*(\{[\s\S]*?\})[\s\S]*?\})\s*\n?\s*```/g,
-  ]
-
-  const extractFromMatch = (toolName: string, argsStr: string, _fullMatch: string): boolean => {
-    if (!validToolNames.includes(toolName)) return false
-
-    try {
-      const args = JSON.parse(argsStr)
-      const id = `inline_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-
-      if (toolCallIds.has(id)) return false
-      toolCallIds.add(id)
-
-      const toolCall: ToolCall = {
-        id,
-        type: 'function',
-        function: {
-          name: toolName,
-          arguments: JSON.stringify(args),
-        },
-      }
-      toolCalls.push(toolCall)
-      return true
-    } catch (parseError) {
-      void parseError
-      return false
-    }
-  }
-
-  for (const pattern of patterns) {
-    let match
-    while ((match = pattern.exec(content)) !== null) {
-      if (pattern.source.includes('```json')) {
-        extractFromMatch(match[2], match[3], match[0])
-      } else {
-        extractFromMatch(match[1], match[2], match[0])
-      }
-    }
-  }
-
-  let cleanedContent = content
-
-  if (toolCalls.length > 0) {
-    for (const pattern of patterns) {
-      cleanedContent = cleanedContent.replace(pattern, '')
-    }
-    cleanedContent = cleanedContent
-      .replace(/\n\s*\n\s*\n/g, '\n\n')
-      .replace(/^[\s\n]+|[\s\n]+$/g, '')
-      .trim()
-  }
-
-  return { cleanedContent, toolCalls }
-}
-
-/**
- * Agent Runtime - manages agent execution
- */
-export class AgentRuntime {
-  private options: RuntimeOptions
-  private toolContext: ToolContext
-
-  constructor(options: RuntimeOptions, toolContext: ToolContext) {
-    this.options = options
-    this.toolContext = toolContext
-  }
-
-  /**
-   * Run the agent with streaming output
-   * This is a generator that yields events as they occur
-   */
-  async *run(promptContext: PromptContext, config?: RuntimeConfig): AsyncGenerator<AgentEvent> {
-    const resolvedSkills = resolveAgentSkillsForPromptContext(promptContext)
-
-    // Initialize state
-    const state: RuntimeState = {
-      messages: getPromptForMode(promptContext),
-      iteration: 0,
-      toolResults: [],
-      isComplete: false,
-      executedToolCalls: new Set(),
-      toolCallHistory: [],
-    }
-
-    if (!state.messages || state.messages.length === 0) {
-      yield {
-        type: 'error',
-        error: 'Invalid prompt: messages must not be empty (no user message provided).',
-      }
-      return
-    }
-
-    for (const match of resolvedSkills.matches) {
-      yield {
-        type: 'progress_step',
-        content: `Skill matched: ${match.skill.name}`,
-        progressStatus: 'completed',
-        progressCategory: 'analysis',
-      }
-    }
-
-    const maxIterations = this.options.maxIterations ?? config?.maxIterations ?? 10
-    const maxToolCallsPerIteration = config?.maxToolCallsPerIteration ?? 5
-    const enableDeduplication = config?.enableToolDeduplication ?? true
-    const toolLoopThreshold = config?.toolLoopThreshold ?? 3
-    const model = this.options.model ?? 'gpt-4o'
-    const providerCapabilities =
-      this.options.provider.config.capabilities ??
-      getDefaultProviderCapabilities(this.options.provider.config.provider)
-
-    try {
-      // Main agent loop
-      while (state.iteration < maxIterations && !state.isComplete) {
-        state.iteration++
-
-        // Yield thinking event
-        yield {
-          type: 'status_thinking',
-          content: `Iteration ${state.iteration}: Generating response...`,
-        }
-        yield {
-          type: 'progress_step',
-          content: `Iteration ${state.iteration}: analyzing context and drafting response`,
-          progressStatus: 'running',
-          progressCategory: 'analysis',
-        }
-
-        // Create completion options
-        const completionOptions: CompletionOptions = {
-          model,
-          messages: state.messages,
-          temperature: this.options.temperature ?? 0.7,
-          maxTokens: this.options.maxTokens,
-          tools: getToolsForMode(promptContext.chatMode),
-          stream: true,
-          ...(providerCapabilities.supportsReasoning && this.options.reasoning
-            ? { reasoning: this.options.reasoning }
-            : {}),
-        }
-
-        // Stream the completion
-        let fullContent = ''
-        let pendingToolCalls: ToolCall[] = []
-        let usage:
-          | { promptTokens: number; completionTokens: number; totalTokens: number }
-          | undefined
-        let didPlanModeRewrite = false
-        let didBuildModeRewrite = false
-        let buildRewriteTriggeredDuringStream = false
-        let planRewriteTriggeredDuringStream = false
-
-        for await (const chunk of this.options.provider.completionStream(completionOptions)) {
-          // Handle different chunk types
-          switch (chunk.type) {
-            case 'text':
-              if (chunk.content) {
-                // In Build mode, prevent fenced code blocks from ever streaming into the UI.
-                // If we detect a code fence, stop streaming and do a single rewrite pass that uses tools/artifacts.
-                if (promptContext.chatMode === 'build') {
-                  const combined = fullContent + chunk.content
-                  const fenceIndex = combined.indexOf('```')
-                  if (fenceIndex !== -1) {
-                    const safePrefixLen = Math.max(0, fenceIndex - fullContent.length)
-                    if (safePrefixLen > 0) {
-                      const safe = chunk.content.slice(0, safePrefixLen)
-                      fullContent += safe
-                      yield { type: 'text', content: safe }
-                    }
-                    buildRewriteTriggeredDuringStream = true
-                    break
-                  }
-                }
-
-                // In Architect mode, prevent fenced code blocks from ever streaming into the UI.
-                // If we detect a code fence, stop streaming and do a single rewrite pass into plan format.
-                if (promptContext.chatMode === 'architect') {
-                  const combined = fullContent + chunk.content
-                  const fenceIndex = combined.indexOf('```')
-                  if (fenceIndex !== -1) {
-                    const safePrefixLen = Math.max(0, fenceIndex - fullContent.length)
-                    if (safePrefixLen > 0) {
-                      const safe = chunk.content.slice(0, safePrefixLen)
-                      fullContent += safe
-                      yield { type: 'text', content: safe }
-                    }
-                    planRewriteTriggeredDuringStream = true
-                    break
-                  }
-                }
-
-                fullContent += chunk.content
-                yield { type: 'text', content: chunk.content }
-              }
-              break
-            case 'status_thinking':
-              yield {
-                type: 'status_thinking',
-                content: chunk.content,
-              }
-              break
-            case 'reasoning':
-              if (chunk.reasoningContent || chunk.content) {
-                yield {
-                  type: 'reasoning',
-                  reasoningContent: chunk.reasoningContent ?? chunk.content,
-                }
-              }
-              break
-
-            case 'tool_call':
-              if (chunk.toolCall) {
-                pendingToolCalls.push(chunk.toolCall)
-                yield {
-                  type: 'tool_call',
-                  toolCall: chunk.toolCall,
-                }
-              }
-              break
-
-            case 'finish':
-              if (chunk.usage) {
-                usage = chunk.usage
-              }
-              break
-
-            case 'error':
-              yield {
-                type: 'error',
-                error: chunk.error ?? 'Unknown error during streaming',
-              }
-              return
-          }
-
-          if (buildRewriteTriggeredDuringStream) {
-            // Stop consuming the provider stream early to avoid leaking more code.
-            break
-          }
-          if (planRewriteTriggeredDuringStream) {
-            // Stop consuming the provider stream early to avoid leaking more code.
-            break
-          }
-        }
-
-        // Claude Code-style Plan Mode enforcement:
-        // If the model outputs code in architect mode, do one automatic rewrite pass into plan format.
-        if (
-          promptContext.chatMode === 'architect' &&
-          !didPlanModeRewrite &&
-          (planRewriteTriggeredDuringStream || shouldRewriteDiscussResponse(fullContent))
-        ) {
-          didPlanModeRewrite = true
-
-          yield {
-            type: 'status_thinking',
-            content: 'Plan Mode: rewriting response into a plan (no code)…',
-          }
-          yield {
-            type: 'progress_step',
-            content: 'Plan mode guardrail triggered: rewriting response into plan format',
-            progressStatus: 'running',
-            progressCategory: 'rewrite',
-          }
-          yield { type: 'reset', resetReason: 'plan_mode_rewrite' }
-
-          const retryMessages: CompletionMessage[] = [
-            ...state.messages,
-            {
-              role: 'user',
-              content:
-                'Rewrite your previous answer into Plan Mode format. Do not include any fenced code blocks. ' +
-                'Follow the required Plan Mode structure (clarifying questions, proposed plan, risks, next step). ' +
-                `\n\nPrevious answer:\n${fullContent}`,
-            },
-          ]
-
-          const retryOptions: CompletionOptions = {
-            ...completionOptions,
-            messages: retryMessages,
-            // No tools in architect mode anyway, but keep explicit.
-            tools: undefined,
-          }
-
-          fullContent = ''
-          pendingToolCalls = []
-          usage = undefined
-
-          for await (const chunk of this.options.provider.completionStream(retryOptions)) {
-            switch (chunk.type) {
-              case 'text':
-                if (chunk.content) {
-                  fullContent += chunk.content
-                  yield { type: 'text', content: chunk.content }
-                }
-                break
-              case 'finish':
-                if (chunk.usage) usage = chunk.usage
-                break
-              case 'error':
-                yield { type: 'error', error: chunk.error ?? 'Unknown error during streaming' }
-                return
-              // Ignore tool events in plan rewrite (should not happen)
-              default:
-                break
-            }
-          }
-        }
-
-        // Claude Code-style Build Mode enforcement:
-        // If the model dumps code blocks into chat OR "plans" without any tool calls when the user asked to build,
-        // do one automatic rewrite pass that uses tools/artifacts.
-        if (
-          promptContext.chatMode === 'build' &&
-          !didBuildModeRewrite &&
-          (buildRewriteTriggeredDuringStream ||
-            shouldRewriteBuildResponse(fullContent) ||
-            shouldRetryBuildForToolUse({
-              promptContext,
-              content: fullContent,
-              pendingToolCalls,
-            }))
-        ) {
-          didBuildModeRewrite = true
-
-          yield {
-            type: 'status_thinking',
-            content: 'Build Mode: rewriting response to use artifacts (no code blocks)…',
-          }
-          yield {
-            type: 'progress_step',
-            content: 'Build mode guardrail triggered: rewriting response to execute via tools',
-            progressStatus: 'running',
-            progressCategory: 'rewrite',
-          }
-          yield { type: 'reset', resetReason: 'build_mode_rewrite' }
-
-          const retryMessages: CompletionMessage[] = [
-            ...state.messages,
-            {
-              role: 'user',
-              content:
-                'Your previous answer included fenced code blocks, which are not allowed in Build Mode. ' +
-                'If you only provided a plan without using tools, you must now EXECUTE the plan. ' +
-                'Redo the work using tools only:\n' +
-                '- Use search_code or search_code_ast to locate relevant code quickly.\n' +
-                '- Use read_files to inspect context as needed.\n' +
-                '- Use write_files to apply code changes (complete file contents).\n' +
-                '- Use run_command to validate.\n' +
-                'In chat, output only a short summary and next steps. Do not include any fenced code blocks.\n\n' +
-                `Previous answer:\n${fullContent}`,
-            },
-          ]
-
-          const retryOptions: CompletionOptions = {
-            ...completionOptions,
-            messages: retryMessages,
-            tools: getToolsForMode(promptContext.chatMode),
-          }
-
-          fullContent = ''
-          pendingToolCalls = []
-          usage = undefined
-
-          for await (const chunk of this.options.provider.completionStream(retryOptions)) {
-            switch (chunk.type) {
-              case 'text':
-                if (chunk.content) {
-                  fullContent += chunk.content
-                  yield { type: 'text', content: chunk.content }
-                }
-                break
-              case 'tool_call':
-                if (chunk.toolCall) {
-                  pendingToolCalls.push(chunk.toolCall)
-                  yield { type: 'tool_call', toolCall: chunk.toolCall }
-                }
-                break
-              case 'finish':
-                if (chunk.usage) usage = chunk.usage
-                break
-              case 'error':
-                yield { type: 'error', error: chunk.error ?? 'Unknown error during streaming' }
-                return
-              default:
-                break
-            }
-          }
-        }
-
-        // Detect and extract inline tool calls (models that output tool calls as text JSON)
-        // This happens when models don't properly support function calling
-        if (
-          pendingToolCalls.length === 0 &&
-          fullContent.includes('"name"') &&
-          fullContent.includes('"arguments"')
-        ) {
-          const extracted = extractInlineToolCalls(fullContent)
-          if (extracted.toolCalls.length > 0) {
-            fullContent = extracted.cleanedContent
-            pendingToolCalls = extracted.toolCalls
-            yield {
-              type: 'status_thinking',
-              content: `Detected ${extracted.toolCalls.length} inline tool call(s) in response`,
-            }
-            for (const tc of extracted.toolCalls) {
-              yield { type: 'tool_call', toolCall: tc }
-            }
-          }
-        }
-
-        // Check for empty response - this can happen if the provider doesn't support tools
-        // or if there's an API issue that didn't trigger an error event
-        if (!fullContent.trim() && pendingToolCalls.length === 0) {
-          logRuntimeError('Empty response detected - no content and no tool calls')
-          yield {
-            type: 'error',
-            error:
-              'Model produced no output. This may indicate:\n' +
-              '1. The provider (Z.ai) does not support tools/function calling\n' +
-              '2. The API endpoint is not responding correctly\n' +
-              '3. The model configuration is incompatible\n\n' +
-              'Try using Plan mode (no tools) or switching to a different provider.',
-          }
-          state.isComplete = true
-          break
-        }
-
-        // Add assistant message to history
-        const assistantMessage: CompletionMessage = {
-          role: 'assistant',
-          content: fullContent,
-          ...(pendingToolCalls.length > 0 && { tool_calls: pendingToolCalls }),
-        }
-        state.messages.push(assistantMessage)
-
-        // Handle tool calls if any
-        if (pendingToolCalls.length > 0) {
-          // Limit tool calls per iteration to prevent abuse
-          if (pendingToolCalls.length > maxToolCallsPerIteration) {
-            yield {
-              type: 'status_thinking',
-              content: `Limiting to ${maxToolCallsPerIteration} tool calls out of ${pendingToolCalls.length} requested...`,
-            }
-            pendingToolCalls = pendingToolCalls.slice(0, maxToolCallsPerIteration)
-          }
-
-          // Deduplicate tool calls
-          if (enableDeduplication) {
-            const uniqueToolCalls: ToolCall[] = []
-            for (const toolCall of pendingToolCalls) {
-              const toolHash = hashToolCall(toolCall)
-
-              if (state.executedToolCalls.has(toolHash)) {
-                yield {
-                  type: 'status_thinking',
-                  content: `Skipping duplicate tool call: ${toolCall.function.name}`,
-                }
-                continue
-              }
-
-              uniqueToolCalls.push(toolCall)
-              state.executedToolCalls.add(toolHash)
-            }
-            pendingToolCalls = uniqueToolCalls
-          }
-
-          // Track tool call patterns for loop detection using full call signatures
-          // (name + arguments), not just tool names.
-          // This avoids false positives for legitimate repeated tools with different targets.
-          const currentToolPattern = buildToolCallPattern(pendingToolCalls)
-          state.toolCallHistory.push(currentToolPattern)
-
-          // Detect repeated identical tool call batches across recent iterations.
-          if (state.toolCallHistory.length >= toolLoopThreshold) {
-            const recentPatterns = state.toolCallHistory.slice(-toolLoopThreshold)
-            if (recentPatterns.every((pattern) => pattern === recentPatterns[0])) {
-              const toolSummary = summarizeToolCallNames(pendingToolCalls)
-              yield {
-                type: 'error',
-                error:
-                  `Detected repeated identical tool calls: ${toolSummary || 'unknown tools'}. ` +
-                  'Stopping to prevent infinite iteration.',
-              }
-              state.isComplete = true
-              break
-            }
-          }
-
-          // Execute each tool call
-          for (const toolCall of pendingToolCalls) {
-            yield {
-              type: 'status_thinking',
-              content: `Executing tool: ${toolCall.function.name}...`,
-            }
-            yield {
-              type: 'progress_step',
-              content: `Executing tool: ${toolCall.function.name}`,
-              progressStatus: 'running',
-              progressCategory: 'tool',
-              progressToolName: toolCall.function.name,
-              progressHasArtifactTarget:
-                toolCall.function.name === 'write_files' ||
-                toolCall.function.name === 'run_command',
-              progressArgs: (() => {
-                try {
-                  return JSON.parse(toolCall.function.arguments) as Record<string, unknown>
-                } catch (parseError) {
-                  void parseError
-                  return undefined
-                }
-              })(),
-            }
-
-            const result = await executeTool(toolCall, this.toolContext)
-            state.toolResults.push(result)
-
-            yield {
-              type: 'tool_result',
-              toolResult: result,
-            }
-            yield {
-              type: 'progress_step',
-              content: result.error
-                ? `Tool failed: ${toolCall.function.name}`
-                : `Tool completed: ${toolCall.function.name}`,
-              progressStatus: result.error ? 'error' : 'completed',
-              progressCategory: 'tool',
-              progressToolName: toolCall.function.name,
-              progressHasArtifactTarget:
-                toolCall.function.name === 'write_files' ||
-                toolCall.function.name === 'run_command',
-              progressDurationMs: result.durationMs,
-              progressError: result.error,
-            }
-
-            // Add tool result to messages
-            state.messages.push({
-              role: 'tool',
-              content: result.error
-                ? `Error: ${result.error}\n\nOutput: ${result.output}`
-                : result.output,
-              tool_call_id: toolCall.id,
-            })
-          }
-
-          // Continue loop for next iteration with tool results
-          continue
-        }
-
-        // No tool calls - agent is done
-        state.isComplete = true
-
-        // Yield complete event
-        yield {
-          type: 'progress_step',
-          content: 'Run complete: final response ready',
-          progressStatus: 'completed',
-          progressCategory: 'complete',
-        }
-        yield {
-          type: 'complete',
-          content: fullContent,
-          usage,
-        }
-      }
-
-      // Check if we hit max iterations
-      if (state.iteration >= maxIterations && !state.isComplete) {
-        yield {
-          type: 'error',
-          error: `Agent reached maximum iterations (${maxIterations}) without completing`,
-        }
-      }
-    } catch (error) {
-      yield {
-        type: 'error',
-        error: error instanceof Error ? error.message : String(error),
-      }
-    }
-  }
-
-  /**
-   * Run the agent without streaming (returns complete result)
-   */
-  async runSync(promptContext: PromptContext): Promise<{
-    content: string
-    toolResults: ToolExecutionResult[]
-    usage?: { promptTokens: number; completionTokens: number; totalTokens: number }
-    error?: string
-  }> {
-    const events: AgentEvent[] = []
-
-    for await (const event of this.run(promptContext)) {
-      events.push(event)
-    }
-
-    const completeEvent = events.find((e) => e.type === 'complete')
-    const errorEvent = events.find((e) => e.type === 'error')
-    const toolResults = events
-      .filter((e) => e.type === 'tool_result' && e.toolResult)
-      .map((e) => e.toolResult!)
-
-    return {
-      content: completeEvent?.content ?? '',
-      toolResults,
-      usage: completeEvent?.usage,
-      error: errorEvent?.error,
-    }
-  }
-}
-
-export function resolveHarnessAgentName(args: {
-  chatMode: PromptContext['chatMode']
-  harnessAgentName?: RuntimeConfig['harnessAgentName']
-}): string {
-  if (args.harnessAgentName) {
-    return args.harnessAgentName
-  }
-
-  return mapChatModeToHarnessAgent(args.chatMode)
-}
-
-function mapChatModeToHarnessAgent(chatMode: PromptContext['chatMode']): string {
-  // Keep the direct chat surface on the legacy conversational agents.
-  // Forge roles are exposed via the UI and explicit harnessAgentName overrides.
-  switch (chatMode) {
-    case 'ask':
-      return 'ask'
-    case 'architect':
-      return 'plan'
-    case 'code':
-      return 'code'
-    case 'build':
-      return 'build'
-    default:
-      return chatMode
-  }
 }
 
 function completionMessagesToHarnessMessages(args: {
@@ -918,7 +210,7 @@ function completionMessagesToHarnessMessages(args: {
             text: toText(msg),
           },
         ],
-        agent: 'build',
+        agent: 'builder',
       }
     }
 
@@ -997,7 +289,7 @@ function completionMessagesToHarnessMessages(args: {
         text: finalUserContent,
       },
     ],
-    agent: 'build',
+    agent: 'builder',
     ...(systemMessages.length > 0 ? { system: systemMessages.join('\n\n') } : {}),
   }
 
@@ -1009,6 +301,7 @@ function createHarnessToolExecutors(toolContext: ToolContext): Map<string, Harne
     'read_files',
     'list_directory',
     'write_files',
+    'apply_patch',
     'run_command',
     'search_codebase',
     'search_code',
@@ -1039,6 +332,130 @@ function createHarnessToolExecutors(toolContext: ToolContext): Map<string, Harne
   return executors
 }
 
+function buildInlineToolCallSummary(content: string): ToolCall[] {
+  const supportedNames = new Set([
+    'read_files',
+    'list_directory',
+    'write_files',
+    'apply_patch',
+    'run_command',
+    'search_codebase',
+    'search_code',
+    'search_code_ast',
+    'update_memory_bank',
+    'task',
+  ])
+
+  const calls: ToolCall[] = []
+  const patterns = [
+    /\{[^{}]*"name"\s*:\s*"([^"]+)"[^{}]*"arguments"\s*:\s*(\{[\s\S]*?\})\s*\}/g,
+    /\{[^{}]*"function"\s*:\s*\{[^{}]*"name"\s*:\s*"([^"]+)"[^{}]*"arguments"\s*:\s*(\{[\s\S]*?\})[^{}]*\}[^{}]*\}/g,
+  ]
+
+  for (const pattern of patterns) {
+    let match: RegExpExecArray | null
+    while ((match = pattern.exec(content)) !== null) {
+      const name = match[1]
+      const argumentsText = match[2]
+      if (!supportedNames.has(name)) continue
+      try {
+        JSON.parse(argumentsText)
+        calls.push({
+          id: `inline-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          type: 'function',
+          function: { name, arguments: argumentsText },
+        })
+      } catch {
+        continue
+      }
+    }
+  }
+
+  return calls
+}
+
+function inferPendingToolCallsFromText(content: string): ToolCall[] {
+  if (!content.includes('"name"') || !content.includes('"arguments"')) {
+    return []
+  }
+  return buildInlineToolCallSummary(content)
+}
+
+export function resolveHarnessAgentName(args: {
+  chatMode: PromptContext['chatMode']
+  harnessAgentName?: RuntimeConfig['harnessAgentName']
+}): string {
+  return resolveExecutionHarnessAgentName(args)
+}
+
+export function resolveLegacyHarnessAgentName(args: {
+  chatMode: PromptContext['chatMode']
+  harnessAgentName?: RuntimeConfig['harnessAgentName']
+}): string {
+  if (args.harnessAgentName) {
+    return args.harnessAgentName
+  }
+
+  return getLegacyHarnessAgent(args.chatMode)
+}
+
+function resolveExecutionHarnessAgentName(args: {
+  chatMode: PromptContext['chatMode']
+  harnessAgentName?: RuntimeConfig['harnessAgentName']
+}): string {
+  if (args.harnessAgentName) {
+    return args.harnessAgentName
+  }
+
+  return getDefaultForgeHarnessAgent(args.chatMode)
+}
+
+function createReasoningAwareProvider(
+  provider: LLMProvider,
+  reasoning: ReasoningOptions | undefined
+): LLMProvider {
+  const capabilities =
+    provider.config.capabilities ?? getDefaultProviderCapabilities(provider.config.provider)
+  if (!capabilities.supportsReasoning || !reasoning) {
+    return provider
+  }
+
+  return {
+    ...provider,
+    async complete(options) {
+      return await provider.complete({ ...options, reasoning })
+    },
+    async *completionStream(options) {
+      yield* provider.completionStream({ ...options, reasoning })
+    },
+  }
+}
+
+function shouldTriggerRewrite(args: {
+  promptContext: PromptContext
+  content: string
+  sawToolCall: boolean
+}): boolean {
+  if (args.promptContext.chatMode === 'architect') {
+    return shouldRewriteDiscussResponse(args.content)
+  }
+
+  if (args.promptContext.chatMode !== 'build') {
+    return false
+  }
+
+  return (
+    shouldRewriteBuildResponse(args.content) ||
+    shouldRetryBuildForToolUse({
+      promptContext: args.promptContext,
+      content: args.content,
+      pendingToolCalls: args.sawToolCall
+        ? [{ id: 'synthetic-tool', type: 'function', function: { name: 'tool', arguments: '{}' } }]
+        : inferPendingToolCallsFromText(args.content),
+    })
+  )
+}
+
 class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
   private pendingSpecApprovalResolver:
     | ((value: { decision: 'approve' | 'edit' | 'cancel'; spec?: FormalSpecification }) => void)
@@ -1061,12 +478,22 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
   }
 
   async *run(promptContext: PromptContext, config?: RuntimeConfig): AsyncGenerator<AgentEvent> {
+    const resolvedSkills = resolveAgentSkillsForPromptContext(promptContext)
+    for (const match of resolvedSkills.matches) {
+      yield {
+        type: 'progress_step',
+        content: `Skill matched: ${match.skill.name}`,
+        progressStatus: 'completed',
+        progressCategory: 'analysis',
+      }
+    }
+
     const sessionID =
       config?.harnessSessionID ?? `harness_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
     const riskInterruptsEnabled =
-      config?.harnessEnableRiskInterrupts ?? this.options.harnessEnableRiskInterrupts ?? true
+      config?.harnessEnableRiskInterrupts ?? this.options.harnessEnableRiskInterrupts ?? false
     const harnessEvalMode = config?.harnessEvalMode ?? this.options.harnessEvalMode
-    const specApprovalMode = config?.harnessSpecApprovalMode ?? 'interactive'
+    const specApprovalMode = config?.harnessSpecApprovalMode ?? 'auto_approve'
     const sessionPermissions = this.options.harnessSessionPermissions
     this.pendingSpecApprovalResolver = null
     this.abortController = new AbortController()
@@ -1074,6 +501,11 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
     if (sessionPermissions && Object.keys(sessionPermissions).length > 0) {
       harnessPermissions.setSessionPermissions(sessionID, sessionPermissions)
     }
+
+    const checkpointStore =
+      config?.harnessCheckpointStore ??
+      this.options.harnessCheckpointStore ??
+      new InMemoryCheckpointStore()
 
     const harnessRuntimeConfig: Partial<HarnessRuntimeConfig> = {
       ...(typeof config?.maxIterations === 'number' ? { maxSteps: config.maxIterations } : {}),
@@ -1086,12 +518,7 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
       ...(typeof config?.toolLoopThreshold === 'number'
         ? { toolLoopThreshold: config.toolLoopThreshold }
         : {}),
-      ...((config?.harnessCheckpointStore ?? this.options.harnessCheckpointStore)
-        ? {
-            checkpointStore: (config?.harnessCheckpointStore ??
-              this.options.harnessCheckpointStore) as HarnessCheckpointStore,
-          }
-        : {}),
+      checkpointStore,
       ...(riskInterruptsEnabled
         ? {
             toolRiskPolicy: { high: 'ask', critical: 'ask' as const },
@@ -1120,6 +547,7 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
         ? {
             toolRiskOverrides: {
               write_files: 'critical' as const,
+              apply_patch: 'critical' as const,
               run_command: 'critical' as const,
               update_memory_bank: 'critical' as const,
               task: 'critical' as const,
@@ -1152,11 +580,17 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
         })
       },
     }
-    const harnessRuntime = new HarnessRuntime(
+
+    const harnessProvider = createReasoningAwareProvider(
       this.options.provider,
+      this.options.reasoning
+    )
+    const harnessRuntime = new HarnessRuntime(
+      harnessProvider,
       createHarnessToolExecutors(this.toolContext),
       harnessRuntimeConfig
     )
+
     const completionMessages = getPromptForMode(promptContext)
     const { initialMessages, userMessage } = completionMessagesToHarnessMessages({
       sessionID,
@@ -1167,21 +601,16 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
       chatMode: promptContext.chatMode,
       harnessAgentName: config?.harnessAgentName,
     })
-
     userMessage.agent = harnessAgents.has(harnessAgentName) ? harnessAgentName : 'build'
 
     let attemptText = ''
     let sawToolCall = false
     let fenceTriggered = false
     let pendingComplete: AgentEvent | null = null
+
     let shouldResume = false
-    if (
-      config?.harnessAutoResume === true &&
-      (config.harnessCheckpointStore ?? this.options.harnessCheckpointStore)
-    ) {
+    if (config?.harnessAutoResume) {
       try {
-        const checkpointStore =
-          config.harnessCheckpointStore ?? this.options.harnessCheckpointStore!
         const checkpoint = await checkpointStore.load(sessionID)
         shouldResume = checkpoint !== null && checkpoint.reason !== 'complete'
       } catch (error) {
@@ -1189,19 +618,16 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
         shouldResume = false
       }
     }
-
     const source = shouldResume
       ? harnessRuntime.resume(sessionID)
       : harnessRuntime.run(sessionID, userMessage, initialMessages)
 
     for await (const event of source) {
-      // Check if abort was requested
       if (this.abortController?.signal.aborted) {
         return
       }
 
       const mapped = mapHarnessEventToAgentEvent(event)
-
       if (!mapped) continue
 
       if (mapped.type === 'tool_call') {
@@ -1216,6 +642,10 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
           progressArgs: mapped.toolCall
             ? (safeJSONParse<Record<string, unknown>>(mapped.toolCall.function.arguments, {}) ?? {})
             : undefined,
+          progressHasArtifactTarget:
+            mapped.toolCall?.function.name === 'write_files' ||
+            mapped.toolCall?.function.name === 'run_command' ||
+            mapped.toolCall?.function.name === 'apply_patch',
         }
         yield mapped
         continue
@@ -1234,6 +664,10 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
           progressArgs: mapped.toolResult?.args,
           progressDurationMs: mapped.toolResult?.durationMs,
           progressError: mapped.toolResult?.error,
+          progressHasArtifactTarget:
+            mapped.toolResult?.toolName === 'write_files' ||
+            mapped.toolResult?.toolName === 'run_command' ||
+            mapped.toolResult?.toolName === 'apply_patch',
         }
         yield mapped
         continue
@@ -1256,36 +690,26 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
             break
           }
         }
-
         attemptText += mapped.content
         yield mapped
         continue
       }
 
       if (mapped.type === 'complete') {
-        pendingComplete = { ...mapped }
+        pendingComplete = {
+          ...mapped,
+          content: attemptText,
+        }
         continue
       }
 
       yield mapped
     }
 
-    const shouldFallbackForArchitect =
-      promptContext.chatMode === 'architect' &&
-      (fenceTriggered || shouldRewriteDiscussResponse(attemptText))
-    const shouldFallbackForBuild =
-      promptContext.chatMode === 'build' &&
-      (fenceTriggered ||
-        shouldRewriteBuildResponse(attemptText) ||
-        shouldRetryBuildForToolUse({
-          promptContext,
-          content: attemptText,
-          pendingToolCalls: sawToolCall
-            ? [{ id: 'x', type: 'function', function: { name: 'tool', arguments: '{}' } }]
-            : [],
-        }))
-
-    if (shouldFallbackForArchitect || shouldFallbackForBuild) {
+    if (
+      fenceTriggered ||
+      shouldTriggerRewrite({ promptContext, content: attemptText, sawToolCall })
+    ) {
       yield {
         type: 'status_thinking',
         content:
@@ -1302,62 +726,120 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
         progressStatus: 'running',
         progressCategory: 'rewrite',
       }
+      yield {
+        type: 'reset',
+        resetReason:
+          promptContext.chatMode === 'architect' ? 'plan_mode_rewrite' : 'build_mode_rewrite',
+      }
 
-      // Rewrite within the harness instead of falling back to legacy runtime
       const rewriteMessage: CompletionMessage = {
         role: 'user',
         content:
           promptContext.chatMode === 'architect'
             ? 'Rewrite your previous answer into Plan Mode format. Do not include any fenced code blocks. Focus on architecture, design decisions, and implementation approach.'
-            : 'Your previous answer included fenced code blocks, which are not allowed in Build Mode. Use the write_files tool to create or modify files instead. In chat, output only a short summary and next steps. Do not include any fenced code blocks.',
+            : 'Your previous answer included fenced code blocks, which are not allowed in Build Mode. If you only provided a plan without using tools, you must now execute the work using tools. Use tool calls only, and keep chat output to a short summary with no fenced code blocks.',
       }
 
       const rewriteMessages = [...completionMessages, rewriteMessage]
+      const rewriteSessionID = `${sessionID}-rewrite`
       const { initialMessages: rewriteInitialMessages, userMessage: rewriteUserMessage } =
         completionMessagesToHarnessMessages({
-          sessionID: sessionID + '-rewrite',
+          sessionID: rewriteSessionID,
           messages: rewriteMessages,
         })
 
       rewriteUserMessage.agent = userMessage.agent
 
-      // Create a fresh harness runtime for the rewrite
       const rewriteRuntime = new HarnessRuntime(
-        this.options.provider,
+        harnessProvider,
         createHarnessToolExecutors(this.toolContext),
         {
           ...harnessRuntimeConfig,
+          checkpointStore: new InMemoryCheckpointStore(),
           specEngine: {
-            ...harnessRuntimeConfig.specEngine,
+            ...(harnessRuntimeConfig.specEngine ?? {}),
             enabled: false,
           },
         }
       )
 
-      // Continue with harness runtime for the rewrite
+      let rewriteText = ''
+      let rewriteComplete: AgentEvent | null = null
       for await (const event of rewriteRuntime.run(
-        sessionID + '-rewrite',
+        rewriteSessionID,
         rewriteUserMessage,
         rewriteInitialMessages
       )) {
         const mapped = mapHarnessEventToAgentEvent(event)
         if (!mapped) continue
-
-        if (mapped.type === 'text' && mapped.content) {
+        if (mapped.type === 'tool_call') {
+          yield {
+            type: 'progress_step',
+            content: `Running tool: ${mapped.toolCall?.function.name ?? 'unknown'}`,
+            progressStatus: 'running',
+            progressCategory: 'tool',
+            progressToolName: mapped.toolCall?.function.name,
+            progressToolCallId: mapped.toolCall?.id,
+            progressArgs: mapped.toolCall
+              ? (safeJSONParse<Record<string, unknown>>(mapped.toolCall.function.arguments, {}) ??
+                {})
+              : undefined,
+            progressHasArtifactTarget:
+              mapped.toolCall?.function.name === 'write_files' ||
+              mapped.toolCall?.function.name === 'run_command' ||
+              mapped.toolCall?.function.name === 'apply_patch',
+          }
           yield mapped
-        } else if (mapped.type === 'tool_result') {
-          yield mapped
-        } else if (mapped.type === 'complete') {
-          yield mapped
-          return
-        } else {
-          yield mapped
+          continue
         }
+        if (mapped.type === 'tool_result') {
+          yield {
+            type: 'progress_step',
+            content: `Tool ${mapped.toolResult?.error ? 'failed' : 'completed'}: ${
+              mapped.toolResult?.toolName ?? 'unknown'
+            }`,
+            progressStatus: mapped.toolResult?.error ? 'error' : 'completed',
+            progressCategory: 'tool',
+            progressToolName: mapped.toolResult?.toolName,
+            progressToolCallId: mapped.toolResult?.toolCallId,
+            progressArgs: mapped.toolResult?.args,
+            progressDurationMs: mapped.toolResult?.durationMs,
+            progressError: mapped.toolResult?.error,
+            progressHasArtifactTarget:
+              mapped.toolResult?.toolName === 'write_files' ||
+              mapped.toolResult?.toolName === 'run_command' ||
+              mapped.toolResult?.toolName === 'apply_patch',
+          }
+          yield mapped
+          continue
+        }
+        if (mapped.type === 'text' && mapped.content) {
+          const combined = rewriteText + mapped.content
+          const fenceIndex = combined.indexOf('```')
+          if (fenceIndex !== -1) {
+            const safePrefixLength = Math.max(0, fenceIndex - rewriteText.length)
+            if (safePrefixLength > 0) {
+              const safeText = mapped.content.slice(0, safePrefixLength)
+              rewriteText += safeText
+              yield { ...mapped, content: safeText }
+            }
+            continue
+          }
+          rewriteText += mapped.content
+          yield mapped
+          continue
+        }
+        if (mapped.type === 'complete') {
+          rewriteComplete = {
+            ...mapped,
+            content: rewriteText,
+          }
+          continue
+        }
+        yield mapped
       }
 
-      yield {
-        type: 'complete',
-      }
+      yield rewriteComplete ?? { type: 'complete', content: rewriteText }
       return
     }
 
@@ -1379,8 +861,9 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
       if (event.type === 'tool_result' && event.toolResult) {
         toolResults.push(event.toolResult)
       }
-      if (event.type === 'complete' && event.usage) {
+      if (event.type === 'complete') {
         usage = event.usage
+        content = event.content ?? content
       }
       if (event.type === 'error' && event.error) {
         error = event.error
@@ -1390,6 +873,8 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
     return { content, toolResults, usage, error }
   }
 }
+
+export class AgentRuntime extends HarnessAgentRuntimeAdapter {}
 
 function mapHarnessEventToAgentEvent(event: HarnessRuntimeEvent): AgentEvent | null {
   switch (event.type) {
@@ -1402,12 +887,11 @@ function mapHarnessEventToAgentEvent(event: HarnessRuntimeEvent): AgentEvent | n
       return { type: 'reasoning', reasoningContent: event.reasoningContent }
     case 'text':
       return { type: 'text', content: event.content }
-    case 'tool_call': {
+    case 'tool_call':
       return {
         type: 'tool_call',
         toolCall: event.toolCall,
       }
-    }
     case 'tool_result': {
       const toolResult: ToolExecutionResult = {
         toolCallId: event.toolResult?.toolCallId ?? `harness-result-${Date.now()}`,
@@ -1425,6 +909,27 @@ function mapHarnessEventToAgentEvent(event: HarnessRuntimeEvent): AgentEvent | n
         toolResult,
       }
     }
+    case 'status':
+      return event.content
+        ? {
+            type: 'status_thinking',
+            content: event.content,
+          }
+        : null
+    case 'warning':
+      return {
+        type: 'progress_step',
+        content: event.message ?? event.content ?? 'Warning',
+        progressStatus: 'error',
+        progressCategory: 'analysis',
+      }
+    case 'step_finish':
+      return {
+        type: 'progress_step',
+        content: `Step ${event.step ?? 0} complete`,
+        progressStatus: 'completed',
+        progressCategory: 'analysis',
+      }
     case 'spec_pending_approval':
       return {
         type: 'spec_pending_approval',
@@ -1513,19 +1018,13 @@ function mapHarnessEventToAgentEvent(event: HarnessRuntimeEvent): AgentEvent | n
   }
 }
 
-/**
- * Factory function to create an agent runtime
- */
 export function createAgentRuntime(
   options: RuntimeOptions,
   toolContext: ToolContext
 ): AgentRuntimeLike {
-  return new HarnessAgentRuntimeAdapter(options, toolContext)
+  return new AgentRuntime(options, toolContext)
 }
 
-/**
- * Quick helper to run an agent with minimal setup
- */
 export async function runAgent(
   provider: LLMProvider,
   promptContext: PromptContext,
@@ -1541,9 +1040,6 @@ export async function runAgent(
   return runtime.runSync(promptContext)
 }
 
-/**
- * Stream helper for React hooks
- */
 export async function* streamAgent(
   provider: LLMProvider,
   promptContext: PromptContext,

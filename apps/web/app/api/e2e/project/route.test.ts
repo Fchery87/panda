@@ -48,6 +48,10 @@ function getFunctionLabel(func: unknown): string {
   return 'convex-function'
 }
 
+async function importFreshRoute() {
+  return await import(`./route?test=${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
+}
+
 mock.module('convex/browser', () => ({
   ConvexHttpClient: MockConvexHttpClient,
 }))
@@ -84,7 +88,7 @@ describe('/api/e2e/project route', () => {
     setTestEnv()
     env.E2E_AUTH_BYPASS = 'false'
     try {
-      const { GET } = await import('./route')
+      const { GET } = await importFreshRoute()
 
       const response = await GET(new Request('http://localhost:3000/api/e2e/project'))
 
@@ -98,7 +102,7 @@ describe('/api/e2e/project route', () => {
     setTestEnv()
     queryResult = [{ _id: 'project-existing', name: 'Workbench E2E Fixture' }]
     try {
-      const { GET } = await import('./route')
+      const { GET } = await importFreshRoute()
 
       const response = await GET(
         new Request('http://localhost:3000/api/e2e/project?name=Workbench%20E2E%20Fixture')
@@ -119,7 +123,7 @@ describe('/api/e2e/project route', () => {
   test('creates a fixture project when none exists', async () => {
     setTestEnv()
     try {
-      const { GET } = await import('./route')
+      const { GET } = await importFreshRoute()
 
       const response = await GET(new Request('http://localhost:3000/api/e2e/project'))
 
@@ -172,7 +176,7 @@ describe('/api/e2e/project route', () => {
     }
 
     try {
-      const { GET } = await import('./route')
+      const { GET } = await importFreshRoute()
 
       const response = await GET(
         new Request('http://localhost:3000/api/e2e/project?ensureCapacity=1')
@@ -196,7 +200,7 @@ describe('/api/e2e/project route', () => {
     queryResult = [{ _id: 'project-existing', name: 'Workbench E2E Fixture' }]
     mutationResult = 'checkpoint-created'
     try {
-      const { GET } = await import('./route')
+      const { GET } = await importFreshRoute()
 
       const response = await GET(
         new Request(
@@ -237,7 +241,7 @@ describe('/api/e2e/project route', () => {
     queryResult = [{ _id: 'project-existing', name: 'Workbench E2E Fixture' }]
     mutationResult = 'artifact-created'
     try {
-      const { GET } = await import('./route')
+      const { GET } = await importFreshRoute()
 
       const response = await GET(
         new Request(
@@ -284,7 +288,7 @@ describe('/api/e2e/project route', () => {
     setTestEnv()
     queryResult = [{ _id: 'project-existing', name: 'Workbench E2E Fixture' }]
     try {
-      const { GET } = await import('./route')
+      const { GET } = await importFreshRoute()
 
       const response = await GET(
         new Request(
@@ -318,7 +322,7 @@ describe('/api/e2e/project route', () => {
     queryResult = [{ _id: 'project-existing', name: 'Workbench E2E Fixture' }]
     mutationResult = 'chat-updated'
     try {
-      const { GET } = await import('./route')
+      const { GET } = await importFreshRoute()
 
       const response = await GET(
         new Request(
@@ -410,7 +414,7 @@ describe('/api/e2e/project route', () => {
     }
 
     try {
-      const { GET } = await import('./route')
+      const { GET } = await importFreshRoute()
 
       const response = await GET(
         new Request(
@@ -442,7 +446,7 @@ describe('/api/e2e/project route', () => {
     setTestEnv()
     mutationError = new Error('Unauthorized: Authentication required')
     try {
-      const { GET } = await import('./route')
+      const { GET } = await importFreshRoute()
 
       const response = await GET(new Request('http://localhost:3000/api/e2e/project'))
 
@@ -493,7 +497,7 @@ describe('/api/e2e/project route', () => {
     }
 
     try {
-      const { GET } = await import('./route')
+      const { GET } = await importFreshRoute()
 
       const response = await GET(new Request('http://localhost:3000/api/e2e/project'))
 
@@ -538,7 +542,7 @@ describe('/api/e2e/project route', () => {
     }
 
     try {
-      const { GET } = await import('./route')
+      const { GET } = await importFreshRoute()
 
       const response = await GET(new Request('http://localhost:3000/api/e2e/project'))
 
@@ -593,7 +597,7 @@ describe('/api/e2e/project route', () => {
     }
 
     try {
-      const { GET } = await import('./route')
+      const { GET } = await importFreshRoute()
 
       const response = await GET(
         new Request('http://localhost:3000/api/e2e/project?name=Loop%20Debug%20Fixture')

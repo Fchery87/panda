@@ -14,9 +14,11 @@ import {
   type BudgetAllocationOptions,
   type FileBudgetInfo,
 } from './context/context-budget'
+import { CHAT_MODE_CONFIGS, type ChatMode } from './chat-modes'
 import { resolveAgentSkillsForPromptContext } from './skills/resolver'
 
-export type ChatMode = 'ask' | 'architect' | 'code' | 'build'
+export type { ChatMode } from './chat-modes'
+
 type LegacyChatMode = ChatMode | 'discuss' | 'debug' | 'review'
 
 /**
@@ -29,24 +31,17 @@ export interface ModeConfig {
   fileAccess: 'read-only' | 'read-write'
 }
 
-export const MODE_CONFIGS: Record<ChatMode, ModeConfig> = {
-  ask: {
-    description: 'Read-only Q&A without modifications',
-    fileAccess: 'read-only',
-  },
-  architect: {
-    description: 'System design and planning',
-    fileAccess: 'read-only',
-  },
-  code: {
-    description: 'Default implementation mode',
-    fileAccess: 'read-write',
-  },
-  build: {
-    description: 'Full implementation',
-    fileAccess: 'read-write',
-  },
-}
+export const MODE_CONFIGS: Record<ChatMode, ModeConfig> = Object.fromEntries(
+  (
+    Object.entries(CHAT_MODE_CONFIGS) as Array<[ChatMode, (typeof CHAT_MODE_CONFIGS)[ChatMode]]>
+  ).map(([mode, config]) => [
+    mode,
+    {
+      description: config.description,
+      fileAccess: config.fileAccess,
+    },
+  ])
+) as Record<ChatMode, ModeConfig>
 
 /**
  * Context for prompt generation
