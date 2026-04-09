@@ -18,6 +18,8 @@ import {
   Minimize2,
   TerminalSquare,
   ChevronUp,
+  FolderTree,
+  LayoutPanelTop,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SpecHistory } from './SpecHistory'
@@ -99,49 +101,136 @@ interface EmptyStateProps {
 
 function EmptyState({ onCreateFile, onOpenSearch, variant = 'desktop' }: EmptyStateProps) {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-6 px-6 text-center text-muted-foreground">
-      <div className="flex flex-col items-center gap-4">
+    <div className="dot-grid flex h-full flex-col items-center justify-center gap-6 px-6 text-center text-muted-foreground">
+      <div className="surface-1 shadow-sharp-md flex w-full max-w-lg flex-col items-center gap-5 border border-border px-6 py-8">
+        <div className="flex items-center gap-2 self-start font-mono text-[10px] uppercase tracking-[0.24em] text-primary">
+          <LayoutPanelTop className="h-3.5 w-3.5" />
+          Workspace Ready
+        </div>
         <div className="flex h-16 w-16 items-center justify-center rounded-none border border-border bg-muted/50">
           <FileCode className="h-8 w-8 text-muted-foreground" />
         </div>
         <div className="space-y-2">
           <h3 className="font-mono text-lg font-medium text-foreground">No file selected</h3>
-          <p className="max-w-xs text-sm text-muted-foreground">
+          <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
             {variant === 'mobile'
               ? 'Open Files tab and select a file to edit'
-              : 'Select a file from the explorer, or create a new file to get started'}
+              : 'Select a file from the explorer, search across the project, or create a new file to start building.'}
           </p>
+        </div>
+
+        <div className="grid w-full gap-3 sm:grid-cols-2">
+          {onCreateFile && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 rounded-none font-mono text-xs uppercase tracking-wider"
+              onClick={() => onCreateFile('')}
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              New File
+            </Button>
+          )}
+          {onOpenSearch && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 rounded-none font-mono text-xs uppercase tracking-wider"
+              onClick={onOpenSearch}
+            >
+              <Search className="mr-1.5 h-3.5 w-3.5" />
+              Search Project
+            </Button>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/60">
+          <span className="surface-0 border border-border px-2 py-1">Inspect</span>
+          <span className="surface-0 border border-border px-2 py-1">Edit</span>
+          <span className="surface-0 border border-border px-2 py-1">Ship</span>
+        </div>
+
+        <div className="font-mono text-xs text-muted-foreground/50">
+          <kbd className="rounded-none bg-muted px-1.5 py-0.5">Ctrl</kbd>+
+          <kbd className="rounded-none bg-muted px-1.5 py-0.5">K</kbd> to open command palette
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface WorkspaceHeaderProps {
+  selectedFilePath: string | null
+  tabCount: number
+  fileCount: number
+  isTerminalExpanded: boolean
+  onOpenSearch: () => void
+  onToggleTerminal: () => void
+}
+
+function WorkspaceHeader({
+  selectedFilePath,
+  tabCount,
+  fileCount,
+  isTerminalExpanded,
+  onOpenSearch,
+  onToggleTerminal,
+}: WorkspaceHeaderProps) {
+  const activeLabel = selectedFilePath?.split('/').pop() ?? 'Workspace overview'
+  const activePath = selectedFilePath?.includes('/')
+    ? selectedFilePath.split('/').slice(0, -1).join('/')
+    : 'root'
+
+  return (
+    <div className="surface-1 flex shrink-0 items-center justify-between gap-3 border-b border-border px-3 py-2.5">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.24em] text-primary">
+          <LayoutPanelTop className="h-3.5 w-3.5" />
+          Workbench
+        </div>
+        <div className="mt-1 flex min-w-0 items-center gap-2">
+          <span className="truncate font-mono text-sm font-medium text-foreground">
+            {activeLabel}
+          </span>
+          <span className="hidden font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground md:inline">
+            {activePath}
+          </span>
         </div>
       </div>
 
-      <div className="flex gap-3">
-        {onCreateFile && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 rounded-none font-mono text-xs"
-            onClick={() => onCreateFile('')}
-          >
-            <Plus className="mr-1.5 h-3.5 w-3.5" />
-            New File
-          </Button>
-        )}
-        {onOpenSearch && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 rounded-none font-mono text-xs"
-            onClick={onOpenSearch}
-          >
-            <Search className="mr-1.5 h-3.5 w-3.5" />
-            Search
-          </Button>
-        )}
-      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <div className="hidden items-center gap-2 md:flex">
+          <span className="surface-0 flex items-center gap-1.5 border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            <FolderTree className="h-3.5 w-3.5" />
+            {fileCount} files
+          </span>
+          <span className="surface-0 border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            {tabCount} tabs
+          </span>
+        </div>
 
-      <div className="font-mono text-xs text-muted-foreground/50">
-        <kbd className="rounded-none bg-muted px-1.5 py-0.5">Ctrl</kbd>+
-        <kbd className="rounded-none bg-muted px-1.5 py-0.5">K</kbd> to open command palette
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onOpenSearch}
+          className="h-8 rounded-none font-mono text-[10px] uppercase tracking-[0.18em]"
+        >
+          <Search className="mr-1.5 h-3.5 w-3.5" />
+          Search
+        </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onToggleTerminal}
+          className="h-8 rounded-none font-mono text-[10px] uppercase tracking-[0.18em]"
+          aria-pressed={isTerminalExpanded}
+        >
+          <TerminalIcon className="mr-1.5 h-3.5 w-3.5" />
+          {isTerminalExpanded ? 'Hide Terminal' : 'Show Terminal'}
+        </Button>
       </div>
     </div>
   )
@@ -472,6 +561,15 @@ export function Workbench({
             className="min-h-0 min-w-0"
           >
             <div className="surface-0 flex h-full min-h-0 min-w-0 flex-col">
+              <WorkspaceHeader
+                selectedFilePath={selectedFilePath}
+                tabCount={openTabs.length}
+                fileCount={files.length}
+                isTerminalExpanded={isTerminalExpanded}
+                onOpenSearch={() => onSidebarSectionChange('search')}
+                onToggleTerminal={() => setIsTerminalExpanded((prev) => !prev)}
+              />
+
               {/* File Tabs */}
               {openTabs.length > 0 && (
                 <FileTabs
@@ -534,15 +632,15 @@ export function Workbench({
               >
                 <div className="flex h-full min-h-0 min-w-0 flex-col">
                   {/* Terminal Header with Minimize Button */}
-                  <div className="surface-1 flex h-8 shrink-0 items-center justify-between border-b border-border px-3">
+                  <div className="surface-1 flex h-9 shrink-0 items-center justify-between border-b border-border px-3">
                     <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
                       <TerminalIcon className="h-3.5 w-3.5" />
-                      <span>Terminal</span>
+                      <span className="uppercase tracking-[0.18em]">Terminal Console</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => setIsTerminalExpanded(false)}
-                      className="flex h-6 w-6 items-center justify-center rounded-none text-muted-foreground hover:text-foreground"
+                      className="flex h-7 w-7 items-center justify-center rounded-none border border-transparent text-muted-foreground hover:border-border hover:text-foreground"
                       title="Minimize terminal"
                       aria-label="Minimize terminal"
                     >
@@ -556,15 +654,15 @@ export function Workbench({
               </Panel>
             </>
           ) : (
-            <div className="surface-1 flex h-8 shrink-0 items-center justify-between border-t border-border px-3">
+            <div className="surface-1 flex h-9 shrink-0 items-center justify-between border-t border-border px-3">
               <button
                 type="button"
                 onClick={() => setIsTerminalExpanded(true)}
-                className="flex items-center gap-2 font-mono text-xs text-muted-foreground hover:text-foreground"
+                className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground"
               >
                 <ChevronUp className="h-3.5 w-3.5" />
                 <TerminalIcon className="h-3.5 w-3.5" />
-                <span>Terminal</span>
+                <span>Terminal Console</span>
               </button>
               <span className="font-mono text-[10px] text-muted-foreground/50">
                 <kbd className="rounded-none bg-muted px-1">Ctrl</kbd>+

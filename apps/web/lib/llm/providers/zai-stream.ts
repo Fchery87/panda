@@ -65,7 +65,14 @@ export async function* zaiCompletionStream(
 
     if (!response.ok) {
       const errorText = await response.text()
-      appLog.error('[zaiCompletionStream] HTTP error:', response.status, errorText)
+      if (response.status === 429) {
+        appLog.warn('[zaiCompletionStream] Rate limited by provider:', {
+          status: response.status,
+          errorText,
+        })
+      } else {
+        appLog.error('[zaiCompletionStream] HTTP error:', response.status, errorText)
+      }
       yield {
         type: 'error',
         error: `Z.ai API error (${response.status}): ${errorText}`,

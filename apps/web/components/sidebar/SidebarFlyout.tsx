@@ -13,6 +13,15 @@ const SECTION_LABELS: Record<SidebarSection, string> = {
   terminal: 'Terminal',
 }
 
+const SECTION_DESCRIPTIONS: Record<SidebarSection, string> = {
+  explorer: 'Navigate project files and symbols',
+  search: 'Jump into code by meaning or text',
+  history: 'Move across prior runs and chats',
+  specs: 'Track constraints and implementation plans',
+  git: 'Review repository state and diffs',
+  terminal: 'Launch shell commands in context',
+}
+
 interface SidebarFlyoutProps {
   isOpen: boolean
   activeSection: SidebarSection
@@ -31,7 +40,24 @@ export function SidebarFlyout({ isOpen, activeSection, children }: SidebarFlyout
           className="surface-1 h-full flex-shrink-0 overflow-hidden border-r border-border"
         >
           <div className="flex h-full w-[220px] flex-col">
-            <div className="panel-header-compact shrink-0">{SECTION_LABELS[activeSection]}</div>
+            <div className="surface-0 shrink-0 border-b border-border px-3 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-primary">
+                    Panel
+                  </p>
+                  <h2 className="mt-1 font-mono text-sm font-medium text-foreground">
+                    {SECTION_LABELS[activeSection]}
+                  </h2>
+                </div>
+                <div className="surface-1 flex h-7 min-w-7 items-center justify-center border border-border px-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                  {SECTION_LABELS[activeSection].slice(0, 2)}
+                </div>
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                {SECTION_DESCRIPTIONS[activeSection]}
+              </p>
+            </div>
             <div className="flex-1 overflow-auto">{children}</div>
           </div>
         </motion.div>

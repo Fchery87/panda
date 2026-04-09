@@ -173,8 +173,8 @@ export function FileTabs({
                 }}
                 aria-label={ariaLabel}
                 className={cn(
-                  'group relative flex cursor-pointer items-center gap-1.5 px-3 py-1.5',
-                  'border-r border-border font-mono text-xs',
+                  'group relative flex cursor-pointer items-center gap-2 px-3 py-2',
+                  'min-w-0 border-r border-border font-mono text-xs',
                   'transition-colors duration-150',
                   isPlanTab && 'bg-background/95',
                   isActive
@@ -199,9 +199,16 @@ export function FileTabs({
                   getFileIcon(filename)
                 )}
 
-                <span className="max-w-[120px] truncate">
-                  {isPlanTab ? `Plan: ${filename}` : filename}
-                </span>
+                <div className="flex min-w-0 flex-col">
+                  <span className="max-w-[140px] truncate leading-none">
+                    {isPlanTab ? `Plan: ${filename}` : filename}
+                  </span>
+                  {!isPlanTab && (
+                    <span className="max-w-[140px] truncate pt-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground/60">
+                      {tab.path.includes('/') ? tab.path.split('/').slice(0, -1).join('/') : 'root'}
+                    </span>
+                  )}
+                </div>
 
                 {!isPlanTab && tab.isDirty && (
                   <span className="h-1.5 w-1.5 rounded-full bg-primary" />
@@ -229,11 +236,11 @@ export function FileTabs({
 
         {/* Action Strip */}
         {onOpenAgentManager && (
-          <div className="flex items-center gap-1 border-l border-border px-2">
+          <div className="surface-0 sticky right-0 flex items-center gap-1 border-l border-border px-2">
             <button
               type="button"
               onClick={onOpenAgentManager}
-              className="hover:bg-surface-2 flex h-7 items-center gap-1.5 rounded-none px-2 font-mono text-[10px] uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
+              className="hover:bg-surface-2 flex h-8 items-center gap-1.5 rounded-none border border-transparent px-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:border-border hover:text-foreground"
               title="Open Agent Manager"
             >
               <IconBot className="h-3.5 w-3.5" weight="duotone" />

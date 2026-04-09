@@ -138,7 +138,7 @@ const JobCard: React.FC<{
       layout
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="surface-2 overflow-hidden rounded-none border border-border/50"
+      className="surface-2 shadow-sharp-sm overflow-hidden rounded-none border border-border/60"
     >
       {/* Job Header */}
       <div
@@ -162,7 +162,7 @@ const JobCard: React.FC<{
           </button>
           <div className="flex flex-col gap-0.5">
             <span className="font-mono text-sm font-medium text-foreground">{job.command}</span>
-            <span className="text-xs text-muted-foreground">
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
               {new Date(job.createdAt).toLocaleString()}
             </span>
           </div>
@@ -356,7 +356,7 @@ export function Terminal({ projectId }: TerminalProps) {
   }, [])
 
   return (
-    <div className="surface-0 flex h-full flex-col">
+    <div className="surface-0 dot-grid flex h-full flex-col">
       {/* Terminal Header */}
       <div className="surface-2 flex items-center justify-between border-b border-border/50 px-3 py-2.5">
         <div className="flex items-center gap-3">
@@ -395,9 +395,9 @@ export function Terminal({ projectId }: TerminalProps) {
               Loading jobs...
             </div>
           ) : jobs.length === 0 ? (
-            <div className="flex h-32 flex-col items-center justify-center text-muted-foreground/60">
+            <div className="surface-1 shadow-sharp-md flex h-40 flex-col items-center justify-center border border-border text-muted-foreground/60">
               <TerminalSquare className="mb-2 h-8 w-8 opacity-50" />
-              <span className="text-sm">No jobs yet</span>
+              <span className="font-mono text-sm uppercase tracking-[0.18em]">No jobs yet</span>
               <span className="mt-1 text-xs">Type a command below to get started</span>
             </div>
           ) : (

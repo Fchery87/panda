@@ -64,9 +64,15 @@ export function SidebarRail({
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="surface-1 flex h-full w-12 flex-shrink-0 flex-col border-r border-border">
+      <div className="surface-1 flex h-full w-14 flex-shrink-0 flex-col border-r border-border">
+        <div className="flex h-14 items-center justify-center border-b border-border">
+          <div className="surface-0 shadow-sharp-sm flex h-8 w-8 items-center justify-center border border-border font-mono text-[10px] font-semibold uppercase tracking-[0.24em] text-foreground">
+            P
+          </div>
+        </div>
+
         {/* Top section - Navigation items */}
-        <div className="flex flex-col">
+        <div className="flex flex-col py-2">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon
             const isActive = item.id === activeSection
@@ -78,15 +84,15 @@ export function SidebarRail({
                     type="button"
                     onClick={() => handleItemClick(item.id)}
                     className={cn(
-                      'relative flex h-12 w-12 items-center justify-center transition-colors duration-150',
+                      'relative mx-1 flex h-12 items-center justify-center border border-transparent transition-colors duration-150',
                       isActive
-                        ? 'bg-surface-2 text-foreground'
-                        : 'hover:bg-surface-2 text-muted-foreground hover:text-foreground'
+                        ? 'bg-surface-2 shadow-sharp-sm border-border text-foreground'
+                        : 'hover:bg-surface-2 text-muted-foreground hover:border-border hover:text-foreground'
                     )}
                     aria-label={item.label}
                     aria-pressed={isActive}
                   >
-                    {isActive && <div className="absolute left-0 top-0 h-full w-0.5 bg-primary" />}
+                    {isActive && <div className="absolute inset-y-1 left-0 w-0.5 bg-primary" />}
                     <Icon className="h-5 w-5" />
                   </button>
                 </TooltipTrigger>
@@ -105,12 +111,12 @@ export function SidebarRail({
         <div className="flex-1" />
 
         {/* Bottom section - Settings and Docs */}
-        <div className="flex flex-col">
+        <div className="flex flex-col border-t border-border py-2">
           <Tooltip>
             <TooltipTrigger asChild>
               <Link
                 href="/settings"
-                className="hover:bg-surface-2 flex h-12 w-12 items-center justify-center text-muted-foreground transition-colors duration-150 hover:text-foreground"
+                className="hover:bg-surface-2 mx-1 flex h-12 items-center justify-center border border-transparent text-muted-foreground transition-colors duration-150 hover:border-border hover:text-foreground"
                 aria-label="Settings"
               >
                 <IconSettings className="h-5 w-5" />
@@ -125,7 +131,7 @@ export function SidebarRail({
             <TooltipTrigger asChild>
               <Link
                 href="/education"
-                className="hover:bg-surface-2 flex h-12 w-12 items-center justify-center text-muted-foreground transition-colors duration-150 hover:text-foreground"
+                className="hover:bg-surface-2 mx-1 flex h-12 items-center justify-center border border-transparent text-muted-foreground transition-colors duration-150 hover:border-border hover:text-foreground"
                 aria-label="Documentation"
               >
                 <IconDocs className="h-5 w-5" />
