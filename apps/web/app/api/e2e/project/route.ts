@@ -86,6 +86,35 @@ interface StructuredPlanningSessionPlanSeed {
   acceptanceChecks?: string[]
 }
 
+function buildSeededExecutionEvents() {
+  return [
+    {
+      sequence: 1,
+      type: 'progress_step' as const,
+      content: 'Tool completed: write_files',
+      status: 'completed' as const,
+      progressCategory: 'tool' as const,
+      progressToolName: 'write_files',
+      targetFilePaths: ['apps/web/components/chat/MessageList.tsx'],
+    },
+    {
+      sequence: 2,
+      type: 'progress_step' as const,
+      content: 'Tool completed: run_command',
+      status: 'completed' as const,
+      progressCategory: 'tool' as const,
+      progressToolName: 'run_command',
+    },
+    {
+      sequence: 3,
+      type: 'progress_step' as const,
+      content: 'Run complete',
+      status: 'completed' as const,
+      progressCategory: 'complete' as const,
+    },
+  ]
+}
+
 function isE2EFixtureModeEnabled(request: Request): boolean {
   if (process.env.NODE_ENV === 'production') {
     return false
@@ -343,6 +372,7 @@ export async function GET(request: Request) {
     const fileContent = url.searchParams.get('fileContent') ?? ''
     const artifactContent = url.searchParams.get('artifactContent') ?? null
     const seedRuntimeCheckpoint = url.searchParams.get('seedRuntimeCheckpoint') === '1'
+    const seedExecutionUpdates = url.searchParams.get('seedExecutionUpdates') === '1'
     const autoApplyFiles = url.searchParams.get('autoApplyFiles')
     const autoRunCommands = url.searchParams.get('autoRunCommands')
     const planDraft = url.searchParams.get('planDraft')?.trim() || null
@@ -456,6 +486,7 @@ export async function GET(request: Request) {
       filePath ||
       artifactContent ||
       seedRuntimeCheckpoint ||
+      seedExecutionUpdates ||
       planDraft ||
       planStatus ||
       structuredPlanningSession ||
@@ -529,6 +560,35 @@ export async function GET(request: Request) {
       await convex.mutation(api.agentRuns.saveRuntimeCheckpoint, {
         chatId,
         checkpoint: buildSeededRuntimeCheckpoint(sessionID),
+      })
+    }
+
+    if (seedExecutionUpdates && chatId) {
+      const projectRecord = (await convex.query(api.projects.get, {
+        id: projectId,
+      })) as { createdBy: Id<'users'> } | null
+      if (!projectRecord) {
+        throw new Error('Fixture project not found while seeding execution updates')
+      }
+
+      const runId = await convex.mutation(api.agentRuns.create, {
+        projectId,
+        chatId,
+        userId: projectRecord.createdBy,
+        mode: 'build',
+        provider: 'openai',
+        model: 'fixture-model',
+        userMessage: 'Seed execution updates',
+      })
+
+      await convex.mutation(api.agentRuns.appendEvents, {
+        runId,
+        events: buildSeededExecutionEvents(),
+      })
+
+      await convex.mutation(api.agentRuns.complete, {
+        runId,
+        summary: 'Seeded execution update history',
       })
     }
 

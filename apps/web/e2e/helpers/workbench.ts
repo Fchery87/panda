@@ -223,6 +223,7 @@ export async function openWorkbenchProjectFixture(
     autoApplyFiles?: boolean
     autoRunCommands?: boolean
     seedRuntimeCheckpoint?: boolean
+    seedExecutionUpdates?: boolean
     planDraft?: string
     planStatus?: 'awaiting_review' | 'approved' | 'stale' | 'executing' | 'completed' | 'failed'
     structuredPlanningSession?: {
@@ -266,6 +267,9 @@ export async function openWorkbenchProjectFixture(
   }
   if (options?.seedRuntimeCheckpoint) {
     params.set('seedRuntimeCheckpoint', '1')
+  }
+  if (options?.seedExecutionUpdates) {
+    params.set('seedExecutionUpdates', '1')
   }
   if (options?.planDraft) {
     params.set('planDraft', options.planDraft)

@@ -3,10 +3,15 @@ import {
   buildAssistantMessageTranscriptBlocks,
   buildTranscriptFeedItems,
 } from './transcript-blocks'
+import {
+  getSurfacedTranscriptModePolicies,
+  getTranscriptModePolicy,
+  mapRunEventToSurface,
+} from './transcript-policy'
 import type { Message } from '@/components/chat/types'
 
 describe('transcript blocks', () => {
-  test('builds assistant message blocks for reasoning, text, and tools', () => {
+  test('builds assistant message blocks for reasoning and text only', () => {
     const message: Message = {
       _id: 'assistant-1',
       role: 'assistant',
@@ -33,11 +38,10 @@ describe('transcript blocks', () => {
     expect(buildAssistantMessageTranscriptBlocks(message)).toEqual([
       expect.objectContaining({ kind: 'thinking_teaser' }),
       expect.objectContaining({ kind: 'assistant_text' }),
-      expect.objectContaining({ kind: 'tool_result' }),
     ])
   })
 
-  test('adds compact transcript tail items for live progress and approvals', () => {
+  test('returns transcript messages without operational tail items', () => {
     const messages: Message[] = [
       {
         _id: 'user-1',
@@ -56,6 +60,7 @@ describe('transcript blocks', () => {
 
     const items = buildTranscriptFeedItems({
       messages,
+      chatMode: 'architect',
       isStreaming: true,
       liveSteps: [
         {
@@ -102,19 +107,100 @@ describe('transcript blocks', () => {
       planStatus: 'approved',
     })
 
-    expect(items.map((item) => item.type)).toEqual([
-      'message',
-      'message',
-      'block',
-      'block',
-      'block',
-      'block',
-    ])
+    expect(items.map((item) => item.type)).toEqual(['message', 'message'])
+  })
+
+  test('adds compact milestone summaries for Build transcript surfaces', () => {
+    const messages: Message[] = [
+      {
+        _id: 'assistant-1',
+        role: 'assistant',
+        content: 'Working on it.',
+        annotations: { mode: 'build' },
+        createdAt: 200,
+      },
+    ]
+
+    const items = buildTranscriptFeedItems({
+      messages,
+      chatMode: 'code',
+      runEvents: [
+        {
+          _id: 'event-1',
+          type: 'progress_step',
+          content: 'Tool completed: write_files',
+          status: 'completed',
+          progressCategory: 'tool',
+          progressToolName: 'write_files',
+          targetFilePaths: ['apps/web/components/chat/MessageList.tsx'],
+          createdAt: 260,
+        },
+        {
+          _id: 'event-2',
+          type: 'progress_step',
+          content: 'Tool completed: run_command',
+          status: 'completed',
+          progressCategory: 'tool',
+          progressToolName: 'run_command',
+          createdAt: 300,
+        },
+        {
+          _id: 'event-3',
+          type: 'progress_step',
+          content: 'Run complete',
+          status: 'completed',
+          progressCategory: 'complete',
+          createdAt: 340,
+        },
+      ],
+    })
+
+    expect(items.map((item) => item.type)).toEqual(['message', 'block', 'block', 'block'])
+    expect(items[1]).toEqual(
+      expect.objectContaining({
+        type: 'block',
+        block: expect.objectContaining({
+          kind: 'execution_update',
+          title: 'Updated files',
+        }),
+      })
+    )
     expect(items[2]).toEqual(
       expect.objectContaining({
         type: 'block',
-        block: expect.objectContaining({ kind: 'progress_line' }),
+        block: expect.objectContaining({ title: 'Ran verification' }),
       })
     )
+    expect(items[3]).toEqual(
+      expect.objectContaining({
+        type: 'block',
+        block: expect.objectContaining({ title: 'Completed run' }),
+      })
+    )
+  })
+
+  test('maps tool and progress events to inspector surface', () => {
+    expect(mapRunEventToSurface({ type: 'tool_call' })).toBe('inspector')
+    expect(mapRunEventToSurface({ type: 'progress_step', progressCategory: 'analysis' })).toBe(
+      'inspector'
+    )
+    expect(mapRunEventToSurface({ type: 'snapshot' })).toBe('inspector')
+  })
+
+  test('defines plan mode transcript policy around plan actions instead of trace rows', () => {
+    const policy = getTranscriptModePolicy('architect')
+
+    expect(policy.chatAllows).toContain('plan_actions')
+    expect(policy.inspectorOwns).toContain('tool_calls')
+    expect(policy.inspectorOwns).toContain('progress_steps')
+    expect(policy.inspectorOwns).toContain('snapshots')
+  })
+
+  test('exposes surfaced Panda transcript modes as Plan, Build, and Builder', () => {
+    expect(getSurfacedTranscriptModePolicies().map((policy) => policy.surfaceLabel)).toEqual([
+      'Plan',
+      'Build',
+      'Builder',
+    ])
   })
 })

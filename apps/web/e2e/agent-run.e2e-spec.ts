@@ -99,4 +99,19 @@ Ship the seeded structured planning workflow
       timeout: 15_000,
     })
   })
+
+  test('seeded execution updates render as transcript execution cards', async ({ page }) => {
+    test.setTimeout(120_000)
+
+    await openWorkbenchProjectFixture(page, {
+      name: `Agent Run Execution Cards ${Date.now()}`,
+      seedExecutionUpdates: true,
+    })
+
+    await expect(page.getByText(/build update/i).first()).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText(/updated files/i).first()).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText(/ran verification/i).first()).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText(/completed run/i).first()).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText(/^spec approved$/i)).toHaveCount(0)
+  })
 })

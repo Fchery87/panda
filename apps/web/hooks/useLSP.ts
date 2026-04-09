@@ -51,7 +51,9 @@ export function useLSP({
           setDiagnostics(diags)
         },
         onConnectionError: (err) => {
-          console.error('[useLSP] Connection error:', err)
+          if (err.name !== 'LSPWebSocketUnavailableError') {
+            console.error('[useLSP] Connection error:', err)
+          }
           setIsConnected(false)
         },
       })
@@ -80,7 +82,9 @@ export function useLSP({
         await clientRef.current?.connect()
         setIsConnected(true)
       } catch (err) {
-        console.error('[useLSP] Failed to connect:', err)
+        if (!(err instanceof Error) || err.name !== 'LSPWebSocketUnavailableError') {
+          console.error('[useLSP] Failed to connect:', err)
+        }
         setIsConnected(false)
       } finally {
         isConnectingRef.current = false

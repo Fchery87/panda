@@ -76,7 +76,7 @@ export function ChatActionBar({
   }
 
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence>
       {showPlanCard && (
         <motion.div
           key="plan"

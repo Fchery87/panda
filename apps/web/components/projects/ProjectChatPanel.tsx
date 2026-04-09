@@ -415,6 +415,7 @@ export function ProjectChatPanel({
           currentSpec={currentSpec}
           pendingSpec={pendingSpec}
           planStatus={activeChatPlanStatus}
+          chatMode={chatMode}
         />
       </div>
 

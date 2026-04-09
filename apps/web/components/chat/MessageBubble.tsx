@@ -289,9 +289,6 @@ export function MessageBubble({
   const reasoningBlock = assistantBlocks.find(
     (block) => block.kind === 'thinking_teaser' || block.kind === 'thinking_redacted'
   )
-  const toolBlocks = assistantBlocks.filter(
-    (block) => block.kind === 'tool_use' || block.kind === 'tool_result'
-  )
 
   const handleCopyPlan = async () => {
     if (!canCopyValidatedPlan) return
@@ -456,56 +453,6 @@ export function MessageBubble({
           </div>
         )}
 
-        {isAssistant && toolBlocks.length > 0 && (
-          <div className="w-full space-y-1.5 px-1 pt-1">
-            {toolBlocks.map((block) => {
-              if (block.kind !== 'tool_use' && block.kind !== 'tool_result') {
-                return null
-              }
-
-              const call = block.call
-              const statusLabel = block.kind === 'tool_use' ? 'invoked' : call.status
-
-              return (
-                <div
-                  key={block.id}
-                  className="border border-border bg-background/70 px-2 py-1.5 font-mono text-[11px]"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="truncate text-foreground/90">{call.name}</span>
-                    <span
-                      className={cn(
-                        'shrink-0 border px-1 py-0 uppercase tracking-wide',
-                        call.status === 'error'
-                          ? 'border-destructive/40 text-destructive'
-                          : 'border-border text-muted-foreground'
-                      )}
-                    >
-                      {statusLabel}
-                    </span>
-                  </div>
-                  {block.kind === 'tool_use' && (
-                    <div className="mt-1 whitespace-pre-wrap break-words leading-relaxed text-muted-foreground/80">
-                      {JSON.stringify(call.args)}
-                    </div>
-                  )}
-                  {call.result?.output && block.kind === 'tool_result' ? (
-                    <div className="mt-1 whitespace-pre-wrap break-words leading-relaxed text-muted-foreground/80">
-                      {call.result.output.length > 220
-                        ? `${call.result.output.slice(0, 217)}...`
-                        : call.result.output}
-                    </div>
-                  ) : null}
-                  {call.result?.error && (
-                    <div className="mt-1 whitespace-pre-wrap break-words leading-relaxed text-destructive">
-                      {call.result.error}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
         {/* Suggested Actions */}
         {isAssistant &&
           !isStreaming &&

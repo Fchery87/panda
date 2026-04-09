@@ -27,6 +27,15 @@ interface LSPClientOptions {
   onConnectionError?: (error: Error) => void
 }
 
+class LSPWebSocketUnavailableError extends Error {
+  constructor() {
+    super('LSP websocket transport is unavailable in this runtime')
+    this.name = 'LSPWebSocketUnavailableError'
+  }
+}
+
+let lspWebSocketUnavailable = false
+
 /**
  * Language Server Protocol client
  * Manages WebSocket connection to LSP server
@@ -48,11 +57,18 @@ export class LSPClient {
    */
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
+      if (lspWebSocketUnavailable) {
+        reject(new LSPWebSocketUnavailableError())
+        return
+      }
+
       const wsUrl = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/lsp`
+      let opened = false
 
       this.ws = new WebSocket(wsUrl)
 
       this.ws.onopen = () => {
+        opened = true
         console.log('[LSP Client] Connected')
         this.isConnected = true
         this.initialize()
@@ -65,12 +81,28 @@ export class LSPClient {
       }
 
       this.ws.onerror = (error) => {
+        if (!opened) {
+          lspWebSocketUnavailable = true
+          const unavailableError = new LSPWebSocketUnavailableError()
+          this.options.onConnectionError?.(unavailableError)
+          reject(unavailableError)
+          return
+        }
+
         console.error('[LSP Client] WebSocket error:', error)
         this.options.onConnectionError?.(new Error('WebSocket error'))
         reject(error)
       }
 
       this.ws.onclose = () => {
+        if (!opened) {
+          lspWebSocketUnavailable = true
+          const unavailableError = new LSPWebSocketUnavailableError()
+          this.options.onConnectionError?.(unavailableError)
+          reject(unavailableError)
+          return
+        }
+
         console.log('[LSP Client] Disconnected')
         this.isConnected = false
         this.pendingRequests.clear()
@@ -390,4 +422,5 @@ export function resetLSPClient(): void {
     globalLSPClient.disconnect()
     globalLSPClient = null
   }
+  lspWebSocketUnavailable = false
 }

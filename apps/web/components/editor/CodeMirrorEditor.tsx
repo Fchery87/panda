@@ -73,7 +73,7 @@ export function CodeMirrorEditor({
   onSave,
   onInlineChat,
   onContextualChat,
-  enableLSP = true,
+  enableLSP = false,
 }: CodeMirrorEditorProps) {
   const editorViewRef = useRef<EditorView | null>(null)
   const clearHighlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)

@@ -479,14 +479,7 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
 
   async *run(promptContext: PromptContext, config?: RuntimeConfig): AsyncGenerator<AgentEvent> {
     const resolvedSkills = resolveAgentSkillsForPromptContext(promptContext)
-    for (const match of resolvedSkills.matches) {
-      yield {
-        type: 'progress_step',
-        content: `Skill matched: ${match.skill.name}`,
-        progressStatus: 'completed',
-        progressCategory: 'analysis',
-      }
-    }
+    void resolvedSkills
 
     const sessionID =
       config?.harnessSessionID ?? `harness_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`

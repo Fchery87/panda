@@ -152,7 +152,7 @@ describe('AgentRuntime progress steps', () => {
     ).toBe(true)
   })
 
-  it('emits a progress step when ai-slop-cleaner is matched', async () => {
+  it('does not emit raw skill-match progress steps', async () => {
     const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }
 
     const provider: LLMProvider = {
@@ -200,14 +200,7 @@ describe('AgentRuntime progress steps', () => {
       events.push(evt as { type: string; content?: string; progressCategory?: string })
     }
 
-    expect(
-      events.some(
-        (e) =>
-          e.type === 'progress_step' &&
-          e.progressCategory === 'analysis' &&
-          e.content?.includes('Skill matched: ai-slop-cleaner')
-      )
-    ).toBe(true)
+    expect(events.some((e) => e.content?.includes('Skill matched: ai-slop-cleaner'))).toBe(false)
   })
 
   it('does not emit a skill progress step when skillProfile is off', async () => {

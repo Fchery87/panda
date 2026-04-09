@@ -29,6 +29,14 @@ export interface LiveProgressStep {
   createdAt: number
 }
 
+export interface ChatMilestoneSummary {
+  id: string
+  title: string
+  detail?: string
+  tone: 'default' | 'primary' | 'warning' | 'danger' | 'success'
+  createdAt: number
+}
+
 interface LiveProgressGroup {
   key: LiveProgressCategory
   label: string
@@ -45,11 +53,88 @@ export interface PlanProgressSummary {
 const GROUP_ORDER: LiveProgressCategory[] = ['analysis', 'rewrite', 'tool', 'complete', 'other']
 
 const GROUP_LABELS: Record<LiveProgressCategory, string> = {
-  analysis: 'Analysis',
+  analysis: 'Planning',
   rewrite: 'Guardrails',
-  tool: 'Tool Execution',
-  complete: 'Completion',
-  other: 'Other',
+  tool: 'Actions',
+  complete: 'Outcome',
+  other: 'Updates',
+}
+
+function summarizePathList(paths: string[] | undefined): string | undefined {
+  if (!paths || paths.length === 0) return undefined
+  if (paths.length === 1) return paths[0]
+  const preview = paths.slice(0, 2).join(', ')
+  return paths.length > 2 ? `${preview} +${paths.length - 2} more` : preview
+}
+
+export function describeProgressCategory(category: LiveProgressCategory | undefined): string {
+  if (!category) return GROUP_LABELS.other
+  return GROUP_LABELS[category]
+}
+
+export function deriveChatMilestoneSummaries(steps: LiveProgressStep[]): ChatMilestoneSummary[] {
+  const latestSuccessfulWrite = [...steps]
+    .reverse()
+    .find(
+      (step) =>
+        step.category === 'tool' &&
+        step.status === 'completed' &&
+        (step.details?.toolName === 'write_files' || step.details?.toolName === 'apply_patch')
+    )
+
+  const latestVerification = [...steps]
+    .reverse()
+    .find(
+      (step) =>
+        step.category === 'tool' &&
+        step.status === 'completed' &&
+        step.details?.toolName === 'run_command'
+    )
+
+  const latestOutcome = [...steps]
+    .reverse()
+    .find(
+      (step) =>
+        step.category === 'complete' || (step.category === 'tool' && step.status === 'error')
+    )
+
+  const summaries: ChatMilestoneSummary[] = []
+
+  if (latestSuccessfulWrite) {
+    summaries.push({
+      id: `milestone-${latestSuccessfulWrite.id}`,
+      title: 'Updated files',
+      detail:
+        summarizePathList(latestSuccessfulWrite.details?.targetFilePaths) ?? 'Code changes applied',
+      tone: 'primary',
+      createdAt: latestSuccessfulWrite.createdAt,
+    })
+  }
+
+  if (latestVerification) {
+    summaries.push({
+      id: `milestone-${latestVerification.id}`,
+      title: 'Ran verification',
+      detail: latestVerification.content,
+      tone: 'default',
+      createdAt: latestVerification.createdAt,
+    })
+  }
+
+  if (latestOutcome) {
+    const outcomeIsError = latestOutcome.status === 'error'
+    summaries.push({
+      id: `milestone-${latestOutcome.id}`,
+      title: outcomeIsError ? 'Needs attention' : 'Completed run',
+      detail: outcomeIsError
+        ? (latestOutcome.details?.errorExcerpt ?? latestOutcome.content)
+        : latestOutcome.content,
+      tone: outcomeIsError ? 'danger' : 'success',
+      createdAt: latestOutcome.createdAt,
+    })
+  }
+
+  return summaries.sort((a, b) => a.createdAt - b.createdAt)
 }
 
 function inferCategory(step: LiveProgressStep): LiveProgressCategory {

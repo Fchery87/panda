@@ -11,6 +11,7 @@ import type { LiveProgressStep } from './live-run-utils'
 import type { FormalSpecification } from '@/lib/agent/spec/types'
 import type { PlanStatus } from '@/lib/chat/planDraft'
 import { buildTranscriptFeedItems } from '@/lib/chat/transcript-blocks'
+import { getTranscriptModePolicy } from '@/lib/chat/transcript-policy'
 
 interface MessageListProps {
   messages: Message[]
@@ -21,6 +22,7 @@ interface MessageListProps {
   currentSpec?: FormalSpecification | null
   pendingSpec?: FormalSpecification | null
   planStatus?: PlanStatus | null
+  chatMode: ChatMode
 }
 
 export function MessageList({
@@ -32,12 +34,15 @@ export function MessageList({
   currentSpec,
   pendingSpec,
   planStatus,
+  chatMode,
 }: MessageListProps) {
   const parentRef = useRef<HTMLDivElement>(null)
+  const transcriptPolicy = getTranscriptModePolicy(chatMode)
   const feedItems = useMemo(
     () =>
       buildTranscriptFeedItems({
         messages,
+        chatMode,
         liveSteps,
         runEvents,
         currentSpec,
@@ -45,7 +50,7 @@ export function MessageList({
         planStatus,
         isStreaming,
       }),
-    [messages, liveSteps, runEvents, currentSpec, pendingSpec, planStatus, isStreaming]
+    [messages, chatMode, liveSteps, runEvents, currentSpec, pendingSpec, planStatus, isStreaming]
   )
   const lastAssistantMessageId = [...messages]
     .reverse()
@@ -93,6 +98,7 @@ export function MessageList({
         role="log"
         aria-live="polite"
         aria-label="Chat messages"
+        data-transcript-policy={transcriptPolicy.mode}
       >
         {virtualizer.getVirtualItems().map((virtualRow) => {
           const item = feedItems[virtualRow.index]

@@ -1,4 +1,9 @@
 import type { NextConfig } from 'next'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const configDir = path.dirname(fileURLToPath(import.meta.url))
+const workspaceRoot = path.resolve(configDir, '../..')
 
 interface SecurityHeaderOptions {
   isDev?: boolean
@@ -50,8 +55,14 @@ export function buildSecurityHeaders({
 }
 
 const nextConfig: NextConfig = {
-  transpilePackages: ['@uiw/react-codemirror', '@codemirror/*'],
+  transpilePackages: ['@uiw/react-codemirror'],
   distDir: process.env.NEXT_DIST_DIR || '.next',
+  experimental: {
+    turbopackFileSystemCacheForDev: false,
+  },
+  turbopack: {
+    root: workspaceRoot,
+  },
   env: {
     NEXT_PUBLIC_CONVEX_URL: process.env.NEXT_PUBLIC_CONVEX_URL,
   },
