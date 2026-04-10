@@ -13,15 +13,6 @@ import { WorkspaceHome } from './WorkspaceHome'
 import { DiffTab } from './DiffTab'
 import { ReviewChangesBanner } from './ReviewChangesBanner'
 import { AgentCompletionBanner } from './AgentCompletionBanner'
-import { cn } from '@/lib/utils'
-
-import { SidebarRail } from '@/components/sidebar/SidebarRail'
-import { SidebarFlyout } from '@/components/sidebar/SidebarFlyout'
-import { SidebarHistoryPanel } from '@/components/sidebar/SidebarHistoryPanel'
-import { SourceControlPane } from '@/components/sidebar/SourceControlPane'
-import { ActiveAgentsPane } from '@/components/sidebar/ActiveAgentsPane'
-
-import { ExplorerOutline } from '@/components/sidebar/ExplorerOutline'
 import { isWorkspacePlanTab, useWorkspace } from '@/contexts/WorkspaceContext'
 import { useShortcuts } from '@/hooks/useShortcuts'
 
@@ -81,8 +72,8 @@ const CENTER_TABS: CenterTabBarTab[] = [
 const innerLayoutPersistenceKey = 'panda-workbench-inner'
 
 export function Workbench({
-  projectId,
-  currentChatId,
+  projectId: _projectId,
+  currentChatId: _currentChatId,
   files,
   selectedFilePath,
   selectedLocation,
@@ -105,14 +96,7 @@ export function Workbench({
   isAgentRunning = false,
   onStartAgent,
 }: WorkbenchProps) {
-  const {
-    activeSection: sidebarActiveSection,
-    isFlyoutOpen: isSidebarFlyoutOpen,
-    handleSectionChange: onSidebarSectionChange,
-    toggleFlyout: onToggleSidebarFlyout,
-    onSelectChat,
-    isMobileLayout: isMobile,
-  } = useWorkspace()
+  const { isMobileLayout: isMobile } = useWorkspace()
 
   const selectedFile = selectedFilePath ? files.find((f) => f.path === selectedFilePath) : undefined
   const selectedWorkspaceTab = openTabs.find((tab) => tab.path === selectedFilePath) ?? null
@@ -220,7 +204,7 @@ export function Workbench({
   // Desktop layout
   return (
     <div
-      className="surface-0 flex h-full min-h-0 w-full min-w-0 overflow-hidden"
+      className="surface-0 h-full min-h-0 w-full min-w-0 overflow-hidden"
       data-layout-persistence-key={innerLayoutPersistenceKey}
     >
       {/* Legacy layout contract markers retained for source-based integration tests:
@@ -228,201 +212,121 @@ export function Workbench({
           id="editor-panel" order={1}
           id="terminal-panel" order={2}
       */}
-      {/* Sidebar Rail + Flyout */}
-      <div className="flex h-full min-h-0 shrink-0">
-        <SidebarRail
-          activeSection={sidebarActiveSection}
-          isFlyoutOpen={isSidebarFlyoutOpen}
-          onSectionChange={onSidebarSectionChange}
-          onToggleFlyout={onToggleSidebarFlyout}
-          projectId={String(projectId)}
-        />
-        <SidebarFlyout isOpen={isSidebarFlyoutOpen} activeSection={sidebarActiveSection}>
-          {sidebarActiveSection === 'files' && (
-            <div className="flex h-full flex-col overflow-hidden">
-              <div className="flex-1 overflow-auto">
-                <FileTree
-                  files={files.map((f) => ({
-                    _id: f._id,
-                    path: f.path,
-                    content: f.content ?? '',
-                    isBinary: f.isBinary,
-                    updatedAt: f.updatedAt,
-                  }))}
-                  selectedPath={selectedFilePath}
-                  onSelect={onSelectFile}
-                  onCreate={onCreateFile}
-                  onRename={onRenameFile}
-                  onDelete={onDeleteFile}
-                />
-              </div>
-              <ExplorerOutline
-                fileContent={files.find((f) => f.path === selectedFilePath)?.content}
-                filePath={selectedFilePath}
-                onSelectSymbol={(line) => {
-                  if (selectedFilePath) {
-                    onSelectFile(selectedFilePath, { line, column: 0 })
-                  }
-                }}
-              />
-            </div>
-          )}
-          {sidebarActiveSection === 'agents' && (
-            <ActiveAgentsPane
-              tasks={
-                isAgentRunning
-                  ? [
-                      {
-                        id: 'current',
-                        title: 'Active Task',
-                        workspace: 'Current project',
-                        status: 'running',
-                        lastActivity: 'now',
-                      },
-                    ]
-                  : []
-              }
-            />
-          )}
-          {sidebarActiveSection === 'search' && <ProjectSearchPanel onSelectFile={onSelectFile} />}
-          {sidebarActiveSection === 'git' && <SourceControlPane projectId={projectId} />}
-          {sidebarActiveSection === 'deploy' && (
-            <div className="flex flex-col gap-3 p-3">
-              <p className="font-mono text-xs text-muted-foreground">
-                Deploy and preview settings will appear here.
-              </p>
-            </div>
-          )}
-          {sidebarActiveSection === 'tasks' && (
-            <SidebarHistoryPanel
-              projectId={projectId}
-              activeChatId={currentChatId}
-              onSelectChat={onSelectChat}
-            />
-          )}
-        </SidebarFlyout>
-      </div>
-
-      {/* Main content area */}
-      <div className="min-h-0 min-w-0 flex-1">
-        <div className="surface-0 flex h-full min-h-0 min-w-0 flex-col">
-          <CenterTabBar
-            tabs={centerTabs}
-            activeTab={effectiveTab}
-            onTabChange={onCenterTabChange}
-            trailingContent={
-              effectiveTab === 'editor' ? (
-                <>
-                  <span className="surface-0 border border-border px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
-                    {openTabs.length} tabs
-                  </span>
-                  <span className="surface-0 border border-border px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
-                    {files.length} files
-                  </span>
-                </>
-              ) : null
-            }
-          />
-
-          {/* File Tabs (only in editor mode) */}
-          {effectiveTab === 'editor' && openTabs.length > 0 && (
-            <FileTabs
-              tabs={openTabs}
-              activePath={selectedFilePath}
-              onSelect={onSelectFile}
-              onClose={onCloseTab || (() => {})}
-            />
-          )}
-
-          {/* Review Changes Banner */}
-          {pendingDiffCount > 0 && effectiveTab !== 'diff' && (
-            <ReviewChangesBanner
-              isVisible={true}
-              changedFilesCount={pendingDiffCount}
-              status={isAgentRunning ? 'running' : 'review'}
-              onReviewChanges={() => onCenterTabChange?.('diff')}
-            />
-          )}
-
-          {/* Agent Completion Banner */}
-          <AgentCompletionBanner
-            isVisible={!isAgentRunning && pendingDiffCount > 0 && effectiveTab !== 'diff'}
-            taskTitle="Task completed"
-            changedFilesCount={pendingDiffCount}
-            onReviewDiff={() => onCenterTabChange?.('diff')}
-            onOpenPreview={() => onCenterTabChange?.('preview')}
-          />
-
-          {/* Tab Content */}
-          <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
-            {effectiveTab === 'home' && (
-              <WorkspaceHome
-                recentFiles={recentFiles}
-                pendingDiffs={pendingDiffCount}
-                activeAgents={isAgentRunning ? 1 : 0}
-                problemCount={0}
-                onOpenFile={onSelectFile}
-                onOpenDiffView={() => onCenterTabChange?.('diff')}
-                onStartAgent={onStartAgent}
-              />
-            )}
-
-            {effectiveTab === 'editor' && (
+      <div className="surface-0 flex h-full min-h-0 min-w-0 flex-col">
+        <CenterTabBar
+          tabs={centerTabs}
+          activeTab={effectiveTab}
+          onTabChange={onCenterTabChange}
+          trailingContent={
+            effectiveTab === 'editor' ? (
               <>
-                {selectedPlanTab ? (
-                  <PlanArtifactTab artifact={selectedPlanTab.artifact} />
-                ) : selectedFile ? (
-                  <div className="flex h-full min-h-0 min-w-0 flex-col">
-                    {pendingArtifactPreview ? (
-                      <PendingArtifactOverlay
-                        preview={pendingArtifactPreview}
-                        onApply={onApplyPendingArtifact}
-                        onReject={onRejectPendingArtifact}
-                      />
-                    ) : (
-                      <div className="min-h-0 min-w-0 flex-1">
-                        <EditorContainer
-                          filePath={selectedFile.path}
-                          content={selectedFile.content ?? ''}
-                          jumpTo={selectedLocation}
-                          onSave={(content) => onSaveFile(selectedFile.path, content)}
-                          onDirtyChange={(isDirty) =>
-                            onEditorDirtyChange(selectedFile.path, isDirty)
-                          }
-                          onContextualChat={onContextualChat}
-                          onInlineChat={onInlineChat}
-                        />
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <WorkspaceHome
-                    recentFiles={recentFiles}
-                    pendingDiffs={pendingDiffCount}
-                    activeAgents={isAgentRunning ? 1 : 0}
-                    onOpenFile={onSelectFile}
-                    onOpenDiffView={() => onCenterTabChange?.('diff')}
-                    onStartAgent={onStartAgent}
-                  />
-                )}
+                <span className="surface-0 border border-border px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
+                  {openTabs.length} tabs
+                </span>
+                <span className="surface-0 border border-border px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
+                  {files.length} files
+                </span>
               </>
-            )}
+            ) : null
+          }
+        />
 
-            {effectiveTab === 'diff' && (
-              <DiffTab pendingDiffCount={pendingDiffCount} agentLabel="Agent" />
-            )}
+        {/* File Tabs (only in editor mode) */}
+        {effectiveTab === 'editor' && openTabs.length > 0 && (
+          <FileTabs
+            tabs={openTabs}
+            activePath={selectedFilePath}
+            onSelect={onSelectFile}
+            onClose={onCloseTab || (() => {})}
+          />
+        )}
 
-            {effectiveTab === 'preview' && (
-              <div className="dot-grid flex h-full flex-col items-center justify-center gap-4">
-                <div className="surface-1 shadow-sharp-md max-w-md border border-border px-6 py-8 text-center">
-                  <h2 className="font-mono text-sm font-medium text-foreground">Preview</h2>
-                  <p className="mt-2 font-mono text-xs text-muted-foreground">
-                    Live preview of your application. Start a dev server to see your UI here.
-                  </p>
+        {/* Review Changes Banner */}
+        {pendingDiffCount > 0 && effectiveTab !== 'diff' && (
+          <ReviewChangesBanner
+            isVisible={true}
+            changedFilesCount={pendingDiffCount}
+            status={isAgentRunning ? 'running' : 'review'}
+            onReviewChanges={() => onCenterTabChange?.('diff')}
+          />
+        )}
+
+        {/* Agent Completion Banner */}
+        <AgentCompletionBanner
+          isVisible={!isAgentRunning && pendingDiffCount > 0 && effectiveTab !== 'diff'}
+          taskTitle="Task completed"
+          changedFilesCount={pendingDiffCount}
+          onReviewDiff={() => onCenterTabChange?.('diff')}
+          onOpenPreview={() => onCenterTabChange?.('preview')}
+        />
+
+        {/* Tab Content */}
+        <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
+          {effectiveTab === 'home' && (
+            <WorkspaceHome
+              recentFiles={recentFiles}
+              pendingDiffs={pendingDiffCount}
+              activeAgents={isAgentRunning ? 1 : 0}
+              problemCount={0}
+              onOpenFile={onSelectFile}
+              onOpenDiffView={() => onCenterTabChange?.('diff')}
+              onStartAgent={onStartAgent}
+            />
+          )}
+
+          {effectiveTab === 'editor' && (
+            <>
+              {selectedPlanTab ? (
+                <PlanArtifactTab artifact={selectedPlanTab.artifact} />
+              ) : selectedFile ? (
+                <div className="flex h-full min-h-0 min-w-0 flex-col">
+                  {pendingArtifactPreview ? (
+                    <PendingArtifactOverlay
+                      preview={pendingArtifactPreview}
+                      onApply={onApplyPendingArtifact}
+                      onReject={onRejectPendingArtifact}
+                    />
+                  ) : (
+                    <div className="min-h-0 min-w-0 flex-1">
+                      <EditorContainer
+                        filePath={selectedFile.path}
+                        content={selectedFile.content ?? ''}
+                        jumpTo={selectedLocation}
+                        onSave={(content) => onSaveFile(selectedFile.path, content)}
+                        onDirtyChange={(isDirty) => onEditorDirtyChange(selectedFile.path, isDirty)}
+                        onContextualChat={onContextualChat}
+                        onInlineChat={onInlineChat}
+                      />
+                    </div>
+                  )}
                 </div>
+              ) : (
+                <WorkspaceHome
+                  recentFiles={recentFiles}
+                  pendingDiffs={pendingDiffCount}
+                  activeAgents={isAgentRunning ? 1 : 0}
+                  onOpenFile={onSelectFile}
+                  onOpenDiffView={() => onCenterTabChange?.('diff')}
+                  onStartAgent={onStartAgent}
+                />
+              )}
+            </>
+          )}
+
+          {effectiveTab === 'diff' && (
+            <DiffTab pendingDiffCount={pendingDiffCount} agentLabel="Agent" />
+          )}
+
+          {effectiveTab === 'preview' && (
+            <div className="dot-grid flex h-full flex-col items-center justify-center gap-4">
+              <div className="surface-1 shadow-sharp-md max-w-md border border-border px-6 py-8 text-center">
+                <h2 className="font-mono text-sm font-medium text-foreground">Preview</h2>
+                <p className="mt-2 font-mono text-xs text-muted-foreground">
+                  Live preview of your application. Start a dev server to see your UI here.
+                </p>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
