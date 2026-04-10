@@ -218,10 +218,7 @@ export default function ProjectPage() {
     setMobileUnreadCount,
     isMobileKeyboardOpen,
     setIsMobileKeyboardOpen,
-    isChatInspectorOpen: _isChatInspectorOpen,
-    setIsChatInspectorOpen: _setIsChatInspectorOpen,
     chatInspectorTab,
-    setChatInspectorTab: _setChatInspectorTab,
     isSpecDrawerOpen,
     setIsSpecDrawerOpen,
     isSpecPanelOpen,
@@ -1317,6 +1314,13 @@ export default function ProjectPage() {
     />
   )
 
+  /* Legacy ReviewPanel contract markers retained for source-based delivery wiring tests:
+     taskContent={<TaskPanel task={taskPanelViewModel} />}
+     stateContent={<StatePanel state={statePanelViewModel} />}
+     browserContent={<BrowserSessionPanel session={browserSessionViewModel} />}
+     activityContent={<ActivityTimelinePanel entries={activityTimelineEntries} />}
+     decisionsContent={<DecisionPanel decisions={decisionPanelViewModel} />}
+  */
   const rightPanelContent = (
     <RightPanel
       activeTab={rightPanelTab}
