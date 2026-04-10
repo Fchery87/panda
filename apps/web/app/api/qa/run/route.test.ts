@@ -54,7 +54,7 @@ mock.module('@/lib/qa/executor', () => ({
       sessionStrategy: 'reuse' as const,
       environment: 'local',
       urlsTested: ['/projects/demo'],
-      flowNames: ['task-panel-review-loop'],
+      flowNames: ['project-workbench-smoke'],
       baseUrl: 'http://localhost:3000',
     }
   },
@@ -67,11 +67,19 @@ mock.module('@/lib/qa/executor', () => ({
       environment: 'local',
       baseUrl: 'http://localhost:3000',
       urlsTested: ['/projects/demo'],
-      flowNames: ['task-panel-review-loop'],
+      flowNames: ['project-workbench-smoke'],
+      scenarioNames: ['project-workbench-smoke'],
       assertions: [{ label: 'Task panel rendered', status: 'passed' as const }],
       consoleErrors: [],
       networkFailures: [],
       screenshotPath: '/tmp/shot.png',
+      evidenceArtifacts: [
+        {
+          kind: 'screenshot',
+          label: 'Full page screenshot',
+          path: '/tmp/shot.png',
+        },
+      ],
       lastUsedAt: 200,
       lastVerifiedAt: 200,
     }
@@ -93,9 +101,17 @@ mock.module('@/lib/qa/executor', () => ({
     evidence: {
       screenshotPath: '/tmp/shot.png',
       urlsTested: ['/projects/demo'],
-      flowNames: ['task-panel-review-loop'],
+      flowNames: ['project-workbench-smoke'],
+      scenarioNames: ['project-workbench-smoke'],
       consoleErrors: [],
       networkFailures: [],
+      artifacts: [
+        {
+          kind: 'screenshot',
+          label: 'Full page screenshot',
+          path: '/tmp/shot.png',
+        },
+      ],
     },
     defects: [],
   }),
@@ -143,7 +159,7 @@ describe('POST /api/qa/run', () => {
           chatId: 'chat-1',
           taskId: 'task-1',
           urlsTested: ['/projects/demo'],
-          flowNames: ['task-panel-review-loop'],
+          flowNames: ['project-workbench-smoke'],
         }),
       })
     )
@@ -161,5 +177,29 @@ describe('POST /api/qa/run', () => {
     expect(mutationCalls[0]?.args.deliveryStateId).toBe('delivery-state-1')
     expect(mutationCalls[0]?.args.browserSessionKey).toBe('browser-session::persisted')
     expect(mutationCalls[0]?.args.lastRoutesTested).toEqual(['/projects/demo'])
+    expect((await response.json()).scenarioNames).toEqual(['project-workbench-smoke'])
+    expect(
+      (
+        await POST(
+          new Request('http://localhost/api/qa/run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              projectId: 'project-1',
+              chatId: 'chat-1',
+              taskId: 'task-1',
+              urlsTested: ['/projects/demo'],
+              flowNames: ['project-workbench-smoke'],
+            }),
+          })
+        ).then((res) => res.json())
+      ).evidenceArtifacts
+    ).toEqual([
+      {
+        kind: 'screenshot',
+        label: 'Full page screenshot',
+        path: '/tmp/shot.png',
+      },
+    ])
   })
 })

@@ -3,8 +3,10 @@ import type { Doc, Id } from './_generated/dataModel'
 import { v } from 'convex/values'
 import { requireProjectOwner } from './lib/authz'
 import {
+  ReviewChecklistResult,
   ReviewDecision as ReviewDecisionValidator,
   ReviewType as ReviewTypeValidator,
+  VerificationEvidenceRef,
 } from './schema'
 
 export type ReviewType = 'architecture' | 'implementation'
@@ -24,6 +26,18 @@ export type ReviewReportRecord = {
   type: ReviewType
   decision: ReviewDecision
   summary: string
+  checklistResults: {
+    item: string
+    status: 'passed' | 'failed' | 'waived'
+    detail?: string
+  }[]
+  requiredActionItems: string[]
+  verificationEvidence: {
+    kind: 'worker_result' | 'review_report' | 'qa_report' | 'ship_report' | 'artifact' | 'external'
+    label: string
+    ref?: string
+    href?: string
+  }[]
   findings: ReviewFinding[]
   followUpTaskIds: Id<'deliveryTasks'>[]
   reviewerRole: 'executive'
@@ -36,6 +50,9 @@ export function createReviewReportRecord(args: {
   type: ReviewType
   decision: ReviewDecision
   summary: string
+  checklistResults?: ReviewReportRecord['checklistResults']
+  requiredActionItems?: string[]
+  verificationEvidence?: ReviewReportRecord['verificationEvidence']
   findings?: ReviewFinding[]
   followUpTaskIds?: Id<'deliveryTasks'>[]
   now: number
@@ -46,6 +63,9 @@ export function createReviewReportRecord(args: {
     type: args.type,
     decision: args.decision,
     summary: args.summary,
+    checklistResults: args.checklistResults ?? [],
+    requiredActionItems: args.requiredActionItems ?? [],
+    verificationEvidence: args.verificationEvidence ?? [],
     findings: args.findings ?? [],
     followUpTaskIds: args.followUpTaskIds ?? [],
     reviewerRole: 'executive',
@@ -80,6 +100,9 @@ export const create = mutation({
     type: ReviewTypeValidator,
     decision: ReviewDecisionValidator,
     summary: v.string(),
+    checklistResults: v.optional(v.array(ReviewChecklistResult)),
+    requiredActionItems: v.optional(v.array(v.string())),
+    verificationEvidence: v.optional(v.array(VerificationEvidenceRef)),
     findings: v.optional(
       v.array(
         v.object({
@@ -105,6 +128,9 @@ export const create = mutation({
       type: args.type,
       decision: args.decision,
       summary: args.summary,
+      checklistResults: args.checklistResults,
+      requiredActionItems: args.requiredActionItems,
+      verificationEvidence: args.verificationEvidence,
       findings: args.findings,
       followUpTaskIds: args.followUpTaskIds,
       now: Date.now(),

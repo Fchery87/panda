@@ -70,5 +70,9 @@ export async function POST(request: Request) {
     leaseExpiresAt: normalized.browserSession.leaseExpiresAt,
   })
 
-  return NextResponse.json(normalized)
+  return NextResponse.json({
+    ...normalized,
+    scenarioNames: normalized.evidence.scenarioNames,
+    evidenceArtifacts: normalized.evidence.artifacts,
+  })
 }

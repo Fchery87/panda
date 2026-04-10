@@ -13,6 +13,7 @@
 import type { ToolDefinition } from '../../llm/types'
 import type { CheckpointStore } from './checkpoint-store'
 import type { FormalSpecification, SpecEngineConfig, SpecTier } from '../spec/types'
+import type { WorkerContextPack } from '../../forge/types'
 
 export type { ToolDefinition } from '../../llm/types'
 
@@ -411,6 +412,8 @@ export interface RuntimeConfig {
   streamRetryBackoffMs?: number
   /** Timeout in ms for individual tool executions (default: 300000 = 5 minutes) */
   toolExecutionTimeoutMs?: number
+  /** Prebuilt Forge execution context for builder/manager/executive runs */
+  forgeContextPack?: WorkerContextPack
 }
 
 export interface RuntimeSnapshotEvent {

@@ -1,14 +1,22 @@
 import type { Browser, BrowserContext, Page } from '@playwright/test'
 import { chromium } from '@playwright/test'
+import path from 'node:path'
 import { createBrowserSessionKey } from './browser-session'
 import { createBrowserSessionSupervisor } from '@/lib/forge/browser-session-supervisor'
 import { deriveForgeAffectedRoutes } from '@/lib/forge/route-impact'
-import path from 'node:path'
+import { deriveQaScenarioNames } from './scenario-catalog'
 
 type QaSessionRecord = {
   browser: Browser
   context: BrowserContext
   page: Page
+}
+
+export type QaEvidenceArtifact = {
+  kind: 'screenshot' | 'console-log' | 'network-log' | 'trace' | 'report'
+  label: string
+  path?: string
+  content?: string
 }
 
 const qaSessionRegistry = new Map<string, QaSessionRecord>()
@@ -35,6 +43,7 @@ export function buildBrowserQaRunInput(args: {
   environment: string
   urlsTested: string[]
   flowNames: string[]
+  scenarioNames: string[]
   baseUrl?: string
 } {
   const environment = args.environment ?? 'local'
@@ -49,6 +58,7 @@ export function buildBrowserQaRunInput(args: {
     args.urlsTested.length > 0
       ? args.urlsTested
       : deriveForgeAffectedRoutes(args.filesInScope ?? [])
+  const scenarioNames = deriveQaScenarioNames({ routes: urlsTested })
 
   return {
     browserSessionKey:
@@ -61,7 +71,8 @@ export function buildBrowserQaRunInput(args: {
     sessionStrategy: sessionPlan.strategy,
     environment,
     urlsTested,
-    flowNames: args.flowNames,
+    flowNames: args.flowNames.length > 0 ? args.flowNames : scenarioNames,
+    scenarioNames,
     baseUrl: args.baseUrl,
   }
 }
@@ -81,6 +92,7 @@ export async function runBrowserQa(args: {
   environment?: string
   urlsTested: string[]
   flowNames: string[]
+  scenarioNames?: string[]
   baseUrl?: string
 }) {
   const session = await getOrCreateQaSession({
@@ -139,10 +151,16 @@ export async function runBrowserQa(args: {
       baseUrl,
       urlsTested: args.urlsTested,
       flowNames: args.flowNames,
+      scenarioNames: args.scenarioNames ?? args.flowNames,
       assertions,
       consoleErrors,
       networkFailures,
       screenshotPath,
+      evidenceArtifacts: normalizeQaEvidenceArtifacts({
+        screenshotPath,
+        consoleErrors,
+        networkFailures,
+      }),
       lastUsedAt: now,
       lastVerifiedAt: now,
       leaseOwner: undefined,
@@ -161,10 +179,12 @@ export function normalizeBrowserQaResult(args: {
   baseUrl?: string
   urlsTested: string[]
   flowNames: string[]
+  scenarioNames?: string[]
   assertions: Array<{ label: string; status: 'passed' | 'failed' | 'skipped' }>
   consoleErrors: string[]
   networkFailures: string[]
   screenshotPath?: string
+  evidenceArtifacts?: QaEvidenceArtifact[]
   lastUsedAt?: number
   lastVerifiedAt?: number
   leaseOwner?: string
@@ -219,8 +239,15 @@ export function normalizeBrowserQaResult(args: {
       screenshotPath: args.screenshotPath,
       urlsTested: args.urlsTested,
       flowNames: args.flowNames,
+      scenarioNames: args.scenarioNames ?? args.flowNames,
       consoleErrors: args.consoleErrors,
       networkFailures: args.networkFailures,
+      artifacts: normalizeQaEvidenceArtifacts({
+        evidenceArtifacts: args.evidenceArtifacts,
+        screenshotPath: args.screenshotPath,
+        consoleErrors: args.consoleErrors,
+        networkFailures: args.networkFailures,
+      }),
     },
     defects: defects as Array<{
       severity: 'high' | 'medium' | 'low'
@@ -229,6 +256,44 @@ export function normalizeBrowserQaResult(args: {
       route?: string
     }>,
   }
+}
+
+function normalizeQaEvidenceArtifacts(args: {
+  evidenceArtifacts?: QaEvidenceArtifact[]
+  screenshotPath?: string
+  consoleErrors: string[]
+  networkFailures: string[]
+}): QaEvidenceArtifact[] {
+  const artifacts = [...(args.evidenceArtifacts ?? [])]
+  const kinds = new Set(artifacts.map((artifact) => artifact.kind))
+
+  if (args.screenshotPath && !kinds.has('screenshot')) {
+    artifacts.push({
+      kind: 'screenshot',
+      label: 'Full page screenshot',
+      path: args.screenshotPath,
+    })
+    kinds.add('screenshot')
+  }
+
+  if (args.consoleErrors.length > 0 && !kinds.has('console-log')) {
+    artifacts.push({
+      kind: 'console-log',
+      label: 'Console errors',
+      content: args.consoleErrors.join('\n'),
+    })
+    kinds.add('console-log')
+  }
+
+  if (args.networkFailures.length > 0 && !kinds.has('network-log')) {
+    artifacts.push({
+      kind: 'network-log',
+      label: 'Network failures',
+      content: args.networkFailures.join('\n'),
+    })
+  }
+
+  return artifacts
 }
 
 async function getOrCreateQaSession(args: {

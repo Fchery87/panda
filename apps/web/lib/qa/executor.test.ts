@@ -21,31 +21,68 @@ describe('browser QA executor helpers', () => {
       browserSessionKey: 'session-1',
       urlsTested: ['/projects/example'],
       flowNames: ['task-panel-review-loop'],
+      scenarioNames: ['project-workbench-smoke'],
       assertions: [{ label: 'Task panel rendered', status: 'passed' }],
       consoleErrors: [],
       networkFailures: [],
-      screenshotPath: '/tmp/task-panel.png',
+      evidenceArtifacts: [
+        {
+          kind: 'screenshot',
+          label: 'Full page screenshot',
+          path: '/tmp/task-panel.png',
+        },
+      ],
     })
 
     expect(result.decision).toBe('pass')
     expect(result.summary).toContain('QA passed')
-    expect(result.evidence.screenshotPath).toBe('/tmp/task-panel.png')
+    expect(result.evidence.artifacts).toEqual([
+      {
+        kind: 'screenshot',
+        label: 'Full page screenshot',
+        path: '/tmp/task-panel.png',
+      },
+    ])
+    expect(result.evidence.scenarioNames).toEqual(['project-workbench-smoke'])
   })
 
-  test('maps failed assertions to concerns with explicit defects and preserves screenshot path', () => {
+  test('maps failed assertions to concerns and preserves richer evidence artifacts', () => {
     const result = normalizeBrowserQaResult({
       browserSessionKey: 'session-1',
       urlsTested: ['/projects/example'],
       flowNames: ['task-panel-review-loop'],
+      scenarioNames: ['project-workbench-smoke'],
       assertions: [{ label: 'Task panel rendered', status: 'failed' }],
       consoleErrors: [],
       networkFailures: [],
-      screenshotPath: '/tmp/assertion-failure.png',
+      evidenceArtifacts: [
+        {
+          kind: 'screenshot',
+          label: 'Assertion failure screenshot',
+          path: '/tmp/assertion-failure.png',
+        },
+        {
+          kind: 'trace',
+          label: 'Playwright trace',
+          path: '/tmp/assertion-failure.zip',
+        },
+      ],
     })
 
     expect(result.decision).toBe('concerns')
     expect(result.summary).toContain('Assertion failures')
-    expect(result.evidence.screenshotPath).toBe('/tmp/assertion-failure.png')
+    expect(result.evidence.artifacts).toEqual([
+      {
+        kind: 'screenshot',
+        label: 'Assertion failure screenshot',
+        path: '/tmp/assertion-failure.png',
+      },
+      {
+        kind: 'trace',
+        label: 'Playwright trace',
+        path: '/tmp/assertion-failure.zip',
+      },
+    ])
     expect(result.defects).toEqual([
       {
         severity: 'high',
@@ -61,14 +98,48 @@ describe('browser QA executor helpers', () => {
       browserSessionKey: 'session-1',
       urlsTested: ['/projects/example'],
       flowNames: ['task-panel-review-loop'],
+      scenarioNames: ['project-workbench-smoke'],
       assertions: [{ label: 'Task panel rendered', status: 'passed' }],
       consoleErrors: ['ReferenceError: x is not defined'],
       networkFailures: ['GET https://example.com/api/tasks'],
-      screenshotPath: '/tmp/with-issues.png',
+      evidenceArtifacts: [
+        {
+          kind: 'console-log',
+          label: 'Console errors',
+          content: 'ReferenceError: x is not defined',
+        },
+        {
+          kind: 'network-log',
+          label: 'Network failures',
+          content: 'GET https://example.com/api/tasks',
+        },
+        {
+          kind: 'report',
+          label: 'QA summary report',
+          path: '/tmp/with-issues.json',
+        },
+      ],
     })
 
     expect(result.decision).toBe('concerns')
     expect(result.summary).toContain('browser session surfaced issues')
+    expect(result.evidence.artifacts).toEqual([
+      {
+        kind: 'console-log',
+        label: 'Console errors',
+        content: 'ReferenceError: x is not defined',
+      },
+      {
+        kind: 'network-log',
+        label: 'Network failures',
+        content: 'GET https://example.com/api/tasks',
+      },
+      {
+        kind: 'report',
+        label: 'QA summary report',
+        path: '/tmp/with-issues.json',
+      },
+    ])
     expect(result.defects).toEqual([
       {
         severity: 'medium',
@@ -105,6 +176,35 @@ describe('browser QA executor helpers', () => {
     expect(input.browserSessionKey).toBe('browser-session::project_1::preview')
     expect(input.sessionStrategy).toBe('fresh')
     expect(input.environment).toBe('preview')
+  })
+
+  test('derives route-aware QA scenarios when explicit flows are missing', () => {
+    const input = buildBrowserQaRunInput({
+      projectId: 'project_1',
+      chatId: 'chat_1',
+      taskId: 'task_1',
+      urlsTested: [],
+      filesInScope: ['apps/web/components/workbench/WorkbenchShell.tsx'],
+      flowNames: [],
+    })
+
+    expect(input.urlsTested).toEqual(['/projects/[projectId]', '/projects/[projectId]/review'])
+    expect(input.flowNames).toEqual(['global-smoke', 'project-workbench-smoke'])
+    expect(input.scenarioNames).toEqual(['global-smoke', 'project-workbench-smoke'])
+  })
+
+  test('preserves explicit flows separately from derived scenario names', () => {
+    const input = buildBrowserQaRunInput({
+      projectId: 'project_1',
+      chatId: 'chat_1',
+      taskId: 'task_1',
+      urlsTested: [],
+      filesInScope: ['apps/web/components/workbench/WorkbenchShell.tsx'],
+      flowNames: ['task-panel-review-loop'],
+    })
+
+    expect(input.flowNames).toEqual(['task-panel-review-loop'])
+    expect(input.scenarioNames).toEqual(['global-smoke', 'project-workbench-smoke'])
   })
 
   test('reuses an existing healthy browser session when provided', () => {

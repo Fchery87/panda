@@ -33,10 +33,15 @@ export interface ForgeAcceptanceCriterion {
 }
 
 export type EvidenceKind =
+  | 'agent_run'
+  | 'run_event'
+  | 'job'
   | 'worker_result'
   | 'review_report'
   | 'qa_report'
   | 'ship_report'
+  | 'specification'
+  | 'eval_run'
   | 'artifact'
   | 'external'
 
@@ -59,6 +64,13 @@ export interface ReviewChecklistResult {
   detail?: string
 }
 
+export interface ShipCriterionResult {
+  criterion: string
+  status: 'passed' | 'failed' | 'waived'
+  evidenceRefs: string[]
+  detail?: string
+}
+
 export interface ReviewFinding {
   severity: 'high' | 'medium' | 'low'
   title: string
@@ -72,6 +84,8 @@ export interface ReviewResult {
   decision: 'pass' | 'concerns' | 'reject'
   summary: string
   checklistResults: ReviewChecklistResult[]
+  requiredActionItems?: string[]
+  verificationEvidence?: EvidenceRef[]
   findings: ReviewFinding[]
   followUpTaskSeeds: FollowUpTaskSeed[]
   createdAt: number
@@ -179,6 +193,12 @@ export interface ForgeTaskRecord {
   evidence: EvidenceRef[]
   latestReview?: ReviewResult | null
   latestQa?: QaResult | null
+  taskBoard?: {
+    readiness: 'ready' | 'blocked' | 'done' | 'rejected'
+    isReady: boolean
+    blockedByTaskIds: string[]
+    priority: number
+  }
   createdAt: number
   updatedAt: number
 }
@@ -221,6 +241,54 @@ export interface WorkerResult {
   suggestedTaskStatus: Extract<ForgeTaskStatus, 'in_review' | 'blocked' | 'rejected'>
 }
 
+export interface ForgeHandoffSummary {
+  activeTask: {
+    id: string
+    title: string
+    status: ForgeTaskStatus
+    ownerRole: ForgeRole
+  } | null
+  openTaskCount: number
+  summaryLines: string[]
+}
+
+export interface ForgeRoleActionView {
+  role: ForgeRole
+  items: string[]
+}
+
+export interface ForgeRoleNextActions {
+  builder: ForgeRoleActionView
+  manager: ForgeRoleActionView
+  executive: ForgeRoleActionView
+}
+
+export interface ForgeStatusView {
+  primarySummary: string
+  summaryLines: string[]
+}
+
+export interface ForgeTaskListItem {
+  id: string
+  title: string
+  status: ForgeTaskStatus
+  ownerRole: ForgeRole
+}
+
+export interface ForgeTaskView {
+  openTasks: ForgeTaskListItem[]
+  pendingReviews: ForgeTaskListItem[]
+  qaBlockers: string[]
+  shipBlockers: string[]
+}
+
+export interface ForgeVerificationView {
+  reviewDecision?: ReviewResult['decision'] | null
+  qaDecision?: QaResult['decision'] | null
+  shipDecision?: 'ready' | 'ready_with_risk' | 'not_ready' | null
+  summaryLines: string[]
+}
+
 export interface ForgeProjectSnapshot {
   project: {
     id: string
@@ -250,10 +318,24 @@ export interface ForgeProjectSnapshot {
     records: VerificationRecord[]
     latestReview?: ReviewResult | null
     latestQa?: QaResult | null
+    latestShip?: {
+      decision: 'ready' | 'ready_with_risk' | 'not_ready'
+      summary: string
+      evidenceSummary: string
+      criteriaResults: ShipCriterionResult[]
+      createdAt: number
+    } | null
   }
   browserQa: {
     activeSession?: BrowserSessionRecord
     latestQa?: QaResult | null
+  }
+  handoffSummary?: ForgeHandoffSummary
+  roleNextActions?: ForgeRoleNextActions
+  operatorViews?: {
+    status: ForgeStatusView
+    tasks: ForgeTaskView
+    verification: ForgeVerificationView
   }
   decisions: DecisionLogEntry[]
   timeline: Array<Record<string, unknown>>

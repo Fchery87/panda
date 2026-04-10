@@ -90,45 +90,20 @@ describe('forge status machine', () => {
       status: 'in_progress',
     })
 
-    expect(() => assertTaskReadyForTransition(task, 'in_review')).toThrow(/evidence/i)
+    expect(() => assertTaskReadyForTransition(task, 'in_review')).not.toThrow()
   })
 
-  test('requires implementation review before entering qa pending', () => {
+  test('keeps review and qa gate rules on the server', () => {
     const task = buildTask({
       status: 'in_review',
       evidence: [{ kind: 'worker_result', label: 'Builder result', ref: 'worker:1' }],
       latestReview: null,
     })
 
-    expect(() => assertTaskReadyForTransition(task, 'qa_pending')).toThrow(/implementation review/i)
-  })
-
-  test('requires qa pass or waiver before entering done', () => {
-    const task = buildTask({
-      status: 'qa_pending',
-      evidence: [{ kind: 'qa_report', label: 'QA report', ref: 'qa:1' }],
-      latestReview: {
-        reviewType: 'implementation',
-        decision: 'pass',
-        summary: 'Implementation approved.',
-        checklistResults: [],
-        findings: [],
-        followUpTaskSeeds: [],
-        createdAt: 10,
-      },
-      latestQa: {
-        decision: 'concerns',
-        summary: 'Issues found.',
-        assertions: [],
-        routesTested: [],
-        flowsTested: [],
-        evidence: [],
-        defects: [],
-        createdAt: 11,
-      },
-    })
-
-    expect(() => assertTaskReadyForTransition(task, 'done')).toThrow(/qa pass or waiver/i)
+    expect(() => assertTaskReadyForTransition(task, 'qa_pending')).not.toThrow()
+    expect(() =>
+      assertTaskReadyForTransition({ ...task, status: 'qa_pending' }, 'done')
+    ).not.toThrow()
   })
 
   test('exports explicit transition maps for server-side enforcement', () => {

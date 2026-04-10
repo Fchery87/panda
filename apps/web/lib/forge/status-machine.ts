@@ -48,25 +48,4 @@ export function assertTaskReadyForTransition(task: ForgeTaskRecord, to: ForgeTas
       throw new Error('Forge task requires QA requirements before entering ready')
     }
   }
-
-  if (to === 'in_review' && task.evidence.length === 0) {
-    throw new Error('Forge task requires evidence before entering review')
-  }
-
-  if (to === 'qa_pending') {
-    if (!task.latestReview || task.latestReview.reviewType !== 'implementation') {
-      throw new Error('Forge task requires an implementation review before entering qa_pending')
-    }
-  }
-
-  if (to === 'done') {
-    const qaPassed = task.latestQa?.decision === 'pass'
-    const qaWaived = task.evidence.some(
-      (entry) => entry.kind === 'qa_report' && /waiv/i.test(entry.label)
-    )
-
-    if (!qaPassed && !qaWaived) {
-      throw new Error('Forge task requires QA pass or waiver before entering done')
-    }
-  }
 }

@@ -21,6 +21,13 @@ export type QaEvidence = {
   networkFailures: string[]
   urlsTested: string[]
   flowNames: string[]
+  scenarioNames: string[]
+  artifacts: Array<{
+    kind: 'screenshot' | 'console-log' | 'network-log' | 'trace' | 'report'
+    label: string
+    path?: string
+    content?: string
+  }>
 }
 
 export type QaReportRecord = {
@@ -48,7 +55,15 @@ export function createQaReportRecord(args: {
   summary: string
   assertions: QaAssertion[]
   evidence: Partial<QaEvidence> &
-    Pick<QaEvidence, 'urlsTested' | 'flowNames' | 'consoleErrors' | 'networkFailures'>
+    Pick<
+      QaEvidence,
+      | 'urlsTested'
+      | 'flowNames'
+      | 'consoleErrors'
+      | 'networkFailures'
+      | 'scenarioNames'
+      | 'artifacts'
+    >
   defects?: QaReportRecord['defects']
   now: number
 }): QaReportRecord {
@@ -63,8 +78,10 @@ export function createQaReportRecord(args: {
       screenshotPath: args.evidence.screenshotPath,
       urlsTested: args.evidence.urlsTested,
       flowNames: args.evidence.flowNames,
+      scenarioNames: args.evidence.scenarioNames,
       consoleErrors: args.evidence.consoleErrors,
       networkFailures: args.evidence.networkFailures,
+      artifacts: args.evidence.artifacts,
     },
     defects: args.defects ?? [],
     createdAt: args.now,

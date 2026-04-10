@@ -2,7 +2,7 @@ import { mutation, query, type MutationCtx, type QueryCtx } from './_generated/s
 import type { Doc, Id } from './_generated/dataModel'
 import { v } from 'convex/values'
 import { requireProjectOwner } from './lib/authz'
-import { ShipDecision as ShipDecisionValidator } from './schema'
+import { ShipCriterionResult, ShipDecision as ShipDecisionValidator } from './schema'
 
 export type ShipDecision = 'ready' | 'ready_with_risk' | 'not_ready'
 
@@ -13,6 +13,12 @@ export type ShipReportRecord = {
   openRisks: string[]
   unresolvedDefects: string[]
   evidenceSummary: string
+  criteriaResults: {
+    criterion: string
+    status: 'passed' | 'failed' | 'waived'
+    evidenceRefs: string[]
+    detail?: string
+  }[]
   createdAt: number
 }
 
@@ -23,6 +29,7 @@ export function createShipReportRecord(args: {
   openRisks?: string[]
   unresolvedDefects?: string[]
   evidenceSummary: string
+  criteriaResults?: ShipReportRecord['criteriaResults']
   now: number
 }): ShipReportRecord {
   return {
@@ -32,6 +39,7 @@ export function createShipReportRecord(args: {
     openRisks: args.openRisks ?? [],
     unresolvedDefects: args.unresolvedDefects ?? [],
     evidenceSummary: args.evidenceSummary,
+    criteriaResults: args.criteriaResults ?? [],
     createdAt: args.now,
   }
 }
@@ -59,6 +67,7 @@ export const create = mutation({
     openRisks: v.optional(v.array(v.string())),
     unresolvedDefects: v.optional(v.array(v.string())),
     evidenceSummary: v.string(),
+    criteriaResults: v.optional(v.array(ShipCriterionResult)),
   },
   handler: async (ctx, args) => {
     await requireDeliveryStateForShip(ctx, args.deliveryStateId)
@@ -70,6 +79,7 @@ export const create = mutation({
       openRisks: args.openRisks,
       unresolvedDefects: args.unresolvedDefects,
       evidenceSummary: args.evidenceSummary,
+      criteriaResults: args.criteriaResults,
       now: Date.now(),
     })
 

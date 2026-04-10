@@ -37,6 +37,14 @@ function makeWave(overrides: Partial<OrchestrationWaveRecord> = {}): Orchestrati
   })
 }
 
+function makeSnapshotWave() {
+  return {
+    _id: 'wave_1' as never,
+    _creationTime: 100,
+    ...makeWave(),
+  }
+}
+
 describe('forge source surface', () => {
   test('defines forge schema extensions and query surface', () => {
     const schemaSource = fs.readFileSync(path.resolve(import.meta.dir, 'schema.ts'), 'utf8')
@@ -47,6 +55,7 @@ describe('forge source surface', () => {
     expect(schemaSource).toContain('orchestrationWaves: defineTable({')
     expect(schemaSource).toContain('browserSessions: defineTable({')
     expect(forgeSource).toContain('export const getProjectSnapshot = query({')
+    expect(forgeSource).toContain('export const getTaskContextPack = query({')
     expect(forgeSource).toContain('export const startIntake = mutation({')
     expect(forgeSource).toContain('export const acceptPlan = mutation({')
     expect(forgeSource).toContain('export const createTasksFromPlan = mutation({')
@@ -61,13 +70,64 @@ describe('forge source surface', () => {
   })
 
   test('accepts rich QA evidence through the forge control plane', () => {
+    const routeSource = fs.readFileSync(
+      path.resolve(import.meta.dir, '../apps/web/app/api/qa/run/route.ts'),
+      'utf8'
+    )
+    const schemaSource = fs.readFileSync(path.resolve(import.meta.dir, 'schema.ts'), 'utf8')
     const forgeSource = fs.readFileSync(path.resolve(import.meta.dir, 'forge.ts'), 'utf8')
 
-    expect(forgeSource).toContain('assertions: v.array(')
-    expect(forgeSource).toContain('consoleErrors: v.array(v.string())')
-    expect(forgeSource).toContain('networkFailures: v.array(v.string())')
-    expect(forgeSource).toContain('screenshotPath: v.optional(v.string())')
+    expect(schemaSource).toContain('artifacts: v.array(')
+    expect(schemaSource).toContain('scenarioNames: v.array(v.string())')
+    expect(forgeSource).toContain('scenarioNames: v.optional(v.array(v.string()))')
+    expect(forgeSource).toContain('evidenceArtifacts: v.optional(')
     expect(forgeSource).toContain('defects: v.array(')
+    expect(routeSource).toContain('scenarioNames: normalized.evidence.scenarioNames')
+    expect(routeSource).toContain('evidenceArtifacts: normalized.evidence.artifacts')
+  })
+
+  test('accepts richer review artifacts and ship criteria through the forge control plane', () => {
+    const typesSource = fs.readFileSync(
+      path.resolve(import.meta.dir, '../apps/web/lib/forge/types.ts'),
+      'utf8'
+    )
+    const schemaSource = fs.readFileSync(path.resolve(import.meta.dir, 'schema.ts'), 'utf8')
+    const forgeSource = fs.readFileSync(path.resolve(import.meta.dir, 'forge.ts'), 'utf8')
+
+    expect(typesSource).toContain('requiredActionItems')
+    expect(typesSource).toContain('verificationEvidence')
+    expect(typesSource).toContain('criteriaResults')
+    expect(typesSource).toContain('ShipCriterionResult')
+
+    expect(schemaSource).toContain('checklistResults: v.array(')
+    expect(schemaSource).toContain('requiredActionItems: v.array(v.string())')
+    expect(schemaSource).toContain('verificationEvidence: v.array(')
+    expect(schemaSource).toContain('criteriaResults: v.array(')
+
+    expect(forgeSource).toContain('requiredActionItems: v.optional(v.array(v.string()))')
+    expect(forgeSource).toContain('verificationEvidence: v.optional(')
+    expect(forgeSource).toContain('criteriaResults: v.array(')
+  })
+
+  test('exposes a task-scoped context pack helper surface', () => {
+    const forgeSource = fs.readFileSync(path.resolve(import.meta.dir, 'forge.ts'), 'utf8')
+
+    expect(forgeSource).toContain('export function buildTaskContextPack(')
+    expect(forgeSource).toContain('recentChangesDigest')
+    expect(forgeSource).toContain('excludedContext')
+  })
+
+  test('exposes handoff summaries and operator views through the snapshot', () => {
+    const forgeSource = fs.readFileSync(path.resolve(import.meta.dir, 'forge.ts'), 'utf8')
+
+    expect(forgeSource).toContain('buildForgeHandoffSummary')
+    expect(forgeSource).toContain('buildRoleNextActions')
+    expect(forgeSource).toContain('buildForgeStatusView')
+    expect(forgeSource).toContain('buildForgeTaskView')
+    expect(forgeSource).toContain('buildForgeVerificationView')
+    expect(forgeSource).toContain('handoffSummary:')
+    expect(forgeSource).toContain('roleNextActions:')
+    expect(forgeSource).toContain('operatorViews:')
   })
 })
 
@@ -125,10 +185,12 @@ describe('forge helpers', () => {
         openRiskCount: 1,
         unresolvedDefectCount: 0,
       },
-      activeWave: makeWave(),
+      activeWave: makeSnapshotWave(),
       tasks: [
         {
           _id: 'task_1' as never,
+          _creationTime: 100,
+          deliveryStateId: 'delivery_state_1' as never,
           taskKey: 'task-1',
           title: 'Implement snapshot query',
           description: 'Build a workbench-ready snapshot.',
@@ -161,9 +223,10 @@ describe('forge helpers', () => {
       latestShipReport: null,
       activePlanningSession: {
         _id: 'planning_1' as never,
+        _creationTime: 90,
         chatId: 'chat_1' as never,
         sessionId: 'planning_session_1',
-        status: 'review',
+        status: 'ready_for_review',
         questions: [],
         answers: [],
         generatedPlan: undefined,
@@ -179,6 +242,7 @@ describe('forge helpers', () => {
       },
       latestSpecification: {
         _id: 'spec_1' as never,
+        _creationTime: 100,
         projectId: 'project_1' as never,
         chatId: 'chat_1' as never,
         runId: 'run_1' as never,
@@ -212,9 +276,19 @@ describe('forge helpers', () => {
         createdAt: 100,
         updatedAt: 120,
       },
-      decisions: [makeDecision()],
+      decisions: [
+        {
+          _id: 'decision_1' as never,
+          _creationTime: 100,
+          ...makeDecision(),
+        },
+      ],
       verifications: [],
-      browserSession,
+      browserSession: {
+        _id: 'browser_1' as never,
+        _creationTime: 150,
+        ...browserSession,
+      },
       timeline: [],
     })
 
@@ -226,6 +300,12 @@ describe('forge helpers', () => {
     expect(snapshot.specification?.status).toBe('verified')
     expect(snapshot.decisions).toHaveLength(1)
     expect(snapshot.taskBoard.tasks[0]?.title).toBe('Implement snapshot query')
+    expect(snapshot.taskBoard.activeTaskId).toBe('task_1')
+    expect(snapshot.taskBoard.tasks[0]?.taskBoard.readiness).toBe('ready')
+    expect(snapshot.taskBoard.tasks[0]?.taskBoard.isReady).toBe(true)
+    expect(snapshot.handoffSummary.activeTask?.id).toBe('task_1')
+    expect(snapshot.roleNextActions.manager.items[0]).toContain('Implement snapshot query')
+    expect(snapshot.operatorViews.status.summaryLines[0]).toContain('Phase execute is active')
   })
 
   it('advances task status based on the review decision', () => {

@@ -551,6 +551,7 @@ export default function ProjectPage() {
                 qaDecision,
               }),
               evidenceSummary: qaSummary ?? closurePlan.shipReport.evidenceSummary,
+              criteriaResults: [],
             })
           }
         }
@@ -672,29 +673,16 @@ export default function ProjectPage() {
     : null
   const activeDeliveryTask = useMemo(() => {
     const forgeTasks = forgeProjectSnapshot?.taskBoard.tasks ?? []
-    if (forgeTasks.length > 0) {
-      const forgeActiveTaskId = forgeProjectSnapshot?.taskBoard.activeTaskId
-      if (forgeActiveTaskId) {
-        const forgeActiveTask = forgeTasks.find((task) => task._id === forgeActiveTaskId)
-        if (forgeActiveTask) return forgeActiveTask
-      }
-
-      return forgeTasks.find((task) => task.status !== 'done' && task.status !== 'rejected') ?? null
+    const forgeActiveTaskId = forgeProjectSnapshot?.taskBoard.activeTaskId
+    if (forgeActiveTaskId) {
+      const forgeActiveTask = forgeTasks.find((task) => task._id === forgeActiveTaskId)
+      if (forgeActiveTask) return forgeActiveTask
     }
 
-    return null
+    return forgeTasks[0] ?? null
   }, [forgeProjectSnapshot?.taskBoard.activeTaskId, forgeProjectSnapshot?.taskBoard.tasks])
   const activeTaskReview = forgeProjectSnapshot?.verification.latestReview ?? null
   const activeTaskQaReport = forgeProjectSnapshot?.verification.latestQa ?? null
-  const latestShipReport = useMemo(() => {
-    const timeline = forgeProjectSnapshot?.timeline ?? []
-    const shipEntry = timeline.find((entry) => entry.kind === 'ship')
-    if (!shipEntry) return null
-
-    return {
-      summary: typeof shipEntry.summary === 'string' ? shipEntry.summary : '',
-    }
-  }, [forgeProjectSnapshot?.timeline])
   const requestedFilePath = searchParams.get('filePath')
   const taskPanelViewModel = useMemo(
     () =>
@@ -739,20 +727,18 @@ export default function ProjectPage() {
   const statePanelViewModel = useMemo(() => {
     if (!forgeProjectSnapshot) return null
 
+    const statusView = forgeProjectSnapshot?.operatorViews.status
+    const handoffSummary = forgeProjectSnapshot?.handoffSummary
+
     return {
       currentPhase: forgeProjectSnapshot.state.phase,
-      openTaskCount: forgeProjectSnapshot.taskBoard.tasks.filter(
-        (task) => task.status !== 'done' && task.status !== 'rejected'
-      ).length,
+      openTaskCount: handoffSummary.openTaskCount,
       unresolvedRiskCount: forgeProjectSnapshot.state.openRiskCount,
       reviewGateStatus: forgeProjectSnapshot.state.gates.implementation_review,
       qaGateStatus: forgeProjectSnapshot.state.gates.qa_review,
-      shipSummary:
-        latestShipReport?.summary ??
-        forgeProjectSnapshot.state.summary.nextStepBrief ??
-        'Ship readiness has not been recorded yet.',
+      shipSummary: statusView.primarySummary,
     }
-  }, [forgeProjectSnapshot, latestShipReport])
+  }, [forgeProjectSnapshot])
   const browserSessionViewModel = useMemo(
     () => forgeProjectSnapshot?.browserQa.activeSession ?? null,
     [forgeProjectSnapshot?.browserQa.activeSession]
@@ -768,7 +754,7 @@ export default function ProjectPage() {
           ? [forgeProjectSnapshot.verification.latestQa]
           : [],
         shipReports:
-          latestShipReport && forgeProjectSnapshot?.timeline
+          forgeProjectSnapshot?.verification.latestShip && forgeProjectSnapshot?.timeline
             ? forgeProjectSnapshot.timeline
                 .filter((entry) => entry.kind === 'ship')
                 .map((entry) => ({
@@ -778,7 +764,7 @@ export default function ProjectPage() {
                 }))
             : [],
       }),
-    [forgeProjectSnapshot, latestShipReport]
+    [forgeProjectSnapshot]
   )
   const decisionPanelViewModel = useMemo(
     () => forgeProjectSnapshot?.decisions ?? [],

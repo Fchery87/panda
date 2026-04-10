@@ -10,6 +10,7 @@ import { snapshots } from './snapshots'
 import type { Message, UserMessage } from './types'
 import { agents } from './agents'
 import type { FormalSpecification } from '../spec/types'
+import type { WorkerContextPack } from '../../forge/types'
 
 const snapshotTrackNoop: typeof snapshots.track = async () => null
 
@@ -125,6 +126,62 @@ describe('harness Runtime', () => {
     expect(events.some((event) => event.type === 'complete')).toBe(true)
     expect(observedModel).toBe('hook-mutated-model')
     expect(sawBuiltinReadFilesTool).toBe(true)
+  })
+
+  test('threads a prebuilt forge context pack into builder execution context', async () => {
+    resetHarnessTestState()
+    let systemMessages: string[] = []
+    const provider = createProvider((options) => {
+      systemMessages = options.messages
+        .filter((message) => message.role === 'system' && typeof message.content === 'string')
+        .map((message) => String(message.content))
+    })
+
+    const forgeContextPack: WorkerContextPack = {
+      projectId: 'project_1',
+      deliveryStateId: 'delivery_state_1',
+      taskId: 'task_1',
+      role: 'builder',
+      objective: 'Build ContextEngine',
+      summary: 'Create a deterministic task-scoped context pack builder.',
+      filesInScope: ['apps/web/lib/forge/context-engine.ts'],
+      routesInScope: ['/projects/[projectId]'],
+      constraints: ['Keep Convex as source of truth'],
+      acceptanceCriteria: [],
+      testRequirements: ['Add context-engine unit tests'],
+      reviewRequirements: ['Manager validates scope exclusion'],
+      qaRequirements: ['Verify active route context stays intact'],
+      decisions: [],
+      recentChangesDigest: 'Recent task changes: initial red test recorded.',
+      nextStepBrief: 'Next: Implement the minimal context engine.',
+      excludedContext: ['Task task-2: Centralize gates'],
+    }
+
+    const runtime = new Runtime(provider, new Map(), {
+      checkpointStore: new InMemoryCheckpointStore(),
+      forgeContextPack,
+      specEngine: {
+        enabled: false,
+      },
+    })
+    const userMessage = createUserMessage({
+      id: 'msg-user-forge-context',
+      sessionID: 'session-forge-context',
+      text: 'implement task',
+      agent: 'builder',
+    })
+
+    const events = []
+    for await (const event of runtime.run('session-forge-context', userMessage)) {
+      events.push(event)
+    }
+
+    expect(events.some((event) => event.type === 'complete')).toBe(true)
+    expect(systemMessages.some((message) => message.includes('Forge execution context'))).toBe(true)
+    expect(systemMessages.some((message) => message.includes('Build ContextEngine'))).toBe(true)
+    expect(
+      systemMessages.some((message) => message.includes('Task task-2: Centralize gates'))
+    ).toBe(true)
   })
 
   test('applies compaction results and still reaches the provider', async () => {

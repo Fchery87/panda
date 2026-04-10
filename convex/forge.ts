@@ -16,12 +16,32 @@ import {
   GateStatus,
   OrchestrationWaveStatus,
   QaDecision,
+  ReviewChecklistResult,
   ReviewDecision,
   ReviewType,
   ShipDecision,
+  ShipCriterionResult,
   VerificationKind,
+  VerificationEvidenceRef,
   VerificationStatus,
 } from './schema'
+import {
+  assertForgePhaseTransition,
+  assertForgeQaGate,
+  assertForgeReviewGate,
+  assertForgeShipGate,
+  assertForgeTaskTransition,
+} from './lib/forge_gatekeeper'
+import { buildTaskBoardView, type ForgeTaskBoardMetadata } from './lib/forge_task_board'
+import {
+  buildForgeHandoffSummary,
+  buildRoleNextActions,
+} from '../apps/web/lib/forge/handoff-summary'
+import {
+  buildForgeStatusView,
+  buildForgeTaskView,
+  buildForgeVerificationView,
+} from '../apps/web/lib/forge/operator-views'
 
 export type DecisionLogRecord = {
   deliveryStateId: Id<'deliveryStates'>
@@ -74,6 +94,7 @@ export type BrowserSessionRecord = {
 }
 
 type SnapshotTaskRecord = Doc<'deliveryTasks'>
+type SnapshotTaskBoardRecord = SnapshotTaskRecord & { taskBoard: ForgeTaskBoardMetadata }
 
 export type ForgeProjectSnapshotRecord = {
   project: {
@@ -99,7 +120,7 @@ export type ForgeProjectSnapshotRecord = {
   }
   taskBoard: {
     activeTaskId?: Id<'deliveryTasks'>
-    tasks: SnapshotTaskRecord[]
+    tasks: SnapshotTaskBoardRecord[]
   }
   planning: {
     activeSession:
@@ -126,10 +147,18 @@ export type ForgeProjectSnapshotRecord = {
     records: Doc<'deliveryVerifications'>[]
     latestReview: Doc<'reviewReports'> | null
     latestQa: Doc<'qaReports'> | null
+    latestShip: Doc<'shipReports'> | null
   }
   browserQa: {
     activeSession: Doc<'browserSessions'> | null
     latestQa: Doc<'qaReports'> | null
+  }
+  handoffSummary: ReturnType<typeof buildForgeHandoffSummary>
+  roleNextActions: ReturnType<typeof buildRoleNextActions>
+  operatorViews: {
+    status: ReturnType<typeof buildForgeStatusView>
+    tasks: ReturnType<typeof buildForgeTaskView>
+    verification: ReturnType<typeof buildForgeVerificationView>
   }
   decisions: Doc<'deliveryDecisions'>[]
   timeline: Array<Record<string, unknown>>
@@ -310,6 +339,181 @@ export function buildProjectSnapshot(args: {
   browserSession: Doc<'browserSessions'> | null
   timeline: Array<Record<string, unknown>>
 }): ForgeProjectSnapshotRecord {
+  const taskBoard = buildTaskBoardView({ tasks: args.tasks })
+
+  const snapshotBase = {
+    project: {
+      id: String(args.project._id),
+      name: args.project.name,
+      description: args.project.description,
+    },
+    state: {
+      id: String(args.deliveryState._id),
+      phase: args.deliveryState.currentPhase,
+      status: args.deliveryState.status,
+      activeRole: args.deliveryState.activeRole,
+      activeWave: args.activeWave
+        ? {
+            id: String(args.activeWave._id),
+            phase: args.activeWave.phase,
+            status: args.activeWave.status,
+            summary: args.activeWave.summary,
+            taskIds: args.activeWave.taskIds.map((taskId) => String(taskId)),
+            contextResetRequired: args.activeWave.contextResetRequired,
+            createdAt: args.activeWave.createdAt,
+            updatedAt: args.activeWave.updatedAt,
+          }
+        : undefined,
+      summary: args.deliveryState.summary,
+      gates: {
+        architecture_review: args.deliveryState.reviewGateStatus,
+        implementation_review: args.deliveryState.reviewGateStatus,
+        qa_review: args.deliveryState.qaGateStatus,
+        ship_review: args.deliveryState.shipGateStatus,
+      },
+      openRiskCount: args.deliveryState.openRiskCount,
+      unresolvedDefectCount: args.deliveryState.unresolvedDefectCount,
+    },
+    taskBoard: {
+      activeTaskId: taskBoard.activeTaskId ? String(taskBoard.activeTaskId) : undefined,
+      tasks: taskBoard.tasks.map((task) => ({
+        id: String(task._id),
+        taskKey: task.taskKey,
+        title: task.title,
+        description: task.description,
+        rationale: task.rationale,
+        ownerRole: task.ownerRole,
+        dependencies: task.dependencies.map((dependency) => String(dependency)),
+        filesInScope: task.filesInScope,
+        routesInScope: task.routesInScope,
+        constraints: task.constraints,
+        acceptanceCriteria: task.acceptanceCriteria,
+        testRequirements: task.testRequirements,
+        reviewRequirements: task.reviewRequirements,
+        qaRequirements: task.qaRequirements,
+        blockers: task.blockers,
+        status: task.status,
+        evidence: task.evidence.map((evidence) => ({
+          kind: evidence.type,
+          label: evidence.label,
+          ref: evidence.id,
+          href: evidence.href,
+        })),
+        latestReview: null,
+        latestQa: null,
+        taskBoard: task.taskBoard,
+        createdAt: task.createdAt,
+        updatedAt: task.updatedAt,
+      })),
+    },
+    verification: {
+      records: args.verifications.map((record) => ({
+        id: String(record._id),
+        taskId: record.taskId ? String(record.taskId) : '',
+        kind: record.kind,
+        label: record.label,
+        status: record.status,
+        evidenceRefs: record.evidenceRefs,
+        createdAt: record.createdAt,
+        updatedAt: record.updatedAt,
+      })),
+      latestReview: args.latestReview
+        ? {
+            reviewType: args.latestReview.type,
+            decision: args.latestReview.decision,
+            summary: args.latestReview.summary,
+            checklistResults: args.latestReview.checklistResults.map((result) => ({
+              item: result.item,
+              status: result.status,
+              detail: result.detail,
+            })),
+            requiredActionItems: args.latestReview.requiredActionItems,
+            verificationEvidence: args.latestReview.verificationEvidence.map((evidence) => ({
+              kind: evidence.kind,
+              label: evidence.label,
+              ref: evidence.ref,
+              href: evidence.href,
+            })),
+            findings: args.latestReview.findings,
+            followUpTaskSeeds: [],
+            createdAt: args.latestReview.createdAt,
+          }
+        : null,
+      latestQa: args.latestQa
+        ? {
+            decision: args.latestQa.decision,
+            summary: args.latestQa.summary,
+            assertions: args.latestQa.assertions,
+            routesTested: args.latestQa.evidence.urlsTested,
+            flowsTested: args.latestQa.evidence.flowNames,
+            evidence: [
+              ...(args.latestQa.evidence.screenshotPath
+                ? [
+                    {
+                      kind: 'screenshot' as const,
+                      label: 'Full page screenshot',
+                      href: args.latestQa.evidence.screenshotPath,
+                    },
+                  ]
+                : []),
+            ],
+            defects: args.latestQa.defects,
+            browserSessionKey: args.latestQa.browserSessionKey,
+            createdAt: args.latestQa.createdAt,
+          }
+        : null,
+      latestShip: args.latestShipReport
+        ? {
+            decision: args.latestShipReport.decision,
+            summary: args.latestShipReport.summary,
+            evidenceSummary: args.latestShipReport.evidenceSummary,
+            criteriaResults: args.latestShipReport.criteriaResults,
+            createdAt: args.latestShipReport.createdAt,
+          }
+        : null,
+    },
+    browserQa: {
+      activeSession: args.browserSession
+        ? {
+            id: String(args.browserSession._id),
+            projectId: String(args.browserSession.projectId),
+            environment: args.browserSession.environment,
+            status: args.browserSession.status,
+            browserSessionKey: args.browserSession.browserSessionKey,
+            baseUrl: args.browserSession.baseUrl,
+            storageStatePath: args.browserSession.storageStatePath,
+            lastUsedAt: args.browserSession.lastUsedAt,
+            lastVerifiedAt: args.browserSession.lastVerifiedAt,
+            lastRoutesTested: args.browserSession.lastRoutesTested,
+            leaseOwner: args.browserSession.leaseOwner,
+            leaseExpiresAt: args.browserSession.leaseExpiresAt,
+            createdAt: args.browserSession.createdAt,
+            updatedAt: args.browserSession.updatedAt,
+          }
+        : undefined,
+      latestQa: undefined,
+    },
+    decisions: args.decisions.map((decision) => ({
+      id: String(decision._id),
+      category: decision.category,
+      summary: decision.summary,
+      detail: decision.detail,
+      relatedTaskIds: decision.relatedTaskIds.map((taskId) => String(taskId)),
+      relatedFilePaths: decision.relatedFilePaths,
+      createdByRole: decision.createdByRole,
+      createdAt: decision.createdAt,
+    })),
+    timeline: args.timeline,
+  } satisfies import('../apps/web/lib/forge/types').ForgeProjectSnapshot
+
+  const handoffSummary = buildForgeHandoffSummary({ snapshot: snapshotBase })
+  const roleNextActions = buildRoleNextActions({ snapshot: snapshotBase })
+  const operatorViews = {
+    status: buildForgeStatusView({ snapshot: snapshotBase }),
+    tasks: buildForgeTaskView({ snapshot: snapshotBase }),
+    verification: buildForgeVerificationView({ snapshot: snapshotBase }),
+  }
+
   return {
     project: {
       id: args.project._id,
@@ -333,8 +537,8 @@ export function buildProjectSnapshot(args: {
       unresolvedDefectCount: args.deliveryState.unresolvedDefectCount,
     },
     taskBoard: {
-      activeTaskId: args.tasks[0]?._id,
-      tasks: args.tasks,
+      activeTaskId: taskBoard.activeTaskId as Id<'deliveryTasks'> | undefined,
+      tasks: taskBoard.tasks as SnapshotTaskBoardRecord[],
     },
     planning: {
       activeSession: args.activePlanningSession,
@@ -355,13 +559,72 @@ export function buildProjectSnapshot(args: {
       records: args.verifications,
       latestReview: args.latestReview,
       latestQa: args.latestQa,
+      latestShip: args.latestShipReport,
     },
     browserQa: {
       activeSession: args.browserSession,
       latestQa: args.latestQa,
     },
+    handoffSummary,
+    roleNextActions,
+    operatorViews,
     decisions: args.decisions,
     timeline: args.timeline,
+  }
+}
+
+export function buildTaskContextPack(args: {
+  projectId: Id<'projects'>
+  deliveryStateId: Id<'deliveryStates'>
+  task: SnapshotTaskRecord
+  role: Extract<Doc<'deliveryTasks'>['ownerRole'], 'builder' | 'manager' | 'executive'>
+  decisions: Doc<'deliveryDecisions'>[]
+  verifications: Doc<'deliveryVerifications'>[]
+  latestReview: Doc<'reviewReports'> | null
+  deliverySummary: DeliveryStateRecord['summary']
+  allTasks: SnapshotTaskRecord[]
+}) {
+  const taskDecisions = [...args.decisions]
+    .filter((entry) => entry.relatedTaskIds.includes(args.task._id))
+    .sort((left, right) => left.createdAt - right.createdAt)
+  const latestDecision = taskDecisions[taskDecisions.length - 1]?.summary
+  const latestVerification = [...args.verifications]
+    .filter((record) => record.taskId === args.task._id)
+    .sort((left, right) => right.updatedAt - left.updatedAt)[0]?.label
+  const recentChanges = [latestDecision, latestVerification, args.latestReview?.summary].filter(
+    (value): value is string => typeof value === 'string' && value.length > 0
+  )
+
+  return {
+    projectId: args.projectId,
+    deliveryStateId: args.deliveryStateId,
+    taskId: args.task._id,
+    role: args.role,
+    objective: args.task.title,
+    summary: args.task.description,
+    filesInScope: args.task.filesInScope,
+    routesInScope: args.task.routesInScope,
+    constraints: args.task.constraints,
+    acceptanceCriteria: args.task.acceptanceCriteria,
+    testRequirements: args.task.testRequirements,
+    reviewRequirements: args.task.reviewRequirements,
+    qaRequirements: args.task.qaRequirements,
+    decisions: taskDecisions,
+    recentChangesDigest:
+      recentChanges.length > 0
+        ? `Recent task changes: ${recentChanges.join('. ')}.`
+        : 'Recent task changes: none recorded yet.',
+    nextStepBrief: args.deliverySummary.nextStepBrief,
+    excludedContext: [
+      ...args.allTasks
+        .filter((task) => task._id !== args.task._id)
+        .sort((left, right) => left.createdAt - right.createdAt)
+        .map((task) => `Task ${task.taskKey}: ${task.title}`),
+      ...args.decisions
+        .filter((entry) => !entry.relatedTaskIds.includes(args.task._id))
+        .sort((left, right) => left.createdAt - right.createdAt)
+        .map((entry) => `Decision ${String(entry._id)}: ${entry.summary}`),
+    ],
   }
 }
 
@@ -588,6 +851,58 @@ export const getQaRunContext = query({
   },
 })
 
+export const getTaskContextPack = query({
+  args: {
+    chatId: v.id('chats'),
+    taskId: v.id('deliveryTasks'),
+    role: v.union(v.literal('builder'), v.literal('manager'), v.literal('executive')),
+  },
+  handler: async (ctx, args) => {
+    const { chat } = await requireChatOwner(ctx, args.chatId)
+    const task = await requireDeliveryTaskOwner(ctx, args.taskId)
+    const deliveryState = await requireDeliveryStateOwner(ctx, task.deliveryStateId)
+
+    if (deliveryState.chatId !== chat._id) {
+      throw new Error('Delivery task does not belong to the specified chat')
+    }
+
+    const [tasks, decisions, verifications, reviews] = await Promise.all([
+      ctx.db
+        .query('deliveryTasks')
+        .withIndex('by_delivery_updated', (q) => q.eq('deliveryStateId', deliveryState._id))
+        .order('desc')
+        .collect(),
+      ctx.db
+        .query('deliveryDecisions')
+        .withIndex('by_delivery_created', (q) => q.eq('deliveryStateId', deliveryState._id))
+        .order('desc')
+        .take(20),
+      ctx.db
+        .query('deliveryVerifications')
+        .withIndex('by_delivery_updated', (q) => q.eq('deliveryStateId', deliveryState._id))
+        .order('desc')
+        .take(20),
+      ctx.db
+        .query('reviewReports')
+        .withIndex('by_task_created', (q) => q.eq('taskId', task._id))
+        .order('desc')
+        .take(1),
+    ])
+
+    return buildTaskContextPack({
+      projectId: deliveryState.projectId,
+      deliveryStateId: deliveryState._id,
+      task,
+      role: args.role,
+      decisions,
+      verifications,
+      latestReview: reviews[0] ?? null,
+      deliverySummary: deliveryState.summary,
+      allTasks: tasks,
+    })
+  },
+})
+
 export const startIntake = mutation({
   args: {
     projectId: v.id('projects'),
@@ -802,6 +1117,9 @@ export const startTaskExecution = mutation({
     const deliveryState = await requireDeliveryStateOwner(ctx, task.deliveryStateId)
     const now = Date.now()
 
+    assertForgeTaskTransition({ from: task.status, to: 'in_progress' })
+    assertForgePhaseTransition({ from: deliveryState.currentPhase, to: 'execute' })
+
     await ctx.db.patch(args.taskId, {
       status: 'in_progress',
       updatedAt: now,
@@ -838,16 +1156,30 @@ export const submitWorkerResult = mutation({
     const now = Date.now()
     const workerOutcome = args.outcome ?? 'completed'
     const nextTaskStatus = workerOutcome === 'completed' ? 'in_review' : 'blocked'
+    const nextEvidence = [
+      ...task.evidence,
+      {
+        type: 'external' as const,
+        label: args.summary,
+      },
+    ]
+
+    if (workerOutcome === 'completed') {
+      assertForgeReviewGate({
+        task: {
+          ...task,
+          evidence: nextEvidence,
+        },
+        verificationRefs: args.evidenceRefs,
+      })
+      assertForgePhaseTransition({ from: deliveryState.currentPhase, to: 'review' })
+    } else {
+      assertForgeTaskTransition({ from: task.status, to: nextTaskStatus })
+    }
 
     await ctx.db.patch(args.taskId, {
       status: nextTaskStatus,
-      evidence: [
-        ...task.evidence,
-        {
-          type: 'external',
-          label: args.summary,
-        },
-      ],
+      evidence: nextEvidence,
       updatedAt: now,
     })
 
@@ -891,6 +1223,9 @@ export const recordReview = mutation({
     type: ReviewType,
     decision: ReviewDecision,
     summary: v.string(),
+    checklistResults: v.optional(v.array(ReviewChecklistResult)),
+    requiredActionItems: v.optional(v.array(v.string())),
+    verificationEvidence: v.optional(v.array(VerificationEvidenceRef)),
     findings: v.optional(
       v.array(
         v.object({
@@ -910,6 +1245,21 @@ export const recordReview = mutation({
       throw new Error('Delivery task does not belong to the specified delivery state')
     }
 
+    const deliveryState = await requireDeliveryStateOwner(ctx, args.deliveryStateId)
+    if (args.decision === 'pass') {
+      assertForgeQaGate({
+        task,
+        reviewType: args.type,
+        nextStatus: 'qa_pending',
+      })
+      assertForgePhaseTransition({ from: deliveryState.currentPhase, to: 'qa' })
+    } else {
+      assertForgeTaskTransition({
+        from: task.status,
+        to: getTaskStatusForReviewDecision(args.decision),
+      })
+    }
+
     const now = Date.now()
     const reviewId = await ctx.db.insert(
       'reviewReports',
@@ -919,6 +1269,9 @@ export const recordReview = mutation({
         type: args.type,
         decision: args.decision,
         summary: args.summary,
+        checklistResults: args.checklistResults,
+        requiredActionItems: args.requiredActionItems,
+        verificationEvidence: args.verificationEvidence,
         findings: args.findings,
         followUpTaskIds: args.followUpTaskIds,
         now,
@@ -944,7 +1297,6 @@ export const recordReview = mutation({
       })
     )
 
-    const deliveryState = await requireDeliveryStateOwner(ctx, args.deliveryStateId)
     await ctx.db.patch(args.deliveryStateId, {
       currentPhase: args.decision === 'pass' ? 'qa' : 'review',
       status: args.decision === 'reject' ? 'blocked' : deliveryState.status,
@@ -982,9 +1334,26 @@ export const runQaForTask = mutation({
     ),
     urlsTested: v.array(v.string()),
     flowNames: v.array(v.string()),
+    scenarioNames: v.optional(v.array(v.string())),
     consoleErrors: v.array(v.string()),
     networkFailures: v.array(v.string()),
     screenshotPath: v.optional(v.string()),
+    evidenceArtifacts: v.optional(
+      v.array(
+        v.object({
+          kind: v.union(
+            v.literal('screenshot'),
+            v.literal('console-log'),
+            v.literal('network-log'),
+            v.literal('trace'),
+            v.literal('report')
+          ),
+          label: v.string(),
+          path: v.optional(v.string()),
+          content: v.optional(v.string()),
+        })
+      )
+    ),
     browserSessionKey: v.optional(v.string()),
     defects: v.array(
       v.object({
@@ -1001,6 +1370,15 @@ export const runQaForTask = mutation({
       throw new Error('Delivery task does not belong to the specified delivery state')
     }
 
+    const deliveryState = await requireDeliveryStateOwner(ctx, args.deliveryStateId)
+    if (args.decision === 'pass') {
+      assertForgeQaGate({
+        task,
+        nextStatus: 'done',
+      })
+      assertForgePhaseTransition({ from: deliveryState.currentPhase, to: 'ship' })
+    }
+
     const now = Date.now()
     const qaId = await ctx.db.insert(
       'qaReports',
@@ -1014,9 +1392,24 @@ export const runQaForTask = mutation({
         evidence: {
           urlsTested: args.urlsTested,
           flowNames: args.flowNames,
+          scenarioNames: args.scenarioNames ?? args.flowNames,
           consoleErrors: args.consoleErrors,
           networkFailures: args.networkFailures,
           screenshotPath: args.screenshotPath,
+          artifacts:
+            args.evidenceArtifacts ??
+            [
+              args.screenshotPath
+                ? {
+                    kind: 'screenshot' as const,
+                    label: 'Full page screenshot',
+                    path: args.screenshotPath,
+                  }
+                : null,
+            ].filter(
+              (artifact): artifact is { kind: 'screenshot'; label: string; path: string } =>
+                artifact !== null
+            ),
         },
         defects: args.defects,
         now,
@@ -1042,7 +1435,6 @@ export const runQaForTask = mutation({
       })
     )
 
-    const deliveryState = await requireDeliveryStateOwner(ctx, args.deliveryStateId)
     await ctx.db.patch(args.deliveryStateId, {
       currentPhase: args.decision === 'pass' ? 'ship' : 'qa',
       status: args.decision === 'pass' ? deliveryState.status : 'blocked',
@@ -1070,9 +1462,15 @@ export const recordShipDecision = mutation({
     decision: ShipDecision,
     summary: v.string(),
     evidenceSummary: v.string(),
+    criteriaResults: v.array(ShipCriterionResult),
   },
   handler: async (ctx, args) => {
     const deliveryState = await requireDeliveryStateOwner(ctx, args.deliveryStateId)
+    assertForgeShipGate({
+      shipGateStatus: deliveryState.shipGateStatus,
+      qaGateStatus: deliveryState.qaGateStatus,
+      decision: args.decision,
+    })
     const now = Date.now()
     const shipId = await ctx.db.insert(
       'shipReports',
@@ -1081,6 +1479,7 @@ export const recordShipDecision = mutation({
         decision: args.decision,
         summary: args.summary,
         evidenceSummary: args.evidenceSummary,
+        criteriaResults: args.criteriaResults,
         now,
       })
     )

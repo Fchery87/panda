@@ -337,12 +337,54 @@ export const QaAssertion = v.object({
   detail: v.optional(v.string()),
 })
 
+export const QaEvidenceArtifact = v.object({
+  kind: v.union(
+    v.literal('screenshot'),
+    v.literal('console-log'),
+    v.literal('network-log'),
+    v.literal('trace'),
+    v.literal('report')
+  ),
+  label: v.string(),
+  path: v.optional(v.string()),
+  content: v.optional(v.string()),
+})
+
 export const QaEvidence = v.object({
   screenshotPath: v.optional(v.string()),
   consoleErrors: v.array(v.string()),
   networkFailures: v.array(v.string()),
   urlsTested: v.array(v.string()),
   flowNames: v.array(v.string()),
+  scenarioNames: v.array(v.string()),
+  artifacts: v.array(QaEvidenceArtifact),
+})
+
+export const ReviewChecklistResult = v.object({
+  item: v.string(),
+  status: v.union(v.literal('passed'), v.literal('failed'), v.literal('waived')),
+  detail: v.optional(v.string()),
+})
+
+export const VerificationEvidenceRef = v.object({
+  kind: v.union(
+    v.literal('worker_result'),
+    v.literal('review_report'),
+    v.literal('qa_report'),
+    v.literal('ship_report'),
+    v.literal('artifact'),
+    v.literal('external')
+  ),
+  label: v.string(),
+  ref: v.optional(v.string()),
+  href: v.optional(v.string()),
+})
+
+export const ShipCriterionResult = v.object({
+  criterion: v.string(),
+  status: v.union(v.literal('passed'), v.literal('failed'), v.literal('waived')),
+  evidenceRefs: v.array(v.string()),
+  detail: v.optional(v.string()),
 })
 
 export const ShipDecision = v.union(
@@ -1089,6 +1131,9 @@ export default defineSchema({
     type: ReviewType,
     decision: ReviewDecision,
     summary: v.string(),
+    checklistResults: v.array(ReviewChecklistResult),
+    requiredActionItems: v.array(v.string()),
+    verificationEvidence: v.array(VerificationEvidenceRef),
     findings: v.array(
       v.object({
         severity: v.union(v.literal('high'), v.literal('medium'), v.literal('low')),
@@ -1135,6 +1180,7 @@ export default defineSchema({
     openRisks: v.array(v.string()),
     unresolvedDefects: v.array(v.string()),
     evidenceSummary: v.string(),
+    criteriaResults: v.array(ShipCriterionResult),
     createdAt: v.number(),
   }).index('by_delivery_created', ['deliveryStateId', 'createdAt']),
 

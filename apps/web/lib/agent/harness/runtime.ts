@@ -61,6 +61,7 @@ import type {
   RuntimeCheckpointLegacyToolCallFrequencyEntry,
 } from './checkpoint-store'
 import { SpecEngine, createSpecEngine, type SpecGenerationContext } from '../spec/engine'
+import type { WorkerContextPack } from '../../forge/types'
 
 /**
  * Runtime state
@@ -96,6 +97,34 @@ interface RuntimeState {
   messagesDirtySinceCheckpoint: boolean
   /** Tracks consecutive compaction failures to break death spirals */
   consecutiveCompactionFailures: number
+  forgeContextPack?: WorkerContextPack
+}
+
+function shouldInjectForgeContext(agent: AgentConfig): boolean {
+  return agent.name === 'builder' || agent.name === 'manager' || agent.name === 'executive'
+}
+
+function formatForgeContextPack(pack: WorkerContextPack): string {
+  return [
+    'Forge execution context',
+    `Project ID: ${pack.projectId}`,
+    `Delivery State ID: ${pack.deliveryStateId}`,
+    `Task ID: ${pack.taskId}`,
+    `Role: ${pack.role}`,
+    `Objective: ${pack.objective}`,
+    `Summary: ${pack.summary}`,
+    `Files In Scope: ${pack.filesInScope.join(', ') || 'None'}`,
+    `Routes In Scope: ${pack.routesInScope.join(', ') || 'None'}`,
+    `Constraints: ${pack.constraints.join(' | ') || 'None'}`,
+    `Acceptance Criteria: ${pack.acceptanceCriteria.map((criterion) => criterion.text).join(' | ') || 'None'}`,
+    `Test Requirements: ${pack.testRequirements.join(' | ') || 'None'}`,
+    `Review Requirements: ${pack.reviewRequirements.join(' | ') || 'None'}`,
+    `QA Requirements: ${pack.qaRequirements.join(' | ') || 'None'}`,
+    `Decisions: ${pack.decisions.map((decision) => decision.summary).join(' | ') || 'None'}`,
+    `Recent Changes Digest: ${pack.recentChangesDigest}`,
+    `Next Step Brief: ${pack.nextStepBrief ?? 'None'}`,
+    `Excluded Context: ${pack.excludedContext.join(' | ') || 'None'}`,
+  ].join('\n')
 }
 
 function normalizeCheckpointToolCallFrequency(
@@ -505,6 +534,7 @@ export class Runtime {
       checkpointMessageSnapshot: null,
       messagesDirtySinceCheckpoint: true,
       consecutiveCompactionFailures: 0,
+      forgeContextPack: this.config.forgeContextPack,
     }
   }
 
@@ -709,7 +739,7 @@ export class Runtime {
 
     const baseCompletionOptions: CompletionOptions = {
       model: agent.model ?? this.provider.config.defaultModel ?? 'gpt-4o',
-      messages: this.buildCompletionMessages(isLastStep),
+      messages: this.buildCompletionMessages(agent, isLastStep),
       temperature: agent.temperature ?? 0.7,
       maxTokens: 4096,
       tools: isLastStep ? undefined : this.getToolsForAgent(agent),
@@ -795,7 +825,7 @@ export class Runtime {
 
               if (contextOverflowRetryCount <= maxContextOverflowRetries) {
                 // Update completion options with compacted messages
-                completionOptions.messages = this.buildCompletionMessages(isLastStep)
+                completionOptions.messages = this.buildCompletionMessages(agent, isLastStep)
                 continue // Retry the stream with compacted context
               }
             }
@@ -2087,7 +2117,7 @@ export class Runtime {
   /**
    * Build completion messages from state
    */
-  private buildCompletionMessages(isLastStep: boolean): CompletionMessage[] {
+  private buildCompletionMessages(agent: AgentConfig, isLastStep: boolean): CompletionMessage[] {
     if (!this.state) return []
 
     const messages: CompletionMessage[] = []
@@ -2097,6 +2127,13 @@ export class Runtime {
 
     if (latestUserWithSystem?.system) {
       messages.push({ role: 'system', content: latestUserWithSystem.system })
+    }
+
+    if (this.state.forgeContextPack && shouldInjectForgeContext(agent)) {
+      messages.push({
+        role: 'system',
+        content: formatForgeContextPack(this.state.forgeContextPack),
+      })
     }
 
     for (const msg of this.state.messages) {
