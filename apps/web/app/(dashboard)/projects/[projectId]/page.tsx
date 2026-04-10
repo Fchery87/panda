@@ -17,7 +17,7 @@ import { CommandPalette } from '@/components/command-palette/CommandPalette'
 import { ProjectChatPanel } from '@/components/projects/ProjectChatPanel'
 import { ProjectShareDialog } from '@/components/projects/ProjectShareDialog'
 import { ProjectWorkspaceLayout } from '@/components/projects/ProjectWorkspaceLayout'
-import { ReviewPanel } from '@/components/review/ReviewPanel'
+import { RightPanel } from '@/components/panels/RightPanel'
 import { TaskPanel } from '@/components/panels/TaskPanel'
 import { QAPanel } from '@/components/panels/QAPanel'
 import { StatePanel } from '@/components/panels/StatePanel'
@@ -1090,17 +1090,16 @@ export default function ProjectPage() {
     [updateArtifactStatusMutation]
   )
 
-  const openReviewTab = useCallback(
-    (tab: ChatInspectorTab) => {
-      setChatInspectorTab(tab)
+  const openRightPanelTab = useCallback(
+    (tab: 'chat' | 'plan' | 'review' | 'inspect' | 'run' | 'comments') => {
+      setRightPanelTab(tab)
       if (isMobileLayout) {
         setMobilePrimaryPanel('review')
-        setIsChatInspectorOpen(false)
         return
       }
-      setIsChatInspectorOpen(true)
+      setIsRightPanelOpen(true)
     },
-    [isMobileLayout, setChatInspectorTab, setIsChatInspectorOpen, setMobilePrimaryPanel]
+    [isMobileLayout, setIsRightPanelOpen, setMobilePrimaryPanel, setRightPanelTab]
   )
 
   useEffect(() => {
@@ -1223,13 +1222,13 @@ export default function ProjectPage() {
       inlineRateLimitError={inlineRateLimitError}
       onToggleInspector={() => {
         if (isMobileLayout) {
-          openReviewTab(chatInspectorSurfaceTab)
+          openRightPanelTab('run')
           return
         }
-        setIsChatInspectorOpen((prev) => !prev)
+        setIsRightPanelOpen((prev) => !prev)
       }}
       onOpenHistory={() => {
-        openReviewTab('run')
+        openRightPanelTab('run')
       }}
       onOpenShare={() => setIsShareDialogOpen(true)}
       onResetWorkspace={handleResetWorkspace}
@@ -1238,7 +1237,7 @@ export default function ProjectPage() {
       }}
       planDraft={planDraft}
       onPlanReview={() => {
-        openReviewTab('plan')
+        openRightPanelTab('plan')
       }}
       onPlanApprove={() => {
         void handleApprovePlan()
@@ -1271,12 +1270,12 @@ export default function ProjectPage() {
       tracePersistenceStatus={agent.tracePersistenceStatus}
       onOpenFile={handleFileSelect}
       onOpenArtifacts={() => {
-        openReviewTab('artifacts')
+        openRightPanelTab('review')
       }}
       currentSpec={agent.currentSpec}
       onSpecClick={() => setIsSpecDrawerOpen(true)}
       onPlanClick={() => {
-        openReviewTab('plan')
+        openRightPanelTab('plan')
       }}
       onResumeRuntimeSession={agent.resumeRuntimeSession}
       snapshotEvents={snapshotRunEvents}
@@ -1296,30 +1295,11 @@ export default function ProjectPage() {
     />
   )
 
-  const reviewPanelContent = (
-    <ReviewPanel
-      activeTab={chatInspectorTab}
-      onTabChange={(tab) => setChatInspectorTab(tab as ChatInspectorTab)}
-      taskContent={<TaskPanel task={taskPanelViewModel} />}
-      runContent={
-        <InspectorRunContent
-          chatId={activeChat?._id}
-          liveSteps={liveRunSteps}
-          isStreaming={agent.isLoading}
-          tracePersistenceStatus={agent.tracePersistenceStatus}
-          onOpenFile={handleFileSelect}
-          onOpenArtifacts={() => openReviewTab('artifacts')}
-          currentSpec={agent.currentSpec}
-          planStatus={activeChat?.planStatus}
-          planDraft={planDraft}
-          onSpecClick={() => setIsSpecDrawerOpen(true)}
-          onPlanClick={() => openReviewTab('plan')}
-          onResumeRuntimeSession={agent.resumeRuntimeSession}
-          planningDebug={planningDebug}
-          snapshotEvents={snapshotRunEvents}
-          subagentToolCalls={subagentToolCalls}
-        />
-      }
+  const rightPanelContent = (
+    <RightPanel
+      activeTab={rightPanelTab}
+      onTabChange={setRightPanelTab}
+      chatContent={chatPanelContent}
       planContent={
         <InspectorPlanContent
           planDraft={planDraft}
@@ -1341,29 +1321,63 @@ export default function ProjectPage() {
           buildDisabled={!canBuildFromPlan(activeChat?.planStatus, planDraft) || agent.isLoading}
         />
       }
-      artifactsContent={
+      reviewContent={
         <ArtifactPanel projectId={projectId} chatId={activeChat?._id} position="right" />
       }
-      memoryContent={
-        <InspectorMemoryContent
-          memoryBank={agent.memoryBank}
-          onSaveMemoryBank={agent.updateMemoryBank}
-        />
+      inspectContent={
+        <div className="flex h-full flex-col overflow-hidden">
+          <div className="surface-1 border-b border-border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            Inspect
+          </div>
+          <div className="min-h-0 flex-1 overflow-auto">
+            <BrowserSessionPanel session={browserSessionViewModel} />
+          </div>
+        </div>
       }
-      evalsContent={
-        <InspectorEvalsContent
-          projectId={projectId}
+      runContent={
+        <InspectorRunContent
           chatId={activeChat?._id}
-          lastUserPrompt={latestUserPrompt}
-          lastAssistantReply={latestAssistantReply}
-          onRunEvalScenario={agent.runEvalScenario}
+          liveSteps={liveRunSteps}
+          isStreaming={agent.isLoading}
+          tracePersistenceStatus={agent.tracePersistenceStatus}
+          onOpenFile={handleFileSelect}
+          onOpenArtifacts={() => openRightPanelTab('review')}
+          currentSpec={agent.currentSpec}
+          planStatus={activeChat?.planStatus}
+          planDraft={planDraft}
+          onSpecClick={() => setIsSpecDrawerOpen(true)}
+          onPlanClick={() => openRightPanelTab('plan')}
+          onResumeRuntimeSession={agent.resumeRuntimeSession}
+          planningDebug={planningDebug}
+          snapshotEvents={snapshotRunEvents}
+          subagentToolCalls={subagentToolCalls}
         />
       }
-      qaContent={<QAPanel report={qaPanelViewModel} />}
-      stateContent={<StatePanel state={statePanelViewModel} />}
-      browserContent={<BrowserSessionPanel session={browserSessionViewModel} />}
-      activityContent={<ActivityTimelinePanel entries={activityTimelineEntries} />}
-      decisionsContent={<DecisionPanel decisions={decisionPanelViewModel} />}
+      commentsContent={
+        <div className="flex h-full flex-col overflow-hidden">
+          <div className="surface-1 border-b border-border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            Notes
+          </div>
+          <div className="min-h-0 flex-1 overflow-auto">
+            <TaskPanel task={taskPanelViewModel} />
+            <QAPanel report={qaPanelViewModel} />
+            <StatePanel state={statePanelViewModel} />
+            <ActivityTimelinePanel entries={activityTimelineEntries} />
+            <DecisionPanel decisions={decisionPanelViewModel} />
+            <InspectorMemoryContent
+              memoryBank={agent.memoryBank}
+              onSaveMemoryBank={agent.updateMemoryBank}
+            />
+            <InspectorEvalsContent
+              projectId={projectId}
+              chatId={activeChat?._id}
+              lastUserPrompt={latestUserPrompt}
+              lastAssistantReply={latestAssistantReply}
+              onRunEvalScenario={agent.runEvalScenario}
+            />
+          </div>
+        </div>
+      }
     />
   )
 
@@ -1586,9 +1600,9 @@ export default function ProjectPage() {
           mobileUnreadCount={mobileUnreadCount}
           isMobileKeyboardOpen={isMobileKeyboardOpen}
           chatPanel={chatPanelContent}
-          reviewPanel={reviewPanelContent}
-          isReviewPanelOpen={isChatInspectorOpen}
-          onReviewPanelOpenChange={setIsChatInspectorOpen}
+          reviewPanel={rightPanelContent}
+          isReviewPanelOpen={false}
+          onReviewPanelOpenChange={() => {}}
           isChatPanelOpen={isChatPanelOpen}
           pendingArtifactPreview={pendingArtifactPreview}
           onApplyPendingArtifact={handleApplyPendingArtifact}
