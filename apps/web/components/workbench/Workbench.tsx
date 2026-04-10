@@ -8,6 +8,7 @@ import { FileTabs } from './FileTabs'
 import { ProjectSearchPanel } from './ProjectSearchPanel'
 import { PendingArtifactOverlay } from './PendingArtifactOverlay'
 import { EditorContainer } from '../editor/EditorContainer'
+import { CenterTabBar, type CenterTabBarTab } from './CenterTabBar'
 import { WorkspaceHome } from './WorkspaceHome'
 import { DiffTab } from './DiffTab'
 import { ReviewChangesBanner } from './ReviewChangesBanner'
@@ -70,7 +71,7 @@ interface WorkbenchProps {
 
 type CenterTabId = 'home' | 'editor' | 'diff' | 'preview' | 'logs' | 'tests'
 
-const CENTER_TABS: Array<{ id: CenterTabId; label: string }> = [
+const CENTER_TABS: CenterTabBarTab[] = [
   { id: 'home', label: 'Home' },
   { id: 'editor', label: 'Editor' },
   { id: 'diff', label: 'Diff' },
@@ -141,54 +142,26 @@ export function Workbench({
   useShortcuts(shortcuts)
 
   const effectiveTab = selectedFilePath && activeCenterTab === 'home' ? 'editor' : activeCenterTab
+  const centerTabs = useMemo(
+    () =>
+      CENTER_TABS.map((tab) => ({
+        ...tab,
+        badge: tab.id === 'diff' ? pendingDiffCount : undefined,
+      })),
+    [pendingDiffCount]
+  )
 
   if (isMobile) {
     // Mobile layout - simplified stacked view
     return (
       <div className="surface-0 h-full min-h-0 w-full min-w-0">
-        <div className="surface-1 flex h-10 shrink-0 border-b border-border font-mono text-[10px] uppercase tracking-widest">
-          <button
-            type="button"
-            onClick={() => onCenterTabChange?.('home')}
-            className={cn(
-              'h-full flex-1 border-r border-border',
-              effectiveTab === 'home'
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            Home
-          </button>
-          <button
-            type="button"
-            onClick={() => onCenterTabChange?.('editor')}
-            className={cn(
-              'h-full flex-1 border-r border-border',
-              effectiveTab === 'editor'
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            Editor
-          </button>
-          <button
-            type="button"
-            onClick={() => onCenterTabChange?.('diff')}
-            className={cn(
-              'relative h-full flex-1',
-              effectiveTab === 'diff'
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            Diff
-            {pendingDiffCount > 0 && (
-              <span className="absolute right-1 top-1 min-w-3.5 bg-destructive px-0.5 text-center text-[8px] text-destructive-foreground">
-                {pendingDiffCount}
-              </span>
-            )}
-          </button>
-        </div>
+        <CenterTabBar
+          tabs={centerTabs.filter(
+            (tab) => tab.id === 'home' || tab.id === 'editor' || tab.id === 'diff'
+          )}
+          activeTab={effectiveTab}
+          onTabChange={onCenterTabChange}
+        />
         <div className="h-[calc(100%-2.5rem)] min-h-0 min-w-0">
           {effectiveTab === 'home' && (
             <WorkspaceHome
@@ -333,46 +306,23 @@ export function Workbench({
       {/* Main content area */}
       <div className="min-h-0 min-w-0 flex-1">
         <div className="surface-0 flex h-full min-h-0 min-w-0 flex-col">
-          {/* Center Tab Bar */}
-          <div className="surface-1 flex h-9 shrink-0 items-center border-b border-border">
-            <div className="flex h-full items-center">
-              {CENTER_TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => onCenterTabChange?.(tab.id)}
-                  className={cn(
-                    'relative flex h-full items-center gap-1.5 border-r border-border px-4 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors duration-100',
-                    effectiveTab === tab.id
-                      ? 'surface-0 text-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  {effectiveTab === tab.id && (
-                    <div className="absolute inset-x-0 bottom-0 h-0.5 bg-primary" />
-                  )}
-                  {tab.label}
-                  {tab.id === 'diff' && pendingDiffCount > 0 && (
-                    <span className="dock-tab-badge" data-severity="warning">
-                      {pendingDiffCount}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-
-            {/* File info - right side of center tab bar */}
-            {effectiveTab === 'editor' && (
-              <div className="ml-auto flex items-center gap-2 px-3">
-                <span className="surface-0 border border-border px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
-                  {openTabs.length} tabs
-                </span>
-                <span className="surface-0 border border-border px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
-                  {files.length} files
-                </span>
-              </div>
-            )}
-          </div>
+          <CenterTabBar
+            tabs={centerTabs}
+            activeTab={effectiveTab}
+            onTabChange={onCenterTabChange}
+            trailingContent={
+              effectiveTab === 'editor' ? (
+                <>
+                  <span className="surface-0 border border-border px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
+                    {openTabs.length} tabs
+                  </span>
+                  <span className="surface-0 border border-border px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
+                    {files.length} files
+                  </span>
+                </>
+              ) : null
+            }
+          />
 
           {/* File Tabs (only in editor mode) */}
           {effectiveTab === 'editor' && openTabs.length > 0 && (

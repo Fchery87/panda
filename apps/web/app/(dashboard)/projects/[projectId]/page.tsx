@@ -13,6 +13,7 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import { Breadcrumb, buildBreadcrumbItems } from '@/components/workbench/Breadcrumb'
 import { mapLatestRunProgressSteps } from '@/components/chat/live-run-utils'
 import { ComposerOverlay } from '@/components/chat/ComposerOverlay'
+import { CommandPalette } from '@/components/command-palette/CommandPalette'
 import { ProjectChatPanel } from '@/components/projects/ProjectChatPanel'
 import { ProjectShareDialog } from '@/components/projects/ProjectShareDialog'
 import { ProjectWorkspaceLayout } from '@/components/projects/ProjectWorkspaceLayout'
@@ -35,6 +36,8 @@ import {
 import { RotateCcw, MoreHorizontal, PanelLeftOpen, PanelLeftClose } from 'lucide-react'
 import Link from 'next/link'
 import { TopBarControls } from '@/components/layout/TopBarControls'
+import { useCommandPaletteStore } from '@/stores/commandPaletteStore'
+import { useGit } from '@/hooks/useGit'
 
 // UI Components
 import { PandaLogo } from '@/components/ui/panda-logo'
@@ -193,6 +196,8 @@ export default function ProjectPage() {
   const params = useParams()
   const searchParams = useSearchParams()
   const projectId = params.projectId as Id<'projects'>
+  const openCommandPalette = useCommandPaletteStore((state) => state.open)
+  const { status: gitStatus, refreshStatus: refreshGitStatus } = useGit()
 
   const {
     isChatPanelOpen,
@@ -237,6 +242,10 @@ export default function ProjectPage() {
     taskHeaderVisible,
     setTaskHeaderVisible,
   } = useProjectWorkspaceUi()
+
+  useEffect(() => {
+    void refreshGitStatus()
+  }, [refreshGitStatus])
 
   const { activeSection, isFlyoutOpen, handleSectionChange, toggleFlyout } = useSidebar()
 
@@ -576,6 +585,19 @@ export default function ProjectPage() {
       })
     },
   })
+
+  const healthStatus = useMemo(() => {
+    if (agent.error) return 'error' as const
+    if (isAnyJobRunning || agent.isLoading) return 'issues' as const
+    return 'ready' as const
+  }, [agent.error, agent.isLoading, isAnyJobRunning])
+
+  const healthDetail = useMemo(() => {
+    if (agent.error) return 'Agent execution encountered an error'
+    if (agent.isLoading) return 'Agent is actively working'
+    if (isAnyJobRunning) return 'Background jobs are running'
+    return 'Workspace systems nominal'
+  }, [agent.error, agent.isLoading, isAnyJobRunning])
   const sendAgentMessage = agent.sendMessage
 
   // Auto-show task header when agent is running
@@ -1474,18 +1496,40 @@ export default function ProjectPage() {
                 setCursorPosition(null)
               }}
             />
+          </div>
 
-            {isAnyJobRunning && (
-              <span className="ml-2 flex h-2 w-2 animate-pulse bg-primary" title="Jobs running" />
-            )}
+          <div className="mx-4 hidden min-w-0 flex-1 justify-center md:flex">
+            <button
+              type="button"
+              onClick={openCommandPalette}
+              className="surface-0 flex h-8 w-full max-w-md items-center gap-3 border border-border px-3 text-left font-mono text-[11px] text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+              aria-label="Open command palette"
+            >
+              <span className="uppercase tracking-[0.18em] text-primary">Search</span>
+              <span className="min-w-0 flex-1 truncate">
+                Jump to files, modes, settings, and commands
+              </span>
+              <span className="surface-1 shrink-0 border border-border px-2 py-0.5 text-[10px] uppercase tracking-[0.18em]">
+                Ctrl+K
+              </span>
+            </button>
           </div>
 
           <div className="flex items-center gap-1">
             <TopBarControls
+              branch={gitStatus?.branch}
               model={selectedModel}
               isAgentRunning={agent.isLoading}
               onNewTask={handleNewChat}
-              healthStatus={isAnyJobRunning ? 'ready' : 'ready'}
+              healthStatus={healthStatus}
+              healthDetail={healthDetail}
+              devServerLabel={isAnyJobRunning ? 'Dev server active' : 'Dev server idle'}
+              agentLabel={agent.isLoading ? 'Agent running' : 'Agent idle'}
+              repoLabel={
+                gitStatus
+                  ? `${gitStatus.staged.length + gitStatus.unstaged.length + gitStatus.untracked.length} repo changes`
+                  : 'Repo status loading'
+              }
               onToggleRightPanel={() => setIsRightPanelOpen((prev) => !prev)}
               isRightPanelOpen={isRightPanelOpen}
             />
@@ -1634,6 +1678,7 @@ export default function ProjectPage() {
           isStreaming={agent.isLoading}
         />
         <ShortcutHelpOverlay open={isShortcutHelpOpen} onOpenChange={setIsShortcutHelpOpen} />
+        <CommandPalette projectId={projectId} files={files.map((file) => ({ path: file.path }))} />
       </div>
     </WorkspaceProvider>
   )

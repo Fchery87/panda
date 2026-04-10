@@ -8,10 +8,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  WorkspaceHealthIndicator,
+  type WorkspaceHealthStatus,
+} from '@/components/layout/WorkspaceHealthIndicator'
 import { cn } from '@/lib/utils'
 
 export type RunMode = 'local' | 'worktree' | 'cloud'
-export type HealthStatus = 'ready' | 'issues' | 'error'
+export type HealthStatus = WorkspaceHealthStatus
 
 interface TopBarControlsProps {
   branch?: string
@@ -25,26 +29,10 @@ interface TopBarControlsProps {
   onNotificationsClick?: () => void
   onToggleRightPanel?: () => void
   isRightPanelOpen?: boolean
-}
-
-function HealthDot({ status }: { status: HealthStatus }) {
-  return (
-    <span
-      className={cn(
-        'h-2 w-2 shrink-0',
-        status === 'ready' && 'bg-[hsl(var(--status-success))]',
-        status === 'issues' && 'bg-[hsl(var(--status-warning))]',
-        status === 'error' && 'bg-destructive'
-      )}
-      title={
-        status === 'ready'
-          ? 'Workspace ready'
-          : status === 'issues'
-            ? 'Workspace has issues'
-            : 'Workspace error'
-      }
-    />
-  )
+  healthDetail?: string
+  devServerLabel?: string
+  agentLabel?: string
+  repoLabel?: string
 }
 
 export function TopBarControls({
@@ -59,13 +47,20 @@ export function TopBarControls({
   onNotificationsClick,
   onToggleRightPanel,
   isRightPanelOpen = false,
+  healthDetail,
+  devServerLabel,
+  agentLabel,
+  repoLabel,
 }: TopBarControlsProps) {
   return (
     <div className="flex items-center gap-1.5">
-      {/* Health indicator */}
-      <div className="flex items-center gap-1.5 px-1.5">
-        <HealthDot status={healthStatus} />
-      </div>
+      <WorkspaceHealthIndicator
+        status={healthStatus}
+        detail={healthDetail}
+        devServerLabel={devServerLabel}
+        agentLabel={agentLabel}
+        repoLabel={repoLabel}
+      />
 
       {/* Branch chip */}
       {branch && (
