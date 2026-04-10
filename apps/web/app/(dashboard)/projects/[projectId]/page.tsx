@@ -218,10 +218,10 @@ export default function ProjectPage() {
     setMobileUnreadCount,
     isMobileKeyboardOpen,
     setIsMobileKeyboardOpen,
-    isChatInspectorOpen,
-    setIsChatInspectorOpen,
+    isChatInspectorOpen: _isChatInspectorOpen,
+    setIsChatInspectorOpen: _setIsChatInspectorOpen,
     chatInspectorTab,
-    setChatInspectorTab,
+    setChatInspectorTab: _setChatInspectorTab,
     isSpecDrawerOpen,
     setIsSpecDrawerOpen,
     isSpecPanelOpen,
@@ -1102,6 +1102,28 @@ export default function ProjectPage() {
     [isMobileLayout, setIsRightPanelOpen, setMobilePrimaryPanel, setRightPanelTab]
   )
 
+  const openReviewTab = useCallback(
+    (tab: ChatInspectorTab) => {
+      if (tab === 'plan') {
+        openRightPanelTab('plan')
+        return
+      }
+
+      if (tab === 'run') {
+        openRightPanelTab('run')
+        return
+      }
+
+      if (tab === 'artifacts') {
+        openRightPanelTab('review')
+        return
+      }
+
+      openRightPanelTab('comments')
+    },
+    [openRightPanelTab]
+  )
+
   useEffect(() => {
     if (!isMobileLayout || mobilePrimaryPanel === 'chat') {
       setMobileUnreadCount(0)
@@ -1228,7 +1250,7 @@ export default function ProjectPage() {
         setIsRightPanelOpen((prev) => !prev)
       }}
       onOpenHistory={() => {
-        openRightPanelTab('run')
+        openReviewTab('run')
       }}
       onOpenShare={() => setIsShareDialogOpen(true)}
       onResetWorkspace={handleResetWorkspace}
@@ -1600,10 +1622,7 @@ export default function ProjectPage() {
           mobileUnreadCount={mobileUnreadCount}
           isMobileKeyboardOpen={isMobileKeyboardOpen}
           chatPanel={chatPanelContent}
-          reviewPanel={rightPanelContent}
-          isReviewPanelOpen={false}
-          onReviewPanelOpenChange={() => {}}
-          isChatPanelOpen={isChatPanelOpen}
+          rightPanelContent={rightPanelContent}
           pendingArtifactPreview={pendingArtifactPreview}
           onApplyPendingArtifact={handleApplyPendingArtifact}
           onRejectPendingArtifact={handleRejectPendingArtifact}
@@ -1670,7 +1689,6 @@ export default function ProjectPage() {
           activeCenterTab={activeCenterTab}
           onCenterTabChange={setActiveCenterTab}
           isRightPanelOpen={isRightPanelOpen}
-          onRightPanelOpenChange={setIsRightPanelOpen}
           rightPanelTab={rightPanelTab}
           onRightPanelTabChange={setRightPanelTab}
           activeTaskTitle={

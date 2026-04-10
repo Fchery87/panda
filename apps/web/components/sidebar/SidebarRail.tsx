@@ -35,7 +35,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'files', icon: IconHome, label: 'Home & Files', shortcut: 'Ctrl+Shift+E' },
+  { id: 'files', icon: IconProjects, label: 'Files', shortcut: 'Ctrl+Shift+E' },
   { id: 'agents', icon: IconAgents, label: 'Active Agents', shortcut: 'Ctrl+Shift+A' },
   { id: 'search', icon: IconSearch, label: 'Search', shortcut: 'Ctrl+Shift+F' },
   { id: 'git', icon: IconGit, label: 'Source Control', shortcut: 'Ctrl+Shift+G' },
@@ -49,7 +49,7 @@ export function SidebarRail({
   onSectionChange,
   onToggleFlyout,
   projectId: _projectId,
-  onHomeClick: _onHomeClick,
+  onHomeClick,
 }: SidebarRailProps) {
   const handleItemClick = (section: SidebarSection) => {
     if (section === activeSection && isFlyoutOpen) {
@@ -69,20 +69,38 @@ export function SidebarRail({
     <TooltipProvider delayDuration={300}>
       <div className="surface-1 flex h-full w-12 flex-shrink-0 flex-col border-r border-border">
         {/* Projects link at top */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Link
-              href="/projects"
-              className="hover:bg-surface-2 flex h-11 items-center justify-center border-b border-border text-muted-foreground transition-colors duration-150 hover:text-foreground"
-              aria-label="Projects"
-            >
-              <IconProjects className="h-4.5 w-4.5" weight="duotone" />
-            </Link>
-          </TooltipTrigger>
-          <TooltipContent side="right" className="font-mono text-xs">
-            Projects
-          </TooltipContent>
-        </Tooltip>
+        <div className="flex flex-col border-b border-border">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onHomeClick}
+                className="hover:bg-surface-2 flex h-11 items-center justify-center text-muted-foreground transition-colors duration-150 hover:text-foreground"
+                aria-label="Home"
+              >
+                <IconHome className="h-4.5 w-4.5" weight="duotone" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-mono text-xs">
+              Home
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link
+                href="/projects"
+                className="hover:bg-surface-2 flex h-11 items-center justify-center border-t border-border text-muted-foreground transition-colors duration-150 hover:text-foreground"
+                aria-label="Projects"
+              >
+                <IconProjects className="h-4.5 w-4.5" weight="duotone" />
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-mono text-xs">
+              Projects
+            </TooltipContent>
+          </Tooltip>
+        </div>
 
         {/* Top section - Navigation items */}
         <div className="flex flex-col py-1">

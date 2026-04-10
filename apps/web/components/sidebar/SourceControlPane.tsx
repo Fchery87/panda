@@ -11,6 +11,10 @@ import {
   IconChevronDown,
   IconChevronRight,
   IconCheck,
+  IconArrowUp,
+  IconRevert,
+  IconCloud,
+  IconChevronUpDown,
 } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 import { useGit } from '@/hooks/useGit'
@@ -28,6 +32,7 @@ export function SourceControlPane({ projectId: _projectId }: SourceControlPanePr
   const [stagedExpanded, setStagedExpanded] = useState(true)
   const [unstagedExpanded, setUnstagedExpanded] = useState(true)
   const [untrackedExpanded, setUntrackedExpanded] = useState(true)
+  const [showBranchList, setShowBranchList] = useState(false)
 
   useEffect(() => {
     refreshStatus()
@@ -60,28 +65,88 @@ export function SourceControlPane({ projectId: _projectId }: SourceControlPanePr
   return (
     <div className="flex h-full flex-col">
       {/* Branch header with quick actions */}
-      <div className="flex items-center justify-between border-b border-border px-3 py-2">
-        <div className="flex items-center gap-2">
-          <IconGit className="h-3.5 w-3.5 text-primary" weight="duotone" />
-          <span className="font-mono text-xs font-medium text-foreground">
-            {status?.branch ?? '...'}
-          </span>
+      <div className="border-b border-border">
+        <div className="flex items-center justify-between px-3 py-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <IconGit className="h-3.5 w-3.5 text-primary" weight="duotone" />
+            <button
+              type="button"
+              onClick={() => setShowBranchList((value) => !value)}
+              className="surface-0 flex items-center gap-1 border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-foreground"
+              aria-label="Branch switcher"
+            >
+              <span className="max-w-[120px] truncate">{status?.branch ?? 'branch'}</span>
+              <IconChevronUpDown className="h-3 w-3 text-muted-foreground" />
+            </button>
+          </div>
+          <div className="flex items-center gap-0.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-5 w-5 rounded-none p-0"
+              onClick={() => {
+                refreshStatus()
+                refreshLog(10)
+              }}
+              disabled={isLoading}
+              title="Refresh"
+            >
+              <IconRefresh className={cn('h-3 w-3', isLoading && 'animate-spin')} />
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-0.5">
+
+        <div className="flex flex-wrap items-center gap-1 border-t border-border px-3 py-2">
           <Button
             variant="ghost"
             size="sm"
-            className="h-5 w-5 rounded-none p-0"
-            onClick={() => {
-              refreshStatus()
-              refreshLog(10)
-            }}
-            disabled={isLoading}
-            title="Refresh"
+            className="h-7 gap-1 rounded-none border border-border px-2 font-mono text-[10px] uppercase tracking-[0.18em]"
+            onClick={handleCommit}
+            disabled={!commitMessage.trim() || stagedCount === 0}
           >
-            <IconRefresh className={cn('h-3 w-3', isLoading && 'animate-spin')} />
+            <IconCheck className="h-3 w-3" />
+            Commit
           </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 rounded-none border border-border px-2 font-mono text-[10px] uppercase tracking-[0.18em]"
+            disabled
+            title="Push integration not yet wired"
+          >
+            <IconArrowUp className="h-3 w-3" />
+            Push
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 rounded-none border border-border px-2 font-mono text-[10px] uppercase tracking-[0.18em]"
+            disabled={totalChanges === 0}
+            title="Revert flow coming next"
+          >
+            <IconRevert className="h-3 w-3" />
+            Revert
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 rounded-none border border-border px-2 font-mono text-[10px] uppercase tracking-[0.18em]"
+            disabled
+            title="Pull request creation is not wired from this pane yet"
+          >
+            <IconCloud className="h-3 w-3" />
+            Create PR
+          </Button>
+          <span className="ml-auto font-mono text-[10px] text-muted-foreground">
+            {totalChanges} total changes
+          </span>
         </div>
+
+        {showBranchList && (
+          <div className="surface-0 border-t border-border px-3 py-2 font-mono text-[10px] text-muted-foreground">
+            Branch switching will be wired here. Current branch: {status?.branch ?? 'unknown'}
+          </div>
+        )}
       </div>
 
       {/* Summary bar */}

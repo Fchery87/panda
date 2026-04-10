@@ -34,10 +34,7 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
         mobileUnreadCount={0}
         isMobileKeyboardOpen={false}
         chatPanel={<div>chat-panel</div>}
-        reviewPanel={<div>review-panel</div>}
-        isReviewPanelOpen={false}
-        onReviewPanelOpenChange={() => {}}
-        isChatPanelOpen={true}
+        rightPanelContent={<div>right-panel</div>}
         isRightPanelOpen={true}
         chatMode="code"
         onModeChange={() => {}}

@@ -3,9 +3,7 @@
 import { useEffect, useMemo } from 'react'
 
 import type { Id } from '@convex/_generated/dataModel'
-import { FileTree } from './FileTree'
 import { FileTabs } from './FileTabs'
-import { ProjectSearchPanel } from './ProjectSearchPanel'
 import { PendingArtifactOverlay } from './PendingArtifactOverlay'
 import { EditorContainer } from '../editor/EditorContainer'
 import { CenterTabBar, type CenterTabBarTab } from './CenterTabBar'
@@ -60,8 +58,6 @@ interface WorkbenchProps {
   onStartAgent?: () => void
 }
 
-type CenterTabId = 'home' | 'editor' | 'diff' | 'preview' | 'logs' | 'tests'
-
 const CENTER_TABS: CenterTabBarTab[] = [
   { id: 'home', label: 'Home' },
   { id: 'editor', label: 'Editor' },
@@ -80,9 +76,9 @@ export function Workbench({
   openTabs = [],
   onSelectFile,
   onCloseTab,
-  onCreateFile,
-  onRenameFile,
-  onDeleteFile,
+  onCreateFile: _onCreateFile,
+  onRenameFile: _onRenameFile,
+  onDeleteFile: _onDeleteFile,
   onSaveFile,
   pendingArtifactPreview,
   onApplyPendingArtifact,

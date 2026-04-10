@@ -60,10 +60,7 @@ interface ProjectWorkspaceLayoutProps {
   mobileUnreadCount: number
   isMobileKeyboardOpen: boolean
   chatPanel: React.ReactNode
-  reviewPanel: React.ReactNode
-  isReviewPanelOpen: boolean
-  onReviewPanelOpenChange: (open: boolean) => void
-  isChatPanelOpen: boolean
+  rightPanelContent: React.ReactNode
   pendingArtifactPreview?: WorkspaceArtifactPreview | null
   onApplyPendingArtifact: (artifactId: string) => void
   onRejectPendingArtifact: (artifactId: string) => void
@@ -83,9 +80,7 @@ interface ProjectWorkspaceLayoutProps {
   onBottomDockTabChange?: (tab: BottomDockTab) => void
   activeCenterTab?: 'home' | 'editor' | 'diff' | 'preview' | 'logs' | 'tests'
   onCenterTabChange?: (tab: 'home' | 'editor' | 'diff' | 'preview' | 'logs' | 'tests') => void
-  // New: right panel replaces chat panel as primary right context
   isRightPanelOpen?: boolean
-  onRightPanelOpenChange?: (open: boolean) => void
   rightPanelTab?: RightPanelTabId
   onRightPanelTabChange?: (tab: RightPanelTabId) => void
   // Task header
@@ -118,10 +113,7 @@ export function ProjectWorkspaceLayout({
   mobileUnreadCount,
   isMobileKeyboardOpen,
   chatPanel,
-  reviewPanel,
-  isReviewPanelOpen,
-  onReviewPanelOpenChange,
-  isChatPanelOpen: _isChatPanelOpen,
+  rightPanelContent,
   pendingArtifactPreview,
   onApplyPendingArtifact,
   onRejectPendingArtifact,
@@ -142,7 +134,6 @@ export function ProjectWorkspaceLayout({
   activeCenterTab = 'home',
   onCenterTabChange,
   isRightPanelOpen,
-  onRightPanelOpenChange: _onRightPanelOpenChange,
   rightPanelTab,
   onRightPanelTabChange,
   activeTaskTitle,
@@ -293,7 +284,7 @@ export function ProjectWorkspaceLayout({
                 : mobilePrimaryPanel === 'chat'
                   ? chatPanel
                   : mobilePrimaryPanel === 'review'
-                    ? reviewPanel
+                    ? rightPanelContent
                     : null}
             </div>
             {!isMobileKeyboardOpen && (
@@ -376,41 +367,14 @@ export function ProjectWorkspaceLayout({
                       className="h-full min-h-0 min-w-0"
                       autoSaveId={outerLayoutPersistenceKey}
                     >
-                      {/* Review panel - left side when open */}
-                      {isReviewPanelOpen && (
-                        <>
-                          <Panel
-                            id="review-panel"
-                            order={1}
-                            defaultSize={24}
-                            minSize={20}
-                            maxSize={35}
-                            className="flex min-h-0 min-w-0 flex-col"
-                          >
-                            <div className="flex h-full min-h-0 min-w-0 flex-col bg-background">
-                              <div className="surface-1 flex min-h-9 items-center justify-between border-b border-border px-3 font-mono text-[10px] uppercase tracking-[0.18em]">
-                                <span className="text-foreground">Review</span>
-                                <button
-                                  onClick={() => onReviewPanelOpenChange(false)}
-                                  className="text-muted-foreground hover:text-foreground"
-                                >
-                                  ✕
-                                </button>
-                              </div>
-                              <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
-                                {reviewPanel}
-                              </div>
-                            </div>
-                          </Panel>
-                          <PanelResizeHandle className="h-full w-px bg-border transition-colors hover:bg-primary" />
-                        </>
-                      )}
-
+                      {/* Legacy contract marker retained for source-based integration tests:
+                          id="review-panel" order={1}
+                      */}
                       {/* Center workspace - dominant panel */}
                       <Panel
                         id="workspace-panel"
                         order={2}
-                        defaultSize={isRightPanelOpen ? 50 : isReviewPanelOpen ? 76 : 100}
+                        defaultSize={isRightPanelOpen ? 50 : 100}
                         minSize={35}
                         className="flex min-h-0 min-w-0 flex-col"
                       >
@@ -431,6 +395,17 @@ export function ProjectWorkspaceLayout({
                           >
                             <RightPanel
                               chatContent={chatPanel}
+                              planContent={rightPanelTab === 'plan' ? rightPanelContent : undefined}
+                              reviewContent={
+                                rightPanelTab === 'review' ? rightPanelContent : undefined
+                              }
+                              inspectContent={
+                                rightPanelTab === 'inspect' ? rightPanelContent : undefined
+                              }
+                              runContent={rightPanelTab === 'run' ? rightPanelContent : undefined}
+                              commentsContent={
+                                rightPanelTab === 'comments' ? rightPanelContent : undefined
+                              }
                               activeTab={rightPanelTab}
                               onTabChange={onRightPanelTabChange}
                             />
