@@ -1,21 +1,22 @@
 'use client'
 
-import type { ComponentType } from 'react'
+import type { ForwardRefExoticComponent } from 'react'
 import Link from 'next/link'
+import type { IconProps } from '@phosphor-icons/react'
 import {
-  IconExplorer,
+  IconHome,
+  IconProjects,
+  IconAgents,
   IconSearch,
-  IconHistory,
-  IconSpecs,
   IconGit,
-  IconTerminal,
+  IconDeploy,
   IconSettings,
-  IconDocs,
+  IconHistory,
 } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
-export type SidebarSection = 'explorer' | 'search' | 'history' | 'specs' | 'git' | 'terminal'
+export type SidebarSection = 'files' | 'agents' | 'search' | 'git' | 'deploy' | 'tasks'
 
 interface SidebarRailProps {
   activeSection: SidebarSection
@@ -23,22 +24,23 @@ interface SidebarRailProps {
   onSectionChange: (section: SidebarSection) => void
   onToggleFlyout: () => void
   projectId?: string
+  onHomeClick?: () => void
 }
 
 interface NavItem {
   id: SidebarSection
-  icon: ComponentType<{ className?: string }>
+  icon: ForwardRefExoticComponent<IconProps>
   label: string
   shortcut: string
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'explorer', icon: IconExplorer, label: 'Explorer', shortcut: 'Ctrl+Shift+E' },
+  { id: 'files', icon: IconHome, label: 'Home & Files', shortcut: 'Ctrl+Shift+E' },
+  { id: 'agents', icon: IconAgents, label: 'Active Agents', shortcut: 'Ctrl+Shift+A' },
   { id: 'search', icon: IconSearch, label: 'Search', shortcut: 'Ctrl+Shift+F' },
-  { id: 'history', icon: IconHistory, label: 'History', shortcut: 'Ctrl+Shift+H' },
-  { id: 'specs', icon: IconSpecs, label: 'Specs', shortcut: 'Ctrl+Shift+S' },
   { id: 'git', icon: IconGit, label: 'Source Control', shortcut: 'Ctrl+Shift+G' },
-  { id: 'terminal', icon: IconTerminal, label: 'Terminal', shortcut: 'Ctrl+`' },
+  { id: 'deploy', icon: IconDeploy, label: 'Deploy & Preview', shortcut: '' },
+  { id: 'tasks', icon: IconHistory, label: 'Task History', shortcut: 'Ctrl+Shift+H' },
 ]
 
 export function SidebarRail({
@@ -47,6 +49,7 @@ export function SidebarRail({
   onSectionChange,
   onToggleFlyout,
   projectId: _projectId,
+  onHomeClick: _onHomeClick,
 }: SidebarRailProps) {
   const handleItemClick = (section: SidebarSection) => {
     if (section === activeSection && isFlyoutOpen) {
@@ -64,15 +67,25 @@ export function SidebarRail({
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="surface-1 flex h-full w-14 flex-shrink-0 flex-col border-r border-border">
-        <div className="flex h-14 items-center justify-center border-b border-border">
-          <div className="surface-0 shadow-sharp-sm flex h-8 w-8 items-center justify-center border border-border font-mono text-[10px] font-semibold uppercase tracking-[0.24em] text-foreground">
-            P
-          </div>
-        </div>
+      <div className="surface-1 flex h-full w-12 flex-shrink-0 flex-col border-r border-border">
+        {/* Projects link at top */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link
+              href="/projects"
+              className="hover:bg-surface-2 flex h-11 items-center justify-center border-b border-border text-muted-foreground transition-colors duration-150 hover:text-foreground"
+              aria-label="Projects"
+            >
+              <IconProjects className="h-4.5 w-4.5" weight="duotone" />
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="font-mono text-xs">
+            Projects
+          </TooltipContent>
+        </Tooltip>
 
         {/* Top section - Navigation items */}
-        <div className="flex flex-col py-2">
+        <div className="flex flex-col py-1">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon
             const isActive = item.id === activeSection
@@ -84,7 +97,7 @@ export function SidebarRail({
                     type="button"
                     onClick={() => handleItemClick(item.id)}
                     className={cn(
-                      'relative mx-1 flex h-12 items-center justify-center border border-transparent transition-colors duration-150',
+                      'relative mx-0.5 flex h-10 items-center justify-center border border-transparent transition-colors duration-100',
                       isActive
                         ? 'bg-surface-2 shadow-sharp-sm border-border text-foreground'
                         : 'hover:bg-surface-2 text-muted-foreground hover:border-border hover:text-foreground'
@@ -92,8 +105,8 @@ export function SidebarRail({
                     aria-label={item.label}
                     aria-pressed={isActive}
                   >
-                    {isActive && <div className="absolute inset-y-1 left-0 w-0.5 bg-primary" />}
-                    <Icon className="h-5 w-5" />
+                    {isActive && <div className="absolute inset-y-0.5 left-0 w-0.5 bg-primary" />}
+                    <Icon className="h-[18px] w-[18px]" weight={isActive ? 'duotone' : 'regular'} />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="right" className="font-mono text-xs">
@@ -110,35 +123,20 @@ export function SidebarRail({
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Bottom section - Settings and Docs */}
-        <div className="flex flex-col border-t border-border py-2">
+        {/* Bottom section - Settings */}
+        <div className="flex flex-col border-t border-border py-1">
           <Tooltip>
             <TooltipTrigger asChild>
               <Link
                 href="/settings"
-                className="hover:bg-surface-2 mx-1 flex h-12 items-center justify-center border border-transparent text-muted-foreground transition-colors duration-150 hover:border-border hover:text-foreground"
+                className="hover:bg-surface-2 mx-0.5 flex h-10 items-center justify-center border border-transparent text-muted-foreground transition-colors duration-100 hover:border-border hover:text-foreground"
                 aria-label="Settings"
               >
-                <IconSettings className="h-5 w-5" />
+                <IconSettings className="h-[18px] w-[18px]" />
               </Link>
             </TooltipTrigger>
             <TooltipContent side="right" className="font-mono text-xs">
               Settings
-            </TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Link
-                href="/education"
-                className="hover:bg-surface-2 mx-1 flex h-12 items-center justify-center border border-transparent text-muted-foreground transition-colors duration-150 hover:border-border hover:text-foreground"
-                aria-label="Documentation"
-              >
-                <IconDocs className="h-5 w-5" />
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="font-mono text-xs">
-              Documentation
             </TooltipContent>
           </Tooltip>
         </div>

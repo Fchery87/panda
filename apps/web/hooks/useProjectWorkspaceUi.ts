@@ -3,6 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { useLayoutPersistence } from './useLayoutPersistence'
 import type { WorkspaceOpenTab } from '@/contexts/WorkspaceContext'
+import type { BottomDockTab } from '@/components/layout/BottomDock'
 
 type MobilePrimaryPanel = 'workspace' | 'chat' | 'review'
 type ChatInspectorTab =
@@ -17,6 +18,10 @@ type ChatInspectorTab =
   | 'browser'
   | 'activity'
   | 'decisions'
+
+type RightPanelTab = 'chat' | 'plan' | 'review' | 'inspect' | 'run' | 'comments'
+
+type CenterTab = 'home' | 'editor' | 'diff' | 'preview' | 'logs' | 'tests'
 
 type PlanningPopupState = {
   isPlanningPopupOpen: boolean
@@ -84,6 +89,9 @@ export function closePlanningPopup() {
   setSharedPlanningPopupState((currentState) => closePlanningPopupState(currentState))
 }
 
+const DOCK_OPEN_KEY = 'panda:dock-open'
+const RIGHT_PANEL_OPEN_KEY = 'panda:right-panel-open'
+
 export function useProjectWorkspaceUi() {
   const [isArtifactPanelOpen, setIsArtifactPanelOpen] = useState(false)
   const { isChatPanelOpen, setIsChatPanelOpen } = useLayoutPersistence()
@@ -107,11 +115,49 @@ export function useProjectWorkspaceUi() {
   const [isSpecDrawerOpen, setIsSpecDrawerOpen] = useState(false)
   const [isSpecPanelOpen, setIsSpecPanelOpen] = useState(false)
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
+
+  // New: Bottom dock state
+  const [isBottomDockOpen, setIsBottomDockOpen] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem(DOCK_OPEN_KEY) === 'true'
+  })
+  const [activeBottomDockTab, setActiveBottomDockTab] = useState<BottomDockTab>('terminal')
+
+  // New: Center tab state
+  const [activeCenterTab, setActiveCenterTab] = useState<CenterTab>('home')
+
+  // New: Right panel state (replaces isChatPanelOpen as primary right panel control)
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem(RIGHT_PANEL_OPEN_KEY) === 'true'
+  })
+  const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>('chat')
+
+  // New: Task header visibility
+  const [taskHeaderVisible, setTaskHeaderVisible] = useState(false)
+
   const planningPopupState = useSyncExternalStore(
     subscribePlanningPopup,
     () => sharedPlanningPopupState,
     () => sharedPlanningPopupState
   )
+
+  // Persist dock state
+  useEffect(() => {
+    localStorage.setItem(DOCK_OPEN_KEY, String(isBottomDockOpen))
+  }, [isBottomDockOpen])
+
+  // Persist right panel state
+  useEffect(() => {
+    localStorage.setItem(RIGHT_PANEL_OPEN_KEY, String(isRightPanelOpen))
+  }, [isRightPanelOpen])
+
+  // Auto-switch center tab to editor when a file is selected
+  useEffect(() => {
+    if (selectedFilePath) {
+      setActiveCenterTab('editor')
+    }
+  }, [selectedFilePath])
 
   useEffect(() => {
     const mobileMedia = window.matchMedia('(max-width: 1023px)')
@@ -128,9 +174,6 @@ export function useProjectWorkspaceUi() {
       compactDesktopMedia.removeEventListener('change', update)
     }
   }, [])
-  // Keyboard shortcuts moved to the shared shortcut registry.
-  // Terminal toggle: Ctrl+` -> shortcut registry.
-  // Sidebar toggle: Ctrl+B -> useSidebar.
 
   return {
     isArtifactPanelOpen,
@@ -163,6 +206,21 @@ export function useProjectWorkspaceUi() {
     setIsSpecPanelOpen,
     isShareDialogOpen,
     setIsShareDialogOpen,
+
+    // New state
+    isBottomDockOpen,
+    setIsBottomDockOpen,
+    activeBottomDockTab,
+    setActiveBottomDockTab,
+    activeCenterTab,
+    setActiveCenterTab,
+    isRightPanelOpen,
+    setIsRightPanelOpen,
+    rightPanelTab,
+    setRightPanelTab,
+    taskHeaderVisible,
+    setTaskHeaderVisible,
+
     isPlanningPopupOpen: planningPopupState.isPlanningPopupOpen,
     planningSessionId: planningPopupState.planningSessionId,
     setIsPlanningPopupOpen: (isPlanningPopupOpen: boolean) => {

@@ -5,6 +5,14 @@ import { api } from '@convex/_generated/api'
 const E2E_ADMIN_EMAIL = 'e2e@example.com'
 const E2E_ADMIN_TOKEN_IDENTIFIER = 'e2e-admin-token'
 
+const authApi = {
+  getOrCreateUser: (api as any)['lib/auth']?.getOrCreateUser ?? 'lib/auth:getOrCreateUser',
+}
+
+const seedApi = {
+  makeFirstAdmin: (api as any).seed?.makeFirstAdmin ?? 'seed:makeFirstAdmin',
+}
+
 function isE2EFixtureModeEnabled(request: Request): boolean {
   if (process.env.NODE_ENV === 'production') {
     return false
@@ -41,13 +49,13 @@ export async function POST(_request: Request) {
   try {
     const client = getConvexClient()
 
-    await client.mutation((api as any)['lib/auth'].getOrCreateUser, {
+    await client.mutation(authApi.getOrCreateUser, {
       email: E2E_ADMIN_EMAIL,
       name: 'E2E Admin',
       tokenIdentifier: E2E_ADMIN_TOKEN_IDENTIFIER,
     })
 
-    const promotionResult = (await client.mutation(api.seed.makeFirstAdmin, {
+    const promotionResult = (await client.mutation(seedApi.makeFirstAdmin, {
       email: E2E_ADMIN_EMAIL,
     })) as { success: boolean; userId: string }
 

@@ -5,21 +5,21 @@ import type { ReactNode } from 'react'
 import type { SidebarSection } from './SidebarRail'
 
 const SECTION_LABELS: Record<SidebarSection, string> = {
-  explorer: 'Explorer',
+  files: 'Files',
+  agents: 'Active Agents',
   search: 'Search',
-  history: 'History',
-  specs: 'Specifications',
   git: 'Source Control',
-  terminal: 'Terminal',
+  deploy: 'Deploy & Preview',
+  tasks: 'Task History',
 }
 
 const SECTION_DESCRIPTIONS: Record<SidebarSection, string> = {
-  explorer: 'Navigate project files and symbols',
+  files: 'Navigate project files and symbols',
+  agents: 'Monitor and control running agents',
   search: 'Jump into code by meaning or text',
-  history: 'Move across prior runs and chats',
-  specs: 'Track constraints and implementation plans',
   git: 'Review repository state and diffs',
-  terminal: 'Launch shell commands in context',
+  deploy: 'Preview builds and deployments',
+  tasks: 'Browse completed and active tasks',
 }
 
 interface SidebarFlyoutProps {
@@ -34,27 +34,24 @@ export function SidebarFlyout({ isOpen, activeSection, children }: SidebarFlyout
       {isOpen && (
         <motion.div
           initial={{ width: 0, opacity: 0 }}
-          animate={{ width: 220, opacity: 1 }}
+          animate={{ width: 260, opacity: 1 }}
           exit={{ width: 0, opacity: 0 }}
-          transition={{ duration: 0.2, ease: 'easeOut' }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
           className="surface-1 h-full flex-shrink-0 overflow-hidden border-r border-border"
         >
-          <div className="flex h-full w-[220px] flex-col">
-            <div className="surface-0 shrink-0 border-b border-border px-3 py-3">
+          <div className="flex h-full flex-col" style={{ width: 260 }}>
+            <div className="surface-0 shrink-0 border-b border-border px-3 py-2.5">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-primary">
-                    Panel
-                  </p>
-                  <h2 className="mt-1 font-mono text-sm font-medium text-foreground">
+                  <h2 className="font-mono text-xs font-medium text-foreground">
                     {SECTION_LABELS[activeSection]}
                   </h2>
                 </div>
-                <div className="surface-1 flex h-7 min-w-7 items-center justify-center border border-border px-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                  {SECTION_LABELS[activeSection].slice(0, 2)}
+                <div className="surface-1 flex h-6 min-w-6 items-center justify-center border border-border px-1.5 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                  {SECTION_LABELS[activeSection].slice(0, 3)}
                 </div>
               </div>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
                 {SECTION_DESCRIPTIONS[activeSection]}
               </p>
             </div>

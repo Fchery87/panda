@@ -13,7 +13,7 @@ mock.module('@/contexts/WorkspaceContext', () => ({
 }))
 
 describe('ProjectWorkspaceLayout desktop shell', () => {
-  test('does not render PreviewPanel in the desktop right rail', () => {
+  test('renders the desktop right rail chat panel', () => {
     const html = renderToStaticMarkup(
       <ProjectWorkspaceLayout
         projectId={'project' as never}
@@ -38,6 +38,7 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
         isReviewPanelOpen={false}
         onReviewPanelOpenChange={() => {}}
         isChatPanelOpen={true}
+        isRightPanelOpen={true}
         chatMode="code"
         onModeChange={() => {}}
         cursorPosition={null}
@@ -51,6 +52,6 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
     )
 
     expect(html).toContain('chat-panel')
-    expect(html).not.toContain('Preview')
+    expect(html).toContain('Notes')
   })
 })

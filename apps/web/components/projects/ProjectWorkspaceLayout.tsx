@@ -1,20 +1,23 @@
 'use client'
 
-import { useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { useMemo } from 'react'
+
 import type { Id } from '@convex/_generated/dataModel'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { CommandPalette } from '@/components/command-palette/CommandPalette'
-import { RightPanel } from '@/components/panels/RightPanel'
+import { RightPanel, type RightPanelTabId } from '@/components/panels/RightPanel'
 import { SpecDrawer } from '@/components/chat/SpecDrawer'
 import { StatusBar } from '@/components/workbench/StatusBar'
 import { Workbench } from '@/components/workbench/Workbench'
+import { BottomDock, type BottomDockTab } from '@/components/layout/BottomDock'
+import { TaskHeader, type TaskStatus } from '@/components/layout/TaskHeader'
+import { Terminal } from '@/components/workbench/Terminal'
+import { AgentEventsPanel } from '@/components/panels/AgentEventsPanel'
 import { useWorkspace, type WorkspaceOpenTab } from '@/contexts/WorkspaceContext'
 import { cn } from '@/lib/utils'
 import type { FormalSpecification } from '@/lib/agent/spec/types'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import type { WorkspaceArtifactPreview } from '@/components/workbench/artifact-preview'
-import type { SidebarSection } from '@/components/sidebar/SidebarRail'
 
 type FileRecord = {
   _id: Id<'files'>
@@ -65,6 +68,25 @@ interface ProjectWorkspaceLayoutProps {
   onSpecDrawerOpenChange: (open: boolean) => void
   onContextualChat?: (selection: string, filePath: string) => void
   onInlineChat?: (prompt: string, selectedText: string, filePath: string) => Promise<string | null>
+  // New: bottom dock and center tab state
+  isBottomDockOpen?: boolean
+  onBottomDockOpenChange?: (open: boolean) => void
+  activeBottomDockTab?: BottomDockTab
+  onBottomDockTabChange?: (tab: BottomDockTab) => void
+  activeCenterTab?: 'home' | 'editor' | 'diff' | 'preview' | 'logs' | 'tests'
+  onCenterTabChange?: (tab: 'home' | 'editor' | 'diff' | 'preview' | 'logs' | 'tests') => void
+  // New: right panel replaces chat panel as primary right context
+  isRightPanelOpen?: boolean
+  onRightPanelOpenChange?: (open: boolean) => void
+  rightPanelTab?: RightPanelTabId
+  onRightPanelTabChange?: (tab: RightPanelTabId) => void
+  // Task header
+  activeTaskTitle?: string
+  activeTaskStatus?: TaskStatus
+  changedFilesCount?: number
+  onReviewChanges?: () => void
+  onStopAgent?: () => void
+  onStartAgent?: () => void
 }
 
 export function ProjectWorkspaceLayout({
@@ -91,7 +113,7 @@ export function ProjectWorkspaceLayout({
   reviewPanel,
   isReviewPanelOpen,
   onReviewPanelOpenChange,
-  isChatPanelOpen,
+  isChatPanelOpen: _isChatPanelOpen,
   pendingArtifactPreview,
   onApplyPendingArtifact,
   onRejectPendingArtifact,
@@ -104,12 +126,45 @@ export function ProjectWorkspaceLayout({
   onSpecDrawerOpenChange,
   onContextualChat,
   onInlineChat,
+  // New props with defaults
+  isBottomDockOpen = false,
+  onBottomDockOpenChange,
+  activeBottomDockTab = 'terminal',
+  onBottomDockTabChange,
+  activeCenterTab = 'home',
+  onCenterTabChange,
+  isRightPanelOpen,
+  onRightPanelOpenChange: _onRightPanelOpenChange,
+  rightPanelTab,
+  onRightPanelTabChange,
+  activeTaskTitle,
+  activeTaskStatus,
+  changedFilesCount = 0,
+  onReviewChanges,
+  onStopAgent,
+  onStartAgent,
 }: ProjectWorkspaceLayoutProps) {
-  const { handleSectionChange } = useWorkspace()
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
-  const outerLayoutPersistenceKey = `panda-workbench-outer-${
-    isReviewPanelOpen ? 'review-open' : 'review-closed'
-  }-${isChatPanelOpen ? 'chat-open' : 'chat-closed'}`
+  const { handleSectionChange: _handleSectionChange } = useWorkspace()
+  void _handleSectionChange
+
+  // Dock tab definitions with badge counts
+  const dockTabs = useMemo(
+    () => [
+      { id: 'terminal' as BottomDockTab, label: 'Terminal' },
+      { id: 'problems' as BottomDockTab, label: 'Problems', badge: 0 },
+      {
+        id: 'agent-events' as BottomDockTab,
+        label: 'Agent Events',
+        badge: isStreaming ? 1 : 0,
+        badgeSeverity: 'info' as const,
+      },
+      { id: 'logs' as BottomDockTab, label: 'Logs' },
+      { id: 'build' as BottomDockTab, label: 'Build' },
+    ],
+    [isStreaming]
+  )
+
+  const outerLayoutPersistenceKey = `panda-workspace-${isRightPanelOpen ? 'right-open' : 'right-closed'}`
 
   const workbench = (
     <Workbench
@@ -131,11 +186,27 @@ export function ProjectWorkspaceLayout({
       onEditorDirtyChange={onEditorDirtyChange}
       onContextualChat={onContextualChat}
       onInlineChat={onInlineChat}
+      activeCenterTab={activeCenterTab}
+      onCenterTabChange={onCenterTabChange}
+      pendingDiffCount={changedFilesCount}
+      isAgentRunning={isStreaming}
+      onStartAgent={onStartAgent}
     />
   )
 
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      {/* Task Header - visible when agent has active work */}
+      {activeTaskTitle && activeTaskStatus && (
+        <TaskHeader
+          title={activeTaskTitle}
+          status={activeTaskStatus}
+          changedFilesCount={changedFilesCount}
+          onReviewChanges={onReviewChanges}
+          onStop={onStopAgent}
+        />
+      )}
+
       <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
         {isMobileLayout ? (
           <div className="relative flex h-full min-h-0 min-w-0 flex-col">
@@ -193,126 +264,150 @@ export function ProjectWorkspaceLayout({
                 </button>
               </div>
             )}
-            {/* Mobile sidebar overlay */}
-            <AnimatePresence>
-              {isMobileSidebarOpen && (
-                <>
-                  {/* Backdrop */}
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    onClick={() => setIsMobileSidebarOpen(false)}
-                    className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm"
-                  />
-                  {/* Sidebar panel */}
-                  <motion.div
-                    initial={{ x: '-100%' }}
-                    animate={{ x: 0 }}
-                    exit={{ x: '-100%' }}
-                    transition={{ duration: 0.2, ease: 'easeOut' }}
-                    className="surface-1 absolute inset-y-0 left-0 z-50 w-64 border-r border-border"
-                  >
-                    <div className="flex h-full flex-col p-4">
-                      <div className="mb-4 font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                        Navigation
-                      </div>
-                      {[
-                        { section: 'explorer' as SidebarSection, label: 'Explorer' },
-                        { section: 'search' as SidebarSection, label: 'Search' },
-                        { section: 'history' as SidebarSection, label: 'History' },
-                        { section: 'specs' as SidebarSection, label: 'Specifications' },
-                        { section: 'git' as SidebarSection, label: 'Source Control' },
-                        { section: 'terminal' as SidebarSection, label: 'Terminal' },
-                      ].map(({ section, label }) => (
-                        <button
-                          key={section}
-                          type="button"
-                          onClick={() => {
-                            handleSectionChange(section)
-                            setIsMobileSidebarOpen(false)
-                            onMobilePrimaryPanelChange('workspace')
-                          }}
-                          className="hover:bg-surface-2 flex items-center gap-3 px-3 py-2.5 font-mono text-sm text-muted-foreground transition-colors hover:text-foreground"
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
           </div>
         ) : (
-          <PanelGroup
-            key={`${isReviewPanelOpen ? 'with-review' : 'without-review'}-${isChatPanelOpen ? 'with-chat' : 'without-chat'}`}
-            direction="horizontal"
-            className="h-full min-h-0 min-w-0"
-            autoSaveId={outerLayoutPersistenceKey}
-          >
-            {isReviewPanelOpen && (
-              <>
-                <Panel
-                  id="review-panel"
-                  order={1}
-                  defaultSize={30}
-                  minSize={25}
-                  maxSize={45}
-                  className="flex min-h-0 min-w-0 flex-col"
-                >
-                  <div className="flex h-full min-h-0 min-w-0 flex-col bg-background">
-                    <div className="surface-1 flex min-h-11 items-center justify-between border-b border-border px-4 font-mono text-xs uppercase tracking-wide">
-                      <span>Review</span>
-                      <button
-                        onClick={() => onReviewPanelOpenChange(false)}
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                    <div className="min-h-0 min-w-0 flex-1 overflow-hidden">{reviewPanel}</div>
-                  </div>
-                </Panel>
-                <PanelResizeHandle className="h-full w-px bg-border transition-colors hover:bg-primary" />
-              </>
-            )}
-
-            <Panel
-              id="workspace-panel"
-              order={2}
-              defaultSize={
-                isChatPanelOpen && isReviewPanelOpen
-                  ? 40
-                  : isChatPanelOpen || isReviewPanelOpen
-                    ? isCompactDesktopLayout && !isReviewPanelOpen
-                      ? 64
-                      : 70
-                    : 100
-              }
-              minSize={30}
-              className="flex min-h-0 min-w-0 flex-col"
+          <>
+            {/* Desktop: Three-zone + dock layout */}
+            <PanelGroup
+              direction="vertical"
+              className="flex h-full min-h-0 min-w-0 flex-col"
+              autoSaveId="panda-workspace-vertical"
             >
-              {workbench}
-            </Panel>
-
-            {isChatPanelOpen && (
-              <>
-                <PanelResizeHandle className="h-full w-px bg-border transition-colors hover:bg-primary" />
-
-                <Panel
-                  id="chat-panel"
-                  order={3}
-                  defaultSize={isCompactDesktopLayout ? 36 : 30}
-                  minSize={isCompactDesktopLayout ? 30 : 25}
-                  maxSize={isCompactDesktopLayout ? 45 : 50}
-                  className="flex min-h-0 min-w-0 flex-col"
+              {/* Upper area: Center + Right panel */}
+              <Panel
+                id="upper-area"
+                order={1}
+                defaultSize={isBottomDockOpen ? 72 : 100}
+                minSize={40}
+              >
+                <PanelGroup
+                  key={`layout-${isRightPanelOpen ? 'right-open' : 'right-closed'}`}
+                  direction="horizontal"
+                  className="h-full min-h-0 min-w-0"
+                  autoSaveId={outerLayoutPersistenceKey}
                 >
-                  <RightPanel chatContent={chatPanel} chatInput={null} />
-                </Panel>
-              </>
+                  {/* Review panel - left side when open */}
+                  {isReviewPanelOpen && (
+                    <>
+                      <Panel
+                        id="review-panel"
+                        order={1}
+                        defaultSize={24}
+                        minSize={20}
+                        maxSize={35}
+                        className="flex min-h-0 min-w-0 flex-col"
+                      >
+                        <div className="flex h-full min-h-0 min-w-0 flex-col bg-background">
+                          <div className="surface-1 flex min-h-9 items-center justify-between border-b border-border px-3 font-mono text-[10px] uppercase tracking-[0.18em]">
+                            <span className="text-foreground">Review</span>
+                            <button
+                              onClick={() => onReviewPanelOpenChange(false)}
+                              className="text-muted-foreground hover:text-foreground"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                          <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
+                            {reviewPanel}
+                          </div>
+                        </div>
+                      </Panel>
+                      <PanelResizeHandle className="h-full w-px bg-border transition-colors hover:bg-primary" />
+                    </>
+                  )}
+
+                  {/* Center workspace - dominant panel */}
+                  <Panel
+                    id="workspace-panel"
+                    order={2}
+                    defaultSize={isRightPanelOpen ? 50 : isReviewPanelOpen ? 76 : 100}
+                    minSize={35}
+                    className="flex min-h-0 min-w-0 flex-col"
+                  >
+                    {workbench}
+                  </Panel>
+
+                  {/* Right context panel - chat + context */}
+                  {isRightPanelOpen && (
+                    <>
+                      <PanelResizeHandle className="h-full w-px bg-border transition-colors hover:bg-primary" />
+                      <Panel
+                        id="chat-panel"
+                        order={3}
+                        defaultSize={isCompactDesktopLayout ? 32 : 26}
+                        minSize={22}
+                        maxSize={40}
+                        className="flex min-h-0 min-w-0 flex-col"
+                      >
+                        <RightPanel
+                          chatContent={chatPanel}
+                          activeTab={rightPanelTab}
+                          onTabChange={onRightPanelTabChange}
+                        />
+                      </Panel>
+                    </>
+                  )}
+                </PanelGroup>
+              </Panel>
+
+              {/* Bottom Dock */}
+              {isBottomDockOpen && (
+                <>
+                  <PanelResizeHandle className="h-px w-full bg-border transition-colors hover:bg-primary" />
+                  <Panel
+                    id="bottom-dock-panel"
+                    order={2}
+                    defaultSize={28}
+                    minSize={15}
+                    maxSize={60}
+                    className="min-h-0 min-w-0"
+                  >
+                    <BottomDock
+                      isOpen={true}
+                      activeTab={activeBottomDockTab}
+                      onTabChange={(tab) => onBottomDockTabChange?.(tab)}
+                      onToggle={() => onBottomDockOpenChange?.(false)}
+                      tabs={dockTabs}
+                    >
+                      {activeBottomDockTab === 'terminal' && <Terminal projectId={projectId} />}
+                      {activeBottomDockTab === 'problems' && (
+                        <div className="flex h-full items-center justify-center font-mono text-xs text-muted-foreground">
+                          No problems detected
+                        </div>
+                      )}
+                      {activeBottomDockTab === 'agent-events' && <AgentEventsPanel />}
+                      {activeBottomDockTab === 'logs' && (
+                        <div className="flex h-full items-center justify-center font-mono text-xs text-muted-foreground">
+                          No logs
+                        </div>
+                      )}
+                      {activeBottomDockTab === 'build' && (
+                        <div className="flex h-full items-center justify-center font-mono text-xs text-muted-foreground">
+                          No build output
+                        </div>
+                      )}
+                    </BottomDock>
+                  </Panel>
+                </>
+              )}
+            </PanelGroup>
+
+            {/* Collapsed dock bar (outside PanelGroup since it's not resizable) */}
+            {!isBottomDockOpen && (
+              <BottomDock
+                isOpen={false}
+                activeTab={activeBottomDockTab}
+                onTabChange={(tab) => {
+                  onBottomDockTabChange?.(tab)
+                  onBottomDockOpenChange?.(true)
+                }}
+                onToggle={() => onBottomDockOpenChange?.(true)}
+                tabs={dockTabs}
+              >
+                {null}
+              </BottomDock>
             )}
-          </PanelGroup>
+          </>
         )}
 
         <CommandPalette

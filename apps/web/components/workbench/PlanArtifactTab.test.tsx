@@ -58,7 +58,7 @@ function createWorkspaceValue(
     chatMode: 'architect' as ChatMode,
     onSelectChat: () => {},
     onNewChat: () => {},
-    activeSection: 'explorer',
+    activeSection: 'files',
     isFlyoutOpen: false,
     handleSectionChange: () => {},
     toggleFlyout: () => {},

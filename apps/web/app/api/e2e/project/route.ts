@@ -37,6 +37,50 @@ const PLAN_STATUSES: PlanStatus[] = [
   'executing',
 ]
 
+const projectsApi = {
+  list: (api as any).projects?.list ?? 'projects:list',
+  remove: (api as any).projects?.remove ?? 'projects:remove',
+  create: (api as any).projects?.create ?? 'projects:create',
+  update: (api as any).projects?.update ?? 'projects:update',
+  get: (api as any).projects?.get ?? 'projects:get',
+}
+
+const settingsApi = {
+  getAdminDefaults: (api as any).settings?.getAdminDefaults ?? 'settings:getAdminDefaults',
+}
+
+const chatsApi = {
+  list: (api as any).chats?.list ?? 'chats:list',
+  create: (api as any).chats?.create ?? 'chats:create',
+  update: (api as any).chats?.update ?? 'chats:update',
+}
+
+const planningSessionsApi = {
+  startIntake: (api as any).planningSessions?.startIntake ?? 'planningSessions:startIntake',
+  answerQuestion:
+    (api as any).planningSessions?.answerQuestion ?? 'planningSessions:answerQuestion',
+  completeIntake:
+    (api as any).planningSessions?.completeIntake ?? 'planningSessions:completeIntake',
+  acceptPlan: (api as any).planningSessions?.acceptPlan ?? 'planningSessions:acceptPlan',
+}
+
+const filesApi = {
+  getByPath: (api as any).files?.getByPath ?? 'files:getByPath',
+  upsert: (api as any).files?.upsert ?? 'files:upsert',
+}
+
+const artifactsApi = {
+  create: (api as any).artifacts?.create ?? 'artifacts:create',
+}
+
+const agentRunsApi = {
+  saveRuntimeCheckpoint:
+    (api as any).agentRuns?.saveRuntimeCheckpoint ?? 'agentRuns:saveRuntimeCheckpoint',
+  create: (api as any).agentRuns?.create ?? 'agentRuns:create',
+  appendEvents: (api as any).agentRuns?.appendEvents ?? 'agentRuns:appendEvents',
+  complete: (api as any).agentRuns?.complete ?? 'agentRuns:complete',
+}
+
 interface RuntimeCheckpointEnvelope {
   version: 1
   sessionID: string
@@ -275,7 +319,7 @@ async function seedStructuredPlanningSession(args: {
   acceptPlan: boolean
 }) {
   const planningQuestions = buildDefaultPlanningQuestions({ projectName: args.fixtureName })
-  const sessionId = (await args.convex.mutation(api.planningSessions.startIntake, {
+  const sessionId = (await args.convex.mutation(planningSessionsApi.startIntake, {
     chatId: args.chatId,
     questions: planningQuestions,
   })) as string
@@ -284,7 +328,7 @@ async function seedStructuredPlanningSession(args: {
     const selectedOptionId = question.suggestions[0]?.id
     if (!selectedOptionId) continue
 
-    await args.convex.mutation(api.planningSessions.answerQuestion, {
+    await args.convex.mutation(planningSessionsApi.answerQuestion, {
       sessionId,
       questionId: question.id,
       selectedOptionId,
@@ -299,14 +343,14 @@ async function seedStructuredPlanningSession(args: {
     planSeed: args.planSeed,
   })
 
-  await args.convex.mutation(api.planningSessions.completeIntake, {
+  await args.convex.mutation(planningSessionsApi.completeIntake, {
     sessionId,
     generatedPlan,
   })
 
   let effectivePlanStatus: GeneratedPlanArtifact['status'] = generatedPlan.status
   if (args.acceptPlan) {
-    await args.convex.mutation(api.planningSessions.acceptPlan, {
+    await args.convex.mutation(planningSessionsApi.acceptPlan, {
       sessionId,
     })
     effectivePlanStatus = 'accepted'
@@ -344,11 +388,11 @@ function getFixtureCleanupCandidate(
 }
 
 async function listFixtureProjects(convex: ConvexHttpClient): Promise<E2EFixtureProject[]> {
-  return (await convex.query(api.projects.list, {})) as E2EFixtureProject[]
+  return (await convex.query(projectsApi.list, {})) as E2EFixtureProject[]
 }
 
 async function getMaxProjectsPerUser(convex: ConvexHttpClient): Promise<number> {
-  const defaults = (await convex.query(api.settings.getAdminDefaults, {})) as {
+  const defaults = (await convex.query(settingsApi.getAdminDefaults, {})) as {
     maxProjectsPerUser?: number
   } | null
   return defaults?.maxProjectsPerUser ?? 100
@@ -406,7 +450,7 @@ export async function GET(request: Request) {
           )
         }
 
-        await convex.mutation(api.projects.remove, { id: cleanupCandidate._id })
+        await convex.mutation(projectsApi.remove, { id: cleanupCandidate._id })
         cleanedUpProjectId = cleanupCandidate._id
       }
 
@@ -429,7 +473,7 @@ export async function GET(request: Request) {
             fixtureName
           )
           if (cleanupCandidate) {
-            await convex.mutation(api.projects.remove, { id: cleanupCandidate._id })
+            await convex.mutation(projectsApi.remove, { id: cleanupCandidate._id })
             removedProjectIds.add(cleanupCandidate._id)
             projects = await listFixtureProjects(convex)
             const reclaimedFixture = projects.find((project) => project.name === fixtureName)
@@ -441,7 +485,7 @@ export async function GET(request: Request) {
         }
 
         try {
-          projectId = await convex.mutation(api.projects.create, {
+          projectId = await convex.mutation(projectsApi.create, {
             name: fixtureName,
             description: DEFAULT_FIXTURE_DESCRIPTION,
           })
@@ -459,7 +503,7 @@ export async function GET(request: Request) {
             throw error
           }
 
-          await convex.mutation(api.projects.remove, { id: cleanupCandidate._id })
+          await convex.mutation(projectsApi.remove, { id: cleanupCandidate._id })
           removedProjectIds.add(cleanupCandidate._id)
           projects = await listFixtureProjects(convex)
           const reclaimedFixture = projects.find((project) => project.name === fixtureName)
@@ -472,7 +516,7 @@ export async function GET(request: Request) {
 
     let chatId: Id<'chats'> | undefined
     if (autoApplyFiles !== null || autoRunCommands !== null) {
-      await convex.mutation(api.projects.update, {
+      await convex.mutation(projectsApi.update, {
         id: projectId,
         agentPolicy: {
           autoApplyFiles: autoApplyFiles === null ? false : autoApplyFiles === '1',
@@ -492,11 +536,11 @@ export async function GET(request: Request) {
       structuredPlanningSession ||
       structuredPlanningSessionPlan
     ) {
-      const chats = await convex.query(api.chats.list, { projectId })
+      const chats = await convex.query(chatsApi.list, { projectId })
       const existingChat = chats[0]
       chatId =
         existingChat?._id ??
-        (await convex.mutation(api.chats.create, {
+        (await convex.mutation(chatsApi.create, {
           projectId,
           title: DEFAULT_CHAT_TITLE,
           mode: 'build',
@@ -504,7 +548,7 @@ export async function GET(request: Request) {
     }
 
     if (chatId && (planDraft || planStatus)) {
-      await convex.mutation(api.chats.update, {
+      await convex.mutation(chatsApi.update, {
         id: chatId,
         ...(planDraft ? { planDraft } : {}),
         ...(planStatus ? { planStatus } : {}),
@@ -527,8 +571,8 @@ export async function GET(request: Request) {
     }
 
     if (filePath) {
-      const existingFile = await convex.query(api.files.getByPath, { projectId, path: filePath })
-      await convex.mutation(api.files.upsert, {
+      const existingFile = await convex.query(filesApi.getByPath, { projectId, path: filePath })
+      await convex.mutation(filesApi.upsert, {
         ...(existingFile?._id ? { id: existingFile._id } : {}),
         projectId,
         path: filePath,
@@ -538,7 +582,7 @@ export async function GET(request: Request) {
     }
 
     if (chatId && filePath && artifactContent !== null) {
-      await convex.mutation(api.artifacts.create, {
+      await convex.mutation(artifactsApi.create, {
         chatId,
         actions: [
           {
@@ -557,21 +601,21 @@ export async function GET(request: Request) {
     let sessionID: string | undefined
     if (seedRuntimeCheckpoint && chatId) {
       sessionID = `harness_run_resume_fixture_${Date.now()}`
-      await convex.mutation(api.agentRuns.saveRuntimeCheckpoint, {
+      await convex.mutation(agentRunsApi.saveRuntimeCheckpoint, {
         chatId,
         checkpoint: buildSeededRuntimeCheckpoint(sessionID),
       })
     }
 
     if (seedExecutionUpdates && chatId) {
-      const projectRecord = (await convex.query(api.projects.get, {
+      const projectRecord = (await convex.query(projectsApi.get, {
         id: projectId,
       })) as { createdBy: Id<'users'> } | null
       if (!projectRecord) {
         throw new Error('Fixture project not found while seeding execution updates')
       }
 
-      const runId = await convex.mutation(api.agentRuns.create, {
+      const runId = await convex.mutation(agentRunsApi.create, {
         projectId,
         chatId,
         userId: projectRecord.createdBy,
@@ -581,12 +625,12 @@ export async function GET(request: Request) {
         userMessage: 'Seed execution updates',
       })
 
-      await convex.mutation(api.agentRuns.appendEvents, {
+      await convex.mutation(agentRunsApi.appendEvents, {
         runId,
         events: buildSeededExecutionEvents(),
       })
 
-      await convex.mutation(api.agentRuns.complete, {
+      await convex.mutation(agentRunsApi.complete, {
         runId,
         summary: 'Seeded execution update history',
       })

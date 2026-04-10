@@ -32,8 +32,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-import { ChevronLeft, RotateCcw, MoreHorizontal, PanelLeftOpen, PanelLeftClose } from 'lucide-react'
+import { RotateCcw, MoreHorizontal, PanelLeftOpen, PanelLeftClose } from 'lucide-react'
 import Link from 'next/link'
+import { TopBarControls } from '@/components/layout/TopBarControls'
 
 // UI Components
 import { PandaLogo } from '@/components/ui/panda-logo'
@@ -222,6 +223,19 @@ export default function ProjectPage() {
     setIsSpecPanelOpen,
     isShareDialogOpen,
     setIsShareDialogOpen,
+    // New agent command center state
+    isBottomDockOpen,
+    setIsBottomDockOpen,
+    activeBottomDockTab,
+    setActiveBottomDockTab,
+    activeCenterTab,
+    setActiveCenterTab,
+    isRightPanelOpen,
+    setIsRightPanelOpen,
+    rightPanelTab,
+    setRightPanelTab,
+    taskHeaderVisible,
+    setTaskHeaderVisible,
   } = useProjectWorkspaceUi()
 
   const { activeSection, isFlyoutOpen, handleSectionChange, toggleFlyout } = useSidebar()
@@ -250,6 +264,26 @@ export default function ProjectPage() {
     (e) => {
       e.preventDefault()
       setIsShortcutHelpOpen((prev) => !prev)
+    },
+    { enableOnFormTags: ['INPUT', 'TEXTAREA'] }
+  )
+
+  // Toggle bottom dock with Ctrl+J
+  useHotkeys(
+    'ctrl+j',
+    (e) => {
+      e.preventDefault()
+      setIsBottomDockOpen((prev) => !prev)
+    },
+    { enableOnFormTags: ['INPUT', 'TEXTAREA'] }
+  )
+
+  // Toggle right panel (chat) with Cmd+L
+  useHotkeys(
+    'mod+l',
+    (e) => {
+      e.preventDefault()
+      setIsRightPanelOpen((prev) => !prev)
     },
     { enableOnFormTags: ['INPUT', 'TEXTAREA'] }
   )
@@ -544,6 +578,11 @@ export default function ProjectPage() {
   })
   const sendAgentMessage = agent.sendMessage
 
+  // Auto-show task header when agent is running
+  useEffect(() => {
+    setTaskHeaderVisible(agent.isLoading)
+  }, [agent.isLoading, setTaskHeaderVisible])
+
   const { planDraft, setPlanDraft, isSavingPlanDraft, handleSavePlanDraft, handleApprovePlan } =
     useProjectPlanDraft({
       activeChat,
@@ -784,7 +823,16 @@ export default function ProjectPage() {
   const handleNewChat = useCallback(async () => {
     const id = await createChatMutation({ projectId, title: 'New Chat', mode: chatMode })
     setActiveChatId(id)
-  }, [createChatMutation, projectId, chatMode, setActiveChatId])
+    setIsRightPanelOpen(true)
+    setRightPanelTab('chat')
+  }, [
+    createChatMutation,
+    projectId,
+    chatMode,
+    setActiveChatId,
+    setIsRightPanelOpen,
+    setRightPanelTab,
+  ])
 
   const handleResetWorkspace = useCallback(() => {
     // Stop any running agent
@@ -1377,11 +1425,11 @@ export default function ProjectPage() {
           chatId={activeChat?._id}
           chatTitle={activeChat?.title}
         />
-        {/* Top Bar - Unified Header */}
+        {/* Top Bar - Unified Command Strip */}
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="surface-1 flex h-14 shrink-0 items-center justify-between border-b border-border px-4"
+          className="surface-1 flex h-11 shrink-0 items-center justify-between border-b border-border px-3"
         >
           <div className="flex min-w-0 flex-1 items-center gap-2">
             {/* Sidebar Toggle + Panda Wordmark */}
@@ -1389,38 +1437,23 @@ export default function ProjectPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 rounded-none p-0"
+                className="h-7 w-7 rounded-none p-0"
                 onClick={toggleFlyout}
                 title={isFlyoutOpen ? 'Close sidebar' : 'Open sidebar'}
                 aria-label={isFlyoutOpen ? 'Close sidebar' : 'Open sidebar'}
               >
                 {isFlyoutOpen ? (
-                  <PanelLeftClose className="h-4 w-4" />
+                  <PanelLeftClose className="h-3.5 w-3.5" />
                 ) : (
-                  <PanelLeftOpen className="h-4 w-4" />
+                  <PanelLeftOpen className="h-3.5 w-3.5" />
                 )}
               </Button>
               <Link href="/" className="flex shrink-0 items-center">
-                <PandaLogo size="md" variant="icon" />
+                <PandaLogo size="sm" variant="icon" />
               </Link>
             </div>
 
-            <div className="h-6 w-px bg-border" />
-
-            <Link href="/projects" className="shrink-0">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-9 gap-1 rounded-none font-mono text-xs"
-                aria-label="Back to projects"
-                title="Back to projects"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                <span className="hidden sm:inline">Projects</span>
-              </Button>
-            </Link>
-
-            <div className="h-6 w-px bg-border" />
+            <div className="h-5 w-px bg-border" />
 
             <Breadcrumb
               projectName={project.name}
@@ -1434,7 +1467,7 @@ export default function ProjectPage() {
 
                 if (!revealTarget) return
 
-                handleSectionChange('explorer')
+                handleSectionChange('files')
                 if (!isFlyoutOpen) toggleFlyout()
                 setSelectedFilePath(revealTarget)
                 setSelectedFileLocation(null)
@@ -1443,25 +1476,30 @@ export default function ProjectPage() {
             />
 
             {isAnyJobRunning && (
-              <span
-                className="ml-2 flex h-2 w-2 animate-pulse rounded-full bg-primary"
-                title="Jobs running"
-              />
+              <span className="ml-2 flex h-2 w-2 animate-pulse bg-primary" title="Jobs running" />
             )}
           </div>
 
           <div className="flex items-center gap-1">
+            <TopBarControls
+              model={selectedModel}
+              isAgentRunning={agent.isLoading}
+              onNewTask={handleNewChat}
+              healthStatus={isAnyJobRunning ? 'ready' : 'ready'}
+              onToggleRightPanel={() => setIsRightPanelOpen((prev) => !prev)}
+              isRightPanelOpen={isRightPanelOpen}
+            />
+            <div className="h-5 w-px bg-border" />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 gap-1 rounded-none font-mono text-xs"
+                  className="h-7 w-7 rounded-none p-0"
                   title="More actions"
                   aria-label="More actions"
                 >
-                  <MoreHorizontal className="h-4 w-4" />
-                  <span className="hidden xl:inline">More</span>
+                  <MoreHorizontal className="h-3.5 w-3.5" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="rounded-none border-border font-mono">
@@ -1471,6 +1509,12 @@ export default function ProjectPage() {
                 >
                   <RotateCcw className="mr-2 h-3.5 w-3.5" />
                   Reset Workspace
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setIsShareDialogOpen(true)}
+                  className="rounded-none text-xs uppercase tracking-wide"
+                >
+                  Share
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -1516,9 +1560,10 @@ export default function ProjectPage() {
             const ext = filePath.split('.').pop() || 'text'
             const prompt = `\`\`\`${ext}\n// ${filePath}\n${selection}\n\`\`\``
             setContextualPrompt(prompt)
-            if (!isChatPanelOpen) {
-              setIsChatPanelOpen(true)
+            if (!isRightPanelOpen) {
+              setIsRightPanelOpen(true)
             }
+            setRightPanelTab('chat')
             if (isMobileLayout) {
               setMobilePrimaryPanel('chat')
             }
@@ -1558,6 +1603,28 @@ export default function ProjectPage() {
               })
               return null
             }
+          }}
+          // New agent command center props
+          isBottomDockOpen={isBottomDockOpen}
+          onBottomDockOpenChange={setIsBottomDockOpen}
+          activeBottomDockTab={activeBottomDockTab}
+          onBottomDockTabChange={setActiveBottomDockTab}
+          activeCenterTab={activeCenterTab}
+          onCenterTabChange={setActiveCenterTab}
+          isRightPanelOpen={isRightPanelOpen}
+          onRightPanelOpenChange={setIsRightPanelOpen}
+          rightPanelTab={rightPanelTab}
+          onRightPanelTabChange={setRightPanelTab}
+          activeTaskTitle={
+            taskHeaderVisible && agent.isLoading ? (activeChat?.title ?? 'Active Task') : undefined
+          }
+          activeTaskStatus={taskHeaderVisible && agent.isLoading ? 'running' : undefined}
+          changedFilesCount={0}
+          onReviewChanges={() => setActiveCenterTab('diff')}
+          onStopAgent={() => agent.stop?.()}
+          onStartAgent={() => {
+            setIsRightPanelOpen(true)
+            setRightPanelTab('chat')
           }}
         />
         <ComposerOverlay

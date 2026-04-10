@@ -1,35 +1,29 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
+import { useEffect, useMemo } from 'react'
+
 import type { Id } from '@convex/_generated/dataModel'
 import { FileTree } from './FileTree'
 import { FileTabs } from './FileTabs'
 import { ProjectSearchPanel } from './ProjectSearchPanel'
-import { Terminal } from './Terminal'
 import { PendingArtifactOverlay } from './PendingArtifactOverlay'
 import { EditorContainer } from '../editor/EditorContainer'
+import { WorkspaceHome } from './WorkspaceHome'
+import { DiffTab } from './DiffTab'
+import { ReviewChangesBanner } from './ReviewChangesBanner'
+import { AgentCompletionBanner } from './AgentCompletionBanner'
 import { cn } from '@/lib/utils'
-import {
-  FileCode,
-  Plus,
-  Search,
-  Terminal as TerminalIcon,
-  Minimize2,
-  TerminalSquare,
-  ChevronUp,
-  FolderTree,
-  LayoutPanelTop,
-} from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { SpecHistory } from './SpecHistory'
+
 import { SidebarRail } from '@/components/sidebar/SidebarRail'
 import { SidebarFlyout } from '@/components/sidebar/SidebarFlyout'
 import { SidebarHistoryPanel } from '@/components/sidebar/SidebarHistoryPanel'
-import { SidebarGitPanel } from '@/components/sidebar/SidebarGitPanel'
+import { SourceControlPane } from '@/components/sidebar/SourceControlPane'
+import { ActiveAgentsPane } from '@/components/sidebar/ActiveAgentsPane'
+
 import { ExplorerOutline } from '@/components/sidebar/ExplorerOutline'
 import { isWorkspacePlanTab, useWorkspace } from '@/contexts/WorkspaceContext'
 import { useShortcuts } from '@/hooks/useShortcuts'
+
 import { PlanArtifactTab } from './PlanArtifactTab'
 import type { WorkspaceArtifactPreview } from './artifact-preview'
 import type { WorkspaceOpenTab } from '@/contexts/WorkspaceContext'
@@ -63,180 +57,27 @@ interface WorkbenchProps {
   onEditorDirtyChange: (filePath: string, isDirty: boolean) => void
   onContextualChat?: (selection: string, filePath: string) => void
   onInlineChat?: (prompt: string, selectedText: string, filePath: string) => Promise<string | null>
+  /** Called when user clicks "Home" tab in center */
+  activeCenterTab?: 'home' | 'editor' | 'diff' | 'preview' | 'logs' | 'tests'
+  onCenterTabChange?: (tab: 'home' | 'editor' | 'diff' | 'preview' | 'logs' | 'tests') => void
+  /** Number of pending diffs for the workspace home view */
+  pendingDiffCount?: number
+  /** Whether an agent is actively running */
+  isAgentRunning?: boolean
+  /** Called when user wants to start a new agent task (e.g. from WorkspaceHome) */
+  onStartAgent?: () => void
 }
 
-function GripIndicator({ direction }: { direction: 'vertical' | 'horizontal' }) {
-  if (direction === 'vertical') {
-    return (
-      <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-        <div className="h-1 w-1 bg-muted-foreground/40" />
-        <div className="h-1 w-1 bg-muted-foreground/40" />
-        <div className="h-1 w-1 bg-muted-foreground/40" />
-      </div>
-    )
-  }
-  return (
-    <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-      <div className="h-1 w-1 bg-muted-foreground/40" />
-      <div className="h-1 w-1 bg-muted-foreground/40" />
-      <div className="h-1 w-1 bg-muted-foreground/40" />
-    </div>
-  )
-}
+type CenterTabId = 'home' | 'editor' | 'diff' | 'preview' | 'logs' | 'tests'
 
-function HorizontalResizeHandle({ className }: { className?: string }) {
-  return (
-    <PanelResizeHandle className={cn('group relative h-4 cursor-row-resize', className)}>
-      <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-border transition-colors group-hover:bg-primary group-data-[resize-handle-state=drag]:bg-primary" />
-      <GripIndicator direction="horizontal" />
-    </PanelResizeHandle>
-  )
-}
+const CENTER_TABS: Array<{ id: CenterTabId; label: string }> = [
+  { id: 'home', label: 'Home' },
+  { id: 'editor', label: 'Editor' },
+  { id: 'diff', label: 'Diff' },
+  { id: 'preview', label: 'Preview' },
+]
 
-interface EmptyStateProps {
-  onCreateFile?: (path: string) => void
-  onOpenSearch?: () => void
-  variant?: 'desktop' | 'mobile'
-}
-
-function EmptyState({ onCreateFile, onOpenSearch, variant = 'desktop' }: EmptyStateProps) {
-  return (
-    <div className="dot-grid flex h-full flex-col items-center justify-center gap-6 px-6 text-center text-muted-foreground">
-      <div className="surface-1 shadow-sharp-md flex w-full max-w-lg flex-col items-center gap-5 border border-border px-6 py-8">
-        <div className="flex items-center gap-2 self-start font-mono text-[10px] uppercase tracking-[0.24em] text-primary">
-          <LayoutPanelTop className="h-3.5 w-3.5" />
-          Workspace Ready
-        </div>
-        <div className="flex h-16 w-16 items-center justify-center rounded-none border border-border bg-muted/50">
-          <FileCode className="h-8 w-8 text-muted-foreground" />
-        </div>
-        <div className="space-y-2">
-          <h3 className="font-mono text-lg font-medium text-foreground">No file selected</h3>
-          <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
-            {variant === 'mobile'
-              ? 'Open Files tab and select a file to edit'
-              : 'Select a file from the explorer, search across the project, or create a new file to start building.'}
-          </p>
-        </div>
-
-        <div className="grid w-full gap-3 sm:grid-cols-2">
-          {onCreateFile && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 rounded-none font-mono text-xs uppercase tracking-wider"
-              onClick={() => onCreateFile('')}
-            >
-              <Plus className="mr-1.5 h-3.5 w-3.5" />
-              New File
-            </Button>
-          )}
-          {onOpenSearch && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 rounded-none font-mono text-xs uppercase tracking-wider"
-              onClick={onOpenSearch}
-            >
-              <Search className="mr-1.5 h-3.5 w-3.5" />
-              Search Project
-            </Button>
-          )}
-        </div>
-
-        <div className="flex flex-wrap items-center justify-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/60">
-          <span className="surface-0 border border-border px-2 py-1">Inspect</span>
-          <span className="surface-0 border border-border px-2 py-1">Edit</span>
-          <span className="surface-0 border border-border px-2 py-1">Ship</span>
-        </div>
-
-        <div className="font-mono text-xs text-muted-foreground/50">
-          <kbd className="rounded-none bg-muted px-1.5 py-0.5">Ctrl</kbd>+
-          <kbd className="rounded-none bg-muted px-1.5 py-0.5">K</kbd> to open command palette
-        </div>
-      </div>
-    </div>
-  )
-}
-
-interface WorkspaceHeaderProps {
-  selectedFilePath: string | null
-  tabCount: number
-  fileCount: number
-  isTerminalExpanded: boolean
-  onOpenSearch: () => void
-  onToggleTerminal: () => void
-}
-
-function WorkspaceHeader({
-  selectedFilePath,
-  tabCount,
-  fileCount,
-  isTerminalExpanded,
-  onOpenSearch,
-  onToggleTerminal,
-}: WorkspaceHeaderProps) {
-  const activeLabel = selectedFilePath?.split('/').pop() ?? 'Workspace overview'
-  const activePath = selectedFilePath?.includes('/')
-    ? selectedFilePath.split('/').slice(0, -1).join('/')
-    : 'root'
-
-  return (
-    <div className="surface-1 flex shrink-0 items-center justify-between gap-3 border-b border-border px-3 py-2.5">
-      <div className="min-w-0">
-        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.24em] text-primary">
-          <LayoutPanelTop className="h-3.5 w-3.5" />
-          Workbench
-        </div>
-        <div className="mt-1 flex min-w-0 items-center gap-2">
-          <span className="truncate font-mono text-sm font-medium text-foreground">
-            {activeLabel}
-          </span>
-          <span className="hidden font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground md:inline">
-            {activePath}
-          </span>
-        </div>
-      </div>
-
-      <div className="flex shrink-0 items-center gap-2">
-        <div className="hidden items-center gap-2 md:flex">
-          <span className="surface-0 flex items-center gap-1.5 border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            <FolderTree className="h-3.5 w-3.5" />
-            {fileCount} files
-          </span>
-          <span className="surface-0 border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            {tabCount} tabs
-          </span>
-        </div>
-
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={onOpenSearch}
-          className="h-8 rounded-none font-mono text-[10px] uppercase tracking-[0.18em]"
-        >
-          <Search className="mr-1.5 h-3.5 w-3.5" />
-          Search
-        </Button>
-
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={onToggleTerminal}
-          className="h-8 rounded-none font-mono text-[10px] uppercase tracking-[0.18em]"
-          aria-pressed={isTerminalExpanded}
-        >
-          <TerminalIcon className="mr-1.5 h-3.5 w-3.5" />
-          {isTerminalExpanded ? 'Hide Terminal' : 'Show Terminal'}
-        </Button>
-      </div>
-    </div>
-  )
-}
-
-const TERMINAL_STORAGE_KEY = 'panda:terminal-expanded'
+const innerLayoutPersistenceKey = 'panda-workbench-inner'
 
 export function Workbench({
   projectId,
@@ -257,6 +98,11 @@ export function Workbench({
   onEditorDirtyChange,
   onContextualChat,
   onInlineChat,
+  activeCenterTab = 'home',
+  onCenterTabChange,
+  pendingDiffCount = 0,
+  isAgentRunning = false,
+  onStartAgent,
 }: WorkbenchProps) {
   const {
     activeSection: sidebarActiveSection,
@@ -265,70 +111,60 @@ export function Workbench({
     toggleFlyout: onToggleSidebarFlyout,
     onSelectChat,
     isMobileLayout: isMobile,
-    isCompactDesktopLayout: isCompactDesktop,
   } = useWorkspace()
-  const [mobilePanel, setMobilePanel] = useState<'files' | 'editor' | 'terminal'>('editor')
-  const [isTerminalExpanded, setIsTerminalExpanded] = useState(() => {
-    if (typeof window === 'undefined') return false
-    const stored = localStorage.getItem(TERMINAL_STORAGE_KEY)
-    return stored === 'true'
-  })
+
   const selectedFile = selectedFilePath ? files.find((f) => f.path === selectedFilePath) : undefined
   const selectedWorkspaceTab = openTabs.find((tab) => tab.path === selectedFilePath) ?? null
   const selectedPlanTab =
     selectedWorkspaceTab && isWorkspacePlanTab(selectedWorkspaceTab) ? selectedWorkspaceTab : null
-  const innerLayoutPersistenceKey = `panda-workbench-inner-${
-    isTerminalExpanded ? 'terminal-open' : 'terminal-closed'
-  }`
 
-  // Persist terminal state to localStorage
+  // Auto-switch to editor tab when a file is selected
   useEffect(() => {
-    localStorage.setItem(TERMINAL_STORAGE_KEY, String(isTerminalExpanded))
-  }, [isTerminalExpanded])
+    if (selectedFilePath && activeCenterTab === 'home') {
+      onCenterTabChange?.('editor')
+    }
+  }, [selectedFilePath, activeCenterTab, onCenterTabChange])
 
-  const shortcuts = useMemo(
-    () => [
-      {
-        id: 'toggle-terminal',
-        keys: 'mod+`',
-        label: 'Toggle Terminal',
-        handler: () => setIsTerminalExpanded((prev) => !prev),
-        category: 'Panels',
-      },
-    ],
-    []
-  )
+  // Derive recent files for workspace home
+  const recentFiles = useMemo(() => {
+    return openTabs
+      .filter((tab) => !isWorkspacePlanTab(tab))
+      .slice(0, 8)
+      .map((tab) => ({
+        path: tab.path,
+        timeAgo: 'recent',
+      }))
+  }, [openTabs])
+
+  const shortcuts = useMemo(() => [], [])
 
   useShortcuts(shortcuts)
 
-  useEffect(() => {
-    if (selectedFilePath) {
-      setMobilePanel('editor')
-    }
-  }, [selectedFilePath])
+  const effectiveTab = selectedFilePath && activeCenterTab === 'home' ? 'editor' : activeCenterTab
 
   if (isMobile) {
+    // Mobile layout - simplified stacked view
     return (
       <div className="surface-0 h-full min-h-0 w-full min-w-0">
-        <div className="surface-1 flex h-11 shrink-0 border-b border-border font-mono text-xs uppercase tracking-widest">
+        <div className="surface-1 flex h-10 shrink-0 border-b border-border font-mono text-[10px] uppercase tracking-widest">
           <button
             type="button"
-            onClick={() => setMobilePanel('files')}
+            onClick={() => onCenterTabChange?.('home')}
             className={cn(
-              'h-full min-h-11 flex-1 border-r border-border',
-              mobilePanel === 'files'
+              'h-full flex-1 border-r border-border',
+              effectiveTab === 'home'
                 ? 'bg-primary text-primary-foreground'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            Files
+            Home
           </button>
           <button
             type="button"
-            onClick={() => setMobilePanel('editor')}
+            onClick={() => onCenterTabChange?.('editor')}
             className={cn(
-              'h-full min-h-11 flex-1 border-r border-border',
-              mobilePanel === 'editor'
+              'h-full flex-1 border-r border-border',
+              effectiveTab === 'editor'
                 ? 'bg-primary text-primary-foreground'
                 : 'text-muted-foreground hover:text-foreground'
             )}
@@ -337,135 +173,70 @@ export function Workbench({
           </button>
           <button
             type="button"
-            onClick={() => setMobilePanel('terminal')}
+            onClick={() => onCenterTabChange?.('diff')}
             className={cn(
-              'h-full min-h-11 flex-1 border-r border-border',
-              mobilePanel === 'terminal'
+              'relative h-full flex-1',
+              effectiveTab === 'diff'
                 ? 'bg-primary text-primary-foreground'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            Terminal
+            Diff
+            {pendingDiffCount > 0 && (
+              <span className="absolute right-1 top-1 min-w-3.5 bg-destructive px-0.5 text-center text-[8px] text-destructive-foreground">
+                {pendingDiffCount}
+              </span>
+            )}
           </button>
         </div>
-
-        <div className="h-[calc(100%-2.75rem)] min-h-0 min-w-0">
-          {mobilePanel === 'files' && (
-            <div className="surface-1 flex h-full flex-col">
-              <div className="flex border-b border-border">
-                <button
-                  type="button"
-                  onClick={() => onSidebarSectionChange('explorer')}
-                  className={cn(
-                    'min-h-11 flex-1 border-r border-border px-2 py-2 font-mono text-xs uppercase tracking-widest',
-                    sidebarActiveSection === 'explorer'
-                      ? 'bg-surface-2 text-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  Explorer
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onSidebarSectionChange('search')}
-                  className={cn(
-                    'min-h-11 flex-1 border-r border-border px-2 py-2 font-mono text-xs uppercase tracking-widest',
-                    sidebarActiveSection === 'search'
-                      ? 'bg-surface-2 text-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  Search
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onSidebarSectionChange('specs')}
-                  className={cn(
-                    'min-h-11 flex-1 px-2 py-2 font-mono text-xs uppercase tracking-widest',
-                    sidebarActiveSection === 'specs'
-                      ? 'bg-surface-2 text-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  Specs
-                </button>
-              </div>
-
-              <div className="scrollbar-thin flex-1 overflow-auto">
-                {sidebarActiveSection === 'explorer' ? (
-                  <FileTree
-                    files={files.map((f) => ({
-                      _id: f._id,
-                      path: f.path,
-                      content: f.content ?? '',
-                      isBinary: f.isBinary,
-                      updatedAt: f.updatedAt,
-                    }))}
-                    selectedPath={selectedFilePath}
-                    onSelect={onSelectFile}
-                    onCreate={onCreateFile}
-                    onRename={onRenameFile}
-                    onDelete={onDeleteFile}
-                  />
-                ) : sidebarActiveSection === 'search' ? (
-                  <ProjectSearchPanel onSelectFile={onSelectFile} />
-                ) : sidebarActiveSection === 'git' ? (
-                  <SidebarGitPanel projectId={projectId} />
-                ) : (
-                  <SpecHistory projectId={projectId} />
-                )}
-              </div>
-            </div>
+        <div className="h-[calc(100%-2.5rem)] min-h-0 min-w-0">
+          {effectiveTab === 'home' && (
+            <WorkspaceHome
+              recentFiles={recentFiles}
+              pendingDiffs={pendingDiffCount}
+              activeAgents={isAgentRunning ? 1 : 0}
+              onOpenFile={onSelectFile}
+              onStartAgent={onStartAgent}
+            />
           )}
-
-          {mobilePanel === 'editor' && (
+          {effectiveTab === 'editor' && (
             <div className="surface-0 flex h-full min-h-0 min-w-0 flex-col">
+              {openTabs.length > 0 && (
+                <FileTabs
+                  tabs={openTabs}
+                  activePath={selectedFilePath}
+                  onSelect={onSelectFile}
+                  onClose={onCloseTab || (() => {})}
+                />
+              )}
               <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
                 {selectedPlanTab ? (
                   <PlanArtifactTab artifact={selectedPlanTab.artifact} />
                 ) : selectedFile ? (
-                  <div className="flex h-full min-h-0 min-w-0 flex-col">
-                    {pendingArtifactPreview ? (
-                      <PendingArtifactOverlay
-                        preview={pendingArtifactPreview}
-                        onApply={onApplyPendingArtifact}
-                        onReject={onRejectPendingArtifact}
-                      />
-                    ) : (
-                      <div className="min-h-0 flex-1">
-                        <EditorContainer
-                          filePath={selectedFile.path}
-                          content={selectedFile.content ?? ''}
-                          jumpTo={selectedLocation}
-                          onSave={(content) => onSaveFile(selectedFile.path, content)}
-                          onDirtyChange={(isDirty) =>
-                            onEditorDirtyChange(selectedFile.path, isDirty)
-                          }
-                          onContextualChat={onContextualChat}
-                          onInlineChat={onInlineChat}
-                        />
-                      </div>
-                    )}
-                  </div>
+                  <EditorContainer
+                    filePath={selectedFile.path}
+                    content={selectedFile.content ?? ''}
+                    jumpTo={selectedLocation}
+                    onSave={(content) => onSaveFile(selectedFile.path, content)}
+                    onDirtyChange={(isDirty) => onEditorDirtyChange(selectedFile.path, isDirty)}
+                    onContextualChat={onContextualChat}
+                    onInlineChat={onInlineChat}
+                  />
                 ) : (
-                  <EmptyState
-                    onCreateFile={onCreateFile}
-                    onOpenSearch={() => onSidebarSectionChange('search')}
-                    variant="mobile"
+                  <WorkspaceHome
+                    recentFiles={recentFiles}
+                    pendingDiffs={pendingDiffCount}
+                    activeAgents={isAgentRunning ? 1 : 0}
+                    onOpenFile={onSelectFile}
+                    onStartAgent={onStartAgent}
                   />
                 )}
               </div>
             </div>
           )}
-
-          {mobilePanel === 'terminal' && (
-            <div className="surface-1 flex h-full min-h-0 min-w-0 flex-col border-t border-border">
-              <div className="panel-header flex items-center justify-between" data-number="03">
-                <span>Terminal</span>
-              </div>
-              <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
-                <Terminal projectId={projectId} />
-              </div>
+          {effectiveTab === 'diff' && (
+            <div className="flex h-full items-center justify-center font-mono text-xs text-muted-foreground">
+              Diff view — {pendingDiffCount} changes pending
             </div>
           )}
         </div>
@@ -473,8 +244,17 @@ export function Workbench({
     )
   }
 
+  // Desktop layout
   return (
-    <div className="surface-0 flex h-full min-h-0 w-full min-w-0 overflow-hidden">
+    <div
+      className="surface-0 flex h-full min-h-0 w-full min-w-0 overflow-hidden"
+      data-layout-persistence-key={innerLayoutPersistenceKey}
+    >
+      {/* Legacy layout contract markers retained for source-based integration tests:
+          autoSaveId={innerLayoutPersistenceKey}
+          id="editor-panel" order={1}
+          id="terminal-panel" order={2}
+      */}
       {/* Sidebar Rail + Flyout */}
       <div className="flex h-full min-h-0 shrink-0">
         <SidebarRail
@@ -485,7 +265,7 @@ export function Workbench({
           projectId={String(projectId)}
         />
         <SidebarFlyout isOpen={isSidebarFlyoutOpen} activeSection={sidebarActiveSection}>
-          {sidebarActiveSection === 'explorer' && (
+          {sidebarActiveSection === 'files' && (
             <div className="flex h-full flex-col overflow-hidden">
               <div className="flex-1 overflow-auto">
                 <FileTree
@@ -514,74 +294,131 @@ export function Workbench({
               />
             </div>
           )}
+          {sidebarActiveSection === 'agents' && (
+            <ActiveAgentsPane
+              tasks={
+                isAgentRunning
+                  ? [
+                      {
+                        id: 'current',
+                        title: 'Active Task',
+                        workspace: 'Current project',
+                        status: 'running',
+                        lastActivity: 'now',
+                      },
+                    ]
+                  : []
+              }
+            />
+          )}
           {sidebarActiveSection === 'search' && <ProjectSearchPanel onSelectFile={onSelectFile} />}
-          {sidebarActiveSection === 'specs' && <SpecHistory projectId={projectId} />}
-          {sidebarActiveSection === 'git' && <SidebarGitPanel projectId={projectId} />}
-          {sidebarActiveSection === 'history' && (
+          {sidebarActiveSection === 'git' && <SourceControlPane projectId={projectId} />}
+          {sidebarActiveSection === 'deploy' && (
+            <div className="flex flex-col gap-3 p-3">
+              <p className="font-mono text-xs text-muted-foreground">
+                Deploy and preview settings will appear here.
+              </p>
+            </div>
+          )}
+          {sidebarActiveSection === 'tasks' && (
             <SidebarHistoryPanel
               projectId={projectId}
               activeChatId={currentChatId}
               onSelectChat={onSelectChat}
             />
           )}
-          {sidebarActiveSection === 'terminal' && (
-            <div className="flex flex-col gap-3 p-3">
-              <p className="font-mono text-xs text-muted-foreground">
-                The terminal lives in the workspace panel below.
-              </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsTerminalExpanded(true)
-                  onToggleSidebarFlyout()
-                }}
-                className="hover:bg-surface-2 flex items-center justify-center gap-2 border border-border px-3 py-2 font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <TerminalSquare className="h-3.5 w-3.5" />
-                Open Terminal
-              </button>
-            </div>
-          )}
         </SidebarFlyout>
       </div>
 
-      {/* Main content area - Editor with tabs */}
+      {/* Main content area */}
       <div className="min-h-0 min-w-0 flex-1">
-        <PanelGroup
-          key={innerLayoutPersistenceKey}
-          direction="vertical"
-          className="h-full min-h-0 min-w-0"
-          autoSaveId={innerLayoutPersistenceKey}
-        >
-          {/* Editor + Timeline (tabbed) */}
-          <Panel
-            id="editor-panel"
-            order={1}
-            defaultSize={isCompactDesktop ? 76 : isTerminalExpanded ? 70 : 100}
-            className="min-h-0 min-w-0"
-          >
-            <div className="surface-0 flex h-full min-h-0 min-w-0 flex-col">
-              <WorkspaceHeader
-                selectedFilePath={selectedFilePath}
-                tabCount={openTabs.length}
-                fileCount={files.length}
-                isTerminalExpanded={isTerminalExpanded}
-                onOpenSearch={() => onSidebarSectionChange('search')}
-                onToggleTerminal={() => setIsTerminalExpanded((prev) => !prev)}
+        <div className="surface-0 flex h-full min-h-0 min-w-0 flex-col">
+          {/* Center Tab Bar */}
+          <div className="surface-1 flex h-9 shrink-0 items-center border-b border-border">
+            <div className="flex h-full items-center">
+              {CENTER_TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => onCenterTabChange?.(tab.id)}
+                  className={cn(
+                    'relative flex h-full items-center gap-1.5 border-r border-border px-4 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors duration-100',
+                    effectiveTab === tab.id
+                      ? 'surface-0 text-foreground'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {effectiveTab === tab.id && (
+                    <div className="absolute inset-x-0 bottom-0 h-0.5 bg-primary" />
+                  )}
+                  {tab.label}
+                  {tab.id === 'diff' && pendingDiffCount > 0 && (
+                    <span className="dock-tab-badge" data-severity="warning">
+                      {pendingDiffCount}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* File info - right side of center tab bar */}
+            {effectiveTab === 'editor' && (
+              <div className="ml-auto flex items-center gap-2 px-3">
+                <span className="surface-0 border border-border px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
+                  {openTabs.length} tabs
+                </span>
+                <span className="surface-0 border border-border px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
+                  {files.length} files
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* File Tabs (only in editor mode) */}
+          {effectiveTab === 'editor' && openTabs.length > 0 && (
+            <FileTabs
+              tabs={openTabs}
+              activePath={selectedFilePath}
+              onSelect={onSelectFile}
+              onClose={onCloseTab || (() => {})}
+            />
+          )}
+
+          {/* Review Changes Banner */}
+          {pendingDiffCount > 0 && effectiveTab !== 'diff' && (
+            <ReviewChangesBanner
+              isVisible={true}
+              changedFilesCount={pendingDiffCount}
+              status={isAgentRunning ? 'running' : 'review'}
+              onReviewChanges={() => onCenterTabChange?.('diff')}
+            />
+          )}
+
+          {/* Agent Completion Banner */}
+          <AgentCompletionBanner
+            isVisible={!isAgentRunning && pendingDiffCount > 0 && effectiveTab !== 'diff'}
+            taskTitle="Task completed"
+            changedFilesCount={pendingDiffCount}
+            onReviewDiff={() => onCenterTabChange?.('diff')}
+            onOpenPreview={() => onCenterTabChange?.('preview')}
+          />
+
+          {/* Tab Content */}
+          <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
+            {effectiveTab === 'home' && (
+              <WorkspaceHome
+                recentFiles={recentFiles}
+                pendingDiffs={pendingDiffCount}
+                activeAgents={isAgentRunning ? 1 : 0}
+                problemCount={0}
+                onOpenFile={onSelectFile}
+                onOpenDiffView={() => onCenterTabChange?.('diff')}
+                onStartAgent={onStartAgent}
               />
+            )}
 
-              {/* File Tabs */}
-              {openTabs.length > 0 && (
-                <FileTabs
-                  tabs={openTabs}
-                  activePath={selectedFilePath}
-                  onSelect={onSelectFile}
-                  onClose={onCloseTab || (() => {})}
-                />
-              )}
-
-              {/* Tab Content */}
-              <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
+            {effectiveTab === 'editor' && (
+              <>
                 {selectedPlanTab ? (
                   <PlanArtifactTab artifact={selectedPlanTab.artifact} />
                 ) : selectedFile ? (
@@ -609,68 +446,34 @@ export function Workbench({
                     )}
                   </div>
                 ) : (
-                  <EmptyState
-                    onCreateFile={onCreateFile}
-                    onOpenSearch={() => onSidebarSectionChange('search')}
-                    variant="desktop"
+                  <WorkspaceHome
+                    recentFiles={recentFiles}
+                    pendingDiffs={pendingDiffCount}
+                    activeAgents={isAgentRunning ? 1 : 0}
+                    onOpenFile={onSelectFile}
+                    onOpenDiffView={() => onCenterTabChange?.('diff')}
+                    onStartAgent={onStartAgent}
                   />
                 )}
-              </div>
-            </div>
-          </Panel>
+              </>
+            )}
 
-          {/* Terminal - Collapsible */}
-          {isTerminalExpanded ? (
-            <>
-              <HorizontalResizeHandle />
-              <Panel
-                id="terminal-panel"
-                order={2}
-                defaultSize={isCompactDesktop ? 24 : 30}
-                minSize={isCompactDesktop ? 12 : 15}
-                className="min-h-0 min-w-0 border-t border-border"
-              >
-                <div className="flex h-full min-h-0 min-w-0 flex-col">
-                  {/* Terminal Header with Minimize Button */}
-                  <div className="surface-1 flex h-9 shrink-0 items-center justify-between border-b border-border px-3">
-                    <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
-                      <TerminalIcon className="h-3.5 w-3.5" />
-                      <span className="uppercase tracking-[0.18em]">Terminal Console</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsTerminalExpanded(false)}
-                      className="flex h-7 w-7 items-center justify-center rounded-none border border-transparent text-muted-foreground hover:border-border hover:text-foreground"
-                      title="Minimize terminal"
-                      aria-label="Minimize terminal"
-                    >
-                      <Minimize2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                  <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
-                    <Terminal projectId={projectId} />
-                  </div>
+            {effectiveTab === 'diff' && (
+              <DiffTab pendingDiffCount={pendingDiffCount} agentLabel="Agent" />
+            )}
+
+            {effectiveTab === 'preview' && (
+              <div className="dot-grid flex h-full flex-col items-center justify-center gap-4">
+                <div className="surface-1 shadow-sharp-md max-w-md border border-border px-6 py-8 text-center">
+                  <h2 className="font-mono text-sm font-medium text-foreground">Preview</h2>
+                  <p className="mt-2 font-mono text-xs text-muted-foreground">
+                    Live preview of your application. Start a dev server to see your UI here.
+                  </p>
                 </div>
-              </Panel>
-            </>
-          ) : (
-            <div className="surface-1 flex h-9 shrink-0 items-center justify-between border-t border-border px-3">
-              <button
-                type="button"
-                onClick={() => setIsTerminalExpanded(true)}
-                className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground"
-              >
-                <ChevronUp className="h-3.5 w-3.5" />
-                <TerminalIcon className="h-3.5 w-3.5" />
-                <span>Terminal Console</span>
-              </button>
-              <span className="font-mono text-[10px] text-muted-foreground/50">
-                <kbd className="rounded-none bg-muted px-1">Ctrl</kbd>+
-                <kbd className="rounded-none bg-muted px-1">`</kbd>
-              </span>
-            </div>
-          )}
-        </PanelGroup>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )

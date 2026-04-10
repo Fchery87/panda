@@ -98,6 +98,17 @@ import {
   ArrowsVertical,
   ArrowsInLineHorizontal,
   ArrowsOutLineHorizontal,
+  House,
+  FolderSimple,
+  Globe,
+  Bell,
+  CloudArrowUp,
+  Lightning,
+  Pulse,
+  ArrowsClockwise,
+  Pause,
+  GitDiff,
+  Browser,
   type IconProps,
 } from '@phosphor-icons/react'
 
@@ -116,6 +127,24 @@ export {
   Terminal as IconTerminal,
   GearSix as IconSettings,
   BookOpenText as IconDocs,
+  House as IconHome,
+  FolderSimple as IconProjects,
+  Robot as IconAgents,
+  Globe as IconDeploy,
+}
+
+// ============================================
+// TOP BAR / WORKSPACE ICONS
+// ============================================
+export {
+  Bell as IconBell,
+  CloudArrowUp as IconCloud,
+  Lightning as IconQuickAction,
+  Pulse as IconHealth,
+  ArrowsClockwise as IconRefresh,
+  Pause as IconPause,
+  GitDiff as IconDiff,
+  Browser as IconBrowser,
 }
 
 // ============================================

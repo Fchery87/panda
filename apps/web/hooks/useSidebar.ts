@@ -9,9 +9,18 @@ const FLYOUT_KEY = 'panda:sidebar-flyout-open'
 
 export function useSidebar() {
   const [activeSection, setActiveSection] = useState<SidebarSection>(() => {
-    if (typeof window === 'undefined') return 'explorer'
+    if (typeof window === 'undefined') return 'files'
     const stored = localStorage.getItem(SECTION_KEY)
-    return (stored as SidebarSection) ?? 'explorer'
+    // Migrate legacy values
+    if (
+      stored === 'explorer' ||
+      stored === 'history' ||
+      stored === 'specs' ||
+      stored === 'terminal'
+    ) {
+      return 'files'
+    }
+    return (stored as SidebarSection) ?? 'files'
   })
 
   const [isFlyoutOpen, setIsFlyoutOpen] = useState<boolean>(() => {
