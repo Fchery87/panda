@@ -931,11 +931,9 @@ export class Runtime {
     if (pendingToolCalls.length > 0) {
       finishReason = 'tool-calls'
       // Get list of available tool names for fuzzy matching
-      const availableToolNames = [
-        ...AGENT_TOOLS,
-        ...getTaskToolDefinitions(),
-        ...plugins.getTools(),
-      ].map((t) => t.function.name)
+      const availableToolNames = [...this.getToolsForAgent(agent), ...plugins.getTools()].map(
+        (t) => t.function.name
+      )
 
       const preparedToolCalls = pendingToolCalls.map((toolCall) => {
         // Try to repair tool name if it's not recognized
@@ -2222,6 +2220,9 @@ export class Runtime {
     const allTools = [...AGENT_TOOLS, ...getTaskToolDefinitions(), ...plugins.getTools()]
     const byName = new Map<string, ToolDefinition>()
     for (const tool of allTools) {
+      if (tool.function.name === 'question' && !this.toolExecutors.has('question')) {
+        continue
+      }
       byName.set(tool.function.name, tool)
     }
 

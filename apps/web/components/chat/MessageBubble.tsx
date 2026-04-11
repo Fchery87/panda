@@ -2,11 +2,12 @@
 
 import { Fragment } from 'react'
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 import { toast } from 'sonner'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { Copy, User, Bot } from 'lucide-react'
+import { Copy, Download, FileText, User, Bot } from 'lucide-react'
 import type { Message } from './types'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import { ReasoningPanel } from './ReasoningPanel'
@@ -252,6 +253,13 @@ function formatBrainstormPhaseLabel(
   return null
 }
 
+function formatAttachmentSize(size?: number): string | null {
+  if (!size || size <= 0) return null
+  if (size < 1024) return `${size} B`
+  if (size < 1024 * 1024) return `${Math.round(size / 102.4) / 10} KB`
+  return `${Math.round(size / (1024 * 102.4)) / 10} MB`
+}
+
 export function MessageBubble({
   message,
   isStreaming = false,
@@ -259,6 +267,7 @@ export function MessageBubble({
   disableActions = false,
 }: MessageBubbleProps) {
   const isUser = message.role === 'user'
+  const attachmentsOnly = message.annotations?.attachmentsOnly === true
   const isAssistant = message.role === 'assistant'
   const isBuild = message.annotations?.mode === 'build'
   const shouldRedactBuildCode = isAssistant && isBuild && message.content.includes('```')
@@ -384,65 +393,123 @@ export function MessageBubble({
           <ReasoningPanel content={reasoningBlock.content} redacted />
         ) : null}
 
-        <motion.div
-          initial={{ scale: 0.95, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.2, delay: 0.05 }}
-          className={cn(
-            'relative min-w-0 rounded-none border px-4 py-2.5 text-sm leading-relaxed',
-            'px-3 py-2 text-[13px] xl:px-4 xl:py-2.5 xl:text-sm',
-            isUser
-              ? 'max-w-[85%] self-end bg-primary text-primary-foreground'
-              : 'w-full self-stretch bg-muted text-foreground'
-          )}
-        >
-          <div
+        {!attachmentsOnly ? (
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.2, delay: 0.05 }}
             className={cn(
-              'min-w-0 leading-6 tracking-[0.01em] [overflow-wrap:anywhere]',
-              'selection:bg-primary/20 selection:text-foreground',
-              isUser && 'selection:bg-primary-foreground/20 selection:text-primary-foreground'
+              'relative min-w-0 rounded-none border px-4 py-2.5 text-sm leading-relaxed',
+              'px-3 py-2 text-[13px] xl:px-4 xl:py-2.5 xl:text-sm',
+              isUser
+                ? 'max-w-[85%] self-end bg-primary text-primary-foreground'
+                : 'w-full self-stretch bg-muted text-foreground'
             )}
           >
-            {shouldUseArchitectRenderer ? (
-              <div className="space-y-2.5">
-                {architectSections.map((section, sectionIndex) => {
-                  if (section.kind === 'section') {
-                    return (
-                      <div
-                        key={section.key}
-                        className={cn(
-                          'border border-border/70 bg-background/40 px-2.5 py-2',
-                          sectionIndex === 0 && 'border-primary/25'
-                        )}
-                      >
-                        <div className="mb-1.5 font-mono text-[11px] uppercase tracking-wide text-foreground/90">
-                          {section.title}
+            <div
+              className={cn(
+                'min-w-0 leading-6 tracking-[0.01em] [overflow-wrap:anywhere]',
+                'selection:bg-primary/20 selection:text-foreground',
+                isUser && 'selection:bg-primary-foreground/20 selection:text-primary-foreground'
+              )}
+            >
+              {shouldUseArchitectRenderer ? (
+                <div className="space-y-2.5">
+                  {architectSections.map((section, sectionIndex) => {
+                    if (section.kind === 'section') {
+                      return (
+                        <div
+                          key={section.key}
+                          className={cn(
+                            'border border-border/70 bg-background/40 px-2.5 py-2',
+                            sectionIndex === 0 && 'border-primary/25'
+                          )}
+                        >
+                          <div className="mb-1.5 font-mono text-[11px] uppercase tracking-wide text-foreground/90">
+                            {section.title}
+                          </div>
+                          {renderArchitectBody(section.bodyLines)}
                         </div>
-                        {renderArchitectBody(section.bodyLines)}
-                      </div>
-                    )
-                  }
+                      )
+                    }
 
-                  return <div key={section.key}>{renderArchitectBody(section.bodyLines)}</div>
-                })}
-              </div>
-            ) : isAssistant ? (
-              <ChatMarkdown content={displayContent} />
-            ) : (
-              <div className="whitespace-pre-wrap break-words">{displayContent}</div>
-            )}
-            {isStreaming && (
-              <motion.span
-                className={cn(
-                  'ml-0.5 inline-block h-4 w-0.5 align-middle',
-                  isUser ? 'bg-primary-foreground' : 'bg-foreground'
-                )}
-                animate={{ opacity: [1, 0, 1] }}
-                transition={{ duration: 0.8, repeat: Infinity, ease: 'easeInOut' }}
-              />
-            )}
+                    return <div key={section.key}>{renderArchitectBody(section.bodyLines)}</div>
+                  })}
+                </div>
+              ) : isAssistant ? (
+                <ChatMarkdown content={displayContent} />
+              ) : (
+                <div className="whitespace-pre-wrap break-words">{displayContent}</div>
+              )}
+              {isStreaming && (
+                <motion.span
+                  className={cn(
+                    'ml-0.5 inline-block h-4 w-0.5 align-middle',
+                    isUser ? 'bg-primary-foreground' : 'bg-foreground'
+                  )}
+                  animate={{ opacity: [1, 0, 1] }}
+                  transition={{ duration: 0.8, repeat: Infinity, ease: 'easeInOut' }}
+                />
+              )}
+            </div>
+          </motion.div>
+        ) : null}
+
+        {message.attachments && message.attachments.length > 0 ? (
+          <div className="grid w-full gap-2">
+            {message.attachments.map((attachment, index) => {
+              const sizeLabel = formatAttachmentSize(attachment.size)
+              if (attachment.kind === 'image' && attachment.url) {
+                return (
+                  <a
+                    key={`${attachment.filename}-${index}`}
+                    href={attachment.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="surface-1 flex w-full max-w-md flex-col gap-2 border border-border p-2"
+                  >
+                    <div className="relative aspect-[4/3] w-full overflow-hidden border border-border bg-muted">
+                      <Image
+                        src={attachment.url}
+                        alt={attachment.filename}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 28rem"
+                        className="object-cover"
+                        unoptimized
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-2 font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
+                      <span className="truncate text-foreground">{attachment.filename}</span>
+                      <span className="shrink-0">Open</span>
+                    </div>
+                  </a>
+                )
+              }
+
+              return (
+                <a
+                  key={`${attachment.filename}-${index}`}
+                  href={attachment.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="surface-1 flex w-full max-w-md items-center gap-3 border border-border px-3 py-2"
+                >
+                  <div className="flex h-9 w-9 items-center justify-center border border-border bg-muted text-muted-foreground">
+                    <FileText className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1 font-mono text-[11px] uppercase tracking-wide">
+                    <div className="truncate text-foreground">{attachment.filename}</div>
+                    <div className="truncate text-muted-foreground">
+                      {[attachment.contentType, sizeLabel].filter(Boolean).join(' · ') ||
+                        'Stored attachment'}
+                    </div>
+                  </div>
+                  <Download className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </a>
+              )
+            })}
           </div>
-        </motion.div>
+        ) : null}
 
         {isAssistant && isBuild && shouldRedactBuildCode && (
           <div className="flex items-center gap-2 px-1">

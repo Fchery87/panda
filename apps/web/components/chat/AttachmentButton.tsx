@@ -56,7 +56,13 @@ export function AttachmentButton({
               className="group relative flex items-center gap-1.5 border border-border bg-background px-2 py-1"
             >
               {att.type === 'image' && att.preview ? (
-                <img src={att.preview} alt={att.file.name} className="h-8 w-8 object-cover" />
+                <img
+                  src={att.preview}
+                  alt={att.file.name}
+                  width={32}
+                  height={32}
+                  className="h-8 w-8 object-cover"
+                />
               ) : (
                 <FilePlus2 className="h-3.5 w-3.5 text-muted-foreground" />
               )}
@@ -67,6 +73,7 @@ export function AttachmentButton({
                 type="button"
                 onClick={() => onRemove(att.id)}
                 className="ml-1 text-muted-foreground hover:text-foreground"
+                aria-label={`Remove attachment ${att.file.name}`}
               >
                 <X className="h-3 w-3" />
               </button>

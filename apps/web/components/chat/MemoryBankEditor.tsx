@@ -113,7 +113,7 @@ export function MemoryBankEditor({ memoryBank, onSave, className }: MemoryBankEd
                 ref={textareaRef}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                placeholder={`# About this project\n- Stack: Next.js 15, Convex, Tailwind\n- Convention: all API routes in /convex\n- Prefer functional components...`}
+                placeholder={`# About this project\n- Stack: Next.js 15, Convex, Tailwind\n- Convention: all API routes in /convex\n- Prefer functional components…`}
                 className={cn(
                   'max-h-64 min-h-[120px] resize-none rounded-none border-0 border-t border-border',
                   'bg-muted/20 font-mono text-[12px] leading-relaxed',

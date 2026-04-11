@@ -48,7 +48,6 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
       />
     )
 
-    expect(html).toContain('chat-panel')
-    expect(html).toContain('Notes')
+    expect(html).toContain('right-panel')
   })
 })

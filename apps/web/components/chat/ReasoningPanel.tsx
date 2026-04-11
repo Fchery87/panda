@@ -15,7 +15,7 @@ interface ReasoningPanelProps {
 function buildTeaser(content: string): string {
   const normalized = content.replace(/\s+/g, ' ').trim()
   if (normalized.length <= 120) return normalized
-  return `${normalized.slice(0, 117).trimEnd()}...`
+  return `${normalized.slice(0, 117).trimEnd()}…`
 }
 
 export function ReasoningPanel({

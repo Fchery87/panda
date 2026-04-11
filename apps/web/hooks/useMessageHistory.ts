@@ -44,6 +44,17 @@ export interface UseMessageHistoryResult {
         content: string
         createdAt: number
         annotations?: unknown[]
+        attachments?: Array<{
+          _id?: string
+          storageId?: string
+          kind: 'file' | 'image'
+          filename: string
+          contentType?: string
+          size?: number
+          url?: string | null
+          contextFilePath?: string
+          createdAt?: number
+        }>
       }>
     | undefined
   messagesPaginationStatus: 'LoadingFirstPage' | 'CanLoadMore' | 'LoadingMore' | 'Exhausted'
@@ -99,8 +110,13 @@ export function useMessageHistory(
           toolCalls: Array.isArray(firstAnnotation?.toolCalls)
             ? (firstAnnotation?.toolCalls as ToolCallInfo[])
             : ([] as ToolCallInfo[]),
+          attachments: Array.isArray(msg.attachments) ? msg.attachments : [],
           annotations: {
             mode: hydratedMode,
+            attachmentsOnly:
+              typeof firstAnnotation?.attachmentsOnly === 'boolean'
+                ? firstAnnotation.attachmentsOnly
+                : undefined,
             model: typeof firstAnnotation?.model === 'string' ? firstAnnotation.model : undefined,
             provider:
               typeof firstAnnotation?.provider === 'string' ? firstAnnotation.provider : undefined,
@@ -124,6 +140,9 @@ export function useMessageHistory(
               firstAnnotation?.contextSource === 'fallback'
                 ? firstAnnotation.contextSource
                 : undefined,
+            attachments: Array.isArray(firstAnnotation?.attachments)
+              ? firstAnnotation.attachments
+              : undefined,
           },
         }
       })

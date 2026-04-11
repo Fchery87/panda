@@ -37,10 +37,20 @@ export interface MessageAnnotationInfo {
   contextUsagePct?: number
   contextSource?: ContextWindowSource
   mode?: ChatMode
+  attachmentsOnly?: boolean
   provider?: string
   reasoningTokens?: number
   reasoningSummary?: string
   toolCalls?: ToolCallInfo[]
+  attachments?: Array<{
+    id: string
+    kind: 'file' | 'image'
+    filename: string
+    contentType?: string
+    size?: number
+    url?: string
+    contextFilePath?: string
+  }>
 }
 
 export interface PersistedRunEventInfo {
@@ -88,5 +98,16 @@ export interface Message {
   toolCalls?: ToolCallInfo[]
   suggestedActions?: SuggestedAction[]
   annotations?: MessageAnnotationInfo
+  attachments?: Array<{
+    _id?: string
+    storageId?: string
+    kind: 'file' | 'image'
+    filename: string
+    contentType?: string
+    size?: number
+    url?: string
+    contextFilePath?: string
+    createdAt?: number
+  }>
   createdAt: number
 }

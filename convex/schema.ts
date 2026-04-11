@@ -196,6 +196,7 @@ export const MessageToolCall = v.object({
 
 export const MessageAnnotation = v.object({
   mode: v.optional(ChatMode),
+  attachmentsOnly: v.optional(v.boolean()),
   reasoningSummary: v.optional(v.string()),
   toolCalls: v.optional(v.array(MessageToolCall)),
   model: v.optional(v.string()),
@@ -213,6 +214,19 @@ export const MessageAnnotation = v.object({
     v.union(v.literal('map'), v.literal('provider'), v.literal('fallback'))
   ),
   reasoningTokens: v.optional(v.number()),
+  attachments: v.optional(
+    v.array(
+      v.object({
+        id: v.string(),
+        kind: v.union(v.literal('file'), v.literal('image')),
+        filename: v.string(),
+        contentType: v.optional(v.string()),
+        size: v.optional(v.number()),
+        url: v.optional(v.string()),
+        contextFilePath: v.optional(v.string()),
+      })
+    )
+  ),
 })
 
 export const ArtifactAction = v.union(
@@ -1246,4 +1260,21 @@ export default defineSchema({
     .index('by_delivery_updated', ['deliveryStateId', 'updatedAt'])
     .index('by_project_updated', ['projectId', 'updatedAt'])
     .index('by_session_key', ['browserSessionKey']),
+
+  // 38. Chat attachments table - storage-backed message attachments
+  chatAttachments: defineTable({
+    projectId: v.id('projects'),
+    chatId: v.id('chats'),
+    messageId: v.id('messages'),
+    storageId: v.id('_storage'),
+    kind: v.union(v.literal('file'), v.literal('image')),
+    filename: v.string(),
+    contentType: v.optional(v.string()),
+    size: v.optional(v.number()),
+    contextFilePath: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index('by_message', ['messageId'])
+    .index('by_chat_created', ['chatId', 'createdAt'])
+    .index('by_project_created', ['projectId', 'createdAt']),
 })

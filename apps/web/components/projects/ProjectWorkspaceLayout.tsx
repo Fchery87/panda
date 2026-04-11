@@ -5,7 +5,6 @@ import { useMemo } from 'react'
 import type { Id } from '@convex/_generated/dataModel'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { CommandPalette } from '@/components/command-palette/CommandPalette'
-import { RightPanel, type RightPanelTabId } from '@/components/panels/RightPanel'
 import { SpecDrawer } from '@/components/chat/SpecDrawer'
 import { StatusBar } from '@/components/workbench/StatusBar'
 import { Workbench } from '@/components/workbench/Workbench'
@@ -81,8 +80,6 @@ interface ProjectWorkspaceLayoutProps {
   activeCenterTab?: 'home' | 'editor' | 'diff' | 'preview' | 'logs' | 'tests'
   onCenterTabChange?: (tab: 'home' | 'editor' | 'diff' | 'preview' | 'logs' | 'tests') => void
   isRightPanelOpen?: boolean
-  rightPanelTab?: RightPanelTabId
-  onRightPanelTabChange?: (tab: RightPanelTabId) => void
   // Task header
   activeTaskTitle?: string
   activeTaskStatus?: TaskStatus
@@ -134,8 +131,6 @@ export function ProjectWorkspaceLayout({
   activeCenterTab = 'home',
   onCenterTabChange,
   isRightPanelOpen,
-  rightPanelTab,
-  onRightPanelTabChange,
   activeTaskTitle,
   activeTaskStatus,
   changedFilesCount = 0,
@@ -393,22 +388,7 @@ export function ProjectWorkspaceLayout({
                             maxSize={40}
                             className="flex min-h-0 min-w-0 flex-col"
                           >
-                            <RightPanel
-                              chatContent={chatPanel}
-                              planContent={rightPanelTab === 'plan' ? rightPanelContent : undefined}
-                              reviewContent={
-                                rightPanelTab === 'review' ? rightPanelContent : undefined
-                              }
-                              inspectContent={
-                                rightPanelTab === 'inspect' ? rightPanelContent : undefined
-                              }
-                              runContent={rightPanelTab === 'run' ? rightPanelContent : undefined}
-                              commentsContent={
-                                rightPanelTab === 'comments' ? rightPanelContent : undefined
-                              }
-                              activeTab={rightPanelTab}
-                              onTabChange={onRightPanelTabChange}
-                            />
+                            {rightPanelContent}
                           </Panel>
                         </>
                       )}
