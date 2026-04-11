@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
-import { useConvex, useQuery, useMutation } from 'convex/react'
+import { useConvex, useMutation, usePaginatedQuery, useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { motion } from 'framer-motion'
@@ -13,6 +13,7 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import { Breadcrumb, buildBreadcrumbItems } from '@/components/workbench/Breadcrumb'
 import { mapLatestRunProgressSteps } from '@/components/chat/live-run-utils'
 import { ComposerOverlay } from '@/components/chat/ComposerOverlay'
+import { PermissionDialog } from '@/components/chat/PermissionDialog'
 import { CommandPalette } from '@/components/command-palette/CommandPalette'
 import { ProjectChatPanel } from '@/components/projects/ProjectChatPanel'
 import { ProjectShareDialog } from '@/components/projects/ProjectShareDialog'
@@ -48,7 +49,8 @@ import { useAgent } from '@/hooks/useAgent'
 import { useSidebar } from '@/hooks/useSidebar'
 import { useProjectChatSession } from '@/hooks/useProjectChatSession'
 import { useProjectMessageWorkflow } from '@/hooks/useProjectMessageWorkflow'
-import { useProjectPlanDraft } from '@/hooks/useProjectPlanDraft'
+import { getAuthoritativePlanDraftValue, useProjectPlanDraft } from '@/hooks/useProjectPlanDraft'
+import { useProjectPlanningSession } from '@/hooks/useProjectPlanningSession'
 import { useProjectWorkbenchFiles } from '@/hooks/useProjectWorkbenchFiles'
 import { useProjectWorkspaceUi } from '@/hooks/useProjectWorkspaceUi'
 import { useShortcutListener } from '@/hooks/useShortcuts'
@@ -88,7 +90,6 @@ import {
 } from '@/components/workbench/PlanArtifactTab'
 import { ShortcutHelpOverlay } from '@/components/workbench/ShortcutHelpOverlay'
 import { derivePlanningSessionDebugSummary } from '@/components/plan/PlanningSessionDebugCard'
-import type { GeneratedPlanArtifact } from '@/lib/planning/types'
 import { appLog } from '@/lib/logger'
 import {
   buildInlineChatFailureDisplay,
@@ -97,6 +98,7 @@ import {
 import { buildDeliveryClosureServicePlan } from '@/lib/agent/delivery/service'
 import { deriveQaReportFingerprint } from '@/lib/qa/browser-session'
 import { deriveShipDecision, buildExecutiveSummary } from '@/lib/agent/delivery/executive'
+import { buildDefaultPlanningQuestions } from '@/lib/planning/question-engine'
 
 interface File {
   _id: Id<'files'>
@@ -151,21 +153,6 @@ type ArtifactRecord = {
   createdAt: number
 }
 
-type ChatInspectorTab =
-  | 'run'
-  | 'plan'
-  | 'artifacts'
-  | 'memory'
-  | 'evals'
-  | 'tasks'
-  | 'qa'
-  | 'state'
-  | 'browser'
-  | 'activity'
-  | 'decisions'
-
-// Add placeholder function if needed or safely remove usages
-
 function readAgentPolicyField(
   source: unknown,
   key: 'agentPolicy' | 'agentDefaults'
@@ -218,7 +205,10 @@ export default function ProjectPage() {
     setMobileUnreadCount,
     isMobileKeyboardOpen,
     setIsMobileKeyboardOpen,
+    isChatInspectorOpen,
     chatInspectorTab,
+    setIsChatInspectorOpen,
+    setChatInspectorTab,
     isSpecDrawerOpen,
     setIsSpecDrawerOpen,
     isSpecPanelOpen,
@@ -322,8 +312,6 @@ export default function ProjectPage() {
   const recordForgeReviewMutation = useMutation(api.forge.recordReview)
   const runForgeQaForTaskMutation = useMutation(api.forge.runQaForTask)
   const recordForgeShipDecisionMutation = useMutation(api.forge.recordShipDecision)
-  const acceptPlanningSessionMutation = useMutation(api.planningSessions.acceptPlan)
-  const markPlanningExecutionStateMutation = useMutation(api.planningSessions.markExecutionState)
   const upsertFileMutation = useMutation(api.files.upsert)
   const createAndExecuteJobMutation = useMutation(api.jobs.createAndExecute)
   const updateJobStatusMutation = useMutation(api.jobs.updateStatus)
@@ -351,41 +339,28 @@ export default function ProjectPage() {
     chats,
     projectAgentPolicy,
   })
-  const activePlanningSession = useQuery(
-    api.planningSessions.getActiveByChat,
-    activeChat ? { chatId: activeChat._id } : 'skip'
-  ) as {
-    sessionId: string
-    chatId: Id<'chats'>
-    status: string
-    questions: Array<{
-      id: string
-      title: string
-      prompt: string
-      suggestions: Array<{
-        id: string
-        label: string
-        description?: string
-        recommended?: boolean
-      }>
-      allowFreeform: boolean
-      order: number
-    }>
-    answers: Array<{
-      questionId: string
-      selectedOptionId?: string
-      freeformValue?: string
-      source: 'suggestion' | 'freeform'
-      answeredAt: number
-    }>
-    generatedPlan?: GeneratedPlanArtifact
-  } | null
+  const planningSession = useProjectPlanningSession({
+    activeChatId: activeChat?._id ?? null,
+  })
+  const activePlanningSession = planningSession.session
+  const planningQuestions =
+    activePlanningSession?.questions ??
+    buildDefaultPlanningQuestions({ projectName: project?.name })
   const forgeProjectSnapshot = useQuery(
     api.forge.getProjectSnapshot,
     activeChat ? { chatId: activeChat._id } : 'skip'
   )
   useShortcutListener()
-  const persistedPlanDraft = activeChat?.planDraft ?? ''
+  const persistedPlanDraft = getAuthoritativePlanDraftValue({
+    activeChat,
+    activePlanningSession: activePlanningSession
+      ? {
+          sessionId: activePlanningSession.sessionId,
+          status: activePlanningSession.status,
+          generatedPlan: activePlanningSession.generatedPlan,
+        }
+      : null,
+  })
 
   // Initialize agent hook when activeChat and provider exist
   // Skip the hook if provider is not available - we'll show an error when user tries to send
@@ -414,8 +389,7 @@ export default function ProjectPage() {
       const planningSessionId = activePlanningSession?.sessionId ?? null
       if (planningSessionId) {
         approvedPlanRunSessionsRef.current.set(String(runId), planningSessionId)
-        await markPlanningExecutionStateMutation({
-          sessionId: planningSessionId,
+        await planningSession.markExecutionState({
           state: 'executing',
           runId,
         })
@@ -566,7 +540,7 @@ export default function ProjectPage() {
       const planningSessionId = approvedPlanRunSessionsRef.current.get(String(runId))
       if (planningSessionId) {
         approvedPlanRunSessionsRef.current.delete(String(runId))
-        await markPlanningExecutionStateMutation({
+        await planningSession.markExecutionState({
           sessionId: planningSessionId,
           state: nextPlanStatus,
         })
@@ -612,8 +586,15 @@ export default function ProjectPage() {
       agentStatus: agent.status,
       agentMessages: agent.messages,
       updateChatMutation,
-      acceptPlanningSession: acceptPlanningSessionMutation,
+      acceptPlanningSession: planningSession.acceptPlan,
     })
+
+  const canApproveCurrentPlan =
+    planningSession.canApprove ||
+    (!planningSession.generatedPlan && canApprovePlan(activeChat?.planStatus, planDraft))
+  const canBuildCurrentPlan =
+    planningSession.canBuild ||
+    (!planningSession.generatedPlan && canBuildFromPlan(activeChat?.planStatus, planDraft))
 
   const { handleSendMessage, handleSuggestedAction, handleBuildFromPlan, handleModeChange } =
     useProjectMessageWorkflow({
@@ -635,7 +616,9 @@ export default function ProjectPage() {
         return snapshot ? { _id: snapshot.state.id } : null
       },
       markPlanningExecutionState: ({ sessionId, state }) =>
-        markPlanningExecutionStateMutation({ sessionId, state }),
+        planningSession.markExecutionState({ sessionId, state }),
+      startPlanningIntake: ({ chatId, questions }) =>
+        planningSession.startIntakeForChat(chatId, questions),
       sendAgentMessage,
       setActiveChatId,
       setMobilePrimaryPanel,
@@ -654,7 +637,7 @@ export default function ProjectPage() {
     return pendingArtifactPreviews.find((preview) => preview.filePath === selectedFilePath) ?? null
   }, [pendingArtifactPreviews, selectedFilePath])
 
-  const activePlanArtifact = activePlanningSession?.generatedPlan ?? null
+  const activePlanArtifact = planningSession.generatedPlan
   const planningDebug = useMemo(() => {
     if (!activePlanningSession) return null
     return derivePlanningSessionDebugSummary({
@@ -852,15 +835,18 @@ export default function ProjectPage() {
     setChatMode('architect')
     // Show confirmation
     toast.success('Workspace reset', {
-      description: 'Chat, artifacts, and plan draft have been cleared',
+      description:
+        'Local draft state was cleared. Persisted messages and artifacts remain available.',
     })
   }, [agent, setChatMode, setPlanDraft])
 
   // Fetch messages for active chat (fallback when not streaming)
-  const convexMessages = useQuery(
-    api.messages.list,
-    activeChat ? { chatId: activeChat._id } : 'skip'
-  ) as ConvexMessage[] | undefined
+  const convexMessagesPage = usePaginatedQuery(
+    api.messages.listPaginated,
+    activeChat ? { chatId: activeChat._id } : 'skip',
+    { initialNumItems: 100 }
+  )
+  const convexMessages = convexMessagesPage.results as ConvexMessage[] | undefined
   const runEvents = useQuery(
     api.agentRuns.listEventsByChat,
     activeChat ? { chatId: activeChat._id, limit: 120 } : 'skip'
@@ -1085,28 +1071,6 @@ export default function ProjectPage() {
     [isMobileLayout, setIsRightPanelOpen, setMobilePrimaryPanel, setRightPanelTab]
   )
 
-  const openReviewTab = useCallback(
-    (tab: ChatInspectorTab) => {
-      if (tab === 'plan') {
-        openRightPanelTab('plan')
-        return
-      }
-
-      if (tab === 'run') {
-        openRightPanelTab('run')
-        return
-      }
-
-      if (tab === 'artifacts') {
-        openRightPanelTab('review')
-        return
-      }
-
-      openRightPanelTab('comments')
-    },
-    [openRightPanelTab]
-  )
-
   useEffect(() => {
     if (!isMobileLayout || mobilePrimaryPanel === 'chat') {
       setMobileUnreadCount(0)
@@ -1195,6 +1159,27 @@ export default function ProjectPage() {
 
     return 'run'
   }, [chatInspectorTab])
+
+  const openChatInspectorSurface = useCallback(
+    (tab: InspectorTab) => {
+      setRightPanelTab('chat')
+      setIsRightPanelOpen(true)
+      setIsChatInspectorOpen(true)
+      setChatInspectorTab(tab)
+      if (isMobileLayout) {
+        setMobilePrimaryPanel('chat')
+      }
+    },
+    [
+      isMobileLayout,
+      setChatInspectorTab,
+      setIsChatInspectorOpen,
+      setIsRightPanelOpen,
+      setMobilePrimaryPanel,
+      setRightPanelTab,
+    ]
+  )
+
   const chatPanelContent = (
     <ProjectChatPanel
       projectId={projectId}
@@ -1222,21 +1207,19 @@ export default function ProjectPage() {
       variant={reasoningVariant}
       onVariantChange={setReasoningVariant}
       supportsReasoning={supportsReasoning}
+      attachmentsEnabled={true}
       specTier={specTier}
       onSpecTierChange={setSpecTier}
       inlineRateLimitError={inlineRateLimitError}
       onToggleInspector={() => {
-        if (isMobileLayout) {
-          openRightPanelTab('run')
-          return
-        }
-        setIsRightPanelOpen((prev) => !prev)
+        openChatInspectorSurface(chatInspectorSurfaceTab)
       }}
       onOpenHistory={() => {
-        openReviewTab('run')
+        openChatInspectorSurface('run')
       }}
       onOpenShare={() => setIsShareDialogOpen(true)}
       onResetWorkspace={handleResetWorkspace}
+      resetWorkspaceLabel="Clear Local Workspace"
       onNewChat={() => {
         void handleNewChat()
       }}
@@ -1250,8 +1233,8 @@ export default function ProjectPage() {
       onBuildFromPlan={() => {
         void handleBuildFromPlan()
       }}
-      planApproveDisabled={!canApprovePlan(activeChat?.planStatus, planDraft) || agent.isLoading}
-      planBuildDisabled={!canBuildFromPlan(activeChat?.planStatus, planDraft) || agent.isLoading}
+      planApproveDisabled={!canApproveCurrentPlan || agent.isLoading}
+      planBuildDisabled={!canBuildCurrentPlan || agent.isLoading}
       showInlinePlanReview={backgroundExecutionPolicy.showInlinePlanReview}
       pendingSpec={agent.pendingSpec}
       onSpecApprove={agent.approvePendingSpec}
@@ -1267,10 +1250,17 @@ export default function ProjectPage() {
         setIsSpecPanelOpen(false)
       }}
       isMobileLayout={isMobileLayout}
-      isInspectorOpen={false}
+      isInspectorOpen={isChatInspectorOpen}
       inspectorTab={chatInspectorSurfaceTab}
-      onInspectorOpenChange={() => {}}
-      onInspectorTabChange={() => {}}
+      planningSession={activePlanningSession}
+      planningCurrentQuestion={planningSession.currentQuestion}
+      onStartPlanningIntake={() => planningSession.startIntake(planningQuestions)}
+      onAnswerPlanningQuestion={planningSession.answerQuestion}
+      onClearPlanningIntake={() =>
+        activePlanningSession?.sessionId ? planningSession.clearIntake() : Promise.resolve(null)
+      }
+      onInspectorOpenChange={setIsChatInspectorOpen}
+      onInspectorTabChange={setChatInspectorTab}
       liveSteps={liveRunSteps}
       tracePersistenceStatus={agent.tracePersistenceStatus}
       onOpenFile={handleFileSelect}
@@ -1329,8 +1319,8 @@ export default function ProjectPage() {
           isSavingPlanDraft={isSavingPlanDraft}
           lastSavedAt={activeChat?.planUpdatedAt}
           lastGeneratedAt={activeChat?.planLastGeneratedAt}
-          approveDisabled={!canApprovePlan(activeChat?.planStatus, planDraft) || agent.isLoading}
-          buildDisabled={!canBuildFromPlan(activeChat?.planStatus, planDraft) || agent.isLoading}
+          approveDisabled={!canApproveCurrentPlan || agent.isLoading}
+          buildDisabled={!canBuildCurrentPlan || agent.isLoading}
         />
       }
       reviewContent={
@@ -1467,6 +1457,9 @@ export default function ProjectPage() {
   return (
     <WorkspaceProvider value={workspaceContextValue}>
       <div className="fixed inset-0 top-0 z-10 flex flex-col overflow-hidden bg-background">
+        <div className="pointer-events-none absolute inset-x-0 top-11 z-40 px-3 py-2">
+          <PermissionDialog className="pointer-events-auto ml-auto max-w-xl" />
+        </div>
         <ProjectShareDialog
           open={isShareDialogOpen}
           onOpenChange={setIsShareDialogOpen}
@@ -1679,14 +1672,15 @@ export default function ProjectPage() {
           activeCenterTab={activeCenterTab}
           onCenterTabChange={setActiveCenterTab}
           isRightPanelOpen={isRightPanelOpen}
-          rightPanelTab={rightPanelTab}
-          onRightPanelTabChange={setRightPanelTab}
           activeTaskTitle={
             taskHeaderVisible && agent.isLoading ? (activeChat?.title ?? 'Active Task') : undefined
           }
           activeTaskStatus={taskHeaderVisible && agent.isLoading ? 'running' : undefined}
           changedFilesCount={0}
-          onReviewChanges={() => setActiveCenterTab('diff')}
+          onReviewChanges={() => {
+            setActiveCenterTab('diff')
+            openChatInspectorSurface('artifacts')
+          }}
           onStopAgent={() => agent.stop?.()}
           onStartAgent={() => {
             setIsRightPanelOpen(true)

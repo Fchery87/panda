@@ -15,7 +15,6 @@ import {
   MonitorSmartphone,
 } from 'lucide-react'
 import { TabContainer, type TabItem } from '@/components/ui/tab-container'
-import { PlanningIntakeSurface } from '@/components/plan/PlanningIntakePopup'
 
 export type ReviewTab =
   | 'tasks'
@@ -136,7 +135,14 @@ export function ReviewPanel({
         <span className="text-sm font-medium text-foreground">Review</span>
       </div>
       <div className="border-b border-border p-3">
-        <PlanningIntakeSurface />
+        <div className="border border-dashed border-border bg-background px-3 py-2">
+          <div className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+            Planning intake
+          </div>
+          <div className="mt-1 text-sm text-muted-foreground">
+            Open the project chat inspector to continue the guided intake flow.
+          </div>
+        </div>
       </div>
       <div className="relative flex-1 overflow-hidden">
         <TabContainer

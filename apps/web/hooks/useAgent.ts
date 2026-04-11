@@ -34,6 +34,7 @@ import { parsePlanSteps } from '../lib/agent/plan-progress'
 import { registerDefaultPlugins } from '../lib/agent/harness/plugins'
 import { appLog } from '@/lib/logger'
 import { toast } from 'sonner'
+import type { GeneratedPlanArtifact } from '../lib/planning/types'
 
 import {
   buildAgentPromptContext,
@@ -58,6 +59,7 @@ import { useProjectContext } from './useProjectContext'
 import { useMessageHistory } from './useMessageHistory'
 import { useSpecManagement } from './useSpecManagement'
 import type {
+  Message,
   MessageAnnotationInfo,
   PersistedRunEventInfo,
   TokenSource,
@@ -71,6 +73,45 @@ import type {
 type AgentStatus = 'idle' | 'thinking' | 'streaming' | 'executing_tools' | 'complete' | 'error'
 
 type RunEventInput = PersistedRunEventInfo
+
+type UploadedAttachment = {
+  storageId: Id<'_storage'>
+  kind: 'file' | 'image'
+  filename: string
+  contentType?: string
+  size?: number
+  contextFilePath?: string
+  url?: string
+}
+
+type SendMessageOptions = {
+  approvedPlanExecution?: boolean
+  approvedPlanExecutionContext?: {
+    sessionId: string
+    plan: GeneratedPlanArtifact
+  }
+  attachments?: UploadedAttachment[]
+  attachmentsOnly?: boolean
+}
+
+export function buildPublicSendMessageOptions(options?: SendMessageOptions): {
+  clearInput: true
+  approvedPlanExecution?: boolean
+  approvedPlanExecutionContext?: {
+    sessionId: string
+    plan: GeneratedPlanArtifact
+  }
+  attachments?: UploadedAttachment[]
+  attachmentsOnly?: boolean
+} {
+  return {
+    clearInput: true,
+    approvedPlanExecution: options?.approvedPlanExecution,
+    approvedPlanExecutionContext: options?.approvedPlanExecutionContext,
+    attachments: options?.attachments,
+    attachmentsOnly: options?.attachmentsOnly,
+  }
+}
 
 function logUseAgentError(message: string, error: unknown): void {
   appLog.error(`[useAgent] ${message}`, error)
@@ -117,6 +158,7 @@ interface UseAgentReturn {
     createdAt: number
     toolCalls?: ToolCallInfo[]
     annotations?: MessageAnnotationInfo
+    attachments?: Message['attachments']
   }>
 
   // Input
@@ -150,7 +192,7 @@ interface UseAgentReturn {
   sendMessage: (
     content: string,
     contextFiles?: string[],
-    options?: { approvedPlanExecution?: boolean }
+    options?: SendMessageOptions
   ) => Promise<void>
   runEvalScenario: (scenario: {
     input?: unknown
@@ -214,6 +256,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     chatId ? { chatId, mode } : 'skip'
   )
   const addMessage = useMutation(api.messages.add)
+  const createChatAttachments = useMutation(api.chatAttachments.createMany)
   const createRun = useMutation(api.agentRuns.create)
   const appendRunEvents = useMutation(api.agentRuns.appendEvents)
   const completeRun = useMutation(api.agentRuns.complete)
@@ -436,6 +479,12 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         clearInput?: boolean
         harnessSessionID?: string
         approvedPlanExecution?: boolean
+        approvedPlanExecutionContext?: {
+          sessionId: string
+          plan: GeneratedPlanArtifact
+        }
+        attachments?: UploadedAttachment[]
+        attachmentsOnly?: boolean
       }
     ) => {
       const userContent = rawContent.trim()
@@ -482,27 +531,65 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         ...prev,
         {
           id: userMessageId,
+          _id: userMessageId,
           role: 'user',
           content: userContent,
           mode,
           createdAt: Date.now(),
+          annotations: {
+            mode,
+            attachmentsOnly: options?.attachmentsOnly,
+          },
+          attachments: options?.attachments?.map((attachment) => ({
+            kind: attachment.kind,
+            filename: attachment.filename,
+            contentType: attachment.contentType,
+            size: attachment.size,
+            url: attachment.url ?? undefined,
+            contextFilePath: attachment.contextFilePath,
+          })),
         },
       ])
 
       // Persist user message to Convex
       try {
-        await addMessage({
+        const persistedMessageId = await addMessage({
           chatId,
           role: 'user',
           content: userContent,
           annotations: [
             {
               mode,
+              attachmentsOnly: options?.attachmentsOnly,
               model,
               provider: provider?.config?.provider,
+              attachments: options?.attachments?.map((attachment) => ({
+                id: String(attachment.storageId),
+                kind: attachment.kind,
+                filename: attachment.filename,
+                contentType: attachment.contentType,
+                size: attachment.size,
+                url: attachment.url ?? undefined,
+                contextFilePath: attachment.contextFilePath,
+              })),
             },
           ],
         })
+
+        if (options?.attachments?.length) {
+          await createChatAttachments({
+            chatId,
+            messageId: persistedMessageId,
+            attachments: options.attachments.map((attachment) => ({
+              storageId: attachment.storageId,
+              kind: attachment.kind,
+              filename: attachment.filename,
+              contentType: attachment.contentType,
+              size: attachment.size,
+              contextFilePath: attachment.contextFilePath,
+            })),
+          })
+        }
       } catch (err) {
         logUseAgentError('Failed to persist user message', err)
       }
@@ -573,6 +660,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           userContent,
           contextFiles,
           architectBrainstormEnabled,
+          planDraft,
+          approvedPlanExecutionContext: options?.approvedPlanExecutionContext,
         })
 
         // Create runtime config with deduplication
@@ -940,7 +1029,9 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       provider,
       model,
       architectBrainstormEnabled,
+      planDraft,
       addMessage,
+      createChatAttachments,
       beginRun,
       clearRun,
       createRun,
@@ -977,15 +1068,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   )
 
   const sendMessage = useCallback(
-    async (
-      rawContent: string,
-      contextFiles?: string[],
-      options?: { approvedPlanExecution?: boolean }
-    ) => {
-      await sendMessageInternal(rawContent, contextFiles, {
-        clearInput: true,
-        approvedPlanExecution: options?.approvedPlanExecution,
-      })
+    async (rawContent: string, contextFiles?: string[], options?: SendMessageOptions) => {
+      await sendMessageInternal(rawContent, contextFiles, buildPublicSendMessageOptions(options))
     },
     [sendMessageInternal]
   )

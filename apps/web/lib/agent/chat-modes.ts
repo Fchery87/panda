@@ -18,12 +18,12 @@ export interface ChatModeConfig {
 
 export const CHAT_MODE_CONFIGS: Record<ChatMode, ChatModeConfig> = {
   ask: {
-    description: 'Read-only Q&A without modifications',
+    description: 'Read-only Q&A',
     fileAccess: 'read-only',
     surface: {
-      label: 'Build',
-      shortLabel: 'Build',
-      description: 'Default delivery coordination for everyday requests.',
+      label: 'Ask',
+      shortLabel: 'Ask',
+      description: 'Read-only Q&A without touching files or running changes.',
       advanced: false,
     },
     runtime: {
@@ -32,12 +32,12 @@ export const CHAT_MODE_CONFIGS: Record<ChatMode, ChatModeConfig> = {
     },
   },
   architect: {
-    description: 'System design and planning',
+    description: 'Clarify, scope, draft, and approve a plan',
     fileAccess: 'read-only',
     surface: {
       label: 'Plan',
       shortLabel: 'Plan',
-      description: 'Strategy, architecture, and review decisions.',
+      description: 'Clarify scope, draft the plan, and get approval before execution.',
       advanced: false,
       primaryShortcut: '1',
     },
@@ -47,12 +47,12 @@ export const CHAT_MODE_CONFIGS: Record<ChatMode, ChatModeConfig> = {
     },
   },
   code: {
-    description: 'Default implementation mode',
+    description: 'Execute an approved plan with coordination',
     fileAccess: 'read-write',
     surface: {
       label: 'Build',
       shortLabel: 'Build',
-      description: 'Default delivery coordination for everyday requests.',
+      description: 'Execute an approved plan with coordinated delivery across the workspace.',
       advanced: false,
       primaryShortcut: '2',
     },
@@ -62,12 +62,12 @@ export const CHAT_MODE_CONFIGS: Record<ChatMode, ChatModeConfig> = {
     },
   },
   build: {
-    description: 'Full implementation',
+    description: 'Direct expert execution',
     fileAccess: 'read-write',
     surface: {
       label: 'Builder',
       shortLabel: 'Bldr',
-      description: 'Direct task-scoped execution for advanced users.',
+      description: 'Direct expert execution when you want the specialist to do the work.',
       advanced: true,
       primaryShortcut: '3',
     },

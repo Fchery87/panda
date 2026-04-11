@@ -126,7 +126,9 @@ export function serializeGeneratedPlanArtifact(artifact: GeneratedPlanArtifact):
   const markdown = artifact.markdown.trim()
   if (markdown) return markdown
 
-  const sections = [...artifact.sections].sort((a, b) => a.order - b.order)
+  const sections = [...artifact.sections].sort(
+    (a, b) => a.order - b.order || a.id.localeCompare(b.id)
+  )
   const lines = [`# ${artifact.title}`]
 
   if (artifact.summary.trim()) {

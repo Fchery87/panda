@@ -12,7 +12,6 @@ import { ChatActionBar } from '@/components/chat/ChatActionBar'
 import { ChatInput } from '@/components/chat/ChatInput'
 import { MessageList } from '@/components/chat/MessageList'
 import type { AvailableModel } from '@/components/chat/ModelSelector'
-import { PermissionDialog } from '@/components/chat/PermissionDialog'
 import { ProjectChatInspector, type InspectorTab } from '@/components/projects/ProjectChatInspector'
 import { SpecPanel } from '@/components/plan/SpecPanel'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -31,6 +30,15 @@ import type { ChatMode } from '@/lib/agent/prompt-library'
 import type { PlanStatus } from '@/lib/chat/planDraft'
 import type { TracePersistenceStatus } from '@/hooks/useRunEventBuffer'
 import { getChatModeSurfacePresentation } from '@/lib/chat/chat-mode-surface'
+import type { GeneratedPlanArtifact, PlanningAnswer, PlanningQuestion } from '@/lib/planning/types'
+
+type PlanningSessionView = {
+  sessionId: string
+  status: string
+  questions: PlanningQuestion[]
+  answers: PlanningAnswer[]
+  generatedPlan?: GeneratedPlanArtifact
+} | null
 
 // Removed ChatInspectorTab definition
 
@@ -68,7 +76,18 @@ interface ProjectChatPanelProps {
     content: string,
     mode: ChatMode,
     contextFiles?: string[],
-    options?: { approvedPlanExecution?: boolean }
+    options?: {
+      approvedPlanExecution?: boolean
+      attachments?: Array<{
+        storageId: Id<'_storage'>
+        path: string
+        filename: string
+        kind: 'file' | 'image'
+        contentType?: string
+        size?: number
+        url?: string
+      }>
+    }
   ) => Promise<void>
   onSuggestedAction: (prompt: string, targetMode?: ChatMode) => Promise<void>
   isStreaming: boolean
@@ -80,6 +99,7 @@ interface ProjectChatPanelProps {
   variant: string
   onVariantChange: (variant: string) => void
   supportsReasoning: boolean
+  attachmentsEnabled?: boolean
   specTier: SpecTier | 'auto'
   onSpecTierChange: (tier: SpecTier | 'auto') => void
   inlineRateLimitError: InlineRateLimitError | null
@@ -89,6 +109,7 @@ interface ProjectChatPanelProps {
   previewUrl?: string | null
   onOpenPreview?: () => void
   onResetWorkspace: () => void
+  resetWorkspaceLabel?: string
   onNewChat?: () => void
   planDraft: string
   onPlanReview: () => void
@@ -112,6 +133,16 @@ interface ProjectChatPanelProps {
   isMobileLayout: boolean
   isInspectorOpen: boolean
   inspectorTab: InspectorTab
+  planningSession: PlanningSessionView
+  planningCurrentQuestion: PlanningQuestion | null
+  onStartPlanningIntake: () => Promise<unknown> | unknown
+  onAnswerPlanningQuestion: (input: {
+    questionId: string
+    selectedOptionId?: string
+    freeformValue?: string
+    source: 'suggestion' | 'freeform'
+  }) => Promise<unknown> | unknown
+  onClearPlanningIntake: () => Promise<unknown> | unknown
   onInspectorOpenChange: (open: boolean) => void
   onInspectorTabChange: (tab: InspectorTab) => void
   liveSteps: LiveProgressStep[]
@@ -171,6 +202,7 @@ export function ProjectChatPanel({
   variant,
   onVariantChange,
   supportsReasoning,
+  attachmentsEnabled = false,
   specTier,
   onSpecTierChange,
   inlineRateLimitError,
@@ -180,6 +212,7 @@ export function ProjectChatPanel({
   previewUrl,
   onOpenPreview,
   onResetWorkspace,
+  resetWorkspaceLabel = 'Reset Workspace',
   onNewChat,
   planDraft,
   onPlanReview,
@@ -203,6 +236,11 @@ export function ProjectChatPanel({
   isMobileLayout,
   isInspectorOpen,
   inspectorTab,
+  planningSession,
+  planningCurrentQuestion,
+  onStartPlanningIntake,
+  onAnswerPlanningQuestion,
+  onClearPlanningIntake,
   onInspectorOpenChange,
   onInspectorTabChange,
   liveSteps,
@@ -241,6 +279,50 @@ export function ProjectChatPanel({
 
   const latestRecoverableCheckpoint = (runtimeCheckpoints ?? []).find(
     (checkpoint) => checkpoint.reason !== 'complete' && typeof checkpoint.sessionID === 'string'
+  )
+
+  const inspectorPanel = (
+    <ProjectChatInspector
+      projectId={projectId}
+      chatId={activeChatId}
+      isMobileLayout={isMobileLayout}
+      isOpen={isInspectorOpen}
+      tab={inspectorTab}
+      planningSession={planningSession}
+      planningCurrentQuestion={planningCurrentQuestion}
+      onStartPlanningIntake={onStartPlanningIntake}
+      onAnswerPlanningQuestion={onAnswerPlanningQuestion}
+      onClearPlanningIntake={onClearPlanningIntake}
+      onOpenChange={onInspectorOpenChange}
+      onTabChange={onInspectorTabChange}
+      liveSteps={liveSteps}
+      isStreaming={isStreaming}
+      tracePersistenceStatus={tracePersistenceStatus}
+      onOpenFile={onOpenFile}
+      onOpenArtifacts={onOpenArtifacts}
+      currentSpec={currentSpec}
+      planStatus={activeChatPlanStatus}
+      planDraft={planDraft}
+      onSpecClick={onSpecClick}
+      onPlanClick={onPlanClick}
+      onResumeRuntimeSession={onResumeRuntimeSession}
+      snapshotEvents={snapshotEvents}
+      subagentToolCalls={subagentToolCalls}
+      onPlanDraftChange={onPlanDraftChange}
+      onSavePlanDraft={onSavePlanDraft}
+      onApprovePlan={onPlanApprove}
+      onBuildFromPlan={onBuildFromPlan}
+      isSavingPlanDraft={isSavingPlanDraft}
+      lastSavedAt={activeChatPlanUpdatedAt ?? null}
+      lastGeneratedAt={activeChatPlanLastGeneratedAt ?? null}
+      approveDisabled={planApproveDisabled}
+      buildDisabled={planBuildDisabled}
+      memoryBank={memoryBank}
+      onSaveMemoryBank={onSaveMemoryBank}
+      lastUserPrompt={lastUserPrompt}
+      lastAssistantReply={lastAssistantReply}
+      onRunEvalScenario={onRunEvalScenario}
+    />
   )
   const activeRole = getChatModeSurfacePresentation(chatMode)
 
@@ -308,14 +390,14 @@ export function ProjectChatPanel({
                   onClick={onOpenHistory}
                   className="rounded-none text-xs uppercase tracking-wide"
                 >
-                  History ({chatMessages.length})
+                  Run History ({chatMessages.length})
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem
                 onClick={onResetWorkspace}
                 className="rounded-none text-xs uppercase tracking-wide"
               >
-                Reset Workspace
+                {resetWorkspaceLabel}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -435,10 +517,9 @@ export function ProjectChatPanel({
         showSpecReview={showInlineSpecReview}
         specTier={currentSpecTier}
       />
-
-      <PermissionDialog />
-
       <ChatInput
+        projectId={projectId}
+        chatId={activeChatId}
         mode={chatMode}
         onModeChange={onModeChange}
         architectBrainstormEnabled={architectBrainstormEnabled}
@@ -453,6 +534,7 @@ export function ProjectChatPanel({
         variant={variant}
         onVariantChange={onVariantChange}
         supportsReasoning={supportsReasoning}
+        attachmentsEnabled={attachmentsEnabled}
         specTier={specTier}
         onSpecTierChange={onSpecTierChange}
         contextualPrompt={contextualPrompt}
@@ -489,45 +571,10 @@ export function ProjectChatPanel({
           </>
         ) : null}
 
-        {renderInspectorInline ? (
-          <ProjectChatInspector
-            projectId={projectId}
-            chatId={activeChatId}
-            isMobileLayout={isMobileLayout}
-            isOpen={isInspectorOpen}
-            tab={inspectorTab}
-            onOpenChange={onInspectorOpenChange}
-            onTabChange={onInspectorTabChange}
-            liveSteps={liveSteps}
-            isStreaming={isStreaming}
-            tracePersistenceStatus={tracePersistenceStatus}
-            onOpenFile={onOpenFile}
-            onOpenArtifacts={onOpenArtifacts}
-            currentSpec={currentSpec}
-            planStatus={activeChatPlanStatus}
-            planDraft={planDraft}
-            onSpecClick={onSpecClick}
-            onPlanClick={onPlanClick}
-            onResumeRuntimeSession={onResumeRuntimeSession}
-            snapshotEvents={snapshotEvents}
-            subagentToolCalls={subagentToolCalls}
-            onPlanDraftChange={onPlanDraftChange}
-            onSavePlanDraft={onSavePlanDraft}
-            onApprovePlan={onPlanApprove}
-            onBuildFromPlan={onBuildFromPlan}
-            isSavingPlanDraft={isSavingPlanDraft}
-            lastSavedAt={activeChatPlanUpdatedAt ?? null}
-            lastGeneratedAt={activeChatPlanLastGeneratedAt ?? null}
-            approveDisabled={planApproveDisabled}
-            buildDisabled={planBuildDisabled}
-            memoryBank={memoryBank}
-            onSaveMemoryBank={onSaveMemoryBank}
-            lastUserPrompt={lastUserPrompt}
-            lastAssistantReply={lastAssistantReply}
-            onRunEvalScenario={onRunEvalScenario}
-          />
-        ) : null}
+        {renderInspectorInline ? inspectorPanel : null}
       </AnimatePresence>
+
+      {!renderInspectorInline ? inspectorPanel : null}
     </div>
   )
 }

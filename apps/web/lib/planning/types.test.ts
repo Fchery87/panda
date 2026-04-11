@@ -28,6 +28,28 @@ describe('planning types helpers', () => {
     )
   })
 
+  it('falls back to structured serialization for empty markdown and keeps section order deterministic', () => {
+    const artifact: GeneratedPlanArtifact = {
+      chatId: 'chat-1',
+      sessionId: 'session-1',
+      title: 'Plan Title',
+      summary: 'Short summary',
+      markdown: '   ',
+      sections: [
+        { id: 'section-b', title: 'Second', content: 'two', order: 10 },
+        { id: 'section-a', title: 'First', content: 'one', order: 10 },
+        { id: 'section-c', title: 'Third', content: 'three', order: 20 },
+      ],
+      acceptanceChecks: ['Run lint', 'Review acceptance checks'],
+      status: 'ready_for_review',
+      generatedAt: 123,
+    }
+
+    expect(serializeGeneratedPlanArtifact(artifact)).toBe(
+      '# Plan Title\n\nShort summary\n\n## First\none\n\n## Second\ntwo\n\n## Third\nthree\n\n## Acceptance Checks\n- Run lint\n- Review acceptance checks'
+    )
+  })
+
   it('uses the artifact markdown when it exists', () => {
     const artifact: GeneratedPlanArtifact = {
       chatId: 'chat-1',

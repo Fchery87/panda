@@ -114,6 +114,25 @@ export interface PromptContext {
       files: string[]
     }
   }
+  planningSession?: {
+    hasActiveSession: boolean
+    phase?: 'discovery' | 'options' | 'validated_plan'
+    hasDraftPlan?: boolean
+  }
+  approvedPlanExecution?: {
+    sessionId: string
+    plan: {
+      title: string
+      summary: string
+      acceptanceChecks: string[]
+      sections: Array<{
+        id: string
+        title: string
+        content: string
+        order: number
+      }>
+    }
+  }
 }
 
 const ASK_SYSTEM_PROMPT = `You are Panda.ai, a senior engineer helping a teammate understand their codebase.
@@ -144,34 +163,19 @@ INTENT RULES (read first, always):
 1. Determine the intent of the user's message BEFORE choosing a format.
 2. For conventional questions, trade-off discussions, or opinions (e.g. "what do you think of X?", "is Y a good idea?", "how does Z compare to W?"): respond naturally in paragraphs. No plan format. No headers. Just a clear, opinionated engineering take.
 3. For straightforward factual questions: answer directly in plain language (1-4 sentences).
-4. For planning, architecture, or multi-step implementation requests (e.g. "plan out X", "design the architecture for Y"): ONLY THEN produce or update the plan artifact below.
+4. For planning, architecture, or multi-step implementation requests (e.g. "plan out X", "design the architecture for Y"): ONLY THEN produce planning content in markdown.
 
-Plan artifact format (for explicit architecture/planning requests only):
-## Goal
-- One short statement of the desired outcome
-
-## Clarifications
-- 0-2 bullets; only questions or assumptions that materially affect implementation
-
-## Relevant Files
-- File paths, symbols, routes, or systems likely impacted
-
-## Implementation Plan
-1. Ordered steps to execute
-
-## Risks
-- Trade-offs, regressions, unknowns
-
-## Validation
-- Checks, tests, or acceptance steps
-
-## Open Questions
-- Remaining unresolved questions, or "None"
+Planner behavior for explicit architecture/planning requests:
+- Gather missing constraints before locking the plan. Ask only the questions that materially change implementation.
+- Avoid implementation. Do not write production code, patches, or large code blocks in Architect Mode.
+- Produce execution-ready planning content that a builder can follow without re-discovering the problem.
+- Use project context, file context, and referenced systems. Prefer concrete file paths, symbols, routes, and workflows over generic prose.
+- Keep compatibility with markdown output. Headings may vary, but the artifact should usually cover outcome, constraints or assumptions, affected files or systems, execution steps, risks, validation, and open questions.
 
 Output constraints:
 - Do NOT paste full implementations or large code blocks.
 - If a snippet is necessary for explanation, keep it ≤10 lines and label it clearly.
-- When generating a plan artifact, prefer file paths and code references over generic architecture prose.
+- When generating planning content, prefer file paths and code references over generic architecture prose.
 - If asked to "write the code", produce a plan and suggest switching to Code or Build mode.
 
 You have access to project files for context. Use them. Be opinionated and concrete.`
@@ -255,6 +259,79 @@ function getSystemPromptForMode(mode: ChatMode): string {
   }
 }
 
+function buildArchitectPlanningContext(context: PromptContext): string {
+  if (context.chatMode !== 'architect' || !context.planningSession) {
+    return ''
+  }
+
+  const { hasActiveSession, phase, hasDraftPlan } = context.planningSession
+  const lines = [
+    '## Planning Session Context',
+    `- Active planning session: ${hasActiveSession ? 'yes' : 'no'}`,
+  ]
+
+  if (phase) {
+    lines.push(`- Current phase: ${phase}`)
+  }
+
+  if (typeof hasDraftPlan === 'boolean') {
+    lines.push(`- Draft plan already exists: ${hasDraftPlan ? 'yes' : 'no'}`)
+  }
+
+  if (phase === 'discovery') {
+    lines.push(
+      '- Focus on uncovering missing constraints and asking the smallest useful next question.'
+    )
+  } else if (phase === 'options') {
+    lines.push(
+      '- Focus on comparing viable approaches, trade-offs, and recommending one direction.'
+    )
+  } else if (phase === 'validated_plan') {
+    lines.push(
+      '- Focus on refining the approved direction into execution-ready planning content without implementation.'
+    )
+  }
+
+  return lines.join('\n')
+}
+
+function buildApprovedPlanExecutionContext(context: PromptContext): string {
+  if (context.chatMode !== 'build' || !context.approvedPlanExecution) {
+    return ''
+  }
+
+  const { sessionId, plan } = context.approvedPlanExecution
+  const lines = [
+    '## Approved Plan Execution Context',
+    `- Planning session ID: ${sessionId}`,
+    `- Approved plan title: ${plan.title}`,
+  ]
+
+  if (plan.summary.trim()) {
+    lines.push(`- Summary: ${plan.summary.trim()}`)
+  }
+
+  if (plan.sections.length > 0) {
+    lines.push('', '### Ordered Plan Sections')
+    for (const section of [...plan.sections].sort(
+      (a, b) => a.order - b.order || a.id.localeCompare(b.id)
+    )) {
+      lines.push(`- ${section.title}: ${section.content.trim()}`)
+    }
+  }
+
+  if (plan.acceptanceChecks.length > 0) {
+    lines.push('', '### Acceptance Checks')
+    for (const check of plan.acceptanceChecks) {
+      lines.push(`- ${check}`)
+    }
+  }
+
+  lines.push('', '- Treat the approved structured plan as the primary execution contract.')
+
+  return lines.join('\n')
+}
+
 /**
  * Check if provider requires system prompt to be embedded in user message
  * Some providers (Z.ai, some OpenRouter models, etc.) don't support separate system role
@@ -289,6 +366,16 @@ export function getPromptForMode(context: PromptContext): CompletionMessage[] {
 
   if (brainstormEnabled) {
     systemPrompt = `${systemPrompt}${ARCHITECT_BRAINSTORM_PROTOCOL}`
+  }
+
+  const planningContextSection = buildArchitectPlanningContext(context)
+  if (planningContextSection) {
+    systemPrompt = `${systemPrompt}\n\n${planningContextSection}`
+  }
+
+  const approvedPlanExecutionSection = buildApprovedPlanExecutionContext(context)
+  if (approvedPlanExecutionSection) {
+    systemPrompt = `${systemPrompt}\n\n${approvedPlanExecutionSection}`
   }
 
   if (resolvedSkills.matches.length > 0) {

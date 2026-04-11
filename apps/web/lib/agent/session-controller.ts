@@ -5,6 +5,7 @@ import type { RuntimeConfig } from './runtime'
 import { buildPlanContext } from './context/plan-context'
 import { resolveBackgroundExecutionPolicy } from '../chat/backgroundExecution'
 import type { Id } from '@convex/_generated/dataModel'
+import type { GeneratedPlanArtifact } from '../planning/types'
 
 interface ProjectFileContext {
   path: string
@@ -32,6 +33,11 @@ export function buildAgentPromptContext(args: {
   userContent: string
   contextFiles?: string[]
   architectBrainstormEnabled?: boolean
+  planDraft?: string
+  approvedPlanExecutionContext?: {
+    sessionId: string
+    plan: GeneratedPlanArtifact
+  }
 }): PromptContext {
   const projectOverview =
     args.mode === 'architect' && args.projectFiles
@@ -70,6 +76,19 @@ export function buildAgentPromptContext(args: {
     customInstructions: args.architectBrainstormEnabled
       ? 'Architect brainstorming protocol: enabled'
       : undefined,
+    planningSession:
+      args.mode === 'architect'
+        ? {
+            hasActiveSession: args.architectBrainstormEnabled || Boolean(args.planDraft?.trim()),
+            phase: args.architectBrainstormEnabled
+              ? 'discovery'
+              : args.planDraft?.trim()
+                ? 'validated_plan'
+                : undefined,
+            hasDraftPlan: Boolean(args.planDraft?.trim()),
+          }
+        : undefined,
+    approvedPlanExecution: args.mode === 'build' ? args.approvedPlanExecutionContext : undefined,
   }
 }
 

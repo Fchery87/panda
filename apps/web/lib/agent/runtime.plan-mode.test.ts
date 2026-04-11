@@ -40,7 +40,7 @@ describe('Plan Mode rewrite guardrails', () => {
         yield {
           type: 'text',
           content:
-            '## Goal\nPlan auth migration\n\n## Clarifications\n- Use Better Auth\n\n## Relevant Files\n- apps/web/app/auth/page.tsx\n\n## Implementation Plan\n1. Update auth route\n\n## Risks\n- Session migration edge cases\n\n## Validation\n- Run auth tests\n\n## Open Questions\n- None\n',
+            '## Outcome\nPlan auth migration\n\n## Constraints To Confirm\n- Use Better Auth\n\n## Affected Areas\n- apps/web/app/auth/page.tsx\n\n## Execution Steps\n1. Update auth route\n\n## Risks\n- Session migration edge cases\n\n## Checks\n- Run auth tests\n',
         }
         yield makeFinish()
       },
@@ -75,8 +75,9 @@ describe('Plan Mode rewrite guardrails', () => {
     expect(callCount).toBe(2)
     expect(events.some((e: any) => e.type === 'reset')).toBe(true)
     const complete = events.find((e: any) => e.type === 'complete')
-    expect(complete?.content).toContain('Relevant Files')
-    expect(complete?.content).toContain('Implementation Plan')
+    expect(complete?.content).toContain('apps/web/app/auth/page.tsx')
+    expect(complete?.content).toContain('Run auth tests')
+    expect(complete?.content).not.toContain('```')
   })
 
   it('does not stream fenced code to the UI before rewrite', async () => {
@@ -104,7 +105,7 @@ describe('Plan Mode rewrite guardrails', () => {
         yield {
           type: 'text',
           content:
-            '## Goal\nPlan auth migration\n\n## Clarifications\n- Use Better Auth\n\n## Relevant Files\n- apps/web/app/auth/page.tsx\n\n## Implementation Plan\n1. Update auth route\n\n## Risks\n- Session migration edge cases\n\n## Validation\n- Run auth tests\n\n## Open Questions\n- None\n',
+            '## Outcome\nPlan auth migration\n\n## Constraints To Confirm\n- Use Better Auth\n\n## Affected Areas\n- apps/web/app/auth/page.tsx\n\n## Execution Steps\n1. Update auth route\n\n## Risks\n- Session migration edge cases\n\n## Checks\n- Run auth tests\n',
         }
         yield makeFinish()
       },
@@ -145,7 +146,7 @@ describe('Plan Mode rewrite guardrails', () => {
       .map((e) => e.content ?? '')
       .join('')
     expect(streamedText.includes('```')).toBe(false)
-    expect(streamedText).toContain('Relevant Files')
-    expect(streamedText).toContain('Validation')
+    expect(streamedText).toContain('apps/web/app/auth/page.tsx')
+    expect(streamedText).toContain('Run auth tests')
   })
 })

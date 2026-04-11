@@ -1,114 +1,281 @@
 import { describe, expect, test } from 'bun:test'
 import { renderToStaticMarkup } from 'react-dom/server'
 import {
-  advancePlanningIntakeFlow,
-  createPlanningIntakeFlowState,
   PlanningIntakePopup,
   PlanningIntakeSurface,
-  rewindPlanningIntakeFlow,
+  submitPlanningFreeformAnswer,
+  submitPlanningSuggestionAnswer,
 } from './PlanningIntakePopup'
 import {
+  closePlanningPopup,
   closePlanningPopupState,
   createPlanningPopupState,
-  closePlanningPopup,
-  openPlanningPopupState,
   openPlanningPopup,
+  openPlanningPopupState,
 } from '@/hooks/useProjectWorkspaceUi'
 import { buildDefaultPlanningQuestions } from '@/lib/planning/question-engine'
+import type { GeneratedPlanArtifact, PlanningAnswer, PlanningQuestion } from '@/lib/planning/types'
+
+const questions = buildDefaultPlanningQuestions({ projectName: 'Panda' })
+
+function createSession(
+  args: {
+    sessionId?: string
+    status?:
+      | 'intake'
+      | 'generating'
+      | 'ready_for_review'
+      | 'accepted'
+      | 'executing'
+      | 'completed'
+      | 'failed'
+    answers?: PlanningAnswer[]
+    generatedPlan?: GeneratedPlanArtifact
+    sessionQuestions?: PlanningQuestion[]
+  } = {}
+) {
+  return {
+    sessionId: args.sessionId ?? 'planning_session_test',
+    status: args.status ?? 'intake',
+    questions: args.sessionQuestions ?? questions,
+    answers: args.answers ?? [],
+    generatedPlan: args.generatedPlan,
+  }
+}
 
 describe('PlanningIntakePopup', () => {
   test('renders closed as nothing', () => {
     const html = renderToStaticMarkup(
-      <PlanningIntakePopup isOpen={false} planningSessionId={null} onClose={() => {}} />
+      <PlanningIntakePopup
+        isOpen={false}
+        session={createSession()}
+        currentQuestion={questions[0] ?? null}
+        onAnswerQuestion={() => {}}
+        onClearIntake={() => {}}
+        onClose={() => {}}
+      />
     )
 
     expect(html).toBe('')
   })
 
-  test('renders one question at a time with numbered choices and freeform input', () => {
+  test('fires the suggestion submit callback with the current question id', async () => {
+    const calls: Array<unknown> = []
+    const onAnswerQuestion = async (input: unknown) => {
+      calls.push(input)
+      return input
+    }
+
+    await submitPlanningSuggestionAnswer({
+      currentQuestion: questions[0]!,
+      selectedOptionId: questions[0]!.suggestions[1]!.id,
+      onAnswerQuestion,
+    })
+
+    expect(calls).toEqual([
+      {
+        questionId: questions[0]!.id,
+        selectedOptionId: questions[0]!.suggestions[1]!.id,
+        source: 'suggestion',
+      },
+    ])
+  })
+
+  test('fires the freeform submit callback with trimmed text', async () => {
+    const calls: Array<unknown> = []
+    const onAnswerQuestion = async (input: unknown) => {
+      calls.push(input)
+      return input
+    }
+
+    await submitPlanningFreeformAnswer({
+      currentQuestion: questions[1]!,
+      freeformValue: '  preserve the current UI and mirror  ',
+      onAnswerQuestion,
+    })
+
+    expect(calls).toEqual([
+      {
+        questionId: questions[1]!.id,
+        freeformValue: 'preserve the current UI and mirror',
+        source: 'freeform',
+      },
+    ])
+  })
+
+  test('renders current question suggestions on the surface', () => {
     const html = renderToStaticMarkup(
-      <PlanningIntakePopup isOpen planningSessionId="planning_session_test" onClose={() => {}} />
+      <PlanningIntakePopup
+        isOpen
+        session={createSession()}
+        currentQuestion={questions[0] ?? null}
+        onAnswerQuestion={() => {}}
+        onClearIntake={() => {}}
+        onClose={() => {}}
+      />
     )
 
-    expect(html).toContain('Planning intake')
-    expect(html).toContain('Question 1 of 4')
-    expect(html).toContain('Outcome')
     expect(html).toContain('1. Ship the smallest viable change')
     expect(html).toContain('2. Deliver the full workflow end to end')
-    expect(html).toContain('<textarea')
-    expect(html).toContain('Back')
-    expect(html).toContain('Cancel')
-    expect(html).not.toContain('Approach')
-    expect(html).not.toContain('Validation')
+    expect(html).toContain('3. Make a surgical fix only')
+    expect(html).toContain('Recommended')
   })
 
-  test('advances to the next question when a suggestion is selected', () => {
-    const questions = buildDefaultPlanningQuestions()
-    const firstQuestion = questions[0]
-    const nextState = advancePlanningIntakeFlow(
-      createPlanningIntakeFlowState(),
-      questions,
-      firstQuestion,
-      '1',
-      1234
+  test('hides the freeform form when the current question disallows freeform answers', () => {
+    const html = renderToStaticMarkup(
+      <PlanningIntakePopup
+        isOpen
+        session={createSession()}
+        currentQuestion={{
+          ...questions[0]!,
+          allowFreeform: false,
+        }}
+        onAnswerQuestion={() => {}}
+        onClearIntake={() => {}}
+        onClose={() => {}}
+      />
     )
 
-    expect(nextState.currentQuestionIndex).toBe(1)
-    expect(nextState.answers).toHaveLength(1)
-    expect(nextState.answers[0]).toEqual({
-      questionId: firstQuestion.id,
-      selectedOptionId: firstQuestion.suggestions[0]?.id,
-      source: 'suggestion',
-      answeredAt: 1234,
-    })
-    expect(nextState.isGenerating).toBe(false)
+    expect(html).toContain('1. Ship the smallest viable change')
+    expect(html).not.toContain('Freeform response')
+    expect(html).not.toContain('Type your own answer')
+    expect(html).not.toContain('Submit answer')
   })
 
-  test('accepts custom freeform text and advances', () => {
-    const questions = buildDefaultPlanningQuestions()
-    const question = questions[1]
-    const nextState = advancePlanningIntakeFlow(
-      createPlanningIntakeFlowState(),
-      questions,
-      question,
-      ' preserve the current UI and state mirror ',
-      9876
+  test('renders session-backed answer progress and answered summaries', () => {
+    const html = renderToStaticMarkup(
+      <PlanningIntakePopup
+        isOpen
+        session={createSession({
+          answers: [
+            {
+              questionId: questions[0]!.id,
+              selectedOptionId: questions[0]!.suggestions[0]!.id,
+              source: 'suggestion',
+              answeredAt: 1,
+            },
+            {
+              questionId: questions[1]!.id,
+              freeformValue: 'mirror the current plan review flow',
+              source: 'freeform',
+              answeredAt: 2,
+            },
+          ],
+        })}
+        currentQuestion={questions[2] ?? null}
+        onAnswerQuestion={() => {}}
+        onClearIntake={() => {}}
+        onClose={() => {}}
+      />
     )
 
-    expect(nextState.currentQuestionIndex).toBe(1)
-    expect(nextState.answers).toHaveLength(1)
-    expect(nextState.answers[0]).toEqual({
-      questionId: question.id,
-      freeformValue: 'preserve the current UI and state mirror',
-      source: 'freeform',
-      answeredAt: 9876,
-    })
-    expect(nextState.isGenerating).toBe(false)
+    expect(html).toContain('Answered 2/4')
+    expect(html).toContain('Outcome: Ship the smallest viable change')
+    expect(html).toContain('Scope: mirror the current plan review flow')
+    expect(html).toContain('Question 3 of 4')
   })
 
-  test('enters the generating state after the final answer', () => {
-    const questions = buildDefaultPlanningQuestions()
-    const finalQuestion = questions[questions.length - 1]
-    const nextState = advancePlanningIntakeFlow(
-      {
-        currentQuestionIndex: questions.length - 1,
-        answers: questions.slice(0, -1).map((question, index) => ({
-          questionId: question.id,
-          selectedOptionId: question.suggestions[0]?.id,
-          source: 'suggestion',
-          answeredAt: index + 1,
-        })),
-        isGenerating: false,
-      },
-      questions,
-      finalQuestion,
-      '1',
-      2468
+  test('advances when the session and current question props update', () => {
+    const firstHtml = renderToStaticMarkup(
+      <PlanningIntakePopup
+        isOpen
+        session={createSession()}
+        currentQuestion={questions[0] ?? null}
+        onAnswerQuestion={() => {}}
+        onClearIntake={() => {}}
+        onClose={() => {}}
+      />
+    )
+    const nextHtml = renderToStaticMarkup(
+      <PlanningIntakePopup
+        isOpen
+        session={createSession({
+          answers: [
+            {
+              questionId: questions[0]!.id,
+              selectedOptionId: questions[0]!.suggestions[0]!.id,
+              source: 'suggestion',
+              answeredAt: 1,
+            },
+          ],
+        })}
+        currentQuestion={questions[1] ?? null}
+        onAnswerQuestion={() => {}}
+        onClearIntake={() => {}}
+        onClose={() => {}}
+      />
     )
 
-    expect(nextState.currentQuestionIndex).toBe(questions.length)
-    expect(nextState.answers).toHaveLength(questions.length)
-    expect(nextState.isGenerating).toBe(true)
+    expect(firstHtml).toContain('Question 1 of 4')
+    expect(firstHtml).toContain('Outcome')
+    expect(firstHtml).toContain('Answered 0/4')
+    expect(nextHtml).toContain('Question 2 of 4')
+    expect(nextHtml).toContain('Scope')
+    expect(nextHtml).toContain('Answered 1/4')
+    expect(nextHtml).toContain('Outcome: Ship the smallest viable change')
+    expect(nextHtml).not.toContain('Question 1 of 4')
+  })
+
+  test('renders generating state from the session status', () => {
+    const html = renderToStaticMarkup(
+      <PlanningIntakePopup
+        isOpen
+        session={createSession({ status: 'generating' })}
+        currentQuestion={null}
+        onAnswerQuestion={() => {}}
+        onClearIntake={() => {}}
+        onClose={() => {}}
+      />
+    )
+
+    expect(html).toContain('Generating plan')
+    expect(html).toContain('workspace-ready plan')
+    expect(html).toContain('Reset intake')
+    expect(html).not.toContain('Submit answer')
+  })
+
+  test('renders a clean pending state when the popup opens without session data', () => {
+    const html = renderToStaticMarkup(
+      <PlanningIntakePopup
+        isOpen
+        session={null}
+        currentQuestion={null}
+        onAnswerQuestion={() => {}}
+        onClearIntake={() => {}}
+        onClose={() => {}}
+      />
+    )
+
+    expect(html).toContain('Waiting for intake session')
+    expect(html).toContain('Start or resume a planning intake session')
+    expect(html).toContain('Close')
+    expect(html).not.toContain('Question 1 of')
+    expect(html).not.toContain('Submit answer')
+  })
+
+  test('labels the destructive reset action honestly instead of back', () => {
+    const html = renderToStaticMarkup(
+      <PlanningIntakePopup
+        isOpen
+        session={createSession({
+          answers: [
+            {
+              questionId: questions[0]!.id,
+              selectedOptionId: questions[0]!.suggestions[0]!.id,
+              source: 'suggestion',
+              answeredAt: 1,
+            },
+          ],
+        })}
+        currentQuestion={questions[1] ?? null}
+        onAnswerQuestion={() => {}}
+        onClearIntake={() => {}}
+        onClose={() => {}}
+      />
+    )
+
+    expect(html).toContain('Reset intake')
+    expect(html).not.toContain('>Back<')
   })
 
   test('exposes explicit open and close lifecycle helpers', () => {
@@ -133,37 +300,99 @@ describe('PlanningIntakePopup', () => {
     })
   })
 
-  test('shared planning intake surface launches and renders the popup', () => {
+  test('shared planning intake surface launches and renders the popup with session props', () => {
     try {
       openPlanningPopup('planning_surface_test')
-      const openHtml = renderToStaticMarkup(<PlanningIntakeSurface />)
+      const openHtml = renderToStaticMarkup(
+        <PlanningIntakeSurface
+          session={createSession({ sessionId: 'planning_surface_test' })}
+          currentQuestion={questions[0] ?? null}
+          onStartIntake={() => 'planning_surface_test'}
+          onAnswerQuestion={() => {}}
+          onClearIntake={() => {}}
+        />
+      )
 
       expect(openHtml).toContain('Planning intake')
       expect(openHtml).toContain('Question 1 of 4')
-      expect(openHtml).not.toContain('Guided intake')
+      expect(openHtml).toContain('Answered 0/4')
+      expect(openHtml).not.toContain('Waiting for intake session')
     } finally {
       closePlanningPopup()
     }
 
-    const closedHtml = renderToStaticMarkup(<PlanningIntakeSurface />)
+    const closedHtml = renderToStaticMarkup(
+      <PlanningIntakeSurface
+        session={createSession({ sessionId: 'planning_surface_test' })}
+        currentQuestion={questions[0] ?? null}
+        onStartIntake={() => 'planning_surface_test'}
+        onAnswerQuestion={() => {}}
+        onClearIntake={() => {}}
+      />
+    )
     expect(closedHtml).toContain('Planning intake')
     expect(closedHtml).toContain('Start intake')
   })
 
-  test('rewind helper steps back without reopening generation', () => {
-    const questions = buildDefaultPlanningQuestions()
-    const firstQuestion = questions[0]
-    const secondState = advancePlanningIntakeFlow(
-      createPlanningIntakeFlowState(),
-      questions,
-      firstQuestion,
-      '1',
-      42
-    )
-    const previousState = rewindPlanningIntakeFlow(secondState)
+  test('closed surface with an existing session resumes without invoking new-session creation', async () => {
+    const calls: string[] = []
+    const onStartIntake = async () => {
+      calls.push('start')
+      return 'new_planning_session'
+    }
 
-    expect(previousState.currentQuestionIndex).toBe(0)
-    expect(previousState.answers).toHaveLength(0)
-    expect(previousState.isGenerating).toBe(false)
+    const closedHtml = renderToStaticMarkup(
+      <PlanningIntakeSurface
+        session={createSession({ sessionId: 'planning_surface_resume' })}
+        currentQuestion={questions[1] ?? null}
+        onStartIntake={onStartIntake}
+        onAnswerQuestion={() => {}}
+        onClearIntake={() => {}}
+      />
+    )
+
+    expect(closedHtml).toContain('Planning intake')
+    expect(closedHtml).toContain('Start intake')
+    expect(calls).toEqual([])
+
+    try {
+      openPlanningPopup('planning_surface_resume')
+      const reopenedHtml = renderToStaticMarkup(
+        <PlanningIntakeSurface
+          session={createSession({ sessionId: 'planning_surface_resume' })}
+          currentQuestion={questions[1] ?? null}
+          onStartIntake={onStartIntake}
+          onAnswerQuestion={() => {}}
+          onClearIntake={() => {}}
+        />
+      )
+
+      expect(reopenedHtml).toContain('Question 2 of 4')
+      expect(reopenedHtml).not.toContain('Waiting for intake session')
+      expect(calls).toEqual([])
+    } finally {
+      closePlanningPopup()
+    }
+  })
+
+  test('surface renders the popup pending state when the workspace popup is open before session data exists', () => {
+    try {
+      openPlanningPopup('planning_surface_pending')
+      const html = renderToStaticMarkup(
+        <PlanningIntakeSurface
+          session={null}
+          currentQuestion={null}
+          onStartIntake={() => 'planning_surface_pending'}
+          onAnswerQuestion={() => {}}
+          onClearIntake={() => {}}
+        />
+      )
+
+      expect(html).toContain('Waiting for intake session')
+      expect(html).not.toContain('Start intake')
+      expect(html).not.toContain('Question 1 of')
+    } finally {
+      closePlanningPopup()
+    }
   })
 })

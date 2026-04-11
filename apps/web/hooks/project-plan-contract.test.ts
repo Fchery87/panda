@@ -1,7 +1,10 @@
 import { describe, expect, test } from 'bun:test'
-import fs from 'node:fs'
-import path from 'node:path'
-import { isExecutablePlanArtifact } from './useProjectMessageWorkflow'
+import {
+  isExecutablePlanArtifact,
+  shouldUseStructuredExecutionTransition,
+} from './useProjectMessageWorkflow'
+import { createProjectPlanningSessionActions } from './useProjectPlanningSession'
+import { shouldUseStructuredPlanApproval } from './useProjectPlanDraft'
 
 describe('project plan contract wiring', () => {
   test('treats accepted and resumed plan artifacts as executable contracts', () => {
@@ -13,27 +16,71 @@ describe('project plan contract wiring', () => {
     expect(isExecutablePlanArtifact(null)).toBe(false)
   })
 
-  test('approves generated plans through the planning session mutation', () => {
-    const source = fs.readFileSync(path.resolve(import.meta.dir, 'useProjectPlanDraft.ts'), 'utf8')
+  test('uses structured approval only when review-ready session state and callback are present', () => {
+    expect(
+      shouldUseStructuredPlanApproval({
+        activePlanningSession: {
+          sessionId: 'planning_1',
+          generatedPlan: { status: 'ready_for_review' } as never,
+        },
+        acceptPlanningSession: async () => null,
+      })
+    ).toBe(true)
 
-    expect(source).toContain('activePlanningSession?.sessionId')
-    expect(source).toContain('activePlanningSession.generatedPlan')
-    expect(source).toContain('acceptPlanningSession')
+    expect(
+      shouldUseStructuredPlanApproval({
+        activePlanningSession: {
+          sessionId: 'planning_1',
+          generatedPlan: { status: 'ready_for_review' } as never,
+        },
+      })
+    ).toBe(false)
   })
 
-  test('marks approved plan execution through planning session state transitions', () => {
-    const pageSource = fs.readFileSync(
-      path.resolve(import.meta.dir, '../app/(dashboard)/projects/[projectId]/page.tsx'),
-      'utf8'
-    )
-    const workflowSource = fs.readFileSync(
-      path.resolve(import.meta.dir, 'useProjectMessageWorkflow.ts'),
-      'utf8'
-    )
+  test('binds execution-state transitions to the recorded planning session id', async () => {
+    const calls: Array<{ sessionId: string; state: string }> = []
+    const actions = createProjectPlanningSessionActions({
+      activeChatId: 'chat_1' as never,
+      sessionId: 'planning_current',
+      mutations: {
+        startIntake: async () => null,
+        answerQuestion: async () => null,
+        acceptPlan: async () => null,
+        markExecutionState: async (payload) => {
+          calls.push({ sessionId: payload.sessionId, state: payload.state })
+          return payload
+        },
+        clearIntake: async () => null,
+      },
+    })
 
-    expect(pageSource).toContain('api.planningSessions.markExecutionState')
-    expect(pageSource).toContain('approvedPlanRunSessionsRef')
-    expect(workflowSource).toContain('approvedPlanArtifact')
-    expect(workflowSource).toContain('markPlanningExecutionState')
+    await actions.markExecutionState({ sessionId: 'planning_recorded', state: 'completed' })
+
+    expect(calls).toEqual([{ sessionId: 'planning_recorded', state: 'completed' }])
+  })
+
+  test('uses structured execution transitions only when session, executable artifact, and callback are present', () => {
+    expect(
+      shouldUseStructuredExecutionTransition({
+        activePlanningSessionId: 'planning_1',
+        approvedPlanArtifact: { status: 'accepted' },
+        markPlanningExecutionState: async () => null,
+      })
+    ).toBe(true)
+
+    expect(
+      shouldUseStructuredExecutionTransition({
+        activePlanningSessionId: 'planning_1',
+        approvedPlanArtifact: { status: 'accepted' },
+      })
+    ).toBe(false)
+
+    expect(
+      shouldUseStructuredExecutionTransition({
+        activePlanningSessionId: 'planning_1',
+        approvedPlanArtifact: { status: 'ready_for_review' },
+        markPlanningExecutionState: async () => null,
+      })
+    ).toBe(false)
   })
 })

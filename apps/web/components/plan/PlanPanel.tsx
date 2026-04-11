@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -8,9 +8,13 @@ import { MermaidRenderer } from './MermaidRenderer'
 import { FileText, GitGraph, Check, Loader2 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import type { GeneratedPlanArtifact } from '@/lib/planning/types'
+
+export type PlanPanelTab = 'review' | 'edit' | 'preview'
 
 interface PlanPanelProps {
   planDraft: string
+  generatedPlanArtifact?: GeneratedPlanArtifact | null
   planStatus?:
     | 'idle'
     | 'drafting'
@@ -44,8 +48,22 @@ const STATUS_LABELS: Record<NonNullable<PlanPanelProps['planStatus']>, string> =
   failed: 'Failed',
 }
 
+export function getPlanPanelDefaultTab(
+  generatedPlanArtifact?: GeneratedPlanArtifact | null
+): PlanPanelTab {
+  return generatedPlanArtifact ? 'review' : 'edit'
+}
+
+export function getPlanPanelArtifactIdentity(
+  generatedPlanArtifact?: GeneratedPlanArtifact | null
+): string {
+  if (!generatedPlanArtifact) return 'draft'
+  return `${generatedPlanArtifact.sessionId}:${generatedPlanArtifact.generatedAt}`
+}
+
 export function PlanPanel({
   planDraft,
+  generatedPlanArtifact,
   planStatus = 'idle',
   onChange,
   onSave,
@@ -57,10 +75,27 @@ export function PlanPanel({
   approveDisabled = false,
   buildDisabled = false,
 }: PlanPanelProps) {
-  const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit')
+  const hasStructuredPlan = !!generatedPlanArtifact
+  const artifactIdentity = getPlanPanelArtifactIdentity(generatedPlanArtifact)
+  const [activeTab, setActiveTab] = useState<PlanPanelTab>(
+    getPlanPanelDefaultTab(generatedPlanArtifact)
+  )
 
   const mermaidBlocks = useMemo(() => extractMermaidBlocks(planDraft), [planDraft])
   const markdownContent = useMemo(() => removeMermaidBlocks(planDraft), [planDraft])
+  const orderedSections = useMemo(
+    () =>
+      generatedPlanArtifact
+        ? [...generatedPlanArtifact.sections].sort(
+            (a, b) => a.order - b.order || a.id.localeCompare(b.id)
+          )
+        : [],
+    [generatedPlanArtifact]
+  )
+
+  useEffect(() => {
+    setActiveTab(getPlanPanelDefaultTab(generatedPlanArtifact))
+  }, [artifactIdentity, generatedPlanArtifact])
 
   return (
     <div className="flex h-full flex-col">
@@ -130,10 +165,19 @@ export function PlanPanel({
 
       <Tabs
         value={activeTab}
-        onValueChange={(v) => setActiveTab(v as 'edit' | 'preview')}
+        onValueChange={(v) => setActiveTab(v as PlanPanelTab)}
         className="flex-1 overflow-hidden"
       >
         <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent px-4">
+          {hasStructuredPlan ? (
+            <TabsTrigger
+              value="review"
+              className="gap-1.5 rounded-none border-b-2 border-transparent px-3 py-2 font-mono text-xs uppercase tracking-wider data-[state=active]:border-primary data-[state=active]:bg-transparent"
+            >
+              <Check className="h-3.5 w-3.5" />
+              Review
+            </TabsTrigger>
+          ) : null}
           <TabsTrigger
             value="edit"
             className="gap-1.5 rounded-none border-b-2 border-transparent px-3 py-2 font-mono text-xs uppercase tracking-wider data-[state=active]:border-primary data-[state=active]:bg-transparent"
@@ -146,9 +190,81 @@ export function PlanPanel({
             className="gap-1.5 rounded-none border-b-2 border-transparent px-3 py-2 font-mono text-xs uppercase tracking-wider data-[state=active]:border-primary data-[state=active]:bg-transparent"
           >
             <GitGraph className="h-3.5 w-3.5" />
-            Preview
+            Markdown
           </TabsTrigger>
         </TabsList>
+
+        {generatedPlanArtifact ? (
+          <TabsContent value="review" className="m-0 h-[calc(100%-48px)] overflow-auto p-4">
+            <div className="space-y-6">
+              <section className="space-y-2 border border-border bg-muted/20 p-4">
+                <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  Structured Review
+                </p>
+                <h2 className="font-mono text-lg uppercase tracking-[0.08em] text-foreground">
+                  {generatedPlanArtifact.title}
+                </h2>
+                {generatedPlanArtifact.summary.trim() ? (
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    {generatedPlanArtifact.summary}
+                  </p>
+                ) : null}
+              </section>
+
+              <section className="space-y-3">
+                <h3 className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  Plan Sections
+                </h3>
+                {orderedSections.length > 0 ? (
+                  <ol className="space-y-3">
+                    {orderedSections.map((section) => (
+                      <li key={section.id} className="border border-border bg-background p-4">
+                        <div className="flex items-baseline gap-3">
+                          <span className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                            {section.order}
+                          </span>
+                          <h4 className="font-mono text-sm uppercase tracking-[0.08em] text-foreground">
+                            {section.title}
+                          </h4>
+                        </div>
+                        <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-foreground">
+                          {section.content}
+                        </p>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p className="border border-dashed border-border p-4 text-sm text-muted-foreground">
+                    No structured sections available.
+                  </p>
+                )}
+              </section>
+
+              <section className="space-y-3">
+                <h3 className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  Acceptance Checks
+                </h3>
+                {generatedPlanArtifact.acceptanceChecks.length > 0 ? (
+                  <ul className="space-y-2">
+                    {generatedPlanArtifact.acceptanceChecks.map((checkItem) => (
+                      <li
+                        key={checkItem}
+                        className="flex gap-3 border border-border bg-background p-3 text-sm"
+                      >
+                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                        <span>{checkItem}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="border border-dashed border-border p-4 text-sm text-muted-foreground">
+                    No acceptance checks provided.
+                  </p>
+                )}
+              </section>
+            </div>
+          </TabsContent>
+        ) : null}
 
         <TabsContent value="edit" className="m-0 h-[calc(100%-48px)] overflow-auto">
           <Textarea

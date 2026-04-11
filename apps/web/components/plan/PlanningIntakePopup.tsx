@@ -1,125 +1,77 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ArrowLeft, Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
-import {
-  buildDefaultPlanningQuestions,
-  formatQuestionChoices,
-  resolvePlanningAnswer,
-  type PlanningAnswerInput,
-  type PlanningQuestionChoiceView,
-} from '@/lib/planning/question-engine'
-import type { PlanningAnswer, PlanningQuestion } from '@/lib/planning/types'
+import { formatQuestionChoices } from '@/lib/planning/question-engine'
+import type { PlanningQuestion, GeneratedPlanArtifact, PlanningAnswer } from '@/lib/planning/types'
 import {
   closePlanningPopup,
   openPlanningPopup,
   useProjectWorkspaceUi,
 } from '@/hooks/useProjectWorkspaceUi'
 
-export interface PlanningIntakeFlowState {
-  currentQuestionIndex: number
+type PlanningSessionView = {
+  sessionId: string
+  status: string
+  questions: PlanningQuestion[]
   answers: PlanningAnswer[]
-  isGenerating: boolean
+  generatedPlan?: GeneratedPlanArtifact
+} | null
+
+type AnswerQuestionInput = {
+  questionId: string
+  selectedOptionId?: string
+  freeformValue?: string
+  source: 'suggestion' | 'freeform'
 }
 
 export interface PlanningIntakePopupProps {
   isOpen: boolean
-  planningSessionId: string | null
+  session: PlanningSessionView
+  currentQuestion: PlanningQuestion | null
+  onAnswerQuestion: (input: AnswerQuestionInput) => Promise<unknown> | unknown
+  onClearIntake: () => Promise<unknown> | unknown
   onClose: () => void
   className?: string
 }
 
 export interface PlanningIntakeSurfaceProps {
+  session: PlanningSessionView
+  currentQuestion: PlanningQuestion | null
+  onStartIntake: () => Promise<unknown> | unknown
+  onAnswerQuestion: (input: AnswerQuestionInput) => Promise<unknown> | unknown
+  onClearIntake: () => Promise<unknown> | unknown
   className?: string
 }
 
-const DEFAULT_CONTEXT = { projectName: 'Panda' }
-
-export function createPlanningIntakeFlowState(): PlanningIntakeFlowState {
-  return {
-    currentQuestionIndex: 0,
-    answers: [],
-    isGenerating: false,
-  }
+export function submitPlanningSuggestionAnswer(args: {
+  currentQuestion: PlanningQuestion
+  selectedOptionId: string
+  onAnswerQuestion: (input: AnswerQuestionInput) => Promise<unknown> | unknown
+}) {
+  return args.onAnswerQuestion({
+    questionId: args.currentQuestion.id,
+    selectedOptionId: args.selectedOptionId,
+    source: 'suggestion',
+  })
 }
 
-export function advancePlanningIntakeFlow(
-  state: PlanningIntakeFlowState,
-  questions: PlanningQuestion[],
-  question: PlanningQuestion,
-  input: string | PlanningAnswerInput,
-  answeredAt = Date.now()
-): PlanningIntakeFlowState {
-  const nextAnswer = resolvePlanningAnswer(question, input, answeredAt)
-  const nextAnswers = [
-    ...state.answers.filter((answer) => answer.questionId !== question.id),
-    nextAnswer,
-  ]
-  const nextQuestionIndex = Math.min(state.currentQuestionIndex + 1, questions.length)
+export function submitPlanningFreeformAnswer(args: {
+  currentQuestion: PlanningQuestion
+  freeformValue: string
+  onAnswerQuestion: (input: AnswerQuestionInput) => Promise<unknown> | unknown
+}) {
+  const value = args.freeformValue.trim()
+  if (!value) return null
 
-  return {
-    currentQuestionIndex: nextQuestionIndex,
-    answers: nextAnswers,
-    isGenerating: nextQuestionIndex >= questions.length,
-  }
-}
-
-export function rewindPlanningIntakeFlow(state: PlanningIntakeFlowState): PlanningIntakeFlowState {
-  return {
-    currentQuestionIndex: Math.max(0, state.currentQuestionIndex - 1),
-    answers: state.answers.slice(0, -1),
-    isGenerating: false,
-  }
-}
-
-export function PlanningIntakeSurface({ className }: PlanningIntakeSurfaceProps) {
-  const { isPlanningPopupOpen, planningSessionId } = useProjectWorkspaceUi()
-
-  function handleStart() {
-    const nextSessionId = `planning_${Date.now().toString(36)}`
-    openPlanningPopup(nextSessionId)
-  }
-
-  function handleClose() {
-    closePlanningPopup()
-  }
-
-  return (
-    <div className={cn('space-y-3', className)}>
-      {isPlanningPopupOpen ? (
-        <PlanningIntakePopup
-          isOpen={isPlanningPopupOpen}
-          planningSessionId={planningSessionId}
-          onClose={handleClose}
-        />
-      ) : (
-        <div className="border border-dashed border-border bg-background px-3 py-2">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-                Planning intake
-              </div>
-              <div className="mt-1 text-sm text-muted-foreground">
-                Start the guided question flow before reviewing the plan.
-              </div>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleStart}
-              className="rounded-none border-border px-3 font-mono text-[11px] uppercase tracking-[0.2em]"
-            >
-              Start intake
-            </Button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
+  return args.onAnswerQuestion({
+    questionId: args.currentQuestion.id,
+    freeformValue: value,
+    source: 'freeform',
+  })
 }
 
 function summarizeSessionId(sessionId: string | null): string {
@@ -131,11 +83,37 @@ function getQuestionLabel(index: number, total: number): string {
   return `Question ${index + 1} of ${total}`
 }
 
+function getCurrentQuestionIndex(
+  session: NonNullable<PlanningSessionView>,
+  currentQuestion: PlanningQuestion | null
+): number {
+  if (!currentQuestion) return session.questions.length
+  const index = session.questions.findIndex((question) => question.id === currentQuestion.id)
+  return index >= 0 ? index : 0
+}
+
+function getAnsweredQuestionSummary(session: NonNullable<PlanningSessionView>): string[] {
+  return session.answers
+    .map((answer) => {
+      const question = session.questions.find((entry) => entry.id === answer.questionId)
+      if (!question) return null
+      if (answer.source === 'suggestion' && answer.selectedOptionId) {
+        const option = question.suggestions.find((entry) => entry.id === answer.selectedOptionId)
+        return option ? `${question.title}: ${option.label}` : question.title
+      }
+      if (answer.source === 'freeform' && answer.freeformValue) {
+        return `${question.title}: ${answer.freeformValue}`
+      }
+      return question.title
+    })
+    .filter((value): value is string => Boolean(value))
+}
+
 function PlanningChoiceButton({
   choice,
   onSelect,
 }: {
-  choice: PlanningQuestionChoiceView
+  choice: ReturnType<typeof formatQuestionChoices>[number]
   onSelect: (optionId: string) => void
 }) {
   return (
@@ -167,43 +145,96 @@ function PlanningChoiceButton({
   )
 }
 
+export function PlanningIntakeSurface({
+  session,
+  currentQuestion,
+  onStartIntake,
+  onAnswerQuestion,
+  onClearIntake,
+  className,
+}: PlanningIntakeSurfaceProps) {
+  const { isPlanningPopupOpen } = useProjectWorkspaceUi()
+
+  function handleClose() {
+    closePlanningPopup()
+  }
+
+  async function handleStart() {
+    if (session?.sessionId) {
+      openPlanningPopup(session.sessionId)
+      return
+    }
+
+    const result = await onStartIntake()
+    openPlanningPopup(typeof result === 'string' ? result : (session?.sessionId ?? undefined))
+  }
+
+  return (
+    <div className={cn('space-y-3', className)}>
+      {isPlanningPopupOpen ? (
+        <PlanningIntakePopup
+          isOpen={isPlanningPopupOpen}
+          session={session}
+          currentQuestion={currentQuestion}
+          onAnswerQuestion={onAnswerQuestion}
+          onClearIntake={onClearIntake}
+          onClose={handleClose}
+        />
+      ) : (
+        <div className="border border-dashed border-border bg-background px-3 py-2">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                Planning intake
+              </div>
+              <div className="mt-1 text-sm text-muted-foreground">
+                Start the guided question flow before reviewing the plan.
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                void handleStart()
+              }}
+              className="rounded-none border-border px-3 font-mono text-[11px] uppercase tracking-[0.2em]"
+            >
+              Start intake
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function PlanningIntakePopup({
   isOpen,
-  planningSessionId,
+  session,
+  currentQuestion,
+  onAnswerQuestion,
+  onClearIntake,
   onClose,
   className,
 }: PlanningIntakePopupProps) {
-  const questions = useMemo(() => buildDefaultPlanningQuestions(DEFAULT_CONTEXT), [])
-  const [flow, setFlow] = useState<PlanningIntakeFlowState>(() => createPlanningIntakeFlowState())
   const [freeformValue, setFreeformValue] = useState('')
 
   useEffect(() => {
     if (!isOpen) return
-    setFlow(createPlanningIntakeFlowState())
     setFreeformValue('')
-  }, [isOpen, planningSessionId])
-
-  const currentQuestion =
-    !flow.isGenerating && flow.currentQuestionIndex < questions.length
-      ? questions[flow.currentQuestionIndex]
-      : null
-  const currentChoices = currentQuestion ? formatQuestionChoices(currentQuestion) : []
-
-  function submitAnswer(input: string | PlanningAnswerInput) {
-    if (!currentQuestion) return
-    setFlow((currentState) =>
-      advancePlanningIntakeFlow(currentState, questions, currentQuestion, input)
-    )
-    setFreeformValue('')
-  }
-
-  function handleBack() {
-    if (flow.currentQuestionIndex === 0 || flow.isGenerating) return
-    setFlow((currentState) => rewindPlanningIntakeFlow(currentState))
-    setFreeformValue('')
-  }
+  }, [isOpen, session?.sessionId, currentQuestion?.id])
 
   if (!isOpen) return null
+
+  const sessionId = session?.sessionId ?? null
+  const status = session?.status ?? null
+  const totalQuestions = session?.questions.length ?? 0
+  const currentQuestionIndex = session ? getCurrentQuestionIndex(session, currentQuestion) : 0
+  const isGenerating = status === 'generating'
+  const currentChoices = currentQuestion ? formatQuestionChoices(currentQuestion) : []
+  const answeredSummaries = session ? getAnsweredQuestionSummary(session) : []
+  const isPendingSession = !session
 
   return (
     <section
@@ -220,7 +251,7 @@ export function PlanningIntakePopup({
               Planning intake
             </div>
             <div className="mt-1 font-mono text-sm uppercase tracking-[0.14em] text-foreground">
-              Session {summarizeSessionId(planningSessionId)}
+              Session {summarizeSessionId(sessionId)}
             </div>
           </div>
           <Button
@@ -237,7 +268,28 @@ export function PlanningIntakePopup({
       </div>
 
       <div className="space-y-4 p-4">
-        {flow.isGenerating ? (
+        {isPendingSession ? (
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <div className="font-mono text-xs uppercase tracking-[0.22em] text-muted-foreground">
+                Waiting for intake session
+              </div>
+              <p className="max-w-prose text-sm leading-6 text-muted-foreground">
+                Start or resume a planning intake session to answer guided questions.
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-2 border-t border-border pt-3">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={onClose}
+                className="rounded-none font-mono text-xs uppercase tracking-[0.2em]"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        ) : isGenerating ? (
           <div className="space-y-4">
             <div className="space-y-3">
               <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.22em] text-muted-foreground">
@@ -253,12 +305,14 @@ export function PlanningIntakePopup({
               <Button
                 type="button"
                 variant="ghost"
-                onClick={handleBack}
+                onClick={() => {
+                  void onClearIntake()
+                }}
                 disabled
                 className="rounded-none font-mono text-xs uppercase tracking-[0.2em]"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
-                Back
+                Reset intake
               </Button>
               <Button
                 type="button"
@@ -274,8 +328,23 @@ export function PlanningIntakePopup({
           <>
             <div className="space-y-2">
               <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-                {getQuestionLabel(flow.currentQuestionIndex, questions.length)}
+                {getQuestionLabel(currentQuestionIndex, totalQuestions)}
               </div>
+              {session ? (
+                <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  <span className="border border-border px-1.5 py-0.5">
+                    Answered {session.answers.length}/{totalQuestions}
+                  </span>
+                  {answeredSummaries.map((summary) => (
+                    <span
+                      key={summary}
+                      className="border border-border px-1.5 py-0.5 normal-case tracking-normal"
+                    >
+                      {summary}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
               <h3 className="font-mono text-base uppercase tracking-[0.14em] text-foreground">
                 {currentQuestion.title}
               </h3>
@@ -289,61 +358,71 @@ export function PlanningIntakePopup({
                 <PlanningChoiceButton
                   key={choice.optionId}
                   choice={choice}
-                  onSelect={(optionId) =>
-                    submitAnswer({ selectedOptionId: optionId, source: 'suggestion' })
-                  }
+                  onSelect={(optionId) => {
+                    void submitPlanningSuggestionAnswer({
+                      currentQuestion,
+                      selectedOptionId: optionId,
+                      onAnswerQuestion,
+                    })
+                  }}
                 />
               ))}
             </div>
 
-            <form
-              className="space-y-2 border-t border-border pt-3"
-              onSubmit={(event) => {
-                event.preventDefault()
-                const value = freeformValue.trim()
-                if (!value) return
-                submitAnswer({ freeformValue: value, rawValue: value, source: 'freeform' })
-              }}
-            >
-              <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-                Freeform response
-              </div>
-              <Textarea
-                value={freeformValue}
-                onChange={(event) => setFreeformValue(event.target.value)}
-                placeholder="Type your own answer"
-                className="min-h-24 rounded-none border-border bg-background font-mono text-sm"
-              />
-              <div className="flex items-center justify-between gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={handleBack}
-                  disabled={flow.currentQuestionIndex === 0}
-                  className="rounded-none font-mono text-xs uppercase tracking-[0.2em]"
-                >
-                  <ArrowLeft className="h-3.5 w-3.5" />
-                  Back
-                </Button>
-                <div className="flex items-center gap-2">
+            {currentQuestion.allowFreeform ? (
+              <form
+                className="space-y-2 border-t border-border pt-3"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  void submitPlanningFreeformAnswer({
+                    currentQuestion,
+                    freeformValue,
+                    onAnswerQuestion,
+                  })
+                }}
+              >
+                <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                  Freeform response
+                </div>
+                <Textarea
+                  value={freeformValue}
+                  onChange={(event) => setFreeformValue(event.target.value)}
+                  placeholder="Type your own answer"
+                  className="min-h-24 rounded-none border-border bg-background font-mono text-sm"
+                />
+                <div className="flex items-center justify-between gap-2">
                   <Button
                     type="button"
                     variant="ghost"
-                    onClick={onClose}
+                    onClick={() => {
+                      void onClearIntake()
+                    }}
+                    disabled={currentQuestionIndex === 0}
                     className="rounded-none font-mono text-xs uppercase tracking-[0.2em]"
                   >
-                    Cancel
+                    <ArrowLeft className="h-3.5 w-3.5" />
+                    Reset intake
                   </Button>
-                  <Button
-                    type="submit"
-                    disabled={!freeformValue.trim()}
-                    className="rounded-none font-mono text-xs uppercase tracking-[0.2em]"
-                  >
-                    Submit answer
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={onClose}
+                      className="rounded-none font-mono text-xs uppercase tracking-[0.2em]"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={!freeformValue.trim()}
+                      className="rounded-none font-mono text-xs uppercase tracking-[0.2em]"
+                    >
+                      Submit answer
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </form>
+              </form>
+            ) : null}
           </>
         ) : null}
       </div>

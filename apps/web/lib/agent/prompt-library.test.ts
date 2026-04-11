@@ -32,11 +32,11 @@ describe('prompt-library — natural flow (INTENT RULES)', () => {
   it('ARCHITECT mode: structured plan only for explicit planning requests', () => {
     const text = getSystemText('architect')
     expect(text).toContain('INTENT RULES')
-    expect(text).toContain('ONLY THEN produce or update the plan artifact')
+    expect(text).toContain('ONLY THEN produce planning content in markdown')
     expect(text).toContain('respond naturally in paragraphs')
-    expect(text).toContain('Relevant Files')
-    expect(text).toContain('Implementation Plan')
-    expect(text).toContain('Validation')
+    expect(text).toContain('Gather missing constraints')
+    expect(text).toContain('execution-ready')
+    expect(text).toContain('Headings may vary')
   })
 
   it('CODE mode: quiet execution — no planning preamble, all code via tools', () => {
@@ -121,6 +121,20 @@ describe('prompt-library — architect brainstorming protocol', () => {
 
     expect(systemText).toContain('For straightforward factual questions')
     expect(systemText).toContain('answer directly in plain language')
+  })
+
+  it('injects planning session context for architect mode when provided', () => {
+    const systemText = getSystemText('architect', {
+      planningSession: {
+        hasActiveSession: true,
+        phase: 'validated_plan',
+        hasDraftPlan: true,
+      },
+    })
+
+    expect(systemText).toContain('## Planning Session Context')
+    expect(systemText).toContain('Current phase: validated_plan')
+    expect(systemText).toContain('Draft plan already exists: yes')
   })
 })
 

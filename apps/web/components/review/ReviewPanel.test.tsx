@@ -34,6 +34,7 @@ describe('ReviewPanel', () => {
     expect(html).toContain('Activity')
     expect(html).toContain('Decisions')
     expect(html).toContain('Planning intake')
-    expect(html).toContain('Start intake')
+    expect(html).toContain('Open the project chat inspector to continue the guided intake flow.')
+    expect(html).not.toContain('Start intake')
   })
 })

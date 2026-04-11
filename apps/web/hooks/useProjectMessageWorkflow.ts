@@ -9,6 +9,7 @@ import {
   type PlanStatus,
 } from '@/lib/chat/planDraft'
 import type { ChatMode } from '@/lib/agent/prompt-library'
+import { buildDefaultPlanningQuestions } from '@/lib/planning/question-engine'
 import type { GeneratedPlanArtifact } from '@/lib/planning/types'
 import {
   deriveDeliveryTaskSeed,
@@ -27,6 +28,197 @@ type ForgeStateRecord = {
 
 type ExecutablePlanArtifact = Pick<GeneratedPlanArtifact, 'status'>
 
+type UploadedAttachment = {
+  storageId: Id<'_storage'>
+  kind: 'file' | 'image'
+  filename: string
+  contentType?: string
+  size?: number
+  contextFilePath?: string
+  url?: string
+}
+
+type SendAgentMessageOptions = {
+  approvedPlanExecution?: boolean
+  approvedPlanExecutionContext?: {
+    sessionId: string
+    plan: GeneratedPlanArtifact
+  }
+  attachments?: UploadedAttachment[]
+  attachmentsOnly?: boolean
+}
+
+export function shouldQueuePendingDirectSend(args: {
+  workflowAction: MessageWorkflowAction
+  providerAvailable: boolean
+}): boolean {
+  return args.workflowAction.type === 'create_chat_and_send_directly' && args.providerAvailable
+}
+
+export function buildApprovedPlanExecutionPayload(args: {
+  content: string
+  approvedPlanExecution?: boolean
+  planDraft?: string
+  approvedPlanArtifact?: GeneratedPlanArtifact | null
+  activePlanningSessionId?: string | null
+}): Pick<SendAgentMessageOptions, 'approvedPlanExecutionContext'> & { content: string } {
+  const shouldExecuteApprovedPlan = Boolean(args.approvedPlanExecution)
+
+  if (
+    shouldExecuteApprovedPlan &&
+    args.activePlanningSessionId &&
+    args.approvedPlanArtifact &&
+    args.approvedPlanArtifact.sessionId === args.activePlanningSessionId
+  ) {
+    return {
+      content: args.content,
+      approvedPlanExecutionContext: {
+        sessionId: args.activePlanningSessionId,
+        plan: args.approvedPlanArtifact,
+      },
+    }
+  }
+
+  return {
+    content:
+      shouldExecuteApprovedPlan && (args.approvedPlanArtifact || args.planDraft?.trim())
+        ? buildApprovedPlanExecutionMessage(
+            args.approvedPlanArtifact ?? args.planDraft ?? '',
+            args.content
+          )
+        : args.content,
+  }
+}
+
+type PlanningIntakeRequest = {
+  taskSummary: string
+  questions: ReturnType<typeof buildDefaultPlanningQuestions>
+}
+
+type MessageWorkflowAction =
+  | { type: 'create_chat_and_start_planning_intake'; intakeRequest: PlanningIntakeRequest }
+  | { type: 'start_planning_intake'; intakeRequest: PlanningIntakeRequest }
+  | { type: 'resume_planning_intake' }
+  | { type: 'create_chat_and_send_directly' }
+  | { type: 'send_directly' }
+
+export function shouldRouteMessageToPlanningIntake(args: {
+  mode: ChatMode
+  trimmedContent: string
+}): boolean {
+  if (!args.trimmedContent) return false
+  return args.mode === 'architect'
+}
+
+export function buildArchitectPlanningIntakeRequest(trimmedContent: string): PlanningIntakeRequest {
+  const taskSummary = trimmedContent.trim()
+
+  return {
+    taskSummary,
+    questions: buildDefaultPlanningQuestions({ taskSummary }),
+  }
+}
+
+export function resolveMessageWorkflowAction(args: {
+  hasActiveChat: boolean
+  mode: ChatMode
+  trimmedContent: string
+  activePlanningSessionId?: string | null
+}): MessageWorkflowAction {
+  if (
+    shouldRouteMessageToPlanningIntake({
+      mode: args.mode,
+      trimmedContent: args.trimmedContent,
+    })
+  ) {
+    if (args.hasActiveChat && args.activePlanningSessionId) {
+      return { type: 'resume_planning_intake' }
+    }
+
+    const intakeRequest = buildArchitectPlanningIntakeRequest(args.trimmedContent)
+    return args.hasActiveChat
+      ? { type: 'start_planning_intake', intakeRequest }
+      : { type: 'create_chat_and_start_planning_intake', intakeRequest }
+  }
+
+  return args.hasActiveChat ? { type: 'send_directly' } : { type: 'create_chat_and_send_directly' }
+}
+
+export async function executeMessageWorkflowAction(args: {
+  workflowAction: MessageWorkflowAction
+  activeChatId?: Id<'chats'> | null
+  createChat?: () => Promise<Id<'chats'>>
+  onChatCreated?: (chatId: Id<'chats'>) => void
+  startPlanningIntake?: (args: {
+    chatId: Id<'chats'>
+    taskSummary: string
+    questions: ReturnType<typeof buildDefaultPlanningQuestions>
+  }) => Promise<unknown>
+  queuePendingDirectSend?: () => void
+}): Promise<boolean> {
+  const {
+    workflowAction,
+    activeChatId,
+    createChat,
+    onChatCreated,
+    startPlanningIntake,
+    queuePendingDirectSend,
+  } = args
+
+  if (workflowAction.type === 'resume_planning_intake') {
+    throw new Error(
+      'A planning intake session is already active and must be completed or cleared first'
+    )
+  }
+
+  if (workflowAction.type === 'start_planning_intake') {
+    if (!activeChatId) {
+      throw new Error('Cannot continue planning intake without an active chat')
+    }
+    if (!startPlanningIntake) {
+      throw new Error('Cannot start planning intake without a startPlanningIntake callback')
+    }
+
+    await startPlanningIntake({
+      chatId: activeChatId,
+      taskSummary: workflowAction.intakeRequest.taskSummary,
+      questions: workflowAction.intakeRequest.questions,
+    })
+    return true
+  }
+
+  if (workflowAction.type === 'create_chat_and_start_planning_intake') {
+    if (!createChat) {
+      throw new Error('Cannot create a chat for planning intake without a createChat callback')
+    }
+    if (!startPlanningIntake) {
+      throw new Error('Cannot start planning intake without a startPlanningIntake callback')
+    }
+
+    const chatId = await createChat()
+    onChatCreated?.(chatId)
+    await startPlanningIntake({
+      chatId,
+      taskSummary: workflowAction.intakeRequest.taskSummary,
+      questions: workflowAction.intakeRequest.questions,
+    })
+    return true
+  }
+
+  if (workflowAction.type === 'create_chat_and_send_directly') {
+    if (!createChat) {
+      throw new Error('Cannot create a chat for direct send without a createChat callback')
+    }
+
+    const chatId = await createChat()
+    onChatCreated?.(chatId)
+    queuePendingDirectSend?.()
+    return true
+  }
+
+  return false
+}
+
 export function isExecutablePlanArtifact(
   artifact: ExecutablePlanArtifact | null | undefined
 ): boolean {
@@ -36,6 +228,18 @@ export function isExecutablePlanArtifact(
     artifact.status === 'executing' ||
     artifact.status === 'failed' ||
     artifact.status === 'completed'
+  )
+}
+
+export function shouldUseStructuredExecutionTransition(args: {
+  activePlanningSessionId?: string | null
+  approvedPlanArtifact?: ExecutablePlanArtifact | null
+  markPlanningExecutionState?: (args: { sessionId: string; state: 'executing' }) => Promise<unknown>
+}): boolean {
+  return Boolean(
+    args.activePlanningSessionId &&
+    isExecutablePlanArtifact(args.approvedPlanArtifact) &&
+    args.markPlanningExecutionState
   )
 }
 
@@ -91,10 +295,15 @@ export function useProjectMessageWorkflow(args: {
   }) => Promise<Id<'deliveryStates'>>
   getActiveForgeState?: (chatId: Id<'chats'>) => Promise<ForgeStateRecord | null>
   markPlanningExecutionState?: (args: { sessionId: string; state: 'executing' }) => Promise<unknown>
+  startPlanningIntake?: (args: {
+    chatId: Id<'chats'>
+    taskSummary: string
+    questions: ReturnType<typeof buildDefaultPlanningQuestions>
+  }) => Promise<unknown>
   sendAgentMessage: (
     content: string,
     contextFiles?: string[],
-    options?: { approvedPlanExecution?: boolean }
+    options?: SendAgentMessageOptions
   ) => Promise<void>
   setActiveChatId: (chatId: Id<'chats'>) => void
   setMobilePrimaryPanel: (panel: 'workspace' | 'chat') => void
@@ -115,6 +324,7 @@ export function useProjectMessageWorkflow(args: {
     acceptForgePlan,
     getActiveForgeState,
     markPlanningExecutionState,
+    startPlanningIntake,
     sendAgentMessage,
     setActiveChatId,
     setMobilePrimaryPanel,
@@ -123,7 +333,14 @@ export function useProjectMessageWorkflow(args: {
     id: string
     content: string
     mode: ChatMode
+    contextFiles?: string[]
     approvedPlanExecution?: boolean
+    approvedPlanExecutionContext?: {
+      sessionId: string
+      plan: GeneratedPlanArtifact
+    }
+    attachments?: UploadedAttachment[]
+    attachmentsOnly?: boolean
   } | null>(null)
   const pendingMessageDispatchRef = useRef<string | null>(null)
 
@@ -132,8 +349,11 @@ export function useProjectMessageWorkflow(args: {
     if (pendingMessageDispatchRef.current === pendingMessage.id) return
 
     pendingMessageDispatchRef.current = pendingMessage.id
-    void sendAgentMessage(pendingMessage.content, undefined, {
+    void sendAgentMessage(pendingMessage.content, pendingMessage.contextFiles, {
       approvedPlanExecution: pendingMessage.approvedPlanExecution,
+      approvedPlanExecutionContext: pendingMessage.approvedPlanExecutionContext,
+      attachments: pendingMessage.attachments,
+      attachmentsOnly: pendingMessage.attachmentsOnly,
     }).finally(() => {
       setPendingMessage((current) => (current?.id === pendingMessage.id ? null : current))
       if (pendingMessageDispatchRef.current === pendingMessage.id) {
@@ -147,7 +367,7 @@ export function useProjectMessageWorkflow(args: {
       content: string,
       mode: ChatMode,
       contextFiles?: string[],
-      options?: { approvedPlanExecution?: boolean }
+      options?: SendAgentMessageOptions
     ) => {
       const trimmed = content.trim()
       if (!trimmed) {
@@ -158,28 +378,67 @@ export function useProjectMessageWorkflow(args: {
       setChatMode(mode)
       setMobilePrimaryPanel('chat')
 
-      const finalContent =
-        mode === 'build' &&
-        (approvedPlanArtifact || planDraft.trim()) &&
-        (options?.approvedPlanExecution || activeChat?.planStatus === 'executing')
-          ? buildApprovedPlanExecutionMessage(approvedPlanArtifact ?? planDraft, trimmed)
-          : content
+      const approvedPlanExecutionPayload =
+        mode === 'build'
+          ? buildApprovedPlanExecutionPayload({
+              content: trimmed,
+              approvedPlanExecution:
+                options?.approvedPlanExecution || activeChat?.planStatus === 'executing',
+              planDraft,
+              approvedPlanArtifact,
+              activePlanningSessionId,
+            })
+          : { content }
+      const finalContent = approvedPlanExecutionPayload.content
+      const workflowAction = resolveMessageWorkflowAction({
+        hasActiveChat: Boolean(activeChat),
+        mode,
+        trimmedContent: trimmed,
+        activePlanningSessionId,
+      })
+
+      if (workflowAction.type === 'create_chat_and_send_directly' && !providerAvailable) {
+        toast.error('LLM provider not configured', {
+          description: 'Please configure your LLM settings in the settings page.',
+        })
+        return
+      }
 
       if (!activeChat) {
         try {
-          const newChatId = await createChatMutation({
-            projectId,
-            title: trimmed.slice(0, 50),
-            mode,
+          const handled = await executeMessageWorkflowAction({
+            workflowAction,
+            createChat: () =>
+              createChatMutation({
+                projectId,
+                title: trimmed.slice(0, 50),
+                mode,
+              }),
+            onChatCreated: (chatId) => {
+              toast.success('Chat created')
+              setActiveChatId(chatId)
+            },
+            startPlanningIntake,
+            queuePendingDirectSend: shouldQueuePendingDirectSend({
+              workflowAction,
+              providerAvailable,
+            })
+              ? () => {
+                  setPendingMessage({
+                    id: `pending-${Date.now()}`,
+                    content: finalContent,
+                    mode,
+                    contextFiles,
+                    approvedPlanExecution: options?.approvedPlanExecution,
+                    approvedPlanExecutionContext:
+                      approvedPlanExecutionPayload.approvedPlanExecutionContext,
+                    attachments: options?.attachments,
+                    attachmentsOnly: options?.attachmentsOnly,
+                  })
+                }
+              : undefined,
           })
-          toast.success('Chat created')
-          setActiveChatId(newChatId)
-          setPendingMessage({
-            id: `pending-${Date.now()}`,
-            content: finalContent,
-            mode,
-            approvedPlanExecution: options?.approvedPlanExecution,
-          })
+          if (handled) return
         } catch (error) {
           void error
           toast.error('Failed to create chat')
@@ -189,6 +448,16 @@ export function useProjectMessageWorkflow(args: {
 
       if (activeChat.mode !== mode) {
         await updateChatMutation({ id: activeChat._id, mode })
+      }
+
+      if (
+        await executeMessageWorkflowAction({
+          workflowAction,
+          activeChatId: activeChat._id,
+          startPlanningIntake,
+        })
+      ) {
+        return
       }
 
       if (
@@ -248,6 +517,9 @@ export function useProjectMessageWorkflow(args: {
 
       await sendAgentMessage(finalContent, contextFiles, {
         approvedPlanExecution: options?.approvedPlanExecution,
+        approvedPlanExecutionContext: approvedPlanExecutionPayload.approvedPlanExecutionContext,
+        attachments: options?.attachments,
+        attachmentsOnly: options?.attachmentsOnly,
       })
     },
     [
@@ -261,10 +533,12 @@ export function useProjectMessageWorkflow(args: {
       createForgeTasksFromPlan,
       acceptForgePlan,
       getActiveForgeState,
+      activePlanningSessionId,
       sendAgentMessage,
       setActiveChatId,
       setChatMode,
       setMobilePrimaryPanel,
+      startPlanningIntake,
       updateChatMutation,
     ]
   )
@@ -293,9 +567,27 @@ export function useProjectMessageWorkflow(args: {
     }
 
     try {
-      if (activePlanningSessionId && canBuildFromArtifact && markPlanningExecutionState) {
-        await markPlanningExecutionState({
-          sessionId: activePlanningSessionId,
+      const shouldUseStructuredTransition = shouldUseStructuredExecutionTransition({
+        activePlanningSessionId,
+        approvedPlanArtifact,
+        markPlanningExecutionState,
+      })
+
+      if (activePlanningSessionId && canBuildFromArtifact && !shouldUseStructuredTransition) {
+        throw new Error('Structured plan execution requires a planning session transition callback')
+      }
+
+      if (shouldUseStructuredTransition) {
+        const transitionSessionId = activePlanningSessionId
+        const transitionPlanningExecutionState = markPlanningExecutionState
+        if (!transitionSessionId || !transitionPlanningExecutionState) {
+          throw new Error(
+            'Structured plan execution requires a planning session transition callback'
+          )
+        }
+
+        await transitionPlanningExecutionState({
+          sessionId: transitionSessionId,
           state: 'executing',
         })
         if (activeChat.mode !== 'build') {

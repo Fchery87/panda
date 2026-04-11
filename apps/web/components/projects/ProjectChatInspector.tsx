@@ -19,6 +19,15 @@ import type { FormalSpecification } from '@/lib/agent/spec/types'
 import type { PlanStatus } from '@/lib/chat/planDraft'
 import type { TracePersistenceStatus } from '@/hooks/useRunEventBuffer'
 import type { PlanningSessionDebugSummary } from '@/components/plan/PlanningSessionDebugCard'
+import type { GeneratedPlanArtifact, PlanningAnswer, PlanningQuestion } from '@/lib/planning/types'
+
+type PlanningSessionView = {
+  sessionId: string
+  status: string
+  questions: PlanningQuestion[]
+  answers: PlanningAnswer[]
+  generatedPlan?: GeneratedPlanArtifact
+} | null
 
 export type InspectorTab = 'run' | 'plan' | 'artifacts' | 'memory' | 'evals'
 export type ReviewTab = InspectorTab
@@ -95,6 +104,7 @@ export function InspectorRunContent({
 
 export interface InspectorPlanContentProps {
   planDraft: string
+  generatedPlanArtifact?: GeneratedPlanArtifact | null
   planStatus?: PlanStatus | null
   onPlanDraftChange: (value: string) => void
   onSavePlanDraft: () => void
@@ -109,6 +119,7 @@ export interface InspectorPlanContentProps {
 
 export function InspectorPlanContent({
   planDraft,
+  generatedPlanArtifact,
   planStatus,
   onPlanDraftChange,
   onSavePlanDraft,
@@ -124,6 +135,7 @@ export function InspectorPlanContent({
     <div className="m-0 border border-border bg-background">
       <PlanPanel
         planDraft={planDraft}
+        generatedPlanArtifact={generatedPlanArtifact}
         planStatus={planStatus ?? 'idle'}
         onChange={onPlanDraftChange}
         onSave={onSavePlanDraft}
@@ -202,6 +214,16 @@ export interface ProjectChatInspectorProps
   isMobileLayout: boolean
   isOpen: boolean
   tab: InspectorTab
+  planningSession: PlanningSessionView
+  planningCurrentQuestion: PlanningQuestion | null
+  onStartPlanningIntake: () => Promise<unknown> | unknown
+  onAnswerPlanningQuestion: (input: {
+    questionId: string
+    selectedOptionId?: string
+    freeformValue?: string
+    source: 'suggestion' | 'freeform'
+  }) => Promise<unknown> | unknown
+  onClearPlanningIntake: () => Promise<unknown> | unknown
   onOpenChange: (open: boolean) => void
   onTabChange: (tab: InspectorTab) => void
 }
@@ -212,6 +234,11 @@ export function ProjectChatInspector({
   isMobileLayout,
   isOpen,
   tab,
+  planningSession,
+  planningCurrentQuestion,
+  onStartPlanningIntake,
+  onAnswerPlanningQuestion,
+  onClearPlanningIntake,
   onOpenChange,
   onTabChange,
   liveSteps,
@@ -245,7 +272,14 @@ export function ProjectChatInspector({
 }: ProjectChatInspectorProps) {
   const tabs = (
     <div className="space-y-3">
-      <PlanningIntakeSurface />
+      <PlanningIntakeSurface
+        session={planningSession}
+        currentQuestion={planningCurrentQuestion}
+        onStartIntake={onStartPlanningIntake}
+        onAnswerQuestion={onAnswerPlanningQuestion}
+        onClearIntake={onClearPlanningIntake}
+        key={planningSession?.sessionId ?? 'planning-intake'}
+      />
       <Tabs
         value={tab}
         onValueChange={(value) => onTabChange(value as InspectorTab)}
@@ -309,6 +343,7 @@ export function ProjectChatInspector({
         <TabsContent value="plan" className="m-0">
           <InspectorPlanContent
             planDraft={planDraft}
+            generatedPlanArtifact={planningSession?.generatedPlan ?? null}
             planStatus={planStatus}
             onPlanDraftChange={onPlanDraftChange}
             onSavePlanDraft={onSavePlanDraft}

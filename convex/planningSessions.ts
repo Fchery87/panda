@@ -57,7 +57,9 @@ function serializeGeneratedPlanArtifact(artifact: GeneratedPlanArtifact): string
   const markdown = artifact.markdown.trim()
   if (markdown) return markdown
 
-  const sections = [...artifact.sections].sort((a, b) => a.order - b.order)
+  const sections = [...artifact.sections].sort(
+    (a, b) => a.order - b.order || a.id.localeCompare(b.id)
+  )
   const lines = [`# ${artifact.title}`]
 
   if (artifact.summary.trim()) {
@@ -258,6 +260,10 @@ function markPlanningExecutionRecord(
     now: number
   }
 ): PlanningSessionWithMirror {
+  if (args.state === 'executing' && session.status !== 'accepted') {
+    throw new Error('Planning sessions must be accepted before execution starts')
+  }
+
   const nextStatus = args.state === 'partial' ? session.status : args.state
   const nextGeneratedPlan =
     args.state === 'partial'

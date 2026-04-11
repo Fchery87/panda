@@ -28,14 +28,20 @@ const SURFACE_PRESENTATIONS: Record<ChatMode, ChatModeSurfacePresentation> = Obj
   ])
 ) as Record<ChatMode, ChatModeSurfacePresentation>
 
+function cloneSurfacePresentation(
+  presentation: ChatModeSurfacePresentation
+): ChatModeSurfacePresentation {
+  return { ...presentation }
+}
+
 export function getChatModeSurfacePresentation(mode: ChatMode): ChatModeSurfacePresentation {
-  return SURFACE_PRESENTATIONS[mode]
+  return cloneSurfacePresentation(SURFACE_PRESENTATIONS[mode])
 }
 
 export function getPrimaryChatModeSurfaceOptions(): ChatModeSurfacePresentation[] {
-  return getPrimaryChatModes().map((mode) => SURFACE_PRESENTATIONS[mode])
+  return getPrimaryChatModes().map((mode) => cloneSurfacePresentation(SURFACE_PRESENTATIONS[mode]))
 }
 
 export function getAdvancedChatModeSurfaceOptions(): ChatModeSurfacePresentation[] {
-  return getAdvancedChatModes().map((mode) => SURFACE_PRESENTATIONS[mode])
+  return getAdvancedChatModes().map((mode) => cloneSurfacePresentation(SURFACE_PRESENTATIONS[mode]))
 }

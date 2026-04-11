@@ -7,8 +7,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { IconSend, IconStop, IconEnhance, IconRevert } from '@/components/ui/icons'
 
-import { useAction, useQuery } from 'convex/react'
+import { useAction, useMutation, useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
+import type { Id } from '@convex/_generated/dataModel'
 import { toast } from 'sonner'
 import { AgentSelector } from './AgentSelector'
 import { AttachmentButton, type Attachment } from './AttachmentButton'
@@ -39,14 +40,45 @@ function parseMentions(text: string): { message: string; contextFiles: string[] 
   return { message, contextFiles }
 }
 
+function sanitizeAttachmentFileName(fileName: string): string {
+  const trimmed = fileName.trim()
+  const fallback = 'attachment'
+  const safe = (trimmed || fallback).replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '')
+
+  return safe || fallback
+}
+
+function formatAttachmentMessage(args: { message: string; attachmentCount: number }): string {
+  const trimmedMessage = args.message.trim()
+  if (trimmedMessage) return trimmedMessage
+  return ''
+}
+
+type UploadedAttachmentPayload = {
+  storageId: Id<'_storage'>
+  path: string
+  filename: string
+  kind: 'file' | 'image'
+  contentType?: string
+  size?: number
+  url?: string
+}
+
 interface ChatInputProps {
+  projectId?: Id<'projects'>
+  chatId?: Id<'chats'>
   mode?: ChatMode
   onModeChange?: (mode: ChatMode) => void
   architectBrainstormEnabled?: boolean
   onArchitectBrainstormEnabledChange?: (enabled: boolean) => void
   specTier?: SpecTier | 'auto'
   onSpecTierChange?: (tier: SpecTier | 'auto') => void
-  onSendMessage?: (content: string, mode: ChatMode, contextFiles?: string[]) => void
+  onSendMessage?: (
+    content: string,
+    mode: ChatMode,
+    contextFiles?: string[],
+    options?: { attachments?: UploadedAttachmentPayload[]; attachmentsOnly?: boolean }
+  ) => void
   isStreaming?: boolean
   onStopStreaming?: () => void
   /** File paths available for @-mention context, from the project file tree */
@@ -63,13 +95,16 @@ interface ChatInputProps {
   supportsReasoning?: boolean
   contextualPrompt?: string | null
   onContextualPromptHandled?: () => void
+  attachmentsEnabled?: boolean
 }
 
 export function ChatInput({
+  projectId,
+  chatId,
   mode: controlledMode,
   onModeChange,
-  architectBrainstormEnabled: _architectBrainstormEnabled = false,
-  onArchitectBrainstormEnabledChange: _onArchitectBrainstormEnabledChange,
+  architectBrainstormEnabled = false,
+  onArchitectBrainstormEnabledChange,
   specTier: _specTier,
   onSpecTierChange: _onSpecTierChange,
   onSendMessage,
@@ -84,10 +119,12 @@ export function ChatInput({
   supportsReasoning = false,
   contextualPrompt,
   onContextualPromptHandled,
+  attachmentsEnabled = false,
 }: ChatInputProps) {
   const [input, setInput] = useState('')
   const [uncontrolledMode, setUncontrolledMode] = useState<ChatMode>('code')
   const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [isUploadingAttachments, setIsUploadingAttachments] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // @-mention picker state
@@ -119,12 +156,15 @@ export function ChatInput({
 
   // Convex action for enhancing prompts
   const enhancePrompt = useAction(api.enhancePrompt.enhance)
+  const generateAttachmentUploadUrl = useMutation(api.chatAttachments.generateUploadUrl)
+  const upsertFile = useMutation(api.files.upsert)
 
   // Fetch admin defaults and user settings for enhancement LLM configuration
   const adminDefaults = useQuery(api.settings.getAdminDefaults)
   const userSettings = useQuery(api.settings.get)
 
   const mode = controlledMode ?? uncontrolledMode
+  const hasSendContent = input.trim().length > 0 || attachments.length > 0
   const setMode = useCallback(
     (nextMode: ChatMode) => {
       onModeChange?.(nextMode)
@@ -143,21 +183,107 @@ export function ChatInput({
     setAttachments((prev) => prev.filter((a) => a.id !== id))
   }, [])
 
-  const handleSend = useCallback(() => {
-    if (input.trim() && !isStreaming) {
-      const { message, contextFiles } = parseMentions(input.trim())
-      onSendMessage?.(message || input.trim(), mode, contextFiles)
-      setInput('')
-      setMentionQuery(null)
-      setAttachments([])
-      if (textareaRef.current) {
-        textareaRef.current.style.height = 'auto'
-      }
+  const handleSend = useCallback(async () => {
+    if ((!input.trim() && attachments.length === 0) || isStreaming || isUploadingAttachments) {
+      return
     }
-  }, [input, isStreaming, mode, onSendMessage])
+
+    const { message, contextFiles } = parseMentions(input.trim())
+    let uploadedAttachments: UploadedAttachmentPayload[] = []
+
+    if (attachments.length > 0) {
+      if (!projectId || !chatId) {
+        toast.error('Attachments are unavailable for this chat')
+        return
+      }
+
+      setIsUploadingAttachments(true)
+      try {
+        uploadedAttachments = await Promise.all(
+          attachments.map(async (attachment) => {
+            const sanitizedName = sanitizeAttachmentFileName(attachment.file.name)
+            const storedPath = `.panda/attachments/${Date.now()}-${attachment.id}-${sanitizedName}`
+            const uploadUrl = await generateAttachmentUploadUrl({ chatId })
+            const uploadResult = await fetch(uploadUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': attachment.file.type || 'application/octet-stream',
+              },
+              body: attachment.file,
+            })
+
+            if (!uploadResult.ok) {
+              throw new Error(`Upload failed with status ${uploadResult.status}`)
+            }
+
+            const { storageId } = (await uploadResult.json()) as { storageId: Id<'_storage'> }
+
+            if (attachment.type === 'file') {
+              await upsertFile({
+                projectId,
+                path: storedPath,
+                content: await attachment.file.text(),
+                isBinary: false,
+              })
+            }
+
+            return {
+              storageId,
+              path: storedPath,
+              filename: attachment.file.name,
+              kind: attachment.type,
+              contentType: attachment.file.type || undefined,
+              size: attachment.file.size,
+              url: attachment.type === 'image' ? attachment.preview : undefined,
+            }
+          })
+        )
+      } catch (error) {
+        toast.error('Failed to attach files', {
+          description: error instanceof Error ? error.message : 'Unknown error',
+        })
+        setIsUploadingAttachments(false)
+        return
+      }
+      setIsUploadingAttachments(false)
+    }
+
+    const nextContextFiles = [
+      ...contextFiles,
+      ...uploadedAttachments
+        .filter((attachment) => attachment.kind === 'file')
+        .map((attachment) => attachment.path),
+    ]
+    const nextMessage = formatAttachmentMessage({
+      message: message || input.trim(),
+      attachmentCount: uploadedAttachments.length,
+    })
+
+    onSendMessage?.(nextMessage || input.trim(), mode, nextContextFiles, {
+      attachments: uploadedAttachments,
+      attachmentsOnly: !message.trim() && uploadedAttachments.length > 0,
+    })
+    setInput('')
+    setMentionQuery(null)
+    setAttachments([])
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+    }
+  }, [
+    attachments,
+    chatId,
+    input,
+    isStreaming,
+    isUploadingAttachments,
+    mode,
+    onSendMessage,
+    projectId,
+    generateAttachmentUploadUrl,
+    upsertFile,
+  ])
 
   const handleSendWithReset = useCallback(() => {
-    handleSend()
+    void handleSend()
     // Reset enhance state after sending
     setEnhanceState('idle')
     setPreEnhanceText('')
@@ -317,8 +443,9 @@ export function ChatInput({
           value={input}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
+          aria-label="Message input"
           placeholder="Ask anything, @ to mention, / for workflows"
-          disabled={isStreaming}
+          disabled={isStreaming || isUploadingAttachments}
           className={cn(
             'max-h-[200px] min-h-[68px] resize-none pr-10 sm:min-h-[80px]',
             'rounded-none border border-border bg-background',
@@ -393,12 +520,14 @@ export function ChatInput({
 
       {/* Inline controls row */}
       <div className="mt-2 flex items-center gap-2">
-        <AttachmentButton
-          attachments={attachments}
-          onAttach={handleAttach}
-          onRemove={handleRemoveAttachment}
-          disabled={isStreaming}
-        />
+        {attachmentsEnabled ? (
+          <AttachmentButton
+            attachments={attachments}
+            onAttach={handleAttach}
+            onRemove={handleRemoveAttachment}
+            disabled={isStreaming || isUploadingAttachments}
+          />
+        ) : null}
 
         <AgentSelector mode={mode} onModeChange={setMode} disabled={isStreaming} />
 
@@ -415,17 +544,39 @@ export function ChatInput({
           <VariantSelector currentVariant={variant} onVariantChange={onVariantChange} />
         )}
 
+        {mode === 'architect' && onArchitectBrainstormEnabledChange && (
+          <button
+            type="button"
+            onClick={() => onArchitectBrainstormEnabledChange(!architectBrainstormEnabled)}
+            disabled={isStreaming}
+            aria-pressed={architectBrainstormEnabled}
+            aria-label={
+              architectBrainstormEnabled ? 'Disable brainstorming' : 'Enable brainstorming'
+            }
+            className={cn(
+              'transition-sharp border border-border px-2.5 py-1 font-mono text-[11px] uppercase tracking-wide',
+              'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary',
+              'disabled:pointer-events-none disabled:opacity-50',
+              architectBrainstormEnabled
+                ? 'border-primary bg-primary/10 text-foreground'
+                : 'text-muted-foreground hover:border-foreground/30 hover:text-foreground'
+            )}
+          >
+            Brainstorm
+          </button>
+        )}
+
         <div className="flex-1" />
 
         {!isStreaming && (
           <Button
             size="icon"
             onClick={handleSendWithReset}
-            disabled={!input.trim()}
+            disabled={!hasSendContent}
             aria-label="Send message"
             className={cn(
               'transition-sharp h-7 w-7 rounded-none',
-              input.trim()
+              hasSendContent
                 ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                 : 'bg-secondary text-muted-foreground'
             )}

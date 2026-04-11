@@ -181,22 +181,23 @@ describe('planningSessions helpers', () => {
       status: 'ready_for_review' as const,
       generatedAt: 456,
     }
+    const baseRecord = createPlanningSessionRecord({
+      chatId: 'chat_1' as Parameters<typeof createPlanningSessionRecord>[0]['chatId'],
+      sessionId: 'planning_session_1',
+      now: 123,
+      questions: [],
+    })
 
-    const accepted = acceptPlanningSessionRecord(
-      {
-        chatId: 'chat_1' as Parameters<typeof createPlanningSessionRecord>[0]['chatId'],
-        sessionId: 'planning_session_1',
-        status: 'ready_for_review',
-        questions: [],
-        answers: [],
-        generatedPlan,
-        startedAt: 123,
-        completedAt: 456,
-        acceptedAt: undefined,
-        updatedAt: 456,
-      },
-      789
-    )
+    const readyForReviewSession: Parameters<typeof acceptPlanningSessionRecord>[0] = {
+      ...baseRecord.session,
+      status: 'ready_for_review',
+      generatedPlan,
+      completedAt: 456,
+      acceptedAt: undefined,
+      updatedAt: 456,
+    }
+
+    const accepted = acceptPlanningSessionRecord(readyForReviewSession, 789)
 
     expect(accepted.session.status).toBe('accepted')
     expect(accepted.session.generatedPlan).toMatchObject({
@@ -210,17 +211,11 @@ describe('planningSessions helpers', () => {
       updatedAt: 789,
     })
 
-    const executing = markPlanningExecutionRecord(
-      {
-        ...accepted.session,
-        status: 'executing',
-      },
-      {
-        state: 'executing',
-        runId: 'run_1' as Parameters<typeof markPlanningExecutionRecord>[1]['runId'],
-        now: 900,
-      }
-    )
+    const executing = markPlanningExecutionRecord(accepted.session, {
+      state: 'executing',
+      runId: 'run_1' as Parameters<typeof markPlanningExecutionRecord>[1]['runId'],
+      now: 900,
+    })
 
     expect(executing.session.status).toBe('executing')
     expect(executing.session.generatedPlan).toMatchObject({
@@ -233,16 +228,10 @@ describe('planningSessions helpers', () => {
       updatedAt: 900,
     })
 
-    const partial = markPlanningExecutionRecord(
-      {
-        ...executing.session,
-        status: 'executing',
-      },
-      {
-        state: 'partial',
-        now: 901,
-      }
-    )
+    const partial = markPlanningExecutionRecord(executing.session, {
+      state: 'partial',
+      now: 901,
+    })
 
     expect(partial.session.status).toBe('executing')
     expect(partial.session.generatedPlan).toMatchObject({
@@ -252,6 +241,95 @@ describe('planningSessions helpers', () => {
       planStatus: 'partial',
       planUpdatedAt: 901,
       updatedAt: 901,
+    })
+  })
+
+  it('rejects execution transitions before a plan is accepted', () => {
+    const baseRecord = createPlanningSessionRecord({
+      chatId: 'chat_1' as Parameters<typeof createPlanningSessionRecord>[0]['chatId'],
+      sessionId: 'planning_session_1',
+      now: 123,
+      questions: [],
+    })
+    const readyForReviewSession: Parameters<typeof markPlanningExecutionRecord>[0] = {
+      ...baseRecord.session,
+      status: 'ready_for_review',
+      generatedPlan: {
+        chatId: 'chat_1',
+        sessionId: 'planning_session_1',
+        title: 'Plan Title',
+        summary: 'Short summary',
+        markdown: '# Existing markdown',
+        sections: [],
+        acceptanceChecks: [],
+        status: 'ready_for_review',
+        generatedAt: 456,
+      },
+      completedAt: 456,
+      acceptedAt: undefined,
+      updatedAt: 456,
+    }
+
+    expect(() =>
+      markPlanningExecutionRecord(readyForReviewSession, {
+        state: 'executing',
+        runId: 'run_1' as Parameters<typeof markPlanningExecutionRecord>[1]['runId'],
+        now: 900,
+      })
+    ).toThrow('Planning sessions must be accepted before execution starts')
+  })
+
+  it('allows accepted plans to move directly into completed or failed states', () => {
+    const baseRecord = createPlanningSessionRecord({
+      chatId: 'chat_1' as Parameters<typeof createPlanningSessionRecord>[0]['chatId'],
+      sessionId: 'planning_session_1',
+      now: 123,
+      questions: [],
+    })
+    const acceptedSession: Parameters<typeof markPlanningExecutionRecord>[0] = {
+      ...baseRecord.session,
+      status: 'accepted' as const,
+      generatedPlan: {
+        chatId: 'chat_1',
+        sessionId: 'planning_session_1',
+        title: 'Plan Title',
+        summary: 'Short summary',
+        markdown: '# Existing markdown',
+        sections: [],
+        acceptanceChecks: [],
+        status: 'accepted' as const,
+        generatedAt: 456,
+      },
+      completedAt: 456,
+      acceptedAt: 789,
+      updatedAt: 789,
+    }
+
+    const completed = markPlanningExecutionRecord(acceptedSession, {
+      state: 'completed',
+      now: 901,
+    })
+    const failed = markPlanningExecutionRecord(acceptedSession, {
+      state: 'failed',
+      now: 902,
+    })
+
+    expect(completed.session.status).toBe('completed')
+    expect(completed.session.generatedPlan).toMatchObject({ status: 'completed' })
+    expect(completed.session.completedAt).toBe(901)
+    expect(completed.chatPatch).toMatchObject({
+      planStatus: 'completed',
+      planUpdatedAt: 901,
+      updatedAt: 901,
+    })
+
+    expect(failed.session.status).toBe('failed')
+    expect(failed.session.generatedPlan).toMatchObject({ status: 'failed' })
+    expect(failed.session.completedAt).toBe(902)
+    expect(failed.chatPatch).toMatchObject({
+      planStatus: 'failed',
+      planUpdatedAt: 902,
+      updatedAt: 902,
     })
   })
 
