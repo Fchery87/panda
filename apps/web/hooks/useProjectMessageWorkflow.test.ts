@@ -1,77 +1,24 @@
 import { describe, expect, test } from 'bun:test'
 import type { Id } from '@convex/_generated/dataModel'
-import { buildDefaultPlanningQuestions } from '@/lib/planning/question-engine'
 import {
   buildApprovedPlanExecutionPayload,
-  buildArchitectPlanningIntakeRequest,
   executeMessageWorkflowAction,
   shouldQueuePendingDirectSend,
   resolveMessageWorkflowAction,
-  shouldRouteMessageToPlanningIntake,
 } from './useProjectMessageWorkflow'
 
-describe('useProjectMessageWorkflow architect intake-first behavior', () => {
-  test('routes a new architect message into planning intake', () => {
-    expect(
-      shouldRouteMessageToPlanningIntake({
-        mode: 'architect',
-        trimmedContent: 'Plan the new dashboard flow',
-      })
-    ).toBe(true)
-  })
-
-  test('keeps an active architect planning session on the intake path', () => {
-    expect(
-      shouldRouteMessageToPlanningIntake({
-        mode: 'architect',
-        trimmedContent: 'Also cover migration steps',
-      })
-    ).toBe(true)
-  })
-
-  test('does not route code or build messages into planning intake', () => {
-    expect(
-      shouldRouteMessageToPlanningIntake({
-        mode: 'code',
-        trimmedContent: 'Ship it',
-      })
-    ).toBe(false)
-    expect(
-      shouldRouteMessageToPlanningIntake({
-        mode: 'build',
-        trimmedContent: 'Do it directly',
-      })
-    ).toBe(false)
-  })
-
-  test('builds intake requests with fallback planning questions from the trimmed task summary', () => {
-    expect(buildArchitectPlanningIntakeRequest('  Plan the new dashboard flow  ')).toEqual({
-      taskSummary: 'Plan the new dashboard flow',
-      questions: buildDefaultPlanningQuestions({
-        taskSummary: 'Plan the new dashboard flow',
-      }),
-    })
-  })
-
-  test('architect with no active chat creates the chat and then starts intake without direct send', () => {
+describe('useProjectMessageWorkflow direct-send behavior', () => {
+  test('architect with no active chat creates the chat and then sends directly', () => {
     expect(
       resolveMessageWorkflowAction({
         hasActiveChat: false,
         mode: 'architect',
         trimmedContent: 'Plan the new dashboard flow',
       })
-    ).toEqual({
-      type: 'create_chat_and_start_planning_intake',
-      intakeRequest: {
-        taskSummary: 'Plan the new dashboard flow',
-        questions: buildDefaultPlanningQuestions({
-          taskSummary: 'Plan the new dashboard flow',
-        }),
-      },
-    })
+    ).toEqual({ type: 'create_chat_and_send_directly' })
   })
 
-  test('architect with an active planning session continues the intake path', () => {
+  test('architect with an active planning session still sends directly', () => {
     expect(
       resolveMessageWorkflowAction({
         hasActiveChat: true,
@@ -79,9 +26,7 @@ describe('useProjectMessageWorkflow architect intake-first behavior', () => {
         trimmedContent: 'Also cover migration steps',
         activePlanningSessionId: 'planning_1',
       })
-    ).toEqual({
-      type: 'resume_planning_intake',
-    })
+    ).toEqual({ type: 'send_directly' })
   })
 
   test('code and build messages keep the direct-send behavior unchanged', () => {
@@ -101,7 +46,7 @@ describe('useProjectMessageWorkflow architect intake-first behavior', () => {
     ).toEqual({ type: 'create_chat_and_send_directly' })
   })
 
-  test('architect with no active chat creates chat and starts intake without queueing a direct send', async () => {
+  test('architect with no active chat creates chat and queues a direct send', async () => {
     const calls: string[] = []
 
     const handled = await executeMessageWorkflowAction({
@@ -117,80 +62,13 @@ describe('useProjectMessageWorkflow architect intake-first behavior', () => {
       onChatCreated: (chatId: Id<'chats'>) => {
         calls.push(`select-chat:${chatId}`)
       },
-      startPlanningIntake: async ({
-        chatId,
-        taskSummary,
-      }: {
-        chatId: Id<'chats'>
-        taskSummary: string
-        questions: ReturnType<typeof buildDefaultPlanningQuestions>
-      }) => {
-        calls.push(`start-intake:${chatId}:${taskSummary}`)
-      },
       queuePendingDirectSend: () => {
         calls.push('queue-direct-send')
       },
     })
 
     expect(handled).toBe(true)
-    expect(calls).toEqual([
-      'create-chat',
-      'select-chat:chat_new',
-      'start-intake:chat_new:Plan the new dashboard flow',
-    ])
-  })
-
-  test('architect with an active planning session does not start intake again and does not queue a direct send', async () => {
-    const calls: string[] = []
-
-    await expect(
-      executeMessageWorkflowAction({
-        workflowAction: resolveMessageWorkflowAction({
-          hasActiveChat: true,
-          mode: 'architect',
-          trimmedContent: 'Also cover migration steps',
-          activePlanningSessionId: 'planning_1',
-        }),
-        activeChatId: 'chat_1' as Id<'chats'>,
-        startPlanningIntake: async () => {
-          calls.push('start-intake')
-        },
-        queuePendingDirectSend: () => {
-          calls.push('queue-direct-send')
-        },
-      })
-    ).rejects.toThrow(
-      'A planning intake session is already active and must be completed or cleared first'
-    )
-
-    expect(calls).toEqual([])
-  })
-
-  test('architect create-chat intake fails fast when startPlanningIntake is missing', async () => {
-    await expect(
-      executeMessageWorkflowAction({
-        workflowAction: resolveMessageWorkflowAction({
-          hasActiveChat: false,
-          mode: 'architect',
-          trimmedContent: 'Plan the new dashboard flow',
-        }),
-        createChat: async () => 'chat_new' as Id<'chats'>,
-        onChatCreated: () => undefined,
-      })
-    ).rejects.toThrow('Cannot start planning intake without a startPlanningIntake callback')
-  })
-
-  test('architect active-chat intake fails fast when startPlanningIntake is missing', async () => {
-    await expect(
-      executeMessageWorkflowAction({
-        workflowAction: resolveMessageWorkflowAction({
-          hasActiveChat: true,
-          mode: 'architect',
-          trimmedContent: 'Plan the new dashboard flow',
-        }),
-        activeChatId: 'chat_1' as Id<'chats'>,
-      })
-    ).rejects.toThrow('Cannot start planning intake without a startPlanningIntake callback')
+    expect(calls).toEqual(['create-chat', 'select-chat:chat_new', 'queue-direct-send'])
   })
 
   test('code and build direct-send behavior stays unchanged in the workflow executor', async () => {
@@ -261,7 +139,7 @@ describe('useProjectMessageWorkflow architect intake-first behavior', () => {
     ).toBe(false)
   })
 
-  test('architect create-chat intake is not blocked by provider gating', () => {
+  test('architect create-chat direct send remains blocked when provider is unavailable', () => {
     expect(
       shouldQueuePendingDirectSend({
         workflowAction: resolveMessageWorkflowAction({

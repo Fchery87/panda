@@ -188,7 +188,7 @@ export function PlanningIntakeSurface({
                 Planning intake
               </div>
               <div className="mt-1 text-sm text-muted-foreground">
-                Start the guided question flow before reviewing the plan.
+                Optional guided intake for refining or pressure-testing the plan.
               </div>
             </div>
             <Button
@@ -200,7 +200,7 @@ export function PlanningIntakeSurface({
               }}
               className="rounded-none border-border px-3 font-mono text-[11px] uppercase tracking-[0.2em]"
             >
-              Start intake
+              Refine with intake
             </Button>
           </div>
         </div>

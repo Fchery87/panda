@@ -9,7 +9,6 @@ import {
   type PlanStatus,
 } from '@/lib/chat/planDraft'
 import type { ChatMode } from '@/lib/agent/prompt-library'
-import { buildDefaultPlanningQuestions } from '@/lib/planning/question-engine'
 import type { GeneratedPlanArtifact } from '@/lib/planning/types'
 import {
   deriveDeliveryTaskSeed,
@@ -90,34 +89,7 @@ export function buildApprovedPlanExecutionPayload(args: {
   }
 }
 
-type PlanningIntakeRequest = {
-  taskSummary: string
-  questions: ReturnType<typeof buildDefaultPlanningQuestions>
-}
-
-type MessageWorkflowAction =
-  | { type: 'create_chat_and_start_planning_intake'; intakeRequest: PlanningIntakeRequest }
-  | { type: 'start_planning_intake'; intakeRequest: PlanningIntakeRequest }
-  | { type: 'resume_planning_intake' }
-  | { type: 'create_chat_and_send_directly' }
-  | { type: 'send_directly' }
-
-export function shouldRouteMessageToPlanningIntake(args: {
-  mode: ChatMode
-  trimmedContent: string
-}): boolean {
-  if (!args.trimmedContent) return false
-  return args.mode === 'architect'
-}
-
-export function buildArchitectPlanningIntakeRequest(trimmedContent: string): PlanningIntakeRequest {
-  const taskSummary = trimmedContent.trim()
-
-  return {
-    taskSummary,
-    questions: buildDefaultPlanningQuestions({ taskSummary }),
-  }
-}
+type MessageWorkflowAction = { type: 'create_chat_and_send_directly' } | { type: 'send_directly' }
 
 export function resolveMessageWorkflowAction(args: {
   hasActiveChat: boolean
@@ -125,22 +97,6 @@ export function resolveMessageWorkflowAction(args: {
   trimmedContent: string
   activePlanningSessionId?: string | null
 }): MessageWorkflowAction {
-  if (
-    shouldRouteMessageToPlanningIntake({
-      mode: args.mode,
-      trimmedContent: args.trimmedContent,
-    })
-  ) {
-    if (args.hasActiveChat && args.activePlanningSessionId) {
-      return { type: 'resume_planning_intake' }
-    }
-
-    const intakeRequest = buildArchitectPlanningIntakeRequest(args.trimmedContent)
-    return args.hasActiveChat
-      ? { type: 'start_planning_intake', intakeRequest }
-      : { type: 'create_chat_and_start_planning_intake', intakeRequest }
-  }
-
   return args.hasActiveChat ? { type: 'send_directly' } : { type: 'create_chat_and_send_directly' }
 }
 
@@ -149,61 +105,9 @@ export async function executeMessageWorkflowAction(args: {
   activeChatId?: Id<'chats'> | null
   createChat?: () => Promise<Id<'chats'>>
   onChatCreated?: (chatId: Id<'chats'>) => void
-  startPlanningIntake?: (args: {
-    chatId: Id<'chats'>
-    taskSummary: string
-    questions: ReturnType<typeof buildDefaultPlanningQuestions>
-  }) => Promise<unknown>
   queuePendingDirectSend?: () => void
 }): Promise<boolean> {
-  const {
-    workflowAction,
-    activeChatId,
-    createChat,
-    onChatCreated,
-    startPlanningIntake,
-    queuePendingDirectSend,
-  } = args
-
-  if (workflowAction.type === 'resume_planning_intake') {
-    throw new Error(
-      'A planning intake session is already active and must be completed or cleared first'
-    )
-  }
-
-  if (workflowAction.type === 'start_planning_intake') {
-    if (!activeChatId) {
-      throw new Error('Cannot continue planning intake without an active chat')
-    }
-    if (!startPlanningIntake) {
-      throw new Error('Cannot start planning intake without a startPlanningIntake callback')
-    }
-
-    await startPlanningIntake({
-      chatId: activeChatId,
-      taskSummary: workflowAction.intakeRequest.taskSummary,
-      questions: workflowAction.intakeRequest.questions,
-    })
-    return true
-  }
-
-  if (workflowAction.type === 'create_chat_and_start_planning_intake') {
-    if (!createChat) {
-      throw new Error('Cannot create a chat for planning intake without a createChat callback')
-    }
-    if (!startPlanningIntake) {
-      throw new Error('Cannot start planning intake without a startPlanningIntake callback')
-    }
-
-    const chatId = await createChat()
-    onChatCreated?.(chatId)
-    await startPlanningIntake({
-      chatId,
-      taskSummary: workflowAction.intakeRequest.taskSummary,
-      questions: workflowAction.intakeRequest.questions,
-    })
-    return true
-  }
+  const { workflowAction, createChat, onChatCreated, queuePendingDirectSend } = args
 
   if (workflowAction.type === 'create_chat_and_send_directly') {
     if (!createChat) {
@@ -295,11 +199,6 @@ export function useProjectMessageWorkflow(args: {
   }) => Promise<Id<'deliveryStates'>>
   getActiveForgeState?: (chatId: Id<'chats'>) => Promise<ForgeStateRecord | null>
   markPlanningExecutionState?: (args: { sessionId: string; state: 'executing' }) => Promise<unknown>
-  startPlanningIntake?: (args: {
-    chatId: Id<'chats'>
-    taskSummary: string
-    questions: ReturnType<typeof buildDefaultPlanningQuestions>
-  }) => Promise<unknown>
   sendAgentMessage: (
     content: string,
     contextFiles?: string[],
@@ -324,7 +223,6 @@ export function useProjectMessageWorkflow(args: {
     acceptForgePlan,
     getActiveForgeState,
     markPlanningExecutionState,
-    startPlanningIntake,
     sendAgentMessage,
     setActiveChatId,
     setMobilePrimaryPanel,
@@ -418,7 +316,6 @@ export function useProjectMessageWorkflow(args: {
               toast.success('Chat created')
               setActiveChatId(chatId)
             },
-            startPlanningIntake,
             queuePendingDirectSend: shouldQueuePendingDirectSend({
               workflowAction,
               providerAvailable,
@@ -454,7 +351,6 @@ export function useProjectMessageWorkflow(args: {
         await executeMessageWorkflowAction({
           workflowAction,
           activeChatId: activeChat._id,
-          startPlanningIntake,
         })
       ) {
         return
@@ -538,7 +434,6 @@ export function useProjectMessageWorkflow(args: {
       setActiveChatId,
       setChatMode,
       setMobilePrimaryPanel,
-      startPlanningIntake,
       updateChatMutation,
     ]
   )
