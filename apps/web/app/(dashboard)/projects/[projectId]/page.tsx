@@ -134,6 +134,7 @@ interface ConvexMessage {
   role: 'user' | 'assistant' | 'system'
   content: string
   annotations?: MessageAnnotationInfo[]
+  attachments?: Message['attachments']
   createdAt: number
 }
 
@@ -303,6 +304,7 @@ export default function ProjectPage() {
 
   const projectAgentPolicy = readAgentPolicyField(project, 'agentPolicy')
   const createChatMutation = useMutation(api.chats.create)
+  const addMessageMutation = useMutation(api.messages.add)
   const updateChatMutation = useMutation(api.chats.update)
   const startForgeIntake = useMutation(api.forge.startIntake)
   const createForgeTasksFromPlan = useMutation(api.forge.createTasksFromPlan)
@@ -617,8 +619,21 @@ export default function ProjectPage() {
       },
       markPlanningExecutionState: ({ sessionId, state }) =>
         planningSession.markExecutionState({ sessionId, state }),
-      startPlanningIntake: ({ chatId, questions }) =>
-        planningSession.startIntakeForChat(chatId, questions),
+      startPlanningIntake: async ({ chatId, taskSummary, questions }) => {
+        setIsRightPanelOpen(true)
+        setRightPanelTab('chat')
+        setIsChatInspectorOpen(true)
+        setChatInspectorTab('plan')
+
+        await addMessageMutation({
+          chatId,
+          role: 'user',
+          content: taskSummary,
+          annotations: [{ mode: 'architect' }],
+        })
+
+        return planningSession.startIntakeForChat(chatId, questions)
+      },
       sendAgentMessage,
       setActiveChatId,
       setMobilePrimaryPanel,
@@ -854,26 +869,32 @@ export default function ProjectPage() {
 
   // Convert agent messages to MessageList format
   const chatMessages: Message[] = useMemo(() => {
+    const mapConvexMessages = (source: ConvexMessage[] | undefined) =>
+      source?.map((msg) => {
+        const firstAnnotation = msg.annotations?.[0]
+        return {
+          _id: msg._id,
+          role: msg.role,
+          content: msg.content,
+          reasoningContent: firstAnnotation?.reasoningSummary,
+          attachments: msg.attachments,
+          annotations: firstAnnotation
+            ? {
+                ...firstAnnotation,
+                mode: normalizeChatMode(firstAnnotation.mode, chatMode),
+              }
+            : undefined,
+          toolCalls: firstAnnotation?.toolCalls,
+          createdAt: msg.createdAt,
+        }
+      }) || []
+
     if (!activeChat) {
-      return (
-        convexMessages?.map((msg) => {
-          const firstAnnotation = msg.annotations?.[0]
-          return {
-            _id: msg._id,
-            role: msg.role,
-            content: msg.content,
-            reasoningContent: firstAnnotation?.reasoningSummary,
-            annotations: firstAnnotation
-              ? {
-                  ...firstAnnotation,
-                  mode: normalizeChatMode(firstAnnotation.mode, chatMode),
-                }
-              : undefined,
-            toolCalls: firstAnnotation?.toolCalls,
-            createdAt: msg.createdAt,
-          }
-        }) || []
-      )
+      return mapConvexMessages(convexMessages)
+    }
+
+    if (!agent.isLoading && agent.messages.length === 0 && convexMessages?.length) {
+      return mapConvexMessages(convexMessages)
     }
 
     // Use agent messages when available, converting format
@@ -891,7 +912,7 @@ export default function ProjectPage() {
         },
         createdAt: msg.createdAt,
       }))
-  }, [agent.messages, activeChat, chatMode, convexMessages])
+  }, [agent.isLoading, agent.messages, activeChat, chatMode, convexMessages])
 
   const replayProgressSteps = useMemo(
     () => mapLatestRunProgressSteps(runEvents ?? []).slice(-24),

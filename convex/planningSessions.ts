@@ -43,6 +43,11 @@ type PlanningSessionWithMirror = {
   chatPatch: Partial<PlanningChatMirror>
 }
 
+type AnswerPlanningQuestionResult = {
+  session: PlanningSessionDoc
+  completedSession?: PlanningSessionWithMirror
+}
+
 const TERMINAL_STATUSES: ReadonlySet<PlanningSessionStatus> = new Set([
   'completed',
   'failed',
@@ -212,6 +217,190 @@ function applyPlanningAnswer(
     ...session,
     answers: nextAnswers,
     updatedAt: args.answeredAt,
+  }
+}
+
+function getLatestPlanningAnswer(
+  session: PlanningSessionDoc,
+  questionId: string
+): PlanningAnswer | undefined {
+  let latest: PlanningAnswer | undefined
+
+  for (const answer of session.answers) {
+    if (answer.questionId !== questionId) continue
+    if (!latest || answer.answeredAt >= latest.answeredAt) {
+      latest = answer
+    }
+  }
+
+  return latest
+}
+
+function resolvePlanningAnswerText(
+  question: PlanningQuestion,
+  answer: PlanningAnswer | undefined
+): string | null {
+  if (!answer) return null
+
+  if (answer.freeformValue?.trim()) {
+    return answer.freeformValue.trim()
+  }
+
+  if (!answer.selectedOptionId) return null
+
+  const option = question.suggestions.find((entry) => entry.id === answer.selectedOptionId)
+  return option?.label?.trim() || answer.selectedOptionId
+}
+
+function isPlanningIntakeComplete(session: PlanningSessionDoc): boolean {
+  return session.questions.every((question) => !!getLatestPlanningAnswer(session, question.id))
+}
+
+function buildAcceptanceChecks(
+  session: PlanningSessionDoc,
+  validationAnswerText: string | null
+): string[] {
+  const normalized = validationAnswerText?.trim().toLowerCase() ?? ''
+
+  if (!normalized) {
+    return [
+      'Review the generated plan for completeness and confirm the implementation steps are actionable.',
+    ]
+  }
+
+  const checks: string[] = []
+
+  if (normalized.includes('unit') && normalized.includes('e2e')) {
+    checks.push('Run focused unit tests for the planning completion flow.')
+    checks.push('Run the relevant end-to-end coverage for the planning review flow.')
+  } else if (normalized.includes('unit')) {
+    checks.push('Run focused unit tests for the planning completion flow.')
+  } else if (normalized.includes('manual')) {
+    checks.push('Review the generated plan and chat mirror state manually before approval.')
+  } else if (normalized.includes('full verification') || normalized.includes('full pass')) {
+    checks.push('Run the full verification pass before accepting the plan.')
+  } else {
+    checks.push(`Validate the result by ${validationAnswerText.trim()}.`)
+  }
+
+  if (checks.length === 0) {
+    checks.push(
+      'Review the generated plan for completeness and confirm the implementation steps are actionable.'
+    )
+  }
+
+  return checks
+}
+
+function buildStructuredPlanFromAnswers(
+  session: PlanningSessionDoc,
+  generatedAt: number
+): GeneratedPlanArtifact {
+  const sections = [...session.questions]
+    .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id))
+    .map((question, index) => {
+      const answerText = resolvePlanningAnswerText(
+        question,
+        getLatestPlanningAnswer(session, question.id)
+      )
+
+      return {
+        id: question.id,
+        title: question.title,
+        content: answerText
+          ? `${question.prompt}\n\nPlanned direction: ${answerText}`
+          : `${question.prompt}\n\nPlanned direction: Confirm during implementation planning.`,
+        order: index + 1,
+      }
+    })
+
+  const outcomeQuestion = session.questions.find((question) => question.id === 'outcome')
+  const scopeQuestion = session.questions.find((question) => question.id === 'scope')
+  const approachQuestion = session.questions.find((question) => question.id === 'approach')
+  const validationQuestion = session.questions.find((question) => question.id === 'validation')
+
+  const outcomeText = outcomeQuestion
+    ? resolvePlanningAnswerText(
+        outcomeQuestion,
+        getLatestPlanningAnswer(session, outcomeQuestion.id)
+      )
+    : null
+  const scopeText = scopeQuestion
+    ? resolvePlanningAnswerText(scopeQuestion, getLatestPlanningAnswer(session, scopeQuestion.id))
+    : null
+  const approachText = approachQuestion
+    ? resolvePlanningAnswerText(
+        approachQuestion,
+        getLatestPlanningAnswer(session, approachQuestion.id)
+      )
+    : null
+  const validationText = validationQuestion
+    ? resolvePlanningAnswerText(
+        validationQuestion,
+        getLatestPlanningAnswer(session, validationQuestion.id)
+      )
+    : null
+
+  const title = outcomeText
+    ? `Implementation plan for ${outcomeText.toLowerCase()}`
+    : 'Implementation plan for this request'
+
+  const summaryParts = [
+    outcomeText && `Target outcome: ${outcomeText}.`,
+    scopeText && `Primary scope: ${scopeText}.`,
+    approachText && `Approach: ${approachText}.`,
+  ].filter((part): part is string => Boolean(part))
+
+  const artifact: GeneratedPlanArtifact = {
+    chatId: session.chatId,
+    sessionId: session.sessionId,
+    title,
+    summary:
+      summaryParts.join(' ') ||
+      'Structured implementation plan synthesized from the completed intake answers.',
+    markdown: '',
+    sections,
+    acceptanceChecks: buildAcceptanceChecks(session, validationText),
+    status: 'ready_for_review',
+    generatedAt,
+  }
+
+  return {
+    ...artifact,
+    markdown: serializeGeneratedPlanArtifact(artifact),
+  }
+}
+
+function answerPlanningQuestionRecord(
+  session: PlanningSessionDoc,
+  args: {
+    questionId: string
+    selectedOptionId?: string
+    freeformValue?: string
+    source: PlanningAnswer['source']
+    answeredAt: number
+  }
+): AnswerPlanningQuestionResult {
+  const nextSession = applyPlanningAnswer(session, args)
+
+  if (!isPlanningIntakeComplete(nextSession)) {
+    return { session: nextSession }
+  }
+
+  const generatedPlan = buildStructuredPlanFromAnswers(nextSession, args.answeredAt)
+  const completedSession = completePlanningSessionRecord(
+    {
+      ...nextSession,
+      status: 'generating',
+      updatedAt: args.answeredAt,
+    },
+    generatedPlan,
+    args.answeredAt
+  )
+
+  return {
+    session: completedSession.session,
+    completedSession,
   }
 }
 
@@ -405,7 +594,7 @@ export const answerQuestion = mutation({
   },
   handler: async (ctx, args) => {
     const session = await getPlanningSessionOrThrow(ctx, args.sessionId)
-    await requireChatOwner(ctx, session.chatId)
+    const { chat } = await requireChatOwner(ctx, session.chatId)
 
     const question = session.questions.find((entry) => entry.id === args.questionId)
     if (!question) {
@@ -424,18 +613,31 @@ export const answerQuestion = mutation({
       throw new Error('freeformValue is required for freeform answers')
     }
 
-    const nextSession = applyPlanningAnswer(session, {
+    const answeredAt = Date.now()
+    const next = answerPlanningQuestionRecord(session, {
       questionId: args.questionId,
       selectedOptionId: args.selectedOptionId,
       freeformValue: args.freeformValue?.trim(),
       source: args.source,
-      answeredAt: Date.now(),
+      answeredAt,
     })
 
     await ctx.db.patch(session._id, {
-      answers: nextSession.answers,
-      updatedAt: nextSession.updatedAt,
+      status: next.completedSession ? 'generating' : session.status,
+      answers: next.session.answers,
+      updatedAt: answeredAt,
     })
+
+    if (next.completedSession) {
+      await ctx.db.patch(session._id, {
+        status: next.completedSession.session.status,
+        generatedPlan: next.completedSession.session.generatedPlan,
+        completedAt: next.completedSession.session.completedAt,
+        updatedAt: next.completedSession.session.updatedAt,
+      })
+
+      await patchChatMirror(ctx, chat._id, next.completedSession.chatPatch)
+    }
 
     return args.sessionId
   },
@@ -572,7 +774,9 @@ export const markExecutionState = mutation({
 export {
   acceptPlanningSessionRecord,
   applyPlanningAnswer,
+  answerPlanningQuestionRecord,
   buildGeneratedChatPatch,
+  buildStructuredPlanFromAnswers,
   buildIntakeChatPatch,
   completePlanningSessionRecord,
   createPlanningSessionRecord,

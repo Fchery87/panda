@@ -68,4 +68,25 @@ describe('project chat wiring', () => {
     expect(content).toContain('onInspectorTabChange={setChatInspectorTab}')
     expect(content).toContain("openChatInspectorSurface('artifacts')")
   })
+
+  test('project page persists architect intake messages and opens the plan inspector', async () => {
+    const content = await readProjectPage()
+
+    expect(content).toContain('const addMessageMutation = useMutation(api.messages.add)')
+    expect(content).toContain('setIsChatInspectorOpen(true)')
+    expect(content).toContain("setChatInspectorTab('plan')")
+    expect(content).toContain('await addMessageMutation({')
+    expect(content).toContain("role: 'user'")
+    expect(content).toContain('content: taskSummary')
+    expect(content).toContain("annotations: [{ mode: 'architect' }]")
+  })
+
+  test('project page falls back to persisted convex messages when local agent state is empty', async () => {
+    const content = await readProjectPage()
+
+    expect(content).toContain(
+      'if (!agent.isLoading && agent.messages.length === 0 && convexMessages?.length)'
+    )
+    expect(content).toContain('attachments: msg.attachments')
+  })
 })

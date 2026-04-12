@@ -4,6 +4,8 @@ import path from 'node:path'
 import {
   acceptPlanningSessionRecord,
   applyPlanningAnswer,
+  answerPlanningQuestionRecord,
+  buildStructuredPlanFromAnswers,
   completePlanningSessionRecord,
   createPlanningSessionRecord,
   markPlanningExecutionRecord,
@@ -167,6 +169,196 @@ describe('planningSessions helpers', () => {
       planUpdatedAt: 789,
       updatedAt: 789,
     })
+  })
+
+  it('builds a structured review-ready plan from completed intake answers', () => {
+    const questions = [
+      {
+        id: 'outcome',
+        title: 'Outcome',
+        prompt: 'What outcome should Panda deliver?',
+        suggestions: [{ id: 'smallest-viable-change', label: 'Ship the smallest viable change' }],
+        allowFreeform: true,
+        order: 10,
+      },
+      {
+        id: 'scope',
+        title: 'Scope',
+        prompt: 'Which part of the system is in scope?',
+        suggestions: [{ id: 'backend', label: 'Planning backend only' }],
+        allowFreeform: true,
+        order: 20,
+      },
+      {
+        id: 'approach',
+        title: 'Approach',
+        prompt: 'How should the agent implement it?',
+        suggestions: [{ id: 'incremental', label: 'Implement it incrementally' }],
+        allowFreeform: true,
+        order: 30,
+      },
+      {
+        id: 'validation',
+        title: 'Validation',
+        prompt: 'How should the result be verified?',
+        suggestions: [{ id: 'unit-tests', label: 'Run unit tests only' }],
+        allowFreeform: true,
+        order: 40,
+      },
+    ]
+    const record = createPlanningSessionRecord({
+      chatId: 'chat_1' as Parameters<typeof createPlanningSessionRecord>[0]['chatId'],
+      sessionId: 'planning_session_1',
+      now: 100,
+      questions,
+    })
+
+    const completedAnswers = [
+      {
+        questionId: 'outcome',
+        freeformValue: 'fix the final intake regression',
+        source: 'freeform' as const,
+        answeredAt: 101,
+      },
+      {
+        questionId: 'scope',
+        freeformValue: 'planning session backend and tests',
+        source: 'freeform' as const,
+        answeredAt: 102,
+      },
+      {
+        questionId: 'approach',
+        freeformValue: 'reuse the existing completion path with minimal changes',
+        source: 'freeform' as const,
+        answeredAt: 103,
+      },
+      {
+        questionId: 'validation',
+        selectedOptionId: 'unit-tests',
+        source: 'suggestion' as const,
+        answeredAt: 104,
+      },
+    ]
+
+    const session = { ...record.session, answers: completedAnswers, updatedAt: 104 }
+    const plan = buildStructuredPlanFromAnswers(session, 200)
+
+    expect(plan.status).toBe('ready_for_review')
+    expect(plan.title).toBe('Implementation plan for fix the final intake regression')
+    expect(plan.summary).toContain('Target outcome: fix the final intake regression.')
+    expect(plan.summary).toContain('Primary scope: planning session backend and tests.')
+    expect(plan.sections.map((section) => section.title)).toEqual([
+      'Outcome',
+      'Scope',
+      'Approach',
+      'Validation',
+    ])
+    expect(plan.acceptanceChecks).toEqual([
+      'Run focused unit tests for the planning completion flow.',
+    ])
+    expect(plan.markdown).toContain('## Validation')
+    expect(plan.markdown).toContain('## Acceptance Checks')
+  })
+
+  it('final answer generates a review-ready plan artifact and awaiting_review mirror', () => {
+    const record = createPlanningSessionRecord({
+      chatId: 'chat_1' as Parameters<typeof createPlanningSessionRecord>[0]['chatId'],
+      sessionId: 'planning_session_1',
+      now: 100,
+      questions: [
+        {
+          id: 'outcome',
+          title: 'Outcome',
+          prompt: 'What outcome should Panda deliver?',
+          suggestions: [{ id: 'smallest-viable-change', label: 'Ship the smallest viable change' }],
+          allowFreeform: true,
+          order: 10,
+        },
+        {
+          id: 'validation',
+          title: 'Validation',
+          prompt: 'How should the result be verified?',
+          suggestions: [{ id: 'unit-tests', label: 'Run unit tests only' }],
+          allowFreeform: true,
+          order: 40,
+        },
+      ],
+    })
+    const partiallyAnswered = applyPlanningAnswer(record.session, {
+      questionId: 'outcome',
+      freeformValue: 'fix the regression safely',
+      source: 'freeform',
+      answeredAt: 101,
+    })
+
+    const result = answerPlanningQuestionRecord(partiallyAnswered, {
+      questionId: 'validation',
+      selectedOptionId: 'unit-tests',
+      source: 'suggestion',
+      answeredAt: 200,
+    })
+
+    expect(result.session.status).toBe('ready_for_review')
+    expect(result.session.generatedPlan).toMatchObject({
+      chatId: 'chat_1',
+      sessionId: 'planning_session_1',
+      status: 'ready_for_review',
+      generatedAt: 200,
+    })
+    expect(result.completedSession?.chatPatch).toMatchObject({
+      planStatus: 'awaiting_review',
+      planSourceMessageId: 'planning_session_1',
+      planLastGeneratedAt: 200,
+    })
+    expect(result.completedSession?.chatPatch.planDraft).toContain(
+      '# Implementation plan for fix the regression safely'
+    )
+  })
+
+  it('non-final answers still only update answers', () => {
+    const record = createPlanningSessionRecord({
+      chatId: 'chat_1' as Parameters<typeof createPlanningSessionRecord>[0]['chatId'],
+      sessionId: 'planning_session_1',
+      now: 100,
+      questions: [
+        {
+          id: 'outcome',
+          title: 'Outcome',
+          prompt: 'What outcome should Panda deliver?',
+          suggestions: [{ id: 'smallest-viable-change', label: 'Ship the smallest viable change' }],
+          allowFreeform: true,
+          order: 10,
+        },
+        {
+          id: 'validation',
+          title: 'Validation',
+          prompt: 'How should the result be verified?',
+          suggestions: [{ id: 'unit-tests', label: 'Run unit tests only' }],
+          allowFreeform: true,
+          order: 40,
+        },
+      ],
+    })
+
+    const result = answerPlanningQuestionRecord(record.session, {
+      questionId: 'outcome',
+      freeformValue: 'keep the fix minimal',
+      source: 'freeform',
+      answeredAt: 150,
+    })
+
+    expect(result.session.status).toBe('intake')
+    expect(result.session.answers).toEqual([
+      {
+        questionId: 'outcome',
+        selectedOptionId: undefined,
+        freeformValue: 'keep the fix minimal',
+        source: 'freeform',
+        answeredAt: 150,
+      },
+    ])
+    expect(result.session.generatedPlan).toBeUndefined()
+    expect(result.completedSession).toBeUndefined()
   })
 
   it('accepts generated plans and preserves execution state transitions', () => {
