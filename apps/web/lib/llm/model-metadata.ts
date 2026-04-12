@@ -15,6 +15,16 @@ const KNOWN_MODEL_CONTEXT_WINDOWS: Record<string, number> = {
   'glm-4.7': 128000,
   'glm-4.7-flashx': 128000,
   'glm-4.7-flash': 128000,
+  'kimi-k2.5': 262144,
+  'kimi-k2.5-lightning': 131072,
+  'glm-5.1': 202752,
+  'glm-5.1-precision': 202752,
+  'glm-5': 202752,
+  'gemma-4-31b-it': 262144,
+  'minimax-m2.5': 204800,
+  'qwen3.5-397b-a17b': 262144,
+  'qwen3.5-9b': 262144,
+  'deepseek-v3.2': 163840,
 
   // Common routing defaults
   'anthropic/claude-3.5-sonnet': 200000,
@@ -33,6 +43,7 @@ const PROVIDER_FALLBACK_CONTEXT_WINDOWS: Record<string, number> = {
   deepseek: 64000,
   groq: 128000,
   fireworks: 128000,
+  crofai: 128000,
   custom: 32000,
 }
 

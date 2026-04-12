@@ -75,6 +75,24 @@ export const SHARED_PROVIDER_DEFINITIONS: ProviderDefinition[] = [
       'accounts/fireworks/models/deepseek-v3',
     ],
   },
+  {
+    value: 'crofai',
+    label: 'crof.ai',
+    models: [
+      'kimi-k2.5',
+      'kimi-k2.5-lightning',
+      'glm-5.1',
+      'glm-5.1-precision',
+      'glm-5',
+      'glm-4.7',
+      'glm-4.7-flash',
+      'gemma-4-31b-it',
+      'minimax-m2.5',
+      'qwen3.5-397b-a17b',
+      'qwen3.5-9b',
+      'deepseek-v3.2',
+    ],
+  },
 ]
 
 export function getSharedProviderDefinitions(): ProviderDefinition[] {

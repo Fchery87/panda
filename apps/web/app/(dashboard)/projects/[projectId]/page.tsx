@@ -619,21 +619,6 @@ export default function ProjectPage() {
       },
       markPlanningExecutionState: ({ sessionId, state }) =>
         planningSession.markExecutionState({ sessionId, state }),
-      startPlanningIntake: async ({ chatId, taskSummary, questions }) => {
-        setIsRightPanelOpen(true)
-        setRightPanelTab('chat')
-        setIsChatInspectorOpen(true)
-        setChatInspectorTab('plan')
-
-        await addMessageMutation({
-          chatId,
-          role: 'user',
-          content: taskSummary,
-          annotations: [{ mode: 'architect' }],
-        })
-
-        return planningSession.startIntakeForChat(chatId, questions)
-      },
       sendAgentMessage,
       setActiveChatId,
       setMobilePrimaryPanel,

@@ -47,4 +47,14 @@ describe('resolveContextWindow', () => {
     expect(result.source).toBe('fallback')
     expect(result.contextWindow).toBeGreaterThan(0)
   })
+
+  it('supports crof.ai seeded models in the known context map', () => {
+    const result = resolveContextWindow({
+      providerType: 'crofai',
+      model: 'deepseek-v3.2',
+    })
+
+    expect(result.source).toBe('map')
+    expect(result.contextWindow).toBe(163840)
+  })
 })

@@ -280,7 +280,7 @@ function buildAcceptanceChecks(
   } else if (normalized.includes('full verification') || normalized.includes('full pass')) {
     checks.push('Run the full verification pass before accepting the plan.')
   } else {
-    checks.push(`Validate the result by ${validationAnswerText.trim()}.`)
+    checks.push(`Validate the result by ${(validationAnswerText ?? '').trim()}.`)
   }
 
   if (checks.length === 0) {
