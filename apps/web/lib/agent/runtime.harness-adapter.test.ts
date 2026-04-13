@@ -547,7 +547,8 @@ describe('Harness adapter guardrail parity', () => {
     expect(new Set(completeIds)).toEqual(new Set(startIds))
   })
 
-  it('rewrites within harness when fenced code detected in architect mode and does not leak fenced code', async () => {
+  it('filters fenced code inline in architect mode without a rewrite and does not leak fenced code', async () => {
+    // Architect mode uses inline stream filtering — one LLM call, no reset event.
     let callCount = 0
     const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }
     const provider: LLMProvider = {
@@ -561,16 +562,7 @@ describe('Harness adapter guardrail parity', () => {
       },
       async *completionStream(_options: CompletionOptions): AsyncGenerator<StreamChunk> {
         callCount += 1
-        if (callCount === 1) {
-          yield { type: 'text', content: 'Here is code:\n```js\nconsole.log(1)\n```' }
-          yield makeFinish()
-          return
-        }
-        // Second call is the harness rewrite (no code fences)
-        yield {
-          type: 'text',
-          content: '1) Clarifying questions\n2) Proposed plan\n3) Risks\n4) Next step\n',
-        }
+        yield { type: 'text', content: 'Here is code:\n```js\nconsole.log(1)\n```\nEnd.' }
         yield makeFinish()
       },
     }
@@ -593,15 +585,18 @@ describe('Harness adapter guardrail parity', () => {
       events.push(evt)
     }
 
-    // Should be 2 calls: first attempt with fence, second is harness rewrite
-    expect(callCount).toBe(2)
+    expect(callCount).toBe(1)
+    expect(events.some((e) => e.type === 'reset')).toBe(false)
+
     const streamedText = events
       .filter((e) => e.type === 'text')
       .map((e) => e.content ?? '')
       .join('')
+
     expect(streamedText.includes('```')).toBe(false)
-    const complete = events.find((e) => e.type === 'complete')
-    expect(complete).toBeDefined()
+    expect(streamedText).not.toContain('console.log(1)')
+    expect(streamedText).toContain('Here is code:')
+    expect(streamedText).toContain('End.')
   })
 
   it('emits subagent failure progress from core runtime events with error details', async () => {

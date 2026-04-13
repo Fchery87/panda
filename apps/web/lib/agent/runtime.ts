@@ -599,6 +599,9 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
     let attemptText = ''
     let sawToolCall = false
     let fenceTriggered = false
+    // Architect mode: tracks whether the stream is currently inside a fenced block
+    // so we can filter it inline rather than aborting the stream entirely.
+    let inArchitectFence = false
     let pendingComplete: AgentEvent | null = null
 
     let shouldResume = false
@@ -667,9 +670,34 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
       }
 
       if (mapped.type === 'text' && mapped.content) {
-        const isGuardrailMode =
-          promptContext.chatMode === 'build' || promptContext.chatMode === 'architect'
-        if (isGuardrailMode) {
+        if (promptContext.chatMode === 'architect') {
+          // Architect (plan) mode: stream all tokens but silently drop content inside
+          // fenced code blocks. This keeps the chat flowing while enforcing the
+          // "no large code blocks" contract without aborting the stream entirely.
+          let chunk = mapped.content
+          let filtered = ''
+          while (chunk.length > 0) {
+            const markerIdx = chunk.indexOf('```')
+            if (markerIdx === -1) {
+              if (!inArchitectFence) filtered += chunk
+              break
+            }
+            if (!inArchitectFence) {
+              filtered += chunk.slice(0, markerIdx)
+              inArchitectFence = true
+            } else {
+              inArchitectFence = false
+            }
+            chunk = chunk.slice(markerIdx + 3)
+          }
+          attemptText += filtered
+          if (filtered) yield { ...mapped, content: filtered }
+          continue
+        }
+
+        // Build mode: break on first fence and trigger a rewrite so the LLM
+        // re-executes using tools instead of outputting code in chat.
+        if (promptContext.chatMode === 'build') {
           const combined = attemptText + mapped.content
           const fenceIndex = combined.indexOf('```')
           if (fenceIndex !== -1) {
@@ -703,37 +731,35 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
       fenceTriggered ||
       shouldTriggerRewrite({ promptContext, content: attemptText, sawToolCall })
     ) {
+      // Rewrite only fires for build mode — architect handles fenced blocks inline.
       yield {
         type: 'status_thinking',
-        content:
-          promptContext.chatMode === 'architect'
-            ? 'Plan Mode: rewriting response into a plan (no code)…'
-            : 'Build Mode: rewriting response to use artifacts (no code blocks)…',
+        content: 'Build Mode: rewriting response to use artifacts (no code blocks)…',
       }
       yield {
         type: 'progress_step',
-        content:
-          promptContext.chatMode === 'architect'
-            ? 'Plan mode guardrail triggered: rewriting response into plan format'
-            : 'Build mode guardrail triggered: rewriting response to execute via tools',
+        content: 'Build mode guardrail triggered: rewriting response to execute via tools',
         progressStatus: 'running',
         progressCategory: 'rewrite',
       }
       yield {
         type: 'reset',
-        resetReason:
-          promptContext.chatMode === 'architect' ? 'plan_mode_rewrite' : 'build_mode_rewrite',
+        resetReason: 'build_mode_rewrite',
       }
 
       const rewriteMessage: CompletionMessage = {
         role: 'user',
         content:
-          promptContext.chatMode === 'architect'
-            ? 'Rewrite your previous answer into Plan Mode format. Do not include any fenced code blocks. Focus on architecture, design decisions, and implementation approach.'
-            : 'Your previous answer included fenced code blocks, which are not allowed in Build Mode. If you only provided a plan without using tools, you must now execute the work using tools. Use tool calls only, and keep chat output to a short summary with no fenced code blocks.',
+          'Your previous answer included fenced code blocks, which are not allowed in Build Mode. If you only provided a plan without using tools, you must now execute the work using tools. Use tool calls only, and keep chat output to a short summary with no fenced code blocks.',
       }
 
-      const rewriteMessages = [...completionMessages, rewriteMessage]
+      // Include the first-attempt text so the rewrite LLM has a "previous answer" to work from.
+      const rewriteMessages: CompletionMessage[] = [
+        ...completionMessages,
+        ...(attemptText.trim() ? [{ role: 'assistant' as const, content: attemptText }] : []),
+        rewriteMessage,
+      ]
+
       const rewriteSessionID = `${sessionID}-rewrite`
       const { initialMessages: rewriteInitialMessages, userMessage: rewriteUserMessage } =
         completionMessagesToHarnessMessages({

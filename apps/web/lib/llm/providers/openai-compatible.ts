@@ -326,7 +326,47 @@ export class OpenAICompatibleProvider implements LLMProvider {
       filteredMessages = this.convertChutesToolMessages(filteredMessages)
     }
 
-    return filteredMessages.map((msg: CompletionMessage) => {
+    return filteredMessages.map((msg: CompletionMessage): CoreMessage => {
+      // AI SDK CoreToolMessage requires content to be ToolResultPart[], not a string
+      if (msg.role === 'tool') {
+        return {
+          role: 'tool',
+          content: [
+            {
+              type: 'tool-result',
+              toolCallId: msg.tool_call_id ?? '',
+              toolName: msg.name ?? 'unknown',
+              result: msg.content,
+            },
+          ],
+        }
+      }
+
+      // AI SDK CoreAssistantMessage with tool calls requires content array format
+      if (msg.role === 'assistant' && msg.tool_calls && msg.tool_calls.length > 0) {
+        const parts: Array<
+          { type: 'text'; text: string } | { type: 'tool-call'; toolCallId: string; toolName: string; args: unknown }
+        > = []
+        if (msg.content) {
+          parts.push({ type: 'text', text: msg.content })
+        }
+        for (const tc of msg.tool_calls) {
+          let args: unknown = {}
+          try {
+            args = JSON.parse(tc.function.arguments ?? '{}')
+          } catch {
+            args = {}
+          }
+          parts.push({
+            type: 'tool-call',
+            toolCallId: tc.id,
+            toolName: tc.function.name,
+            args,
+          })
+        }
+        return { role: 'assistant', content: parts }
+      }
+
       const baseMessage = {
         role: msg.role,
         content: msg.content,
@@ -334,9 +374,6 @@ export class OpenAICompatibleProvider implements LLMProvider {
 
       if (msg.name) {
         baseMessage.name = msg.name
-      }
-      if (msg.tool_calls) {
-        baseMessage.tool_calls = msg.tool_calls
       }
       if (msg.tool_call_id) {
         baseMessage.tool_call_id = msg.tool_call_id
