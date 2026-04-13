@@ -556,7 +556,9 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
       maxToolExecutionRetries: 1,
       toolRetryBackoffMs: 200,
       specEngine: {
-        enabled: true,
+        // Architect (plan) mode is a planning-only pass — no implementation happens,
+        // so spec generation and verification would always fail. Disable entirely.
+        enabled: promptContext.chatMode !== 'architect',
         autoApproveAmbient: true,
         ...(isE2ESpecApprovalModeEnabled ? { defaultTier: 'explicit' as const } : {}),
       },
