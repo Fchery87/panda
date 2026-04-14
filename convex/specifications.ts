@@ -692,6 +692,30 @@ export const markDrifted = mutation({
 })
 
 /**
+ * Approve a specification — produced by the plan-exit tool.
+ * Sets status to 'approved', records approvedAt, approvedBy, and a content signature.
+ */
+export const approve = mutation({
+  args: {
+    id: v.id('specifications'),
+    approvedBy: v.string(),
+    signature: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireSpecificationOwner(ctx, args.id)
+    const now = Date.now()
+    await ctx.db.patch(args.id, {
+      status: 'approved',
+      approvedAt: now,
+      approvedBy: args.approvedBy,
+      ...(args.signature ? { signature: args.signature } : {}),
+      updatedAt: now,
+    })
+    return { approvedAt: now }
+  },
+})
+
+/**
  * Get specifications by run ID
  */
 export const listByRun = query({

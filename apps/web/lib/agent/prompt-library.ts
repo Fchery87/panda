@@ -24,8 +24,9 @@ type LegacyChatMode = ChatMode | 'discuss' | 'debug' | 'review'
 
 /**
  * Mode configuration
- * Note: allowedTools are defined in tools.ts:getAllowedToolsForMode()
- * to maintain a single source of truth for tool permissions.
+ * Note: structural tool permissions are enforced by the capability-based
+ * rule system in lib/agent/permission/mode-rulesets.ts, wired through the
+ * harness runtime config (chatMode + permissionRules fields).
  */
 export interface ModeConfig {
   description: string

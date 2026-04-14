@@ -40,7 +40,8 @@ import type {
   CompletionMessage,
   StreamChunk,
 } from '../../llm/types'
-import { AGENT_TOOLS } from '../tools'
+import { AGENT_TOOLS, type AgentToolDefinition } from '../tools'
+import { evaluate, narrowRulesForSubagent } from './permission/evaluate'
 import { analyzeCommand } from '../command-analysis'
 import { ascending } from './identifier'
 import { agents } from './agents'
@@ -287,6 +288,17 @@ export interface RuntimeEvent {
   drift?: {
     specId: string
     findings: Array<{ filePath: string; description: string }>
+  }
+  /** Phase 8 — capability-based permission evaluation result */
+  permission?: {
+    tool: string
+    capability: string
+    target?: string
+    decision: 'allow' | 'ask' | 'deny'
+    source?: string
+    reason: string
+    mode: string
+    agentId: string
   }
 }
 
@@ -1312,6 +1324,53 @@ export class Runtime {
       return { output: '', error }
     }
     const patterns = this.extractPatterns(toolName, args)
+
+    // Phase 5 — execution-time capability guard (defense-in-depth, second layer)
+    // Catches tools that slipped through tool-list filtering and enforces
+    // target-specific rules (e.g. `rm *` in build mode). Returns a structured
+    // tool_result so the LLM can see and reason about the denial.
+    const modeRules = this.config.permissionRules
+    if (modeRules && modeRules.length > 0) {
+      const agentTool = AGENT_TOOLS.find((t) => t.function.name === toolName)
+      if (agentTool?.capability) {
+        const primaryTarget = patterns[0] ?? undefined
+        const execResult = evaluate(modeRules, {
+          capability: agentTool.capability,
+          target: primaryTarget,
+          mode: this.config.chatMode ?? 'code',
+          agentId: agent.name,
+        })
+        // Always emit observability event for the decision
+        yield {
+          type: 'permission_decision',
+          permission: {
+            tool: toolName,
+            capability: agentTool.capability,
+            target: primaryTarget,
+            decision: execResult.decision,
+            source: execResult.rule?.source,
+            reason: execResult.reason,
+            mode: this.config.chatMode ?? 'code',
+            agentId: agent.name,
+          },
+        }
+
+        if (execResult.decision === 'deny') {
+          const error = `Permission denied by ${execResult.rule?.source ?? 'mode'} rule: ${execResult.reason}`
+          log.warn('Capability denied at execution', { tool: toolName, reason: execResult.reason })
+          yield this.createToolResultEvent({
+            toolCallId: toolCall.id,
+            toolName,
+            args,
+            output: '',
+            error,
+            startedAt,
+          })
+          return { output: '', error, argsUsed: args }
+        }
+      }
+    }
+
     const riskTier = this.classifyToolRisk(toolName, args)
     const riskPolicyDecision = this.resolveRiskPolicyDecision(toolName, riskTier)
 
@@ -1947,9 +2006,16 @@ export class Runtime {
       }
     }
 
+    // Phase 7 — narrow parent permission rules to the subagent's capability ceiling.
+    // Subagents can never inherit capabilities beyond their maxCapabilities declaration.
+    const narrowedRules = narrowRulesForSubagent(
+      this.config.permissionRules ?? [],
+      agent.maxCapabilities
+    )
     const childRuntime = new Runtime(this.provider, this.toolExecutors, {
       ...this.config,
       subagentDepth: currentDepth + 1,
+      permissionRules: narrowedRules.length > 0 ? narrowedRules : this.config.permissionRules,
     })
     const parentAbortSignal = this.state?.abortController.signal
     const abortChild = () => childRuntime.abort()
@@ -2293,8 +2359,25 @@ export class Runtime {
     }
 
     return Array.from(byName.values()).filter((tool) => {
-      const decision = checkPermission(agent.permission, tool.function.name)
-      return decision !== 'deny'
+      // Layer 1: existing agent permission check (name-pattern based)
+      const agentDecision = checkPermission(agent.permission, tool.function.name)
+      if (agentDecision === 'deny') return false
+
+      // Layer 2: capability-based mode rule evaluation (structural enforcement)
+      const rules = this.config.permissionRules
+      if (rules && rules.length > 0) {
+        const agentTool = tool as AgentToolDefinition
+        if (agentTool.capability) {
+          const result = evaluate(rules, {
+            capability: agentTool.capability,
+            mode: this.config.chatMode ?? 'code',
+            agentId: agent.name,
+          })
+          if (result.decision === 'deny') return false
+        }
+      }
+
+      return true
     })
   }
 

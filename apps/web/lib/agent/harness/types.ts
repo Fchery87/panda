@@ -14,6 +14,8 @@ import type { ToolDefinition } from '../../llm/types'
 import type { CheckpointStore } from './checkpoint-store'
 import type { FormalSpecification, SpecEngineConfig, SpecTier } from '../spec/types'
 import type { WorkerContextPack } from '../../forge/types'
+import type { ChatMode } from '../chat-modes'
+import type { PermissionRule, Capability } from './permission/types'
 
 export type { ToolDefinition } from '../../llm/types'
 
@@ -79,6 +81,13 @@ export interface AgentConfig {
   color?: string
   steps?: number
   options?: Record<string, unknown>
+  /**
+   * Capability ceiling for subagent permission narrowing.
+   * When set, parent permissionRules are filtered to only include
+   * rules for capabilities listed here. Prevents subagents from
+   * inheriting parent capabilities beyond their declared scope.
+   */
+  maxCapabilities?: Capability[]
 }
 
 /**
@@ -414,6 +423,10 @@ export interface RuntimeConfig {
   toolExecutionTimeoutMs?: number
   /** Prebuilt Forge execution context for builder/manager/executive runs */
   forgeContextPack?: WorkerContextPack
+  /** Active chat mode — used for capability-based tool filtering */
+  chatMode?: ChatMode
+  /** Ordered permission rules evaluated with last-rule-wins semantics to filter tools */
+  permissionRules?: PermissionRule[]
 }
 
 export interface RuntimeSnapshotEvent {

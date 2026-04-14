@@ -6,9 +6,9 @@
  */
 
 import { appLog } from '@/lib/logger'
-import { streamText, generateText, jsonSchema, type CoreMessage, type ToolSet } from 'ai'
+import { streamText, generateText, jsonSchema, NoSuchToolError, type CoreMessage, type ToolSet } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
-import { formatProviderError } from './error-utils'
+import { formatProviderError, repairHallucinatedToolName } from './error-utils'
 import type {
   LLMProvider,
   ModelInfo,
@@ -227,6 +227,13 @@ export class OpenAICompatibleProvider implements LLMProvider {
             [providerType]: reasoningParams as Record<string, unknown>,
           },
         }),
+        experimental_repairToolCall: async ({ toolCall, tools: availableTools, error }) => {
+          if (!(error instanceof NoSuchToolError)) throw error
+          const known = Object.keys(availableTools ?? {})
+          const repaired = repairHallucinatedToolName(toolCall.toolName, known)
+          if (!repaired) return null
+          return { ...toolCall, toolName: repaired }
+        },
       } as StreamTextArgs
 
       const result = streamText(streamOptions)

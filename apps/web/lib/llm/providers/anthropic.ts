@@ -5,8 +5,8 @@
  */
 
 import { createAnthropic } from '@ai-sdk/anthropic'
-import { generateText, jsonSchema, streamText, type CoreMessage, type ToolSet } from 'ai'
-import { formatProviderError } from './error-utils'
+import { generateText, jsonSchema, streamText, NoSuchToolError, type CoreMessage, type ToolSet } from 'ai'
+import { formatProviderError, repairHallucinatedToolName } from './error-utils'
 import type {
   CompletionMessage,
   CompletionOptions,
@@ -161,6 +161,16 @@ export class AnthropicProvider implements LLMProvider {
       providerOptions: {
         anthropic: anthropicOptions,
       },
+      // Gracefully handle hallucinated tool names (e.g. "write_to_file", "create_file").
+      // Try to map the call to the closest available tool so the harness can respond
+      // with a proper denial instead of crashing the stream with NoSuchToolError.
+      experimental_repairToolCall: async ({ toolCall, tools: availableTools, error }) => {
+        if (!(error instanceof NoSuchToolError)) throw error
+        const knownNames = Object.keys(availableTools ?? {})
+        const repaired = repairHallucinatedToolName(toolCall.toolName, knownNames)
+        if (!repaired) return null
+        return { ...toolCall, toolName: repaired }
+      },
     } as StreamTextArgs)
 
     try {
@@ -275,3 +285,4 @@ export class AnthropicProvider implements LLMProvider {
 export function createAnthropicProvider(config: ProviderConfig): AnthropicProvider {
   return new AnthropicProvider(config)
 }
+

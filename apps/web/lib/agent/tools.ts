@@ -13,9 +13,15 @@
 import { appLog } from '@/lib/logger'
 import type { ToolDefinition, ToolCall, ToolResult } from '../llm/types'
 import type { ChatMode } from './prompt-library'
+import type { Capability } from '@/lib/agent/harness/permission/types'
 import { analyzeCommand, isCommandPipelineSafe } from './command-analysis'
 import { executeOracleSearch } from './harness/oracle'
 import { repairJSON, safeJSONParse } from './harness/tool-repair'
+
+export interface AgentToolDefinition extends ToolDefinition {
+  capability: Capability
+  readOnly: boolean
+}
 
 type ConvexFunctionRef = unknown
 type ConvexArgs = Record<string, unknown>
@@ -26,7 +32,10 @@ function logToolError(message: string, error: unknown): void {
 }
 
 /**
- * Get tools allowed for a specific mode
+ * Get tools allowed for a specific mode (name-list approach).
+ * @deprecated Structural enforcement is now done via capability-based rules in
+ * lib/agent/permission/mode-rulesets.ts, evaluated by the harness runtime.
+ * This function is retained for tests and legacy consumers.
  */
 export function getAllowedToolsForMode(mode: ChatMode): string[] {
   const modeTools: Record<ChatMode, string[]> = {
@@ -68,7 +77,7 @@ export function getAllowedToolsForMode(mode: ChatMode): string[] {
 /**
  * Filter tools based on mode
  */
-export function getToolsForMode(mode: ChatMode): ToolDefinition[] {
+export function getToolsForMode(mode: ChatMode): AgentToolDefinition[] {
   const allowedTools = getAllowedToolsForMode(mode)
   return AGENT_TOOLS.filter((tool) => allowedTools.includes(tool.function.name))
 }
@@ -84,9 +93,11 @@ export function isToolAllowedForMode(toolName: string, mode: ChatMode): boolean 
 /**
  * Tool definitions for the agent
  */
-export const AGENT_TOOLS: ToolDefinition[] = [
+export const AGENT_TOOLS: AgentToolDefinition[] = [
   {
     type: 'function',
+    capability: 'read',
+    readOnly: true,
     function: {
       name: 'read_files',
       description:
@@ -109,6 +120,8 @@ export const AGENT_TOOLS: ToolDefinition[] = [
   },
   {
     type: 'function',
+    capability: 'read',
+    readOnly: true,
     function: {
       name: 'list_directory',
       description:
@@ -130,6 +143,8 @@ export const AGENT_TOOLS: ToolDefinition[] = [
   },
   {
     type: 'function',
+    capability: 'edit',
+    readOnly: false,
     function: {
       name: 'write_files',
       description:
@@ -162,6 +177,8 @@ export const AGENT_TOOLS: ToolDefinition[] = [
   },
   {
     type: 'function',
+    capability: 'exec',
+    readOnly: false,
     function: {
       name: 'run_command',
       description:
@@ -189,6 +206,8 @@ export const AGENT_TOOLS: ToolDefinition[] = [
   },
   {
     type: 'function',
+    capability: 'search',
+    readOnly: true,
     function: {
       name: 'search_codebase',
       description:
@@ -208,6 +227,8 @@ export const AGENT_TOOLS: ToolDefinition[] = [
   },
   {
     type: 'function',
+    capability: 'search',
+    readOnly: true,
     function: {
       name: 'search_code',
       description:
@@ -266,6 +287,8 @@ export const AGENT_TOOLS: ToolDefinition[] = [
   },
   {
     type: 'function',
+    capability: 'search',
+    readOnly: true,
     function: {
       name: 'search_code_ast',
       description: 'Search code structurally using ast-grep patterns.',
@@ -305,6 +328,8 @@ export const AGENT_TOOLS: ToolDefinition[] = [
   },
   {
     type: 'function',
+    capability: 'memory',
+    readOnly: false,
     function: {
       name: 'update_memory_bank',
       description:
@@ -323,6 +348,8 @@ export const AGENT_TOOLS: ToolDefinition[] = [
   },
   {
     type: 'function',
+    capability: 'edit',
+    readOnly: false,
     function: {
       name: 'apply_patch',
       description:

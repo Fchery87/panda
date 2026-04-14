@@ -1071,6 +1071,9 @@ export default defineSchema({
     verificationResults: v.optional(v.array(v.any())),
     createdAt: v.number(),
     updatedAt: v.number(),
+    approvedAt: v.optional(v.number()),
+    approvedBy: v.optional(v.string()),   // agent name or user ID
+    signature: v.optional(v.string()),    // hash of plan content for integrity checks
   })
     .index('by_project', ['projectId'])
     .index('by_chat', ['chatId'])
