@@ -165,7 +165,7 @@ export class AnthropicProvider implements LLMProvider {
       // Try to map the call to the closest available tool so the harness can respond
       // with a proper denial instead of crashing the stream with NoSuchToolError.
       experimental_repairToolCall: async ({ toolCall, tools: availableTools, error }) => {
-        if (!(error instanceof NoSuchToolError)) throw error
+        if (!NoSuchToolError.isInstance(error)) return null
         const knownNames = Object.keys(availableTools ?? {})
         const repaired = repairHallucinatedToolName(toolCall.toolName, knownNames)
         if (!repaired) return null

@@ -228,7 +228,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
           },
         }),
         experimental_repairToolCall: async ({ toolCall, tools: availableTools, error }) => {
-          if (!(error instanceof NoSuchToolError)) throw error
+          if (!NoSuchToolError.isInstance(error)) return null
           const known = Object.keys(availableTools ?? {})
           const repaired = repairHallucinatedToolName(toolCall.toolName, known)
           if (!repaired) return null
