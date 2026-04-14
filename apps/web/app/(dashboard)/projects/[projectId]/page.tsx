@@ -1358,7 +1358,7 @@ export default function ProjectPage() {
       inspectContent={
         <div className="flex h-full flex-col overflow-hidden">
           <div className="surface-1 border-b border-border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            Inspect
+            Inspect — element details
           </div>
           <div className="min-h-0 flex-1 overflow-auto">
             <BrowserSessionPanel session={browserSessionViewModel} />
@@ -1387,7 +1387,7 @@ export default function ProjectPage() {
       commentsContent={
         <div className="flex h-full flex-col overflow-hidden">
           <div className="surface-1 border-b border-border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            Notes
+            Notes — memory, QA, delivery
           </div>
           <div className="min-h-0 flex-1 overflow-auto">
             <TaskPanel task={taskPanelViewModel} />
@@ -1421,9 +1421,10 @@ export default function ProjectPage() {
           animate={{ opacity: 1, scale: 1 }}
           className="space-y-6 text-center"
         >
+          <span className="text-label text-primary">404</span>
           <h1 className="font-mono text-2xl font-bold">Project not found</h1>
           <p className="font-mono text-sm text-muted-foreground">
-            The project you're looking for doesn't exist or has been deleted.
+            This project doesn&apos;t exist or was deleted. Your other projects are safe.
           </p>
           <Button
             variant="outline"
@@ -1449,7 +1450,7 @@ export default function ProjectPage() {
           className="space-y-4 text-center"
         >
           <div className="mx-auto h-12 w-12 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
-          <p className="font-mono text-sm text-muted-foreground">Loading project...</p>
+          <p className="font-mono text-sm text-muted-foreground">Opening workbench...</p>
         </motion.div>
       </div>
     )
@@ -1554,9 +1555,7 @@ export default function ProjectPage() {
               aria-label="Open command palette"
             >
               <span className="uppercase tracking-[0.18em] text-primary">Search</span>
-              <span className="min-w-0 flex-1 truncate">
-                Jump to files, modes, settings, and commands
-              </span>
+              <span className="min-w-0 flex-1 truncate">Files, commands, settings</span>
               <span className="surface-1 shrink-0 border border-border px-2 py-0.5 text-[10px] uppercase tracking-[0.18em]">
                 Ctrl+K
               </span>
@@ -1600,7 +1599,7 @@ export default function ProjectPage() {
                   className="rounded-none text-xs uppercase tracking-wide"
                 >
                   <RotateCcw className="mr-2 h-3.5 w-3.5" />
-                  Reset Workspace
+                  Clear Workspace State
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setIsShareDialogOpen(true)}

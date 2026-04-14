@@ -55,7 +55,20 @@ export function buildSecurityHeaders({
 }
 
 const nextConfig: NextConfig = {
-  transpilePackages: ['@uiw/react-codemirror'],
+  transpilePackages: [
+    '@uiw/react-codemirror',
+    '@uiw/codemirror-extensions-basic-setup',
+    '@uiw/codemirror-themes',
+    '@codemirror/state',
+    '@codemirror/view',
+    '@codemirror/language',
+    '@codemirror/commands',
+    '@codemirror/autocomplete',
+    '@codemirror/search',
+    '@codemirror/lint',
+    '@codemirror/theme-one-dark',
+    '@codemirror/merge',
+  ],
   distDir: process.env.NEXT_DIST_DIR || '.next',
   experimental: {
     turbopackFileSystemCacheForDev: false,

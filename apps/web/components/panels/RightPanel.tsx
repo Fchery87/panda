@@ -60,7 +60,7 @@ export function RightPanel({
           planContent ?? (
             <EmptyTabContent
               title="Plan"
-              description="Plan drafts and approval flows will appear here during architect mode."
+              description="Switch to architect mode to generate a plan, then review and approve it here before building."
             />
           )
         )
@@ -68,8 +68,8 @@ export function RightPanel({
         return (
           reviewContent ?? (
             <EmptyTabContent
-              title="Review Notes"
-              description="Inline comments on files and diff chunks. Click 'Comment on Change' in the diff view to add notes."
+              title="Review"
+              description="File edits and artifact diffs from agent runs appear here. Approve or reject changes before they land."
             />
           )
         )
@@ -78,7 +78,7 @@ export function RightPanel({
           inspectContent ?? (
             <EmptyTabContent
               title="Inspect"
-              description="Component path, CSS metadata, and 'Send to agent' controls. Select an element in preview to inspect."
+              description="DOM tree, CSS metadata, and element details. Select an element in the preview to inspect it."
             />
           )
         )
@@ -86,8 +86,8 @@ export function RightPanel({
         return (
           runContent ?? (
             <EmptyTabContent
-              title="Run Details"
-              description="Current step, tool activity, token/cost, elapsed time. Active during agent runs."
+              title="Run"
+              description="Step-by-step execution trace for the active agent run. Shows tool calls, file changes, and timing."
             />
           )
         )
@@ -96,7 +96,7 @@ export function RightPanel({
           commentsContent ?? (
             <EmptyTabContent
               title="Notes"
-              description="Conversation-style comments on the current task. Add context for future sessions."
+              description="Project memory, QA reports, delivery state, and eval results. Context that persists across sessions."
             />
           )
         )
