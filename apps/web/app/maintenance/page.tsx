@@ -25,16 +25,24 @@ export default async function MaintenancePage({ searchParams }: MaintenancePageP
   return (
     <main
       id="main-content"
-      className="flex min-h-screen flex-col items-center justify-center gap-8 p-4 text-center"
+      className="dot-grid flex min-h-screen flex-col items-center justify-center gap-8 p-4 text-center"
     >
       <PandaLogo size="lg" />
       <div className="space-y-3">
         <h1 className="text-display text-3xl">{accessState.title}</h1>
         <p className="max-w-md text-muted-foreground">{accessState.message}</p>
       </div>
-      <Link href="/">
-        <Button className="rounded-none font-mono">Return Home</Button>
-      </Link>
+      <div className="flex items-center gap-4">
+        <Link href="/">
+          <Button className="rounded-none font-mono">Return Home</Button>
+        </Link>
+        <Link
+          href="/education"
+          className="font-mono text-sm text-muted-foreground underline hover:text-foreground"
+        >
+          Read the Docs
+        </Link>
+      </div>
       <Link
         href="/admin"
         className="font-mono text-xs text-muted-foreground/50 hover:text-muted-foreground"

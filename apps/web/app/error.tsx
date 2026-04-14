@@ -16,15 +16,17 @@ export default function GlobalError({
   }, [error])
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-6">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-6">
       <PandaLogo className="h-12 w-12" />
-      <div className="flex flex-col items-center gap-2 text-center">
+      <div className="flex flex-col items-center gap-3 text-center">
+        <span className="text-label text-destructive">Error</span>
         <h1 className="font-mono text-2xl font-bold">Something went wrong</h1>
-        <p className="text-sm text-muted-foreground">
-          An unexpected error occurred. Please try again.
+        <p className="max-w-sm text-sm text-muted-foreground">
+          An unexpected error occurred. This has been logged. Try again or head back to the
+          workbench.
         </p>
         {error.digest && (
-          <p className="font-mono text-xs text-muted-foreground">Error digest: {error.digest}</p>
+          <p className="font-mono text-xs text-muted-foreground">Reference: {error.digest}</p>
         )}
       </div>
       <div className="flex gap-3">
@@ -41,6 +43,6 @@ export default function GlobalError({
           Go Home
         </Button>
       </div>
-    </div>
+    </main>
   )
 }

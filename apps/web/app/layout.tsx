@@ -17,10 +17,11 @@ const firaCode = Fira_Code({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Panda.ai',
+    default: 'Panda.ai — AI Coding Workbench for the Browser',
     template: '%s | Panda.ai',
   },
-  description: 'Build software with AI assistance',
+  description:
+    'Plan, approve, and build software in the browser. Panda is an AI coding workbench with plan review, execution approvals, resumable runs, and shared chat history.',
 }
 
 export default function RootLayout({

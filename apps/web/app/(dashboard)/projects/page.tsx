@@ -404,8 +404,13 @@ export default function ProjectsPage() {
           <span className="text-label text-muted-foreground">Projects</span>
         </div>
 
-        <div className="flex items-center justify-between">
-          <h1 className="text-display text-4xl">Your Work</h1>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-display text-4xl">Your Projects</h1>
+            <p className="mt-2 text-muted-foreground">
+              Each project is a workspace with its own files, chat history, plans, and runs.
+            </p>
+          </div>
           <CreateProjectDialog onCreate={handleCreateProject} />
         </div>
       </div>
@@ -462,14 +467,24 @@ export default function ProjectsPage() {
             <FolderGit2 className="h-8 w-8 text-muted-foreground" />
           </div>
           <h3 className="mb-2 font-mono text-xl font-medium">
-            {searchQuery ? 'No projects found' : 'No projects yet'}
+            {searchQuery ? 'No projects found' : 'Start your first project'}
           </h3>
           <p className="mb-8 max-w-sm text-muted-foreground">
             {searchQuery
               ? `No projects matching "${searchQuery}".`
-              : 'Create your first project to start coding with AI.'}
+              : 'A project gives you a workspace with file editing, AI chat, plan review, and terminal access — all in one browser tab.'}
           </p>
-          {!searchQuery && <CreateProjectDialog onCreate={handleCreateProject} />}
+          {!searchQuery && (
+            <div className="flex flex-col items-center gap-3">
+              <CreateProjectDialog onCreate={handleCreateProject} />
+              <Link
+                href="/education"
+                className="font-mono text-xs text-muted-foreground underline hover:text-foreground"
+              >
+                Learn how Panda works
+              </Link>
+            </div>
+          )}
         </motion.div>
       )}
     </div>

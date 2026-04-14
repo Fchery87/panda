@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, BookOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/settings/ThemeToggle'
 import { PandaLogo } from '@/components/ui/panda-logo'
@@ -21,11 +21,20 @@ export function PublicNav({ showEducationLink = false }: PublicNavProps) {
           {showEducationLink && (
             <Link
               href="/education"
-              className="transition-sharp hidden font-mono text-xs uppercase tracking-wide text-muted-foreground hover:text-foreground sm:inline-flex"
+              className="transition-sharp hidden items-center gap-1.5 font-mono text-xs uppercase tracking-wide text-muted-foreground hover:text-foreground sm:inline-flex"
             >
-              How Panda Works
+              <BookOpen className="h-3.5 w-3.5" />
+              How It Works
             </Link>
           )}
+          <a
+            href="https://github.com/Fchery87/panda"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition-sharp hidden font-mono text-xs uppercase tracking-wide text-muted-foreground hover:text-foreground sm:inline"
+          >
+            Source
+          </a>
           <ThemeToggle />
           <Link href="/projects">
             <Button className="rounded-none font-mono text-sm tracking-wide">
