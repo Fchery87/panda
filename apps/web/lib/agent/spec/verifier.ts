@@ -140,14 +140,9 @@ async function verifyAcceptanceCriteria(
   results: ExecutionResults,
   context?: VerificationContext
 ): Promise<VerificationResult[]> {
-  const results_array: VerificationResult[] = []
-
-  for (const criterion of criteria) {
-    const result = await verifySingleCriterion(criterion, results, context)
-    results_array.push(result)
-  }
-
-  return results_array
+  return Promise.all(
+    criteria.map((criterion) => verifySingleCriterion(criterion, results, context))
+  )
 }
 
 /**
@@ -422,18 +417,7 @@ async function verifyConstraints(
     message?: string
   }>
 > {
-  const results_array: Array<{
-    constraint: Constraint
-    satisfied: boolean
-    message?: string
-  }> = []
-
-  for (const constraint of constraints) {
-    const result = await verifySingleConstraint(constraint, results)
-    results_array.push(result)
-  }
-
-  return results_array
+  return Promise.all(constraints.map((constraint) => verifySingleConstraint(constraint, results)))
 }
 
 /**

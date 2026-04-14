@@ -4,6 +4,7 @@ import { bus } from './event-bus'
 import { createPlugin, plugins } from './plugins'
 import { InMemoryCheckpointStore } from './checkpoint-store'
 import { compaction } from './compaction'
+import { SUMMARIZATION_PROMPT } from './compaction'
 import { Runtime } from './runtime'
 import type { RuntimeEvent } from './runtime'
 import { snapshots } from './snapshots'
@@ -2137,8 +2138,28 @@ describe('harness Runtime', () => {
         return []
       },
       async complete(_options: CompletionOptions): Promise<CompletionResponse> {
-        // Never resolves — simulates a hung summarization call
-        return new Promise(() => {})
+        const prompt = _options.messages
+          .map((message) => (typeof message.content === 'string' ? message.content : ''))
+          .join('\n')
+
+        if (prompt.includes(SUMMARIZATION_PROMPT)) {
+          // Never resolves — simulates a hung summarization call
+          return new Promise(() => {})
+        }
+
+        return {
+          message: {
+            role: 'assistant',
+            content: 'ok',
+          },
+          usage: {
+            promptTokens: 1,
+            completionTokens: 1,
+            totalTokens: 2,
+          },
+          finishReason: 'stop',
+          model: 'test-model',
+        }
       },
       async *completionStream(_options: CompletionOptions) {
         streamCalls++
@@ -2174,7 +2195,7 @@ describe('harness Runtime', () => {
         checkpointStore: new InMemoryCheckpointStore(),
         contextWindowSize: 10,
         contextCompactionThreshold: 0.0001,
-        compactionTimeBudgetMs: 50,
+        compactionTimeBudgetMs: 10,
       }
     )
 
@@ -2183,7 +2204,7 @@ describe('harness Runtime', () => {
       createUserMessage({
         id: `msg-big-${i}`,
         sessionID,
-        text: `This is message number ${i} with enough words to exceed ten tokens easily`,
+        text: `Message ${i} has enough words to exceed ten tokens for compaction testing`,
         agent: 'build',
       })
     )
@@ -2191,7 +2212,7 @@ describe('harness Runtime', () => {
     const userMessage = createUserMessage({
       id: 'msg-trigger',
       sessionID,
-      text: 'Do something please',
+      text: 'hi',
       agent: 'build',
     })
 

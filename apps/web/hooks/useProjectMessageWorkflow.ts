@@ -45,6 +45,7 @@ type SendAgentMessageOptions = {
   }
   attachments?: UploadedAttachment[]
   attachmentsOnly?: boolean
+  variantCount?: number
 }
 
 export function shouldQueuePendingDirectSend(args: {
@@ -237,6 +238,7 @@ export function useProjectMessageWorkflow(args: {
       sessionId: string
       plan: GeneratedPlanArtifact
     }
+    variantCount?: number
     attachments?: UploadedAttachment[]
     attachmentsOnly?: boolean
   } | null>(null)
@@ -250,6 +252,7 @@ export function useProjectMessageWorkflow(args: {
     void sendAgentMessage(pendingMessage.content, pendingMessage.contextFiles, {
       approvedPlanExecution: pendingMessage.approvedPlanExecution,
       approvedPlanExecutionContext: pendingMessage.approvedPlanExecutionContext,
+      variantCount: pendingMessage.variantCount,
       attachments: pendingMessage.attachments,
       attachmentsOnly: pendingMessage.attachmentsOnly,
     }).finally(() => {
@@ -329,6 +332,7 @@ export function useProjectMessageWorkflow(args: {
                     approvedPlanExecution: options?.approvedPlanExecution,
                     approvedPlanExecutionContext:
                       approvedPlanExecutionPayload.approvedPlanExecutionContext,
+                    variantCount: options?.variantCount,
                     attachments: options?.attachments,
                     attachmentsOnly: options?.attachmentsOnly,
                   })
@@ -414,6 +418,7 @@ export function useProjectMessageWorkflow(args: {
       await sendAgentMessage(finalContent, contextFiles, {
         approvedPlanExecution: options?.approvedPlanExecution,
         approvedPlanExecutionContext: approvedPlanExecutionPayload.approvedPlanExecutionContext,
+        variantCount: options?.variantCount,
         attachments: options?.attachments,
         attachmentsOnly: options?.attachmentsOnly,
       })

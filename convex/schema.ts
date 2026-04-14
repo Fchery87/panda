@@ -135,6 +135,8 @@ export const PersistedRunEvent = v.object({
 export const RuntimeCheckpointState = v.object({
   sessionID: v.string(),
   messages: v.array(v.any()),
+  _flatParts: v.optional(v.array(v.any())),
+  _flattened: v.optional(v.boolean()),
   step: v.number(),
   isComplete: v.boolean(),
   isLastStep: v.boolean(),

@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { useLayoutPersistence } from './useLayoutPersistence'
 import type { WorkspaceOpenTab } from '@/contexts/WorkspaceContext'
 import type { BottomDockTab } from '@/components/layout/BottomDock'
+import type { SpecSurfaceMode } from '@/components/chat/SpecSurface'
 
 type MobilePrimaryPanel = 'workspace' | 'chat' | 'review'
 type ChatInspectorTab =
@@ -114,6 +115,10 @@ export function useProjectWorkspaceUi() {
   const [chatInspectorTab, setChatInspectorTab] = useState<ChatInspectorTab>('run')
   const [isSpecDrawerOpen, setIsSpecDrawerOpen] = useState(false)
   const [isSpecPanelOpen, setIsSpecPanelOpen] = useState(false)
+  const [specSurfaceMode, setSpecSurfaceMode] = useState<SpecSurfaceMode>('closed')
+  const openSpecApproval = useCallback(() => setSpecSurfaceMode('approval'), [])
+  const openSpecInspect = useCallback(() => setSpecSurfaceMode('inspect'), [])
+  const closeSpecSurface = useCallback(() => setSpecSurfaceMode('closed'), [])
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false)
 
   // New: Bottom dock state
@@ -204,6 +209,11 @@ export function useProjectWorkspaceUi() {
     setIsSpecDrawerOpen,
     isSpecPanelOpen,
     setIsSpecPanelOpen,
+    specSurfaceMode,
+    setSpecSurfaceMode,
+    openSpecApproval,
+    openSpecInspect,
+    closeSpecSurface,
     isShareDialogOpen,
     setIsShareDialogOpen,
 

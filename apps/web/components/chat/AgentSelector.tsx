@@ -192,29 +192,4 @@ export function AgentSelector({ mode, onModeChange, disabled, className }: Agent
     </DropdownMenu>
   )
 }
-
-export const MODE_OPTIONS = [
-  {
-    value: 'architect' as ChatMode,
-    label: 'Plan',
-    icon: MODE_ICONS.architect,
-    description: getChatModeSurfacePresentation('architect').description,
-    shortcut: '1',
-  },
-  {
-    value: 'code' as ChatMode,
-    label: 'Build',
-    icon: MODE_ICONS.code,
-    description: getChatModeSurfacePresentation('code').description,
-    shortcut: '2',
-  },
-  {
-    value: 'build' as ChatMode,
-    label: 'Builder',
-    icon: MODE_ICONS.build,
-    description: getChatModeSurfacePresentation('build').description,
-    shortcut: '3',
-  },
-]
-
 export { AgentSelector as ModeSelector }

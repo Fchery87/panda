@@ -3,9 +3,9 @@ import type { CheckpointStore as HarnessCheckpointStore } from './harness/checkp
 import type { PromptContext, ChatMode } from './prompt-library'
 import type { RuntimeConfig } from './runtime'
 import { buildPlanContext } from './context/plan-context'
-import { resolveBackgroundExecutionPolicy } from '../chat/backgroundExecution'
 import type { Id } from '@convex/_generated/dataModel'
 import type { GeneratedPlanArtifact } from '../planning/types'
+import type { FormalSpecification } from './spec/types'
 
 interface ProjectFileContext {
   path: string
@@ -38,6 +38,7 @@ export function buildAgentPromptContext(args: {
     sessionId: string
     plan: GeneratedPlanArtifact
   }
+  activeSpec?: FormalSpecification
 }): PromptContext {
   const projectOverview =
     args.mode === 'architect' && args.projectFiles
@@ -89,11 +90,12 @@ export function buildAgentPromptContext(args: {
           }
         : undefined,
     approvedPlanExecution: args.mode === 'build' ? args.approvedPlanExecutionContext : undefined,
+    activeSpec: args.activeSpec,
   }
 }
 
 export function buildAgentRuntimeConfig(args: {
-  runId: Id<'agentRuns'>
+  runId: string
   mode: ChatMode
   harnessSessionID?: string
   specApprovalMode?: 'interactive' | 'auto_approve'
@@ -105,8 +107,7 @@ export function buildAgentRuntimeConfig(args: {
     toolLoopThreshold: 3,
     harnessSessionID: args.harnessSessionID ?? `harness_run_${args.runId}`,
     harnessAutoResume: true,
-    harnessSpecApprovalMode:
-      args.specApprovalMode ?? resolveBackgroundExecutionPolicy(args.mode).harnessSpecApprovalMode,
+    harnessSpecApprovalMode: args.specApprovalMode ?? 'interactive',
   }
 }
 

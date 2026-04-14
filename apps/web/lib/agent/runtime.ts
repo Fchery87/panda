@@ -63,6 +63,7 @@ export type AgentEventType =
   | 'spec_pending_approval'
   | 'spec_generated'
   | 'spec_verification'
+  | 'drift_detected'
   | 'complete'
 
 export interface AgentEvent {
@@ -93,6 +94,13 @@ export interface AgentEvent {
       criterionId: string
       passed: boolean
       message?: string
+    }>
+  }
+  drift?: {
+    specId: string
+    findings: Array<{
+      filePath: string
+      description: string
     }>
   }
   resetReason?: 'plan_mode_rewrite' | 'build_mode_rewrite'

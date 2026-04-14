@@ -6,14 +6,14 @@ import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { AlertTriangle, History, RotateCcw } from 'lucide-react'
 import { IconOverflow, IconNewChat } from '@/components/ui/icons'
-import { ModeToggle } from '@/components/chat/ModeToggle'
+import { OversightToggle } from '@/components/chat/OversightToggle'
 import Link from 'next/link'
 import { ChatActionBar } from '@/components/chat/ChatActionBar'
 import { ChatInput } from '@/components/chat/ChatInput'
 import { MessageList } from '@/components/chat/MessageList'
 import type { AvailableModel } from '@/components/chat/ModelSelector'
 import { ProjectChatInspector, type InspectorTab } from '@/components/projects/ProjectChatInspector'
-import { SpecPanel } from '@/components/plan/SpecPanel'
+import { SpecSurface, type SpecSurfaceMode } from '@/components/chat/SpecSurface'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -25,7 +25,7 @@ import {
 import { cn } from '@/lib/utils'
 import type { PersistedRunEventInfo, ToolCallInfo, Message } from '@/components/chat/types'
 import type { LiveProgressStep } from '@/components/chat/live-run-utils'
-import type { FormalSpecification, SpecTier } from '@/lib/agent/spec/types'
+import type { FormalSpecification } from '@/lib/agent/spec/types'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import type { PlanStatus } from '@/lib/chat/planDraft'
 import type { TracePersistenceStatus } from '@/hooks/useRunEventBuffer'
@@ -100,8 +100,6 @@ interface ProjectChatPanelProps {
   onVariantChange: (variant: string) => void
   supportsReasoning: boolean
   attachmentsEnabled?: boolean
-  specTier: SpecTier | 'auto'
-  onSpecTierChange: (tier: SpecTier | 'auto') => void
   inlineRateLimitError: InlineRateLimitError | null
   onToggleInspector: () => void
   onOpenHistory: () => void
@@ -123,13 +121,12 @@ interface ProjectChatPanelProps {
   onSpecEdit: () => void
   onSpecCancel: () => void
   showInlineSpecReview: boolean
-  currentSpecTier: SpecTier | 'auto'
-  isSpecPanelOpen: boolean
-  onCloseSpecPanel: () => void
+  specSurfaceMode: SpecSurfaceMode
+  onCloseSpecSurface: () => void
   onEditPendingSpec: (spec: FormalSpecification) => void
   onExecutePendingSpec: (spec: FormalSpecification) => void
-  automationMode: 'manual' | 'auto'
-  onAutomationModeChange: (mode: 'manual' | 'auto') => void
+  oversightLevel: 'review' | 'autopilot'
+  onOversightLevelChange: (level: 'review' | 'autopilot') => void
   isMobileLayout: boolean
   isInspectorOpen: boolean
   inspectorTab: InspectorTab
@@ -203,8 +200,6 @@ export function ProjectChatPanel({
   onVariantChange,
   supportsReasoning,
   attachmentsEnabled = false,
-  specTier,
-  onSpecTierChange,
   inlineRateLimitError,
   onToggleInspector,
   onOpenHistory,
@@ -226,13 +221,12 @@ export function ProjectChatPanel({
   onSpecEdit,
   onSpecCancel,
   showInlineSpecReview,
-  currentSpecTier,
-  isSpecPanelOpen,
-  onCloseSpecPanel,
+  specSurfaceMode,
+  onCloseSpecSurface,
   onEditPendingSpec,
   onExecutePendingSpec,
-  automationMode,
-  onAutomationModeChange,
+  oversightLevel,
+  onOversightLevelChange,
   isMobileLayout,
   isInspectorOpen,
   inspectorTab,
@@ -339,9 +333,9 @@ export function ProjectChatPanel({
         </span>
 
         <div className="flex items-center gap-1.5">
-          <ModeToggle
-            mode={automationMode}
-            onModeChange={onAutomationModeChange}
+          <OversightToggle
+            level={oversightLevel}
+            onChange={onOversightLevelChange}
             disabled={isStreaming}
           />
           <DropdownMenu>
@@ -515,7 +509,6 @@ export function ProjectChatPanel({
         onSpecEdit={() => pendingSpec && onSpecEdit()}
         onSpecCancel={onSpecCancel}
         showSpecReview={showInlineSpecReview}
-        specTier={currentSpecTier}
       />
       <ChatInput
         projectId={projectId}
@@ -535,44 +528,20 @@ export function ProjectChatPanel({
         onVariantChange={onVariantChange}
         supportsReasoning={supportsReasoning}
         attachmentsEnabled={attachmentsEnabled}
-        specTier={specTier}
-        onSpecTierChange={onSpecTierChange}
         contextualPrompt={contextualPrompt}
         onContextualPromptHandled={onContextualPromptHandled}
       />
 
-      <AnimatePresence>
-        {pendingSpec && isSpecPanelOpen ? (
-          <>
-            <motion.button
-              type="button"
-              aria-label="Close spec editor"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={onCloseSpecPanel}
-              className="absolute inset-0 z-20 bg-background/55 backdrop-blur-[1px]"
-            />
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-              className="shadow-sharp-lg absolute inset-x-0 bottom-0 z-30 max-h-[90vh] border-t border-border bg-background sm:inset-x-3 sm:bottom-3 sm:border"
-            >
-              <SpecPanel
-                spec={pendingSpec}
-                onEdit={onEditPendingSpec}
-                onExecute={onExecutePendingSpec}
-                onCancel={onSpecCancel}
-                onClose={onCloseSpecPanel}
-              />
-            </motion.div>
-          </>
-        ) : null}
+      <SpecSurface
+        mode={pendingSpec ? specSurfaceMode : 'closed'}
+        spec={pendingSpec}
+        onApprove={onExecutePendingSpec}
+        onEdit={onEditPendingSpec}
+        onCancel={onSpecCancel}
+        onClose={onCloseSpecSurface}
+      />
 
-        {renderInspectorInline ? inspectorPanel : null}
-      </AnimatePresence>
+      <AnimatePresence>{renderInspectorInline ? inspectorPanel : null}</AnimatePresence>
 
       {!renderInspectorInline ? inspectorPanel : null}
     </div>

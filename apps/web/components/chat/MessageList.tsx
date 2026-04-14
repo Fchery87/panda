@@ -55,6 +55,23 @@ export function MessageList({
   const lastAssistantMessageId = [...messages]
     .reverse()
     .find((message) => message.role === 'assistant')?._id
+  const failedCriteria = useMemo(() => {
+    if (currentSpec?.status !== 'failed' || !currentSpec.verificationResults?.length) {
+      return []
+    }
+
+    return currentSpec.verificationResults
+      .filter((result) => !result.passed)
+      .map((result) => ({
+        id: result.criterionId,
+        description:
+          currentSpec.intent.acceptanceCriteria.find(
+            (criterion) => criterion.id === result.criterionId
+          )?.behavior ??
+          result.message ??
+          result.criterionId,
+      }))
+  }, [currentSpec])
 
   const virtualizer = useVirtualizer({
     count: feedItems.length,
@@ -116,6 +133,7 @@ export function MessageList({
                   isStreaming={isStreaming && item.message._id === lastAssistantMessageId}
                   onSuggestedAction={onSuggestedAction}
                   disableActions={isStreaming}
+                  failedCriteria={item.message._id === lastAssistantMessageId ? failedCriteria : []}
                 />
               ) : (
                 <TranscriptEventRow block={item.block} />

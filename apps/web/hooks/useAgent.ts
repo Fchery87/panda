@@ -35,6 +35,7 @@ import { registerDefaultPlugins } from '../lib/agent/harness/plugins'
 import { appLog } from '@/lib/logger'
 import { toast } from 'sonner'
 import type { GeneratedPlanArtifact } from '../lib/planning/types'
+import { spawnVariants } from '../lib/agent/parallelVariants'
 
 import {
   buildAgentPromptContext,
@@ -90,6 +91,7 @@ type SendMessageOptions = {
     sessionId: string
     plan: GeneratedPlanArtifact
   }
+  variantCount?: number
   attachments?: UploadedAttachment[]
   attachmentsOnly?: boolean
 }
@@ -101,6 +103,7 @@ export function buildPublicSendMessageOptions(options?: SendMessageOptions): {
     sessionId: string
     plan: GeneratedPlanArtifact
   }
+  variantCount?: number
   attachments?: UploadedAttachment[]
   attachmentsOnly?: boolean
 } {
@@ -108,6 +111,7 @@ export function buildPublicSendMessageOptions(options?: SendMessageOptions): {
     clearInput: true,
     approvedPlanExecution: options?.approvedPlanExecution,
     approvedPlanExecutionContext: options?.approvedPlanExecutionContext,
+    variantCount: options?.variantCount,
     attachments: options?.attachments,
     attachmentsOnly: options?.attachmentsOnly,
   }
@@ -194,6 +198,7 @@ interface UseAgentReturn {
     contextFiles?: string[],
     options?: SendMessageOptions
   ) => Promise<void>
+  variantResults: Array<{ content: string; toolCalls: number; elapsedMs: number }>
   runEvalScenario: (scenario: {
     input?: unknown
     prompt?: string
@@ -296,6 +301,9 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const completedPlanStepIndexesRef = useRef<number[]>([])
   const [error, setError] = useState<string | null>(null)
   const [currentRunUsage, setCurrentRunUsage] = useState<UsageTotals & { source: TokenSource }>()
+  const [variantResults, setVariantResults] = useState<
+    Array<{ content: string; toolCalls: number; elapsedMs: number }>
+  >([])
 
   // Provider settings hook
   const { contextWindowResolution, getReasoningRuntimeSettings } = useProviderSettings(
@@ -662,6 +670,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           architectBrainstormEnabled,
           planDraft,
           approvedPlanExecutionContext: options?.approvedPlanExecutionContext,
+          activeSpec: currentSpec ?? undefined,
         })
 
         // Create runtime config with deduplication
@@ -1067,11 +1076,154 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     ]
   )
 
+  const sendMessageWithVariants = useCallback(
+    async (rawContent: string, contextFiles?: string[], options?: SendMessageOptions) => {
+      const userContent = rawContent.trim()
+      if (!userContent || isRunningRef.current || !userId) return
+
+      const variantCount = options?.variantCount ?? 2
+      const previousMessagesSnapshot = buildPromptMessagesWithModeSummary({
+        currentMode: mode,
+        messages,
+      })
+      const promptContext = buildAgentPromptContext({
+        projectId,
+        chatId,
+        userId,
+        projectName,
+        projectDescription,
+        mode,
+        provider: provider?.config?.provider || 'openai',
+        previousMessages: previousMessagesSnapshot.map((message) => ({
+          role: message.role === 'assistant' ? 'assistant' : 'user',
+          content: message.content,
+        })),
+        projectOverviewContent,
+        projectFiles: projectFiles?.map((file) => ({
+          path: file.path,
+          content: '',
+          updatedAt: file.updatedAt,
+        })),
+        memoryBankContent,
+        userContent,
+        contextFiles,
+        architectBrainstormEnabled,
+        planDraft,
+        approvedPlanExecutionContext: options?.approvedPlanExecutionContext,
+        activeSpec: currentSpec ?? undefined,
+      })
+
+      const toolContext =
+        toolContextRef.current ??
+        createToolContext(projectId, chatId, userId, convexClient, artifactQueue.current, {
+          files: { batchGet: api.files.batchGet, list: api.files.list },
+          jobs: { create: api.jobs.create, updateStatus: api.jobs.updateStatus },
+          artifacts: { create: api.artifacts.create },
+          memoryBank: { update: api.memoryBank.update },
+        })
+
+      const runtimeSettings = getReasoningRuntimeSettings()
+      setInput('')
+      setError(null)
+      setStatus('thinking')
+      setVariantResults([])
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `msg-${Date.now()}-user`,
+          _id: `msg-${Date.now()}-user`,
+          role: 'user',
+          content: userContent,
+          mode,
+          createdAt: Date.now(),
+          annotations: { mode },
+        },
+      ])
+
+      const results = await spawnVariants({
+        count: variantCount,
+        promptContext,
+        runtimeConfig: buildAgentRuntimeConfig({
+          runId: `variant-${Date.now()}`,
+          mode,
+          specApprovalMode,
+        }),
+        makeRuntime: (index) =>
+          createAgentRuntime(
+            {
+              provider,
+              model,
+              maxIterations: 10,
+              temperature: index === 0 ? 0.2 : 0.8,
+              harnessEnableRiskInterrupts: true,
+              harnessSessionPermissions: automationPolicy
+                ? buildHarnessSessionPermissions(automationPolicy)
+                : undefined,
+              ...(runtimeSettings.reasoning ? { reasoning: runtimeSettings.reasoning } : {}),
+            },
+            toolContext
+          ),
+      })
+
+      setVariantResults(results)
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `msg-${Date.now()}-assistant`,
+          role: 'assistant',
+          content: results
+            .map((result, index) => `Variant ${index + 1}:\n${result.content}`)
+            .join('\n\n---\n\n'),
+          mode,
+          createdAt: Date.now(),
+          annotations: {
+            mode,
+            provider: provider?.config?.provider,
+            model,
+          },
+        },
+      ])
+      setStatus('idle')
+    },
+    [
+      userId,
+      mode,
+      messages,
+      projectId,
+      chatId,
+      projectName,
+      projectDescription,
+      provider,
+      projectOverviewContent,
+      projectFiles,
+      memoryBankContent,
+      architectBrainstormEnabled,
+      planDraft,
+      currentSpec,
+      convexClient,
+      getReasoningRuntimeSettings,
+      specApprovalMode,
+      model,
+      automationPolicy,
+    ]
+  )
+
   const sendMessage = useCallback(
     async (rawContent: string, contextFiles?: string[], options?: SendMessageOptions) => {
-      await sendMessageInternal(rawContent, contextFiles, buildPublicSendMessageOptions(options))
+      const publicOptions = buildPublicSendMessageOptions(options)
+      if (
+        process.env.NEXT_PUBLIC_PANDA_VARIANTS === '1' &&
+        publicOptions.variantCount &&
+        publicOptions.variantCount > 1
+      ) {
+        await sendMessageWithVariants(rawContent, contextFiles, publicOptions)
+        return
+      }
+
+      await sendMessageInternal(rawContent, contextFiles, publicOptions)
     },
-    [sendMessageInternal]
+    [sendMessageInternal, sendMessageWithVariants]
   )
 
   const resumeRuntimeSession = useCallback(
@@ -1212,6 +1364,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     updateMemoryBank,
     projectOverview: projectOverviewContent,
     sendMessage,
+    variantResults,
     runEvalScenario,
     handleSubmit,
     handleInputChange,

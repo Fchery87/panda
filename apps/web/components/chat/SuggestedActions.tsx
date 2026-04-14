@@ -6,14 +6,34 @@ import { ArrowRight } from 'lucide-react'
 import type { SuggestedAction } from './types'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 
+type FailedCriterion = {
+  id: string
+  description: string
+}
+
 interface SuggestedActionsProps {
   actions: SuggestedAction[]
+  failedCriteria?: FailedCriterion[]
   disabled?: boolean
   onAction: (prompt: string, targetMode?: ChatMode) => void
 }
 
-export function SuggestedActions({ actions, disabled = false, onAction }: SuggestedActionsProps) {
-  if (!actions || actions.length === 0) return null
+function buildFailedCriterionActions(failedCriteria: FailedCriterion[]): SuggestedAction[] {
+  return failedCriteria.map((criterion) => ({
+    label: `Fix: ${criterion.description}`,
+    prompt: `Retry failed criterion: ${criterion.description}`,
+  }))
+}
+
+export function SuggestedActions({
+  actions,
+  failedCriteria,
+  disabled = false,
+  onAction,
+}: SuggestedActionsProps) {
+  const allActions = [...buildFailedCriterionActions(failedCriteria ?? []), ...(actions ?? [])]
+
+  if (allActions.length === 0) return null
 
   return (
     <AnimatePresence>
@@ -23,7 +43,7 @@ export function SuggestedActions({ actions, disabled = false, onAction }: Sugges
         transition={{ duration: 0.2, delay: 0.1 }}
         className="mt-2 flex flex-wrap gap-1.5"
       >
-        {actions.map((action, idx) => (
+        {allActions.map((action, idx) => (
           <motion.button
             key={idx}
             initial={{ opacity: 0, scale: 0.95 }}

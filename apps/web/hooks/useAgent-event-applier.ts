@@ -303,6 +303,19 @@ export function applyNonTerminalAgentEvent(args: {
       return true
     }
 
+    case 'drift_detected': {
+      const findings = event.drift?.findings ?? []
+      const driftStep: ProgressStep = {
+        id: `drift_${Date.now()}`,
+        content: `Drift: ${findings.length} file(s) out of spec scope — ${findings.map((f) => f.filePath).join(', ')}`,
+        status: 'error',
+        category: 'other',
+        createdAt: Date.now(),
+      }
+      setProgressSteps((prev) => [...prev, driftStep].slice(-30))
+      return true
+    }
+
     case 'reasoning': {
       if (runtimeSettings.showReasoningPanel && event.reasoningContent) {
         mutable.assistantReasoning += event.reasoningContent

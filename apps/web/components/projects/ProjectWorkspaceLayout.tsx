@@ -5,7 +5,6 @@ import { useMemo } from 'react'
 import type { Id } from '@convex/_generated/dataModel'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { CommandPalette } from '@/components/command-palette/CommandPalette'
-import { SpecDrawer } from '@/components/chat/SpecDrawer'
 import { StatusBar } from '@/components/workbench/StatusBar'
 import { Workbench } from '@/components/workbench/Workbench'
 import { BottomDock, type BottomDockTab } from '@/components/layout/BottomDock'
@@ -68,8 +67,7 @@ interface ProjectWorkspaceLayoutProps {
   cursorPosition: { line: number; column: number } | null
   isStreaming: boolean
   currentSpec: FormalSpecification | null
-  isSpecDrawerOpen: boolean
-  onSpecDrawerOpenChange: (open: boolean) => void
+  openSpecInspect: () => void
   onContextualChat?: (selection: string, filePath: string) => void
   onInlineChat?: (prompt: string, selectedText: string, filePath: string) => Promise<string | null>
   // New: bottom dock and center tab state
@@ -119,8 +117,7 @@ export function ProjectWorkspaceLayout({
   cursorPosition,
   isStreaming,
   currentSpec,
-  isSpecDrawerOpen,
-  onSpecDrawerOpenChange,
+  openSpecInspect,
   onContextualChat,
   onInlineChat,
   // New props with defaults
@@ -475,12 +472,7 @@ export function ProjectWorkspaceLayout({
           currentSpec?.verificationResults?.filter((result) => result.passed).length
         }
         specConstraintsTotal={currentSpec?.intent.acceptanceCriteria.length}
-        onSpecClick={currentSpec ? () => onSpecDrawerOpenChange(true) : undefined}
-      />
-      <SpecDrawer
-        spec={currentSpec}
-        isOpen={isSpecDrawerOpen}
-        onClose={() => onSpecDrawerOpenChange(false)}
+        onSpecClick={currentSpec ? openSpecInspect : undefined}
       />
     </div>
   )

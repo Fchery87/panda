@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { Lightbulb, Target, FileText, CheckCircle2, XCircle } from 'lucide-react'
-import type { SpecTier, FormalSpecification } from '@/lib/agent/spec/types'
+import type { FormalSpecification } from '@/lib/agent/spec/types'
 import type { PlanStatus } from '@/lib/chat/planDraft'
 
 export interface ChatActionBarProps {
@@ -34,8 +34,6 @@ export interface ChatActionBarProps {
   onSpecCancel?: () => void
   /** Whether to show spec review controls */
   showSpecReview?: boolean
-  /** SpecNative: Current spec tier override */
-  specTier?: SpecTier | 'auto'
   className?: string
 }
 
@@ -53,7 +51,6 @@ export function ChatActionBar({
   onSpecEdit,
   onSpecCancel,
   showSpecReview = true,
-  specTier = 'auto',
   className,
 }: ChatActionBarProps) {
   const hasPlanDraft = Boolean(planDraft?.trim())
@@ -178,7 +175,7 @@ export function ChatActionBar({
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex min-w-0 flex-1 items-center gap-2">
-              {specTier === 'explicit' ? (
+              {pendingSpec?.tier === 'explicit' ? (
                 <Target className="h-4 w-4 shrink-0 text-primary" />
               ) : (
                 <FileText className="h-4 w-4 shrink-0 text-primary" />

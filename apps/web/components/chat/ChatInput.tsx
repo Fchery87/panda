@@ -17,7 +17,6 @@ import { MentionPicker } from './MentionPicker'
 import { ModelSelector, type AvailableModel } from './ModelSelector'
 import { VariantSelector } from './VariantSelector'
 import type { ChatMode } from '@/lib/agent/prompt-library'
-import type { SpecTier } from '@/lib/agent/spec/types'
 
 /**
  * Enhance state for prompt enhancement button
@@ -71,13 +70,16 @@ interface ChatInputProps {
   onModeChange?: (mode: ChatMode) => void
   architectBrainstormEnabled?: boolean
   onArchitectBrainstormEnabledChange?: (enabled: boolean) => void
-  specTier?: SpecTier | 'auto'
-  onSpecTierChange?: (tier: SpecTier | 'auto') => void
+
   onSendMessage?: (
     content: string,
     mode: ChatMode,
     contextFiles?: string[],
-    options?: { attachments?: UploadedAttachmentPayload[]; attachmentsOnly?: boolean }
+    options?: {
+      variantCount?: number
+      attachments?: UploadedAttachmentPayload[]
+      attachmentsOnly?: boolean
+    }
   ) => void
   isStreaming?: boolean
   onStopStreaming?: () => void
@@ -105,8 +107,7 @@ export function ChatInput({
   onModeChange,
   architectBrainstormEnabled = false,
   onArchitectBrainstormEnabledChange,
-  specTier: _specTier,
-  onSpecTierChange: _onSpecTierChange,
+
   onSendMessage,
   isStreaming = false,
   onStopStreaming,
@@ -260,6 +261,7 @@ export function ChatInput({
     })
 
     onSendMessage?.(nextMessage || input.trim(), mode, nextContextFiles, {
+      variantCount: variant === 'parallel:2' ? 2 : undefined,
       attachments: uploadedAttachments,
       attachmentsOnly: !message.trim() && uploadedAttachments.length > 0,
     })

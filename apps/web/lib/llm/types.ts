@@ -219,7 +219,9 @@ export interface CompletionOptions {
   presencePenalty?: number
   tools?: ToolDefinition[]
   stream?: boolean
-  responseFormat?: { type: 'text' | 'json_object' }
+  responseFormat?:
+    | { type: 'text' | 'json_object' }
+    | { type: 'json_schema'; schema: object; name: string }
   reasoning?: ReasoningOptions
 }
 

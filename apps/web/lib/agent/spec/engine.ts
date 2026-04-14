@@ -26,7 +26,8 @@ import {
   generateReviewSpec,
 } from './templates'
 import { validateSpec, type ValidationResult } from './validator'
-import { verifySpec, type SpecVerificationReport } from './verifier'
+import { verifySpec, type SpecVerificationReport, type VerificationContext } from './verifier'
+import type { LLMProvider } from '../../llm/types'
 import { ascending } from '../harness/identifier'
 import { hashString } from '../utils/hash'
 import type { DriftReport, DriftFinding, ReconciliationChange } from './reconciler'
@@ -75,6 +76,7 @@ export interface SpecGenerationResult {
  */
 export class SpecEngine {
   private config: SpecEngineConfig
+  private provider?: LLMProvider
 
   constructor(config: SpecEngineConfig) {
     this.config = {
@@ -83,6 +85,10 @@ export class SpecEngine {
       enableDriftDetection: true,
       ...config,
     }
+  }
+
+  setProvider(provider: LLMProvider): void {
+    this.provider = provider
   }
 
   /**
@@ -114,9 +120,10 @@ export class SpecEngine {
    * @returns Classification result with tier and confidence
    */
   async classify(message: string, context?: ClassificationContext): Promise<ClassificationResult> {
+    const ctxWithProvider: ClassificationContext = { ...context, provider: this.provider }
     // If default tier is set, use it but still run classification for factors
     if (this.config.defaultTier) {
-      const result = await classifyIntent(message, context)
+      const result = await classifyIntent(message, ctxWithProvider)
       return {
         ...result,
         tier: this.config.defaultTier,
@@ -124,7 +131,7 @@ export class SpecEngine {
       }
     }
 
-    return classifyIntent(message, context)
+    return classifyIntent(message, ctxWithProvider)
   }
 
   /**
@@ -306,9 +313,11 @@ export class SpecEngine {
       commandsRun?: string[]
       errors?: string[]
       output?: string
-    }
+    },
+    context?: VerificationContext
   ): Promise<SpecVerificationReport> {
-    return verifySpec(spec, executionResults)
+    const ctxWithProvider: VerificationContext = { provider: this.provider, ...context }
+    return verifySpec(spec, executionResults, ctxWithProvider)
   }
 
   /**

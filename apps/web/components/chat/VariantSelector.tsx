@@ -20,8 +20,13 @@ const DEFAULT_VARIANTS: ModelVariant[] = [
   { id: 'max', name: 'Max', options: { reasoningEffort: 'max' } },
 ]
 
+const DEFAULT_VARIANT_OPTIONS =
+  process.env.NEXT_PUBLIC_PANDA_VARIANTS === '1'
+    ? [...DEFAULT_VARIANTS, { id: 'parallel:2', name: 'Parallel x2', options: {} }]
+    : DEFAULT_VARIANTS
+
 export function VariantSelector({
-  variants = DEFAULT_VARIANTS,
+  variants = DEFAULT_VARIANT_OPTIONS,
   currentVariant = 'none',
   onVariantChange,
   className,

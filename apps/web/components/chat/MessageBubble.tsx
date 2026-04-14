@@ -22,6 +22,7 @@ interface MessageBubbleProps {
   isStreaming?: boolean
   onSuggestedAction?: (prompt: string, targetMode?: ChatMode) => void
   disableActions?: boolean
+  failedCriteria?: Array<{ id: string; description: string }>
 }
 
 function formatTimestamp(timestamp: number): string {
@@ -265,6 +266,7 @@ export function MessageBubble({
   isStreaming = false,
   onSuggestedAction,
   disableActions = false,
+  failedCriteria = [],
 }: MessageBubbleProps) {
   const isUser = message.role === 'user'
   const attachmentsOnly = message.annotations?.attachmentsOnly === true
@@ -523,10 +525,11 @@ export function MessageBubble({
         {/* Suggested Actions */}
         {isAssistant &&
           !isStreaming &&
-          message.suggestedActions &&
-          message.suggestedActions.length > 0 && (
+          ((message.suggestedActions && message.suggestedActions.length > 0) ||
+            failedCriteria.length > 0) && (
             <SuggestedActions
-              actions={message.suggestedActions}
+              actions={message.suggestedActions ?? []}
+              failedCriteria={failedCriteria}
               disabled={disableActions}
               onAction={(prompt, targetMode) => onSuggestedAction?.(prompt, targetMode)}
             />

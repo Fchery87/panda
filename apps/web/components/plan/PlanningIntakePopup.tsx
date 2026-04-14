@@ -200,7 +200,7 @@ export function PlanningIntakeSurface({
               }}
               className="rounded-none border-border px-3 font-mono text-[11px] uppercase tracking-[0.2em]"
             >
-              Refine with intake
+              Start intake
             </Button>
           </div>
         </div>

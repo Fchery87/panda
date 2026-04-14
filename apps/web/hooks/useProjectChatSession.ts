@@ -8,7 +8,6 @@ import type { AvailableModel } from '@/components/chat/ModelSelector'
 import { useAutoApplyArtifacts } from './useAutoApplyArtifacts'
 import { resolveEffectiveAgentPolicy, type AgentPolicy } from '@/lib/agent/automationPolicy'
 import { normalizeChatMode, type ChatMode } from '@/lib/agent/prompt-library'
-import type { SpecTier } from '@/lib/agent/spec/types'
 import { getGlobalRegistry } from '@/lib/llm/registry'
 import { buildAvailableModelsFromProviderConfigs } from '@/lib/llm/model-sync'
 import type { LLMProvider } from '@/lib/llm/types'
@@ -49,7 +48,6 @@ export function useProjectChatSession<TChat extends ChatSessionChat>(args: {
   )
   const [uiSelectedModel, setUiSelectedModel] = useState<string | null>(null)
   const [reasoningVariant, setReasoningVariant] = useState('none')
-  const [specTier, setSpecTier] = useState<SpecTier | 'auto'>('auto')
 
   const settings = useQuery(api.settings.get) as ProviderSettings | undefined
   const effectiveSettings = useQuery(api.settings.getEffective) as
@@ -224,8 +222,6 @@ export function useProjectChatSession<TChat extends ChatSessionChat>(args: {
     setUiSelectedModel,
     reasoningVariant,
     setReasoningVariant,
-    specTier,
-    setSpecTier,
     provider,
     selectedModel,
     availableModels,

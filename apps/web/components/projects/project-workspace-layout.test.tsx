@@ -41,8 +41,7 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
         cursorPosition={null}
         isStreaming={false}
         currentSpec={null}
-        isSpecDrawerOpen={false}
-        onSpecDrawerOpenChange={() => {}}
+        openSpecInspect={() => {}}
         onApplyPendingArtifact={() => {}}
         onRejectPendingArtifact={() => {}}
       />

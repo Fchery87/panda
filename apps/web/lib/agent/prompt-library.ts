@@ -16,6 +16,7 @@ import {
 } from './context/context-budget'
 import { CHAT_MODE_CONFIGS, type ChatMode } from './chat-modes'
 import { resolveAgentSkillsForPromptContext } from './skills/resolver'
+import type { FormalSpecification } from './spec/types'
 
 export type { ChatMode } from './chat-modes'
 
@@ -87,33 +88,7 @@ export interface PromptContext {
   /** Optional workflow skill profile */
   skillProfile?: 'off' | 'soft_guidance' | 'strict_workflow'
   /** Active specification for execution awareness */
-  activeSpec?: {
-    id: string
-    version: number
-    tier: string
-    status: string
-    intent: {
-      goal: string
-      userMessage: string
-    }
-    constraints: Array<{
-      type: string
-      description: string
-    }>
-    acceptanceCriteria: Array<{
-      id: string
-      description: string
-      priority: 'high' | 'medium' | 'low'
-    }>
-    plan: {
-      steps: Array<{
-        id: string
-        description: string
-        files: string[]
-      }>
-      files: string[]
-    }
-  }
+  activeSpec?: FormalSpecification
   planningSession?: {
     hasActiveSession: boolean
     phase?: 'discovery' | 'options' | 'validated_plan'
@@ -388,21 +363,38 @@ export function getPromptForMode(context: PromptContext): CompletionMessage[] {
   // Inject active spec context if available
   if (context.activeSpec) {
     const spec = context.activeSpec
+    const constraintLines = spec.intent.constraints.map((constraint) => {
+      switch (constraint.type) {
+        case 'structural':
+          return `- [structural] ${constraint.rule} (${constraint.target})`
+        case 'behavioral':
+          return `- [behavioral] ${constraint.rule} (${constraint.assertion})`
+        case 'performance':
+          return `- [performance] ${constraint.metric} <= ${constraint.threshold} ${constraint.unit}`
+        case 'compatibility':
+          return `- [compatibility] ${constraint.requirement} (${constraint.scope})`
+        case 'security':
+          return `- [security] ${constraint.requirement}${constraint.standard ? ` (${constraint.standard})` : ''}`
+      }
+    })
+    const acceptanceCriteriaLines = spec.intent.acceptanceCriteria.map(
+      (criterion) => `- ${criterion.behavior} [${criterion.verificationMethod}]`
+    )
     const specSection = [
       '\n## Active Specification',
       `**Goal:** ${spec.intent.goal}`,
       `**Status:** ${spec.status} (Tier: ${spec.tier})`,
       '',
       '**Constraints:**',
-      ...spec.constraints.map((c) => `- [${c.type}] ${c.description}`),
+      ...constraintLines,
       '',
       '**Acceptance Criteria:**',
-      ...spec.acceptanceCriteria.map((a) => `- ${a.description} (${a.priority} priority)`),
+      ...acceptanceCriteriaLines,
       '',
       '**Execution Plan:**',
       ...spec.plan.steps.map((s, i) => `${i + 1}. ${s.description}`),
       '',
-      '**Scope:** Only modify files listed in the execution plan. Out-of-scope writes will be blocked.',
+      '**Scope:** Only modify files listed in the execution plan or plan dependencies. Out-of-scope writes will be blocked.',
     ].join('\n')
     systemPrompt = `${systemPrompt}\n${specSection}`
   }

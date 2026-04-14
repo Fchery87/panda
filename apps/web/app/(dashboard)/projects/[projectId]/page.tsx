@@ -64,7 +64,7 @@ import {
 import type { Message, MessageAnnotationInfo, PersistedRunEventInfo } from '@/components/chat/types'
 import { canApprovePlan, canBuildFromPlan, type PlanStatus } from '@/lib/chat/planDraft'
 import { isRateLimitError, getUserFacingAgentError } from '@/lib/chat/error-messages'
-import { resolveBackgroundExecutionPolicy } from '@/lib/chat/backgroundExecution'
+import { resolveAgentPolicy } from '@/lib/chat/agentPolicy'
 import { derivePlanCompletionStatus } from '@/lib/agent/plan-progress'
 import type { AgentPolicy } from '@/lib/agent/automationPolicy'
 import { normalizeChatMode, type ChatMode } from '@/lib/agent/prompt-library'
@@ -210,10 +210,10 @@ export default function ProjectPage() {
     chatInspectorTab,
     setIsChatInspectorOpen,
     setChatInspectorTab,
-    isSpecDrawerOpen,
-    setIsSpecDrawerOpen,
-    isSpecPanelOpen,
-    setIsSpecPanelOpen,
+    specSurfaceMode,
+    openSpecApproval,
+    openSpecInspect,
+    closeSpecSurface,
     isShareDialogOpen,
     setIsShareDialogOpen,
     // New agent command center state
@@ -237,7 +237,7 @@ export default function ProjectPage() {
 
   const { activeSection, isFlyoutOpen, handleSectionChange, toggleFlyout } = useSidebar()
 
-  const [automationMode, setAutomationMode] = useState<'manual' | 'auto'>('manual')
+  const [oversightLevel, setOversightLevel] = useState<'review' | 'autopilot'>('review')
   const [contextualPrompt, setContextualPrompt] = useState<string | null>(null)
   const [isComposerOpen, setIsComposerOpen] = useState(false)
   const [isShortcutHelpOpen, setIsShortcutHelpOpen] = useState(false)
@@ -329,8 +329,6 @@ export default function ProjectPage() {
     setUiSelectedModel,
     reasoningVariant,
     setReasoningVariant,
-    specTier,
-    setSpecTier,
     provider,
     selectedModel,
     availableModels,
@@ -348,6 +346,10 @@ export default function ProjectPage() {
   const planningQuestions =
     activePlanningSession?.questions ??
     buildDefaultPlanningQuestions({ projectName: project?.name })
+  const agentPolicy = useMemo(
+    () => resolveAgentPolicy({ chatMode, oversightLevel }),
+    [chatMode, oversightLevel]
+  )
   const forgeProjectSnapshot = useQuery(
     api.forge.getProjectSnapshot,
     activeChat ? { chatId: activeChat._id } : 'skip'
@@ -377,7 +379,7 @@ export default function ProjectPage() {
     model: selectedModel,
     planDraft: persistedPlanDraft,
     automationPolicy: effectiveAutomationPolicy,
-    specApprovalMode: automationMode === 'auto' ? 'auto_approve' : 'interactive',
+    specApprovalMode: agentPolicy.specApprovalMode,
     onRunCreated: async ({ runId, approvedPlanExecution }) => {
       void runId
       if (activeDeliveryTask) {
@@ -934,10 +936,6 @@ export default function ProjectPage() {
         )?.content ?? null,
     [chatMessages]
   )
-  const backgroundExecutionPolicy = useMemo(
-    () => resolveBackgroundExecutionPolicy(chatMode),
-    [chatMode]
-  )
   const inlineRateLimitError = useMemo(() => {
     if (!agent.error || !isRateLimitError(agent.error)) return null
     return getUserFacingAgentError(agent.error)
@@ -1186,11 +1184,39 @@ export default function ProjectPage() {
     ]
   )
 
+  const handleStartPlanningIntake = useCallback(async () => {
+    const sessionId = await planningSession.startIntake(planningQuestions)
+
+    if (activeChat?._id) {
+      const taskSummary = 'Start planning intake'
+      await addMessageMutation({
+        chatId: activeChat._id,
+        role: 'user',
+        content: taskSummary,
+        annotations: [{ mode: 'architect' }],
+      })
+    }
+
+    setIsChatInspectorOpen(true)
+    setChatInspectorTab('plan')
+    openRightPanelTab('plan')
+
+    return sessionId
+  }, [
+    activeChat?._id,
+    addMessageMutation,
+    openRightPanelTab,
+    planningQuestions,
+    planningSession,
+    setChatInspectorTab,
+    setIsChatInspectorOpen,
+  ])
+
   const chatPanelContent = (
     <ProjectChatPanel
       projectId={projectId}
-      automationMode={automationMode}
-      onAutomationModeChange={setAutomationMode}
+      oversightLevel={oversightLevel}
+      onOversightLevelChange={setOversightLevel}
       activeChatId={activeChat?._id}
       activeChatPlanStatus={activeChat?.planStatus}
       activeChatPlanUpdatedAt={activeChat?.planUpdatedAt}
@@ -1214,8 +1240,6 @@ export default function ProjectPage() {
       onVariantChange={setReasoningVariant}
       supportsReasoning={supportsReasoning}
       attachmentsEnabled={true}
-      specTier={specTier}
-      onSpecTierChange={setSpecTier}
       inlineRateLimitError={inlineRateLimitError}
       onToggleInspector={() => {
         openChatInspectorSurface(chatInspectorSurfaceTab)
@@ -1241,26 +1265,25 @@ export default function ProjectPage() {
       }}
       planApproveDisabled={!canApproveCurrentPlan || agent.isLoading}
       planBuildDisabled={!canBuildCurrentPlan || agent.isLoading}
-      showInlinePlanReview={backgroundExecutionPolicy.showInlinePlanReview}
+      showInlinePlanReview={agentPolicy.showPlanReview}
       pendingSpec={agent.pendingSpec}
       onSpecApprove={agent.approvePendingSpec}
-      onSpecEdit={() => setIsSpecPanelOpen(true)}
+      onSpecEdit={openSpecApproval}
       onSpecCancel={agent.cancelPendingSpec}
-      showInlineSpecReview={backgroundExecutionPolicy.showInlineSpecReview}
-      currentSpecTier={agent.currentSpec?.tier || specTier}
-      isSpecPanelOpen={isSpecPanelOpen}
-      onCloseSpecPanel={() => setIsSpecPanelOpen(false)}
+      showInlineSpecReview={agentPolicy.showSpecReview}
+      specSurfaceMode={specSurfaceMode}
+      onCloseSpecSurface={closeSpecSurface}
       onEditPendingSpec={agent.updatePendingSpecDraft}
       onExecutePendingSpec={(spec) => {
         agent.approvePendingSpec(spec)
-        setIsSpecPanelOpen(false)
+        closeSpecSurface()
       }}
       isMobileLayout={isMobileLayout}
       isInspectorOpen={isChatInspectorOpen}
       inspectorTab={chatInspectorSurfaceTab}
       planningSession={activePlanningSession}
       planningCurrentQuestion={planningSession.currentQuestion}
-      onStartPlanningIntake={() => planningSession.startIntake(planningQuestions)}
+      onStartPlanningIntake={handleStartPlanningIntake}
       onAnswerPlanningQuestion={planningSession.answerQuestion}
       onClearPlanningIntake={() =>
         activePlanningSession?.sessionId ? planningSession.clearIntake() : Promise.resolve(null)
@@ -1274,7 +1297,7 @@ export default function ProjectPage() {
         openRightPanelTab('review')
       }}
       currentSpec={agent.currentSpec}
-      onSpecClick={() => setIsSpecDrawerOpen(true)}
+      onSpecClick={openSpecInspect}
       onPlanClick={() => {
         openRightPanelTab('plan')
       }}
@@ -1353,7 +1376,7 @@ export default function ProjectPage() {
           currentSpec={agent.currentSpec}
           planStatus={activeChat?.planStatus}
           planDraft={planDraft}
-          onSpecClick={() => setIsSpecDrawerOpen(true)}
+          onSpecClick={openSpecInspect}
           onPlanClick={() => openRightPanelTab('plan')}
           onResumeRuntimeSession={agent.resumeRuntimeSession}
           planningDebug={planningDebug}
@@ -1620,8 +1643,7 @@ export default function ProjectPage() {
           cursorPosition={cursorPosition}
           isStreaming={agent.isLoading}
           currentSpec={agent.currentSpec}
-          isSpecDrawerOpen={isSpecDrawerOpen}
-          onSpecDrawerOpenChange={setIsSpecDrawerOpen}
+          openSpecInspect={openSpecInspect}
           onContextualChat={(selection, filePath) => {
             const ext = filePath.split('.').pop() || 'text'
             const prompt = `\`\`\`${ext}\n// ${filePath}\n${selection}\n\`\`\``

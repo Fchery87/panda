@@ -127,6 +127,47 @@ function formatForgeContextPack(pack: WorkerContextPack): string {
   ].join('\n')
 }
 
+export function buildActiveSpecSystemContent(spec: FormalSpecification): string {
+  const lines: string[] = [
+    '## Active Specification',
+    `**Goal:** ${spec.intent.goal}`,
+    `**Status:** ${spec.status} (Tier: ${spec.tier})`,
+    '',
+  ]
+
+  if (spec.intent.constraints.length > 0) {
+    lines.push('**Constraints:**')
+    for (const c of spec.intent.constraints) {
+      lines.push(
+        `- [${c.type}] ${'requirement' in c ? c.requirement : 'rule' in c ? c.rule : 'assertion' in c ? c.assertion : JSON.stringify(c)}`
+      )
+    }
+    lines.push('')
+  }
+
+  if (spec.intent.acceptanceCriteria.length > 0) {
+    lines.push('**Acceptance Criteria:**')
+    for (const a of spec.intent.acceptanceCriteria) {
+      lines.push(`- ${a.behavior}`)
+    }
+    lines.push('')
+  }
+
+  if (spec.plan.steps.length > 0) {
+    lines.push('**Execution Plan:**')
+    for (let i = 0; i < spec.plan.steps.length; i++) {
+      lines.push(`${i + 1}. ${spec.plan.steps[i].description}`)
+    }
+    lines.push('')
+  }
+
+  lines.push(
+    '**Scope Rule:** Only modify files in plan scope. Out-of-scope writes will be flagged.'
+  )
+
+  return lines.join('\n')
+}
+
 function normalizeCheckpointToolCallFrequency(
   entries: RuntimeCheckpointState['toolCallFrequency']
 ): Array<{ key: string; count: number }> {
@@ -188,6 +229,7 @@ export type RuntimeEventType =
   | 'spec_pending_approval'
   | 'spec_generated'
   | 'spec_verification'
+  | 'drift_detected'
 
 /**
  * Runtime event
@@ -241,6 +283,10 @@ export interface RuntimeEvent {
       passed: boolean
       message?: string
     }>
+  }
+  drift?: {
+    specId: string
+    findings: Array<{ filePath: string; description: string }>
   }
 }
 
@@ -309,6 +355,7 @@ export class Runtime {
     this.toolExecutors = toolExecutors
     this.config = { ...DEFAULT_RUNTIME_CONFIG, ...config }
     this.specEngine = createSpecEngine(this.config.specEngine)
+    this.specEngine.setProvider(provider)
   }
 
   /**
@@ -1562,7 +1609,16 @@ export class Runtime {
           const drifts = getPendingDrifts()
           for (const drift of drifts) {
             if (drift.specId === this.state.activeSpec.id) {
-              // Emit drift events for each finding
+              yield {
+                type: 'drift_detected',
+                drift: {
+                  specId: drift.specId,
+                  findings: drift.findings.map((f) => ({
+                    filePath: f.filePath,
+                    description: f.description ?? '',
+                  })),
+                },
+              }
               for (const finding of drift.findings) {
                 await this.executeHook(
                   'spec.drift.detected',
@@ -2131,6 +2187,16 @@ export class Runtime {
       messages.push({
         role: 'system',
         content: formatForgeContextPack(this.state.forgeContextPack),
+      })
+    }
+
+    if (
+      this.state.activeSpec &&
+      (this.state.activeSpec.status === 'executing' || this.state.activeSpec.status === 'approved')
+    ) {
+      messages.push({
+        role: 'system',
+        content: buildActiveSpecSystemContent(this.state.activeSpec),
       })
     }
 
