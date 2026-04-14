@@ -48,11 +48,7 @@ export function reconcileSpecAndForge(args: {
   const gateKey = GATE_REQUIRED_PHASES[forge.phase]
   if (gateKey) {
     const gateStatus = forge.gates[gateKey]
-    if (
-      gateStatus !== 'passed' &&
-      gateStatus !== 'waived' &&
-      gateStatus !== 'not_required'
-    ) {
+    if (gateStatus !== 'passed' && gateStatus !== 'waived' && gateStatus !== 'not_required') {
       return {
         aligned: false,
         reason: 'gate-not-passed',

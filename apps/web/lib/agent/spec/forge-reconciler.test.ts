@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import type { FormalSpecification, SpecStatus } from './types'
-import type { ForgeGateStatus, ForgeGateType, ForgePhase } from '../../forge/types'
+import type { ForgeGateStatus, ForgeGateType } from '../../forge/types'
 import { reconcileSpecAndForge } from './forge-reconciler'
 
 const baseSpec: FormalSpecification = {

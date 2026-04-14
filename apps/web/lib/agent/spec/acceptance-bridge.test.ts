@@ -3,7 +3,6 @@ import type { AcceptanceCriterion } from './types'
 import type { ForgeAcceptanceCriterion } from '../../forge/types'
 import {
   toForgeAcceptance,
-  toSpecAcceptance,
   fromForgeWithHint,
   toForgeAcceptanceWithHint,
 } from './acceptance-bridge'

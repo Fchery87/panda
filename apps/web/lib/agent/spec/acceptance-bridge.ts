@@ -5,40 +5,30 @@ import type {
   VerificationMethod,
 } from '../../forge/types'
 
-const SPEC_TO_FORGE_METHOD: Record<
-  AcceptanceCriterion['verificationMethod'],
-  VerificationMethod
-> = {
-  automated: 'unit',
-  'llm-judge': 'review',
-  manual: 'manual',
-}
+const SPEC_TO_FORGE_METHOD: Record<AcceptanceCriterion['verificationMethod'], VerificationMethod> =
+  {
+    automated: 'unit',
+    'llm-judge': 'review',
+    manual: 'manual',
+  }
 
-const FORGE_TO_SPEC_METHOD: Record<
-  VerificationMethod,
-  AcceptanceCriterion['verificationMethod']
-> = {
-  unit: 'automated',
-  integration: 'automated',
-  e2e: 'automated',
-  review: 'llm-judge',
-  manual: 'manual',
-}
+const FORGE_TO_SPEC_METHOD: Record<VerificationMethod, AcceptanceCriterion['verificationMethod']> =
+  {
+    unit: 'automated',
+    integration: 'automated',
+    e2e: 'automated',
+    review: 'llm-judge',
+    manual: 'manual',
+  }
 
-const SPEC_TO_FORGE_STATUS: Record<
-  AcceptanceCriterion['status'],
-  AcceptanceCriterionStatus
-> = {
+const SPEC_TO_FORGE_STATUS: Record<AcceptanceCriterion['status'], AcceptanceCriterionStatus> = {
   pending: 'pending',
   passed: 'passed',
   failed: 'failed',
   skipped: 'waived',
 }
 
-const FORGE_TO_SPEC_STATUS: Record<
-  AcceptanceCriterionStatus,
-  AcceptanceCriterion['status']
-> = {
+const FORGE_TO_SPEC_STATUS: Record<AcceptanceCriterionStatus, AcceptanceCriterion['status']> = {
   pending: 'pending',
   passed: 'passed',
   failed: 'failed',
@@ -74,13 +64,9 @@ export function fromForgeWithHint(forge: ForgeAcceptanceCriterion): BridgedAccep
   return { spec: toSpecAcceptance(forge), forgeMethodHint: forge.verificationMethod }
 }
 
-export function toForgeAcceptanceWithHint(
-  bridged: BridgedAcceptance
-): ForgeAcceptanceCriterion {
+export function toForgeAcceptanceWithHint(bridged: BridgedAcceptance): ForgeAcceptanceCriterion {
   const base = toForgeAcceptance(bridged.spec)
-  return bridged.forgeMethodHint
-    ? { ...base, verificationMethod: bridged.forgeMethodHint }
-    : base
+  return bridged.forgeMethodHint ? { ...base, verificationMethod: bridged.forgeMethodHint } : base
 }
 
 function splitEarsText(text: string): { trigger: string; behavior: string } {
