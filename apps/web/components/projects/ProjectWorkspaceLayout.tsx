@@ -468,6 +468,7 @@ export function ProjectWorkspaceLayout({
         isStreaming={isStreaming}
         specEngineEnabled={true}
         specStatus={currentSpec?.status ?? null}
+        specTier={currentSpec?.tier}
         specConstraintsMet={
           currentSpec?.verificationResults?.filter((result) => result.passed).length
         }

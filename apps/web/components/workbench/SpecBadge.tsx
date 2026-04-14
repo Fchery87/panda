@@ -2,10 +2,12 @@
 
 import { cn } from '@/lib/utils'
 import { Zap, CheckCircle2, XCircle, AlertTriangle, Loader2 } from 'lucide-react'
-import type { SpecStatus } from '@/lib/agent/spec/types'
+import type { SpecStatus, SpecTier } from '@/lib/agent/spec/types'
 
 interface SpecBadgeProps {
   status: SpecStatus
+  tier?: SpecTier
+  classificationReasoning?: string
   constraintsMet?: number
   constraintsTotal?: number
   onClick?: () => void
@@ -67,6 +69,8 @@ const statusConfig: Record<
 
 export function SpecBadge({
   status,
+  tier,
+  classificationReasoning,
   constraintsMet,
   constraintsTotal,
   onClick,
@@ -79,6 +83,7 @@ export function SpecBadge({
     <button
       type="button"
       onClick={onClick}
+      title={classificationReasoning}
       className={cn(
         'flex items-center gap-1.5 font-mono text-xs',
         'transition-colors hover:opacity-80',
@@ -93,6 +98,9 @@ export function SpecBadge({
         <span className={cn(config.animate && 'animate-pulse')}>
           {status === 'verified' ? 'Spec-verified' : `Spec ${config.label.toLowerCase()}`}
         </span>
+        {tier && (
+          <span className="text-muted-foreground">&middot; {tier}</span>
+        )}
         {hasConstraints && (
           <span className="text-muted-foreground">
             • {constraintsMet}/{constraintsTotal} constraints
@@ -101,6 +109,15 @@ export function SpecBadge({
       </span>
     </button>
   )
+}
+
+/**
+ * Pure helper for building the spec badge label string.
+ * Extracted for testability without needing a DOM renderer.
+ */
+export function buildSpecBadgeLabel(status: SpecStatus, tier?: SpecTier): string {
+  const base = status === 'verified' ? 'Spec-verified' : `Spec ${statusConfig[status].label.toLowerCase()}`
+  return tier ? `${base} · ${tier}` : base
 }
 
 interface SpecBadgeMiniProps {

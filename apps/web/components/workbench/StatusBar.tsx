@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 import { SpecBadge } from './SpecBadge'
-import type { SpecStatus } from '@/lib/agent/spec/types'
+import type { SpecStatus, SpecTier } from '@/lib/agent/spec/types'
 
 export type AgentStatus = 'idle' | 'running' | 'completed' | 'failed'
 
@@ -28,6 +28,8 @@ interface StatusBarProps {
   specEngineEnabled?: boolean
   /** Current spec status */
   specStatus?: SpecStatus | null
+  /** Current spec tier */
+  specTier?: SpecTier
   /** Number of constraints met */
   specConstraintsMet?: number
   /** Total number of constraints */
@@ -86,6 +88,7 @@ export function StatusBar({
   className,
   specEngineEnabled = false,
   specStatus = null,
+  specTier,
   specConstraintsMet,
   specConstraintsTotal,
   onSpecClick,
@@ -149,6 +152,7 @@ export function StatusBar({
         {specEngineEnabled && specStatus && (
           <SpecBadge
             status={specStatus}
+            tier={specTier}
             constraintsMet={specConstraintsMet}
             constraintsTotal={specConstraintsTotal}
             onClick={onSpecClick}
