@@ -13,7 +13,7 @@ import { getDefaultForgeHarnessAgent, getLegacyHarnessAgent } from './chat-modes
 import { getPromptForMode, type PromptContext } from './prompt-library'
 import { executeTool, type ToolContext, type ToolExecutionResult } from './tools'
 import { resolveAgentSkillsForPromptContext } from './skills/resolver'
-import { rulesForMode } from './permission/mode-rulesets'
+import { resolveRulesForPhase } from './permission/mode-rulesets'
 import {
   Runtime as HarnessRuntime,
   agents as harnessAgents,
@@ -566,7 +566,7 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
       toolRetryBackoffMs: 200,
       // Wire chat mode into the harness for capability-based tool filtering
       chatMode: promptContext.chatMode,
-      permissionRules: rulesForMode(promptContext.chatMode),
+      permissionRules: resolveRulesForPhase(promptContext.chatMode, {}),
       specEngine: {
         // Architect (plan) mode is a planning-only pass — no implementation happens,
         // so spec generation and verification would always fail. Disable entirely.
