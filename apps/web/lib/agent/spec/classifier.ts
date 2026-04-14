@@ -11,6 +11,12 @@
 
 import type { SpecTier } from './types'
 import type { LLMProvider } from '../../llm/types'
+import { appLog } from '@/lib/logger'
+
+const LLM_CLASSIFIER_FLAG = 'PANDA_SPEC_LLM_CLASSIFIER'
+function llmClassifierEnabled(): boolean {
+  return process.env[LLM_CLASSIFIER_FLAG] !== '0'
+}
 
 /**
  * Context for intent classification
@@ -390,6 +396,15 @@ async function performLLMClassification(
     return performHeuristicScoring(message, context, heuristicResult)
   }
 
+  if (!llmClassifierEnabled()) {
+    appLog.debug('[classifier] LLM path disabled by flag', { flag: LLM_CLASSIFIER_FLAG })
+    return performHeuristicScoring(message, context, heuristicResult)
+  }
+
+  appLog.debug('[classifier] invoking LLM classifier', {
+    model: context.provider.config.defaultModel,
+  })
+
   try {
     const prompt = buildClassificationPrompt(message, context, heuristicResult)
 
@@ -416,6 +431,10 @@ async function performLLMClassification(
         result.confidence >= 0 &&
         result.confidence <= 1
       ) {
+        appLog.debug('[classifier] LLM classification result', {
+          tier: result.tier,
+          confidence: result.confidence,
+        })
         return {
           tier: result.tier,
           confidence: result.confidence,

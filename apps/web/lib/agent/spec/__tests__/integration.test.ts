@@ -578,3 +578,24 @@ describe('SpecNative Integration', () => {
     })
   })
 })
+
+describe('LLM classifier feature flag', () => {
+  test('respects PANDA_SPEC_LLM_CLASSIFIER=0 flag', async () => {
+    const { classifyIntent } = await import('../classifier')
+    const original = process.env.PANDA_SPEC_LLM_CLASSIFIER
+    process.env.PANDA_SPEC_LLM_CLASSIFIER = '0'
+    try {
+      const result = await classifyIntent('refactor all of auth', {
+        provider: {
+          config: { provider: 'openai', defaultModel: 'test' },
+          complete: async () => {
+            throw new Error('LLM should not be called when flag is disabled')
+          },
+        } as never,
+      })
+      expect(['instant', 'ambient', 'explicit']).toContain(result.tier)
+    } finally {
+      process.env.PANDA_SPEC_LLM_CLASSIFIER = original
+    }
+  })
+})

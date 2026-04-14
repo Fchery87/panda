@@ -16,6 +16,12 @@ import type {
 } from './types'
 
 import type { LLMProvider } from '../../llm/types'
+import { appLog } from '@/lib/logger'
+
+const LLM_VERIFIER_FLAG = 'PANDA_SPEC_LLM_VERIFIER'
+function llmVerifierEnabled(): boolean {
+  return process.env[LLM_VERIFIER_FLAG] !== '0'
+}
 
 /**
  * Execution results for verification
@@ -291,6 +297,16 @@ async function verifyLLMJudgeCriterion(
   if (!context?.provider) {
     return performHeuristicLLMJudge(criterion, results)
   }
+
+  if (!llmVerifierEnabled()) {
+    appLog.debug('[verifier] LLM path disabled by flag', { flag: LLM_VERIFIER_FLAG })
+    return performHeuristicLLMJudge(criterion, results)
+  }
+
+  appLog.debug('[verifier] invoking LLM verifier', {
+    criterionId: criterion.id,
+    model: context.provider.config.defaultModel,
+  })
 
   try {
     const prompt = buildLLMJudgePrompt(criterion, results)
