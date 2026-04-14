@@ -1,4 +1,12 @@
-import type { DecisionLogEntry, ForgeRole, ForgeTaskRecord, WorkerContextPack } from './types'
+import type {
+  DecisionLogEntry,
+  ForgeGateStatus,
+  ForgeGateType,
+  ForgePhase,
+  ForgeRole,
+  ForgeTaskRecord,
+  WorkerContextPack,
+} from './types'
 export { parseWorkerResult } from './result-parser'
 
 export function buildForgeContextPack(args: {
@@ -10,6 +18,8 @@ export function buildForgeContextPack(args: {
   recentChangesDigest: string
   nextStepBrief?: string
   excludedContext?: string[]
+  phase?: ForgePhase
+  gates?: Record<ForgeGateType, ForgeGateStatus>
 }): WorkerContextPack {
   return {
     projectId: args.projectId,
@@ -29,5 +39,7 @@ export function buildForgeContextPack(args: {
     recentChangesDigest: args.recentChangesDigest,
     nextStepBrief: args.nextStepBrief,
     excludedContext: args.excludedContext ?? [],
+    phase: args.phase,
+    gates: args.gates,
   }
 }

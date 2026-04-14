@@ -101,4 +101,25 @@ describe('forge context pack', () => {
       )
     ).toThrow(/worker result/i)
   })
+
+  test('includes phase and gate snapshot from delivery state', () => {
+    const pack = buildForgeContextPack({
+      projectId: 'project_1',
+      deliveryStateId: 'delivery_state_1',
+      role: 'builder',
+      task: makeTask(),
+      recentChangesDigest: 'No changes.',
+      phase: 'review',
+      gates: {
+        architecture_review: 'passed',
+        implementation_review: 'pending',
+        qa_review: 'not_required',
+        ship_review: 'not_required',
+      },
+    })
+
+    expect(pack.phase).toBe('review')
+    expect(pack.gates?.implementation_review).toBe('pending')
+    expect(pack.gates?.architecture_review).toBe('passed')
+  })
 })

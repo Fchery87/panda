@@ -221,6 +221,10 @@ export interface WorkerContextPack {
   recentChangesDigest: string
   nextStepBrief?: string
   excludedContext: string[]
+  /** Current Forge delivery phase */
+  phase?: ForgePhase
+  /** Gate snapshot from delivery state */
+  gates?: Record<ForgeGateType, ForgeGateStatus>
 }
 
 export interface WorkerTestResult {
