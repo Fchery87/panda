@@ -728,6 +728,30 @@ export class Runtime {
       // Only emit 'complete' if verification passed or there's no active spec
       // If verification failed, emit 'error' instead
       if (verificationOutcome.passed) {
+        // Spec/Forge reconciliation: block completion if spec and forge gates disagree
+        if (this.state.activeSpec) {
+          const { reconcileSpecAndForge } = await import('../spec/forge-reconciler')
+          const reconcile = reconcileSpecAndForge({
+            spec: this.state.activeSpec,
+            forge: this.state.forgeContextPack
+              ? {
+                  phase: this.state.forgeContextPack.phase,
+                  gates: this.state.forgeContextPack.gates,
+                }
+              : undefined,
+          })
+          if (!reconcile.aligned) {
+            yield {
+              type: 'error',
+              error: `Spec ↔ Forge misalignment: ${reconcile.reason}${
+                reconcile.gate ? ` (gate: ${reconcile.gate})` : ''
+              } — ${reconcile.detail ?? ''}`.trim(),
+            }
+            await this.saveCheckpoint(agent.name, 'error')
+            return
+          }
+        }
+
         log.info('Session completed', {
           steps: this.state.step,
           cost: this.state.cost,
