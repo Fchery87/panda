@@ -871,9 +871,13 @@ export default function SettingsPage() {
             <ArrowLeft className="mr-1 h-4 w-4" />
             Back to Projects
           </Button>
-          <h1 className="text-3xl font-bold">Settings</h1>
+          <div className="flex items-center gap-3">
+            <span className="h-px w-8 bg-primary" />
+            <span className="text-label text-muted-foreground">Configuration</span>
+          </div>
+          <h1 className="text-display text-3xl">Settings</h1>
           <p className="mt-1 text-muted-foreground">
-            Manage your preferences and API configurations
+            Configure your LLM providers, automation defaults, and workspace preferences.
           </p>
         </div>
 
@@ -920,8 +924,10 @@ export default function SettingsPage() {
           <TabsContent value="general" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>General Settings</CardTitle>
-                <CardDescription>Configure your basic preferences</CardDescription>
+                <CardTitle>General</CardTitle>
+                <CardDescription>
+                  Language, default model, and automation behavior for new projects.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Language Selection */}
@@ -982,7 +988,7 @@ export default function SettingsPage() {
               <CardHeader>
                 <CardTitle>Automation Defaults</CardTitle>
                 <CardDescription>
-                  Configure the browser automation defaults Panda uses for new projects.
+                  Default agent behavior for new projects. These can be overridden per-project.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -997,7 +1003,8 @@ export default function SettingsPage() {
               <div>
                 <h3 className="text-lg font-medium">LLM Providers</h3>
                 <p className="text-sm text-muted-foreground">
-                  Configure API keys for your preferred providers
+                  Add API keys for the providers you want to use. Panda supports any
+                  OpenAI-compatible endpoint.
                 </p>
               </div>
               <Button variant="outline" size="sm" onClick={() => setCatalogModalOpen(true)}>
@@ -1070,7 +1077,7 @@ export default function SettingsPage() {
               <CardHeader>
                 <CardTitle>OAuth Connections</CardTitle>
                 <CardDescription>
-                  Connect providers using OAuth for seamless authentication (no API key needed)
+                  Authenticate with providers using OAuth instead of manual API keys.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -1085,7 +1092,7 @@ export default function SettingsPage() {
               <CardHeader>
                 <CardTitle>MCP Servers</CardTitle>
                 <CardDescription>
-                  Configure Model Context Protocol servers for extended capabilities
+                  Connect external tools and data sources via the Model Context Protocol.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -1102,7 +1109,9 @@ export default function SettingsPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Custom Subagents</CardTitle>
-                <CardDescription>Create specialized agents for specific tasks</CardDescription>
+                <CardDescription>
+                  Define specialized agents for repetitive or domain-specific tasks.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {allowUserSubagents ? (
@@ -1121,7 +1130,9 @@ export default function SettingsPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Appearance</CardTitle>
-                <CardDescription>Customize how Panda.ai looks for you</CardDescription>
+                <CardDescription>
+                  Switch between light, dark, and system-matched themes.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-3">

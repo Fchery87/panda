@@ -24,28 +24,32 @@ const adminRouteCards: AdminRouteCard[] = [
   {
     href: '/admin/users',
     title: 'User Management',
-    description: 'Inspect accounts, grant access, ban users, and handle account deletion.',
+    description:
+      'Search, inspect, and manage user accounts. Grant or revoke admin access, ban users, and handle deletions.',
     icon: Users,
     badge: 'Dedicated',
   },
   {
     href: '/admin/analytics',
     title: 'Analytics',
-    description: 'Review provider and model usage with the operational analytics view.',
+    description:
+      'Platform usage metrics — active users, project counts, provider distribution, and model usage over time.',
     icon: BarChart3,
     badge: 'Dedicated',
   },
   {
     href: '/admin/system',
     title: 'System Controls',
-    description: 'Manage maintenance, access, limits, and the LLM configuration tab.',
+    description:
+      'Feature toggles, maintenance mode, global LLM defaults, access policy, and per-user resource limits.',
     icon: Settings,
     badge: 'Dedicated',
   },
   {
     href: '/admin/security',
     title: 'Security',
-    description: 'Review audit logs and security-sensitive administrative actions.',
+    description:
+      'Full audit trail of admin actions — permission changes, user bans, deletions, and settings updates.',
     icon: Shield,
     badge: 'Dedicated',
   },
@@ -63,16 +67,15 @@ export default function AdminDashboardPage() {
             A
           </div>
           <div>
-            <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+            <h1 className="text-display text-3xl">Admin Console</h1>
             <p className="text-muted-foreground">
-              Overview and routing hub for the dedicated admin surfaces
+              System overview and routing hub for administrative tools
             </p>
           </div>
         </div>
         <p className="max-w-3xl text-sm text-muted-foreground">
-          Use this page to review the current system state and jump into the dedicated tools for
-          users, analytics, system controls, and security. Operational editing lives in the routed
-          pages, not here.
+          This page shows the current system state at a glance. To make changes, navigate to the
+          dedicated tool for users, analytics, system controls, or security below.
         </p>
       </div>
 
@@ -115,7 +118,7 @@ export default function AdminDashboardPage() {
           <Card className="rounded-none">
             <CardHeader>
               <CardTitle>Current Access Status</CardTitle>
-              <CardDescription>High-level summary of the current platform policy</CardDescription>
+              <CardDescription>Platform policy at a glance</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {adminSettings ? (
@@ -161,10 +164,8 @@ export default function AdminDashboardPage() {
 
           <Card className="rounded-none">
             <CardHeader>
-              <CardTitle>Operational Routing</CardTitle>
-              <CardDescription>
-                Dedicated admin routes are the single source of truth for changes.
-              </CardDescription>
+              <CardTitle>Quick Navigation</CardTitle>
+              <CardDescription>Jump directly to any admin tool.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {[
