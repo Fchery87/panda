@@ -14,6 +14,13 @@ import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -24,11 +31,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { ArrowLeft, Settings, Save, AlertCircle, Bot, Server, Lock, Sparkles } from 'lucide-react'
+import {
+  ArrowLeft,
+  Settings,
+  Save,
+  AlertCircle,
+  Bot,
+  Server,
+  Lock,
+  Sparkles,
+  X,
+} from 'lucide-react'
 import { EnhancementLLMConfig } from '@/components/settings/EnhancementLLMConfig'
 
 import { readAdminEnumQueryParam, useAdminQueryUpdater } from '@/lib/admin/query-state'
 import { getEnhancementProviderOptions } from '@/lib/admin/enhancement-provider-options'
+import { getSharedProviderDefinitions } from '@/lib/llm/provider-definitions'
 
 const systemTabs = ['features', 'llm', 'access', 'limits'] as const
 
@@ -52,6 +70,11 @@ export default function AdminSystemPage() {
     maxChatsPerProject: 50,
   })
 
+  const [globalLLMConfig, setGlobalLLMConfig] = React.useState({
+    globalDefaultProvider: '',
+    globalDefaultModel: '',
+  })
+
   const [enhancementConfig, setEnhancementConfig] = React.useState({
     enhancementProvider: 'openai',
     enhancementModel: 'gpt-4o-mini',
@@ -61,6 +84,7 @@ export default function AdminSystemPage() {
 
   const serverStateRef = React.useRef<{
     controls: typeof controls
+    globalLLMConfig: typeof globalLLMConfig
     enhancementConfig: typeof enhancementConfig
   } | null>(null)
 
@@ -79,9 +103,18 @@ export default function AdminSystemPage() {
         enhancementProvider: settings.enhancementProvider || 'openai',
         enhancementModel: settings.enhancementModel || 'gpt-4o-mini',
       }
+      const newGlobalLLMConfig = {
+        globalDefaultProvider: settings.globalDefaultProvider || '',
+        globalDefaultModel: settings.globalDefaultModel || '',
+      }
       setControls(newControls)
       setEnhancementConfig(newEnhancementConfig)
-      serverStateRef.current = { controls: newControls, enhancementConfig: newEnhancementConfig }
+      setGlobalLLMConfig(newGlobalLLMConfig)
+      serverStateRef.current = {
+        controls: newControls,
+        globalLLMConfig: newGlobalLLMConfig,
+        enhancementConfig: newEnhancementConfig,
+      }
     }
   }, [settings])
 
@@ -89,9 +122,11 @@ export default function AdminSystemPage() {
     if (!serverStateRef.current) return false
     return (
       JSON.stringify(controls) !== JSON.stringify(serverStateRef.current.controls) ||
+      JSON.stringify(globalLLMConfig) !==
+        JSON.stringify(serverStateRef.current.globalLLMConfig) ||
       JSON.stringify(enhancementConfig) !== JSON.stringify(serverStateRef.current.enhancementConfig)
     )
-  }, [controls, enhancementConfig])
+  }, [controls, globalLLMConfig, enhancementConfig])
 
   React.useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
@@ -116,11 +151,14 @@ export default function AdminSystemPage() {
         registrationEnabled: controls.registrationEnabled,
         maxProjectsPerUser: controls.maxProjectsPerUser,
         maxChatsPerProject: controls.maxChatsPerProject,
+        globalDefaultProvider: globalLLMConfig.globalDefaultProvider || undefined,
+        globalDefaultModel: globalLLMConfig.globalDefaultModel || undefined,
         enhancementProvider: enhancementConfig.enhancementProvider,
         enhancementModel: enhancementConfig.enhancementModel,
       })
       serverStateRef.current = {
         controls: { ...controls },
+        globalLLMConfig: { ...globalLLMConfig },
         enhancementConfig: { ...enhancementConfig },
       }
       toast.success('System settings saved successfully')
@@ -280,6 +318,138 @@ export default function AdminSystemPage() {
         </TabsContent>
 
         <TabsContent value="llm" className="space-y-6">
+          <Card className="rounded-none">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Bot className="h-5 w-5" />
+                <CardTitle>Global LLM Configuration</CardTitle>
+              </div>
+              <CardDescription>
+                Set the default LLM provider and model for all users. Users can override these if
+                allowed in the Features tab.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <Alert className="rounded-none border-l-4 border-l-primary">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  These settings apply to all users unless they have permission to override them.
+                  Changes take effect immediately for new sessions.
+                </AlertDescription>
+              </Alert>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="global-provider" className="font-mono text-sm">
+                    Default Provider
+                  </Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={globalLLMConfig.globalDefaultProvider || undefined}
+                      onValueChange={(value) =>
+                        setGlobalLLMConfig((prev) => ({
+                          ...prev,
+                          globalDefaultProvider: value,
+                          globalDefaultModel: '',
+                        }))
+                      }
+                    >
+                      <SelectTrigger id="global-provider" className="flex-1 rounded-none">
+                        <SelectValue placeholder="No default set (users must configure)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getSharedProviderDefinitions().map((provider) => (
+                          <SelectItem key={provider.value} value={provider.value}>
+                            {provider.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {globalLLMConfig.globalDefaultProvider && (
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="rounded-none"
+                        onClick={() =>
+                          setGlobalLLMConfig((prev) => ({
+                            ...prev,
+                            globalDefaultProvider: '',
+                            globalDefaultModel: '',
+                          }))
+                        }
+                        title="Clear provider selection"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {globalLLMConfig.globalDefaultProvider && (
+                  <div className="space-y-2">
+                    <Label htmlFor="global-model" className="font-mono text-sm">
+                      Default Model
+                    </Label>
+                    <Select
+                      value={globalLLMConfig.globalDefaultModel || undefined}
+                      onValueChange={(value) =>
+                        setGlobalLLMConfig((prev) => ({ ...prev, globalDefaultModel: value }))
+                      }
+                    >
+                      <SelectTrigger id="global-model" className="rounded-none">
+                        <SelectValue placeholder="Select model..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getSharedProviderDefinitions()
+                          .find((p) => p.value === globalLLMConfig.globalDefaultProvider)
+                          ?.models.map((model) => (
+                            <SelectItem key={model} value={model}>
+                              {model}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
+              {(!globalLLMConfig.globalDefaultProvider || !globalLLMConfig.globalDefaultModel) && (
+                <div className="rounded-none bg-muted p-4">
+                  <p className="text-sm text-muted-foreground">
+                    <strong>Note:</strong> No global default is set. Users must configure their own
+                    provider and model in settings.
+                  </p>
+                </div>
+              )}
+
+              {globalLLMConfig.globalDefaultProvider && globalLLMConfig.globalDefaultModel && (
+                <div className="rounded-none border border-border bg-muted/30 p-4">
+                  <p className="mb-3 font-mono text-xs uppercase tracking-wider text-muted-foreground">
+                    Active Configuration
+                  </p>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Provider</Label>
+                      <p className="font-medium">
+                        {getSharedProviderDefinitions().find(
+                          (p) => p.value === globalLLMConfig.globalDefaultProvider
+                        )?.label || globalLLMConfig.globalDefaultProvider}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Model</Label>
+                      <p className="font-mono text-sm font-medium">
+                        {globalLLMConfig.globalDefaultModel}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Separator />
+
           <EnhancementLLMConfig
             enhancementProvider={enhancementConfig.enhancementProvider}
             enhancementModel={enhancementConfig.enhancementModel}
