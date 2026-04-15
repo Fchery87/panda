@@ -96,6 +96,15 @@ type SendMessageOptions = {
   attachmentsOnly?: boolean
 }
 
+function normalizeUserContent(rawContent: string, options?: SendMessageOptions): string {
+  const trimmed = rawContent.trim()
+  if (trimmed) return trimmed
+  if (options?.attachmentsOnly && options.attachments && options.attachments.length > 0) {
+    return '[User attached files for review.]'
+  }
+  return ''
+}
+
 export function buildPublicSendMessageOptions(options?: SendMessageOptions): {
   clearInput: true
   approvedPlanExecution?: boolean
@@ -495,7 +504,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         attachmentsOnly?: boolean
       }
     ) => {
-      const userContent = rawContent.trim()
+      const userContent = normalizeUserContent(rawContent, options)
       if (!userContent || isRunningRef.current) return
       if (options?.clearInput !== false) {
         setInput('')
@@ -1079,7 +1088,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
 
   const sendMessageWithVariants = useCallback(
     async (rawContent: string, contextFiles?: string[], options?: SendMessageOptions) => {
-      const userContent = rawContent.trim()
+      const userContent = normalizeUserContent(rawContent, options)
       if (!userContent || isRunningRef.current || !userId) return
 
       const variantCount = options?.variantCount ?? 2

@@ -304,18 +304,22 @@ function TreeItem({
                 <Plus className="mr-2 h-4 w-4" />
                 New File
               </ContextMenuItem>
-              <ContextMenuSeparator />
             </>
           )}
-          <ContextMenuItem onClick={handleRename}>
-            <Edit2 className="mr-2 h-4 w-4" />
-            Rename
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem onClick={handleDelete} className="text-destructive">
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
-          </ContextMenuItem>
+          {!isDirectory && (
+            <>
+              <ContextMenuSeparator />
+              <ContextMenuItem onClick={handleRename}>
+                <Edit2 className="mr-2 h-4 w-4" />
+                Rename
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem onClick={handleDelete} className="text-destructive">
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </ContextMenuItem>
+            </>
+          )}
         </ContextMenuContent>
       </ContextMenu>
 
@@ -427,7 +431,9 @@ export function FileTree({
     (parentPath: string) => {
       setNewFileParent(parentPath)
       // Auto-expand the parent directory
-      setExpandedPaths((prev) => new Set(prev).add(parentPath))
+      if (parentPath) {
+        setExpandedPaths((prev) => new Set(prev).add(parentPath))
+      }
     },
     [setExpandedPaths]
   )
@@ -461,7 +467,23 @@ export function FileTree({
       <div className="flex flex-col items-center justify-center px-4 py-8 text-center">
         <Folder className="mb-3 h-10 w-10 text-muted-foreground/30" />
         <p className="text-sm text-muted-foreground">No files yet</p>
-        <p className="mt-1 text-xs text-muted-foreground/60">Right-click to create one</p>
+        <button
+          type="button"
+          onClick={() => handleCreate('')}
+          className="mt-3 border border-border px-3 py-1.5 font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground"
+        >
+          Create File
+        </button>
+        {newFileParent === '' && (
+          <div className="mt-3 w-full max-w-xs">
+            <NewFileInput
+              parentPath=""
+              onSubmit={handleCreateSubmit}
+              onCancel={() => setNewFileParent(null)}
+              depth={0}
+            />
+          </div>
+        )}
       </div>
     )
   }

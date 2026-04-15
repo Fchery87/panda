@@ -25,6 +25,7 @@ describe('project chat wiring', () => {
     expect(content).toContain('Run History')
     expect(content).toContain('resetWorkspaceLabel')
     expect(content).toContain('projectId={projectId}')
+    expect(content).toContain('runHistoryCount?: number')
   })
 
   test('ProjectWorkspaceLayout renders the provided right panel content directly', async () => {
@@ -67,6 +68,7 @@ describe('project chat wiring', () => {
     expect(content).toContain('onInspectorOpenChange={setIsChatInspectorOpen}')
     expect(content).toContain('onInspectorTabChange={setChatInspectorTab}')
     expect(content).toContain("openChatInspectorSurface('artifacts')")
+    expect(content).toContain("onOpenPreview={() => setActiveCenterTab('preview')}")
   })
 
   test('project page persists architect intake messages and opens the plan inspector', async () => {
@@ -88,5 +90,13 @@ describe('project chat wiring', () => {
       'if (!agent.isLoading && agent.messages.length === 0 && convexMessages?.length)'
     )
     expect(content).toContain('attachments: msg.attachments')
+  })
+
+  test('project page derives changed file count from pending artifact previews instead of hardcoding zero', async () => {
+    const content = await readProjectPage()
+
+    expect(content).toContain('const pendingChangedFilesCount = pendingArtifactPreviews.length')
+    expect(content).toContain('changedFilesCount={pendingChangedFilesCount}')
+    expect(content).not.toContain('changedFilesCount={0}')
   })
 })

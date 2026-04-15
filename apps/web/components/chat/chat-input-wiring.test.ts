@@ -22,6 +22,7 @@ describe('chat input wiring', () => {
     expect(content).toContain('generateAttachmentUploadUrl')
     expect(content).toContain('await upsertFile({')
     expect(content).toContain('attachments: uploadedAttachments')
+    expect(content).toContain('contextFilePath: isTextLike ? storedPath : undefined')
     expect(content).toContain(
       'const hasSendContent = input.trim().length > 0 || attachments.length > 0'
     )
@@ -60,5 +61,13 @@ describe('chat input wiring', () => {
     expect(content).toContain('aria-label={`Remove attachment ${att.file.name}`}')
     expect(content).toContain('width={32}')
     expect(content).toContain('height={32}')
+  })
+
+  test('ChatInput only mirrors text-like file attachments into workspace files', async () => {
+    const content = await readChatComponent('ChatInput.tsx')
+
+    expect(content).toContain('const isTextLike =')
+    expect(content).toContain("attachment.file.type.startsWith('text/')")
+    expect(content).toContain('if (isTextLike) {')
   })
 })

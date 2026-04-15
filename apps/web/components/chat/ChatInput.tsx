@@ -60,6 +60,7 @@ type UploadedAttachmentPayload = {
   kind: 'file' | 'image'
   contentType?: string
   size?: number
+  contextFilePath?: string
   url?: string
 }
 
@@ -220,12 +221,32 @@ export function ChatInput({
             const { storageId } = (await uploadResult.json()) as { storageId: Id<'_storage'> }
 
             if (attachment.type === 'file') {
-              await upsertFile({
-                projectId,
+              const isTextLike =
+                attachment.file.type.startsWith('text/') ||
+                attachment.file.type === '' ||
+                /\.(txt|md|mdx|json|ya?ml|toml|ini|csv|ts|tsx|js|jsx|mjs|cjs|css|scss|html?|xml|py|rb|go|rs|java|kt|swift|sh|sql)$/i.test(
+                  attachment.file.name
+                )
+
+              if (isTextLike) {
+                await upsertFile({
+                  projectId,
+                  path: storedPath,
+                  content: await attachment.file.text(),
+                  isBinary: false,
+                })
+              }
+
+              return {
+                storageId,
                 path: storedPath,
-                content: await attachment.file.text(),
-                isBinary: false,
-              })
+                filename: attachment.file.name,
+                kind: attachment.type,
+                contentType: attachment.file.type || undefined,
+                size: attachment.file.size,
+                contextFilePath: isTextLike ? storedPath : undefined,
+                url: undefined,
+              }
             }
 
             return {
@@ -252,8 +273,8 @@ export function ChatInput({
     const nextContextFiles = [
       ...contextFiles,
       ...uploadedAttachments
-        .filter((attachment) => attachment.kind === 'file')
-        .map((attachment) => attachment.path),
+        .map((attachment) => attachment.contextFilePath)
+        .filter((path): path is string => Boolean(path)),
     ]
     const nextMessage = formatAttachmentMessage({
       message: message || input.trim(),

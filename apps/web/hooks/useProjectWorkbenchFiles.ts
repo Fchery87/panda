@@ -28,6 +28,17 @@ type SelectedFileLocation = EditorLocation & {
   nonce: number
 }
 
+function isDirectoryPath(targetPath: string, allPaths: string[]): boolean {
+  const prefix = `${targetPath}/`
+  return allPaths.some((path) => path.startsWith(prefix))
+}
+
+function renamePathPrefix(path: string, oldPrefix: string, newPrefix: string): string {
+  if (path === oldPrefix) return newPrefix
+  if (!path.startsWith(`${oldPrefix}/`)) return path
+  return `${newPrefix}${path.slice(oldPrefix.length)}`
+}
+
 export function useProjectWorkbenchFiles(args: {
   projectId: Id<'projects'>
   files: ProjectWorkbenchFile[] | undefined
@@ -121,36 +132,68 @@ export function useProjectWorkbenchFiles(args: {
         toast.success(`Created ${path}`)
         setSelectedFilePath(path)
         setSelectedFileLocation(null)
+        setCursorPosition(null)
+        setOpenTabs((prev) => {
+          if (prev.some((tab) => tab.path === path)) return prev
+          return [...prev, { path }]
+        })
       } catch (error) {
         toast.error('Failed to create file', {
           description: error instanceof Error ? error.message : 'Unknown error',
         })
       }
     },
-    [projectId, setSelectedFileLocation, setSelectedFilePath, upsertFileMutation]
+    [
+      projectId,
+      setCursorPosition,
+      setOpenTabs,
+      setSelectedFileLocation,
+      setSelectedFilePath,
+      upsertFileMutation,
+    ]
   )
 
   const handleFileRename = useCallback(
     async (oldPath: string, newPath: string) => {
       try {
-        const file = files?.find((candidate) => candidate.path === oldPath)
-        if (!file) {
+        const allFiles = files ?? []
+        const targetFiles = isDirectoryPath(
+          oldPath,
+          allFiles.map((candidate) => candidate.path)
+        )
+          ? allFiles.filter(
+              (candidate) => candidate.path === oldPath || candidate.path.startsWith(`${oldPath}/`)
+            )
+          : allFiles.filter((candidate) => candidate.path === oldPath)
+
+        if (targetFiles.length === 0) {
           toast.error('File not found')
           return
         }
 
-        await upsertFileMutation({
-          id: file._id,
-          projectId,
-          path: newPath,
-          content: file.content,
-          isBinary: file.isBinary,
-        })
+        await Promise.all(
+          targetFiles.map((file) =>
+            upsertFileMutation({
+              id: file._id,
+              projectId,
+              path: renamePathPrefix(file.path, oldPath, newPath),
+              content: file.content,
+              isBinary: file.isBinary,
+            })
+          )
+        )
 
         toast.success(`Renamed to ${newPath}`)
-        if (selectedFilePath === oldPath) {
-          setSelectedFilePath(newPath)
+        setOpenTabs((prev) =>
+          prev.map((tab) => ({
+            ...tab,
+            path: renamePathPrefix(tab.path, oldPath, newPath),
+          }))
+        )
+        if (selectedFilePath === oldPath || selectedFilePath?.startsWith(`${oldPath}/`)) {
+          setSelectedFilePath(renamePathPrefix(selectedFilePath, oldPath, newPath))
           setSelectedFileLocation(null)
+          setCursorPosition(null)
         }
       } catch (error) {
         toast.error('Failed to rename file', {
@@ -161,6 +204,8 @@ export function useProjectWorkbenchFiles(args: {
     [
       files,
       projectId,
+      setCursorPosition,
+      setOpenTabs,
       selectedFilePath,
       setSelectedFileLocation,
       setSelectedFilePath,
@@ -171,18 +216,32 @@ export function useProjectWorkbenchFiles(args: {
   const handleFileDelete = useCallback(
     async (path: string) => {
       try {
-        const file = files?.find((candidate) => candidate.path === path)
-        if (!file) {
+        const allFiles = files ?? []
+        const targetFiles = isDirectoryPath(
+          path,
+          allFiles.map((candidate) => candidate.path)
+        )
+          ? allFiles.filter(
+              (candidate) => candidate.path === path || candidate.path.startsWith(`${path}/`)
+            )
+          : allFiles.filter((candidate) => candidate.path === path)
+
+        if (targetFiles.length === 0) {
           toast.error('File not found')
           return
         }
 
-        await deleteFileMutation({ id: file._id })
+        await Promise.all(targetFiles.map((file) => deleteFileMutation({ id: file._id })))
         toast.success(`Deleted ${path}`)
 
-        if (selectedFilePath === path) {
+        setOpenTabs((prev) =>
+          prev.filter((tab) => tab.path !== path && !tab.path.startsWith(`${path}/`))
+        )
+
+        if (selectedFilePath === path || selectedFilePath?.startsWith(`${path}/`)) {
           setSelectedFilePath(null)
           setSelectedFileLocation(null)
+          setCursorPosition(null)
         }
       } catch (error) {
         toast.error('Failed to delete file', {
@@ -190,7 +249,15 @@ export function useProjectWorkbenchFiles(args: {
         })
       }
     },
-    [deleteFileMutation, files, selectedFilePath, setSelectedFileLocation, setSelectedFilePath]
+    [
+      deleteFileMutation,
+      files,
+      selectedFilePath,
+      setCursorPosition,
+      setOpenTabs,
+      setSelectedFileLocation,
+      setSelectedFilePath,
+    ]
   )
 
   const handleEditorSave = useCallback(

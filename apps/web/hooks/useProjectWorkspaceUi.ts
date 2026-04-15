@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
-import { useLayoutPersistence } from './useLayoutPersistence'
 import type { WorkspaceOpenTab } from '@/contexts/WorkspaceContext'
 import type { BottomDockTab } from '@/components/layout/BottomDock'
 import type { SpecSurfaceMode } from '@/components/chat/SpecSurface'
@@ -95,7 +94,6 @@ const RIGHT_PANEL_OPEN_KEY = 'panda:right-panel-open'
 
 export function useProjectWorkspaceUi() {
   const [isArtifactPanelOpen, setIsArtifactPanelOpen] = useState(false)
-  const { isChatPanelOpen, setIsChatPanelOpen } = useLayoutPersistence()
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
   const [selectedFileLocation, setSelectedFileLocation] = useState<{
     line: number
@@ -183,8 +181,6 @@ export function useProjectWorkspaceUi() {
   return {
     isArtifactPanelOpen,
     setIsArtifactPanelOpen,
-    isChatPanelOpen,
-    setIsChatPanelOpen,
     selectedFilePath,
     setSelectedFilePath,
     selectedFileLocation,

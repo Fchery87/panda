@@ -36,7 +36,6 @@ import {
   Trash2,
   UserCheck,
   Loader2,
-  ArrowLeft,
   Users,
   Mail,
   FolderGit,
@@ -225,15 +224,6 @@ export default function AdminUsersPage() {
   return (
     <div className="container mx-auto p-8">
       <div className="mb-8">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="-ml-2 mb-4 text-muted-foreground hover:text-foreground"
-          onClick={() => router.push('/admin')}
-        >
-          <ArrowLeft className="mr-1 h-4 w-4" />
-          Back to Dashboard
-        </Button>
         <div className="flex items-center gap-3">
           <Users className="h-8 w-8" />
           <div>

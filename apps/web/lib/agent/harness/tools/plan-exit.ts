@@ -73,7 +73,11 @@ export interface PlanExitArgs {
  * Simple deterministic hash of the plan content.
  */
 export function buildPlanSignature(args: PlanExitArgs): string {
-  const content = JSON.stringify({ rationale: args.rationale, files: args.files.sort(), steps: args.steps })
+  const content = JSON.stringify({
+    rationale: args.rationale,
+    files: args.files.sort(),
+    steps: args.steps,
+  })
   let hash = 0
   for (let i = 0; i < content.length; i++) {
     const chr = content.charCodeAt(i)

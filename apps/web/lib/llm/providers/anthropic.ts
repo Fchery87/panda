@@ -5,7 +5,14 @@
  */
 
 import { createAnthropic } from '@ai-sdk/anthropic'
-import { generateText, jsonSchema, streamText, NoSuchToolError, type CoreMessage, type ToolSet } from 'ai'
+import {
+  generateText,
+  jsonSchema,
+  streamText,
+  NoSuchToolError,
+  type CoreMessage,
+  type ToolSet,
+} from 'ai'
 import { formatProviderError, repairHallucinatedToolName } from './error-utils'
 import type {
   CompletionMessage,
@@ -285,4 +292,3 @@ export class AnthropicProvider implements LLMProvider {
 export function createAnthropicProvider(config: ProviderConfig): AnthropicProvider {
   return new AnthropicProvider(config)
 }
-

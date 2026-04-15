@@ -7,6 +7,7 @@ import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { CommandPalette } from '@/components/command-palette/CommandPalette'
 import { StatusBar } from '@/components/workbench/StatusBar'
 import { Workbench } from '@/components/workbench/Workbench'
+import type { DiffFileEntry } from '@/components/workbench/DiffTab'
 import { BottomDock, type BottomDockTab } from '@/components/layout/BottomDock'
 import { TaskHeader, type TaskStatus } from '@/components/layout/TaskHeader'
 import { Terminal } from '@/components/workbench/Terminal'
@@ -60,6 +61,7 @@ interface ProjectWorkspaceLayoutProps {
   chatPanel: React.ReactNode
   rightPanelContent: React.ReactNode
   pendingArtifactPreview?: WorkspaceArtifactPreview | null
+  pendingDiffEntries?: DiffFileEntry[]
   onApplyPendingArtifact: (artifactId: string) => void
   onRejectPendingArtifact: (artifactId: string) => void
   chatMode: ChatMode
@@ -110,6 +112,7 @@ export function ProjectWorkspaceLayout({
   chatPanel,
   rightPanelContent,
   pendingArtifactPreview,
+  pendingDiffEntries,
   onApplyPendingArtifact,
   onRejectPendingArtifact,
   chatMode,
@@ -172,6 +175,7 @@ export function ProjectWorkspaceLayout({
       onDeleteFile={onDeleteFile}
       onSaveFile={onSaveFile}
       pendingArtifactPreview={pendingArtifactPreview}
+      pendingDiffEntries={pendingDiffEntries}
       onApplyPendingArtifact={onApplyPendingArtifact}
       onRejectPendingArtifact={onRejectPendingArtifact}
       onEditorDirtyChange={onEditorDirtyChange}

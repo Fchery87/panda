@@ -68,6 +68,7 @@ interface ProjectChatPanelProps {
   activeChatExists: boolean
   chatMessages: Message[]
   runEvents?: PersistedRunEventInfo[]
+  runHistoryCount?: number
   chatMode: ChatMode
   architectBrainstormEnabled: boolean
   onArchitectBrainstormEnabledChange: (enabled: boolean) => void
@@ -104,7 +105,6 @@ interface ProjectChatPanelProps {
   onToggleInspector: () => void
   onOpenHistory: () => void
   onOpenShare: () => void
-  previewUrl?: string | null
   onOpenPreview?: () => void
   onResetWorkspace: () => void
   resetWorkspaceLabel?: string
@@ -184,6 +184,7 @@ export function ProjectChatPanel({
   activeChatExists,
   chatMessages,
   runEvents,
+  runHistoryCount = 0,
   chatMode,
   architectBrainstormEnabled,
   onArchitectBrainstormEnabledChange,
@@ -204,7 +205,6 @@ export function ProjectChatPanel({
   onToggleInspector,
   onOpenHistory,
   onOpenShare,
-  previewUrl,
   onOpenPreview,
   onResetWorkspace,
   resetWorkspaceLabel = 'Reset Workspace',
@@ -365,7 +365,7 @@ export function ProjectChatPanel({
               >
                 Review
               </DropdownMenuItem>
-              {previewUrl && onOpenPreview && (
+              {onOpenPreview && (
                 <DropdownMenuItem
                   onClick={onOpenPreview}
                   className="rounded-none text-xs uppercase tracking-wide"
@@ -384,7 +384,7 @@ export function ProjectChatPanel({
                   onClick={onOpenHistory}
                   className="rounded-none text-xs uppercase tracking-wide"
                 >
-                  Run History ({chatMessages.length})
+                  Run History ({runHistoryCount})
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem

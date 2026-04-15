@@ -6,10 +6,7 @@ import type { PermissionRule, PermissionContext, EvaluationResult, Capability } 
  * Rules are evaluated in order; the final matching rule wins.
  * If no rule matches, the default decision is 'ask'.
  */
-export function evaluate(
-  rules: PermissionRule[],
-  ctx: PermissionContext
-): EvaluationResult {
+export function evaluate(rules: PermissionRule[], ctx: PermissionContext): EvaluationResult {
   let match: PermissionRule | null = null
 
   for (const rule of rules) {
@@ -60,7 +57,15 @@ export function narrowRulesForSubagent(
   )
 
   // Append explicit deny rules for any capability NOT in the ceiling
-  const allCapabilities: Capability[] = ['read', 'search', 'edit', 'exec', 'plan_exit', 'memory', 'mcp']
+  const allCapabilities: Capability[] = [
+    'read',
+    'search',
+    'edit',
+    'exec',
+    'plan_exit',
+    'memory',
+    'mcp',
+  ]
   const extraDenies: PermissionRule[] = allCapabilities
     .filter((cap) => !allowed.has(cap))
     .map((cap) => ({

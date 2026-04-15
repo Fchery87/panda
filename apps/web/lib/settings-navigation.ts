@@ -1,8 +1,19 @@
 import type { AgentPolicy } from '@/lib/agent/automationPolicy'
 
-export const SETTINGS_TABS = ['general', 'providers', 'advanced', 'appearance'] as const
+export const SETTINGS_TABS = ['general', 'providers', 'automation', 'advanced'] as const
 
 export type SettingsTab = (typeof SETTINGS_TABS)[number]
+
+const LEGACY_TAB_MAP: Record<string, SettingsTab> = {
+  appearance: 'general',
+}
+
+export function resolveSettingsTab(raw: string | null): SettingsTab {
+  if (!raw) return 'general'
+  const mapped = LEGACY_TAB_MAP[raw]
+  if (mapped) return mapped
+  return SETTINGS_TABS.includes(raw as SettingsTab) ? (raw as SettingsTab) : 'general'
+}
 
 export interface SettingsSnapshotProviderConfig {
   apiKey: string
@@ -28,8 +39,7 @@ export interface SettingsSnapshotInput {
 }
 
 export function getSettingsTabFromSearchParams(searchParams: URLSearchParams): SettingsTab {
-  const tab = searchParams.get('tab')
-  return SETTINGS_TABS.includes(tab as SettingsTab) ? (tab as SettingsTab) : 'general'
+  return resolveSettingsTab(searchParams.get('tab'))
 }
 
 export function buildSettingsTabHref(

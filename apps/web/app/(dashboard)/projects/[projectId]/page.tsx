@@ -56,6 +56,7 @@ import { useProjectWorkspaceUi } from '@/hooks/useProjectWorkspaceUi'
 import { useShortcutListener } from '@/hooks/useShortcuts'
 import { useSpecDriftDetection } from '@/hooks/useSpecDriftDetection'
 import {
+  derivePreviewDiffEntries,
   deriveWorkspaceArtifactPreviews,
   resolveArtifactPreviewNavigation,
   type WorkspaceArtifactPreview,
@@ -188,8 +189,6 @@ export default function ProjectPage() {
   const { status: gitStatus, refreshStatus: refreshGitStatus } = useGit()
 
   const {
-    isChatPanelOpen,
-    setIsChatPanelOpen,
     selectedFilePath,
     setSelectedFilePath,
     selectedFileLocation,
@@ -638,6 +637,11 @@ export default function ProjectPage() {
     if (!selectedFilePath) return null
     return pendingArtifactPreviews.find((preview) => preview.filePath === selectedFilePath) ?? null
   }, [pendingArtifactPreviews, selectedFilePath])
+  const pendingDiffEntries = useMemo(
+    () => derivePreviewDiffEntries(pendingArtifactPreviews),
+    [pendingArtifactPreviews]
+  )
+  const pendingChangedFilesCount = pendingArtifactPreviews.length
 
   const activePlanArtifact = planningSession.generatedPlan
   const planningDebug = useMemo(() => {
@@ -1224,6 +1228,7 @@ export default function ProjectPage() {
       activeChatExists={Boolean(activeChat?._id)}
       chatMessages={chatMessages}
       runEvents={runEvents}
+      runHistoryCount={(runEvents ?? []).length}
       chatMode={chatMode}
       architectBrainstormEnabled={architectBrainstormEnabled}
       onArchitectBrainstormEnabledChange={setArchitectBrainstormEnabled}
@@ -1248,6 +1253,7 @@ export default function ProjectPage() {
         openChatInspectorSurface('run')
       }}
       onOpenShare={() => setIsShareDialogOpen(true)}
+      onOpenPreview={() => setActiveCenterTab('preview')}
       onResetWorkspace={handleResetWorkspace}
       resetWorkspaceLabel="Clear Local Workspace"
       onNewChat={() => {
@@ -1473,8 +1479,6 @@ export default function ProjectPage() {
     isCompactDesktopLayout,
     mobilePrimaryPanel,
     setMobilePrimaryPanel,
-    isChatPanelOpen,
-    setIsChatPanelOpen,
     projectId,
     activeChatId: activeChat?._id,
     chatMode,
@@ -1635,6 +1639,7 @@ export default function ProjectPage() {
           chatPanel={chatPanelContent}
           rightPanelContent={rightPanelContent}
           pendingArtifactPreview={pendingArtifactPreview}
+          pendingDiffEntries={pendingDiffEntries}
           onApplyPendingArtifact={handleApplyPendingArtifact}
           onRejectPendingArtifact={handleRejectPendingArtifact}
           chatMode={chatMode}
@@ -1703,7 +1708,7 @@ export default function ProjectPage() {
             taskHeaderVisible && agent.isLoading ? (activeChat?.title ?? 'Active Task') : undefined
           }
           activeTaskStatus={taskHeaderVisible && agent.isLoading ? 'running' : undefined}
-          changedFilesCount={0}
+          changedFilesCount={pendingChangedFilesCount}
           onReviewChanges={() => {
             setActiveCenterTab('diff')
             openChatInspectorSurface('artifacts')

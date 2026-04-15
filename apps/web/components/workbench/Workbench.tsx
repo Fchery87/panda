@@ -16,6 +16,7 @@ import { useShortcuts } from '@/hooks/useShortcuts'
 
 import { PlanArtifactTab } from './PlanArtifactTab'
 import type { WorkspaceArtifactPreview } from './artifact-preview'
+import type { DiffFileEntry } from './DiffTab'
 import type { WorkspaceOpenTab } from '@/contexts/WorkspaceContext'
 
 interface WorkbenchProps {
@@ -42,6 +43,7 @@ interface WorkbenchProps {
   onDeleteFile: (path: string) => void
   onSaveFile: (filePath: string, content: string) => void
   pendingArtifactPreview?: WorkspaceArtifactPreview | null
+  pendingDiffEntries?: DiffFileEntry[]
   onApplyPendingArtifact: (artifactId: string) => void
   onRejectPendingArtifact: (artifactId: string) => void
   onEditorDirtyChange: (filePath: string, isDirty: boolean) => void
@@ -81,6 +83,7 @@ export function Workbench({
   onDeleteFile: _onDeleteFile,
   onSaveFile,
   pendingArtifactPreview,
+  pendingDiffEntries = [],
   onApplyPendingArtifact,
   onRejectPendingArtifact,
   onEditorDirtyChange,
@@ -188,9 +191,11 @@ export function Workbench({
             </div>
           )}
           {effectiveTab === 'diff' && (
-            <div className="flex h-full items-center justify-center font-mono text-xs text-muted-foreground">
-              Diff view — {pendingDiffCount} changes pending
-            </div>
+            <DiffTab
+              files={pendingDiffEntries}
+              pendingDiffCount={pendingDiffCount}
+              agentLabel="Agent"
+            />
           )}
         </div>
       </div>
@@ -310,7 +315,11 @@ export function Workbench({
           )}
 
           {effectiveTab === 'diff' && (
-            <DiffTab pendingDiffCount={pendingDiffCount} agentLabel="Agent" />
+            <DiffTab
+              files={pendingDiffEntries}
+              pendingDiffCount={pendingDiffCount}
+              agentLabel="Agent"
+            />
           )}
 
           {effectiveTab === 'preview' && (

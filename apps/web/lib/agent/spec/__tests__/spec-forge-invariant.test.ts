@@ -24,7 +24,16 @@ describe('spec ↔ forge invariant', () => {
     updatedAt: 0,
   })
 
-  const statuses = ['draft', 'validated', 'approved', 'executing', 'verified', 'drifted', 'failed', 'archived'] as const
+  const statuses = [
+    'draft',
+    'validated',
+    'approved',
+    'executing',
+    'verified',
+    'drifted',
+    'failed',
+    'archived',
+  ] as const
   const phases = ['intake', 'plan', 'execute', 'review', 'qa', 'ship'] as const
   const gateStates = ['not_required', 'pending', 'passed', 'failed', 'waived'] as const
 

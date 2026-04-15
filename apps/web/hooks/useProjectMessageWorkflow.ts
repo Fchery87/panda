@@ -271,7 +271,8 @@ export function useProjectMessageWorkflow(args: {
       options?: SendAgentMessageOptions
     ) => {
       const trimmed = content.trim()
-      if (!trimmed) {
+      const hasAttachmentsOnly = Boolean(options?.attachmentsOnly && options?.attachments?.length)
+      if (!trimmed && !hasAttachmentsOnly) {
         toast.error('Message is empty')
         return
       }
@@ -312,7 +313,7 @@ export function useProjectMessageWorkflow(args: {
             createChat: () =>
               createChatMutation({
                 projectId,
-                title: trimmed.slice(0, 50),
+                title: (trimmed || 'Attachments').slice(0, 50),
                 mode,
               }),
             onChatCreated: (chatId) => {

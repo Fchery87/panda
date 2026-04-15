@@ -80,8 +80,6 @@ function createWorkspaceValue(
     setMobilePrimaryPanel: noopDispatch as Dispatch<
       SetStateAction<'workspace' | 'chat' | 'review'>
     >,
-    isChatPanelOpen: false,
-    setIsChatPanelOpen: noopDispatch as Dispatch<SetStateAction<boolean>>,
     ...overrides,
   }
 }

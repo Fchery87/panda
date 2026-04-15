@@ -60,8 +60,6 @@ interface LayoutState {
   isCompactDesktopLayout: boolean
   mobilePrimaryPanel: 'workspace' | 'chat' | 'review'
   setMobilePrimaryPanel: Dispatch<SetStateAction<'workspace' | 'chat' | 'review'>>
-  isChatPanelOpen: boolean
-  setIsChatPanelOpen: Dispatch<SetStateAction<boolean>>
 }
 
 interface ProjectState {

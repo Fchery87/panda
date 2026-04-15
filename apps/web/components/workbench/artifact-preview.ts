@@ -1,4 +1,5 @@
 import type { ArtifactAction, ArtifactRecordStatus } from '@/lib/artifacts/executeArtifact'
+import type { DiffFileEntry } from './DiffTab'
 
 type PreviewArtifactRecord = {
   _id: string
@@ -69,4 +70,28 @@ export function resolveArtifactPreviewNavigation(args: {
     shouldOpenTab: !isOpen,
     shouldSelectFile: selectedFilePath !== preview.filePath && !hasConflictingDirtyTab,
   }
+}
+
+export function derivePreviewDiffEntries(previews: WorkspaceArtifactPreview[]): DiffFileEntry[] {
+  return previews.map((preview) => {
+    const originalLines = preview.originalContent.split('\n')
+    const pendingLines = preview.pendingContent.split('\n')
+
+    return {
+      path: preview.filePath,
+      status: preview.originalContent ? 'modified' : 'added',
+      reviewStatus: 'pending',
+      hunks: [
+        {
+          id: preview.artifactId,
+          startLine: 1,
+          endLine: Math.max(originalLines.length, pendingLines.length),
+          added: pendingLines,
+          removed: preview.originalContent ? originalLines : [],
+          context: [],
+          status: 'pending',
+        },
+      ],
+    }
+  })
 }

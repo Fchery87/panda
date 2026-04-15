@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import {
+  derivePreviewDiffEntries,
   deriveWorkspaceArtifactPreviews,
   resolveArtifactPreviewNavigation,
 } from './artifact-preview'
@@ -124,5 +125,37 @@ describe('artifact preview helpers', () => {
       shouldOpenTab: true,
       shouldSelectFile: false,
     })
+  })
+
+  test('derives diff entries from pending previews for the center diff surface', () => {
+    const entries = derivePreviewDiffEntries([
+      {
+        artifactId: 'artifact-1',
+        createdAt: 10,
+        filePath: 'src/app.ts',
+        pendingContent: 'console.log("next")\n',
+        originalContent: 'console.log("prev")\n',
+        status: 'pending',
+      },
+    ])
+
+    expect(entries).toEqual([
+      {
+        path: 'src/app.ts',
+        status: 'modified',
+        reviewStatus: 'pending',
+        hunks: [
+          {
+            id: 'artifact-1',
+            startLine: 1,
+            endLine: 2,
+            added: ['console.log("next")', ''],
+            removed: ['console.log("prev")', ''],
+            context: [],
+            status: 'pending',
+          },
+        ],
+      },
+    ])
   })
 })

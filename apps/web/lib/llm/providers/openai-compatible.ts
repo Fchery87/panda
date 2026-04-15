@@ -6,7 +6,14 @@
  */
 
 import { appLog } from '@/lib/logger'
-import { streamText, generateText, jsonSchema, NoSuchToolError, type CoreMessage, type ToolSet } from 'ai'
+import {
+  streamText,
+  generateText,
+  jsonSchema,
+  NoSuchToolError,
+  type CoreMessage,
+  type ToolSet,
+} from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
 import { formatProviderError, repairHallucinatedToolName } from './error-utils'
 import type {
@@ -352,7 +359,8 @@ export class OpenAICompatibleProvider implements LLMProvider {
       // AI SDK CoreAssistantMessage with tool calls requires content array format
       if (msg.role === 'assistant' && msg.tool_calls && msg.tool_calls.length > 0) {
         const parts: Array<
-          { type: 'text'; text: string } | { type: 'tool-call'; toolCallId: string; toolName: string; args: unknown }
+          | { type: 'text'; text: string }
+          | { type: 'tool-call'; toolCallId: string; toolName: string; args: unknown }
         > = []
         if (msg.content) {
           parts.push({ type: 'text', text: msg.content })
