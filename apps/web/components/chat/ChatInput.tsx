@@ -278,6 +278,7 @@ export function ChatInput({
     isStreaming,
     isUploadingAttachments,
     mode,
+    variant,
     onSendMessage,
     projectId,
     generateAttachmentUploadUrl,

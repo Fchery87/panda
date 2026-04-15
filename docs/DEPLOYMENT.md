@@ -1,6 +1,6 @@
 # Panda Web Deployment Guide (Convex + Next.js + Vercel)
 
-> Last updated: February 7, 2026
+> Last updated: April 14, 2026
 >
 > Scope: Production deployment for this repository (`panda`) with Convex backend
 > and Next.js frontend.
@@ -67,11 +67,11 @@ For Google auth and Convex Auth production:
 - `AUTH_GOOGLE_ID`
 - `AUTH_GOOGLE_SECRET`
 - `CONVEX_AUTH_SECRET`
-- `SITE_URL=https://<your-frontend-domain>`
+- `CONVEX_SITE_URL=https://<your-convex-site>.convex.site`
 
 `convex/auth.config.ts` uses:
 
-- `CONVEX_SITE_URL`/provider domain wiring in auth configuration
+- `CONVEX_SITE_URL` for the Convex Auth domain wiring
 
 Set Convex env vars with CLI:
 
@@ -79,7 +79,7 @@ Set Convex env vars with CLI:
 npx convex env set AUTH_GOOGLE_ID "<value>"
 npx convex env set AUTH_GOOGLE_SECRET "<value>"
 npx convex env set CONVEX_AUTH_SECRET "<value>"
-npx convex env set SITE_URL "https://<your-frontend-domain>"
+npx convex env set CONVEX_SITE_URL "https://<your-convex-site>.convex.site"
 ```
 
 ## 3.3 GitHub Actions secrets (if using the included deploy workflow)

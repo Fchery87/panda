@@ -1,7 +1,7 @@
 # Panda.ai
 
-> Panda is a web-only AI coding workbench for planning, approving, building,
-> resuming, and sharing software work from one browser workspace.
+> Panda is a browser-only AI coding workbench for planning, approving, building,
+> resuming, and sharing software work from one workspace.
 
 [![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org)
 [![Convex](https://img.shields.io/badge/Convex-Realtime-orange)](https://convex.dev)
@@ -12,26 +12,26 @@
 
 Panda is a browser-native coding workspace built for AI-assisted development. It
 combines chat-driven planning, plan approval, build execution, file editing,
-artifact review, command permissions, resumable runs, and shared chat history in
-one web app. The product is intentionally web-only: no desktop client, no mobile
-app, no split platform story.
+delivery-state tracking, resume checkpoints, shared chat history, and admin
+controls in one web app.
 
 ## Current Product Surface
 
-- **Plan to Build workflow** with saved plan drafts and explicit review gates
-- **Build-from-plan execution** with run progress and execution history
-- **Browser-native file editing** with seeded file flows, artifacts, and diffs
-- **Permission review** for risky commands directly in the web UI
-- **Resumable runtime checkpoints** for paused or interrupted runs
-- **Shared chat links** for public, read-only conversation review
-- **Live project state** backed by Convex queries, mutations, and actions
+- Landing page plus an education page that explains the four workbench surfaces
+- Project list and per-project workbench routes
+- Plan review before execution, with approved build-from-plan runs
+- Browser-native file editing, diffs, artifacts, and terminal jobs
+- Permission review for risky commands in the web UI
+- Shared chat links for public, read-only conversation review
+- Admin console pages for users, analytics, system controls, and security
+- Convex-backed delivery state, QA, ship, and checkpoint history
 
 ## Tech Stack
 
 | Layer           | Technology                         |
 | --------------- | ---------------------------------- |
 | Framework       | Next.js 16 (App Router)            |
-| Runtime         | React 19 + TypeScript              |
+| Runtime         | React 19 + TypeScript 5.9          |
 | Backend         | Convex                             |
 | Authentication  | Convex Auth + Google OAuth         |
 | UI              | shadcn/ui + custom brutalist theme |
@@ -61,7 +61,7 @@ bun run dev
 
 ### Environment
 
-Create `.env.local` with the required Convex and provider values:
+Create `apps/web/.env.local` with the required Convex and provider values:
 
 ```env
 NEXT_PUBLIC_CONVEX_URL=https://<your-project>.convex.cloud
@@ -75,6 +75,7 @@ OPENROUTER_API_KEY=sk-...
 AUTH_GOOGLE_ID=your-client-id.apps.googleusercontent.com
 AUTH_GOOGLE_SECRET=your-client-secret
 CONVEX_AUTH_SECRET=your-random-secret
+CONVEX_SITE_URL=https://<your-convex-site>.convex.site
 ```
 
 ## Development Commands
@@ -102,29 +103,23 @@ bun run build
 panda/
 ├── apps/web/        # Next.js web app
 ├── convex/          # Convex backend
-├── docs/            # Product, architecture, and plan docs
+├── docs/            # Active docs + historical archive index
 └── packages/sdk/    # Shared SDK package
 ```
 
 ## Key Docs
 
-- [AGENTS.md](./AGENTS.md) - Working rules for AI agents in this repo
-- [docs/AGENTIC_HARNESS.md](./docs/AGENTIC_HARNESS.md) - Harness architecture
-- [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) - Deployment guide
-- [docs/GOOGLE_OAUTH_SETUP.md](./docs/GOOGLE_OAUTH_SETUP.md) - Auth setup
-- [docs/plans/2026-03-13-panda-web-stabilization-plan.md](./docs/plans/2026-03-13-panda-web-stabilization-plan.md) -
-  Completed web stabilization plan
-- [VALIDATION_TASKS.md](./VALIDATION_TASKS.md) - Current verification record
+- [docs/README.md](./docs/README.md) - docs index and archive guidance
+- [AGENTS.md](./AGENTS.md) - working rules for AI agents in this repo
+- [docs/AGENTIC_HARNESS.md](./docs/AGENTIC_HARNESS.md) - harness architecture
+- [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) - deployment guide
+- [docs/GOOGLE_OAUTH_SETUP.md](./docs/GOOGLE_OAUTH_SETUP.md) - auth setup
+- [VALIDATION_TASKS.md](./VALIDATION_TASKS.md) - current verification record
 
 ## Current Verification Snapshot
 
-As of 2026-03-13:
-
-- `bun run typecheck`: passing
-- `bun run lint`: passing
-- `bun run format:check`: passing
-- `bun test`: passing
-- `bun run test:e2e`: passing
+See [VALIDATION_TASKS.md](./VALIDATION_TASKS.md) for the latest command-level
+status and health score.
 
 ## License
 

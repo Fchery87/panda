@@ -98,9 +98,7 @@ export function SpecBadge({
         <span className={cn(config.animate && 'animate-pulse')}>
           {status === 'verified' ? 'Spec-verified' : `Spec ${config.label.toLowerCase()}`}
         </span>
-        {tier && (
-          <span className="text-muted-foreground">&middot; {tier}</span>
-        )}
+        {tier && <span className="text-muted-foreground">&middot; {tier}</span>}
         {hasConstraints && (
           <span className="text-muted-foreground">
             • {constraintsMet}/{constraintsTotal} constraints
@@ -116,7 +114,8 @@ export function SpecBadge({
  * Extracted for testability without needing a DOM renderer.
  */
 export function buildSpecBadgeLabel(status: SpecStatus, tier?: SpecTier): string {
-  const base = status === 'verified' ? 'Spec-verified' : `Spec ${statusConfig[status].label.toLowerCase()}`
+  const base =
+    status === 'verified' ? 'Spec-verified' : `Spec ${statusConfig[status].label.toLowerCase()}`
   return tier ? `${base} · ${tier}` : base
 }
 

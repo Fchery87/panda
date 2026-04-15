@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "cd ../.. && CI=1 bunx convex codegen",
+    "prebuild": "cd ../.. && if [ ! -f convex/_generated/api.d.ts ]; then CI=1 bunx convex codegen; fi",
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --ext .ts,.tsx",

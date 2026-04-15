@@ -373,7 +373,7 @@ describe('Harness adapter guardrail parity', () => {
         projectId: 'p',
         chatId: 'c',
         userId: 'u',
-        chatMode: 'architect',
+        chatMode: 'build',
         provider: 'openai',
         userMessage: 'run the allowlisted test command',
       },

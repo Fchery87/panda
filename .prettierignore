@@ -51,6 +51,7 @@ playwright-report/
 *.key
 .worktrees/
 .eslintcache
+.opencode/
 
 # Generated files
 convex/_generated/**

@@ -4,68 +4,64 @@
 
 ## Database Schema
 
-Panda.ai uses 23 tables in Convex for data persistence:
+Panda.ai uses 38 tables in Convex for data persistence across auth, projects,
+workbench state, delivery control, evals, and sharing.
 
-### Authentication
+### Core tables
 
-| Table               | Purpose                                          |
-| ------------------- | ------------------------------------------------ |
-| `accounts`          | OAuth account links (from @convex-dev/auth)      |
-| `sessions`          | User sessions (from @convex-dev/auth)            |
-| `verificationCodes` | Email/phone verification (from @convex-dev/auth) |
-| `users`             | User profiles with admin roles                   |
+| Table              | Purpose                                       |
+| ------------------ | --------------------------------------------- |
+| `users`            | User profiles and admin flags                 |
+| `projects`         | Code projects and project policy state        |
+| `files`            | Current file contents                         |
+| `fileSnapshots`    | Version history for files                     |
+| `chats`            | Chat sessions and plan state                  |
+| `planningSessions` | Structured plan intake and approval flow      |
+| `messages`         | Chat messages                                 |
+| `artifacts`        | AI-generated file and command artifacts       |
+| `jobs`             | Terminal command execution                    |
+| `agentRuns`        | Agent run lifecycle tracking                  |
+| `agentRunEvents`   | Persisted runtime events and timeline entries |
 
-### Core Data
+### Harness and delivery tables
 
-| Table           | Purpose                                   |
-| --------------- | ----------------------------------------- |
-| `projects`      | Code projects with agent policies         |
-| `files`         | Project file contents                     |
-| `fileSnapshots` | Version history for files                 |
-| `chats`         | Chat sessions (Ask/Plan/Code/Build modes) |
-| `messages`      | Chat messages                             |
-| `artifacts`     | AI-generated code changes                 |
+| Table                       | Purpose                         |
+| --------------------------- | ------------------------------- |
+| `sessionSummaries`          | Session handoff summaries       |
+| `harnessRuntimeCheckpoints` | Runtime resume snapshots        |
+| `checkpoints`               | Versioned checkpoints           |
+| `agentSessions`             | Harness session state           |
+| `messageParts`              | Structured message parts        |
+| `permissionRequests`        | Pending approvals               |
+| `permissionAuditLog`        | Permission audit history        |
+| `gitSnapshots`              | Git snapshots for undo          |
+| `deliveryStates`            | Delivery control-plane state    |
+| `deliveryTasks`             | Delivery tasks and evidence     |
+| `reviewReports`             | Review findings and decisions   |
+| `qaReports`                 | QA evidence and defects         |
+| `shipReports`               | Ship readiness decisions        |
+| `deliveryDecisions`         | Control-plane decisions         |
+| `deliveryVerifications`     | Normalized verification log     |
+| `orchestrationWaves`        | Delivery orchestration tracking |
+| `browserSessions`           | Browser QA session metadata     |
 
-### Execution
+### Settings, providers, and sharing
 
-| Table            | Purpose                      |
-| ---------------- | ---------------------------- |
-| `jobs`           | Terminal command execution   |
-| `agentRuns`      | Agent run lifecycle tracking |
-| `agentRunEvents` | Persisted timeline events    |
-
-### Agentic Harness
-
-| Table                | Purpose                  |
-| -------------------- | ------------------------ |
-| `agentSessions`      | Harness session state    |
-| `messageParts`       | Structured message parts |
-| `permissionRequests` | Pending permissions      |
-| `gitSnapshots`       | Git snapshots for undo   |
-
-### User Features
-
-| Table            | Purpose                             |
-| ---------------- | ----------------------------------- |
-| `settings`       | User preferences & provider configs |
-| `providerTokens` | OAuth tokens for LLM providers      |
-| `subagents`      | Custom subagent definitions         |
-| `mcpServers`     | MCP server configurations           |
-
-### Sharing & Admin
-
-| Table           | Purpose                     |
-| --------------- | --------------------------- |
-| `sharedChats`   | Public sharing links        |
-| `adminSettings` | Global system configuration |
-| `userAnalytics` | Usage tracking              |
-| `auditLog`      | Administrative actions      |
-
-### Versioning
-
-| Table         | Purpose                          |
-| ------------- | -------------------------------- |
-| `checkpoints` | Versioned snapshots for rollback |
+| Table             | Purpose                               |
+| ----------------- | ------------------------------------- |
+| `settings`        | User preferences and provider configs |
+| `providerTokens`  | OAuth tokens for LLM providers        |
+| `subagents`       | Custom subagent definitions           |
+| `mcpServers`      | MCP server configurations             |
+| `adminSettings`   | Global system configuration           |
+| `userAnalytics`   | Usage tracking                        |
+| `auditLog`        | Administrative actions                |
+| `sharedChats`     | Public sharing links                  |
+| `chatAttachments` | Chat attachment metadata              |
+| `evalSuites`      | Eval definitions                      |
+| `evalRuns`        | Eval execution runs                   |
+| `evalRunResults`  | Eval outputs and scores               |
+| `specifications`  | Formal specs and spec history         |
 
 ## Functions
 
@@ -90,7 +86,17 @@ Panda.ai uses 23 tables in Convex for data persistence:
 - `create` - Create new chat
 - `list` - List project chats
 - `get` - Get chat by ID
-- `updatePlan` - Update plan draft
+- `updatePlan` - Update plan draft and approval state
+
+### Planning and delivery
+
+- `planningSessions.ts` - plan intake, answers, approval, execution state
+- `deliveryStates.ts` - delivery lifecycle source of truth
+- `deliveryTasks.ts` - task tracking and evidence
+- `reviewReports.ts` - review findings and decisions
+- `qaReports.ts` - QA evidence and defects
+- `shipReports.ts` - ship readiness and closure
+- `specifications.ts` - formal spec records
 
 ### Messages (`messages.ts`)
 
@@ -114,6 +120,12 @@ Panda.ai uses 23 tables in Convex for data persistence:
 - `updateProvider` - Update provider config
 - `updateAgentDefaults` - Update auto-apply defaults
 
+### Artifacts and runs
+
+- `artifacts.ts` - generated file/command artifact persistence
+- `agentRuns.ts` - agent run lifecycle and event stream
+- `jobs.ts` - terminal job execution and logs
+
 ### Agent Runs (`agentRuns.ts`)
 
 - `create` - Create new run
@@ -122,15 +134,11 @@ Panda.ai uses 23 tables in Convex for data persistence:
 - `update` - Update run status
 - `listEvents` - Get run events
 
-### Sharing (`sharing.ts`)
+### Sharing and admin
 
-- `share` - Share chat
-- `getShared` - Get shared chat
-- `listShared` - List user's shared chats
-
-### GitHub (`github.ts`)
-
-- `importRepo` - Import GitHub repository
+- `sharing.ts` - share chats and resolve shared sessions
+- `admin.ts` - admin console queries and mutations
+- `github.ts` - repository import and GitHub integration
 
 ## Environment Variables
 
@@ -141,7 +149,7 @@ Required Convex environment variables:
 AUTH_GOOGLE_ID=your-client-id
 AUTH_GOOGLE_SECRET=your-client-secret
 CONVEX_AUTH_SECRET=your-random-secret
-SITE_URL=https://your-app-domain.com
+CONVEX_SITE_URL=https://your-convex-site.convex.site
 
 # LLM Providers
 OPENAI_API_KEY=sk-...
@@ -170,5 +178,6 @@ bunx convex deploy
 
 - [README.md](../README.md) - Project overview
 - [AGENTS.md](../AGENTS.md) - AI agent instructions
+- [docs/README.md](../docs/README.md) - docs index and archive guidance
 - [docs/AGENTIC_HARNESS.md](../docs/AGENTIC_HARNESS.md) - Agent harness docs
 - [docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md) - Deployment guide

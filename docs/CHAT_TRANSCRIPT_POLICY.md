@@ -18,13 +18,14 @@ If a line does not answer one of those questions, it belongs in the inspector.
 
 The Panda front-end currently exposes these user-facing modes:
 
+- `Ask`
 - `Plan`
 - `Build`
 - `Builder` (under Advanced)
 
-Internal enum values like `ask` and `code` can still exist in the runtime, but
-the transcript contract should be described in terms of the surfaced product
-modes.
+Internal enum values like `ask`, `architect`, `code`, and `build` can still
+exist in the runtime, but the transcript contract should be described in terms
+of the surfaced product modes.
 
 ## By mode
 
@@ -49,10 +50,13 @@ modes.
 
 ## Internal mode note
 
-- Internal `ask` behavior should remain conversational and map to the surfaced
-  Build experience when used.
+- Internal `ask` behavior should remain conversational and maps to the surfaced
+  Ask experience.
+- Internal `architect` behavior maps to the surfaced Plan experience.
 - Internal `code` behavior is the implementation path behind the surfaced Build
   mode.
+- Internal `build` behavior is the specialist execution path behind the surfaced
+  Builder mode.
 
 ## Never show in the main transcript
 

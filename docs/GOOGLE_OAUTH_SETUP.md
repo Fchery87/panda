@@ -62,7 +62,7 @@ development/testing).
 
    ```bash
    cd /home/nochaserz/Documents/Coding\ Projects/panda
-   cat .env.local | grep CONVEX_SITE_URL
+   cat apps/web/.env.local | grep CONVEX_SITE_URL
    # Example: https://enchanted-rooster-343.convex.site
    # Full callback: https://enchanted-rooster-343.convex.site/api/auth/callback/google
    ```
@@ -81,9 +81,8 @@ development/testing).
 
 1. Open your project `.env.local` file:
 
-   ```bash
-   code /home/nochaserz/Documents/Coding\ Projects/panda/.env.local
-   ```
+   Open `/home/nochaserz/Documents/Coding Projects/panda/apps/web/.env.local` in
+   your editor.
 
 2. Add your actual credentials:
 
@@ -113,12 +112,12 @@ development/testing).
 
    ```bash
    cd /home/nochaserz/Documents/Coding\ Projects/panda
-   set -a; source .env.local; set +a
+   set -a; source apps/web/.env.local; set +a
 
    npx convex env set AUTH_GOOGLE_ID "$AUTH_GOOGLE_ID"
    npx convex env set AUTH_GOOGLE_SECRET "$AUTH_GOOGLE_SECRET"
    npx convex env set CONVEX_AUTH_SECRET "$CONVEX_AUTH_SECRET"
-   npx convex env set SITE_URL "http://localhost:3000"
+   npx convex env set CONVEX_SITE_URL "https://<your-convex-site>.convex.site"
    ```
 
 6. **Generate JWT keys required by @convex-dev/auth** (sets `JWT_PRIVATE_KEY`
@@ -136,7 +135,7 @@ Deploy the Convex functions to make the auth endpoints live:
 
 ```bash
 cd /home/nochaserz/Documents/Coding\ Projects/panda
-bunx convex dev
+bunx convex deploy
 ```
 
 For production deployment:
@@ -241,7 +240,7 @@ Verification is only required for production apps with many users.
 
 **Fix:**
 
-1. Ensure `.env.local` exists in the repo root (`/panda/.env.local`)
+1. Ensure `apps/web/.env.local` exists
 2. Restart your dev server: `Ctrl+C` then `bun run dev`
 3. Check variables: `cat .env.local | grep AUTH`
 
@@ -274,7 +273,7 @@ Per
 
 ## Complete Environment Variables Reference
 
-Your repo root `.env.local` should contain:
+Your `apps/web/.env.local` should contain:
 
 ```env
 # Convex Configuration
@@ -293,7 +292,7 @@ Your Convex deployment environment must contain:
 AUTH_GOOGLE_ID=...
 AUTH_GOOGLE_SECRET=...
 CONVEX_AUTH_SECRET=...
-SITE_URL=http://localhost:3000
+CONVEX_SITE_URL=https://your-deployment.convex.site
 JWT_PRIVATE_KEY=...
 JWKS=...
 ```

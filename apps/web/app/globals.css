@@ -134,7 +134,7 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-geist-sans), system-ui, sans-serif;
+    font-family: var(--font-geist-sans, system-ui), system-ui, sans-serif;
     font-feature-settings:
       'ss01' 1,
       'ss02' 1;
@@ -145,7 +145,7 @@
   code,
   pre,
   .font-mono {
-    font-family: var(--font-fira-code), 'SF Mono', 'Consolas', monospace;
+    font-family: var(--font-fira-code, 'SF Mono'), 'SF Mono', 'Consolas', monospace;
     font-feature-settings:
       'liga' 1,
       /* Standard ligatures */ 'calt' 1,

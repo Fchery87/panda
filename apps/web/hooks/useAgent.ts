@@ -1069,6 +1069,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       createSpecMutation,
       updateSpecMutation,
       setCurrentSpec,
+      currentSpec,
       setMessages,
       setPendingSpec,
       specApprovalMode,
@@ -1206,6 +1207,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       specApprovalMode,
       model,
       automationPolicy,
+      setMessages,
     ]
   )
 
