@@ -48,6 +48,9 @@ import { readAdminEnumQueryParam, useAdminQueryUpdater } from '@/lib/admin/query
 import { getEnhancementProviderOptions } from '@/lib/admin/enhancement-provider-options'
 import { getSharedProviderDefinitions } from '@/lib/llm/provider-definitions'
 
+const NO_PROVIDER_SELECTED = '__no-provider-selected__'
+const NO_MODEL_SELECTED = '__no-model-selected__'
+
 const systemTabs = ['features', 'llm', 'access', 'limits'] as const
 
 export default function AdminSystemPage() {
@@ -122,8 +125,7 @@ export default function AdminSystemPage() {
     if (!serverStateRef.current) return false
     return (
       JSON.stringify(controls) !== JSON.stringify(serverStateRef.current.controls) ||
-      JSON.stringify(globalLLMConfig) !==
-        JSON.stringify(serverStateRef.current.globalLLMConfig) ||
+      JSON.stringify(globalLLMConfig) !== JSON.stringify(serverStateRef.current.globalLLMConfig) ||
       JSON.stringify(enhancementConfig) !== JSON.stringify(serverStateRef.current.enhancementConfig)
     )
   }, [controls, globalLLMConfig, enhancementConfig])
@@ -345,11 +347,11 @@ export default function AdminSystemPage() {
                   </Label>
                   <div className="flex gap-2">
                     <Select
-                      value={globalLLMConfig.globalDefaultProvider || undefined}
+                      value={globalLLMConfig.globalDefaultProvider || NO_PROVIDER_SELECTED}
                       onValueChange={(value) =>
                         setGlobalLLMConfig((prev) => ({
                           ...prev,
-                          globalDefaultProvider: value,
+                          globalDefaultProvider: value === NO_PROVIDER_SELECTED ? '' : value,
                           globalDefaultModel: '',
                         }))
                       }
@@ -358,6 +360,9 @@ export default function AdminSystemPage() {
                         <SelectValue placeholder="No default set (users must configure)" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value={NO_PROVIDER_SELECTED}>
+                          No default set (users must configure)
+                        </SelectItem>
                         {getSharedProviderDefinitions().map((provider) => (
                           <SelectItem key={provider.value} value={provider.value}>
                             {provider.label}
@@ -391,15 +396,19 @@ export default function AdminSystemPage() {
                       Default Model
                     </Label>
                     <Select
-                      value={globalLLMConfig.globalDefaultModel || undefined}
+                      value={globalLLMConfig.globalDefaultModel || NO_MODEL_SELECTED}
                       onValueChange={(value) =>
-                        setGlobalLLMConfig((prev) => ({ ...prev, globalDefaultModel: value }))
+                        setGlobalLLMConfig((prev) => ({
+                          ...prev,
+                          globalDefaultModel: value === NO_MODEL_SELECTED ? '' : value,
+                        }))
                       }
                     >
                       <SelectTrigger id="global-model" className="rounded-none">
                         <SelectValue placeholder="Select model..." />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value={NO_MODEL_SELECTED}>Select model...</SelectItem>
                         {getSharedProviderDefinitions()
                           .find((p) => p.value === globalLLMConfig.globalDefaultProvider)
                           ?.models.map((model) => (

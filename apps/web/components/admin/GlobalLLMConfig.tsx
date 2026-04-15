@@ -35,6 +35,8 @@ interface GlobalLLMConfigProps {
 }
 
 const defaultProviders = getSharedProviderDefinitions()
+const NO_PROVIDER_SELECTED = '__no-provider-selected__'
+const NO_MODEL_SELECTED = '__no-model-selected__'
 
 export function GlobalLLMConfig({ settings, onSave }: GlobalLLMConfigProps) {
   const [config, setConfig] = React.useState({
@@ -93,11 +95,11 @@ export function GlobalLLMConfig({ settings, onSave }: GlobalLLMConfigProps) {
               </Label>
               <div className="flex gap-2">
                 <Select
-                  value={config.provider || undefined}
+                  value={config.provider || NO_PROVIDER_SELECTED}
                   onValueChange={(value) =>
                     setConfig((prev) => ({
                       ...prev,
-                      provider: value,
+                      provider: value === NO_PROVIDER_SELECTED ? '' : value,
                       model: '', // Reset model when provider changes
                     }))
                   }
@@ -106,6 +108,9 @@ export function GlobalLLMConfig({ settings, onSave }: GlobalLLMConfigProps) {
                     <SelectValue placeholder="No default set (users must configure)" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value={NO_PROVIDER_SELECTED}>
+                      No default set (users must configure)
+                    </SelectItem>
                     {defaultProviders.map((provider) => (
                       <SelectItem key={provider.value} value={provider.value}>
                         {provider.label}
@@ -133,13 +138,19 @@ export function GlobalLLMConfig({ settings, onSave }: GlobalLLMConfigProps) {
                   Default Model
                 </Label>
                 <Select
-                  value={config.model}
-                  onValueChange={(value) => setConfig((prev) => ({ ...prev, model: value }))}
+                  value={config.model || NO_MODEL_SELECTED}
+                  onValueChange={(value) =>
+                    setConfig((prev) => ({
+                      ...prev,
+                      model: value === NO_MODEL_SELECTED ? '' : value,
+                    }))
+                  }
                 >
                   <SelectTrigger id="global-model" className="rounded-none">
                     <SelectValue placeholder="Select model..." />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value={NO_MODEL_SELECTED}>Select model...</SelectItem>
                     {availableModels.map((model) => (
                       <SelectItem key={model} value={model}>
                         {model}

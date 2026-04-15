@@ -1,5 +1,5 @@
 // apps/web/components/editor/language-support.ts
-import type { Extension } from '@codemirror/state'
+import { EditorState, type Extension } from '@codemirror/state'
 
 /**
  * Maps file extensions to lazy-loaded CodeMirror language extensions.
@@ -72,6 +72,9 @@ const LANGUAGE_MAP: Record<string, () => Promise<Extension>> = {
   '.sql': () => import('@codemirror/lang-sql').then((m) => m.sql()),
 }
 
+const warnedIncompatibleExtensions = new Set<string>()
+const shouldWarnAboutIncompatibleExtensions = process.env.NODE_ENV !== 'test'
+
 /**
  * Resolves the appropriate CodeMirror language extension for a given filename.
  * Returns an empty array if the language is not supported (safe to spread into extensions).
@@ -85,7 +88,22 @@ export async function getLanguageExtension(filePath: string): Promise<Extension 
   if (!loader) return []
 
   try {
-    return await loader()
+    const extension = await loader()
+
+    try {
+      EditorState.create({
+        doc: '',
+        extensions: Array.isArray(extension) ? extension : [extension],
+      })
+    } catch (error) {
+      if (shouldWarnAboutIncompatibleExtensions && !warnedIncompatibleExtensions.has(ext)) {
+        warnedIncompatibleExtensions.add(ext)
+        console.warn(`[language-support] Incompatible CodeMirror extension for ${ext}`, error)
+      }
+      return []
+    }
+
+    return extension
   } catch {
     console.warn(`[language-support] Failed to load language for ${ext}`)
     return []
