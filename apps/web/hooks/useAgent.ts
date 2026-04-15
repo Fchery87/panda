@@ -769,7 +769,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         const schedulePaint = () => {
           if (pendingPaint) return
           pendingPaint = true
-          rafFlushRef.current = requestAnimationFrame(() => {
+          const flush = () => {
             pendingPaint = false
             rafFlushRef.current = null
             setMessages((prev) => {
@@ -801,7 +801,14 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                 },
               ]
             })
-          })
+          }
+          if (typeof requestAnimationFrame === 'function') {
+            rafFlushRef.current = requestAnimationFrame(() => {
+              setTimeout(flush, 0)
+            })
+          } else {
+            rafFlushRef.current = setTimeout(flush, 50) as unknown as number
+          }
         }
 
         for await (const event of runtime.run(promptContext, runtimeConfig)) {

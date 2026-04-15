@@ -613,6 +613,7 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
     let attemptText = ''
     let sawToolCall = false
     let fenceTriggered = false
+    let buildFenceNoticeShown = false
     // Architect mode: tracks whether the stream is currently inside a fenced block
     // so we can filter it inline rather than aborting the stream entirely.
     let inArchitectFence = false
@@ -685,19 +686,21 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
 
       if (mapped.type === 'text' && mapped.content) {
         if (promptContext.chatMode === 'architect') {
-          // Architect (plan) mode: stream all tokens but silently drop content inside
-          // fenced code blocks. This keeps the chat flowing while enforcing the
-          // "no large code blocks" contract without aborting the stream entirely.
           let chunk = mapped.content
           let filtered = ''
           while (chunk.length > 0) {
             const markerIdx = chunk.indexOf('```')
             if (markerIdx === -1) {
               if (!inArchitectFence) filtered += chunk
+              else {
+                filtered += '\n[code collapsed — use Build mode to execute]\n'
+                inArchitectFence = false
+              }
               break
             }
             if (!inArchitectFence) {
               filtered += chunk.slice(0, markerIdx)
+              filtered += '\n[code collapsed — use Build mode to execute]\n'
               inArchitectFence = true
             } else {
               inArchitectFence = false
@@ -711,7 +714,9 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
 
         // Build mode: break on first fence and trigger a rewrite so the LLM
         // re-executes using tools instead of outputting code in chat.
-        if (promptContext.chatMode === 'build') {
+        // Only trigger if no tools were called — tool execution means the
+        // model is already doing work, and code blocks may be supplementary.
+        if (promptContext.chatMode === 'build' && !sawToolCall) {
           const combined = attemptText + mapped.content
           const fenceIndex = combined.indexOf('```')
           if (fenceIndex !== -1) {
@@ -723,6 +728,18 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
             }
             fenceTriggered = true
             break
+          }
+        } else if (promptContext.chatMode === 'build' && sawToolCall) {
+          const combined = attemptText + mapped.content
+          const fenceIndex = combined.indexOf('```')
+          if (fenceIndex !== -1 && !buildFenceNoticeShown) {
+            buildFenceNoticeShown = true
+            yield {
+              type: 'progress_step' as const,
+              content: 'Tools are executing — code blocks will be redacted in Build mode',
+              progressStatus: 'completed' as const,
+              progressCategory: 'rewrite' as const,
+            }
           }
         }
         attemptText += mapped.content

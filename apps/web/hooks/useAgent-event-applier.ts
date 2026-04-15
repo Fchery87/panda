@@ -181,6 +181,21 @@ export function applyNonTerminalAgentEvent(args: {
             }
             return updated
           })
+        } else if (!mutable.assistantContent) {
+          setMessages((prev) => {
+            const existingIndex = prev.findIndex((m) => m.id === assistantMessageId)
+            if (existingIndex < 0) return prev
+            const existing = prev[existingIndex]!
+            if (existing.content === '— Executing tools… —') {
+              const updated = [...prev]
+              updated[existingIndex] = {
+                ...existing,
+                content: '',
+              }
+              return updated
+            }
+            return prev
+          })
         }
         mutable.assistantContent += event.content
         mutable.runUsage = {
@@ -345,10 +360,16 @@ export function applyNonTerminalAgentEvent(args: {
           const existingIndex = prev.findIndex((m) => m.id === assistantMessageId)
           if (existingIndex >= 0) {
             const updated = [...prev]
+            const existing = updated[existingIndex]!
+            const needsPlaceholder =
+              !mutable.assistantContent &&
+              !existing.content &&
+              mutable.assistantToolCalls.length <= 1
             updated[existingIndex] = {
-              ...updated[existingIndex],
+              ...existing,
               mode,
               toolCalls: mutable.assistantToolCalls,
+              content: needsPlaceholder ? '— Executing tools… —' : existing.content,
             }
             return updated
           }

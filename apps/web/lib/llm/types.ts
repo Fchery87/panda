@@ -22,6 +22,7 @@ export const KNOWN_PROVIDERS = [
   'deepseek',
   'groq',
   'fireworks',
+  'crofai',
   'custom',
 ] as const
 

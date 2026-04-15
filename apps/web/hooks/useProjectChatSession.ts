@@ -118,13 +118,20 @@ export function useProjectChatSession<TChat extends ChatSessionChat>(args: {
       return null
     }
 
+    const resolvedProvider = providerConfig.provider || defaultProviderId
+    const isZai = resolvedProvider === 'zai'
+    const hasCodingPlanBaseUrl = isZai && providerConfig.baseUrl?.includes('/coding/paas/')
+    const zaiDefaultBaseUrl = isZai
+      ? hasCodingPlanBaseUrl
+        ? providerConfig.baseUrl
+        : 'https://api.z.ai/api/paas/v4'
+      : undefined
+
     const nextProviderConfig = {
-      provider: (providerConfig.provider || defaultProviderId) as Parameters<
-        typeof getDefaultProviderCapabilities
-      >[0],
+      provider: resolvedProvider as Parameters<typeof getDefaultProviderCapabilities>[0],
       auth: {
         apiKey: providerConfig.apiKey || '',
-        baseUrl: providerConfig.baseUrl,
+        baseUrl: isZai ? providerConfig.baseUrl || zaiDefaultBaseUrl : providerConfig.baseUrl,
       },
       defaultModel: providerConfig.defaultModel,
     }

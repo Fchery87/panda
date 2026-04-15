@@ -77,6 +77,15 @@ export class ProviderRegistry {
         case 'fireworks':
           provider = new FireworksProvider(config)
           break
+        case 'crofai':
+          provider = new OpenAICompatibleProvider({
+            ...config,
+            auth: {
+              ...config.auth,
+              baseUrl: config.auth?.baseUrl || 'https://crof.ai/v1',
+            },
+          })
+          break
         default:
           provider = new OpenAICompatibleProvider(config)
       }
@@ -408,6 +417,22 @@ export function createProviderFromEnv(): LLMProvider | null {
         defaultModel:
           process.env.FIREWORKS_DEFAULT_MODEL ||
           'accounts/fireworks/models/llama-v3p3-70b-instruct',
+      },
+      true
+    )
+  }
+
+  // Try crof.ai
+  if (process.env.CROFAI_API_KEY) {
+    return registry.createProvider(
+      'crofai',
+      {
+        provider: 'crofai',
+        auth: {
+          apiKey: process.env.CROFAI_API_KEY,
+          baseUrl: process.env.CROFAI_BASE_URL || 'https://crof.ai/v1',
+        },
+        defaultModel: process.env.CROFAI_DEFAULT_MODEL || 'default',
       },
       true
     )

@@ -173,6 +173,7 @@ interface ProjectChatPanelProps {
   renderInspectorInline?: boolean
   contextualPrompt?: string | null
   onContextualPromptHandled?: () => void
+  hasProvider?: boolean
 }
 
 export function ProjectChatPanel({
@@ -258,6 +259,7 @@ export function ProjectChatPanel({
   renderInspectorInline = true,
   contextualPrompt,
   onContextualPromptHandled,
+  hasProvider = true,
 }: ProjectChatPanelProps) {
   const runtimeCheckpoints = useQuery(
     api.agentRuns.listRuntimeCheckpoints,
@@ -451,6 +453,29 @@ export function ProjectChatPanel({
               Recover Run
             </Button>
           </div>
+        </div>
+      ) : null}
+
+      {!hasProvider && chatMessages.length === 0 ? (
+        <div className="px-3 pb-2">
+          <Alert className="rounded-none border-primary/40 bg-primary/5">
+            <AlertTitle className="font-mono text-xs uppercase tracking-wide">
+              No LLM Provider Configured
+            </AlertTitle>
+            <AlertDescription className="space-y-2 font-mono text-xs">
+              <p>Configure an API key in Settings to start chatting with Panda.</p>
+              <div className="flex items-center gap-2">
+                <Button
+                  asChild
+                  size="sm"
+                  variant="outline"
+                  className="h-7 rounded-none font-mono text-xs"
+                >
+                  <Link href="/settings">Open Settings</Link>
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
         </div>
       ) : null}
 

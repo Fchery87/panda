@@ -859,6 +859,9 @@ export default function ProjectPage() {
   ) as AgentRunEvent[] | undefined
 
   // Convert agent messages to MessageList format
+  // Retain last non-empty agent messages to bridge the gap between
+  // stream end and Convex message persistence (prevents empty flash).
+  const lastAgentMessagesRef = useRef<Message[]>([])
   const chatMessages: Message[] = useMemo(() => {
     const mapConvexMessages = (source: ConvexMessage[] | undefined) =>
       source?.map((msg) => {
@@ -885,11 +888,12 @@ export default function ProjectPage() {
     }
 
     if (!agent.isLoading && agent.messages.length === 0 && convexMessages?.length) {
+      lastAgentMessagesRef.current = []
       return mapConvexMessages(convexMessages)
     }
 
     // Use agent messages when available, converting format
-    return agent.messages
+    const mapped = agent.messages
       .filter((msg) => msg.role === 'user' || msg.role === 'assistant')
       .map((msg) => ({
         _id: msg.id,
@@ -903,6 +907,17 @@ export default function ProjectPage() {
         },
         createdAt: msg.createdAt,
       }))
+
+    if (mapped.length > 0) {
+      lastAgentMessagesRef.current = mapped
+      return mapped
+    }
+
+    if (lastAgentMessagesRef.current.length > 0 && !convexMessages?.length) {
+      return lastAgentMessagesRef.current
+    }
+
+    return mapped
   }, [agent.isLoading, agent.messages, activeChat, chatMode, convexMessages])
 
   const replayProgressSteps = useMemo(
@@ -1246,6 +1261,7 @@ export default function ProjectPage() {
       supportsReasoning={supportsReasoning}
       attachmentsEnabled={true}
       inlineRateLimitError={inlineRateLimitError}
+      hasProvider={provider !== null}
       onToggleInspector={() => {
         openChatInspectorSurface(chatInspectorSurfaceTab)
       }}
