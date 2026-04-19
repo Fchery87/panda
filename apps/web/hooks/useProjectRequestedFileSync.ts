@@ -14,7 +14,7 @@ interface UseProjectRequestedFileSyncParams {
   files: ProjectFileLike[] | undefined
   requestedFilePath: string | null
   setSelectedFilePath: (path: string) => void
-  setSelectedFileLocation: (location: { line: number; column?: number } | null) => void
+  setSelectedFileLocation: (location: null) => void
   setCursorPosition: (position: { line: number; column: number } | null) => void
   setOpenTabs: (updater: (prev: OpenTabLike[]) => OpenTabLike[]) => void
 }

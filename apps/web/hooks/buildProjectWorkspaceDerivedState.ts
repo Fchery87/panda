@@ -7,7 +7,7 @@ interface BuildProjectWorkspaceDerivedStateParams {
   agent: AgentStatusLike
   isAnyJobRunning: boolean
   selectedModel: string
-  uiSelectedModel?: string
+  uiSelectedModel?: string | null
 }
 
 export function buildProjectWorkspaceDerivedState({
