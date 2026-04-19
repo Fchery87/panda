@@ -21,7 +21,7 @@ type ChatInspectorTab =
 
 type RightPanelTab = 'chat' | 'plan' | 'review' | 'inspect' | 'run' | 'comments'
 
-type CenterTab = 'home' | 'editor' | 'diff' | 'preview' | 'logs' | 'tests'
+type CenterTab = 'editor' | 'diff' | 'preview' | 'logs' | 'tests'
 
 type PlanningPopupState = {
   isPlanningPopupOpen: boolean
@@ -127,7 +127,7 @@ export function useProjectWorkspaceUi() {
   const [activeBottomDockTab, setActiveBottomDockTab] = useState<BottomDockTab>('terminal')
 
   // New: Center tab state
-  const [activeCenterTab, setActiveCenterTab] = useState<CenterTab>('home')
+  const [activeCenterTab, setActiveCenterTab] = useState<CenterTab>('editor')
 
   // New: Right panel state (replaces isChatPanelOpen as primary right panel control)
   const [isRightPanelOpen, setIsRightPanelOpen] = useState<boolean>(() => {
@@ -154,13 +154,6 @@ export function useProjectWorkspaceUi() {
   useEffect(() => {
     localStorage.setItem(RIGHT_PANEL_OPEN_KEY, String(isRightPanelOpen))
   }, [isRightPanelOpen])
-
-  // Auto-switch center tab to editor when a file is selected
-  useEffect(() => {
-    if (selectedFilePath) {
-      setActiveCenterTab('editor')
-    }
-  }, [selectedFilePath])
 
   useEffect(() => {
     const mobileMedia = window.matchMedia('(max-width: 1023px)')

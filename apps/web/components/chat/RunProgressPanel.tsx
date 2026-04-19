@@ -25,8 +25,6 @@ import {
   parsePlanSteps,
   type LiveProgressStep,
 } from './live-run-utils'
-import { DeliveryStatusStrip } from './DeliveryStatusStrip'
-import { mapDeliveryStateToStatusStripProps } from '@/lib/delivery/selectors'
 import type { FormalSpecification } from '@/lib/agent/spec/types'
 import type { PlanStatus } from '@/lib/chat/planDraft'
 import { SpecBadgeMini } from '../workbench/SpecBadge'
@@ -107,7 +105,6 @@ export function RunProgressPanel({
         sessionID?: string
       }>
     | undefined
-  const forgeProjectSnapshot = useQuery(api.forge.getProjectSnapshot, chatId ? { chatId } : 'skip')
 
   useEffect(() => {
     if (!isStreaming) return
@@ -171,28 +168,6 @@ export function RunProgressPanel({
     !!latestRuntimeCheckpoint &&
     latestRuntimeCheckpoint.reason !== 'complete' &&
     typeof latestRuntimeCheckpoint.sessionID === 'string'
-  const deliveryStatus = useMemo(
-    () =>
-      mapDeliveryStateToStatusStripProps(
-        forgeProjectSnapshot
-          ? {
-              currentPhase: forgeProjectSnapshot.state.phase,
-              activeRole: forgeProjectSnapshot.state.activeRole,
-              reviewGateStatus: forgeProjectSnapshot.state.gates.implementation_review,
-              qaGateStatus: forgeProjectSnapshot.state.gates.qa_review,
-              shipGateStatus: forgeProjectSnapshot.state.gates.ship_review,
-              evidenceMissing: false,
-              summary: {
-                goal: forgeProjectSnapshot.state.summary.goal,
-                activeTaskTitle: forgeProjectSnapshot.taskBoard.tasks.find(
-                  (task) => task._id === forgeProjectSnapshot.taskBoard.activeTaskId
-                )?.title,
-              },
-            }
-          : null
-      ),
-    [forgeProjectSnapshot]
-  )
 
   if (!isStreaming && steps.length === 0 && !runtimeCheckpoints?.length) {
     return null
@@ -336,16 +311,6 @@ export function RunProgressPanel({
           </button>
         )}
       </div>
-
-      <DeliveryStatusStrip
-        currentPhase={deliveryStatus.currentPhase}
-        activeRole={deliveryStatus.activeRole}
-        currentTaskTitle={deliveryStatus.currentTaskTitle}
-        reviewGateStatus={deliveryStatus.reviewGateStatus}
-        qaGateStatus={deliveryStatus.qaGateStatus}
-        shipGateStatus={deliveryStatus.shipGateStatus}
-        evidenceMissing={deliveryStatus.evidenceMissing}
-      />
 
       {!isOpen ? null : groups.length === 0 ? (
         <div className="font-mono text-xs text-muted-foreground">

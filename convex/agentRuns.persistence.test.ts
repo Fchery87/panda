@@ -12,6 +12,7 @@ describe('agentRuns persistence', () => {
     expect(schemaSource).toContain('key: v.string()')
     expect(schemaSource).toContain('count: v.number()')
     expect(schemaSource).toContain('consecutiveCompactionFailures: v.optional(v.number())')
+    expect(schemaSource).toContain('consecutiveNarrationTurns: v.optional(v.number())')
     expect(schemaSource).toContain('v.union(')
     expect(schemaSource).toContain('v.array(v.union(v.string(), v.number()))')
 

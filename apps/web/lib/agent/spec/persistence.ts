@@ -60,7 +60,11 @@ export interface UpdateSpecInput {
  */
 export function specToCreateInput(
   spec: FormalSpecification,
-  context: { projectId: Id<'projects'>; chatId: Id<'chats'>; runId?: Id<'agentRuns'> | null }
+  context: {
+    projectId: Id<'projects'>
+    chatId: Id<'chats'>
+    runId?: Id<'agentRuns'> | null
+  }
 ): CreateSpecInput {
   const input: CreateSpecInput = {
     projectId: context.projectId,

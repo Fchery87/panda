@@ -1,7 +1,15 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { IconQuickAction, IconDiff, IconAgents, IconFile, IconHealth } from '@/components/ui/icons'
+import {
+  IconQuickAction,
+  IconDiff,
+  IconAgents,
+  IconFile,
+  IconHealth,
+  IconNewChat,
+  IconUpload,
+} from '@/components/ui/icons'
 import { Button } from '@/components/ui/button'
 
 interface WorkspaceHomeProps {
@@ -30,8 +38,51 @@ export function WorkspaceHome({
   suggestedActions = [],
 }: WorkspaceHomeProps) {
   return (
-    <div className="scrollbar-thin h-full overflow-auto">
+    <div className="dot-grid scrollbar-thin h-full overflow-auto">
       <div className="mx-auto max-w-2xl px-6 py-8">
+        {/* Get Started — shown when workspace is empty */}
+        {recentFiles.length === 0 && pendingDiffs === 0 && activeAgents === 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="mb-8 border border-border bg-background/80 p-6"
+          >
+            <h2 className="font-mono text-xs font-medium uppercase tracking-[0.18em] text-primary">
+              Get Started
+            </h2>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Begin working on your project. Create a file, start a conversation, or import existing
+              code.
+            </p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+              <Button
+                variant="outline"
+                className="h-10 justify-start gap-2 rounded-none font-mono text-xs"
+                onClick={() => onOpenFile?.('')}
+              >
+                <IconFile className="h-4 w-4" weight="duotone" />
+                Create File
+              </Button>
+              <Button
+                variant="outline"
+                className="h-10 justify-start gap-2 rounded-none font-mono text-xs"
+                onClick={onStartAgent}
+              >
+                <IconNewChat className="h-4 w-4" />
+                Start Chat
+              </Button>
+              <Button
+                variant="outline"
+                className="h-10 justify-start gap-2 rounded-none font-mono text-xs"
+                onClick={onOpenTerminal}
+              >
+                <IconUpload className="h-4 w-4" />
+                Import Project
+              </Button>
+            </div>
+          </motion.div>
+        )}
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}

@@ -43,7 +43,7 @@ export const DEFAULT_DRIFT_CONFIG: DriftDetectionConfig = {
 /**
  * Drift detection state
  */
-interface DriftDetectionState {
+export interface DriftDetectionState {
   /** Active specifications being monitored */
   activeSpecs: Map<string, FormalSpecification>
   /** Last drift notification timestamp per spec */
@@ -54,15 +54,19 @@ interface DriftDetectionState {
   pendingDrifts: Map<string, DriftReport>
 }
 
+export function createDriftDetectionState(): DriftDetectionState {
+  return {
+    activeSpecs: new Map(),
+    lastNotificationTime: new Map(),
+    notificationCount: new Map(),
+    pendingDrifts: new Map(),
+  }
+}
+
 /**
  * Global drift detection state
  */
-const state: DriftDetectionState = {
-  activeSpecs: new Map(),
-  lastNotificationTime: new Map(),
-  notificationCount: new Map(),
-  pendingDrifts: new Map(),
-}
+const state: DriftDetectionState = createDriftDetectionState()
 
 /**
  * Register an active specification for drift monitoring
@@ -261,10 +265,14 @@ function detectDriftForFile(
 /**
  * Check if drift notification should be throttled
  */
-function shouldThrottle(specId: string, config: DriftDetectionConfig): boolean {
+function shouldThrottle(
+  specId: string,
+  config: DriftDetectionConfig,
+  driftState: DriftDetectionState
+): boolean {
   const now = Date.now()
-  const lastTime = state.lastNotificationTime.get(specId) || 0
-  const count = state.notificationCount.get(specId) || 0
+  const lastTime = driftState.lastNotificationTime.get(specId) || 0
+  const count = driftState.notificationCount.get(specId) || 0
 
   // Check max notifications
   if (count >= config.maxNotificationsPerSession) {
@@ -282,10 +290,10 @@ function shouldThrottle(specId: string, config: DriftDetectionConfig): boolean {
 /**
  * Update throttle state
  */
-function updateThrottleState(specId: string): void {
+function updateThrottleState(specId: string, driftState: DriftDetectionState): void {
   const now = Date.now()
-  state.lastNotificationTime.set(specId, now)
-  state.notificationCount.set(specId, (state.notificationCount.get(specId) || 0) + 1)
+  driftState.lastNotificationTime.set(specId, now)
+  driftState.notificationCount.set(specId, (driftState.notificationCount.get(specId) || 0) + 1)
 }
 
 /**
@@ -293,6 +301,7 @@ function updateThrottleState(specId: string): void {
  */
 export function createDriftDetectionPlugin(config: Partial<DriftDetectionConfig> = {}): Plugin {
   const fullConfig = { ...DEFAULT_DRIFT_CONFIG, ...config }
+  const pluginState = createDriftDetectionState()
 
   return {
     name: 'drift-detection',
@@ -328,7 +337,7 @@ export function createDriftDetectionPlugin(config: Partial<DriftDetectionConfig>
         }
 
         // Check each active spec for drift
-        for (const [specId, spec] of state.activeSpecs) {
+        for (const [specId, spec] of pluginState.activeSpecs) {
           // Skip specs that are not in a state where drift matters
           if (spec.status !== 'verified' && spec.status !== 'executing') {
             continue
@@ -357,7 +366,7 @@ export function createDriftDetectionPlugin(config: Partial<DriftDetectionConfig>
           }
 
           // Check throttle
-          if (shouldThrottle(specId, fullConfig)) {
+          if (shouldThrottle(specId, fullConfig, pluginState)) {
             continue
           }
 
@@ -372,10 +381,10 @@ export function createDriftDetectionPlugin(config: Partial<DriftDetectionConfig>
           }
 
           // Store as pending
-          state.pendingDrifts.set(specId, driftReport)
+          pluginState.pendingDrifts.set(specId, driftReport)
 
           // Update throttle state
-          updateThrottleState(specId)
+          updateThrottleState(specId, pluginState)
 
           // Note: Drift detection event is emitted by the runtime
           // The plugin stores the drift report, and the runtime

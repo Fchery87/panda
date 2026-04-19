@@ -9,6 +9,7 @@
  */
 
 import type { CompletionMessage } from '../llm/types'
+import type { GeneratedPlanArtifact } from '../planning/types'
 import {
   assembleContext,
   type BudgetAllocationOptions,
@@ -306,6 +307,16 @@ function buildApprovedPlanExecutionContext(context: PromptContext): string {
   lines.push('', '- Treat the approved structured plan as the primary execution contract.')
 
   return lines.join('\n')
+}
+
+export function buildHandoffSystemMessage(args: { plan: GeneratedPlanArtifact }): string {
+  const ritual = CHAT_MODE_CONFIGS.code.handoffRitual?.systemMessage ?? ''
+  const planText = [...args.plan.sections]
+    .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id))
+    .map((s) => `## ${s.title}\n${s.content}`)
+    .join('\n\n')
+
+  return [ritual, '', '---', '## Approved Plan', planText].join('\n')
 }
 
 /**

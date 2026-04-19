@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 
 import type { Id } from '@convex/_generated/dataModel'
 import { FileTabs } from './FileTabs'
@@ -9,8 +9,7 @@ import { EditorContainer } from '../editor/EditorContainer'
 import { CenterTabBar, type CenterTabBarTab } from './CenterTabBar'
 import { WorkspaceHome } from './WorkspaceHome'
 import { DiffTab } from './DiffTab'
-import { ReviewChangesBanner } from './ReviewChangesBanner'
-import { AgentCompletionBanner } from './AgentCompletionBanner'
+import { WorkspaceBanner } from './WorkspaceBanner'
 import { isWorkspacePlanTab, useWorkspace } from '@/contexts/WorkspaceContext'
 import { useShortcuts } from '@/hooks/useShortcuts'
 
@@ -50,8 +49,8 @@ interface WorkbenchProps {
   onContextualChat?: (selection: string, filePath: string) => void
   onInlineChat?: (prompt: string, selectedText: string, filePath: string) => Promise<string | null>
   /** Called when user clicks "Home" tab in center */
-  activeCenterTab?: 'home' | 'editor' | 'diff' | 'preview' | 'logs' | 'tests'
-  onCenterTabChange?: (tab: 'home' | 'editor' | 'diff' | 'preview' | 'logs' | 'tests') => void
+  activeCenterTab?: 'editor' | 'diff' | 'preview' | 'logs' | 'tests'
+  onCenterTabChange?: (tab: 'editor' | 'diff' | 'preview' | 'logs' | 'tests') => void
   /** Number of pending diffs for the workspace home view */
   pendingDiffCount?: number
   /** Whether an agent is actively running */
@@ -61,7 +60,6 @@ interface WorkbenchProps {
 }
 
 const CENTER_TABS: CenterTabBarTab[] = [
-  { id: 'home', label: 'Home' },
   { id: 'editor', label: 'Editor' },
   { id: 'diff', label: 'Diff' },
   { id: 'preview', label: 'Preview' },
@@ -89,7 +87,7 @@ export function Workbench({
   onEditorDirtyChange,
   onContextualChat,
   onInlineChat,
-  activeCenterTab = 'home',
+  activeCenterTab = 'editor',
   onCenterTabChange,
   pendingDiffCount = 0,
   isAgentRunning = false,
@@ -102,14 +100,6 @@ export function Workbench({
   const selectedPlanTab =
     selectedWorkspaceTab && isWorkspacePlanTab(selectedWorkspaceTab) ? selectedWorkspaceTab : null
 
-  // Auto-switch to editor tab when a file is selected
-  useEffect(() => {
-    if (selectedFilePath && activeCenterTab === 'home') {
-      onCenterTabChange?.('editor')
-    }
-  }, [selectedFilePath, activeCenterTab, onCenterTabChange])
-
-  // Derive recent files for workspace home
   const recentFiles = useMemo(() => {
     return openTabs
       .filter((tab) => !isWorkspacePlanTab(tab))
@@ -124,7 +114,7 @@ export function Workbench({
 
   useShortcuts(shortcuts)
 
-  const effectiveTab = selectedFilePath && activeCenterTab === 'home' ? 'editor' : activeCenterTab
+  const effectiveTab = activeCenterTab
   const centerTabs = useMemo(
     () =>
       CENTER_TABS.map((tab) => ({
@@ -139,22 +129,11 @@ export function Workbench({
     return (
       <div className="surface-0 h-full min-h-0 w-full min-w-0">
         <CenterTabBar
-          tabs={centerTabs.filter(
-            (tab) => tab.id === 'home' || tab.id === 'editor' || tab.id === 'diff'
-          )}
+          tabs={centerTabs.filter((tab) => tab.id === 'editor' || tab.id === 'diff')}
           activeTab={effectiveTab}
           onTabChange={onCenterTabChange}
         />
         <div className="h-[calc(100%-2.5rem)] min-h-0 min-w-0">
-          {effectiveTab === 'home' && (
-            <WorkspaceHome
-              recentFiles={recentFiles}
-              pendingDiffs={pendingDiffCount}
-              activeAgents={isAgentRunning ? 1 : 0}
-              onOpenFile={onSelectFile}
-              onStartAgent={onStartAgent}
-            />
-          )}
           {effectiveTab === 'editor' && (
             <div className="surface-0 flex h-full min-h-0 min-w-0 flex-col">
               {openTabs.length > 0 && (
@@ -242,20 +221,15 @@ export function Workbench({
           />
         )}
 
-        {/* Review Changes Banner */}
-        {pendingDiffCount > 0 && effectiveTab !== 'diff' && (
-          <ReviewChangesBanner
-            isVisible={true}
-            changedFilesCount={pendingDiffCount}
-            status={isAgentRunning ? 'running' : 'review'}
-            onReviewChanges={() => onCenterTabChange?.('diff')}
-          />
-        )}
-
-        {/* Agent Completion Banner */}
-        <AgentCompletionBanner
-          isVisible={!isAgentRunning && pendingDiffCount > 0 && effectiveTab !== 'diff'}
-          taskTitle="Task completed"
+        {/* Workspace Banner */}
+        <WorkspaceBanner
+          state={
+            effectiveTab === 'diff' || pendingDiffCount === 0
+              ? 'idle'
+              : isAgentRunning
+                ? 'agent-running'
+                : 'agent-complete'
+          }
           changedFilesCount={pendingDiffCount}
           onReviewDiff={() => onCenterTabChange?.('diff')}
           onOpenPreview={() => onCenterTabChange?.('preview')}
@@ -263,18 +237,6 @@ export function Workbench({
 
         {/* Tab Content */}
         <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
-          {effectiveTab === 'home' && (
-            <WorkspaceHome
-              recentFiles={recentFiles}
-              pendingDiffs={pendingDiffCount}
-              activeAgents={isAgentRunning ? 1 : 0}
-              problemCount={0}
-              onOpenFile={onSelectFile}
-              onOpenDiffView={() => onCenterTabChange?.('diff')}
-              onStartAgent={onStartAgent}
-            />
-          )}
-
           {effectiveTab === 'editor' && (
             <>
               {selectedPlanTab ? (

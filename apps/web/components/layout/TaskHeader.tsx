@@ -36,7 +36,7 @@ export function TaskHeader({
       <div className="flex min-w-0 items-center gap-3">
         <IconQuickAction className="h-3.5 w-3.5 shrink-0 text-primary" weight="fill" />
         <span className="truncate font-mono text-xs font-medium text-foreground">{title}</span>
-        <span className="status-badge" data-status={status}>
+        <span className="badge-md" data-status={status}>
           {status === 'running' && <IconSpinner className="h-2.5 w-2.5 animate-spin" />}
           {status}
         </span>

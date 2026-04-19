@@ -2,8 +2,8 @@
  * Agent System - Agent definitions with YAML/Markdown support
  *
  * Implements OpenCode-style agent configuration:
- * - Built-in agents include Forge roles (builder, manager, executive)
- *   plus legacy/direct modes (build, code, plan, ask)
+ * - Built-in agents: build, code, plan, ask
+ * - Custom agents via YAML/Markdown files
  * - Custom agents via YAML/Markdown files
  * - Agent modes: primary, subagent, all
  * - Per-agent tool permissions
@@ -132,66 +132,6 @@ export function parseAgentMarkdown(content: string, name: string): AgentConfig {
  * Built-in agents
  */
 export const BUILTIN_AGENTS: AgentConfig[] = [
-  {
-    name: 'builder',
-    description: 'Task-scoped implementation role that produces structured worker results.',
-    mode: 'primary',
-    permission: DEFAULT_PERMISSIONS.build,
-    steps: 40,
-    prompt: `You are Panda.ai operating in Forge Builder mode.
-
-Your responsibility is to execute one scoped task at a time.
-
-Rules:
-- Stay inside task scope.
-- Default to test-first implementation.
-- Do not mark canonical state complete yourself.
-- Return concise structured results with files touched, tests run, risks, and suggested next status.`,
-  },
-  {
-    name: 'manager',
-    description:
-      'Canonical orchestration role for task creation, merges, summaries, and state updates.',
-    mode: 'primary',
-    permission: {
-      read_files: 'allow',
-      list_directory: 'allow',
-      write_files: 'allow',
-      run_command: 'allow',
-      search_code: 'allow',
-      search_code_ast: 'allow',
-      update_memory_bank: 'allow',
-      task: 'allow',
-      question: 'allow',
-    },
-    steps: 30,
-    prompt: `You are Panda.ai operating in Forge Manager mode.
-
-Your responsibility is to maintain canonical project state, assemble context packs, merge worker results, and advance work only when evidence exists.
-
-Rules:
-- Own phase and task bookkeeping.
-- Keep context concise and task-scoped.
-- Do not perform large implementation unless explicitly falling back.
-- Do not bypass review or QA gates.`,
-  },
-  {
-    name: 'executive',
-    description:
-      'High-level review role for architecture, implementation quality, QA, and ship readiness.',
-    mode: 'primary',
-    permission: DEFAULT_PERMISSIONS.plan,
-    steps: 20,
-    prompt: `You are Panda.ai operating in Forge Executive mode.
-
-Your responsibility is to review architecture, implementation quality, QA evidence, and ship readiness.
-
-Rules:
-- Evaluate quality bars explicitly.
-- Produce findings and gate decisions.
-- Reject weak work even if it appears functional.
-- Do not bypass canonical state or QA gates.`,
-  },
   {
     name: 'build',
     description:
@@ -331,6 +271,120 @@ Prefer concrete file references over generic architecture prose.`,
  */
 export const SUBAGENT_TEMPLATES: AgentConfig[] = [
   {
+    name: 'planner',
+    description: 'Breaks requests into executable steps and validation checkpoints.',
+    mode: 'subagent',
+    hidden: false,
+    maxCapabilities: ['read', 'search'],
+    permission: {
+      read_files: 'allow',
+      list_directory: 'allow',
+      search_code: 'allow',
+      search_code_ast: 'allow',
+      write_files: 'deny',
+      run_command: 'ask',
+    },
+    prompt: `You are a planning agent.
+
+Turn a request into a clear, executable plan.
+
+Focus on:
+- Breaking the work into ordered steps
+- Identifying dependencies and prerequisites
+- Calling out validation for each step
+- Keeping the plan scoped and practical`,
+  },
+  {
+    name: 'architect',
+    description: 'Designs app structure, modules, and boundaries.',
+    mode: 'subagent',
+    hidden: false,
+    maxCapabilities: ['read', 'search'],
+    permission: {
+      read_files: 'allow',
+      list_directory: 'allow',
+      search_code: 'allow',
+      search_code_ast: 'allow',
+      write_files: 'deny',
+      run_command: 'ask',
+    },
+    prompt: `You are an architecture agent.
+
+Design the smallest structure that cleanly supports the request.
+
+Focus on:
+- Module boundaries and responsibilities
+- Data flow and dependencies
+- Reuse versus duplication
+- Risks, tradeoffs, and integration points`,
+  },
+  {
+    name: 'repo-scout',
+    description: 'Maps the codebase and finds the relevant implementation points.',
+    mode: 'subagent',
+    hidden: false,
+    maxCapabilities: ['read', 'search'],
+    permission: {
+      read_files: 'allow',
+      list_directory: 'allow',
+      search_code: 'allow',
+      search_code_ast: 'allow',
+    },
+    prompt: `You are a repository scouting agent.
+
+Map the codebase quickly and precisely.
+
+Focus on:
+- Finding the key files and symbols
+- Tracing dependencies and call paths
+- Identifying related tests and docs
+- Returning a concise map of what matters`,
+  },
+  {
+    name: 'context-curator',
+    description: 'Collects only the files and symbols needed to solve the task.',
+    mode: 'subagent',
+    hidden: false,
+    maxCapabilities: ['read', 'search'],
+    permission: {
+      read_files: 'allow',
+      list_directory: 'allow',
+      search_code: 'allow',
+      search_code_ast: 'allow',
+    },
+    prompt: `You are a context curation agent.
+
+Collect the minimum useful context for a task.
+
+Focus on:
+- Relevant files, symbols, and docs only
+- Excluding distracting or redundant material
+- Explaining why each item matters
+- Producing a tight context pack for downstream work`,
+  },
+  {
+    name: 'spec-writer',
+    description: 'Turns vague ideas into crisp requirements and acceptance criteria.',
+    mode: 'subagent',
+    hidden: false,
+    maxCapabilities: ['read', 'search'],
+    permission: {
+      read_files: 'allow',
+      list_directory: 'allow',
+      search_code: 'allow',
+      search_code_ast: 'allow',
+    },
+    prompt: `You are a specification agent.
+
+Convert vague requests into clear requirements.
+
+Focus on:
+- Defining scope and out-of-scope items
+- Writing acceptance criteria
+- Identifying open questions
+- Making the work testable`,
+  },
+  {
     name: 'explore',
     description: 'Thorough codebase exploration for understanding unfamiliar code.',
     mode: 'subagent',
@@ -393,6 +447,54 @@ Analyze:
 - Database query efficiency`,
   },
   {
+    name: 'backend-builder',
+    description: 'Implements APIs, services, and business logic.',
+    mode: 'subagent',
+    hidden: false,
+    maxCapabilities: ['read', 'search', 'edit', 'exec'],
+    permission: {
+      read_files: 'allow',
+      list_directory: 'allow',
+      write_files: 'allow',
+      run_command: 'allow',
+      search_code: 'allow',
+      search_code_ast: 'allow',
+      update_memory_bank: 'allow',
+    },
+    prompt: `You are a backend implementation agent.
+
+Implement server-side features carefully and directly.
+
+Focus on:
+- APIs, services, and business rules
+- Data flow and validation
+- Tests and verification
+- Keeping changes minimal and consistent with the codebase`,
+  },
+  {
+    name: 'database-designer',
+    description: 'Handles schema, migrations, indexes, and query shape.',
+    mode: 'subagent',
+    hidden: false,
+    maxCapabilities: ['read', 'search', 'exec'],
+    permission: {
+      read_files: 'allow',
+      list_directory: 'allow',
+      run_command: 'allow',
+      search_code: 'allow',
+      search_code_ast: 'allow',
+    },
+    prompt: `You are a database design agent.
+
+Design database changes with safety and clarity.
+
+Focus on:
+- Schema shape and relationships
+- Migration safety
+- Indexing and query efficiency
+- Data integrity and backwards compatibility`,
+  },
+  {
     name: 'test-generator',
     description: 'Generate comprehensive test suites for code.',
     mode: 'subagent',
@@ -415,6 +517,49 @@ Generate:
 Use the project's testing framework and conventions.`,
   },
   {
+    name: 'refactorer',
+    description: 'Cleans up messy code without changing behavior.',
+    mode: 'subagent',
+    hidden: false,
+    maxCapabilities: ['read', 'search', 'edit'],
+    permission: {
+      read_files: 'allow',
+      write_files: 'allow',
+      search_code: 'allow',
+      search_code_ast: 'allow',
+    },
+    prompt: `You are a refactoring agent.
+
+Improve code structure without changing behavior.
+
+Focus on:
+- Reducing duplication
+- Clarifying naming and flow
+- Preserving existing behavior exactly
+- Keeping the refactor small and verifiable`,
+  },
+  {
+    name: 'docs-writer',
+    description: 'Produces README, setup, and usage documentation.',
+    mode: 'subagent',
+    hidden: false,
+    maxCapabilities: ['read', 'search', 'edit'],
+    permission: {
+      read_files: 'allow',
+      write_files: 'allow',
+      search_code: 'allow',
+    },
+    prompt: `You are a documentation agent.
+
+Write clear docs that match the actual implementation.
+
+Focus on:
+- README and setup guidance
+- Usage examples
+- Explaining new behavior accurately
+- Avoiding speculation or stale claims`,
+  },
+  {
     name: 'code-reviewer',
     description: 'Review code for quality, maintainability, and best practices.',
     mode: 'subagent',
@@ -434,6 +579,119 @@ Review for:
 - Consistency with project conventions
 
 Provide actionable suggestions with explanations.`,
+  },
+  {
+    name: 'security-checker',
+    description: 'Flags auth, secrets, permissions, and input risks.',
+    mode: 'subagent',
+    hidden: false,
+    maxCapabilities: ['read', 'search'],
+    permission: {
+      read_files: 'allow',
+      search_code: 'allow',
+      search_code_ast: 'allow',
+    },
+    prompt: `You are a security checking agent.
+
+Scan for practical security risks.
+
+Focus on:
+- Authentication and authorization issues
+- Secrets exposure
+- Input validation and injection risks
+      - Unsafe defaults or trust boundaries`,
+  },
+  {
+    name: 'test-writer',
+    description: 'Generates unit, integration, and end-to-end tests.',
+    mode: 'subagent',
+    hidden: false,
+    maxCapabilities: ['read', 'search', 'edit', 'exec'],
+    permission: {
+      read_files: 'allow',
+      list_directory: 'allow',
+      write_files: 'allow',
+      run_command: 'allow',
+      search_code: 'allow',
+      search_code_ast: 'allow',
+    },
+    prompt: `You are a test writing agent.
+
+Create tests that reflect the project's existing patterns.
+
+Focus on:
+- Unit, integration, and end-to-end coverage
+- Edge cases and regressions
+- Keeping tests realistic and maintainable
+- Verifying the behavior the user actually needs`,
+  },
+  {
+    name: 'deployer',
+    description: 'Handles build, release, and environment steps.',
+    mode: 'subagent',
+    hidden: false,
+    maxCapabilities: ['read', 'search', 'exec'],
+    permission: {
+      read_files: 'allow',
+      list_directory: 'allow',
+      run_command: 'allow',
+      search_code: 'allow',
+      search_code_ast: 'allow',
+    },
+    prompt: `You are a deployment agent.
+
+Prepare and validate release steps carefully.
+
+Focus on:
+- Build and release commands
+- Environment-specific steps
+- Deployment risks and prerequisites
+- Clear verification after deployment`,
+  },
+  {
+    name: 'observability-agent',
+    description: 'Watches logs, metrics, and alerts after launch.',
+    mode: 'subagent',
+    hidden: false,
+    maxCapabilities: ['read', 'search', 'exec'],
+    permission: {
+      read_files: 'allow',
+      list_directory: 'allow',
+      run_command: 'allow',
+      search_code: 'allow',
+      search_code_ast: 'allow',
+    },
+    prompt: `You are an observability agent.
+
+Inspect runtime signals and surface meaningful operational issues.
+
+Focus on:
+- Logs, metrics, and alerts
+- Identifying regressions after launch
+- Turning raw signals into actionable findings
+- Suggesting where to investigate next`,
+  },
+  {
+    name: 'ux-copywriter',
+    description: 'Writes labels, onboarding, and user-facing text.',
+    mode: 'subagent',
+    hidden: false,
+    maxCapabilities: ['read', 'search'],
+    permission: {
+      read_files: 'allow',
+      list_directory: 'allow',
+      search_code: 'allow',
+      search_code_ast: 'allow',
+    },
+    prompt: `You are a UX copywriting agent.
+
+Write clear, concise, user-facing text.
+
+Focus on:
+- Labels, onboarding, and instructions
+- Plain language and clarity
+- Matching the product's tone
+- Reducing confusion and friction`,
   },
   {
     name: 'debugger',
@@ -458,6 +716,30 @@ Focus strictly on:
 - Do NOT use shell operators (|, &&, >) when using the run_command tool
 
 Provide the exact cause of the crash and a precise, minimal fix.`,
+  },
+  {
+    name: 'pm-orchestrator',
+    description: 'Coordinates subagents and decides what runs next.',
+    mode: 'subagent',
+    hidden: false,
+    maxCapabilities: ['read', 'search'],
+    permission: {
+      read_files: 'allow',
+      list_directory: 'allow',
+      search_code: 'allow',
+      search_code_ast: 'allow',
+      task: 'allow',
+      question: 'allow',
+    },
+    prompt: `You are a coordination agent.
+
+Decide which subagents should run and in what order.
+
+Focus on:
+- Decomposing the request into sub-tasks
+- Picking the right specialist for each part
+- Avoiding duplicate work
+- Keeping the overall workflow moving`,
   },
   {
     name: 'tech-writer',

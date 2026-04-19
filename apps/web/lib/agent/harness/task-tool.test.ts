@@ -13,6 +13,26 @@ function createSubagentResult(): SubagentResult {
 }
 
 describe('executeTaskTool', () => {
+  test('exposes the new high-value subagent templates', () => {
+    const names = agents.listSubagents().map((agent) => agent.name)
+
+    expect(names).toContain('planner')
+    expect(names).toContain('architect')
+    expect(names).toContain('repo-scout')
+    expect(names).toContain('context-curator')
+    expect(names).toContain('spec-writer')
+    expect(names).toContain('backend-builder')
+    expect(names).toContain('database-designer')
+    expect(names).toContain('refactorer')
+    expect(names).toContain('docs-writer')
+    expect(names).toContain('security-checker')
+    expect(names).toContain('pm-orchestrator')
+    expect(names).toContain('test-writer')
+    expect(names).toContain('deployer')
+    expect(names).toContain('observability-agent')
+    expect(names).toContain('ux-copywriter')
+  })
+
   test('intersects delegated permissions with a read-only parent agent', async () => {
     let delegatedAgent: AgentConfig | undefined
 

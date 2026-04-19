@@ -53,6 +53,42 @@ describe('ConvexCheckpointStore', () => {
     )
   })
 
+  test('accepts checkpoints that omit optional spec state', async () => {
+    const store = new ConvexCheckpointStore(
+      {
+        async mutation() {
+          return null
+        },
+        async query() {
+          return {
+            version: 1,
+            sessionID: 'session-legacy',
+            agentName: 'build',
+            reason: 'step',
+            savedAt: 456,
+            state: {
+              sessionID: 'session-legacy',
+              messages: [],
+              step: 1,
+              isComplete: false,
+              isLastStep: false,
+              pendingSubtasks: [],
+              cost: 0,
+              tokens: { input: 1, output: 2, reasoning: 3 },
+              lastToolLoopSignature: null,
+              toolLoopStreak: 0,
+            },
+          }
+        },
+      },
+      { chatId: 'chat-legacy' as never }
+    )
+
+    await expect(store.load('session-legacy')).resolves.toEqual(
+      expect.objectContaining({ sessionID: 'session-legacy', agentName: 'build' })
+    )
+  })
+
   test('rejects malformed runtime checkpoint payloads returned from Convex', async () => {
     const store = new ConvexCheckpointStore(
       {

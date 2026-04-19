@@ -85,41 +85,6 @@ function normalizeFinishReason(value: unknown): FinishReason {
   }
 }
 
-function splitForPerceivedStreaming(text: string, maxChunkChars = 12): string[] {
-  if (!text) return []
-  if (text.length <= maxChunkChars) return [text]
-
-  // Prefer splitting on whitespace, but fall back to fixed-size chunks.
-  const parts = text.split(/(\s+)/)
-  const chunks: string[] = []
-  let buf = ''
-
-  const flush = () => {
-    if (buf) chunks.push(buf)
-    buf = ''
-  }
-
-  for (const part of parts) {
-    if (!part) continue
-    if (part.length > maxChunkChars) {
-      // Flush any buffered content before chunking a long token.
-      flush()
-      for (let i = 0; i < part.length; i += maxChunkChars) {
-        chunks.push(part.slice(i, i + maxChunkChars))
-      }
-      continue
-    }
-
-    if ((buf + part).length > maxChunkChars) {
-      flush()
-    }
-    buf += part
-  }
-
-  flush()
-  return chunks
-}
-
 /**
  * OpenAI Compatible Provider implementation
  * Works with OpenAI, OpenRouter, Together.ai, and other compatible APIs
@@ -249,14 +214,12 @@ export class OpenAICompatibleProvider implements LLMProvider {
           case 'text-delta': {
             const delta = part.textDelta ?? part.text
             if (!delta) break
-            const chunks = splitForPerceivedStreaming(delta)
-            for (const chunkText of chunks) {
-              const chunk: StreamChunk = { type: 'text', content: chunkText }
-              // Process for think tags (DeepSeek, open-source models)
-              const processed = processChunkWithThinking(chunk)
-              for (const processedChunk of processed) {
-                yield processedChunk
-              }
+            const chunk: StreamChunk = { type: 'text', content: delta }
+            // Preserve provider-native chunk boundaries so the UI can render
+            // the stream as smoothly as the upstream transport allows.
+            const processed = processChunkWithThinking(chunk)
+            for (const processedChunk of processed) {
+              yield processedChunk
             }
             break
           }

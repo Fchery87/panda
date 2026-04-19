@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
-import { useConvex, useMutation, usePaginatedQuery, useQuery } from 'convex/react'
+import { useMutation, useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { motion } from 'framer-motion'
@@ -10,38 +10,19 @@ import { toast } from 'sonner'
 
 // Components
 import { useHotkeys } from 'react-hotkeys-hook'
-import { Breadcrumb, buildBreadcrumbItems } from '@/components/workbench/Breadcrumb'
-import { mapLatestRunProgressSteps } from '@/components/chat/live-run-utils'
 import { ComposerOverlay } from '@/components/chat/ComposerOverlay'
 import { PermissionDialog } from '@/components/chat/PermissionDialog'
 import { CommandPalette } from '@/components/command-palette/CommandPalette'
 import { ProjectChatPanel } from '@/components/projects/ProjectChatPanel'
 import { ProjectShareDialog } from '@/components/projects/ProjectShareDialog'
 import { ProjectWorkspaceLayout } from '@/components/projects/ProjectWorkspaceLayout'
-import { RightPanel } from '@/components/panels/RightPanel'
-import { TaskPanel } from '@/components/panels/TaskPanel'
-import { QAPanel } from '@/components/panels/QAPanel'
-import { StatePanel } from '@/components/panels/StatePanel'
-import { BrowserSessionPanel } from '@/components/panels/BrowserSessionPanel'
-import { ActivityTimelinePanel } from '@/components/panels/ActivityTimelinePanel'
-import { DecisionPanel } from '@/components/panels/DecisionPanel'
+import { WorkbenchRightPanel } from '@/components/workbench/WorkbenchRightPanel'
 import { Button } from '@/components/ui/button'
+import { PandaLogo } from '@/components/ui/panda-logo'
 import { WorkspaceProvider, type WorkspaceContextValue } from '@/contexts/WorkspaceContext'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-
-import { RotateCcw, MoreHorizontal, PanelLeftOpen, PanelLeftClose } from 'lucide-react'
-import Link from 'next/link'
-import { TopBarControls } from '@/components/layout/TopBarControls'
+import { WorkbenchTopBar } from '@/components/workbench/WorkbenchTopBar'
 import { useCommandPaletteStore } from '@/stores/commandPaletteStore'
 import { useGit } from '@/hooks/useGit'
-
-// UI Components
-import { PandaLogo } from '@/components/ui/panda-logo'
 
 // Hooks
 import { useJobs } from '@/hooks/useJobs'
@@ -55,40 +36,18 @@ import { useProjectWorkbenchFiles } from '@/hooks/useProjectWorkbenchFiles'
 import { useProjectWorkspaceUi } from '@/hooks/useProjectWorkspaceUi'
 import { useShortcutListener } from '@/hooks/useShortcuts'
 import { useSpecDriftDetection } from '@/hooks/useSpecDriftDetection'
-import {
-  derivePreviewDiffEntries,
-  deriveWorkspaceArtifactPreviews,
-  resolveArtifactPreviewNavigation,
-  type WorkspaceArtifactPreview,
-} from '@/components/workbench/artifact-preview'
+import { useArtifactLifecycle } from '@/hooks/useArtifactLifecycle'
+import { usePlanArtifactSync } from '@/hooks/usePlanArtifactSync'
+import { useWorkbenchChatState } from '@/hooks/useWorkbenchChatState'
+import { useWorkbenchPanelState } from '@/hooks/useWorkbenchPanelState'
 
-import type { Message, MessageAnnotationInfo, PersistedRunEventInfo } from '@/components/chat/types'
 import { canApprovePlan, canBuildFromPlan, type PlanStatus } from '@/lib/chat/planDraft'
-import { isRateLimitError, getUserFacingAgentError } from '@/lib/chat/error-messages'
 import { resolveAgentPolicy } from '@/lib/chat/agentPolicy'
 import { derivePlanCompletionStatus } from '@/lib/agent/plan-progress'
 import type { AgentPolicy } from '@/lib/agent/automationPolicy'
-import { normalizeChatMode, type ChatMode } from '@/lib/agent/prompt-library'
+import { type ChatMode } from '@/lib/agent/prompt-library'
 import type { LLMProvider } from '@/lib/llm/types'
-import { buildForgeActivityTimeline } from '@/lib/forge/activity'
-import {
-  applyArtifact,
-  getPrimaryArtifactAction,
-  type ArtifactAction,
-} from '@/lib/artifacts/executeArtifact'
 
-import { ArtifactPanel } from '@/components/artifacts/ArtifactPanel'
-import {
-  InspectorEvalsContent,
-  type InspectorTab,
-  InspectorMemoryContent,
-  InspectorPlanContent,
-  InspectorRunContent,
-} from '@/components/projects/ProjectChatInspector'
-import {
-  createPlanArtifactWorkspaceTab,
-  upsertPlanArtifactWorkspaceTab,
-} from '@/components/workbench/PlanArtifactTab'
 import { ShortcutHelpOverlay } from '@/components/workbench/ShortcutHelpOverlay'
 import { derivePlanningSessionDebugSummary } from '@/components/plan/PlanningSessionDebugCard'
 import { appLog } from '@/lib/logger'
@@ -96,9 +55,6 @@ import {
   buildInlineChatFailureDisplay,
   resolveExplorerRevealTarget,
 } from '@/lib/workbench-navigation'
-import { buildDeliveryClosureServicePlan } from '@/lib/agent/delivery/service'
-import { deriveQaReportFingerprint } from '@/lib/qa/browser-session'
-import { deriveShipDecision, buildExecutiveSummary } from '@/lib/agent/delivery/executive'
 import { buildDefaultPlanningQuestions } from '@/lib/planning/question-engine'
 
 interface File {
@@ -126,33 +82,6 @@ interface Chat {
   planUpdatedAt?: number
   createdAt: number
   updatedAt: number
-}
-
-interface ConvexMessage {
-  _id: Id<'messages'>
-  _creationTime: number
-  chatId: Id<'chats'>
-  role: 'user' | 'assistant' | 'system'
-  content: string
-  annotations?: MessageAnnotationInfo[]
-  attachments?: Message['attachments']
-  createdAt: number
-}
-
-interface AgentRunEvent extends PersistedRunEventInfo {
-  _id: Id<'agentRunEvents'>
-  _creationTime: number
-  runId: Id<'agentRuns'>
-  chatId: Id<'chats'>
-  sequence: number
-  createdAt: number
-}
-
-type ArtifactRecord = {
-  _id: Id<'artifacts'>
-  actions: ArtifactAction[]
-  status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'rejected'
-  createdAt: number
 }
 
 function readAgentPolicyField(
@@ -230,6 +159,14 @@ export default function ProjectPage() {
     setTaskHeaderVisible,
   } = useProjectWorkspaceUi()
 
+  const { openRightPanelTab } = useWorkbenchPanelState({
+    isMobileLayout,
+    setRightPanelTab,
+    setIsRightPanelOpen,
+    setMobilePrimaryPanel,
+    setIsMobileKeyboardOpen,
+  })
+
   useEffect(() => {
     void refreshGitStatus()
   }, [refreshGitStatus])
@@ -240,10 +177,6 @@ export default function ProjectPage() {
   const [contextualPrompt, setContextualPrompt] = useState<string | null>(null)
   const [isComposerOpen, setIsComposerOpen] = useState(false)
   const [isShortcutHelpOpen, setIsShortcutHelpOpen] = useState(false)
-  const lastAssistantMessageIdRef = useRef<string | null>(null)
-  const seenPendingArtifactIdsRef = useRef<Set<string>>(new Set())
-  const lastOpenedPlanArtifactRef = useRef<string | null>(null)
-  const lastSyncedPlanArtifactRef = useRef<string | null>(null)
   const approvedPlanRunSessionsRef = useRef(new Map<string, string>())
 
   useHotkeys(
@@ -299,24 +232,11 @@ export default function ProjectPage() {
 
   // Jobs (Terminal)
   const { isAnyJobRunning } = useJobs(projectId)
-  const convex = useConvex()
 
   const projectAgentPolicy = readAgentPolicyField(project, 'agentPolicy')
   const createChatMutation = useMutation(api.chats.create)
   const addMessageMutation = useMutation(api.messages.add)
   const updateChatMutation = useMutation(api.chats.update)
-  const startForgeIntake = useMutation(api.forge.startIntake)
-  const createForgeTasksFromPlan = useMutation(api.forge.createTasksFromPlan)
-  const acceptForgePlan = useMutation(api.forge.acceptPlan)
-  const startForgeTaskExecutionMutation = useMutation(api.forge.startTaskExecution)
-  const submitForgeWorkerResultMutation = useMutation(api.forge.submitWorkerResult)
-  const recordForgeReviewMutation = useMutation(api.forge.recordReview)
-  const runForgeQaForTaskMutation = useMutation(api.forge.runQaForTask)
-  const recordForgeShipDecisionMutation = useMutation(api.forge.recordShipDecision)
-  const upsertFileMutation = useMutation(api.files.upsert)
-  const createAndExecuteJobMutation = useMutation(api.jobs.createAndExecute)
-  const updateJobStatusMutation = useMutation(api.jobs.updateStatus)
-  const updateArtifactStatusMutation = useMutation(api.artifacts.updateStatus)
   const {
     setActiveChatId,
     activeChat,
@@ -349,10 +269,6 @@ export default function ProjectPage() {
     () => resolveAgentPolicy({ chatMode, oversightLevel }),
     [chatMode, oversightLevel]
   )
-  const forgeProjectSnapshot = useQuery(
-    api.forge.getProjectSnapshot,
-    activeChat ? { chatId: activeChat._id } : 'skip'
-  )
   useShortcutListener()
   const persistedPlanDraft = getAuthoritativePlanDraftValue({
     activeChat,
@@ -381,11 +297,6 @@ export default function ProjectPage() {
     specApprovalMode: agentPolicy.specApprovalMode,
     onRunCreated: async ({ runId, approvedPlanExecution }) => {
       void runId
-      if (activeDeliveryTask) {
-        await startForgeTaskExecutionMutation({
-          taskId: activeDeliveryTask._id,
-        })
-      }
 
       if (!approvedPlanExecution) return
 
@@ -407,133 +318,6 @@ export default function ProjectPage() {
       })
     },
     onRunCompleted: async ({ runId, outcome, completedPlanStepIndexes, planTotalSteps }) => {
-      if (forgeProjectSnapshot && activeDeliveryTask) {
-        await submitForgeWorkerResultMutation({
-          taskId: activeDeliveryTask._id,
-          summary: `Agent run ${runId} completed for ${activeDeliveryTask.title}.`,
-          evidenceRefs: [String(runId)],
-          verificationLabel: 'Agent run completed',
-          outcome,
-        })
-
-        if (outcome === 'completed') {
-          const latestQaFingerprint = activeTaskQaReport
-            ? deriveQaReportFingerprint({
-                taskId: activeDeliveryTask._id,
-                runId,
-                flowNames: activeTaskQaReport.evidence.flowNames,
-                urlsTested: activeTaskQaReport.evidence.urlsTested,
-              })
-            : null
-          const closurePlan = buildDeliveryClosureServicePlan({
-            taskId: activeDeliveryTask._id,
-            deliveryStateId: forgeProjectSnapshot.state.id,
-            taskTitle: activeDeliveryTask.title,
-            runId,
-            projectId,
-            chatId: activeChat?._id ?? 'unknown-chat',
-            projectPath: `/projects/${projectId}`,
-            latestQaFingerprint,
-          })
-
-          await recordForgeReviewMutation({
-            deliveryStateId: closurePlan.createReviewReport.deliveryStateId,
-            taskId: closurePlan.createReviewReport.taskId,
-            type: closurePlan.createReviewReport.type,
-            decision: closurePlan.createReviewReport.decision,
-            summary: closurePlan.createReviewReport.summary,
-            findings: closurePlan.createReviewReport.findings,
-            followUpTaskIds: closurePlan.createReviewReport.followUpTaskIds,
-          })
-
-          let qaDecision: 'pass' | 'concerns' | 'fail' | null = null
-          let qaSummary: string | null = null
-          if (closurePlan.shouldRunBrowserQa) {
-            const qaResponse = await fetch('/api/qa/run', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                projectId,
-                chatId: activeChat?._id,
-                taskId: activeDeliveryTask._id,
-                urlsTested: closurePlan.createQaReport.evidence.urlsTested,
-                filesInScope: activeDeliveryTask.filesInScope,
-                flowNames: closurePlan.createQaReport.evidence.flowNames,
-                environment: forgeProjectSnapshot?.browserQa.activeSession?.environment ?? 'local',
-                existingSession: forgeProjectSnapshot?.browserQa.activeSession,
-              }),
-            })
-
-            if (!qaResponse.ok) {
-              throw new Error('Failed to run browser QA')
-            }
-
-            const qaPayload = (await qaResponse.json()) as {
-              browserSessionKey: string
-              decision: 'pass' | 'concerns' | 'fail'
-              summary: string
-              assertions: Array<{ label: string; status: 'passed' | 'failed' | 'skipped' }>
-              evidence: {
-                screenshotPath?: string
-                urlsTested: string[]
-                flowNames: string[]
-                consoleErrors: string[]
-                networkFailures: string[]
-              }
-              defects: Array<{
-                severity: 'high' | 'medium' | 'low'
-                title: string
-                detail: string
-                route?: string
-              }>
-              browserSession: {
-                browserSessionKey: string
-                status: 'ready' | 'stale' | 'leased' | 'failed'
-                environment: string
-                baseUrl: string
-                lastRoutesTested: string[]
-                lastUsedAt: number
-                lastVerifiedAt?: number
-                leaseOwner?: string
-                leaseExpiresAt?: number
-              }
-            }
-
-            qaDecision = qaPayload.decision
-            qaSummary = qaPayload.summary
-
-            await runForgeQaForTaskMutation({
-              deliveryStateId: closurePlan.createQaReport.deliveryStateId,
-              taskId: closurePlan.createQaReport.taskId,
-              browserSessionKey: qaPayload.browserSessionKey,
-              decision: qaPayload.decision,
-              summary: qaPayload.summary,
-              assertions: qaPayload.assertions,
-              urlsTested: qaPayload.evidence.urlsTested,
-              flowNames: qaPayload.evidence.flowNames,
-              consoleErrors: qaPayload.evidence.consoleErrors,
-              networkFailures: qaPayload.evidence.networkFailures,
-              screenshotPath: qaPayload.evidence.screenshotPath,
-              defects: qaPayload.defects,
-            })
-          }
-
-          if (qaDecision === 'pass') {
-            const shipDecision = deriveShipDecision({ qaDecision })
-            await recordForgeShipDecisionMutation({
-              deliveryStateId: closurePlan.shipReport.deliveryStateId,
-              decision: shipDecision,
-              summary: buildExecutiveSummary({
-                taskTitle: activeDeliveryTask.title,
-                qaDecision,
-              }),
-              evidenceSummary: qaSummary ?? closurePlan.shipReport.evidenceSummary,
-              criteriaResults: [],
-            })
-          }
-        }
-      }
-
       const nextPlanStatus = derivePlanCompletionStatus({
         planTotalSteps,
         completedPlanStepIndexes,
@@ -611,13 +395,6 @@ export default function ProjectPage() {
       providerAvailable: Boolean(provider),
       createChatMutation,
       updateChatMutation,
-      startForgeIntake,
-      createForgeTasksFromPlan,
-      acceptForgePlan,
-      getActiveForgeState: async (chatId) => {
-        const snapshot = await convex.query(api.forge.getProjectSnapshot, { chatId })
-        return snapshot ? { _id: snapshot.state.id } : null
-      },
       markPlanningExecutionState: ({ sessionId, state }) =>
         planningSession.markExecutionState({ sessionId, state }),
       sendAgentMessage,
@@ -625,23 +402,23 @@ export default function ProjectPage() {
       setMobilePrimaryPanel,
     })
 
-  const artifactRecords = useQuery(
-    api.artifacts.list,
-    activeChat ? { chatId: activeChat._id } : 'skip'
-  ) as ArtifactRecord[] | undefined
-  const pendingArtifactPreviews = useMemo(
-    () => deriveWorkspaceArtifactPreviews((artifactRecords ?? []).map((record) => ({ ...record }))),
-    [artifactRecords]
-  )
-  const pendingArtifactPreview = useMemo<WorkspaceArtifactPreview | null>(() => {
-    if (!selectedFilePath) return null
-    return pendingArtifactPreviews.find((preview) => preview.filePath === selectedFilePath) ?? null
-  }, [pendingArtifactPreviews, selectedFilePath])
-  const pendingDiffEntries = useMemo(
-    () => derivePreviewDiffEntries(pendingArtifactPreviews),
-    [pendingArtifactPreviews]
-  )
-  const pendingChangedFilesCount = pendingArtifactPreviews.length
+  const {
+    pendingArtifactPreview,
+    pendingDiffEntries,
+    pendingChangedFilesCount,
+    handleApplyPendingArtifact,
+    handleRejectPendingArtifact,
+  } = useArtifactLifecycle({
+    projectId,
+    activeChat,
+    selectedFilePath,
+    openTabs,
+    setOpenTabs,
+    setSelectedFilePath,
+    setSelectedFileLocation,
+    setCursorPosition,
+    setMobilePrimaryPanel,
+  })
 
   const activePlanArtifact = planningSession.generatedPlan
   const planningDebug = useMemo(() => {
@@ -654,111 +431,18 @@ export default function ProjectPage() {
       openTabPaths: openTabs.map((tab) => tab.path),
     })
   }, [activePlanningSession, openTabs])
-  const activePlanArtifactOpenKey = activePlanArtifact
-    ? `${activePlanArtifact.sessionId}:${activePlanArtifact.generatedAt}`
-    : null
-  const activePlanArtifactRevisionKey = activePlanArtifact
-    ? `${activePlanArtifact.sessionId}:${activePlanArtifact.generatedAt}:${activePlanArtifact.status}`
-    : null
-  const activeDeliveryTask = useMemo(() => {
-    const forgeTasks = forgeProjectSnapshot?.taskBoard.tasks ?? []
-    const forgeActiveTaskId = forgeProjectSnapshot?.taskBoard.activeTaskId
-    if (forgeActiveTaskId) {
-      const forgeActiveTask = forgeTasks.find((task) => task._id === forgeActiveTaskId)
-      if (forgeActiveTask) return forgeActiveTask
-    }
 
-    return forgeTasks[0] ?? null
-  }, [forgeProjectSnapshot?.taskBoard.activeTaskId, forgeProjectSnapshot?.taskBoard.tasks])
-  const activeTaskReview = forgeProjectSnapshot?.verification.latestReview ?? null
-  const activeTaskQaReport = forgeProjectSnapshot?.verification.latestQa ?? null
+  usePlanArtifactSync({
+    activePlanArtifact,
+    openTabs,
+    setOpenTabs,
+    setSelectedFilePath,
+    setSelectedFileLocation,
+    setCursorPosition,
+    setMobilePrimaryPanel,
+  })
+
   const requestedFilePath = searchParams.get('filePath')
-  const taskPanelViewModel = useMemo(
-    () =>
-      activeDeliveryTask
-        ? {
-            title: activeDeliveryTask.title,
-            description: activeDeliveryTask.description,
-            rationale: activeDeliveryTask.rationale,
-            status: activeDeliveryTask.status,
-            ownerRole: activeDeliveryTask.ownerRole,
-            acceptanceCriteria: activeDeliveryTask.acceptanceCriteria,
-            filesInScope: activeDeliveryTask.filesInScope,
-            blockers: activeDeliveryTask.blockers,
-            evidence: activeDeliveryTask.evidence.map((evidence) => ({
-              label: evidence.label,
-              href: evidence.href,
-            })),
-            latestReview: activeTaskReview
-              ? {
-                  type: activeTaskReview.type,
-                  decision: activeTaskReview.decision,
-                  summary: activeTaskReview.summary,
-                }
-              : null,
-          }
-        : null,
-    [activeDeliveryTask, activeTaskReview]
-  )
-  const qaPanelViewModel = useMemo(
-    () =>
-      activeTaskQaReport
-        ? {
-            decision: activeTaskQaReport.decision,
-            summary: activeTaskQaReport.summary,
-            assertions: activeTaskQaReport.assertions,
-            evidence: activeTaskQaReport.evidence,
-            defects: activeTaskQaReport.defects,
-          }
-        : null,
-    [activeTaskQaReport]
-  )
-  const statePanelViewModel = useMemo(() => {
-    if (!forgeProjectSnapshot) return null
-
-    const statusView = forgeProjectSnapshot?.operatorViews.status
-    const handoffSummary = forgeProjectSnapshot?.handoffSummary
-
-    return {
-      currentPhase: forgeProjectSnapshot.state.phase,
-      openTaskCount: handoffSummary.openTaskCount,
-      unresolvedRiskCount: forgeProjectSnapshot.state.openRiskCount,
-      reviewGateStatus: forgeProjectSnapshot.state.gates.implementation_review,
-      qaGateStatus: forgeProjectSnapshot.state.gates.qa_review,
-      shipSummary: statusView.primarySummary,
-    }
-  }, [forgeProjectSnapshot])
-  const browserSessionViewModel = useMemo(
-    () => forgeProjectSnapshot?.browserQa.activeSession ?? null,
-    [forgeProjectSnapshot?.browserQa.activeSession]
-  )
-  const activityTimelineEntries = useMemo(
-    () =>
-      buildForgeActivityTimeline({
-        decisions: forgeProjectSnapshot?.decisions,
-        reviews: forgeProjectSnapshot?.verification.latestReview
-          ? [forgeProjectSnapshot.verification.latestReview]
-          : [],
-        qaReports: forgeProjectSnapshot?.verification.latestQa
-          ? [forgeProjectSnapshot.verification.latestQa]
-          : [],
-        shipReports:
-          forgeProjectSnapshot?.verification.latestShip && forgeProjectSnapshot?.timeline
-            ? forgeProjectSnapshot.timeline
-                .filter((entry) => entry.kind === 'ship')
-                .map((entry) => ({
-                  _id: String(entry.id ?? 'ship'),
-                  summary: typeof entry.summary === 'string' ? entry.summary : '',
-                  createdAt: Number(entry.createdAt ?? 0),
-                }))
-            : [],
-      }),
-    [forgeProjectSnapshot]
-  )
-  const decisionPanelViewModel = useMemo(
-    () => forgeProjectSnapshot?.decisions ?? [],
-    [forgeProjectSnapshot?.decisions]
-  )
 
   useEffect(() => {
     if (!requestedFilePath || !files?.some((file) => file.path === requestedFilePath)) return
@@ -774,33 +458,6 @@ export default function ProjectPage() {
     files,
     requestedFilePath,
     setCursorPosition,
-    setOpenTabs,
-    setSelectedFileLocation,
-    setSelectedFilePath,
-  ])
-
-  useEffect(() => {
-    if (!activePlanArtifact || !activePlanArtifactOpenKey || !activePlanArtifactRevisionKey) return
-    if (lastSyncedPlanArtifactRef.current === activePlanArtifactRevisionKey) return
-
-    const nextPlanTab = createPlanArtifactWorkspaceTab(activePlanArtifact)
-
-    setOpenTabs((prev) => upsertPlanArtifactWorkspaceTab(prev, activePlanArtifact))
-    lastSyncedPlanArtifactRef.current = activePlanArtifactRevisionKey
-
-    if (lastOpenedPlanArtifactRef.current !== activePlanArtifactOpenKey) {
-      setSelectedFilePath(nextPlanTab.path)
-      setSelectedFileLocation(null)
-      setCursorPosition(null)
-      setMobilePrimaryPanel('workspace')
-      lastOpenedPlanArtifactRef.current = activePlanArtifactOpenKey
-    }
-  }, [
-    activePlanArtifact,
-    activePlanArtifactOpenKey,
-    activePlanArtifactRevisionKey,
-    setCursorPosition,
-    setMobilePrimaryPanel,
     setOpenTabs,
     setSelectedFileLocation,
     setSelectedFilePath,
@@ -846,119 +503,31 @@ export default function ProjectPage() {
     })
   }, [agent, setChatMode, setPlanDraft])
 
-  // Fetch messages for active chat (fallback when not streaming)
-  const convexMessagesPage = usePaginatedQuery(
-    api.messages.listPaginated,
-    activeChat ? { chatId: activeChat._id } : 'skip',
-    { initialNumItems: 100 }
-  )
-  const convexMessages = convexMessagesPage.results as ConvexMessage[] | undefined
-  const runEvents = useQuery(
-    api.agentRuns.listEventsByChat,
-    activeChat ? { chatId: activeChat._id, limit: 120 } : 'skip'
-  ) as AgentRunEvent[] | undefined
-
-  // Convert agent messages to MessageList format
-  // Retain last non-empty agent messages to bridge the gap between
-  // stream end and Convex message persistence (prevents empty flash).
-  const lastAgentMessagesRef = useRef<Message[]>([])
-  const chatMessages: Message[] = useMemo(() => {
-    const mapConvexMessages = (source: ConvexMessage[] | undefined) =>
-      source?.map((msg) => {
-        const firstAnnotation = msg.annotations?.[0]
-        return {
-          _id: msg._id,
-          role: msg.role,
-          content: msg.content,
-          reasoningContent: firstAnnotation?.reasoningSummary,
-          attachments: msg.attachments,
-          annotations: firstAnnotation
-            ? {
-                ...firstAnnotation,
-                mode: normalizeChatMode(firstAnnotation.mode, chatMode),
-              }
-            : undefined,
-          toolCalls: firstAnnotation?.toolCalls,
-          createdAt: msg.createdAt,
-        }
-      }) || []
-
-    if (!activeChat) {
-      return mapConvexMessages(convexMessages)
-    }
-
-    if (!agent.isLoading && agent.messages.length === 0 && convexMessages?.length) {
-      lastAgentMessagesRef.current = []
-      return mapConvexMessages(convexMessages)
-    }
-
-    // Use agent messages when available, converting format
-    const mapped = agent.messages
-      .filter((msg) => msg.role === 'user' || msg.role === 'assistant')
-      .map((msg) => ({
-        _id: msg.id,
-        role: msg.role as 'user' | 'assistant' | 'system',
-        content: msg.content,
-        reasoningContent: msg.reasoningContent,
-        toolCalls: msg.toolCalls,
-        annotations: {
-          ...(msg.annotations || {}),
-          mode: msg.mode,
-        },
-        createdAt: msg.createdAt,
-      }))
-
-    if (mapped.length > 0) {
-      lastAgentMessagesRef.current = mapped
-      return mapped
-    }
-
-    if (lastAgentMessagesRef.current.length > 0 && !convexMessages?.length) {
-      return lastAgentMessagesRef.current
-    }
-
-    return mapped
-  }, [agent.isLoading, agent.messages, activeChat, chatMode, convexMessages])
-
-  const replayProgressSteps = useMemo(
-    () => mapLatestRunProgressSteps(runEvents ?? []).slice(-24),
-    [runEvents]
-  )
-  const liveRunSteps = useMemo(() => {
-    return agent.progressSteps.length > 0 ? agent.progressSteps : replayProgressSteps
-  }, [agent.progressSteps, replayProgressSteps])
-  const snapshotRunEvents = useMemo(
-    () => (runEvents ?? []).filter((event) => event.type === 'snapshot'),
-    [runEvents]
-  )
-  const subagentToolCalls = useMemo(
-    () =>
-      chatMessages
-        .flatMap((message) => message.toolCalls ?? [])
-        .filter((call) => call.name === 'task'),
-    [chatMessages]
-  )
-  const latestUserPrompt = useMemo(
-    () =>
-      [...chatMessages]
-        .reverse()
-        .find((msg) => msg.role === 'user' && typeof msg.content === 'string' && msg.content.trim())
-        ?.content ?? null,
-    [chatMessages]
-  )
-  const latestAssistantReply = useMemo(
-    () =>
-      [...chatMessages]
-        .reverse()
-        .find(
-          (msg) => msg.role === 'assistant' && typeof msg.content === 'string' && msg.content.trim()
-        )?.content ?? null,
-    [chatMessages]
-  )
-  const inlineRateLimitError = useMemo(() => {
-    if (!agent.error || !isRateLimitError(agent.error)) return null
-    return getUserFacingAgentError(agent.error)
-  }, [agent.error])
+  const {
+    runEvents,
+    chatMessages,
+    liveRunSteps,
+    snapshotRunEvents,
+    subagentToolCalls,
+    latestUserPrompt,
+    latestAssistantReply,
+    inlineRateLimitError,
+    chatInspectorSurfaceTab,
+    openChatInspectorSurface,
+  } = useWorkbenchChatState({
+    activeChat,
+    chatMode,
+    agent,
+    isMobileLayout,
+    mobilePrimaryPanel,
+    chatInspectorTab,
+    setMobileUnreadCount,
+    setIsChatInspectorOpen,
+    setChatInspectorTab,
+    setIsRightPanelOpen,
+    setMobilePrimaryPanel,
+    setRightPanelTab,
+  })
 
   // Note: Inspector no longer auto-opens on agent start - user opens it manually
 
@@ -981,227 +550,7 @@ export default function ProjectPage() {
     setMobilePrimaryPanel,
   })
 
-  useEffect(() => {
-    seenPendingArtifactIdsRef.current.clear()
-  }, [activeChat?._id])
-
-  useEffect(() => {
-    if (pendingArtifactPreviews.length === 0) return
-
-    const newPreviews = pendingArtifactPreviews.filter(
-      (preview) => !seenPendingArtifactIdsRef.current.has(preview.artifactId)
-    )
-
-    if (newPreviews.length === 0) return
-
-    for (const preview of newPreviews) {
-      seenPendingArtifactIdsRef.current.add(preview.artifactId)
-    }
-
-    const targetPreview = newPreviews[0]
-    const navigation = resolveArtifactPreviewNavigation({
-      preview: targetPreview,
-      openTabs,
-      selectedFilePath,
-    })
-
-    if (navigation.shouldOpenTab) {
-      setOpenTabs((prev) => {
-        if (prev.some((tab) => tab.path === targetPreview.filePath)) return prev
-        return [...prev, { path: targetPreview.filePath }]
-      })
-    }
-
-    if (navigation.shouldSelectFile) {
-      setMobilePrimaryPanel('workspace')
-      setSelectedFilePath(targetPreview.filePath)
-      setSelectedFileLocation(null)
-      setCursorPosition(null)
-    }
-  }, [
-    openTabs,
-    pendingArtifactPreviews,
-    selectedFilePath,
-    setCursorPosition,
-    setMobilePrimaryPanel,
-    setOpenTabs,
-    setSelectedFileLocation,
-    setSelectedFilePath,
-  ])
-
-  const handleApplyPendingArtifact = useCallback(
-    async (artifactId: string) => {
-      const record = artifactRecords?.find((artifact) => artifact._id === artifactId)
-      const action = record ? getPrimaryArtifactAction(record) : null
-      if (!record || !action) return
-
-      try {
-        await applyArtifact({
-          artifactId: record._id,
-          action,
-          projectId,
-          convex,
-          upsertFile: upsertFileMutation,
-          createAndExecuteJob: createAndExecuteJobMutation,
-          updateJobStatus: (jobId, status, updates) =>
-            updateJobStatusMutation({
-              id: jobId,
-              status,
-              ...updates,
-            }),
-          updateArtifactStatus: updateArtifactStatusMutation,
-        })
-        toast.success('Applied pending artifact', {
-          description:
-            action.type === 'file_write' ? action.payload.filePath : action.payload.command,
-        })
-      } catch (error) {
-        toast.error('Failed to apply pending artifact', {
-          description: error instanceof Error ? error.message : String(error),
-        })
-      }
-    },
-    [
-      artifactRecords,
-      convex,
-      createAndExecuteJobMutation,
-      projectId,
-      updateArtifactStatusMutation,
-      updateJobStatusMutation,
-      upsertFileMutation,
-    ]
-  )
-
-  const handleRejectPendingArtifact = useCallback(
-    async (artifactId: string) => {
-      await updateArtifactStatusMutation({
-        id: artifactId as Id<'artifacts'>,
-        status: 'rejected',
-      })
-    },
-    [updateArtifactStatusMutation]
-  )
-
-  const openRightPanelTab = useCallback(
-    (tab: 'chat' | 'plan' | 'review' | 'inspect' | 'run' | 'comments') => {
-      setRightPanelTab(tab)
-      if (isMobileLayout) {
-        setMobilePrimaryPanel('review')
-        return
-      }
-      setIsRightPanelOpen(true)
-    },
-    [isMobileLayout, setIsRightPanelOpen, setMobilePrimaryPanel, setRightPanelTab]
-  )
-
-  useEffect(() => {
-    if (!isMobileLayout || mobilePrimaryPanel === 'chat') {
-      setMobileUnreadCount(0)
-    }
-  }, [isMobileLayout, mobilePrimaryPanel, setMobileUnreadCount])
-
-  useEffect(() => {
-    const latestAssistant = [...chatMessages].reverse().find((msg) => msg.role === 'assistant')
-    if (!latestAssistant) return
-
-    if (!lastAssistantMessageIdRef.current) {
-      lastAssistantMessageIdRef.current = latestAssistant._id
-      return
-    }
-
-    if (latestAssistant._id !== lastAssistantMessageIdRef.current) {
-      lastAssistantMessageIdRef.current = latestAssistant._id
-      if (isMobileLayout && mobilePrimaryPanel === 'workspace') {
-        setMobileUnreadCount((count) => Math.min(99, count + 1))
-      }
-    }
-  }, [chatMessages, isMobileLayout, mobilePrimaryPanel, setMobileUnreadCount])
-
-  useEffect(() => {
-    if (!isMobileLayout) {
-      setIsMobileKeyboardOpen(false)
-      return
-    }
-
-    let focusedInput = false
-    let viewportKeyboardOpen = false
-
-    const commitState = () => setIsMobileKeyboardOpen(focusedInput || viewportKeyboardOpen)
-
-    const isTextInputTarget = (target: EventTarget | null): boolean => {
-      if (!(target instanceof HTMLElement)) return false
-      if (target.isContentEditable) return true
-      return Boolean(target.closest('input, textarea, [contenteditable="true"]'))
-    }
-
-    const onFocusIn = (event: FocusEvent) => {
-      focusedInput = isTextInputTarget(event.target)
-      commitState()
-    }
-
-    const onFocusOut = () => {
-      window.setTimeout(() => {
-        focusedInput = isTextInputTarget(document.activeElement)
-        commitState()
-      }, 0)
-    }
-
-    const onViewportChange = () => {
-      if (!window.visualViewport) return
-      const heightDelta = window.innerHeight - window.visualViewport.height
-      viewportKeyboardOpen = heightDelta > 140
-      commitState()
-    }
-
-    document.addEventListener('focusin', onFocusIn)
-    document.addEventListener('focusout', onFocusOut)
-    window.visualViewport?.addEventListener('resize', onViewportChange)
-    window.visualViewport?.addEventListener('scroll', onViewportChange)
-    onViewportChange()
-    commitState()
-
-    return () => {
-      document.removeEventListener('focusin', onFocusIn)
-      document.removeEventListener('focusout', onFocusOut)
-      window.visualViewport?.removeEventListener('resize', onViewportChange)
-      window.visualViewport?.removeEventListener('scroll', onViewportChange)
-    }
-  }, [isMobileLayout, setIsMobileKeyboardOpen])
-
   const selectedChatModel = uiSelectedModel || selectedModel
-  const chatInspectorSurfaceTab: InspectorTab = useMemo(() => {
-    if (
-      chatInspectorTab === 'run' ||
-      chatInspectorTab === 'plan' ||
-      chatInspectorTab === 'artifacts' ||
-      chatInspectorTab === 'memory' ||
-      chatInspectorTab === 'evals'
-    ) {
-      return chatInspectorTab
-    }
-
-    return 'run'
-  }, [chatInspectorTab])
-
-  const openChatInspectorSurface = useCallback(
-    (tab: InspectorTab) => {
-      setRightPanelTab('chat')
-      setIsRightPanelOpen(true)
-      setIsChatInspectorOpen(true)
-      setChatInspectorTab(tab)
-      if (isMobileLayout) {
-        setMobilePrimaryPanel('chat')
-      }
-    },
-    [
-      isMobileLayout,
-      setChatInspectorTab,
-      setIsChatInspectorOpen,
-      setIsRightPanelOpen,
-      setMobilePrimaryPanel,
-      setRightPanelTab,
-    ]
-  )
 
   const handleStartPlanningIntake = useCallback(async () => {
     const sessionId = await planningSession.startIntake(planningQuestions)
@@ -1341,96 +690,115 @@ export default function ProjectPage() {
     />
   )
 
-  /* Legacy ReviewPanel contract markers retained for source-based delivery wiring tests:
-     taskContent={<TaskPanel task={taskPanelViewModel} />}
-     stateContent={<StatePanel state={statePanelViewModel} />}
-     browserContent={<BrowserSessionPanel session={browserSessionViewModel} />}
-     activityContent={<ActivityTimelinePanel entries={activityTimelineEntries} />}
-     decisionsContent={<DecisionPanel decisions={decisionPanelViewModel} />}
-  */
   const rightPanelContent = (
-    <RightPanel
+    <WorkbenchRightPanel
+      projectId={projectId}
       activeTab={rightPanelTab}
       onTabChange={setRightPanelTab}
-      chatContent={chatPanelContent}
-      planContent={
-        <InspectorPlanContent
-          planDraft={planDraft}
-          planStatus={activeChat?.planStatus}
-          onPlanDraftChange={setPlanDraft}
-          onSavePlanDraft={() => {
-            void handleSavePlanDraft()
-          }}
-          onApprovePlan={() => {
-            void handleApprovePlan()
-          }}
-          onBuildFromPlan={() => {
-            void handleBuildFromPlan()
-          }}
-          isSavingPlanDraft={isSavingPlanDraft}
-          lastSavedAt={activeChat?.planUpdatedAt}
-          lastGeneratedAt={activeChat?.planLastGeneratedAt}
-          approveDisabled={!canApproveCurrentPlan || agent.isLoading}
-          buildDisabled={!canBuildCurrentPlan || agent.isLoading}
-        />
+      activeChatId={activeChat?._id}
+      activeChatPlanStatus={activeChat?.planStatus}
+      activeChatPlanUpdatedAt={activeChat?.planUpdatedAt}
+      activeChatPlanLastGeneratedAt={activeChat?.planLastGeneratedAt}
+      chatMessages={chatMessages}
+      runEvents={runEvents}
+      chatMode={chatMode}
+      architectBrainstormEnabled={architectBrainstormEnabled}
+      onArchitectBrainstormEnabledChange={setArchitectBrainstormEnabled}
+      onModeChange={handleModeChange}
+      onSendMessage={handleSendMessage}
+      onSuggestedAction={handleSuggestedAction}
+      isStreaming={agent.isLoading}
+      onStopStreaming={agent.stop ?? (() => {})}
+      filePaths={files?.map((f) => f.path) ?? []}
+      model={selectedChatModel}
+      onModelChange={setUiSelectedModel}
+      availableModels={availableModels}
+      variant={reasoningVariant}
+      onVariantChange={setReasoningVariant}
+      supportsReasoning={supportsReasoning}
+      inlineRateLimitError={inlineRateLimitError}
+      hasProvider={provider !== null}
+      oversightLevel={oversightLevel}
+      onOversightLevelChange={setOversightLevel}
+      isMobileLayout={isMobileLayout}
+      isInspectorOpen={isChatInspectorOpen}
+      inspectorTab={chatInspectorSurfaceTab}
+      planningSession={activePlanningSession}
+      planningCurrentQuestion={planningSession.currentQuestion}
+      onStartPlanningIntake={handleStartPlanningIntake}
+      onAnswerPlanningQuestion={planningSession.answerQuestion}
+      onClearPlanningIntake={() =>
+        activePlanningSession?.sessionId ? planningSession.clearIntake() : Promise.resolve(null)
       }
-      reviewContent={
-        <ArtifactPanel projectId={projectId} chatId={activeChat?._id} position="right" />
-      }
-      inspectContent={
-        <div className="flex h-full flex-col overflow-hidden">
-          <div className="surface-1 border-b border-border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            Inspect — element details
-          </div>
-          <div className="min-h-0 flex-1 overflow-auto">
-            <BrowserSessionPanel session={browserSessionViewModel} />
-          </div>
-        </div>
-      }
-      runContent={
-        <InspectorRunContent
-          chatId={activeChat?._id}
-          liveSteps={liveRunSteps}
-          isStreaming={agent.isLoading}
-          tracePersistenceStatus={agent.tracePersistenceStatus}
-          onOpenFile={handleFileSelect}
-          onOpenArtifacts={() => openRightPanelTab('review')}
-          currentSpec={agent.currentSpec}
-          planStatus={activeChat?.planStatus}
-          planDraft={planDraft}
-          onSpecClick={openSpecInspect}
-          onPlanClick={() => openRightPanelTab('plan')}
-          onResumeRuntimeSession={agent.resumeRuntimeSession}
-          planningDebug={planningDebug}
-          snapshotEvents={snapshotRunEvents}
-          subagentToolCalls={subagentToolCalls}
-        />
-      }
-      commentsContent={
-        <div className="flex h-full flex-col overflow-hidden">
-          <div className="surface-1 border-b border-border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            Notes — memory, QA, delivery
-          </div>
-          <div className="min-h-0 flex-1 overflow-auto">
-            <TaskPanel task={taskPanelViewModel} />
-            <QAPanel report={qaPanelViewModel} />
-            <StatePanel state={statePanelViewModel} />
-            <ActivityTimelinePanel entries={activityTimelineEntries} />
-            <DecisionPanel decisions={decisionPanelViewModel} />
-            <InspectorMemoryContent
-              memoryBank={agent.memoryBank}
-              onSaveMemoryBank={agent.updateMemoryBank}
-            />
-            <InspectorEvalsContent
-              projectId={projectId}
-              chatId={activeChat?._id}
-              lastUserPrompt={latestUserPrompt}
-              lastAssistantReply={latestAssistantReply}
-              onRunEvalScenario={agent.runEvalScenario}
-            />
-          </div>
-        </div>
-      }
+      onInspectorOpenChange={setIsChatInspectorOpen}
+      onInspectorTabChange={setChatInspectorTab}
+      liveSteps={liveRunSteps}
+      tracePersistenceStatus={agent.tracePersistenceStatus}
+      onOpenFile={handleFileSelect}
+      onOpenArtifacts={() => openRightPanelTab('review')}
+      currentSpec={agent.currentSpec}
+      onSpecClick={openSpecInspect}
+      onPlanClick={() => openRightPanelTab('plan')}
+      onResumeRuntimeSession={agent.resumeRuntimeSession}
+      snapshotEvents={snapshotRunEvents}
+      subagentToolCalls={subagentToolCalls}
+      planDraft={planDraft}
+      onPlanDraftChange={setPlanDraft}
+      onSavePlanDraft={() => {
+        void handleSavePlanDraft()
+      }}
+      isSavingPlanDraft={isSavingPlanDraft}
+      memoryBank={agent.memoryBank}
+      onSaveMemoryBank={agent.updateMemoryBank}
+      lastUserPrompt={latestUserPrompt}
+      lastAssistantReply={latestAssistantReply}
+      onRunEvalScenario={agent.runEvalScenario}
+      contextualPrompt={contextualPrompt}
+      onContextualPromptHandled={() => setContextualPrompt(null)}
+      onToggleInspector={() => {
+        openChatInspectorSurface(chatInspectorSurfaceTab)
+      }}
+      onOpenHistory={() => {
+        openChatInspectorSurface('run')
+      }}
+      onOpenShare={() => setIsShareDialogOpen(true)}
+      onOpenPreview={() => setActiveCenterTab('preview')}
+      onResetWorkspace={handleResetWorkspace}
+      onNewChat={() => {
+        void handleNewChat()
+      }}
+      onPlanReview={() => {
+        openRightPanelTab('plan')
+      }}
+      onPlanApprove={() => {
+        void handleApprovePlan()
+      }}
+      onBuildFromPlan={() => {
+        void handleBuildFromPlan()
+      }}
+      planApproveDisabled={!canApproveCurrentPlan || agent.isLoading}
+      planBuildDisabled={!canBuildCurrentPlan || agent.isLoading}
+      showInlinePlanReview={agentPolicy.showPlanReview}
+      pendingSpec={agent.pendingSpec}
+      onSpecApprove={agent.approvePendingSpec}
+      onSpecEdit={openSpecApproval}
+      onSpecCancel={agent.cancelPendingSpec}
+      showInlineSpecReview={agentPolicy.showSpecReview}
+      specSurfaceMode={specSurfaceMode}
+      onCloseSpecSurface={closeSpecSurface}
+      onEditPendingSpec={agent.updatePendingSpecDraft}
+      onExecutePendingSpec={(spec) => {
+        agent.approvePendingSpec(spec)
+        closeSpecSurface()
+      }}
+      openSpecApproval={openSpecApproval}
+      openSpecInspect={openSpecInspect}
+      planStatus={activeChat?.planStatus}
+      canApprovePlan={canApproveCurrentPlan}
+      canBuildPlan={canBuildCurrentPlan}
+      lastSavedAt={activeChat?.planUpdatedAt}
+      lastGeneratedAt={activeChat?.planLastGeneratedAt}
+      planningDebug={planningDebug}
     />
   )
 
@@ -1465,14 +833,23 @@ export default function ProjectPage() {
   // Loading state — project is undefined (still loading) or files not yet fetched
   if (project === undefined || !files) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
+      <div className="dot-grid flex h-screen w-full items-center justify-center bg-background">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="space-y-4 text-center"
+          transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+          className="space-y-6 text-center"
         >
-          <div className="mx-auto h-12 w-12 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
-          <p className="font-mono text-sm text-muted-foreground">Opening workbench...</p>
+          <motion.div
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            className="flex justify-center"
+          >
+            <PandaLogo size="xl" variant="icon" />
+          </motion.div>
+          <p className="font-mono text-sm text-muted-foreground">
+            {project === undefined ? 'Loading project...' : 'Loading files...'}
+          </p>
         </motion.div>
       </div>
     )
@@ -1516,121 +893,41 @@ export default function ProjectPage() {
           chatId={activeChat?._id}
           chatTitle={activeChat?.title}
         />
-        {/* Top Bar - Unified Command Strip */}
-        <motion.div
-          initial={{ y: -20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="surface-1 flex h-11 shrink-0 items-center justify-between border-b border-border px-3"
-        >
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            {/* Sidebar Toggle + Panda Wordmark */}
-            <div className="flex shrink-0 items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 rounded-none p-0"
-                onClick={toggleFlyout}
-                title={isFlyoutOpen ? 'Close sidebar' : 'Open sidebar'}
-                aria-label={isFlyoutOpen ? 'Close sidebar' : 'Open sidebar'}
-              >
-                {isFlyoutOpen ? (
-                  <PanelLeftClose className="h-3.5 w-3.5" />
-                ) : (
-                  <PanelLeftOpen className="h-3.5 w-3.5" />
-                )}
-              </Button>
-              <Link href="/" className="flex shrink-0 items-center">
-                <PandaLogo size="sm" variant="icon" />
-              </Link>
-            </div>
-
-            <div className="h-5 w-px bg-border" />
-
-            <Breadcrumb
-              projectName={project.name}
-              projectId={projectId}
-              items={buildBreadcrumbItems(selectedFilePath)}
-              onRevealInExplorer={(folderPath) => {
-                const revealTarget = resolveExplorerRevealTarget({
-                  folderPath,
-                  files: files ?? [],
-                })
-
-                if (!revealTarget) return
-
-                handleSectionChange('files')
-                if (!isFlyoutOpen) toggleFlyout()
-                setSelectedFilePath(revealTarget)
-                setSelectedFileLocation(null)
-                setCursorPosition(null)
-              }}
-            />
-          </div>
-
-          <div className="mx-4 hidden min-w-0 flex-1 justify-center md:flex">
-            <button
-              type="button"
-              onClick={openCommandPalette}
-              className="surface-0 flex h-8 w-full max-w-md items-center gap-3 border border-border px-3 text-left font-mono text-[11px] text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
-              aria-label="Open command palette"
-            >
-              <span className="uppercase tracking-[0.18em] text-primary">Search</span>
-              <span className="min-w-0 flex-1 truncate">Files, commands, settings</span>
-              <span className="surface-1 shrink-0 border border-border px-2 py-0.5 text-[10px] uppercase tracking-[0.18em]">
-                Ctrl+K
-              </span>
-            </button>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <TopBarControls
-              branch={gitStatus?.branch}
-              model={selectedModel}
-              isAgentRunning={agent.isLoading}
-              onNewTask={handleNewChat}
-              healthStatus={healthStatus}
-              healthDetail={healthDetail}
-              devServerLabel={isAnyJobRunning ? 'Dev server active' : 'Dev server idle'}
-              agentLabel={agent.isLoading ? 'Agent running' : 'Agent idle'}
-              repoLabel={
-                gitStatus
-                  ? `${gitStatus.staged.length + gitStatus.unstaged.length + gitStatus.untracked.length} repo changes`
-                  : 'Repo status loading'
-              }
-              onToggleRightPanel={() => setIsRightPanelOpen((prev) => !prev)}
-              isRightPanelOpen={isRightPanelOpen}
-            />
-            <div className="h-5 w-px bg-border" />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 rounded-none p-0"
-                  title="More actions"
-                  aria-label="More actions"
-                >
-                  <MoreHorizontal className="h-3.5 w-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="rounded-none border-border font-mono">
-                <DropdownMenuItem
-                  onClick={handleResetWorkspace}
-                  className="rounded-none text-xs uppercase tracking-wide"
-                >
-                  <RotateCcw className="mr-2 h-3.5 w-3.5" />
-                  Clear Workspace State
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setIsShareDialogOpen(true)}
-                  className="rounded-none text-xs uppercase tracking-wide"
-                >
-                  Share
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </motion.div>
+        <WorkbenchTopBar
+          projectName={project.name}
+          projectId={projectId}
+          selectedFilePath={selectedFilePath}
+          gitStatus={gitStatus}
+          selectedModel={selectedModel}
+          isAgentRunning={agent.isLoading}
+          isAnyJobRunning={isAnyJobRunning}
+          healthStatus={healthStatus}
+          healthDetail={healthDetail}
+          isRightPanelOpen={isRightPanelOpen}
+          isFlyoutOpen={isFlyoutOpen}
+          onToggleFlyout={toggleFlyout}
+          onToggleRightPanel={() => setIsRightPanelOpen((prev) => !prev)}
+          onNewTask={() => {
+            void handleNewChat()
+          }}
+          onResetWorkspace={handleResetWorkspace}
+          onOpenShareDialog={() => setIsShareDialogOpen(true)}
+          onRevealInExplorer={(folderPath) => {
+            const revealTarget = resolveExplorerRevealTarget({
+              folderPath,
+              files: files ?? [],
+            })
+            if (!revealTarget) return
+            handleSectionChange('files')
+            if (!isFlyoutOpen) toggleFlyout()
+            setSelectedFilePath(revealTarget)
+            setSelectedFileLocation(null)
+            setCursorPosition(null)
+          }}
+          onOpenCommandPalette={openCommandPalette}
+          activeSidebarSection={activeSection}
+          onSidebarSectionChange={handleSectionChange}
+        />
 
         <ProjectWorkspaceLayout
           projectId={projectId}

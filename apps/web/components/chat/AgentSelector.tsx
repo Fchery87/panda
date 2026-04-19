@@ -165,7 +165,7 @@ export function AgentSelector({ mode, onModeChange, disabled, className }: Agent
             >
               <Wrench className="h-3.5 w-3.5" />
               <span className="uppercase">Show Advanced</span>
-              <span className="text-xs opacity-80">Reveal Builder</span>
+              <span className="text-xs opacity-80">Reveal Build</span>
             </button>
           </>
         ) : null}

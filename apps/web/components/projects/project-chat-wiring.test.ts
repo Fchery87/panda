@@ -14,6 +14,11 @@ async function readProjectPage() {
   )
 }
 
+async function readHook(fileName: string) {
+  const fs = await import('node:fs')
+  return fs.readFileSync(path.resolve(import.meta.dir, '../../hooks', fileName), 'utf-8')
+}
+
 describe('project chat wiring', () => {
   test('ProjectChatPanel no longer mounts the permission dialog locally', async () => {
     const content = await readProjectComponent('ProjectChatPanel.tsx')
@@ -57,18 +62,19 @@ describe('project chat wiring', () => {
   })
 
   test('project page routes review/open actions into the non-inline chat inspector surface', async () => {
-    const content = await readProjectPage()
+    const pageContent = await readProjectPage()
+    const hookContent = await readHook('useWorkbenchChatState.ts')
 
-    expect(content).toContain('const openChatInspectorSurface = useCallback(')
-    expect(content).toContain("setRightPanelTab('chat')")
-    expect(content).toContain('setIsRightPanelOpen(true)')
-    expect(content).toContain('setIsChatInspectorOpen(true)')
-    expect(content).toContain('setChatInspectorTab(tab)')
-    expect(content).toContain('isInspectorOpen={isChatInspectorOpen}')
-    expect(content).toContain('onInspectorOpenChange={setIsChatInspectorOpen}')
-    expect(content).toContain('onInspectorTabChange={setChatInspectorTab}')
-    expect(content).toContain("openChatInspectorSurface('artifacts')")
-    expect(content).toContain("onOpenPreview={() => setActiveCenterTab('preview')}")
+    expect(hookContent).toContain('const openChatInspectorSurface = useCallback(')
+    expect(hookContent).toContain("setRightPanelTab('chat')")
+    expect(hookContent).toContain('setIsRightPanelOpen(true)')
+    expect(hookContent).toContain('setIsChatInspectorOpen(true)')
+    expect(hookContent).toContain('setChatInspectorTab(tab)')
+    expect(pageContent).toContain('isInspectorOpen={isChatInspectorOpen}')
+    expect(pageContent).toContain('onInspectorOpenChange={setIsChatInspectorOpen}')
+    expect(pageContent).toContain('onInspectorTabChange={setChatInspectorTab}')
+    expect(pageContent).toContain("openChatInspectorSurface('artifacts')")
+    expect(pageContent).toContain("onOpenPreview={() => setActiveCenterTab('preview')}")
   })
 
   test('project page persists architect intake messages and opens the plan inspector', async () => {
@@ -84,7 +90,7 @@ describe('project chat wiring', () => {
   })
 
   test('project page falls back to persisted convex messages when local agent state is empty', async () => {
-    const content = await readProjectPage()
+    const content = await readHook('useWorkbenchChatState.ts')
 
     expect(content).toContain(
       'if (!agent.isLoading && agent.messages.length === 0 && convexMessages?.length)'
@@ -93,10 +99,11 @@ describe('project chat wiring', () => {
   })
 
   test('project page derives changed file count from pending artifact previews instead of hardcoding zero', async () => {
-    const content = await readProjectPage()
+    const pageContent = await readProjectPage()
+    const hookContent = await readHook('useArtifactLifecycle.ts')
 
-    expect(content).toContain('const pendingChangedFilesCount = pendingArtifactPreviews.length')
-    expect(content).toContain('changedFilesCount={pendingChangedFilesCount}')
-    expect(content).not.toContain('changedFilesCount={0}')
+    expect(hookContent).toContain('const pendingChangedFilesCount = pendingArtifactPreviews.length')
+    expect(pageContent).toContain('changedFilesCount={pendingChangedFilesCount}')
+    expect(pageContent).not.toContain('changedFilesCount={0}')
   })
 })

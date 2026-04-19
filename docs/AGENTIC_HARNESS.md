@@ -14,10 +14,9 @@ is adapted to Panda’s current browser product, Convex-backed persistence model
 and plan-review/build workflow rather than trying to mirror another interface
 surface one-to-one.
 
-The current runtime is now layered on top of the Forge delivery model. The chat
-surface exposes Forge-aligned roles while Convex remains the canonical state
-store for delivery state, tasks, review gates, QA evidence, ship readiness,
-browser session metadata, and durable runtime checkpoints.
+The harness executes work through provider-agnostic agents while Convex owns
+truth for delivery lifecycle, task tracking, review gates, QA evidence, ship
+readiness, browser session metadata, and durable runtime checkpoints.
 
 ## Architecture
 
@@ -92,22 +91,18 @@ interface AgentConfig {
 - `plan` - Read-only analysis and planning
 - `ask` - Quick Q&A
 
-### Forge Role Mapping
+### Agent Role Mapping
 
-The default runtime mapping now routes chat modes through Forge roles:
+Chat modes route to appropriate agents:
 
-- `architect -> executive`
-- `code -> manager`
-- `build -> builder`
-- `ask -> manager`
+- `architect` → planning, architecture review, and spec creation
+- `code` → direct implementation with tool calls
+- `build` → full-access structured execution
+- `ask` → quick Q&A, no tool calls
 
-Legacy `build`, `code`, `plan`, and `ask` agents still exist as explicit runtime
-options, but the default workbench execution path uses the Forge role agents
-above.
+## Delivery Control Plane
 
-## Forge Delivery Control Plane
-
-Forge adds a canonical delivery state machine on top of the harness. The key
+The harness integrates with a delivery state machine managed in Convex. The key
 principle is that the harness can execute work, but Convex owns truth for
 delivery lifecycle and gating.
 
@@ -133,8 +128,8 @@ delivery lifecycle and gating.
 - Review, QA, and ship transitions create persistent verification records.
 - Browser QA session reuse is persisted in Convex, not only in process memory.
 - Intake and task creation are idempotent by delivery state and task key.
-- Next.js API routes that operate on Forge resources must authenticate the user
-  and validate ownership through Convex before acting.
+- Next.js API routes that operate on delivery resources must authenticate the
+  user and validate ownership through Convex before acting.
 
 ## Plan-Mode Productization
 
@@ -384,14 +379,13 @@ Unified component combining live + historical progress:
 
 Dropdown for agent selection:
 
-- Primary chat modes: Plan, Build, and Builder
-- These modes route to Forge role agents by default
+- Primary chat modes: Plan, Build, and Code
 - Subagents: Listed with @mention hints
 - Uses harness agent registry
 
 ## Database Schema
 
-Important persistence surfaces used by the harness and Forge control plane:
+Important persistence surfaces used by the harness and delivery control plane:
 
 | Table                       | Purpose                                   |
 | --------------------------- | ----------------------------------------- |

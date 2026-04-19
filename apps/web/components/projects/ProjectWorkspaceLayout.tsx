@@ -77,8 +77,8 @@ interface ProjectWorkspaceLayoutProps {
   onBottomDockOpenChange?: (open: boolean) => void
   activeBottomDockTab?: BottomDockTab
   onBottomDockTabChange?: (tab: BottomDockTab) => void
-  activeCenterTab?: 'home' | 'editor' | 'diff' | 'preview' | 'logs' | 'tests'
-  onCenterTabChange?: (tab: 'home' | 'editor' | 'diff' | 'preview' | 'logs' | 'tests') => void
+  activeCenterTab?: 'editor' | 'diff' | 'preview' | 'logs' | 'tests'
+  onCenterTabChange?: (tab: 'editor' | 'diff' | 'preview' | 'logs' | 'tests') => void
   isRightPanelOpen?: boolean
   // Task header
   activeTaskTitle?: string
@@ -128,7 +128,7 @@ export function ProjectWorkspaceLayout({
   onBottomDockOpenChange,
   activeBottomDockTab = 'terminal',
   onBottomDockTabChange,
-  activeCenterTab = 'home',
+  activeCenterTab = 'editor',
   onCenterTabChange,
   isRightPanelOpen,
   activeTaskTitle,
@@ -145,15 +145,12 @@ export function ProjectWorkspaceLayout({
   const dockTabs = useMemo(
     () => [
       { id: 'terminal' as BottomDockTab, label: 'Terminal' },
-      { id: 'problems' as BottomDockTab, label: 'Problems', badge: 0 },
       {
         id: 'agent-events' as BottomDockTab,
         label: 'Agent Events',
         badge: isStreaming ? 1 : 0,
         badgeSeverity: 'info' as const,
       },
-      { id: 'logs' as BottomDockTab, label: 'Logs' },
-      { id: 'build' as BottomDockTab, label: 'Build' },
     ],
     [isStreaming]
   )
@@ -339,7 +336,7 @@ export function ProjectWorkspaceLayout({
                   onSectionChange={handleSectionChange}
                   onToggleFlyout={toggleFlyout}
                   projectId={String(projectId)}
-                  onHomeClick={() => onCenterTabChange?.('home')}
+                  onHomeClick={() => onCenterTabChange?.('editor')}
                 />
                 {leftPaneContent}
               </div>
@@ -416,22 +413,7 @@ export function ProjectWorkspaceLayout({
                           tabs={dockTabs}
                         >
                           {activeBottomDockTab === 'terminal' && <Terminal projectId={projectId} />}
-                          {activeBottomDockTab === 'problems' && (
-                            <div className="flex h-full items-center justify-center font-mono text-xs text-muted-foreground">
-                              No problems detected
-                            </div>
-                          )}
                           {activeBottomDockTab === 'agent-events' && <AgentEventsPanel />}
-                          {activeBottomDockTab === 'logs' && (
-                            <div className="flex h-full items-center justify-center font-mono text-xs text-muted-foreground">
-                              No logs
-                            </div>
-                          )}
-                          {activeBottomDockTab === 'build' && (
-                            <div className="flex h-full items-center justify-center font-mono text-xs text-muted-foreground">
-                              No build output
-                            </div>
-                          )}
                         </BottomDock>
                       </Panel>
                     </>

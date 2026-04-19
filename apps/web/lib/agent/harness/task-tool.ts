@@ -27,6 +27,21 @@ export const TASK_TOOL_DEFINITION: ToolDefinition = {
     description: `Launch a specialized subagent to handle a complex task.
 
 Available subagent types:
+- planner: Break requests into executable steps
+- architect: Design app structure and boundaries
+- repo-scout: Map the codebase and dependencies
+- context-curator: Collect only the relevant context
+- spec-writer: Turn vague ideas into crisp requirements
+- backend-builder: Implement APIs, services, and business logic
+- database-designer: Handle schema, migrations, and queries
+- refactorer: Clean up code without changing behavior
+- docs-writer: Produce README, setup, and usage docs
+- security-checker: Flag auth, secrets, permissions, and input risks
+- pm-orchestrator: Coordinate subagents and decide next work
+- test-writer: Generate unit, integration, and end-to-end tests
+- deployer: Handle build, release, and environment steps
+- observability-agent: Watch logs, metrics, and alerts after launch
+- ux-copywriter: Write labels, onboarding, and user-facing text
 - explore: Thorough codebase exploration for understanding unfamiliar code
 - security-auditor: Security-focused code review for vulnerabilities
 - performance-analyzer: Analyze code for performance bottlenecks
@@ -51,6 +66,21 @@ CRITICAL: You can spawn multiple subagents in parallel! To do this, simply outpu
           type: 'string',
           description: 'The type of specialized agent to use',
           enum: [
+            'planner',
+            'architect',
+            'repo-scout',
+            'context-curator',
+            'spec-writer',
+            'backend-builder',
+            'database-designer',
+            'refactorer',
+            'docs-writer',
+            'security-checker',
+            'pm-orchestrator',
+            'test-writer',
+            'deployer',
+            'observability-agent',
+            'ux-copywriter',
             'explore',
             'security-auditor',
             'performance-analyzer',

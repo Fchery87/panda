@@ -1,4 +1,5 @@
 import { wildcardMatch } from './wildcard'
+import { ALL_CAPABILITIES } from './types'
 import type { PermissionRule, PermissionContext, EvaluationResult, Capability } from './types'
 
 /**
@@ -57,23 +58,14 @@ export function narrowRulesForSubagent(
   )
 
   // Append explicit deny rules for any capability NOT in the ceiling
-  const allCapabilities: Capability[] = [
-    'read',
-    'search',
-    'edit',
-    'exec',
-    'plan_exit',
-    'memory',
-    'mcp',
-  ]
-  const extraDenies: PermissionRule[] = allCapabilities
-    .filter((cap) => !allowed.has(cap))
-    .map((cap) => ({
+  const extraDenies: PermissionRule[] = ALL_CAPABILITIES.filter((cap) => !allowed.has(cap)).map(
+    (cap) => ({
       capability: cap,
       decision: 'deny' as const,
       source: 'session' as const,
       reason: `capability ${cap} exceeds subagent ceiling`,
-    }))
+    })
+  )
 
   return [...narrowed, ...extraDenies]
 }

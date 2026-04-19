@@ -1,6 +1,6 @@
 'use client'
 
-import { IconGit, IconBell, IconQuickAction, IconSpinner, IconNewChat } from '@/components/ui/icons'
+import { IconBell, IconQuickAction, IconNewChat } from '@/components/ui/icons'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -36,13 +36,13 @@ interface TopBarControlsProps {
 }
 
 export function TopBarControls({
-  branch,
-  model,
+  branch: _branch,
+  model: _model,
   runMode = 'local',
   onRunModeChange,
   healthStatus = 'ready',
   onNewTask,
-  isAgentRunning = false,
+  isAgentRunning: _isAgentRunning = false,
   notificationCount = 0,
   onNotificationsClick,
   onToggleRightPanel,
@@ -61,22 +61,6 @@ export function TopBarControls({
         agentLabel={agentLabel}
         repoLabel={repoLabel}
       />
-
-      {/* Branch chip */}
-      {branch && (
-        <div className="surface-0 flex items-center gap-1.5 border border-border px-2 py-1 font-mono text-[10px] text-muted-foreground">
-          <IconGit className="h-3 w-3" />
-          <span className="max-w-[80px] truncate">{branch}</span>
-        </div>
-      )}
-
-      {/* Active model badge */}
-      {model && (
-        <div className="surface-0 hidden items-center gap-1 border border-border px-2 py-1 font-mono text-[10px] text-muted-foreground lg:flex">
-          {isAgentRunning && <IconSpinner className="h-2.5 w-2.5 animate-spin text-primary" />}
-          <span className="max-w-[100px] truncate">{model}</span>
-        </div>
-      )}
 
       {/* Run mode selector */}
       <DropdownMenu>

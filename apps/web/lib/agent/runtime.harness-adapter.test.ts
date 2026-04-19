@@ -6,7 +6,7 @@ import type {
   StreamChunk,
   ToolCall,
 } from '../llm/types'
-import { resolveHarnessAgentName, resolveLegacyHarnessAgentName, streamAgent } from './runtime'
+import { resolveHarnessAgentName, streamAgent } from './runtime'
 import type { ToolContext } from './tools'
 import {
   InMemoryCheckpointStore,
@@ -16,6 +16,62 @@ import {
 import type { Message as HarnessMessage, UserMessage as HarnessUserMessage } from './harness'
 import { Runtime as HarnessRuntime } from './harness/runtime'
 import type { FormalSpecification } from './spec/types'
+
+describe('createReasoningAwareProvider regression', () => {
+  it('preserves completionStream when overriding the model on class-based providers', async () => {
+    class PrototypeProvider implements LLMProvider {
+      name = 'prototype-provider'
+      config: ProviderConfig = {
+        provider: 'openai',
+        auth: { apiKey: 'x' },
+        defaultModel: 'base-model',
+      }
+
+      async listModels() {
+        return []
+      }
+
+      async complete(options: CompletionOptions) {
+        return {
+          message: { role: 'assistant' as const, content: options.model },
+          finishReason: 'stop' as const,
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+          model: options.model,
+        }
+      }
+
+      async *completionStream(options: CompletionOptions): AsyncGenerator<StreamChunk> {
+        yield { type: 'text', content: options.model }
+        yield makeFinish()
+      }
+    }
+
+    const events: string[] = []
+    for await (const event of streamAgent(
+      new PrototypeProvider(),
+      {
+        projectId: 'p',
+        chatId: 'c',
+        userId: 'u',
+        chatMode: 'ask',
+        provider: 'openai',
+        userMessage: 'Run with an override model',
+      },
+      makeToolContext(),
+      {
+        harnessCheckpointStore: new InMemoryCheckpointStore(),
+        maxIterations: 1,
+        model: 'override-model',
+      }
+    )) {
+      if (event.type === 'text' && event.content) {
+        events.push(event.content)
+      }
+    }
+
+    expect(events.join('')).toContain('override-model')
+  })
+})
 
 function makeFinish(): StreamChunk {
   return {
@@ -74,27 +130,13 @@ function makeHarnessUserMessage(
 }
 
 describe('Harness adapter guardrail parity', () => {
-  it('allows explicit Forge role agents to override chat-mode mapping', () => {
-    expect(resolveHarnessAgentName({ chatMode: 'build', harnessAgentName: 'builder' })).toBe(
-      'builder'
-    )
-    expect(resolveHarnessAgentName({ chatMode: 'build', harnessAgentName: 'manager' })).toBe(
-      'manager'
-    )
-    expect(resolveHarnessAgentName({ chatMode: 'architect', harnessAgentName: 'executive' })).toBe(
-      'executive'
-    )
-    expect(resolveHarnessAgentName({ chatMode: 'ask' })).toBe('manager')
-    expect(resolveHarnessAgentName({ chatMode: 'architect' })).toBe('executive')
-    expect(resolveHarnessAgentName({ chatMode: 'code' })).toBe('manager')
-    expect(resolveHarnessAgentName({ chatMode: 'build' })).toBe('builder')
-  })
-
-  it('preserves legacy direct-mode mapping for compatibility checks', () => {
-    expect(resolveLegacyHarnessAgentName({ chatMode: 'ask' })).toBe('ask')
-    expect(resolveLegacyHarnessAgentName({ chatMode: 'architect' })).toBe('plan')
-    expect(resolveLegacyHarnessAgentName({ chatMode: 'code' })).toBe('code')
-    expect(resolveLegacyHarnessAgentName({ chatMode: 'build' })).toBe('build')
+  it('allows explicit harness agent names to override chat-mode mapping', () => {
+    expect(resolveHarnessAgentName({ chatMode: 'build', harnessAgentName: 'code' })).toBe('code')
+    expect(resolveHarnessAgentName({ chatMode: 'build', harnessAgentName: 'plan' })).toBe('plan')
+    expect(resolveHarnessAgentName({ chatMode: 'ask' })).toBe('ask')
+    expect(resolveHarnessAgentName({ chatMode: 'architect' })).toBe('plan')
+    expect(resolveHarnessAgentName({ chatMode: 'code' })).toBe('code')
+    expect(resolveHarnessAgentName({ chatMode: 'build' })).toBe('build')
   })
 
   // TODO: Fix harness-internal rewrite test - currently times out due to harness runtime interaction
@@ -1094,5 +1136,81 @@ describe('Harness adapter guardrail parity', () => {
 
     // Calling abort before run should not throw
     expect(() => runtime.abort!()).not.toThrow()
+  })
+
+  it('does not surface a risk-interrupt prompt when the agent spawns a `task` subagent', async () => {
+    // Regression guard for the subagent over-prompting issue: even with
+    // harnessEnableRiskInterrupts: true, spawning a subagent must not yield
+    // an `interrupt_request` event. Side-effect tools the subagent invokes
+    // (write_files, run_command) still surface their own prompts.
+    let callCount = 0
+    const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }
+    const provider: LLMProvider = {
+      name: 'fake',
+      config,
+      async listModels() {
+        return []
+      },
+      async complete() {
+        // Spec classifier may call complete() — return a safe fallback.
+        return {
+          message: { role: 'assistant', content: '{"tier":"instant"}' },
+          finishReason: 'stop',
+          usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+          model: 'mock',
+        }
+      },
+      async *completionStream(_options: CompletionOptions): AsyncGenerator<StreamChunk> {
+        callCount += 1
+        if (callCount === 1) {
+          yield {
+            type: 'tool_call',
+            toolCall: makeToolCall('task', {
+              subagent_type: 'explore',
+              prompt: 'Inspect and summarize.',
+              description: 'Explore codebase',
+            }),
+          }
+          yield makeFinish()
+          return
+        }
+        if (callCount === 2) {
+          yield { type: 'text', content: 'Subagent summary: nothing of note.' }
+          yield makeFinish()
+          return
+        }
+        yield { type: 'text', content: 'Parent done.' }
+        yield makeFinish()
+      },
+    }
+
+    const events: any[] = []
+    for await (const evt of streamAgent(
+      provider,
+      {
+        projectId: 'p',
+        chatId: 'c',
+        userId: 'u',
+        chatMode: 'build',
+        provider: 'openai',
+        userMessage: 'delegate this',
+      },
+      makeToolContext(),
+      { harnessCheckpointStore: new InMemoryCheckpointStore() },
+      { harnessEnableRiskInterrupts: true }
+    )) {
+      events.push(evt)
+    }
+
+    const taskInterrupt = events.find(
+      (evt) => evt.type === 'interrupt_request' && evt.interrupt?.toolName === 'task'
+    )
+    expect(taskInterrupt).toBeUndefined()
+
+    const taskResult = events.find(
+      (evt) => evt.type === 'tool_result' && evt.toolResult?.toolName === 'task'
+    )
+    expect(taskResult?.toolResult?.error).toBeUndefined()
+    expect(taskResult?.toolResult?.output).toContain('Subagent summary')
   })
 })

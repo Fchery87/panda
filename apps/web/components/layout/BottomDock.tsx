@@ -1,16 +1,10 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import { TabBar } from '@/components/ui/tab-bar'
 import { cn } from '@/lib/utils'
 
-export type BottomDockTab =
-  | 'terminal'
-  | 'problems'
-  | 'logs'
-  | 'tests'
-  | 'agent-events'
-  | 'network'
-  | 'build'
+export type BottomDockTab = 'terminal' | 'agent-events'
 
 interface DockTabDef {
   id: BottomDockTab
@@ -60,7 +54,7 @@ export function BottomDock({
                 {tab.label}
               </span>
               {tab.badge != null && tab.badge > 0 && (
-                <span className="dock-tab-badge" data-severity={tab.badgeSeverity ?? 'info'}>
+                <span className="badge-sm" data-severity={tab.badgeSeverity ?? 'info'}>
                   {tab.badge}
                 </span>
               )}
@@ -77,35 +71,23 @@ export function BottomDock({
   return (
     <div className="surface-1 flex min-h-0 flex-col border-t border-border">
       {/* Tab bar */}
-      <div className="surface-1 flex h-8 shrink-0 items-center border-b border-border">
-        <div className="flex flex-1 items-center">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              className="dock-tab"
-              data-active={tab.id === activeTab ? 'true' : undefined}
-              onClick={() => onTabChange(tab.id)}
-            >
-              {tab.label}
-              {tab.badge != null && tab.badge > 0 && (
-                <span className="dock-tab-badge" data-severity={tab.badgeSeverity ?? 'info'}>
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-        <button
-          type="button"
-          onClick={onToggle}
-          className="flex h-full items-center px-3 font-mono text-[10px] text-muted-foreground hover:text-foreground"
-          title="Collapse dock"
-          aria-label="Collapse dock"
-        >
-          ▼
-        </button>
-      </div>
+      <TabBar
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={onTabChange}
+        className="h-8"
+        trailingContent={
+          <button
+            type="button"
+            onClick={onToggle}
+            className="flex h-full items-center font-mono text-[10px] text-muted-foreground hover:text-foreground"
+            title="Collapse dock"
+            aria-label="Collapse dock"
+          >
+            ▼
+          </button>
+        }
+      />
       {/* Content */}
       <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
     </div>

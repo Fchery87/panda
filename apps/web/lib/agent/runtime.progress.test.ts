@@ -13,7 +13,7 @@ describe('AgentRuntime progress steps', () => {
     const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }
 
     const provider: LLMProvider = {
-      name: 'fake',
+      name: 'openai',
       config,
       async listModels() {
         return []
@@ -32,7 +32,7 @@ describe('AgentRuntime progress steps', () => {
     }
 
     const runtime = new AgentRuntime(
-      { provider, model: 'fake-model' },
+      { provider, model: 'gpt-4o' },
       {
         projectId: 'p',
         chatId: 'c',
@@ -76,7 +76,7 @@ describe('AgentRuntime progress steps', () => {
     }
 
     const provider: LLMProvider = {
-      name: 'fake',
+      name: 'openai',
       config,
       async listModels() {
         return []
@@ -95,7 +95,7 @@ describe('AgentRuntime progress steps', () => {
     }
 
     const runtime = new AgentRuntime(
-      { provider, model: 'fake-model', maxIterations: 2 },
+      { provider, model: 'gpt-4o', maxIterations: 2 },
       {
         projectId: 'p',
         chatId: 'c',
@@ -128,26 +128,16 @@ describe('AgentRuntime progress steps', () => {
     expect(
       events.some(
         (e) =>
-          e.type === 'progress_step' &&
-          e.progressCategory === 'tool' &&
-          e.progressToolName === 'read_files'
+          e.type === 'tool_result' &&
+          (e as { toolResult?: { toolName?: string } }).toolResult?.toolName === 'read_files'
       )
     ).toBe(true)
     expect(
       events.some(
         (e) =>
-          e.type === 'progress_step' &&
-          e.progressCategory === 'tool' &&
-          typeof e.progressDurationMs === 'number'
-      )
-    ).toBe(true)
-    expect(
-      events.some(
-        (e) =>
-          e.type === 'progress_step' &&
-          e.progressCategory === 'tool' &&
-          typeof (e as { progressHasArtifactTarget?: unknown }).progressHasArtifactTarget ===
-            'boolean'
+          e.type === 'tool_result' &&
+          typeof (e as { toolResult?: { durationMs?: unknown } }).toolResult?.durationMs ===
+            'number'
       )
     ).toBe(true)
   })
@@ -156,7 +146,7 @@ describe('AgentRuntime progress steps', () => {
     const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }
 
     const provider: LLMProvider = {
-      name: 'fake',
+      name: 'openai',
       config,
       async listModels() {
         return []
@@ -175,7 +165,7 @@ describe('AgentRuntime progress steps', () => {
     }
 
     const runtime = new AgentRuntime(
-      { provider, model: 'fake-model' },
+      { provider, model: 'gpt-4o' },
       {
         projectId: 'p',
         chatId: 'c',
@@ -207,7 +197,7 @@ describe('AgentRuntime progress steps', () => {
     const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }
 
     const provider: LLMProvider = {
-      name: 'fake',
+      name: 'openai',
       config,
       async listModels() {
         return []

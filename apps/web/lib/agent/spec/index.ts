@@ -47,6 +47,8 @@ export {
 // Engine
 export { SpecEngine, createSpecEngine, defaultSpecEngine } from './engine'
 export type { SpecGenerationContext, SpecGenerationResult } from './engine'
+export { DefaultSpecLifecycleManager } from './lifecycle-manager'
+export type { SpecLifecycleManager } from './lifecycle-manager'
 
 // Classifier
 export { classifyIntent, classifyBatch, getClassificationStats } from './classifier'

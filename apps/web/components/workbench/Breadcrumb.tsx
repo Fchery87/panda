@@ -1,6 +1,6 @@
 'use client'
 
-import { IconBreadcrumbSeparator, IconFile, IconFolder } from '@/components/ui/icons'
+import { IconBreadcrumbSeparator, IconFolder, IconArrowLeft } from '@/components/ui/icons'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
@@ -33,9 +33,11 @@ export function Breadcrumb({
     <nav aria-label="Breadcrumb" className={cn('flex items-center gap-1 text-sm', className)}>
       <Link
         href="/projects"
-        className="flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
+        className="hover:bg-surface-2 flex items-center gap-1.5 rounded-none px-1.5 py-0.5 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground"
+        title="Back to Projects"
       >
-        <IconFile className="h-3.5 w-3.5" weight="duotone" />
+        <IconArrowLeft className="h-3 w-3" />
+        <span className="hidden sm:inline">Projects</span>
       </Link>
 
       <IconBreadcrumbSeparator className="h-3.5 w-3.5 text-muted-foreground/50" />

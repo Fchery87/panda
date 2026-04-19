@@ -1,141 +1,86 @@
 'use client'
 
-import { useState } from 'react'
 import type { ReactNode } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ChevronUp } from 'lucide-react'
+import { TabBar, type TabBarTab } from '@/components/ui/tab-bar'
 import { cn } from '@/lib/utils'
 
 export type RightPanelTabId = 'chat' | 'plan' | 'review' | 'inspect' | 'run' | 'comments'
 
-interface TabDef {
-  id: RightPanelTabId
-  label: string
-}
-
-const TABS: TabDef[] = [
-  { id: 'chat', label: 'Chat' },
-  { id: 'plan', label: 'Plan' },
-  { id: 'review', label: 'Review' },
-  { id: 'inspect', label: 'Inspect' },
-  { id: 'run', label: 'Run' },
-  { id: 'comments', label: 'Notes' },
-]
+export type InspectorTabDef = TabBarTab<string>
 
 interface RightPanelProps {
   chatContent: ReactNode
-  planContent?: ReactNode
-  reviewContent?: ReactNode
-  inspectContent?: ReactNode
-  runContent?: ReactNode
-  commentsContent?: ReactNode
-  activeTab?: RightPanelTabId
-  onTabChange?: (tab: RightPanelTabId) => void
+  inspectorContent?: ReactNode
+  inspectorTabs?: InspectorTabDef[]
+  activeInspectorTab?: string
+  onInspectorTabChange?: (tab: string) => void
+  isInspectorOpen?: boolean
+  onInspectorToggle?: () => void
 }
 
-/**
- * Right contextual panel — multi-tab panel sitting on the right side
- * of the workspace. Supports Chat, Plan, Review Notes, Inspect,
- * Run Details, and Comments tabs.
- */
+const DRAWER_VARIANTS = {
+  hidden: { height: 0 },
+  visible: { height: '35%' },
+}
+
+const DRAWER_TRANSITION = { duration: 0.2, ease: [0.4, 0, 0.2, 1] as const }
+
 export function RightPanel({
   chatContent,
-  planContent,
-  reviewContent,
-  inspectContent,
-  runContent,
-  commentsContent,
-  activeTab: externalTab,
-  onTabChange: externalOnTabChange,
+  inspectorContent,
+  inspectorTabs = [],
+  activeInspectorTab,
+  onInspectorTabChange,
+  isInspectorOpen = false,
+  onInspectorToggle,
 }: RightPanelProps) {
-  const [internalTab, setInternalTab] = useState<RightPanelTabId>('chat')
-
-  const activeTab = externalTab ?? internalTab
-  const onTabChange = externalOnTabChange ?? setInternalTab
-
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'chat':
-        return chatContent
-      case 'plan':
-        return (
-          planContent ?? (
-            <EmptyTabContent
-              title="Plan"
-              description="Switch to architect mode to generate a plan, then review and approve it here before building."
-            />
-          )
-        )
-      case 'review':
-        return (
-          reviewContent ?? (
-            <EmptyTabContent
-              title="Review"
-              description="File edits and artifact diffs from agent runs appear here. Approve or reject changes before they land."
-            />
-          )
-        )
-      case 'inspect':
-        return (
-          inspectContent ?? (
-            <EmptyTabContent
-              title="Inspect"
-              description="DOM tree, CSS metadata, and element details. Select an element in the preview to inspect it."
-            />
-          )
-        )
-      case 'run':
-        return (
-          runContent ?? (
-            <EmptyTabContent
-              title="Run"
-              description="Step-by-step execution trace for the active agent run. Shows tool calls, file changes, and timing."
-            />
-          )
-        )
-      case 'comments':
-        return (
-          commentsContent ?? (
-            <EmptyTabContent
-              title="Notes"
-              description="Project memory, QA reports, delivery state, and eval results. Context that persists across sessions."
-            />
-          )
-        )
-      default:
-        return chatContent
-    }
-  }
-
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col bg-background">
-      {/* Tab header */}
-      <div className="surface-1 scrollbar-hide flex h-9 shrink-0 items-center overflow-x-auto border-b border-border">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            className={cn('dock-tab whitespace-nowrap', activeTab === tab.id && 'text-foreground')}
-            data-active={activeTab === tab.id ? 'true' : undefined}
-            onClick={() => onTabChange(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-      {/* Content */}
-      <div className="min-h-0 min-w-0 flex-1 overflow-hidden">{renderContent()}</div>
-    </div>
-  )
-}
+      <div className="min-h-0 min-w-0 flex-1 overflow-hidden">{chatContent}</div>
 
-function EmptyTabContent({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="flex h-full flex-col items-center justify-center px-6 py-8 text-center">
-      <h3 className="font-mono text-xs font-medium uppercase tracking-widest text-foreground">
-        {title}
-      </h3>
-      <p className="mt-2 max-w-xs text-[11px] leading-relaxed text-muted-foreground">
-        {description}
-      </p>
+      <button
+        type="button"
+        onClick={onInspectorToggle}
+        className={cn(
+          'flex h-6 shrink-0 items-center justify-center border-t border-border',
+          'hover:bg-surface-2 transition-colors',
+          inspectorTabs.length === 0 && 'hidden'
+        )}
+        aria-label={isInspectorOpen ? 'Close inspector' : 'Open inspector'}
+      >
+        <ChevronUp
+          className={cn(
+            'h-3 w-3 text-muted-foreground transition-transform duration-200',
+            !isInspectorOpen && 'rotate-180'
+          )}
+        />
+      </button>
+
+      <AnimatePresence initial={false}>
+        {isInspectorOpen && (
+          <motion.div
+            key="inspector-drawer"
+            initial="hidden"
+            animate="visible"
+            exit="hidden"
+            variants={DRAWER_VARIANTS}
+            transition={DRAWER_TRANSITION}
+            className="flex min-h-0 flex-col overflow-hidden border-t border-border"
+          >
+            <TabBar
+              tabs={inspectorTabs}
+              activeTab={activeInspectorTab ?? ''}
+              onTabChange={onInspectorTabChange}
+              className="h-8 shrink-0 overflow-x-auto"
+              tabsClassName="scrollbar-hide min-w-max"
+              tabClassName="whitespace-nowrap text-[11px]"
+            />
+            <div className="min-h-0 min-w-0 flex-1 overflow-auto">{inspectorContent}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

@@ -63,7 +63,7 @@ describe('Runtime tool availability', () => {
 
     for await (const event of runtime.run(
       'session-question-filter',
-      createUserMessage('session-question-filter', 'manager')
+      createUserMessage('session-question-filter', 'build')
     )) {
       void event
     }

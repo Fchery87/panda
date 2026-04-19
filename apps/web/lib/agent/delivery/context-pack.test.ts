@@ -7,7 +7,7 @@ describe('delivery context pack', () => {
       deliveryState: {
         currentPhase: 'review',
         summary: {
-          goal: 'Finish Forge delivery closure',
+          goal: 'Finish delivery closure',
           nextStepBrief: 'Resolve remaining QA follow-ups',
         },
       },

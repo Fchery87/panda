@@ -50,7 +50,7 @@ describe('Build Mode no-code guardrails', () => {
     const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }
 
     const provider: LLMProvider = {
-      name: 'fake',
+      name: 'openai',
       config,
       async listModels() {
         return []
@@ -88,7 +88,7 @@ describe('Build Mode no-code guardrails', () => {
     }
 
     const runtime = new AgentRuntime(
-      { provider, model: 'fake-model' },
+      { provider, model: 'gpt-4o' },
       {
         projectId: 'p',
         chatId: 'c',
@@ -136,7 +136,7 @@ describe('Build Mode no-code guardrails', () => {
     const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }
 
     const provider: LLMProvider = {
-      name: 'fake',
+      name: 'openai',
       config,
       async listModels() {
         return []
@@ -177,7 +177,7 @@ describe('Build Mode no-code guardrails', () => {
     }
 
     const runtime = new AgentRuntime(
-      { provider, model: 'fake-model' },
+      { provider, model: 'gpt-4o' },
       {
         projectId: 'p',
         chatId: 'c',

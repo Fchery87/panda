@@ -83,7 +83,10 @@ export function MessageList({
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     if (feedItems.length > 0) {
-      virtualizer.scrollToIndex(feedItems.length - 1, { align: 'end', behavior: 'smooth' })
+      virtualizer.scrollToIndex(feedItems.length - 1, {
+        align: 'end',
+        behavior: isStreaming ? 'auto' : 'smooth',
+      })
     }
   }, [feedItems.length, isStreaming, virtualizer])
 

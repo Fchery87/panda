@@ -11,7 +11,7 @@ describe('browser QA executor helpers', () => {
       flowNames: ['task-panel-review-loop'],
     })
 
-    expect(input.browserSessionKey).toBe('browser-session::project_1::local')
+    expect(input.browserSessionKey).toBe('browser-session::project_1::chat_1::task_1')
     expect(input.sessionStrategy).toBe('fresh')
     expect(input.urlsTested).toEqual(['/projects/example'])
   })
@@ -173,7 +173,7 @@ describe('browser QA executor helpers', () => {
     })
 
     expect(input.urlsTested).toEqual(['/projects/[projectId]'])
-    expect(input.browserSessionKey).toBe('browser-session::project_1::preview')
+    expect(input.browserSessionKey).toBe('browser-session::project_1::chat_1::task_1')
     expect(input.sessionStrategy).toBe('fresh')
     expect(input.environment).toBe('preview')
   })
@@ -188,9 +188,9 @@ describe('browser QA executor helpers', () => {
       flowNames: [],
     })
 
-    expect(input.urlsTested).toEqual(['/projects/[projectId]', '/projects/[projectId]/review'])
-    expect(input.flowNames).toEqual(['global-smoke', 'project-workbench-smoke'])
-    expect(input.scenarioNames).toEqual(['global-smoke', 'project-workbench-smoke'])
+    expect(input.urlsTested).toEqual([])
+    expect(input.flowNames).toEqual(['global-smoke'])
+    expect(input.scenarioNames).toEqual(['global-smoke'])
   })
 
   test('preserves explicit flows separately from derived scenario names', () => {
@@ -204,7 +204,7 @@ describe('browser QA executor helpers', () => {
     })
 
     expect(input.flowNames).toEqual(['task-panel-review-loop'])
-    expect(input.scenarioNames).toEqual(['global-smoke', 'project-workbench-smoke'])
+    expect(input.scenarioNames).toEqual(['global-smoke'])
   })
 
   test('reuses an existing healthy browser session when provided', () => {

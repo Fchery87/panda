@@ -184,6 +184,12 @@ export function useProjectChatSession<TChat extends ChatSessionChat>(args: {
     }
     if (freshAvailableModels.length > 0) return freshAvailableModels[0]
     if (provider?.config?.defaultModel) return provider.config.defaultModel
+    // Default to provider-appropriate model rather than hardcoding gpt-4o
+    const providerType = settings?.defaultProvider || 'openai'
+    if (providerType === 'anthropic') return 'claude-sonnet-4-5'
+    if (providerType === 'deepseek') return 'deepseek-chat'
+    if (providerType === 'groq') return 'llama-3.3-70b-versatile'
+    if (providerType === 'zai') return 'glm-4.7'
     return 'gpt-4o'
   }, [
     effectiveSettings?.effectiveModel,

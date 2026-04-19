@@ -12,6 +12,7 @@ import { SpecEngine, createSpecEngine } from '../engine'
 import { SpecReconciler, createSpecReconciler } from '../reconciler'
 import {
   createDriftDetectionPlugin,
+  createDriftDetectionState,
   registerActiveSpec,
   unregisterActiveSpec,
   createDriftReport,
@@ -120,6 +121,16 @@ describe('SpecNative Integration', () => {
   })
 
   describe('Drift Detection Flow', () => {
+    test('creates isolated drift detection state objects', () => {
+      const first = createDriftDetectionState()
+      const second = createDriftDetectionState()
+
+      first.activeSpecs.set('spec-1', {} as FormalSpecification)
+
+      expect(first.activeSpecs.has('spec-1')).toBe(true)
+      expect(second.activeSpecs.has('spec-1')).toBe(false)
+    })
+
     test('should detect drift when files are modified', async () => {
       setup()
       const spec: FormalSpecification = {

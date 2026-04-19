@@ -6,6 +6,7 @@ import { buildPlanContext } from './context/plan-context'
 import type { Id } from '@convex/_generated/dataModel'
 import type { GeneratedPlanArtifact } from '../planning/types'
 import type { FormalSpecification } from './spec/types'
+import { registerActiveSpecForDrift } from './spec/injector'
 
 interface ProjectFileContext {
   path: string
@@ -52,6 +53,11 @@ export function buildAgentPromptContext(args: {
           .filter((value): value is string => Boolean(value))
           .join('\n\n') || undefined
       : (args.projectOverviewContent ?? undefined)
+
+  const spec = args.activeSpec
+  if (spec && (spec.status === 'approved' || spec.status === 'executing')) {
+    registerActiveSpecForDrift(spec)
+  }
 
   return {
     projectId: args.projectId,

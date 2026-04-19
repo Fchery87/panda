@@ -10,19 +10,11 @@ import {
 } from '@/lib/chat/planDraft'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import type { GeneratedPlanArtifact } from '@/lib/planning/types'
-import {
-  deriveDeliveryTaskSeed,
-  shouldActivateStructuredDelivery,
-} from '@/lib/agent/delivery/manager'
 
 type MessageWorkflowChat = {
   _id: Id<'chats'>
   mode: ChatMode
   planStatus?: PlanStatus
-}
-
-type ForgeStateRecord = {
-  _id: Id<'deliveryStates'>
 }
 
 type ExecutablePlanArtifact = Pick<GeneratedPlanArtifact, 'status'>
@@ -167,38 +159,6 @@ export function useProjectMessageWorkflow(args: {
     mode?: ChatMode
     planStatus?: PlanStatus
   }) => Promise<unknown>
-  startForgeIntake: (args: {
-    projectId: Id<'projects'>
-    chatId: Id<'chats'>
-    title: string
-    goal: string
-    description?: string
-    constraints?: string[]
-  }) => Promise<Id<'deliveryStates'>>
-  createForgeTasksFromPlan: (args: {
-    deliveryStateId: Id<'deliveryStates'>
-    tasks: Array<{
-      taskKey: string
-      title: string
-      description: string
-      rationale: string
-      ownerRole: 'manager'
-      acceptanceCriteria: Array<{
-        id: string
-        text: string
-        status: 'pending'
-        verificationMethod: 'review'
-      }>
-      testRequirements?: string[]
-      reviewRequirements?: string[]
-      qaRequirements?: string[]
-    }>
-  }) => Promise<Id<'deliveryTasks'>[]>
-  acceptForgePlan: (args: {
-    deliveryStateId: Id<'deliveryStates'>
-    summary?: string
-  }) => Promise<Id<'deliveryStates'>>
-  getActiveForgeState?: (chatId: Id<'chats'>) => Promise<ForgeStateRecord | null>
   markPlanningExecutionState?: (args: { sessionId: string; state: 'executing' }) => Promise<unknown>
   sendAgentMessage: (
     content: string,
@@ -219,10 +179,6 @@ export function useProjectMessageWorkflow(args: {
     providerAvailable,
     createChatMutation,
     updateChatMutation,
-    startForgeIntake,
-    createForgeTasksFromPlan,
-    acceptForgePlan,
-    getActiveForgeState,
     markPlanningExecutionState,
     sendAgentMessage,
     setActiveChatId,
@@ -361,54 +317,6 @@ export function useProjectMessageWorkflow(args: {
         return
       }
 
-      if (
-        shouldActivateStructuredDelivery({
-          mode,
-          content: finalContent,
-          approvedPlanExecution: options?.approvedPlanExecution,
-        })
-      ) {
-        const taskSeed = deriveDeliveryTaskSeed({
-          mode,
-          content: finalContent,
-          approvedPlanExecution: options?.approvedPlanExecution,
-        })
-        const existingDeliveryState = getActiveForgeState
-          ? await getActiveForgeState(activeChat._id)
-          : null
-        const deliveryStateId =
-          existingDeliveryState?._id ??
-          (await startForgeIntake({
-            projectId,
-            chatId: activeChat._id,
-            title: taskSeed.title,
-            goal: finalContent,
-            description: taskSeed.description,
-          }))
-
-        await createForgeTasksFromPlan({
-          deliveryStateId,
-          tasks: [
-            {
-              taskKey: `task-${Date.now()}`,
-              title: taskSeed.title,
-              description: taskSeed.description,
-              rationale: taskSeed.rationale,
-              ownerRole: taskSeed.ownerRole,
-              acceptanceCriteria: taskSeed.acceptanceCriteria,
-              testRequirements: ['Run the scoped implementation checks for this task.'],
-              reviewRequirements: ['Executive implementation review is required.'],
-              qaRequirements: ['Browser QA is required for affected routes.'],
-            },
-          ],
-        })
-
-        await acceptForgePlan({
-          deliveryStateId,
-          summary: 'Structured delivery activated for active implementation work.',
-        })
-      }
-
       if (!providerAvailable) {
         toast.error('LLM provider not configured', {
           description: 'Please configure your LLM settings in the settings page.',
@@ -431,10 +339,6 @@ export function useProjectMessageWorkflow(args: {
       planDraft,
       projectId,
       providerAvailable,
-      startForgeIntake,
-      createForgeTasksFromPlan,
-      acceptForgePlan,
-      getActiveForgeState,
       activePlanningSessionId,
       sendAgentMessage,
       setActiveChatId,

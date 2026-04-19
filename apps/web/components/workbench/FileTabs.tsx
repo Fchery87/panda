@@ -141,7 +141,7 @@ export function FileTabs({
         role="tablist"
         aria-label="Open files"
         className={cn(
-          'bg-surface-1 flex items-end gap-0 overflow-x-auto border-b border-border',
+          'surface-1 flex items-end gap-0 overflow-x-auto border-b border-border',
           'scrollbar-thin scrollbar-h-1',
           className
         )}

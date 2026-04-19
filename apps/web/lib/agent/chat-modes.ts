@@ -1,5 +1,9 @@
 export type ChatMode = 'ask' | 'architect' | 'code' | 'build'
 
+export interface HandoffRitual {
+  systemMessage: string
+}
+
 export interface ChatModeConfig {
   description: string
   fileAccess: 'read-only' | 'read-write'
@@ -11,10 +15,14 @@ export interface ChatModeConfig {
     primaryShortcut?: string
   }
   runtime: {
-    forgeAgent: 'builder' | 'manager' | 'executive'
-    legacyAgent: 'build' | 'code' | 'plan' | 'ask'
+    primaryAgent: 'build' | 'code' | 'plan' | 'ask'
   }
+  requiresToolCalls: boolean
+  outputFormat: 'conversational' | 'action-log'
+  handoffRitual?: HandoffRitual
 }
+
+export type ModeContract = ChatModeConfig
 
 export const CHAT_MODE_CONFIGS: Record<ChatMode, ChatModeConfig> = {
   ask: {
@@ -27,9 +35,10 @@ export const CHAT_MODE_CONFIGS: Record<ChatMode, ChatModeConfig> = {
       advanced: false,
     },
     runtime: {
-      forgeAgent: 'manager',
-      legacyAgent: 'ask',
+      primaryAgent: 'ask',
     },
+    requiresToolCalls: false,
+    outputFormat: 'conversational',
   },
   architect: {
     description: 'Clarify, scope, draft, and approve a plan',
@@ -42,38 +51,49 @@ export const CHAT_MODE_CONFIGS: Record<ChatMode, ChatModeConfig> = {
       primaryShortcut: '1',
     },
     runtime: {
-      forgeAgent: 'executive',
-      legacyAgent: 'plan',
+      primaryAgent: 'plan',
     },
+    requiresToolCalls: false,
+    outputFormat: 'conversational',
   },
   code: {
-    description: 'Execute an approved plan with coordination',
+    description: 'Execute code changes with read/write/command access',
     fileAccess: 'read-write',
     surface: {
-      label: 'Build',
-      shortLabel: 'Build',
-      description: 'Execute an approved plan with coordinated delivery across the workspace.',
+      label: 'Code',
+      shortLabel: 'Code',
+      description: 'Execute code changes directly with read, write, and command access.',
       advanced: false,
       primaryShortcut: '2',
     },
     runtime: {
-      forgeAgent: 'manager',
-      legacyAgent: 'code',
+      primaryAgent: 'code',
+    },
+    requiresToolCalls: true,
+    outputFormat: 'action-log',
+    handoffRitual: {
+      systemMessage:
+        'You are now in Build mode. Your FIRST action is to call write_files or run_command — never narrate what you plan to do without calling a tool. Read the approved plan, identify step 1, and execute it.',
     },
   },
   build: {
-    description: 'Direct expert execution',
+    description: 'Full-access build mode for direct expert execution',
     fileAccess: 'read-write',
     surface: {
-      label: 'Builder',
-      shortLabel: 'Bldr',
-      description: 'Direct expert execution when you want the specialist to do the work.',
+      label: 'Build',
+      shortLabel: 'Build',
+      description: 'Full-access mode for direct expert execution of complex tasks.',
       advanced: true,
       primaryShortcut: '3',
     },
     runtime: {
-      forgeAgent: 'builder',
-      legacyAgent: 'build',
+      primaryAgent: 'build',
+    },
+    requiresToolCalls: true,
+    outputFormat: 'action-log',
+    handoffRitual: {
+      systemMessage:
+        'You are now in Builder mode. Your FIRST action is to call write_files or run_command — never narrate what you plan to do without calling a tool.',
     },
   },
 }
@@ -90,12 +110,6 @@ export function getAdvancedChatModes(): ChatMode[] {
   )
 }
 
-export function getDefaultForgeHarnessAgent(
-  mode: ChatMode
-): ChatModeConfig['runtime']['forgeAgent'] {
-  return CHAT_MODE_CONFIGS[mode].runtime.forgeAgent
-}
-
-export function getLegacyHarnessAgent(mode: ChatMode): ChatModeConfig['runtime']['legacyAgent'] {
-  return CHAT_MODE_CONFIGS[mode].runtime.legacyAgent
+export function getDefaultHarnessAgent(mode: ChatMode): ChatModeConfig['runtime']['primaryAgent'] {
+  return CHAT_MODE_CONFIGS[mode].runtime.primaryAgent
 }

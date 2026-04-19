@@ -91,7 +91,7 @@ export function ActiveAgentsPane({
                 </span>
               </div>
               <div className="mt-0.5 flex items-center gap-2">
-                <span className="status-badge" data-status={task.status}>
+                <span className="badge-md" data-status={task.status}>
                   {task.status === 'running' && (
                     <IconSpinner className="h-2.5 w-2.5 animate-spin" />
                   )}

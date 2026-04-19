@@ -45,13 +45,22 @@ import { evaluate, narrowRulesForSubagent } from './permission/evaluate'
 import { analyzeCommand } from '../command-analysis'
 import { ascending } from './identifier'
 import { agents } from './agents'
-import { permissions, checkPermission, mergePermissions } from './permissions'
+import { PermissionManager, checkPermission } from './permissions'
 import { plugins } from './plugins'
 import { repairJSON, fuzzyMatchToolName, safeJSONParse } from './tool-repair'
 import { compaction, needsCompaction, SUMMARIZATION_PROMPT } from './compaction'
 import { withTimeoutAndRetry, isContextOverflowError } from '../../llm/stream-resilience'
 import { snapshots } from './snapshots'
 import { createSubtaskPart, executeTaskTool, getTaskToolDefinitions } from './task-tool'
+import { createToolResultEvent } from './runtime-events'
+import {
+  createToolCallDedupKey,
+  isRetryableToolError,
+  isToolIdempotencyCacheAllowed,
+  isToolRetryAllowed,
+  sleep,
+} from './runtime-tools'
+import { detectCyclicToolPattern } from './runtime-loop-guard'
 import { extractFilePaths, isFileCoveredBySpec } from '../spec/drift-detection'
 import { appLog, createSessionLogger } from '@/lib/logger'
 import type {
@@ -59,10 +68,24 @@ import type {
   RuntimeCheckpointPendingSubtask,
   RuntimeCheckpointReason,
   RuntimeCheckpointState,
-  RuntimeCheckpointLegacyToolCallFrequencyEntry,
 } from './checkpoint-store'
+import {
+  restoreRuntimeCheckpointState,
+  serializeRuntimeCheckpointState,
+  type RuntimeCheckpointSerializableState,
+} from './runtime-checkpoint'
+import {
+  gatherCommandsRun,
+  gatherErrors,
+  gatherModifiedFiles,
+  gatherOutput,
+} from './runtime-summary'
 import { SpecEngine, createSpecEngine, type SpecGenerationContext } from '../spec/engine'
-import type { WorkerContextPack } from '../../forge/types'
+import { DefaultSpecLifecycleManager, type SpecLifecycleManager } from '../spec/lifecycle-manager'
+import { sanitizeText } from './stream-sanitizer'
+import { runPreflight } from './preflight'
+import { getGrammarsForModel } from '../providers/model-capabilities'
+import type { ChatMode } from '../chat-modes'
 
 /**
  * Runtime state
@@ -98,34 +121,8 @@ interface RuntimeState {
   messagesDirtySinceCheckpoint: boolean
   /** Tracks consecutive compaction failures to break death spirals */
   consecutiveCompactionFailures: number
-  forgeContextPack?: WorkerContextPack
-}
-
-function shouldInjectForgeContext(agent: AgentConfig): boolean {
-  return agent.name === 'builder' || agent.name === 'manager' || agent.name === 'executive'
-}
-
-function formatForgeContextPack(pack: WorkerContextPack): string {
-  return [
-    'Forge execution context',
-    `Project ID: ${pack.projectId}`,
-    `Delivery State ID: ${pack.deliveryStateId}`,
-    `Task ID: ${pack.taskId}`,
-    `Role: ${pack.role}`,
-    `Objective: ${pack.objective}`,
-    `Summary: ${pack.summary}`,
-    `Files In Scope: ${pack.filesInScope.join(', ') || 'None'}`,
-    `Routes In Scope: ${pack.routesInScope.join(', ') || 'None'}`,
-    `Constraints: ${pack.constraints.join(' | ') || 'None'}`,
-    `Acceptance Criteria: ${pack.acceptanceCriteria.map((criterion) => criterion.text).join(' | ') || 'None'}`,
-    `Test Requirements: ${pack.testRequirements.join(' | ') || 'None'}`,
-    `Review Requirements: ${pack.reviewRequirements.join(' | ') || 'None'}`,
-    `QA Requirements: ${pack.qaRequirements.join(' | ') || 'None'}`,
-    `Decisions: ${pack.decisions.map((decision) => decision.summary).join(' | ') || 'None'}`,
-    `Recent Changes Digest: ${pack.recentChangesDigest}`,
-    `Next Step Brief: ${pack.nextStepBrief ?? 'None'}`,
-    `Excluded Context: ${pack.excludedContext.join(' | ') || 'None'}`,
-  ].join('\n')
+  /** Consecutive narration turns without tool calls in build mode */
+  consecutiveNarrationTurns: number
 }
 
 export function buildActiveSpecSystemContent(spec: FormalSpecification): string {
@@ -167,19 +164,6 @@ export function buildActiveSpecSystemContent(spec: FormalSpecification): string 
   )
 
   return lines.join('\n')
-}
-
-function normalizeCheckpointToolCallFrequency(
-  entries: RuntimeCheckpointState['toolCallFrequency']
-): Array<{ key: string; count: number }> {
-  return (entries ?? []).flatMap((entry) => {
-    if (Array.isArray(entry)) {
-      const [key, count] = entry as RuntimeCheckpointLegacyToolCallFrequencyEntry
-      return typeof key === 'string' && typeof count === 'number' ? [{ key, count }] : []
-    }
-
-    return typeof entry?.key === 'string' && typeof entry.count === 'number' ? [entry] : []
-  })
 }
 
 type PendingSubtask = RuntimeCheckpointPendingSubtask
@@ -277,6 +261,12 @@ export interface RuntimeEvent {
   // SpecNative event fields
   spec?: FormalSpecification
   tier?: SpecTier
+  reconcile?: {
+    aligned: boolean
+    reason: string
+    gate?: string
+    detail?: string
+  }
   verification?: {
     passed: boolean
     results: Array<{
@@ -351,7 +341,9 @@ export class Runtime {
     }
   >()
   private specEngine: SpecEngine
+  private specLifecycleManager: SpecLifecycleManager
   private pendingPluginErrors: RuntimeEvent[] = []
+  private permissions!: PermissionManager
 
   constructor(
     provider: LLMProvider,
@@ -366,8 +358,12 @@ export class Runtime {
     this.provider = provider
     this.toolExecutors = toolExecutors
     this.config = { ...DEFAULT_RUNTIME_CONFIG, ...config }
+    this.permissions = config?.permissionManager ?? new PermissionManager()
     this.specEngine = createSpecEngine(this.config.specEngine)
     this.specEngine.setProvider(provider)
+    this.specLifecycleManager =
+      config?.specLifecycleManager ?? new DefaultSpecLifecycleManager(this.specEngine)
+    this.specLifecycleManager.setProvider(provider)
   }
 
   /**
@@ -392,7 +388,7 @@ export class Runtime {
     this.state = this.createInitialState(sessionID, [...initialMessages, userMessage])
 
     // SpecNative: Generate spec before execution if enabled
-    if (this.specEngine.isEnabled()) {
+    if (this.specLifecycleManager.isEnabled()) {
       const userText = this.extractUserText(userMessage)
       if (userText) {
         const shouldProceed = yield* this.generateAndHandleSpec(userText, agent, sessionID)
@@ -429,7 +425,7 @@ export class Runtime {
     if (!this.state) return true
 
     // Classify intent
-    const classification = await this.specEngine.classify(userMessage, {
+    const classification = await this.specLifecycleManager.classify(userMessage, {
       mode: agent.name,
     })
 
@@ -459,7 +455,7 @@ export class Runtime {
       model: agent.model ?? this.provider.config.defaultModel ?? 'unknown',
     }
 
-    const { spec } = await this.specEngine.generate(userMessage, specContext, tier)
+    const { spec } = await this.specLifecycleManager.generate(userMessage, specContext, tier)
 
     await this.executeHook(
       'spec.generate.after',
@@ -468,7 +464,7 @@ export class Runtime {
     )
 
     // Validate spec
-    const validation = await this.specEngine.validate(spec)
+    const validation = await this.specLifecycleManager.validate(spec)
 
     await this.executeHook(
       'spec.validate',
@@ -479,7 +475,7 @@ export class Runtime {
     let finalSpec = spec
 
     if (!validation.isValid) {
-      finalSpec = await this.specEngine.refine(spec, validation.errors)
+      finalSpec = await this.specLifecycleManager.refine(spec, validation.errors)
 
       await this.executeHook(
         'spec.refine',
@@ -507,7 +503,7 @@ export class Runtime {
       }
 
       finalSpec = approval.spec ?? finalSpec
-      finalSpec = this.specEngine.approve(finalSpec)
+      finalSpec = this.specLifecycleManager.approve(finalSpec)
 
       await this.executeHook(
         'spec.approve',
@@ -517,7 +513,7 @@ export class Runtime {
     } else if (tier === 'ambient') {
       // Auto-approve ambient specs based on config
       if (this.config.specEngine?.autoApproveAmbient !== false) {
-        finalSpec = this.specEngine.markExecuting(finalSpec)
+        finalSpec = this.specLifecycleManager.markExecuting(finalSpec)
       }
     }
 
@@ -593,7 +589,7 @@ export class Runtime {
       checkpointMessageSnapshot: null,
       messagesDirtySinceCheckpoint: true,
       consecutiveCompactionFailures: 0,
-      forgeContextPack: this.config.forgeContextPack,
+      consecutiveNarrationTurns: 0,
     }
   }
 
@@ -604,6 +600,23 @@ export class Runtime {
   ): AsyncGenerator<RuntimeEvent> {
     if (!this.state) {
       throw new Error('Runtime not initialized')
+    }
+
+    const preflightResult = runPreflight({
+      providerId: this.provider.name,
+      modelId: agent.model ?? this.provider.config.defaultModel ?? '',
+      chatMode: (this.config.chatMode as ChatMode) ?? 'ask',
+      // The user's explicit chat message is their intent — no separate
+      // plan-approval gate is needed at the runtime level.
+      hasApprovedPlan: true,
+      allowExperimental: this.config.allowExperimentalModels ?? false,
+    })
+    if (!preflightResult.ok) {
+      yield {
+        type: 'error',
+        error: `Preflight failed [${preflightResult.error.code}]: ${preflightResult.error.message}`,
+      }
+      return
     }
 
     const sessionID = this.state.sessionID
@@ -698,6 +711,27 @@ export class Runtime {
         }
         log.debug('Step completed', { step: this.state.step, finishReason: result.finishReason })
 
+        const isBuilding = this.config.chatMode === 'code' || this.config.chatMode === 'build'
+        const stepHadToolCalls = result.finishReason === 'tool-calls'
+        if (isBuilding) {
+          if (!stepHadToolCalls) {
+            this.state.consecutiveNarrationTurns++
+            if (this.state.consecutiveNarrationTurns >= 3) {
+              yield {
+                type: 'error',
+                error:
+                  'Agent completed its response without executing tools. ' +
+                  'If you expected file changes, try rephrasing your request or switching to a different mode.',
+              }
+              this.state.isComplete = true
+              await this.saveCheckpoint(agent.name, 'error')
+              return
+            }
+          } else {
+            this.state.consecutiveNarrationTurns = 0
+          }
+        }
+
         await this.executeHook(
           'step.end',
           { sessionID, step: this.state.step, agent, messageID: '' },
@@ -728,30 +762,8 @@ export class Runtime {
       // Only emit 'complete' if verification passed or there's no active spec
       // If verification failed, emit 'error' instead
       if (verificationOutcome.passed) {
-        // Spec/Forge reconciliation: block completion if spec and forge gates disagree
-        if (this.state.activeSpec) {
-          const { reconcileSpecAndForge } = await import('../spec/forge-reconciler')
-          const reconcile = reconcileSpecAndForge({
-            spec: this.state.activeSpec,
-            forge: this.state.forgeContextPack
-              ? {
-                  phase: this.state.forgeContextPack.phase,
-                  gates: this.state.forgeContextPack.gates,
-                }
-              : undefined,
-          })
-          if (!reconcile.aligned) {
-            yield {
-              type: 'error',
-              error: `Spec ↔ Forge misalignment: ${reconcile.reason}${
-                reconcile.gate ? ` (gate: ${reconcile.gate})` : ''
-              } — ${reconcile.detail ?? ''}`.trim(),
-            }
-            await this.saveCheckpoint(agent.name, 'error')
-            return
-          }
-        }
-
+        // Spec reconciliation: emit explicit misalignment event and only
+        // block completion when enforcement is enabled.
         log.info('Session completed', {
           steps: this.state.step,
           cost: this.state.cost,
@@ -799,7 +811,7 @@ export class Runtime {
   private cleanupSessionSingletons(sessionID: Identifier): void {
     snapshots.clear(sessionID)
     compaction.clearSummary(sessionID)
-    permissions.clearSession(sessionID)
+    this.permissions.clearSession(sessionID)
   }
 
   /**
@@ -1001,6 +1013,35 @@ export class Runtime {
     }
 
     if (fullContent) {
+      const declaredGrammars = getGrammarsForModel(this.provider.name, completionOptions.model)
+      const sanitized = sanitizeText(fullContent, {
+        providerId: this.provider.name,
+        modelId: completionOptions.model,
+        declaredGrammars,
+      })
+
+      if (sanitized.kind === 'error') {
+        yield {
+          type: 'error',
+          error: `Grammar leak detected: ${sanitized.error.kind} — ${JSON.stringify(sanitized.error)}`,
+        }
+        return { finishReason: 'error', messageID }
+      }
+
+      if (sanitized.kind === 'extracted') {
+        fullContent = sanitized.cleanText
+        for (const tc of sanitized.toolCalls) {
+          pendingToolCalls.push({
+            id: `extracted_${tc.name}_${Date.now()}`,
+            type: 'function',
+            function: {
+              name: tc.name,
+              arguments: JSON.stringify(tc.arguments),
+            },
+          })
+        }
+      }
+
       const textPart: TextPart = {
         id: ascending('part_'),
         messageID,
@@ -1047,7 +1088,7 @@ export class Runtime {
         return {
           toolCall: { ...toolCall, function: { ...toolCall.function, name: toolName } },
           parsedArgs,
-          dedupKey: this.createToolCallDedupKey(toolName, parsedArgs),
+          dedupKey: createToolCallDedupKey(toolName, parsedArgs),
         }
       })
 
@@ -1142,7 +1183,7 @@ export class Runtime {
               const error =
                 `Skipped duplicate tool call within step: ${toolName} ` + '(duplicate tool call)'
 
-              yield this.createToolResultEvent({
+              yield createToolResultEvent({
                 toolCallId: toolCall.id,
                 toolName,
                 args: parsedArgs,
@@ -1177,7 +1218,7 @@ export class Runtime {
                 `Reached maximum tool calls per step (${maxToolCallsPerStep}); ` +
                 `skipping additional tool call: ${toolName}`
 
-              yield this.createToolResultEvent({
+              yield createToolResultEvent({
                 toolCallId: toolCall.id,
                 toolName,
                 args: parsedArgs,
@@ -1223,7 +1264,7 @@ export class Runtime {
             const error =
               `Skipped duplicate tool call within step: ${toolName} ` + '(duplicate tool call)'
 
-            yield this.createToolResultEvent({
+            yield createToolResultEvent({
               toolCallId: toolCall.id,
               toolName,
               args: parsedArgs,
@@ -1258,7 +1299,7 @@ export class Runtime {
               `Reached maximum tool calls per step (${maxToolCallsPerStep}); ` +
               `skipping additional tool call: ${toolName}`
 
-            yield this.createToolResultEvent({
+            yield createToolResultEvent({
               toolCallId: toolCall.id,
               toolName,
               args: parsedArgs,
@@ -1337,7 +1378,7 @@ export class Runtime {
       args = JSON.parse(toolCall.function.arguments) as Record<string, unknown>
     } catch {
       const error = `Invalid tool arguments for ${toolName}`
-      yield this.createToolResultEvent({
+      yield createToolResultEvent({
         toolCallId: toolCall.id,
         toolName,
         args: {},
@@ -1357,40 +1398,45 @@ export class Runtime {
     if (modeRules && modeRules.length > 0) {
       const agentTool = AGENT_TOOLS.find((t) => t.function.name === toolName)
       if (agentTool?.capability) {
-        const primaryTarget = patterns[0] ?? undefined
-        const execResult = evaluate(modeRules, {
-          capability: agentTool.capability,
-          target: primaryTarget,
-          mode: this.config.chatMode ?? 'code',
-          agentId: agent.name,
-        })
-        // Always emit observability event for the decision
-        yield {
-          type: 'permission_decision',
-          permission: {
-            tool: toolName,
+        const targets = patterns.length > 0 ? patterns : [undefined]
+        for (const target of targets) {
+          const execResult = evaluate(modeRules, {
             capability: agentTool.capability,
-            target: primaryTarget,
-            decision: execResult.decision,
-            source: execResult.rule?.source,
-            reason: execResult.reason,
+            target,
             mode: this.config.chatMode ?? 'code',
             agentId: agent.name,
-          },
-        }
-
-        if (execResult.decision === 'deny') {
-          const error = `Permission denied by ${execResult.rule?.source ?? 'mode'} rule: ${execResult.reason}`
-          log.warn('Capability denied at execution', { tool: toolName, reason: execResult.reason })
-          yield this.createToolResultEvent({
-            toolCallId: toolCall.id,
-            toolName,
-            args,
-            output: '',
-            error,
-            startedAt,
           })
-          return { output: '', error, argsUsed: args }
+          yield {
+            type: 'permission_decision',
+            permission: {
+              tool: toolName,
+              capability: agentTool.capability,
+              target,
+              decision: execResult.decision,
+              source: execResult.rule?.source,
+              reason: execResult.reason,
+              mode: this.config.chatMode ?? 'code',
+              agentId: agent.name,
+            },
+          }
+
+          if (execResult.decision === 'deny') {
+            const error = `Permission denied by ${execResult.rule?.source ?? 'mode'} rule: ${execResult.reason}`
+            log.warn('Capability denied at execution', {
+              tool: toolName,
+              target,
+              reason: execResult.reason,
+            })
+            yield createToolResultEvent({
+              toolCallId: toolCall.id,
+              toolName,
+              args,
+              output: '',
+              error,
+              startedAt,
+            })
+            return { output: '', error, argsUsed: args }
+          }
         }
       }
     }
@@ -1418,7 +1464,7 @@ export class Runtime {
         content: error,
         interrupt: { toolName, riskTier, decision: 'reject', reason: 'Risk policy deny' },
       }
-      yield this.createToolResultEvent({
+      yield createToolResultEvent({
         toolCallId: toolCall.id,
         toolName,
         args,
@@ -1447,30 +1493,17 @@ export class Runtime {
       args = interruptResult.args
     }
 
-    const effectivePermissions = mergePermissions(
-      agent.permission,
-      permissions.getSessionPermissions(this.state.sessionID) ?? {}
-    )
+    // Session-level permission overrides from automation policy.
+    // These grant elevated approval for specific tool+pattern combinations
+    // (e.g. auto-approve specific command prefixes). The capability-based
+    // ruleset already handled deny decisions above — this layer only
+    // adds allow overrides for session-scoped automation settings.
+    const sessionPerms = this.permissions.getSessionPermissions(this.state.sessionID) ?? {}
 
-    for (const pattern of patterns) {
-      const decision = checkPermission(effectivePermissions, toolName, pattern || undefined)
-      if (decision === 'deny') {
-        yield this.createToolResultEvent({
-          toolCallId: toolCall.id,
-          toolName,
-          args,
-          output: '',
-          error: `Permission denied for tool: ${toolName}${pattern ? ` (${pattern})` : ''}`,
-          startedAt,
-        })
-        log.warn('Permission denied', { tool: toolName, step: this.state.step })
-        return { output: '', error: `Permission denied for tool: ${toolName}`, argsUsed: args }
-      }
-    }
-
-    const askPatterns = patterns.filter(
-      (pattern) => checkPermission(effectivePermissions, toolName, pattern || undefined) === 'ask'
-    )
+    const askPatterns = patterns.filter((pattern) => {
+      const sessionDecision = checkPermission(sessionPerms, toolName, pattern || undefined)
+      return Object.keys(sessionPerms).length > 0 && sessionDecision === 'ask'
+    })
 
     if (askPatterns.length > 0) {
       const primaryPattern = askPatterns[0]
@@ -1501,7 +1534,7 @@ export class Runtime {
       }
 
       for (const pattern of askPatterns) {
-        const result = await permissions.request(
+        const result = await this.permissions.request(
           this.state.sessionID,
           messageID,
           toolName,
@@ -1526,7 +1559,7 @@ export class Runtime {
 
     const scopeViolation = this.getSpecScopeViolation(toolName, args)
     if (scopeViolation) {
-      yield this.createToolResultEvent({
+      yield createToolResultEvent({
         toolCallId: toolCall.id,
         toolName,
         args,
@@ -1548,7 +1581,7 @@ export class Runtime {
         typeof description !== 'string'
       ) {
         const error = 'Invalid task tool arguments'
-        yield this.createToolResultEvent({
+        yield createToolResultEvent({
           toolCallId: toolCall.id,
           toolName,
           args,
@@ -1563,7 +1596,7 @@ export class Runtime {
       const maxDepth = this.config.maxSubagentDepth ?? 0
       if (currentDepth >= maxDepth) {
         const error = 'Maximum subagent depth reached'
-        yield this.createToolResultEvent({
+        yield createToolResultEvent({
           toolCallId: toolCall.id,
           toolName,
           args,
@@ -1598,7 +1631,7 @@ export class Runtime {
     const executor = this.toolExecutors.get(toolName)
     if (!executor) {
       const error = `Unknown tool: ${toolName}`
-      yield this.createToolResultEvent({
+      yield createToolResultEvent({
         toolCallId: toolCall.id,
         toolName,
         args,
@@ -1609,18 +1642,15 @@ export class Runtime {
       return { output: '', error, argsUsed: args }
     }
 
-    const cacheKey = this.createToolCallDedupKey(toolName, args)
-    if (
-      this.config.enableToolCallIdempotencyCache &&
-      this.isToolIdempotencyCacheAllowed(toolName)
-    ) {
+    const cacheKey = createToolCallDedupKey(toolName, args)
+    if (this.config.enableToolCallIdempotencyCache && isToolIdempotencyCacheAllowed(toolName)) {
       const cached = this.toolCallResultCache.get(cacheKey)
       if (cached) {
         yield {
           type: 'status',
           content: `Idempotency cache hit for ${toolName}; reusing prior result`,
         }
-        yield this.createToolResultEvent({
+        yield createToolResultEvent({
           toolCallId: toolCall.id,
           toolName,
           args: cached.argsUsed ?? args,
@@ -1634,7 +1664,7 @@ export class Runtime {
 
     let lastError: string | undefined
     const maxRetries = Math.max(0, this.config.maxToolExecutionRetries ?? 0)
-    const retryableTool = this.isToolRetryAllowed(toolName)
+    const retryableTool = isToolRetryAllowed(toolName)
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
@@ -1661,12 +1691,12 @@ export class Runtime {
         if (
           this.config.enableToolCallIdempotencyCache &&
           !result.error &&
-          this.isToolIdempotencyCacheAllowed(toolName)
+          isToolIdempotencyCacheAllowed(toolName)
         ) {
           this.toolCallResultCache.set(cacheKey, { ...result, argsUsed: args })
         }
 
-        yield this.createToolResultEvent({
+        yield createToolResultEvent({
           toolCallId: toolCall.id,
           toolName,
           args,
@@ -1718,19 +1748,18 @@ export class Runtime {
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Tool execution failed'
         lastError = errorMessage
-        const canRetry =
-          retryableTool && attempt < maxRetries && this.isRetryableToolError(errorMessage)
+        const canRetry = retryableTool && attempt < maxRetries && isRetryableToolError(errorMessage)
 
         if (canRetry) {
           yield {
             type: 'status',
             content: `Retrying ${toolName} after transient failure (${attempt + 1}/${maxRetries})`,
           }
-          await this.sleep(this.config.toolRetryBackoffMs ?? 200)
+          await sleep(this.config.toolRetryBackoffMs ?? 200)
           continue
         }
 
-        yield this.createToolResultEvent({
+        yield createToolResultEvent({
           toolCallId: toolCall.id,
           toolName,
           args,
@@ -1901,7 +1930,7 @@ export class Runtime {
         })
 
         yield {
-          ...this.createToolResultEvent({
+          ...createToolResultEvent({
             toolCallId: pending.toolCallId ?? subtask.id,
             toolName: 'task',
             args: pending.input ?? {
@@ -1939,7 +1968,7 @@ export class Runtime {
         })
 
         yield {
-          ...this.createToolResultEvent({
+          ...createToolResultEvent({
             toolCallId: pending.toolCallId ?? subtask.id,
             toolName: 'task',
             args: pending.input ?? {
@@ -2040,6 +2069,9 @@ export class Runtime {
       ...this.config,
       subagentDepth: currentDepth + 1,
       permissionRules: narrowedRules.length > 0 ? narrowedRules : this.config.permissionRules,
+      // Subagents execute a single scoped task — spec generation and
+      // verification are handled by the parent session, not children.
+      specEngine: { enabled: false },
     })
     const parentAbortSignal = this.state?.abortController.signal
     const abortChild = () => childRuntime.abort()
@@ -2273,13 +2305,6 @@ export class Runtime {
       messages.push({ role: 'system', content: latestUserWithSystem.system })
     }
 
-    if (this.state.forgeContextPack && shouldInjectForgeContext(agent)) {
-      messages.push({
-        role: 'system',
-        content: formatForgeContextPack(this.state.forgeContextPack),
-      })
-    }
-
     if (
       this.state.activeSpec &&
       (this.state.activeSpec.status === 'executing' || this.state.activeSpec.status === 'approved')
@@ -2383,11 +2408,9 @@ export class Runtime {
     }
 
     return Array.from(byName.values()).filter((tool) => {
-      // Layer 1: existing agent permission check (name-pattern based)
-      const agentDecision = checkPermission(agent.permission, tool.function.name)
-      if (agentDecision === 'deny') return false
-
-      // Layer 2: capability-based mode rule evaluation (structural enforcement)
+      // Capability-based mode rule evaluation (unified permission system).
+      // Rules are defined per-mode in lib/agent/permission/mode-rulesets.ts
+      // and evaluated with last-rule-wins semantics.
       const rules = this.config.permissionRules
       if (rules && rules.length > 0) {
         const agentTool = tool as AgentToolDefinition
@@ -2513,7 +2536,7 @@ export class Runtime {
           reason: 'No interrupt handler configured — fail-deny policy',
         },
       }
-      yield this.createToolResultEvent({
+      yield createToolResultEvent({
         toolCallId: request.toolCallId ?? request.messageID,
         toolName: request.toolName,
         args: request.args,
@@ -2539,7 +2562,7 @@ export class Runtime {
         },
       }
       yield {
-        ...this.createToolResultEvent({
+        ...createToolResultEvent({
           toolCallId: request.toolCallId ?? request.messageID,
           toolName: request.toolName,
           args: request.args,
@@ -2563,7 +2586,7 @@ export class Runtime {
           reason: result.reason,
         },
       }
-      yield this.createToolResultEvent({
+      yield createToolResultEvent({
         toolCallId: request.toolCallId ?? request.messageID,
         toolName: request.toolName,
         args: request.args,
@@ -2588,77 +2611,6 @@ export class Runtime {
       },
     }
     return { approved: true, args: nextArgs }
-  }
-
-  private isToolRetryAllowed(toolName: string): boolean {
-    return !['write_files', 'run_command', 'task', 'update_memory_bank'].includes(toolName)
-  }
-
-  private isToolIdempotencyCacheAllowed(toolName: string): boolean {
-    return !['write_files', 'run_command', 'task', 'update_memory_bank'].includes(toolName)
-  }
-
-  private createToolResultEvent(args: {
-    toolCallId: string
-    toolName: string
-    args: Record<string, unknown>
-    output: string
-    error?: string
-    startedAt?: number
-    finishedAt?: number
-  }): RuntimeEvent {
-    const finishedAt = args.finishedAt ?? Date.now()
-    const startedAt = args.startedAt ?? finishedAt
-    return {
-      type: 'tool_result',
-      toolResult: {
-        toolCallId: args.toolCallId,
-        toolName: args.toolName,
-        args: args.args,
-        output: args.output,
-        ...(args.error ? { error: args.error } : {}),
-        durationMs: Math.max(0, finishedAt - startedAt),
-      },
-    }
-  }
-
-  private isRetryableToolError(errorMessage: string): boolean {
-    const message = errorMessage.toLowerCase()
-    return (
-      message.includes('timeout') ||
-      message.includes('timed out') ||
-      message.includes('econnreset') ||
-      message.includes('eai_again') ||
-      message.includes('temporar') ||
-      message.includes('429') ||
-      message.includes('rate limit')
-    )
-  }
-
-  private async sleep(ms: number): Promise<void> {
-    if (ms <= 0) return
-    await new Promise((resolve) => setTimeout(resolve, ms))
-  }
-
-  private createToolCallDedupKey(toolName: string, args: Record<string, unknown>): string {
-    return `${toolName}:${this.normalizeToolArgs(args)}`
-  }
-
-  private normalizeToolArgs(value: unknown): string {
-    if (value === null || typeof value !== 'object') {
-      return JSON.stringify(value)
-    }
-
-    if (Array.isArray(value)) {
-      return `[${value.map((item) => this.normalizeToolArgs(item)).join(',')}]`
-    }
-
-    const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
-      a.localeCompare(b)
-    )
-    return `{${entries
-      .map(([key, entryValue]) => `${JSON.stringify(key)}:${this.normalizeToolArgs(entryValue)}`)
-      .join(',')}}`
   }
 
   private applyToolLoopGuard(toolKeysForStep: string[]): { triggered: boolean; warned: boolean } {
@@ -2739,36 +2691,11 @@ export class Runtime {
   private detectCyclicPattern(): boolean {
     if (!this.state) return false
 
-    const history = this.state.toolCallHistory
-    const threshold = this.config.toolLoopThreshold ?? 3
-
-    // Need at least 4 entries to detect a cycle (A→B→A→B)
-    if (history.length < 4) return false
-
-    // Check for A→B→A→B pattern in recent history
-    const recent = history.slice(-4)
-    const [a, b, c, d] = recent
-
-    if (a === c && b === d && a !== b) {
-      // Detected A→B→A→B pattern
-      const toolFreq = this.state.toolCallFrequency
-      const toolNames = a?.split('\x1f').map((k) => k.split(':')[0]) ?? []
-
-      // Only flag if tools are being called frequently
-      const highFreqTools = toolNames.filter((name) => {
-        let count = 0
-        for (const [key, freq] of toolFreq) {
-          if (key.startsWith(`${name}:`) && freq > threshold) {
-            count++
-          }
-        }
-        return count > 0
-      })
-
-      return highFreqTools.length > 0
-    }
-
-    return false
+    return detectCyclicToolPattern({
+      history: this.state.toolCallHistory,
+      toolCallFrequency: this.state.toolCallFrequency,
+      threshold: this.config.toolLoopThreshold ?? 3,
+    })
   }
 
   /**
@@ -2782,58 +2709,18 @@ export class Runtime {
   private serializeStateForCheckpoint(): RuntimeCheckpointState | null {
     if (!this.state) return null
 
-    // Only clone messages when they've actually changed since last checkpoint
-    if (this.state.messagesDirtySinceCheckpoint || !this.state.checkpointMessageSnapshot) {
-      this.state.checkpointMessageSnapshot = structuredClone(this.state.messages)
-      this.state.messagesDirtySinceCheckpoint = false
-    }
-
-    return {
-      sessionID: this.state.sessionID,
-      messages: this.state.checkpointMessageSnapshot,
-      step: this.state.step,
-      isComplete: this.state.isComplete,
-      isLastStep: this.state.isLastStep,
-      pendingSubtasks: structuredClone(this.state.pendingSubtasks),
-      cost: this.state.cost,
-      tokens: { ...this.state.tokens },
-      lastToolLoopSignature: this.state.lastToolLoopSignature,
-      toolLoopStreak: this.state.toolLoopStreak,
-      toolCallHistory: this.state.toolCallHistory,
-      toolCallFrequency: Array.from(this.state.toolCallFrequency.entries()).map(([key, count]) => ({
-        key,
-        count,
-      })),
-      cyclicPatternDetected: this.state.cyclicPatternDetected,
-      lastInterventionStep: this.state.lastInterventionStep,
-      consecutiveCompactionFailures: this.state.consecutiveCompactionFailures,
-    }
+    const serialized = serializeRuntimeCheckpointState(
+      this.state as RuntimeCheckpointSerializableState
+    )
+    this.state.checkpointMessageSnapshot = serialized.messages
+    this.state.messagesDirtySinceCheckpoint = false
+    return serialized
   }
 
   private restoreStateFromCheckpoint(checkpointState: RuntimeCheckpointState): RuntimeState {
     return {
-      sessionID: checkpointState.sessionID,
-      messages: structuredClone(checkpointState.messages),
-      step: checkpointState.step,
-      isComplete: checkpointState.isComplete,
-      isLastStep: checkpointState.isLastStep,
+      ...restoreRuntimeCheckpointState({ checkpointState, config: this.config }),
       abortController: new AbortController(),
-      pendingSubtasks: structuredClone(checkpointState.pendingSubtasks) as PendingSubtask[],
-      cost: checkpointState.cost,
-      tokens: { ...checkpointState.tokens },
-      lastToolLoopSignature: checkpointState.lastToolLoopSignature,
-      toolLoopStreak: checkpointState.toolLoopStreak,
-      toolCallHistory: checkpointState.toolCallHistory ?? [],
-      toolCallFrequency: new Map(
-        normalizeCheckpointToolCallFrequency(checkpointState.toolCallFrequency).map(
-          ({ key, count }) => [key, count]
-        )
-      ),
-      cyclicPatternDetected: checkpointState.cyclicPatternDetected ?? false,
-      lastInterventionStep: checkpointState.lastInterventionStep ?? 0,
-      checkpointMessageSnapshot: structuredClone(checkpointState.messages),
-      messagesDirtySinceCheckpoint: false,
-      consecutiveCompactionFailures: checkpointState.consecutiveCompactionFailures ?? 0,
     }
   }
 
@@ -2923,14 +2810,14 @@ export class Runtime {
 
     // Gather execution results
     const executionResults = {
-      filesModified: this.gatherModifiedFiles(),
-      commandsRun: this.gatherCommandsRun(),
-      errors: this.gatherErrors(),
-      output: this.gatherOutput(),
+      filesModified: gatherModifiedFiles(this.state.messages),
+      commandsRun: gatherCommandsRun(this.state.messages),
+      errors: gatherErrors(this.state.messages),
+      output: gatherOutput(this.state.messages),
     }
 
     // Execute verification
-    const verification = await this.specEngine.verify(spec, executionResults)
+    const verification = await this.specLifecycleManager.verify(spec, executionResults)
 
     await this.executeHook(
       'spec.verify',
@@ -2940,9 +2827,12 @@ export class Runtime {
 
     // Update spec status based on verification
     if (verification.passed) {
-      this.state.activeSpec = this.specEngine.markVerified(spec, verification.criterionResults)
+      this.state.activeSpec = this.specLifecycleManager.markVerified(
+        spec,
+        verification.criterionResults
+      )
     } else {
-      this.state.activeSpec = this.specEngine.markFailed(spec, verification.summary)
+      this.state.activeSpec = this.specLifecycleManager.markFailed(spec, verification.summary)
     }
 
     await this.executeHook(
@@ -2966,113 +2856,6 @@ export class Runtime {
     }
 
     return { passed: verification.passed, summary: verification.summary }
-  }
-
-  /**
-   * Gather modified files from tool calls
-   */
-  private gatherModifiedFiles(): string[] {
-    if (!this.state) return []
-
-    const modifiedFiles: string[] = []
-
-    for (const message of this.state.messages) {
-      if (message.role === 'assistant') {
-        for (const part of message.parts) {
-          if (part.type === 'tool' && part.state.status === 'completed') {
-            // Extract file paths from tool calls
-            const input = part.state.input as Record<string, unknown> | undefined
-            if (input) {
-              if (Array.isArray(input.paths)) {
-                modifiedFiles.push(...input.paths.map((p) => String(p)))
-              }
-              if (Array.isArray(input.files)) {
-                modifiedFiles.push(
-                  ...input.files.map((f: { path?: string }) => f.path || '').filter(Boolean)
-                )
-              }
-              if (typeof input.path === 'string') {
-                modifiedFiles.push(input.path)
-              }
-              if (typeof input.file_path === 'string') {
-                modifiedFiles.push(input.file_path)
-              }
-            }
-          }
-        }
-      }
-    }
-
-    return [...new Set(modifiedFiles)]
-  }
-
-  /**
-   * Gather commands run from tool calls
-   */
-  private gatherCommandsRun(): string[] {
-    if (!this.state) return []
-
-    const commands: string[] = []
-
-    for (const message of this.state.messages) {
-      if (message.role === 'assistant') {
-        for (const part of message.parts) {
-          if (part.type === 'tool' && part.tool === 'run_command') {
-            const input = part.state.input as { command?: string } | undefined
-            if (input?.command) {
-              commands.push(input.command)
-            }
-          }
-        }
-      }
-    }
-
-    return commands
-  }
-
-  /**
-   * Gather errors from execution
-   */
-  private gatherErrors(): string[] {
-    if (!this.state) return []
-
-    const errors: string[] = []
-
-    for (const message of this.state.messages) {
-      if (message.role === 'assistant') {
-        for (const part of message.parts) {
-          if (part.type === 'tool' && part.state.status === 'error') {
-            const errorState = part.state as { error?: string }
-            if (errorState.error) {
-              errors.push(errorState.error)
-            }
-          }
-        }
-      }
-    }
-
-    return errors
-  }
-
-  /**
-   * Gather output from assistant messages
-   */
-  private gatherOutput(): string {
-    if (!this.state) return ''
-
-    const outputs: string[] = []
-
-    for (const message of this.state.messages) {
-      if (message.role === 'assistant') {
-        for (const part of message.parts) {
-          if (part.type === 'text') {
-            outputs.push(part.text)
-          }
-        }
-      }
-    }
-
-    return outputs.join('\n')
   }
 
   /**

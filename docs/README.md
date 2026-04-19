@@ -8,7 +8,7 @@ This directory contains the current source-of-truth docs for the Panda web app.
 - [README.md](../README.md) - project overview and quick start
 - [VALIDATION_TASKS.md](../VALIDATION_TASKS.md) - current verification record
 - [docs/AGENTIC_HARNESS.md](./AGENTIC_HARNESS.md) - harness architecture and
-  Forge delivery control plane
+  delivery control plane
 - [docs/CHAT_TRANSCRIPT_POLICY.md](./CHAT_TRANSCRIPT_POLICY.md) - transcript vs
   inspector behavior
 - [docs/DEPLOYMENT.md](./DEPLOYMENT.md) - production deployment guide

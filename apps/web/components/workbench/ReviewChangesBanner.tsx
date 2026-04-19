@@ -44,7 +44,7 @@ export function ReviewChangesBanner({
             <span className="text-foreground">
               {changedFilesCount} file{changedFilesCount !== 1 ? 's' : ''} with pending changes
             </span>
-            <span className="status-badge" data-status={status}>
+            <span className="badge-md" data-status={status}>
               {status === 'running' && <IconSpinner className="h-2.5 w-2.5 animate-spin" />}
               {STATUS_LABELS[status] ?? status}
             </span>

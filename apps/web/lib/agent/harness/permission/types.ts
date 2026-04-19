@@ -3,6 +3,16 @@ import type { ChatMode } from '@/lib/agent/chat-modes'
 export type Decision = 'allow' | 'ask' | 'deny'
 export type Capability = 'read' | 'search' | 'edit' | 'exec' | 'plan_exit' | 'memory' | 'mcp'
 
+export const ALL_CAPABILITIES: readonly Capability[] = [
+  'read',
+  'search',
+  'edit',
+  'exec',
+  'plan_exit',
+  'memory',
+  'mcp',
+] as const
+
 export interface PermissionRule {
   capability: Capability | '*'
   /** file glob for edit capability, command prefix for exec capability */

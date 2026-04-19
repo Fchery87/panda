@@ -10,7 +10,7 @@
 
 'use client'
 
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import { startTransition, useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useMutation, useConvex, useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
@@ -772,34 +772,36 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           const flush = () => {
             pendingPaint = false
             rafFlushRef.current = null
-            setMessages((prev) => {
-              const existingIndex = prev.findIndex((m) => m.id === assistantMessageId)
-              if (existingIndex >= 0) {
-                const updated = [...prev]
-                updated[existingIndex] = {
-                  ...updated[existingIndex],
-                  content: assistantContent,
-                  reasoningContent: runtimeSettings.showReasoningPanel ? assistantReasoning : '',
-                  mode,
-                  createdAt: updated[existingIndex]!.createdAt,
-                  toolCalls: assistantToolCalls,
-                  annotations: buildUsageAnnotations(),
+            startTransition(() => {
+              setMessages((prev) => {
+                const existingIndex = prev.findIndex((m) => m.id === assistantMessageId)
+                if (existingIndex >= 0) {
+                  const updated = [...prev]
+                  updated[existingIndex] = {
+                    ...updated[existingIndex],
+                    content: assistantContent,
+                    reasoningContent: runtimeSettings.showReasoningPanel ? assistantReasoning : '',
+                    mode,
+                    createdAt: updated[existingIndex]!.createdAt,
+                    toolCalls: assistantToolCalls,
+                    annotations: buildUsageAnnotations(),
+                  }
+                  return updated
                 }
-                return updated
-              }
-              return [
-                ...prev,
-                {
-                  id: assistantMessageId,
-                  role: 'assistant',
-                  content: assistantContent,
-                  reasoningContent: runtimeSettings.showReasoningPanel ? assistantReasoning : '',
-                  mode,
-                  createdAt: Date.now(),
-                  toolCalls: assistantToolCalls,
-                  annotations: buildUsageAnnotations(),
-                },
-              ]
+                return [
+                  ...prev,
+                  {
+                    id: assistantMessageId,
+                    role: 'assistant',
+                    content: assistantContent,
+                    reasoningContent: runtimeSettings.showReasoningPanel ? assistantReasoning : '',
+                    mode,
+                    createdAt: Date.now(),
+                    toolCalls: assistantToolCalls,
+                    annotations: buildUsageAnnotations(),
+                  },
+                ]
+              })
             })
           }
           if (typeof requestAnimationFrame === 'function') {

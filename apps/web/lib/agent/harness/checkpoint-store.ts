@@ -1,4 +1,5 @@
 import type { AgentConfig, Identifier, Message, SubtaskPart } from './types'
+import type { FormalSpecification } from '../spec/types'
 
 export interface RuntimeCheckpointPendingSubtask {
   part: SubtaskPart
@@ -40,6 +41,8 @@ export interface RuntimeCheckpointState {
   cyclicPatternDetected?: boolean
   lastInterventionStep?: number
   consecutiveCompactionFailures?: number
+  consecutiveNarrationTurns?: number
+  activeSpec?: FormalSpecification
 }
 
 export type RuntimeCheckpointReason = 'step' | 'complete' | 'error'

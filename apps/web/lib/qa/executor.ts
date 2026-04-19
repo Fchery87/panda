@@ -2,8 +2,7 @@ import type { Browser, BrowserContext, Page } from '@playwright/test'
 import { chromium } from '@playwright/test'
 import path from 'node:path'
 import { createBrowserSessionKey } from './browser-session'
-import { createBrowserSessionSupervisor } from '@/lib/forge/browser-session-supervisor'
-import { deriveForgeAffectedRoutes } from '@/lib/forge/route-impact'
+import { deriveAffectedRoutes } from './route-impact'
 import { deriveQaScenarioNames } from './scenario-catalog'
 
 type QaSessionRecord = {
@@ -47,28 +46,26 @@ export function buildBrowserQaRunInput(args: {
   baseUrl?: string
 } {
   const environment = args.environment ?? 'local'
-  const supervisor = createBrowserSessionSupervisor()
-  const sessionPlan = supervisor.resolveRunStrategy({
-    projectId: args.projectId,
-    environment,
-    now: args.now ?? Date.now(),
-    existingSession: args.existingSession ?? null,
-  })
+  const existingSession = args.existingSession
+  const sessionStrategy: 'reuse' | 'fresh' =
+    existingSession &&
+    existingSession.status === 'ready' &&
+    (!existingSession.leaseExpiresAt || existingSession.leaseExpiresAt > (args.now ?? Date.now()))
+      ? 'reuse'
+      : 'fresh'
   const urlsTested =
-    args.urlsTested.length > 0
-      ? args.urlsTested
-      : deriveForgeAffectedRoutes(args.filesInScope ?? [])
+    args.urlsTested.length > 0 ? args.urlsTested : deriveAffectedRoutes(args.filesInScope ?? [])
   const scenarioNames = deriveQaScenarioNames({ routes: urlsTested })
 
   return {
     browserSessionKey:
-      sessionPlan.browserSessionKey ||
+      existingSession?.browserSessionKey ||
       createBrowserSessionKey({
         projectId: args.projectId,
         chatId: args.chatId,
         taskId: args.taskId,
       }),
-    sessionStrategy: sessionPlan.strategy,
+    sessionStrategy,
     environment,
     urlsTested,
     flowNames: args.flowNames.length > 0 ? args.flowNames : scenarioNames,

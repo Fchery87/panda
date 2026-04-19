@@ -196,11 +196,11 @@ describe('transcript blocks', () => {
     expect(policy.inspectorOwns).toContain('snapshots')
   })
 
-  test('exposes surfaced Panda transcript modes as Plan, Build, and Builder', () => {
+  test('exposes surfaced Panda transcript modes as Plan, Code, and Build', () => {
     expect(getSurfacedTranscriptModePolicies().map((policy) => policy.surfaceLabel)).toEqual([
       'Plan',
+      'Code',
       'Build',
-      'Builder',
     ])
   })
 })

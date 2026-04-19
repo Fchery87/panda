@@ -125,7 +125,7 @@ export function DiffTab({
           <span className="text-foreground">
             {pendingFiles} file{pendingFiles !== 1 ? 's' : ''} changed by {agentLabel}
           </span>
-          <span className="status-badge" data-status="review">
+          <span className="badge-md" data-status="review">
             Review Required
           </span>
         </div>
@@ -314,7 +314,7 @@ export function DiffTab({
                                 </>
                               ) : (
                                 <span
-                                  className="status-badge"
+                                  className="badge-md"
                                   data-status={hunk.status === 'accepted' ? 'complete' : 'failed'}
                                 >
                                   {hunk.status}

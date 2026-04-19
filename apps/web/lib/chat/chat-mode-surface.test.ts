@@ -15,7 +15,7 @@ describe('chat mode surface presentation', () => {
     })
   })
 
-  test('keeps ask as read-only Q&A and code as coordinated Build execution', () => {
+  test('keeps ask as read-only Q&A and code as coordinated Code execution', () => {
     expect(getChatModeSurfacePresentation('ask')).toMatchObject({
       label: 'Ask',
       shortLabel: 'Ask',
@@ -23,28 +23,28 @@ describe('chat mode surface presentation', () => {
       advanced: false,
     })
     expect(getChatModeSurfacePresentation('code')).toMatchObject({
-      label: 'Build',
-      shortLabel: 'Build',
-      description: 'Execute an approved plan with coordinated delivery across the workspace.',
+      label: 'Code',
+      shortLabel: 'Code',
+      description: 'Execute code changes directly with read, write, and command access.',
       advanced: false,
     })
   })
 
-  test('keeps builder visible through an advanced-only direct execution presentation', () => {
+  test('keeps build visible through an advanced-only direct execution presentation', () => {
     expect(getChatModeSurfacePresentation('build')).toMatchObject({
-      label: 'Builder',
-      shortLabel: 'Bldr',
-      description: 'Direct expert execution when you want the specialist to do the work.',
+      label: 'Build',
+      shortLabel: 'Build',
+      description: 'Full-access mode for direct expert execution of complex tasks.',
       advanced: true,
     })
   })
 
-  test('exposes Plan and Build as the primary picker options and Builder as advanced', () => {
+  test('exposes Plan and Code as the primary picker options and Build as advanced', () => {
     expect(getPrimaryChatModeSurfaceOptions().map((option) => option.label)).toEqual([
       'Plan',
-      'Build',
+      'Code',
     ])
-    expect(getAdvancedChatModeSurfaceOptions().map((option) => option.label)).toEqual(['Builder'])
+    expect(getAdvancedChatModeSurfaceOptions().map((option) => option.label)).toEqual(['Build'])
   })
 
   test('returns fresh presentation objects so caller mutation does not leak', () => {
@@ -61,7 +61,7 @@ describe('chat mode surface presentation', () => {
 
     expect(getPrimaryChatModeSurfaceOptions().map((option) => option.label)).toEqual([
       'Plan',
-      'Build',
+      'Code',
     ])
   })
 })

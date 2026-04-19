@@ -65,7 +65,7 @@ export function TaskHistoryPane({ tasks = [], onOpenTask }: TaskHistoryPaneProps
             <div className="min-w-0 flex-1">
               <p className="truncate font-mono text-xs text-foreground">{task.title}</p>
               <div className="mt-0.5 flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
-                <span className="status-badge" data-status={task.status}>
+                <span className="badge-md" data-status={task.status}>
                   {task.status}
                 </span>
                 {task.changedFiles > 0 && <span>{task.changedFiles} files</span>}

@@ -102,7 +102,7 @@ export function StatusBar({
   return (
     <footer
       className={cn(
-        'bg-surface-1 flex h-6 items-center justify-between border-t border-border',
+        'surface-1 flex h-6 items-center justify-between border-t border-border',
         'px-3 font-mono text-code-xs text-muted-foreground',
         className
       )}

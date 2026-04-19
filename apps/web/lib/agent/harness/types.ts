@@ -13,11 +13,13 @@
 import type { ToolDefinition } from '../../llm/types'
 import type { CheckpointStore } from './checkpoint-store'
 import type { FormalSpecification, SpecEngineConfig, SpecTier } from '../spec/types'
-import type { WorkerContextPack } from '../../forge/types'
 import type { ChatMode } from '../chat-modes'
-import type { PermissionRule, Capability } from './permission/types'
+import type { PermissionRule, Capability, Decision } from './permission/types'
+import type { PermissionManager } from './permissions'
+import type { SpecLifecycleManager } from '../spec/lifecycle-manager'
 
 export type { ToolDefinition } from '../../llm/types'
+export type { Decision } from './permission/types'
 
 /**
  * Unique identifier for messages, parts, sessions
@@ -32,7 +34,7 @@ export type AgentMode = 'primary' | 'subagent' | 'all'
 /**
  * Permission decision for tool access
  */
-export type PermissionDecision = 'allow' | 'deny' | 'ask'
+export type PermissionDecision = Decision
 
 /**
  * Permission configuration - maps tool patterns to decisions
@@ -421,12 +423,16 @@ export interface RuntimeConfig {
   streamRetryBackoffMs?: number
   /** Timeout in ms for individual tool executions (default: 300000 = 5 minutes) */
   toolExecutionTimeoutMs?: number
-  /** Prebuilt Forge execution context for builder/manager/executive runs */
-  forgeContextPack?: WorkerContextPack
   /** Active chat mode — used for capability-based tool filtering */
   chatMode?: ChatMode
+  /** Allow experimental/unverified models in build modes */
+  allowExperimentalModels?: boolean
   /** Ordered permission rules evaluated with last-rule-wins semantics to filter tools */
   permissionRules?: PermissionRule[]
+  /** Per-runtime permission manager instance (replaces singleton usage) */
+  permissionManager?: PermissionManager
+  /** Optional lifecycle manager wrapper around the specification engine */
+  specLifecycleManager?: SpecLifecycleManager
 }
 
 export interface RuntimeSnapshotEvent {

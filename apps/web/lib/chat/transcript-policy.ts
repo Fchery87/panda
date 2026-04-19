@@ -5,7 +5,7 @@ export type TranscriptSurface = 'chat' | 'inspector'
 
 export type TranscriptModePolicy = {
   mode: ChatMode
-  surfaceLabel: 'Plan' | 'Build' | 'Builder'
+  surfaceLabel: 'Plan' | 'Code' | 'Build'
   surfaced: boolean
   chatAllows: Array<
     'messages' | 'reasoning' | 'plan_actions' | 'spec_actions' | 'milestone_summaries'
@@ -17,12 +17,12 @@ export type TranscriptModePolicy = {
 export const TRANSCRIPT_MODE_POLICIES: Record<ChatMode, TranscriptModePolicy> = {
   ask: {
     mode: 'ask',
-    surfaceLabel: 'Build',
+    surfaceLabel: 'Code',
     surfaced: false,
     chatAllows: ['messages', 'reasoning'],
     inspectorOwns: ['tool_calls', 'progress_steps', 'snapshots', 'debug_labels', 'run_trace'],
     summary:
-      'Internal ask behavior stays conversational and is surfaced under the Build experience.',
+      'Internal ask behavior stays conversational and is surfaced under the Code experience.',
   },
   architect: {
     mode: 'architect',
@@ -35,21 +35,21 @@ export const TRANSCRIPT_MODE_POLICIES: Record<ChatMode, TranscriptModePolicy> = 
   },
   code: {
     mode: 'code',
+    surfaceLabel: 'Code',
+    surfaced: true,
+    chatAllows: ['messages', 'reasoning', 'plan_actions', 'spec_actions', 'milestone_summaries'],
+    inspectorOwns: ['tool_calls', 'progress_steps', 'snapshots', 'debug_labels', 'run_trace'],
+    summary:
+      'Code mode keeps the transcript outcome-focused while the inspector carries detailed trace.',
+  },
+  build: {
+    mode: 'build',
     surfaceLabel: 'Build',
     surfaced: true,
     chatAllows: ['messages', 'reasoning', 'plan_actions', 'spec_actions', 'milestone_summaries'],
     inspectorOwns: ['tool_calls', 'progress_steps', 'snapshots', 'debug_labels', 'run_trace'],
     summary:
-      'Build mode keeps the transcript outcome-focused while the inspector carries detailed trace.',
-  },
-  build: {
-    mode: 'build',
-    surfaceLabel: 'Builder',
-    surfaced: true,
-    chatAllows: ['messages', 'reasoning', 'plan_actions', 'spec_actions', 'milestone_summaries'],
-    inspectorOwns: ['tool_calls', 'progress_steps', 'snapshots', 'debug_labels', 'run_trace'],
-    summary:
-      'Builder mode allows concise milestone messaging in chat and full execution detail in the inspector.',
+      'Build mode allows concise milestone messaging in chat and full execution detail in the inspector.',
   },
 }
 

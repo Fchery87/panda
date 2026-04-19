@@ -9,7 +9,7 @@
 import { appLog } from '@/lib/logger'
 import type { LLMProvider, CompletionMessage, ReasoningOptions, ToolCall } from '../llm/types'
 import { getDefaultProviderCapabilities } from '../llm/types'
-import { getDefaultForgeHarnessAgent, getLegacyHarnessAgent } from './chat-modes'
+import { getDefaultHarnessAgent } from './chat-modes'
 import { getPromptForMode, type PromptContext } from './prompt-library'
 import { executeTool, type ToolContext, type ToolExecutionResult } from './tools'
 import { resolveAgentSkillsForPromptContext } from './skills/resolver'
@@ -18,7 +18,6 @@ import {
   Runtime as HarnessRuntime,
   agents as harnessAgents,
   ascending as harnessAscending,
-  permissions as harnessPermissions,
   type Message as HarnessMessage,
   type RuntimeConfig as HarnessRuntimeConfig,
   type RuntimeEvent as HarnessRuntimeEvent,
@@ -26,13 +25,14 @@ import {
   type ToolInterruptRequest as HarnessToolInterruptRequest,
   type UserMessage as HarnessUserMessage,
 } from './harness'
+import { PermissionManager } from './harness/permissions'
 import {
   InMemoryCheckpointStore,
   type CheckpointStore as HarnessCheckpointStore,
 } from './harness/checkpoint-store'
-import { safeJSONParse } from './harness/tool-repair'
 import type { Permission as HarnessPermission } from './harness/types'
 import type { FormalSpecification, SpecTier } from './spec/types'
+import { mapToolCallToProgressStep, mapToolResultToProgressStep } from './runtime-progress'
 
 const isE2ESpecApprovalModeEnabled = process.env.NEXT_PUBLIC_E2E_AGENT_MODE === 'spec-approval'
 
@@ -104,6 +104,12 @@ export interface AgentEvent {
       description: string
     }>
   }
+  reconcile?: {
+    aligned: boolean
+    reason: string
+    gate?: string
+    detail?: string
+  }
   resetReason?: 'plan_mode_rewrite' | 'build_mode_rewrite'
   error?: string
   usage?: {
@@ -133,7 +139,7 @@ export interface RuntimeConfig {
   maxToolCallsPerIteration?: number
   enableToolDeduplication?: boolean
   toolLoopThreshold?: number
-  harnessAgentName?: 'build' | 'code' | 'plan' | 'ask' | 'builder' | 'manager' | 'executive'
+  harnessAgentName?: 'build' | 'code' | 'plan' | 'ask'
   harnessSessionID?: string
   harnessAutoResume?: boolean
   harnessCheckpointStore?: HarnessCheckpointStore
@@ -223,6 +229,50 @@ function completionMessagesToHarnessMessages(args: {
       }
     }
 
+    if (msg.role === 'assistant' && msg.tool_calls && msg.tool_calls.length > 0) {
+      const id = harnessAscending('msg_')
+      const parts: HarnessMessage['parts'] = []
+      // Preserve any text content alongside tool calls
+      const textContent = toText(msg)
+      if (textContent) {
+        parts.push({
+          id: harnessAscending('part_'),
+          messageID: id,
+          sessionID: args.sessionID,
+          type: 'text',
+          text: textContent,
+        })
+      }
+      // Preserve tool call structure so the harness can reason about past tool usage
+      for (const tc of msg.tool_calls) {
+        parts.push({
+          id: harnessAscending('part_'),
+          messageID: id,
+          sessionID: args.sessionID,
+          type: 'tool',
+          tool: tc.function.name,
+          state: {
+            status: 'completed',
+            input: JSON.parse(tc.function.arguments || '{}'),
+            output: '',
+            time: { start: Date.now(), end: Date.now() },
+          },
+        })
+      }
+      return {
+        id,
+        sessionID: args.sessionID,
+        role: 'assistant',
+        parentID: harnessAscending('msg_parent_'),
+        parts,
+        time: { created: Date.now(), completed: Date.now() },
+        modelID: 'legacy-context',
+        providerID: 'legacy-context',
+        mode: 'legacy',
+        agent: 'legacy',
+      }
+    }
+
     if (msg.role === 'assistant') {
       const id = harnessAscending('msg_')
       return {
@@ -248,6 +298,9 @@ function completionMessagesToHarnessMessages(args: {
     }
 
     if (msg.role === 'tool') {
+      // Convert tool results back into completed tool parts on the
+      // preceding assistant message, preserving the tool-call structure
+      // rather than flattening to synthetic text.
       const id = harnessAscending('msg_')
       return {
         id,
@@ -259,9 +312,14 @@ function completionMessagesToHarnessMessages(args: {
             id: harnessAscending('part_'),
             messageID: id,
             sessionID: args.sessionID,
-            type: 'text',
-            synthetic: true,
-            text: `[Tool output]\n${toText(msg)}`,
+            type: 'tool',
+            tool: msg.name ?? 'unknown',
+            state: {
+              status: 'completed',
+              input: {},
+              output: toText(msg),
+              time: { start: Date.now(), end: Date.now() },
+            },
           },
         ],
         time: { created: Date.now(), completed: Date.now() },
@@ -397,17 +455,6 @@ export function resolveHarnessAgentName(args: {
   return resolveExecutionHarnessAgentName(args)
 }
 
-export function resolveLegacyHarnessAgentName(args: {
-  chatMode: PromptContext['chatMode']
-  harnessAgentName?: RuntimeConfig['harnessAgentName']
-}): string {
-  if (args.harnessAgentName) {
-    return args.harnessAgentName
-  }
-
-  return getLegacyHarnessAgent(args.chatMode)
-}
-
 function resolveExecutionHarnessAgentName(args: {
   chatMode: PromptContext['chatMode']
   harnessAgentName?: RuntimeConfig['harnessAgentName']
@@ -416,26 +463,41 @@ function resolveExecutionHarnessAgentName(args: {
     return args.harnessAgentName
   }
 
-  return getDefaultForgeHarnessAgent(args.chatMode)
+  return getDefaultHarnessAgent(args.chatMode)
 }
 
 function createReasoningAwareProvider(
   provider: LLMProvider,
-  reasoning: ReasoningOptions | undefined
+  reasoning: ReasoningOptions | undefined,
+  modelOverride?: string
 ): LLMProvider {
   const capabilities =
     provider.config.capabilities ?? getDefaultProviderCapabilities(provider.config.provider)
-  if (!capabilities.supportsReasoning || !reasoning) {
-    return provider
-  }
+  const resolvedConfig =
+    modelOverride && provider.config.defaultModel !== modelOverride
+      ? {
+          ...provider.config,
+          defaultModel: modelOverride,
+        }
+      : provider.config
 
   return {
-    ...provider,
+    name: provider.name,
+    config: resolvedConfig,
+    async listModels() {
+      return await provider.listModels()
+    },
     async complete(options) {
-      return await provider.complete({ ...options, reasoning })
+      return await provider.complete({
+        ...options,
+        ...(capabilities.supportsReasoning && reasoning ? { reasoning } : {}),
+      })
     },
     async *completionStream(options) {
-      yield* provider.completionStream({ ...options, reasoning })
+      yield* provider.completionStream({
+        ...options,
+        ...(capabilities.supportsReasoning && reasoning ? { reasoning } : {}),
+      })
     },
   }
 }
@@ -470,6 +532,7 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
     | ((value: { decision: 'approve' | 'edit' | 'cancel'; spec?: FormalSpecification }) => void)
     | null = null
   private abortController: AbortController | null = null
+  private permissions = new PermissionManager()
 
   constructor(
     private options: RuntimeOptions,
@@ -501,7 +564,7 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
     this.abortController = new AbortController()
 
     if (sessionPermissions && Object.keys(sessionPermissions).length > 0) {
-      harnessPermissions.setSessionPermissions(sessionID, sessionPermissions)
+      this.permissions.setSessionPermissions(sessionID, sessionPermissions)
     }
 
     const checkpointStore =
@@ -520,13 +583,24 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
       ...(typeof config?.toolLoopThreshold === 'number'
         ? { toolLoopThreshold: config.toolLoopThreshold }
         : {}),
+      // Enable subagent delegation — the harness runtime has built-in
+      // runSubagent that spawns child Runtime instances with narrowed
+      // permissions. Without this, the task tool defers but never executes.
+      maxSubagentDepth: 2,
+      subagentDepth: 0,
       checkpointStore,
       ...(riskInterruptsEnabled
         ? {
             toolRiskPolicy: { high: 'ask', critical: 'ask' as const },
+            // Spawning a subagent (`task`) inherits the parent session's
+            // approved permissions; the side-effect tools the subagent
+            // invokes (write_files, run_command) still surface their own
+            // high/critical risk prompts. Aligns with Claude Code / Codex /
+            // Cursor norms (Claude Code issue #28584).
+            toolRiskOverrides: { task: 'low' as const },
             onToolInterrupt: async (request: HarnessToolInterruptRequest) => {
               const target = request.patterns[0] || request.toolName
-              const permissionResult = await harnessPermissions.request(
+              const permissionResult = await this.permissions.request(
                 request.sessionID,
                 request.messageID,
                 request.toolName,
@@ -566,11 +640,12 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
       toolRetryBackoffMs: 200,
       // Wire chat mode into the harness for capability-based tool filtering
       chatMode: promptContext.chatMode,
-      permissionRules: resolveRulesForPhase(promptContext.chatMode, {}),
+      permissionRules: resolveRulesForPhase(promptContext.chatMode),
       specEngine: {
-        // Architect (plan) mode is a planning-only pass — no implementation happens,
-        // so spec generation and verification would always fail. Disable entirely.
-        enabled: promptContext.chatMode !== 'architect',
+        // Spec generation is only valuable for the coordinated Code mode,
+        // where work should follow a durable execution contract. Build mode
+        // stays direct and fast; ask/architect remain read-only and skip specs.
+        enabled: promptContext.chatMode === 'code',
         autoApproveAmbient: true,
         ...(isE2ESpecApprovalModeEnabled ? { defaultTier: 'explicit' as const } : {}),
       },
@@ -590,7 +665,8 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
 
     const harnessProvider = createReasoningAwareProvider(
       this.options.provider,
-      this.options.reasoning
+      this.options.reasoning,
+      this.options.model
     )
     const harnessRuntime = new HarnessRuntime(
       harnessProvider,
@@ -613,6 +689,8 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
     let attemptText = ''
     let sawToolCall = false
     let fenceTriggered = false
+    let fenceRewriteCount = 0
+    const MAX_FENCE_REWRITES = 2
     let buildFenceNoticeShown = false
     // Architect mode: tracks whether the stream is currently inside a fenced block
     // so we can filter it inline rather than aborting the stream entirely.
@@ -643,43 +721,13 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
 
       if (mapped.type === 'tool_call') {
         sawToolCall = true
-        yield {
-          type: 'progress_step',
-          content: `Running tool: ${mapped.toolCall?.function.name ?? 'unknown'}`,
-          progressStatus: 'running',
-          progressCategory: 'tool',
-          progressToolName: mapped.toolCall?.function.name,
-          progressToolCallId: mapped.toolCall?.id,
-          progressArgs: mapped.toolCall
-            ? (safeJSONParse<Record<string, unknown>>(mapped.toolCall.function.arguments, {}) ?? {})
-            : undefined,
-          progressHasArtifactTarget:
-            mapped.toolCall?.function.name === 'write_files' ||
-            mapped.toolCall?.function.name === 'run_command' ||
-            mapped.toolCall?.function.name === 'apply_patch',
-        }
+        yield mapToolCallToProgressStep(mapped)
         yield mapped
         continue
       }
 
       if (mapped.type === 'tool_result') {
-        yield {
-          type: 'progress_step',
-          content: `Tool ${mapped.toolResult?.error ? 'failed' : 'completed'}: ${
-            mapped.toolResult?.toolName ?? 'unknown'
-          }`,
-          progressStatus: mapped.toolResult?.error ? 'error' : 'completed',
-          progressCategory: 'tool',
-          progressToolName: mapped.toolResult?.toolName,
-          progressToolCallId: mapped.toolResult?.toolCallId,
-          progressArgs: mapped.toolResult?.args,
-          progressDurationMs: mapped.toolResult?.durationMs,
-          progressError: mapped.toolResult?.error,
-          progressHasArtifactTarget:
-            mapped.toolResult?.toolName === 'write_files' ||
-            mapped.toolResult?.toolName === 'run_command' ||
-            mapped.toolResult?.toolName === 'apply_patch',
-        }
+        yield mapToolResultToProgressStep(mapped)
         yield mapped
         continue
       }
@@ -759,9 +807,11 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
     }
 
     if (
-      fenceTriggered ||
-      shouldTriggerRewrite({ promptContext, content: attemptText, sawToolCall })
+      (fenceTriggered ||
+        shouldTriggerRewrite({ promptContext, content: attemptText, sawToolCall })) &&
+      fenceRewriteCount < MAX_FENCE_REWRITES
     ) {
+      fenceRewriteCount++
       // Rewrite only fires for build mode — architect handles fenced blocks inline.
       yield {
         type: 'status_thinking',
@@ -823,43 +873,12 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
         const mapped = mapHarnessEventToAgentEvent(event)
         if (!mapped) continue
         if (mapped.type === 'tool_call') {
-          yield {
-            type: 'progress_step',
-            content: `Running tool: ${mapped.toolCall?.function.name ?? 'unknown'}`,
-            progressStatus: 'running',
-            progressCategory: 'tool',
-            progressToolName: mapped.toolCall?.function.name,
-            progressToolCallId: mapped.toolCall?.id,
-            progressArgs: mapped.toolCall
-              ? (safeJSONParse<Record<string, unknown>>(mapped.toolCall.function.arguments, {}) ??
-                {})
-              : undefined,
-            progressHasArtifactTarget:
-              mapped.toolCall?.function.name === 'write_files' ||
-              mapped.toolCall?.function.name === 'run_command' ||
-              mapped.toolCall?.function.name === 'apply_patch',
-          }
+          yield mapToolCallToProgressStep(mapped)
           yield mapped
           continue
         }
         if (mapped.type === 'tool_result') {
-          yield {
-            type: 'progress_step',
-            content: `Tool ${mapped.toolResult?.error ? 'failed' : 'completed'}: ${
-              mapped.toolResult?.toolName ?? 'unknown'
-            }`,
-            progressStatus: mapped.toolResult?.error ? 'error' : 'completed',
-            progressCategory: 'tool',
-            progressToolName: mapped.toolResult?.toolName,
-            progressToolCallId: mapped.toolResult?.toolCallId,
-            progressArgs: mapped.toolResult?.args,
-            progressDurationMs: mapped.toolResult?.durationMs,
-            progressError: mapped.toolResult?.error,
-            progressHasArtifactTarget:
-              mapped.toolResult?.toolName === 'write_files' ||
-              mapped.toolResult?.toolName === 'run_command' ||
-              mapped.toolResult?.toolName === 'apply_patch',
-          }
+          yield mapToolResultToProgressStep(mapped)
           yield mapped
           continue
         }

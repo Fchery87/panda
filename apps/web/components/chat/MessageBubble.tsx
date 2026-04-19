@@ -13,7 +13,7 @@ import type { ChatMode } from '@/lib/agent/prompt-library'
 import { ReasoningPanel } from './ReasoningPanel'
 import { SuggestedActions } from './SuggestedActions'
 import { extractBrainstormPhase, stripBrainstormPhaseMarker } from '@/lib/chat/brainstorming'
-import { ChatMarkdown } from './ChatMarkdown'
+import { ChatMarkdown, StreamingChatMarkdown } from './ChatMarkdown'
 import { buildAssistantMessageTranscriptBlocks } from '@/lib/chat/transcript-blocks'
 import { getChatModeSurfacePresentation } from '@/lib/chat/chat-mode-surface'
 
@@ -438,6 +438,8 @@ export function MessageBubble({
                     return <div key={section.key}>{renderArchitectBody(section.bodyLines)}</div>
                   })}
                 </div>
+              ) : isAssistant && isStreaming ? (
+                <StreamingChatMarkdown content={displayContent} />
               ) : isAssistant ? (
                 <ChatMarkdown content={displayContent} />
               ) : (

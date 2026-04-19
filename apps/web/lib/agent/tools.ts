@@ -12,7 +12,6 @@
 
 import { appLog } from '@/lib/logger'
 import type { ToolDefinition, ToolCall, ToolResult } from '../llm/types'
-import type { ChatMode } from './prompt-library'
 import type { Capability } from '@/lib/agent/harness/permission/types'
 import { analyzeCommand, isCommandPipelineSafe } from './command-analysis'
 import { executeOracleSearch } from './harness/oracle'
@@ -29,65 +28,6 @@ type ToolApiRef = unknown
 
 function logToolError(message: string, error: unknown): void {
   appLog.error(`[agent-tools] ${message}`, error)
-}
-
-/**
- * Get tools allowed for a specific mode (name-list approach).
- * @deprecated Structural enforcement is now done via capability-based rules in
- * lib/agent/permission/mode-rulesets.ts, evaluated by the harness runtime.
- * This function is retained for tests and legacy consumers.
- */
-export function getAllowedToolsForMode(mode: ChatMode): string[] {
-  const modeTools: Record<ChatMode, string[]> = {
-    ask: ['search_codebase', 'search_code', 'search_code_ast', 'read_files', 'list_directory'],
-    architect: [
-      'search_codebase',
-      'search_code',
-      'search_code_ast',
-      'read_files',
-      'list_directory',
-      'update_memory_bank',
-    ],
-    code: [
-      'search_codebase',
-      'search_code',
-      'search_code_ast',
-      'read_files',
-      'list_directory',
-      'write_files',
-      'apply_patch',
-      'run_command',
-      'update_memory_bank',
-    ],
-    build: [
-      'search_codebase',
-      'search_code',
-      'search_code_ast',
-      'read_files',
-      'list_directory',
-      'write_files',
-      'apply_patch',
-      'run_command',
-      'update_memory_bank',
-    ],
-  }
-  return modeTools[mode] ?? []
-}
-
-/**
- * Filter tools based on mode
- */
-export function getToolsForMode(mode: ChatMode): AgentToolDefinition[] {
-  const allowedTools = getAllowedToolsForMode(mode)
-  return AGENT_TOOLS.filter((tool) => allowedTools.includes(tool.function.name))
-}
-
-/**
- * Check if a tool is allowed for a mode
- */
-export function isToolAllowedForMode(toolName: string, mode: ChatMode): boolean {
-  const allowedTools = getAllowedToolsForMode(mode)
-  return allowedTools.includes(toolName)
 }
 
 /**

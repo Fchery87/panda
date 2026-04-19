@@ -171,8 +171,13 @@
 
 @layer components {
   /* ═══════════════════════════════════════════════════════════
-     SURFACE ELEVATION SYSTEM
-     ═══════════════════════════════════════════════════════════ */
+      SURFACE ELEVATION SYSTEM
+      ═══════════════════════════════════════════════════════════ */
+  /* ═══ ELEVATION CONTRACT ═══
+     surface-1: Chrome (top bar, tab bars, status bar, dock headers, panel headers)
+     surface-0: Primary content (editor, chat messages, file tree body)
+     surface-2: Hover/selected states, active tab bg
+     ═════════════════════════ */
   .surface-0 {
     background-color: hsl(var(--surface-0));
   }
@@ -349,7 +354,7 @@
   }
 
   /* ═══════════════════════════════════════════════════════════
-     BOTTOM DOCK TAB
+     TABS AND BADGES
      ═══════════════════════════════════════════════════════════ */
   .dock-tab {
     @apply relative flex items-center gap-1.5 border-r border-border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition-colors duration-100;
@@ -363,65 +368,47 @@
     background-color: hsl(var(--surface-0));
     box-shadow: inset 0 -2px 0 hsl(var(--primary));
   }
-  .dock-tab-badge {
-    @apply ml-1 inline-flex min-w-[16px] items-center justify-center border border-border px-1 py-px font-mono text-[9px] tabular-nums leading-none;
+  .badge-sm {
+    @apply inline-flex min-w-[16px] items-center justify-center border border-border px-1 py-px font-mono text-[9px] tabular-nums leading-none;
   }
-  .dock-tab-badge[data-severity='error'] {
+  .badge-sm[data-severity='error'] {
     @apply border-destructive/40 bg-destructive/10 text-destructive;
   }
-  .dock-tab-badge[data-severity='warning'] {
+  .badge-sm[data-severity='warning'] {
     border-color: hsl(var(--status-warning) / 0.4);
     background-color: hsl(var(--status-warning) / 0.1);
     color: hsl(var(--status-warning));
   }
-  .dock-tab-badge[data-severity='info'] {
+  .badge-sm[data-severity='info'] {
     @apply border-border bg-muted text-muted-foreground;
   }
 
-  /* ═══════════════════════════════════════════════════════════
-     AGENT STATUS BADGES
-     ═══════════════════════════════════════════════════════════ */
-  .status-badge {
-    @apply inline-flex items-center gap-1 border px-1.5 py-0.5 font-mono text-[10px] uppercase leading-none tracking-[0.14em];
+  .badge-md {
+    @apply inline-flex items-center gap-1 border border-border px-1.5 py-0.5 font-mono text-[10px] uppercase leading-none tracking-[0.14em];
   }
-  .status-badge[data-status='running'] {
+  .badge-md[data-status='running'] {
     @apply border-primary/40 bg-primary/10 text-primary;
   }
-  .status-badge[data-status='waiting'] {
+  .badge-md[data-status='waiting'] {
     border-color: hsl(var(--status-info) / 0.4);
     background-color: hsl(var(--status-info) / 0.1);
     color: hsl(var(--status-info));
   }
-  .status-badge[data-status='review'] {
+  .badge-md[data-status='review'] {
     border-color: hsl(var(--status-warning) / 0.4);
     background-color: hsl(var(--status-warning) / 0.1);
     color: hsl(var(--status-warning));
   }
-  .status-badge[data-status='failed'] {
+  .badge-md[data-status='failed'] {
     @apply border-destructive/40 bg-destructive/10 text-destructive;
   }
-  .status-badge[data-status='complete'] {
+  .badge-md[data-status='complete'] {
     border-color: hsl(var(--status-success) / 0.4);
     background-color: hsl(var(--status-success) / 0.1);
     color: hsl(var(--status-success));
   }
-  .status-badge[data-status='draft'] {
+  .badge-md[data-status='draft'] {
     @apply border-border bg-muted text-muted-foreground;
-  }
-
-  /* ═══════════════════════════════════════════════════════════
-     TASK STATUS CHIP
-     ═══════════════════════════════════════════════════════════ */
-  .task-chip {
-    @apply inline-flex items-center gap-1.5 border border-border px-2 py-1 font-mono text-[10px] uppercase leading-none tracking-[0.14em] text-muted-foreground;
-  }
-  .task-chip[data-status='active'] {
-    @apply border-primary/40 bg-primary/10 text-primary;
-  }
-  .task-chip[data-status='review'] {
-    border-color: hsl(var(--status-warning) / 0.4);
-    background-color: hsl(var(--status-warning) / 0.1);
-    color: hsl(var(--status-warning));
   }
 
   /* ═══════════════════════════════════════════════════════════
