@@ -33,9 +33,13 @@ interface WorkbenchTopBarProps {
   healthDetail: string
   isRightPanelOpen: boolean
   isFlyoutOpen: boolean
+  isRuntimeRunning?: boolean
   onToggleFlyout: () => void
   onToggleRightPanel: () => void
   onNewTask: () => void
+  onStartRuntime?: () => void
+  onStopRuntime?: () => void
+  onOpenPreview?: () => void
   onResetWorkspace: () => void
   onOpenShareDialog: () => void
   onRevealInExplorer: (folderPath: string) => void
@@ -51,14 +55,18 @@ export function WorkbenchTopBar({
   gitStatus,
   selectedModel,
   isAgentRunning,
-  isAnyJobRunning,
+  isAnyJobRunning: _isAnyJobRunning,
   healthStatus,
   healthDetail,
   isRightPanelOpen,
   isFlyoutOpen,
+  isRuntimeRunning = false,
   onToggleFlyout,
   onToggleRightPanel,
   onNewTask,
+  onStartRuntime,
+  onStopRuntime,
+  onOpenPreview,
   onResetWorkspace,
   onOpenShareDialog,
   onRevealInExplorer,
@@ -137,7 +145,7 @@ export function WorkbenchTopBar({
           onNewTask={onNewTask}
           healthStatus={healthStatus}
           healthDetail={healthDetail}
-          devServerLabel={isAnyJobRunning ? 'Dev server active' : 'Dev server idle'}
+          devServerLabel={isRuntimeRunning ? 'Dev server active' : 'Dev server idle'}
           agentLabel={isAgentRunning ? 'Agent running' : 'Agent idle'}
           repoLabel={
             gitStatus
@@ -146,6 +154,10 @@ export function WorkbenchTopBar({
           }
           onToggleRightPanel={onToggleRightPanel}
           isRightPanelOpen={isRightPanelOpen}
+          onStartRuntime={onStartRuntime}
+          onStopRuntime={onStopRuntime}
+          onOpenPreview={onOpenPreview}
+          isRuntimeRunning={isRuntimeRunning}
         />
         <div className="h-5 w-px bg-border" />
         <ThemeToggle />

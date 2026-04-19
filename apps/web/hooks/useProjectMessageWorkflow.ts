@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Id } from '@convex/_generated/dataModel'
 import { toast } from 'sonner'
 import {
-  buildApprovedPlanExecutionMessage,
   canBuildFromPlan,
   type PlanStatus,
 } from '@/lib/chat/planDraft'
@@ -71,15 +70,17 @@ export function buildApprovedPlanExecutionPayload(args: {
     }
   }
 
-  return {
-    content:
-      shouldExecuteApprovedPlan && (args.approvedPlanArtifact || args.planDraft?.trim())
-        ? buildApprovedPlanExecutionMessage(
-            args.approvedPlanArtifact ?? args.planDraft ?? '',
-            args.content
-          )
-        : args.content,
+  if (shouldExecuteApprovedPlan && args.approvedPlanArtifact) {
+    return {
+      content: args.content,
+      approvedPlanExecutionContext: {
+        sessionId: args.approvedPlanArtifact.sessionId ?? 'legacy',
+        plan: args.approvedPlanArtifact,
+      },
+    }
   }
+
+  return { content: args.content }
 }
 
 type MessageWorkflowAction = { type: 'create_chat_and_send_directly' } | { type: 'send_directly' }

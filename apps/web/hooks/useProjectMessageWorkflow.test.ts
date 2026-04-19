@@ -181,7 +181,34 @@ describe('useProjectMessageWorkflow direct-send behavior', () => {
     })
   })
 
-  test('falls back to legacy prose wrapping when no structured approved plan context exists', () => {
+  test('forwards artifact as approvedPlanExecutionContext even when session IDs do not match', () => {
+    const artifact = {
+      chatId: 'chat_1',
+      sessionId: 'planning_old',
+      title: 'Old plan',
+      summary: '',
+      markdown: '',
+      sections: [],
+      acceptanceChecks: [],
+      status: 'accepted' as const,
+      generatedAt: 1,
+    }
+
+    const result = buildApprovedPlanExecutionPayload({
+      content: 'Execute the approved plan.',
+      approvedPlanExecution: true,
+      activePlanningSessionId: 'planning_new',
+      approvedPlanArtifact: artifact,
+    })
+
+    expect(result.content).toBe('Execute the approved plan.')
+    expect(result.approvedPlanExecutionContext).toEqual({
+      sessionId: 'planning_old',
+      plan: artifact,
+    })
+  })
+
+  test('passes content through unchanged when only a raw planDraft is present (no structured artifact)', () => {
     const result = buildApprovedPlanExecutionPayload({
       content: 'Execute the approved plan.',
       approvedPlanExecution: true,
@@ -189,7 +216,6 @@ describe('useProjectMessageWorkflow direct-send behavior', () => {
     })
 
     expect(result.approvedPlanExecutionContext).toBeUndefined()
-    expect(result.content).toContain('Approved plan:')
-    expect(result.content).toContain('# Approved Plan')
+    expect(result.content).toBe('Execute the approved plan.')
   })
 })

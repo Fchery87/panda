@@ -20,7 +20,7 @@ describe('Workbench integration wiring', () => {
     const layoutPath = path.resolve(import.meta.dir, '../projects/ProjectWorkspaceLayout.tsx')
     const layoutSource = fs.readFileSync(layoutPath, 'utf8')
 
-    expect(pageSource).toContain('activeChatId={activeChat?._id}')
+    expect(pageSource).toContain('activeChatId: activeChat?._id')
     expect(layoutSource).toContain('currentChatId={activeChatId}')
   })
 
@@ -50,7 +50,7 @@ describe('Workbench integration wiring', () => {
     const workbenchPath = path.resolve(import.meta.dir, 'Workbench.tsx')
     const workbenchSource = fs.readFileSync(workbenchPath, 'utf8')
 
-    expect(pageSource).toContain('pendingArtifactPreview={pendingArtifactPreview}')
+    expect(pageSource).toContain('pendingArtifactPreview,')
     expect(layoutSource).toContain('pendingArtifactPreview={pendingArtifactPreview}')
     expect(workbenchSource).toContain('PendingArtifactOverlay')
     expect(workbenchSource).toContain('pendingArtifactPreview')
@@ -69,7 +69,7 @@ describe('Workbench integration wiring', () => {
     const editorContainerPath = path.resolve(import.meta.dir, '../editor/EditorContainer.tsx')
     const editorContainerSource = fs.readFileSync(editorContainerPath, 'utf8')
 
-    expect(pageSource).toContain('onEditorDirtyChange={handleEditorDirtyChange}')
+    expect(pageSource).toContain('onEditorDirtyChange: handleEditorDirtyChange')
     expect(layoutSource).toContain('onEditorDirtyChange={onEditorDirtyChange}')
     expect(workbenchSource).toContain('onDirtyChange={(isDirty) =>')
     expect(workbenchSource).toContain('onEditorDirtyChange(selectedFile.path, isDirty)')

@@ -51,6 +51,7 @@ type MobilePrimaryPanel = 'workspace' | 'chat' | 'review'
 interface UseArtifactLifecycleArgs {
   projectId: Id<'projects'>
   activeChat: Chat | null
+  autoApply?: boolean
   selectedFilePath: string | null
   openTabs: OpenTab[]
   setOpenTabs: React.Dispatch<React.SetStateAction<OpenTab[]>>
@@ -63,6 +64,7 @@ interface UseArtifactLifecycleArgs {
 export function useArtifactLifecycle({
   projectId,
   activeChat,
+  autoApply = false,
   selectedFilePath,
   openTabs,
   setOpenTabs,
@@ -73,6 +75,7 @@ export function useArtifactLifecycle({
 }: UseArtifactLifecycleArgs) {
   const convex = useConvex()
   const seenPendingArtifactIdsRef = useRef<Set<string>>(new Set())
+  const autoApplyQueueRef = useRef<Set<string>>(new Set())
 
   const artifactRecords = useQuery(
     api.artifacts.list,
@@ -103,6 +106,7 @@ export function useArtifactLifecycle({
 
   useEffect(() => {
     seenPendingArtifactIdsRef.current.clear()
+    autoApplyQueueRef.current.clear()
   }, [activeChat?._id])
 
   useEffect(() => {
@@ -191,6 +195,20 @@ export function useArtifactLifecycle({
       upsertFileMutation,
     ]
   )
+
+  useEffect(() => {
+    if (!autoApply || !artifactRecords) return
+
+    const pendingRecords = artifactRecords.filter(
+      (r) => r.status === 'pending' && !autoApplyQueueRef.current.has(r._id)
+    )
+    if (pendingRecords.length === 0) return
+
+    for (const record of pendingRecords) {
+      autoApplyQueueRef.current.add(record._id)
+      void handleApplyPendingArtifact(record._id)
+    }
+  }, [autoApply, artifactRecords, handleApplyPendingArtifact])
 
   const handleRejectPendingArtifact = useCallback(
     async (artifactId: string) => {

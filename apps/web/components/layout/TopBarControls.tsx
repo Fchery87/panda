@@ -33,6 +33,10 @@ interface TopBarControlsProps {
   devServerLabel?: string
   agentLabel?: string
   repoLabel?: string
+  onStartRuntime?: () => void
+  onStopRuntime?: () => void
+  onOpenPreview?: () => void
+  isRuntimeRunning?: boolean
 }
 
 export function TopBarControls({
@@ -51,6 +55,10 @@ export function TopBarControls({
   devServerLabel,
   agentLabel,
   repoLabel,
+  onStartRuntime,
+  onStopRuntime,
+  onOpenPreview,
+  isRuntimeRunning = false,
 }: TopBarControlsProps) {
   return (
     <div className="flex items-center gap-1.5">
@@ -97,6 +105,39 @@ export function TopBarControls({
 
       {/* Divider */}
       <div className="h-5 w-px bg-border" />
+
+      {(onStartRuntime || onStopRuntime || onOpenPreview) && (
+        <div className="hidden items-center gap-1 md:flex">
+          {isRuntimeRunning ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 rounded-none px-2 font-mono text-[10px] uppercase tracking-widest"
+              onClick={onOpenPreview}
+            >
+              Preview
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 rounded-none px-2 font-mono text-[10px] uppercase tracking-widest"
+              onClick={onStartRuntime}
+            >
+              Start App
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 rounded-none px-2 font-mono text-[10px] uppercase tracking-widest"
+            onClick={isRuntimeRunning ? onStopRuntime : onStartRuntime}
+          >
+            {isRuntimeRunning ? 'Stop App' : 'Run Dev'}
+          </Button>
+          <div className="h-5 w-px bg-border" />
+        </div>
+      )}
 
       {/* Notifications */}
       <button

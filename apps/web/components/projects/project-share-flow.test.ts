@@ -9,16 +9,19 @@ describe('project share flow', () => {
       '../../app/(dashboard)/projects/[projectId]/page.tsx'
     )
     const pageSource = fs.readFileSync(pagePath, 'utf8')
+    const shellPath = path.resolve(import.meta.dir, 'ProjectWorkspaceShell.tsx')
+    const shellSource = fs.readFileSync(shellPath, 'utf8')
     const uiHookPath = path.resolve(import.meta.dir, '../../hooks/useProjectWorkspaceUi.ts')
     const uiHookSource = fs.readFileSync(uiHookPath, 'utf8')
     const dialogPath = path.resolve(import.meta.dir, 'ProjectShareDialog.tsx')
     const dialogSource = fs.readFileSync(dialogPath, 'utf8')
 
-    expect(pageSource).toContain(
+    expect(shellSource).toContain(
       "import { ProjectShareDialog } from '@/components/projects/ProjectShareDialog'"
     )
-    expect(pageSource).toContain('<ProjectShareDialog')
-    expect(pageSource).toContain('onOpenShare={() => setIsShareDialogOpen(true)}')
+    expect(shellSource).toContain('<ProjectShareDialog')
+    expect(pageSource).toContain('onOpenShareDialog: () => setIsShareDialogOpen(true)')
+    expect(pageSource).toContain('onOpenShare: () => setIsShareDialogOpen(true),')
     expect(pageSource).not.toContain('panda:open-share')
 
     expect(uiHookSource).not.toContain('Share feature coming soon')

@@ -16,8 +16,8 @@ describe('project history flow', () => {
     expect(panelSource).toContain('onClick={onOpenHistory}')
     expect(panelSource).toContain('Run History ({runHistoryCount})')
 
-    expect(pageSource).toContain('onOpenHistory={() => {')
+    expect(pageSource).toContain('onOpenHistory: () => {')
     expect(pageSource).toContain("openChatInspectorSurface('run')")
-    expect(pageSource).toContain('renderInspectorInline={false}')
+    expect(pageSource).toContain('renderInspectorInline: false')
   })
 })

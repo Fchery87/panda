@@ -18,10 +18,12 @@ interface WorkspaceHomeProps {
   activeAgents?: number
   problemCount?: number
   devServerRunning?: boolean
+  previewUrl?: string | null
   onOpenFile?: (path: string) => void
   onOpenDiffView?: () => void
   onStartAgent?: () => void
   onOpenTerminal?: () => void
+  onOpenPreview?: () => void
   suggestedActions?: Array<{ label: string; action: () => void }>
 }
 
@@ -31,10 +33,12 @@ export function WorkspaceHome({
   activeAgents = 0,
   problemCount = 0,
   devServerRunning = false,
+  previewUrl,
   onOpenFile,
   onOpenDiffView,
   onStartAgent,
   onOpenTerminal,
+  onOpenPreview,
   suggestedActions = [],
 }: WorkspaceHomeProps) {
   return (
@@ -152,7 +156,7 @@ export function WorkspaceHome({
           {/* Dev Server */}
           <button
             type="button"
-            onClick={onOpenTerminal}
+            onClick={devServerRunning ? onOpenPreview : onOpenTerminal}
             className="surface-1 hover:bg-surface-2 border border-border p-3 text-left transition-colors"
           >
             <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
@@ -165,13 +169,16 @@ export function WorkspaceHome({
               {devServerRunning ? 'Running' : 'Stopped'}
             </div>
             <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">
-              {devServerRunning ? 'localhost:3000' : 'click to start'}
+              {devServerRunning ? (previewUrl ?? 'preview ready') : 'click to start'}
             </div>
           </button>
         </motion.div>
 
         {/* Suggested Actions */}
-        {(suggestedActions.length > 0 || pendingDiffs > 0 || !devServerRunning) && (
+        {(suggestedActions.length > 0 ||
+          pendingDiffs > 0 ||
+          !devServerRunning ||
+          Boolean(previewUrl)) && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -200,6 +207,15 @@ export function WorkspaceHome({
                 >
                   <IconQuickAction className="h-4 w-4 text-primary" weight="fill" />
                   Start new task
+                </Button>
+              )}
+              {previewUrl && (
+                <Button
+                  variant="outline"
+                  className="h-9 justify-start gap-2 rounded-none font-mono text-xs"
+                  onClick={onOpenPreview}
+                >
+                  Open preview
                 </Button>
               )}
               {suggestedActions.map((action, idx) => (

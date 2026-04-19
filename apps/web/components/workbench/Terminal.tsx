@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useJobs, type Job, type JobStatus } from '@/hooks/useJobs'
+import { startRuntimePreview } from '@/lib/workbench/runtime-preview-state'
 import { toast } from 'sonner'
 import { executeQueuedJob } from '@/lib/jobs/executeJob'
 import type { Id } from '../../../../convex/_generated/dataModel'
@@ -300,6 +301,8 @@ export function Terminal({ projectId }: TerminalProps) {
 
     setIsExecuting(true)
     try {
+      startRuntimePreview(projectId, command.trim())
+
       // Create job and get the jobId
       const result = await createAndExecute({
         projectId: projectId as Id<'projects'>,

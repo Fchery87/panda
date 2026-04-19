@@ -87,6 +87,10 @@ interface ProjectWorkspaceLayoutProps {
   onReviewChanges?: () => void
   onStopAgent?: () => void
   onStartAgent?: () => void
+  previewUrl?: string | null
+  isPreviewRunning?: boolean
+  onOpenPreview?: () => void
+  onOpenTerminal?: () => void
 }
 
 export function ProjectWorkspaceLayout({
@@ -137,6 +141,10 @@ export function ProjectWorkspaceLayout({
   onReviewChanges,
   onStopAgent,
   onStartAgent,
+  previewUrl,
+  isPreviewRunning,
+  onOpenPreview,
+  onOpenTerminal,
 }: ProjectWorkspaceLayoutProps) {
   const { activeSection, isFlyoutOpen, handleSectionChange, toggleFlyout, onSelectChat } =
     useWorkspace()
@@ -183,6 +191,10 @@ export function ProjectWorkspaceLayout({
       pendingDiffCount={changedFilesCount}
       isAgentRunning={isStreaming}
       onStartAgent={onStartAgent}
+      previewUrl={previewUrl}
+      isPreviewRunning={isPreviewRunning}
+      onOpenPreview={onOpenPreview}
+      onOpenTerminal={onOpenTerminal}
     />
   )
 

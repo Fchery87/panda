@@ -16,6 +16,7 @@ import type { Capability } from '@/lib/agent/harness/permission/types'
 import { analyzeCommand, isCommandPipelineSafe } from './command-analysis'
 import { executeOracleSearch } from './harness/oracle'
 import { repairJSON, safeJSONParse } from './harness/tool-repair'
+import { startRuntimePreview } from '@/lib/workbench/runtime-preview-state'
 
 export interface AgentToolDefinition extends ToolDefinition {
   capability: Capability
@@ -675,6 +676,8 @@ export function createToolContext(
       const startTime = Date.now()
 
       try {
+        startRuntimePreview(projectId, command)
+
         if (api.artifacts.create) {
           await convexClient.mutation(api.artifacts.create, {
             chatId,

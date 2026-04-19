@@ -3,6 +3,7 @@ import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
 import { requireAuth, getCurrentUserId } from './lib/auth'
 import { trackUserAnalytics } from './lib/userAnalytics'
+import { RuntimePreview } from './schema'
 
 // list (query) - list all projects for current user
 export const list = query({
@@ -72,6 +73,7 @@ export const create = mutation({
       createdAt: now,
       lastOpenedAt: now,
       repoUrl: args.repoUrl,
+      runtimePreview: null,
       agentPolicy: null,
     })
 
@@ -101,6 +103,7 @@ export const update = mutation({
         })
       )
     ),
+    runtimePreview: v.optional(v.union(v.null(), RuntimePreview)),
   },
   handler: async (ctx, args) => {
     const userId = await requireAuth(ctx)
@@ -118,6 +121,7 @@ export const update = mutation({
     if (args.repoUrl !== undefined) updates.repoUrl = args.repoUrl
     if (args.lastOpenedAt !== undefined) updates.lastOpenedAt = args.lastOpenedAt
     if (args.agentPolicy !== undefined) updates.agentPolicy = args.agentPolicy
+    if (args.runtimePreview !== undefined) updates.runtimePreview = args.runtimePreview
 
     await ctx.db.patch(args.id, updates)
 

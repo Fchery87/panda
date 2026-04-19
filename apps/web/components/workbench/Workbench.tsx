@@ -9,6 +9,7 @@ import { EditorContainer } from '../editor/EditorContainer'
 import { CenterTabBar, type CenterTabBarTab } from './CenterTabBar'
 import { WorkspaceHome } from './WorkspaceHome'
 import { DiffTab } from './DiffTab'
+import { LivePreview } from '@/components/preview/LivePreview'
 import { WorkspaceBanner } from './WorkspaceBanner'
 import { isWorkspacePlanTab, useWorkspace } from '@/contexts/WorkspaceContext'
 import { useShortcuts } from '@/hooks/useShortcuts'
@@ -57,6 +58,12 @@ interface WorkbenchProps {
   isAgentRunning?: boolean
   /** Called when user wants to start a new agent task (e.g. from WorkspaceHome) */
   onStartAgent?: () => void
+  /** Best-effort preview URL derived from workspace jobs */
+  previewUrl?: string | null
+  /** Explicit runtime status for the preview environment */
+  isPreviewRunning?: boolean
+  onOpenPreview?: () => void
+  onOpenTerminal?: () => void
 }
 
 const CENTER_TABS: CenterTabBarTab[] = [
@@ -92,6 +99,10 @@ export function Workbench({
   pendingDiffCount = 0,
   isAgentRunning = false,
   onStartAgent,
+  previewUrl,
+  isPreviewRunning = false,
+  onOpenPreview,
+  onOpenTerminal,
 }: WorkbenchProps) {
   const { isMobileLayout: isMobile } = useWorkspace()
 
@@ -162,8 +173,12 @@ export function Workbench({
                     recentFiles={recentFiles}
                     pendingDiffs={pendingDiffCount}
                     activeAgents={isAgentRunning ? 1 : 0}
+                    devServerRunning={isPreviewRunning}
+                    previewUrl={previewUrl}
                     onOpenFile={onSelectFile}
                     onStartAgent={onStartAgent}
+                    onOpenPreview={onOpenPreview}
+                    onOpenTerminal={onOpenTerminal}
                   />
                 )}
               </div>
@@ -268,9 +283,13 @@ export function Workbench({
                   recentFiles={recentFiles}
                   pendingDiffs={pendingDiffCount}
                   activeAgents={isAgentRunning ? 1 : 0}
+                  devServerRunning={isPreviewRunning}
+                  previewUrl={previewUrl}
                   onOpenFile={onSelectFile}
                   onOpenDiffView={() => onCenterTabChange?.('diff')}
                   onStartAgent={onStartAgent}
+                  onOpenPreview={onOpenPreview}
+                  onOpenTerminal={onOpenTerminal}
                 />
               )}
             </>
@@ -285,14 +304,7 @@ export function Workbench({
           )}
 
           {effectiveTab === 'preview' && (
-            <div className="dot-grid flex h-full flex-col items-center justify-center gap-4">
-              <div className="surface-1 shadow-sharp-md max-w-md border border-border px-6 py-8 text-center">
-                <h2 className="font-mono text-sm font-medium text-foreground">Preview</h2>
-                <p className="mt-2 font-mono text-xs text-muted-foreground">
-                  Live preview of your application. Start a dev server to see your UI here.
-                </p>
-              </div>
-            </div>
+            <LivePreview className="dot-grid h-full" url={previewUrl} />
           )}
         </div>
       </div>
