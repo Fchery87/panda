@@ -640,6 +640,10 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
       toolRetryBackoffMs: 200,
       // Wire chat mode into the harness for capability-based tool filtering
       chatMode: promptContext.chatMode,
+      // Allow experimental models — the model was explicitly selected through
+      // admin/user settings, so the preflight should not block it. Only truly
+      // unverified models (status: 'unverified') remain gated.
+      allowExperimentalModels: true,
       permissionRules: resolveRulesForPhase(promptContext.chatMode),
       specEngine: {
         // Spec generation is only valuable for the coordinated Code mode,
