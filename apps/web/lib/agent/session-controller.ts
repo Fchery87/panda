@@ -42,7 +42,7 @@ export function buildAgentPromptContext(args: {
   activeSpec?: FormalSpecification
 }): PromptContext {
   const projectOverview =
-    args.mode === 'architect' && args.projectFiles
+    args.mode === 'plan' && args.projectFiles
       ? [
           args.projectOverviewContent,
           buildPlanContext({
@@ -84,7 +84,7 @@ export function buildAgentPromptContext(args: {
       ? 'Architect brainstorming protocol: enabled'
       : undefined,
     planningSession:
-      args.mode === 'architect'
+      args.mode === 'plan'
         ? {
             hasActiveSession: args.architectBrainstormEnabled || Boolean(args.planDraft?.trim()),
             phase: args.architectBrainstormEnabled

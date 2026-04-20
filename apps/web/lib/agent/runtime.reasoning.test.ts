@@ -81,7 +81,7 @@ describe('AgentRuntime reasoning events', () => {
       projectId: 'p',
       chatId: 'c',
       userId: 'u',
-      chatMode: 'architect',
+      chatMode: 'plan',
       provider: 'anthropic',
       userMessage: 'Plan this change',
     })) {
@@ -117,7 +117,7 @@ describe('AgentRuntime reasoning events', () => {
       projectId: 'p',
       chatId: 'c',
       userId: 'u',
-      chatMode: 'architect',
+      chatMode: 'plan',
       provider: 'openai',
       userMessage: 'Hi',
     })) {
@@ -154,7 +154,7 @@ describe('AgentRuntime reasoning events', () => {
       projectId: 'p',
       chatId: 'c',
       userId: 'u',
-      chatMode: 'architect',
+      chatMode: 'plan',
       provider: 'anthropic',
       userMessage: 'Hi',
     })) {

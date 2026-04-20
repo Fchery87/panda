@@ -30,7 +30,7 @@ describe('prompt-library — natural flow (INTENT RULES)', () => {
   })
 
   it('ARCHITECT mode: structured plan only for explicit planning requests', () => {
-    const text = getSystemText('architect')
+    const text = getSystemText('plan')
     expect(text).toContain('INTENT RULES')
     expect(text).toContain('ONLY THEN produce planning content in markdown')
     expect(text).toContain('respond naturally in paragraphs')
@@ -56,7 +56,7 @@ describe('prompt-library — natural flow (INTENT RULES)', () => {
 
 describe('prompt-library — legacy mode normalization', () => {
   it('maps discuss to architect', () => {
-    expect(normalizeChatMode('discuss', 'code')).toBe('architect')
+    expect(normalizeChatMode('discuss', 'code')).toBe('plan')
   })
 
   it('maps debug to code and review to ask', () => {
@@ -71,7 +71,7 @@ describe('prompt-library — architect brainstorming protocol', () => {
       projectId: 'p',
       chatId: 'c',
       userId: 'u',
-      chatMode: 'architect',
+      chatMode: 'plan',
       provider: 'openai',
       userMessage: 'help me plan',
       customInstructions: 'Architect brainstorming protocol: enabled',
@@ -91,7 +91,7 @@ describe('prompt-library — architect brainstorming protocol', () => {
       projectId: 'p',
       chatId: 'c',
       userId: 'u',
-      chatMode: 'architect',
+      chatMode: 'plan',
       provider: 'openai',
       userMessage: 'help me plan',
     })
@@ -109,7 +109,7 @@ describe('prompt-library — architect brainstorming protocol', () => {
       projectId: 'p',
       chatId: 'c',
       userId: 'u',
-      chatMode: 'architect',
+      chatMode: 'plan',
       provider: 'openai',
       userMessage: 'what model are you?',
     })
@@ -124,7 +124,7 @@ describe('prompt-library — architect brainstorming protocol', () => {
   })
 
   it('injects planning session context for architect mode when provided', () => {
-    const systemText = getSystemText('architect', {
+    const systemText = getSystemText('plan', {
       planningSession: {
         hasActiveSession: true,
         phase: 'validated_plan',

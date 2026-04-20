@@ -38,7 +38,7 @@ export function createEvalTemplateScenarios(template: EvalTemplate): EvalScenari
           id: `tmpl-${Date.now()}-architect-plan`,
           name: 'Architect response resembles structured plan',
           input: 'Give a 3-step plan to add logging to the app.',
-          mode: 'architect',
+          mode: 'plan',
           prompt: 'Give a 3-step plan to add logging to the app.',
           expected: '(?s)(1\\.|- ).*(2\\.|- ).*(3\\.|- )',
           tags: ['template', 'architect', 'regex', 'plan'],

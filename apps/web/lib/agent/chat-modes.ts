@@ -1,4 +1,4 @@
-export type ChatMode = 'ask' | 'architect' | 'code' | 'build'
+export type ChatMode = 'ask' | 'plan' | 'code' | 'build'
 
 export interface HandoffRitual {
   systemMessage: string
@@ -33,6 +33,7 @@ export const CHAT_MODE_CONFIGS: Record<ChatMode, ChatModeConfig> = {
       shortLabel: 'Ask',
       description: 'Read-only Q&A without touching files or running changes.',
       advanced: false,
+      primaryShortcut: '⇧1',
     },
     runtime: {
       primaryAgent: 'ask',
@@ -40,7 +41,7 @@ export const CHAT_MODE_CONFIGS: Record<ChatMode, ChatModeConfig> = {
     requiresToolCalls: false,
     outputFormat: 'conversational',
   },
-  architect: {
+  plan: {
     description: 'Clarify, scope, draft, and approve a plan',
     fileAccess: 'read-only',
     surface: {
@@ -48,7 +49,7 @@ export const CHAT_MODE_CONFIGS: Record<ChatMode, ChatModeConfig> = {
       shortLabel: 'Plan',
       description: 'Clarify scope, draft the plan, and get approval before execution.',
       advanced: false,
-      primaryShortcut: '1',
+      primaryShortcut: '⇧2',
     },
     runtime: {
       primaryAgent: 'plan',
@@ -64,7 +65,7 @@ export const CHAT_MODE_CONFIGS: Record<ChatMode, ChatModeConfig> = {
       shortLabel: 'Code',
       description: 'Execute code changes directly with read, write, and command access.',
       advanced: false,
-      primaryShortcut: '2',
+      primaryShortcut: '⇧3',
     },
     runtime: {
       primaryAgent: 'code',
@@ -83,8 +84,8 @@ export const CHAT_MODE_CONFIGS: Record<ChatMode, ChatModeConfig> = {
       label: 'Build',
       shortLabel: 'Build',
       description: 'Full-access mode for direct expert execution of complex tasks.',
-      advanced: true,
-      primaryShortcut: '3',
+      advanced: false,
+      primaryShortcut: '⇧4',
     },
     runtime: {
       primaryAgent: 'build',
@@ -100,7 +101,7 @@ export const CHAT_MODE_CONFIGS: Record<ChatMode, ChatModeConfig> = {
 
 export function getPrimaryChatModes(): ChatMode[] {
   return (Object.keys(CHAT_MODE_CONFIGS) as ChatMode[]).filter(
-    (mode) => !CHAT_MODE_CONFIGS[mode].surface.advanced && mode !== 'ask'
+    (mode) => !CHAT_MODE_CONFIGS[mode].surface.advanced
   )
 }
 

@@ -15,7 +15,7 @@ export function resolveAgentPolicy(args: {
   chatMode: ChatMode
   oversightLevel: OversightLevel
 }): AgentPolicy {
-  const specEngineEnabled = args.chatMode !== 'architect'
+  const specEngineEnabled = args.chatMode !== 'plan'
   const isAuto = args.oversightLevel === 'autopilot'
 
   return {

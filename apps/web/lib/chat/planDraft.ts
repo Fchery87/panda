@@ -92,7 +92,7 @@ export function pickLatestArchitectAssistantPlan(
 ): string | null {
   for (let i = messages.length - 1; i >= 0; i--) {
     const m = messages[i]
-    if (m.role === 'assistant' && m.mode === 'architect' && m.content.trim()) {
+    if (m.role === 'assistant' && m.mode === 'plan' && m.content.trim()) {
       return m.content
     }
   }
@@ -112,7 +112,7 @@ export function deriveNextPlanDraft({
   messages: Array<{ role: 'user' | 'assistant'; mode: ChatMode; content: string }>
   requireValidatedBrainstorm?: boolean
 }): string | null {
-  if (mode !== 'architect') return null
+  if (mode !== 'plan') return null
   if (agentStatus !== 'complete') return null
 
   const latest = pickLatestArchitectAssistantPlan(messages)

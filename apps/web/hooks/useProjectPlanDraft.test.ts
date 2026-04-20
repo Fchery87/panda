@@ -71,14 +71,14 @@ describe('useProjectPlanDraft compatibility behavior', () => {
     })
 
     const nextDraft = deriveNextPlanDraft({
-      mode: 'architect',
+      mode: 'plan',
       agentStatus: 'complete',
       currentPlanDraft: '',
       requireValidatedBrainstorm: false,
       messages: [
         {
           role: 'assistant',
-          mode: 'architect',
+          mode: 'plan',
           content: 'Legacy architect plan draft',
         },
       ],

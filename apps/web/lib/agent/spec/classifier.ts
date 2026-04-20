@@ -523,7 +523,7 @@ function performHeuristicScoring(
         ambientScore += 1
         break
       case 'build':
-      case 'architect':
+      case 'plan':
         explicitScore += 2
         break
       case 'review':

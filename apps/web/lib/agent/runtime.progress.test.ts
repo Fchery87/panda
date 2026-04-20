@@ -50,7 +50,7 @@ describe('AgentRuntime progress steps', () => {
       projectId: 'p',
       chatId: 'c',
       userId: 'u',
-      chatMode: 'architect',
+      chatMode: 'plan',
       provider: 'openai',
       userMessage: 'help me plan',
     })) {

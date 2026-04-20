@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { Lightbulb, Code, Hammer, Bot, ChevronDown, Wrench } from 'lucide-react'
+import { useEffect, useMemo } from 'react'
+import { Lightbulb, Code, Hammer, Bot, ChevronDown, HelpCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
@@ -16,7 +16,6 @@ import {
 import { agents } from '@/lib/agent/harness'
 import { CHAT_MODE_CONFIGS, type ChatMode } from '@/lib/agent/chat-modes'
 import {
-  getAdvancedChatModeSurfaceOptions,
   getChatModeSurfacePresentation,
   getPrimaryChatModeSurfaceOptions,
 } from '@/lib/chat/chat-mode-surface'
@@ -29,10 +28,10 @@ interface AgentSelectorProps {
 }
 
 const MODE_ICONS: Partial<Record<ChatMode, React.ReactNode>> = {
-  ask: <Hammer className="h-3.5 w-3.5" />,
-  architect: <Lightbulb className="h-3.5 w-3.5" />,
-  code: <Hammer className="h-3.5 w-3.5" />,
-  build: <Code className="h-3.5 w-3.5" />,
+  ask: <HelpCircle className="h-3.5 w-3.5" />,
+  plan: <Lightbulb className="h-3.5 w-3.5" />,
+  code: <Code className="h-3.5 w-3.5" />,
+  build: <Hammer className="h-3.5 w-3.5" />,
 }
 
 const PRIMARY_SHORTCUTS: Partial<Record<ChatMode, string>> = Object.fromEntries(
@@ -44,23 +43,15 @@ const PRIMARY_SHORTCUTS: Partial<Record<ChatMode, string>> = Object.fromEntries(
 export function AgentSelector({ mode, onModeChange, disabled, className }: AgentSelectorProps) {
   const subagents = useMemo(() => agents.listSubagents(), [])
   const primaryOptions = useMemo(() => getPrimaryChatModeSurfaceOptions(), [])
-  const advancedOptions = useMemo(() => getAdvancedChatModeSurfaceOptions(), [])
-  const [showAdvanced, setShowAdvanced] = useState(mode === 'build')
 
   const currentPresentation = getChatModeSurfacePresentation(mode)
   const currentIcon = MODE_ICONS[mode] ?? <Bot className="h-3.5 w-3.5" />
 
   useEffect(() => {
-    if (mode === 'build') {
-      setShowAdvanced(true)
-    }
-  }, [mode])
-
-  useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (disabled) return
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
-      if (!e.altKey && !e.ctrlKey && !e.metaKey) {
+      if (e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey) {
         const num = parseInt(e.key)
         if (num >= 1 && num <= primaryOptions.length) {
           const option = primaryOptions[num - 1]
@@ -127,48 +118,7 @@ export function AgentSelector({ mode, onModeChange, disabled, className }: Agent
               </DropdownMenuRadioItem>
             )
           })}
-          {showAdvanced ? (
-            <>
-              <DropdownMenuSeparator className="bg-border" />
-              <DropdownMenuLabel className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
-                Advanced
-              </DropdownMenuLabel>
-              {advancedOptions.map((option) => {
-                const icon = MODE_ICONS[option.mode] ?? <Bot className="h-3.5 w-3.5" />
-
-                return (
-                  <DropdownMenuRadioItem
-                    key={option.mode}
-                    value={option.mode}
-                    className="rounded-none font-mono text-xs"
-                  >
-                    <span className="flex items-center gap-2">
-                      {icon}
-                      <span className="uppercase">{option.label}</span>
-                    </span>
-                    <span className="ml-2 text-muted-foreground">{option.description}</span>
-                    <DropdownMenuShortcut>3</DropdownMenuShortcut>
-                  </DropdownMenuRadioItem>
-                )
-              })}
-            </>
-          ) : null}
         </DropdownMenuRadioGroup>
-
-        {!showAdvanced ? (
-          <>
-            <DropdownMenuSeparator className="bg-border" />
-            <button
-              type="button"
-              onClick={() => setShowAdvanced(true)}
-              className="flex w-full items-center gap-2 px-2 py-1.5 text-left font-mono text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              <Wrench className="h-3.5 w-3.5" />
-              <span className="uppercase">Show Advanced</span>
-              <span className="text-xs opacity-80">Reveal Build</span>
-            </button>
-          </>
-        ) : null}
 
         {subagents.length > 0 && (
           <>

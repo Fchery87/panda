@@ -507,7 +507,7 @@ function shouldTriggerRewrite(args: {
   content: string
   sawToolCall: boolean
 }): boolean {
-  if (args.promptContext.chatMode === 'architect') {
+  if (args.promptContext.chatMode === 'plan') {
     return shouldRewriteDiscussResponse(args.content)
   }
 
@@ -737,7 +737,7 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
       }
 
       if (mapped.type === 'text' && mapped.content) {
-        if (promptContext.chatMode === 'architect') {
+        if (promptContext.chatMode === 'plan') {
           let chunk = mapped.content
           let filtered = ''
           while (chunk.length > 0) {

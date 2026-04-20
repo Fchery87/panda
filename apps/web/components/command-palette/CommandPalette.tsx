@@ -131,12 +131,12 @@ export function CommandPalette({
         action: () => onModeChange?.('ask'),
       },
       {
-        id: 'mode-architect',
+        id: 'mode-plan',
         type: 'mode',
-        title: 'Switch to Architect Mode',
+        title: 'Switch to Plan Mode',
         subtitle: 'Design and plan features',
         icon: <MessageSquare className="h-4 w-4" />,
-        action: () => onModeChange?.('architect'),
+        action: () => onModeChange?.('plan'),
       },
       {
         id: 'mode-code',

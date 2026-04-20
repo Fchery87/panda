@@ -134,7 +134,7 @@ describe('Harness adapter guardrail parity', () => {
     expect(resolveHarnessAgentName({ chatMode: 'build', harnessAgentName: 'code' })).toBe('code')
     expect(resolveHarnessAgentName({ chatMode: 'build', harnessAgentName: 'plan' })).toBe('plan')
     expect(resolveHarnessAgentName({ chatMode: 'ask' })).toBe('ask')
-    expect(resolveHarnessAgentName({ chatMode: 'architect' })).toBe('plan')
+    expect(resolveHarnessAgentName({ chatMode: 'plan' })).toBe('plan')
     expect(resolveHarnessAgentName({ chatMode: 'code' })).toBe('code')
     expect(resolveHarnessAgentName({ chatMode: 'build' })).toBe('build')
   })
@@ -476,7 +476,7 @@ describe('Harness adapter guardrail parity', () => {
         projectId: 'p',
         chatId: 'c',
         userId: 'u',
-        chatMode: 'architect',
+        chatMode: 'plan',
         provider: 'openai',
         userMessage: 'run chained commands',
       },
@@ -616,7 +616,7 @@ describe('Harness adapter guardrail parity', () => {
         projectId: 'p',
         chatId: 'c',
         userId: 'u',
-        chatMode: 'architect',
+        chatMode: 'plan',
         provider: 'openai',
         userMessage: 'plan this change',
       },

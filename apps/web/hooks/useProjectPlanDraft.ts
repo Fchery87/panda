@@ -348,7 +348,7 @@ export function useProjectPlanDraft(args: {
       .reverse()
       .find(
         (message) =>
-          message.role === 'assistant' && message.mode === 'architect' && message.content.trim()
+          message.role === 'assistant' && message.mode === 'plan' && message.content.trim()
       )
     void persistPlanDraft(next, {
       source: 'generation',

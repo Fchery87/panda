@@ -12,7 +12,7 @@ interface UseProjectPlanningIntakeParams {
     chatId: Id<'chats'>
     role: 'user'
     content: string
-    annotations: Array<{ mode: 'architect' }>
+    annotations: Array<{ mode: 'plan' }>
   }) => Promise<unknown>
   setIsChatInspectorOpen: (open: boolean) => void
   setChatInspectorTab: (tab: 'run' | 'artifacts' | 'plan' | 'memory' | 'evals') => void
@@ -37,7 +37,7 @@ export function useProjectPlanningIntake({
         chatId: activeChatId,
         role: 'user',
         content: taskSummary,
-        annotations: [{ mode: 'architect' }],
+        annotations: [{ mode: 'plan' }],
       })
     }
 

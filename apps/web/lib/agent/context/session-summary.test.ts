@@ -345,13 +345,13 @@ describe('buildPromptMessagesWithModeSummary', () => {
         {
           role: 'user',
           content: 'Need the dashboard to support offline drafts.',
-          mode: 'architect',
+          mode: 'plan',
         },
         {
           role: 'assistant',
           content:
             'We decided to keep the draft store in Convex and important: preserve conflict resolution rules.',
-          mode: 'architect',
+          mode: 'plan',
         },
         {
           role: 'user',
@@ -408,17 +408,17 @@ describe('buildPromptMessagesWithModeSummary', () => {
         {
           role: 'user',
           content: 'How should we support offline drafts?',
-          mode: 'architect',
+          mode: 'plan',
         },
         {
           role: 'user',
           content: 'Should we keep optimistic sync?',
-          mode: 'architect',
+          mode: 'plan',
         },
         {
           role: 'assistant',
           content: 'We decided to keep draft persistence in Convex.',
-          mode: 'architect',
+          mode: 'plan',
         },
       ],
     })
@@ -437,7 +437,7 @@ describe('buildPromptMessagesWithModeSummary', () => {
           role: 'assistant',
           content:
             'We decided to keep the draft store in Convex. Important: keep the draft store in Convex.',
-          mode: 'architect',
+          mode: 'plan',
         },
       ],
     })
@@ -454,12 +454,12 @@ describe('buildPromptMessagesWithModeSummary', () => {
         {
           role: 'assistant',
           content: 'Important: preserve conflict resolution rules.',
-          mode: 'architect',
+          mode: 'plan',
         },
         {
           role: 'user',
           content: 'We must preserve conflict resolution rules.',
-          mode: 'architect',
+          mode: 'plan',
         },
       ],
     })

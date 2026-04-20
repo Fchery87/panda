@@ -58,7 +58,7 @@ export function useProjectWorkspaceActions({
     agent.clear()
     agent.setInput('')
     setPlanDraft('')
-    setChatMode('architect')
+    setChatMode('plan')
     notifyReset()
   }, [agent, notifyReset, setChatMode, setPlanDraft])
 

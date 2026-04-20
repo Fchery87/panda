@@ -677,7 +677,7 @@ export class SpecEngine {
           model,
         })
 
-      case 'architect':
+      case 'plan':
         return generateArchitectSpec(userMessage, {
           projectId: context.projectId,
           chatId: context.chatId,

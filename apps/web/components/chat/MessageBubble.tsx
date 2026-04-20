@@ -276,7 +276,7 @@ export function MessageBubble({
   const displayContent = shouldRedactBuildCode
     ? redactFencedCodeBlocks(message.content)
     : message.content
-  const isArchitect = message.annotations?.mode === 'architect'
+  const isArchitect = message.annotations?.mode === 'plan'
   const brainstormPhase = isAssistant && isArchitect ? extractBrainstormPhase(displayContent) : null
   const architectContent = brainstormPhase
     ? stripBrainstormPhaseMarker(displayContent).trim()

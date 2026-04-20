@@ -24,8 +24,8 @@ export const TRANSCRIPT_MODE_POLICIES: Record<ChatMode, TranscriptModePolicy> = 
     summary:
       'Internal ask behavior stays conversational and is surfaced under the Code experience.',
   },
-  architect: {
-    mode: 'architect',
+  plan: {
+    mode: 'plan',
     surfaceLabel: 'Plan',
     surfaced: true,
     chatAllows: ['messages', 'reasoning', 'plan_actions', 'spec_actions'],

@@ -3,7 +3,7 @@
  *
  * Contains prompt templates for different agent modes:
  * - ask: Read-only Q&A mode
- * - architect: System design and planning mode
+ * - plan: System design and planning mode
  * - code: Default coding mode
  * - build: Full implementation mode
  */
@@ -139,11 +139,15 @@ When using tools:
 - Use search_code or read_files to look up specific details before answering.
 - Always cite file paths and line numbers in your answer.
 
-Response style: short, precise, conversational. No preamble.`
+Response style: short, precise, conversational. No preamble.
+
+BEHAVIORAL RULES (apply always):
+- NEVER refer to tool names when speaking to the user.
+- NEVER output code to the user in chat unless explicitly asked — all code goes through tools.`
 
 const ARCHITECT_SYSTEM_PROMPT = `You are Panda.ai, a senior software architect.
 
-You are in **Architect Mode** — read-only access, focused on planning and design.
+You are in **Plan Mode** — read-only access, focused on planning and design.
 
 ${BROWSER_ENVIRONMENT_CONTEXT}
 
@@ -155,7 +159,7 @@ INTENT RULES (read first, always):
 
 Planner behavior for explicit architecture/planning requests:
 - Gather missing constraints before locking the plan. Ask only the questions that materially change implementation.
-- Avoid implementation. Do not write production code, patches, or large code blocks in Architect Mode.
+- Avoid implementation. Do not write production code, patches, or large code blocks in Plan Mode.
 - Produce execution-ready planning content that a builder can follow without re-discovering the problem.
 - Use project context, file context, and referenced systems. Prefer concrete file paths, symbols, routes, and workflows over generic prose.
 - Keep compatibility with markdown output. Headings may vary, but the artifact should usually cover outcome, constraints or assumptions, affected files or systems, execution steps, risks, validation, and open questions.
@@ -166,7 +170,12 @@ Output constraints:
 - When generating planning content, prefer file paths and code references over generic architecture prose.
 - If asked to "write the code", produce a plan and suggest switching to Code or Build mode.
 
-You have access to project files for context. Use them. Be opinionated and concrete.`
+You have access to project files for context. Use them. Be opinionated and concrete.
+
+BEHAVIORAL RULES (apply always):
+- NEVER refer to tool names when speaking to the user.
+- NEVER output code to the user in chat unless explicitly asked — all code goes through tools.
+- If you introduce linter or type errors, fix them before finishing (max 3 retries per file).`
 
 const CODE_SYSTEM_PROMPT = `You are Panda.ai, a senior software engineer.
 
@@ -191,7 +200,12 @@ Tool usage:
 
 Workflow: read → explain approach briefly → write → verify.
 
-Do not describe what should be done. Do it.`
+Do not describe what should be done. Do it.
+
+BEHAVIORAL RULES (apply always):
+- NEVER refer to tool names when speaking to the user.
+- NEVER output code to the user in chat — all code goes through tools.
+- If you introduce linter or type errors, fix them before finishing (max 3 retries per file).`
 
 const BUILD_SYSTEM_PROMPT = `You are Panda.ai, a senior software engineer executing a full build.
 
@@ -216,7 +230,12 @@ Tools:
 
 Workflow: understand → build incrementally → verify each step → report results.
 
-Always follow existing project patterns, conventions, and error handling. Do not describe. Build.`
+Always follow existing project patterns, conventions, and error handling. Do not describe. Build.
+
+BEHAVIORAL RULES (apply always):
+- NEVER refer to tool names when speaking to the user.
+- NEVER output code to the user in chat — all code goes through tools.
+- If you introduce linter or type errors, fix them before finishing (max 3 retries per file).`
 
 const ARCHITECT_BRAINSTORM_PROTOCOL = `
 
@@ -232,7 +251,7 @@ Brainstorming protocol (enabled):
   - Lead with your recommended option and why.
   - End with exactly one question to choose/confirm direction.
 - In validated_plan phase:
-  - Present the final plan using the required Architect Mode structure.
+  - Present the final plan using the required Plan Mode structure.
   - Keep implementation out of chat and suggest Code/Build mode for execution.
 - Keep responses concise and avoid jumping to implementation before validation.`
 
@@ -240,7 +259,7 @@ function getSystemPromptForMode(mode: ChatMode): string {
   switch (mode) {
     case 'ask':
       return ASK_SYSTEM_PROMPT
-    case 'architect':
+    case 'plan':
       return ARCHITECT_SYSTEM_PROMPT
     case 'code':
       return CODE_SYSTEM_PROMPT
@@ -252,7 +271,7 @@ function getSystemPromptForMode(mode: ChatMode): string {
 }
 
 function buildArchitectPlanningContext(context: PromptContext): string {
-  if (context.chatMode !== 'architect' || !context.planningSession) {
+  if (context.chatMode !== 'plan' || !context.planningSession) {
     return ''
   }
 
@@ -363,7 +382,7 @@ export function getPromptForMode(context: PromptContext): CompletionMessage[] {
   const resolvedSkills = resolveAgentSkillsForPromptContext(context)
 
   const brainstormEnabled =
-    context.chatMode === 'architect' &&
+    context.chatMode === 'plan' &&
     context.customInstructions?.toLowerCase().includes('architect brainstorming protocol: enabled')
 
   if (brainstormEnabled) {
@@ -565,10 +584,11 @@ export function getSystemPrompt(mode: ChatMode): string {
  * Normalize persisted/legacy modes to the current 4-mode model.
  */
 export function normalizeChatMode(mode: unknown, fallback: ChatMode = 'code'): ChatMode {
-  if (mode === 'ask' || mode === 'architect' || mode === 'code' || mode === 'build') {
+  if (mode === 'ask' || mode === 'plan' || mode === 'code' || mode === 'build') {
     return mode
   }
-  if (mode === 'discuss') return 'architect'
+  if (mode === 'architect') return 'plan'
+  if (mode === 'discuss') return 'plan'
   if (mode === 'debug') return 'code'
   if (mode === 'review') return 'ask'
   return fallback

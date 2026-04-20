@@ -42,7 +42,7 @@ export function useProjectChatSession<TChat extends ChatSessionChat>(args: {
   projectAgentPolicy: AgentPolicy | null | undefined
 }) {
   const [activeChatId, setActiveChatId] = useState<Id<'chats'> | null>(null)
-  const [chatMode, setChatMode] = useState<ChatMode>('architect')
+  const [chatMode, setChatMode] = useState<ChatMode>('plan')
   const [architectBrainstormEnabled, setArchitectBrainstormEnabled] = useState(
     process.env.NEXT_PUBLIC_ENABLE_ARCHITECT_BRAINSTORM === 'true'
   )
@@ -75,7 +75,7 @@ export function useProjectChatSession<TChat extends ChatSessionChat>(args: {
 
   useEffect(() => {
     if (!activeChat?.mode) return
-    setChatMode(normalizeChatMode(activeChat.mode, 'architect'))
+    setChatMode(normalizeChatMode(activeChat.mode, 'plan'))
   }, [activeChat?._id, activeChat?.mode])
 
   const effectiveAutomationPolicy = useMemo<AgentPolicy>(() => {

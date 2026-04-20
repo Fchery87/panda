@@ -568,7 +568,7 @@ export function ChatInput({
           <VariantSelector currentVariant={variant} onVariantChange={onVariantChange} />
         )}
 
-        {mode === 'architect' && onArchitectBrainstormEnabledChange && (
+        {mode === 'plan' && onArchitectBrainstormEnabledChange && (
           <button
             type="button"
             onClick={() => onArchitectBrainstormEnabledChange(!architectBrainstormEnabled)}

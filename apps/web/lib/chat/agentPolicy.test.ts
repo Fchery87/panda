@@ -15,12 +15,12 @@ describe('resolveAgentPolicy', () => {
   })
 
   it('review + architect → spec review hidden (spec engine off)', () => {
-    const p = resolveAgentPolicy({ chatMode: 'architect', oversightLevel: 'review' })
+    const p = resolveAgentPolicy({ chatMode: 'plan', oversightLevel: 'review' })
     expect(p.showSpecReview).toBe(false)
   })
 
   it('autopilot + architect → spec review hidden, plan review shown', () => {
-    const p = resolveAgentPolicy({ chatMode: 'architect', oversightLevel: 'autopilot' })
+    const p = resolveAgentPolicy({ chatMode: 'plan', oversightLevel: 'autopilot' })
     expect(p.showSpecReview).toBe(false)
     expect(p.showPlanReview).toBe(true)
   })

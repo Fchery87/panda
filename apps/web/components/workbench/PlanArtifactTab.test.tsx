@@ -55,7 +55,7 @@ function createWorkspaceValue(
   return {
     projectId: 'project' as never,
     activeChatId: 'chat' as never,
-    chatMode: 'architect' as ChatMode,
+    chatMode: 'plan' as ChatMode,
     onSelectChat: () => {},
     onNewChat: () => {},
     activeSection: 'files',

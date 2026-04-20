@@ -5,12 +5,13 @@ import { v } from 'convex/values'
 /**
  * Chat mode type - used across the application
  * - ask: Read-only Q&A
- * - architect: System design, limited edits
+ * - plan: System design, limited edits (replaces legacy 'architect')
  * - code: Default coding mode
  * - build: Full implementation
  */
 export const ChatMode = v.union(
   v.literal('ask'),
+  v.literal('plan'),
   v.literal('architect'),
   v.literal('code'),
   v.literal('build'),
@@ -19,7 +20,7 @@ export const ChatMode = v.union(
   v.literal('review')
 )
 
-export type ChatModeType = 'ask' | 'architect' | 'code' | 'build'
+export type ChatModeType = 'ask' | 'plan' | 'code' | 'build'
 
 export const PlanStatus = v.union(
   v.literal('idle'),

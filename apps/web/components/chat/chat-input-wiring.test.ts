@@ -44,7 +44,7 @@ describe('chat input wiring', () => {
 
     expect(content).toContain('architectBrainstormEnabled = false')
     expect(content).toContain('onArchitectBrainstormEnabledChange')
-    expect(content).toContain("{mode === 'architect' && onArchitectBrainstormEnabledChange && (")
+    expect(content).toContain("{mode === 'plan' && onArchitectBrainstormEnabledChange && (")
     expect(content).toContain('aria-pressed={architectBrainstormEnabled}')
     expect(content).toContain(
       "architectBrainstormEnabled ? 'Disable brainstorming' : 'Enable brainstorming'"

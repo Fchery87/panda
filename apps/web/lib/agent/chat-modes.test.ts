@@ -9,9 +9,9 @@ describe('ModeContract', () => {
     }
   })
 
-  test('ask and architect do not require tool calls', () => {
+  test('ask and plan do not require tool calls', () => {
     expect(CHAT_MODE_CONFIGS.ask.requiresToolCalls).toBe(false)
-    expect(CHAT_MODE_CONFIGS.architect.requiresToolCalls).toBe(false)
+    expect(CHAT_MODE_CONFIGS.plan.requiresToolCalls).toBe(false)
   })
 
   test('code and build require tool calls', () => {

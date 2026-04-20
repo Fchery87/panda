@@ -12,7 +12,7 @@ describe('useProjectMessageWorkflow direct-send behavior', () => {
     expect(
       resolveMessageWorkflowAction({
         hasActiveChat: false,
-        mode: 'architect',
+        mode: 'plan',
         trimmedContent: 'Plan the new dashboard flow',
       })
     ).toEqual({ type: 'create_chat_and_send_directly' })
@@ -22,7 +22,7 @@ describe('useProjectMessageWorkflow direct-send behavior', () => {
     expect(
       resolveMessageWorkflowAction({
         hasActiveChat: true,
-        mode: 'architect',
+        mode: 'plan',
         trimmedContent: 'Also cover migration steps',
         activePlanningSessionId: 'planning_1',
       })
@@ -52,7 +52,7 @@ describe('useProjectMessageWorkflow direct-send behavior', () => {
     const handled = await executeMessageWorkflowAction({
       workflowAction: resolveMessageWorkflowAction({
         hasActiveChat: false,
-        mode: 'architect',
+        mode: 'plan',
         trimmedContent: 'Plan the new dashboard flow',
       }),
       createChat: async () => {
@@ -144,7 +144,7 @@ describe('useProjectMessageWorkflow direct-send behavior', () => {
       shouldQueuePendingDirectSend({
         workflowAction: resolveMessageWorkflowAction({
           hasActiveChat: false,
-          mode: 'architect',
+          mode: 'plan',
           trimmedContent: 'Plan the new dashboard flow',
         }),
         providerAvailable: false,

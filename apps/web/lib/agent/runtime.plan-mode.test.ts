@@ -62,7 +62,7 @@ describe('Plan Mode rewrite guardrails', () => {
       projectId: 'p',
       chatId: 'c',
       userId: 'u',
-      chatMode: 'architect',
+      chatMode: 'plan',
       provider: 'zai',
       userMessage: 'help me plan',
     })) {
@@ -124,7 +124,7 @@ describe('Plan Mode rewrite guardrails', () => {
       projectId: 'p',
       chatId: 'c',
       userId: 'u',
-      chatMode: 'architect',
+      chatMode: 'plan',
       provider: 'zai',
       userMessage: 'help me plan',
     })) {

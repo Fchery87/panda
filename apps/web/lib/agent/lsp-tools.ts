@@ -146,7 +146,7 @@ export function getAllowedLSPToolsForMode(mode: ChatMode): string[] {
       'get_document_symbols',
       'get_diagnostics',
     ],
-    architect: [
+    plan: [
       'get_type_info',
       'find_references',
       'go_to_definition',

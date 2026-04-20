@@ -72,7 +72,7 @@ function formatRelativeTime(timestamp: number): string {
 function getModeLabel(mode: string): string {
   const labels: Record<string, string> = {
     ask: 'Ask',
-    architect: 'Architect',
+    plan: 'Plan',
     code: 'Code',
     build: 'Build',
     discuss: 'Discuss',
@@ -285,8 +285,8 @@ export function AgentManagerDrawer({
                               description: 'General implementation and coding tasks',
                             },
                             {
-                              mode: 'architect',
-                              name: 'Architect',
+                              mode: 'plan',
+                              name: 'Plan',
                               description: 'System design and planning mode',
                             },
                             {

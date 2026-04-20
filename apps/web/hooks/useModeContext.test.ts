@@ -3,7 +3,7 @@ import { useModeContextRef, type ModeContext } from './useModeContext'
 
 describe('useModeContextRef', () => {
   const base: ModeContext = {
-    mode: 'architect',
+    mode: 'plan',
     approvedPlanId: null,
     activeSpecId: null,
     depth: 'standard',
@@ -16,7 +16,7 @@ describe('useModeContextRef', () => {
   test('ModeContext type accepts all chat modes', () => {
     const modes: ModeContext[] = [
       { ...base, mode: 'ask' },
-      { ...base, mode: 'architect' },
+      { ...base, mode: 'plan' },
       { ...base, mode: 'code' },
       { ...base, mode: 'build' },
     ]

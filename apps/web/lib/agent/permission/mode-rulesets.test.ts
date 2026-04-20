@@ -17,9 +17,9 @@ describe('resolveRulesForPhase', () => {
     expect(rules).toEqual(DEFAULT_RULES.ask)
   })
 
-  it('returns default rules for architect mode', () => {
-    const rules = resolveRulesForPhase('architect')
-    expect(rules).toEqual(DEFAULT_RULES.architect)
+  it('returns default rules for plan mode', () => {
+    const rules = resolveRulesForPhase('plan')
+    expect(rules).toEqual(DEFAULT_RULES.plan)
   })
 
   it('ask mode denies all by default then allows read and search', () => {

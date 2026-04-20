@@ -60,7 +60,7 @@ describe('transcript blocks', () => {
 
     const items = buildTranscriptFeedItems({
       messages,
-      chatMode: 'architect',
+      chatMode: 'plan',
       isStreaming: true,
       liveSteps: [
         {
@@ -188,7 +188,7 @@ describe('transcript blocks', () => {
   })
 
   test('defines plan mode transcript policy around plan actions instead of trace rows', () => {
-    const policy = getTranscriptModePolicy('architect')
+    const policy = getTranscriptModePolicy('plan')
 
     expect(policy.chatAllows).toContain('plan_actions')
     expect(policy.inspectorOwns).toContain('tool_calls')

@@ -7,7 +7,7 @@ import {
 
 describe('chat mode surface presentation', () => {
   test('maps architect mode to the Plan surface with explicit planning semantics', () => {
-    expect(getChatModeSurfacePresentation('architect')).toMatchObject({
+    expect(getChatModeSurfacePresentation('plan')).toMatchObject({
       label: 'Plan',
       shortLabel: 'Plan',
       description: 'Clarify scope, draft the plan, and get approval before execution.',
@@ -30,21 +30,23 @@ describe('chat mode surface presentation', () => {
     })
   })
 
-  test('keeps build visible through an advanced-only direct execution presentation', () => {
+  test('exposes build as a primary mode (no longer advanced)', () => {
     expect(getChatModeSurfacePresentation('build')).toMatchObject({
       label: 'Build',
       shortLabel: 'Build',
       description: 'Full-access mode for direct expert execution of complex tasks.',
-      advanced: true,
+      advanced: false,
     })
   })
 
-  test('exposes Plan and Code as the primary picker options and Build as advanced', () => {
+  test('exposes Ask, Plan, Code, and Build as the four primary picker options with no advanced section', () => {
     expect(getPrimaryChatModeSurfaceOptions().map((option) => option.label)).toEqual([
+      'Ask',
       'Plan',
       'Code',
+      'Build',
     ])
-    expect(getAdvancedChatModeSurfaceOptions().map((option) => option.label)).toEqual(['Build'])
+    expect(getAdvancedChatModeSurfaceOptions()).toEqual([])
   })
 
   test('returns fresh presentation objects so caller mutation does not leak', () => {
@@ -60,8 +62,10 @@ describe('chat mode surface presentation', () => {
     primaryOptions[0]!.label = 'Changed'
 
     expect(getPrimaryChatModeSurfaceOptions().map((option) => option.label)).toEqual([
+      'Ask',
       'Plan',
       'Code',
+      'Build',
     ])
   })
 })

@@ -12,8 +12,8 @@ const DEFAULT_RULES: Record<ChatMode, PermissionRule[]> = {
     { capability: 'read', decision: 'allow', source: 'mode' },
     { capability: 'search', decision: 'allow', source: 'mode' },
   ],
-  architect: [
-    { capability: '*', decision: 'deny', source: 'mode', reason: 'architect mode is read-only' },
+  plan: [
+    { capability: '*', decision: 'deny', source: 'mode', reason: 'plan mode is read-only' },
     { capability: 'read', decision: 'allow', source: 'mode' },
     { capability: 'search', decision: 'allow', source: 'mode' },
     { capability: 'memory', decision: 'allow', source: 'mode' },

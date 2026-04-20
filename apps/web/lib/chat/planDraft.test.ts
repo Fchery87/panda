@@ -75,11 +75,11 @@ describe('planDraft helpers', () => {
 
   it('pickLatestArchitectAssistantPlan returns latest architect assistant content', () => {
     const messages = [
-      { role: 'user' as const, mode: 'architect' as const, content: 'q1' },
-      { role: 'assistant' as const, mode: 'architect' as const, content: 'plan v1' },
+      { role: 'user' as const, mode: 'plan' as const, content: 'q1' },
+      { role: 'assistant' as const, mode: 'plan' as const, content: 'plan v1' },
       { role: 'user' as const, mode: 'build' as const, content: 'do it' },
       { role: 'assistant' as const, mode: 'build' as const, content: 'code' },
-      { role: 'assistant' as const, mode: 'architect' as const, content: 'plan v2' },
+      { role: 'assistant' as const, mode: 'plan' as const, content: 'plan v2' },
     ]
 
     expect(pickLatestArchitectAssistantPlan(messages)).toBe('plan v2')
@@ -87,13 +87,13 @@ describe('planDraft helpers', () => {
 
   it('deriveNextPlanDraft only updates on architect completion and non-empty plan', () => {
     const messages = [
-      { role: 'user' as const, mode: 'architect' as const, content: 'q1' },
-      { role: 'assistant' as const, mode: 'architect' as const, content: 'plan v1' },
+      { role: 'user' as const, mode: 'plan' as const, content: 'q1' },
+      { role: 'assistant' as const, mode: 'plan' as const, content: 'plan v1' },
     ]
 
     expect(
       deriveNextPlanDraft({
-        mode: 'architect',
+        mode: 'plan',
         agentStatus: 'complete',
         currentPlanDraft: '',
         messages,
@@ -111,7 +111,7 @@ describe('planDraft helpers', () => {
 
     expect(
       deriveNextPlanDraft({
-        mode: 'architect',
+        mode: 'plan',
         agentStatus: 'streaming',
         currentPlanDraft: '',
         messages,
@@ -120,7 +120,7 @@ describe('planDraft helpers', () => {
 
     expect(
       deriveNextPlanDraft({
-        mode: 'architect',
+        mode: 'plan',
         agentStatus: 'complete',
         currentPlanDraft: 'plan v1',
         messages,
@@ -142,17 +142,17 @@ describe('planDraft helpers', () => {
 
   it('deriveNextPlanDraft gates architect persistence until validated phase when enabled', () => {
     const unvalidated = [
-      { role: 'user' as const, mode: 'architect' as const, content: 'help me plan auth' },
+      { role: 'user' as const, mode: 'plan' as const, content: 'help me plan auth' },
       {
         role: 'assistant' as const,
-        mode: 'architect' as const,
+        mode: 'plan' as const,
         content: 'Brainstorm phase: discovery\n\nQuestion: Which auth provider do you prefer?',
       },
     ]
 
     expect(
       deriveNextPlanDraft({
-        mode: 'architect',
+        mode: 'plan',
         agentStatus: 'complete',
         currentPlanDraft: '',
         messages: unvalidated,
@@ -162,10 +162,10 @@ describe('planDraft helpers', () => {
 
     const validated = [
       ...unvalidated,
-      { role: 'user' as const, mode: 'architect' as const, content: 'Use Better Auth.' },
+      { role: 'user' as const, mode: 'plan' as const, content: 'Use Better Auth.' },
       {
         role: 'assistant' as const,
-        mode: 'architect' as const,
+        mode: 'plan' as const,
         content:
           'Brainstorm phase: validated_plan\n\n1) Clarifying questions\n2) Proposed plan\n3) Risks\n4) Next step',
       },
@@ -173,7 +173,7 @@ describe('planDraft helpers', () => {
 
     expect(
       deriveNextPlanDraft({
-        mode: 'architect',
+        mode: 'plan',
         agentStatus: 'complete',
         currentPlanDraft: '',
         messages: validated,

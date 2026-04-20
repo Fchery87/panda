@@ -89,7 +89,7 @@ describe('project chat wiring', () => {
     expect(planningHookContent).toContain('await addMessage({')
     expect(planningHookContent).toContain("role: 'user'")
     expect(planningHookContent).toContain('content: taskSummary')
-    expect(planningHookContent).toContain("annotations: [{ mode: 'architect' }]")
+    expect(planningHookContent).toContain("annotations: [{ mode: 'plan' }]")
   })
 
   test('project page falls back to persisted convex messages when local agent state is empty', async () => {
