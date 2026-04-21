@@ -15,6 +15,7 @@ describe('spec persistence', () => {
     projectId: 'proj_123' as Id<'projects'>,
     chatId: 'chat_456' as Id<'chats'>,
     runId: 'run_789' as Id<'agentRuns'>,
+    planningSessionId: 'planning_123',
   }
 
   const mockSpec: FormalSpecification = {
@@ -56,6 +57,7 @@ describe('spec persistence', () => {
       expect(input.projectId).toBe(mockContext.projectId)
       expect(input.chatId).toBe(mockContext.chatId)
       expect(input.runId).toBe(mockContext.runId)
+      expect(input.planningSessionId).toBe(mockContext.planningSessionId)
       expect(input.version).toBe(mockSpec.version)
       expect(input.tier).toBe(mockSpec.tier)
       expect(input.status).toBe(mockSpec.status)
@@ -75,6 +77,16 @@ describe('spec persistence', () => {
 
       const input = specToCreateInput(mockSpec, contextWithoutRun)
       expect(input.runId).toBeUndefined()
+      expect(input.planningSessionId).toBeUndefined()
+    })
+
+    test('preserves planningSessionId when provided', () => {
+      const input = specToCreateInput(mockSpec, {
+        ...mockContext,
+        planningSessionId: 'planning_linked',
+      })
+
+      expect(input.planningSessionId).toBe('planning_linked')
     })
 
     test('preserves parentSpecId from provenance', () => {

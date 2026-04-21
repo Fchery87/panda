@@ -1,32 +1,26 @@
 import { describe, it, expect } from 'bun:test'
-import { SpecSurface } from './SpecSurface'
+import { PlanVerificationDrawer } from './PlanVerificationDrawer'
 
-describe('SpecSurface', () => {
+describe('PlanVerificationDrawer', () => {
   it('returns null when mode is closed', () => {
-    const result = SpecSurface({
+    const result = PlanVerificationDrawer({
       mode: 'closed',
       spec: { id: 's1' } as any,
-      onApprove: () => {},
-      onEdit: () => {},
-      onCancel: () => {},
       onClose: () => {},
     })
     expect(result).toBeNull()
   })
 
   it('returns null when spec is null', () => {
-    const result = SpecSurface({
-      mode: 'approval',
+    const result = PlanVerificationDrawer({
+      mode: 'inspect',
       spec: null,
-      onApprove: () => {},
-      onEdit: () => {},
-      onCancel: () => {},
       onClose: () => {},
     })
     expect(result).toBeNull()
   })
 
-  it('returns element when mode is approval with spec', () => {
+  it('returns element when mode is inspect with spec', () => {
     const spec = {
       id: 's1',
       version: 1,
@@ -44,12 +38,9 @@ describe('SpecSurface', () => {
       createdAt: 0,
       updatedAt: 0,
     } as any
-    const result = SpecSurface({
-      mode: 'approval',
+    const result = PlanVerificationDrawer({
+      mode: 'inspect',
       spec,
-      onApprove: () => {},
-      onEdit: () => {},
-      onCancel: () => {},
       onClose: () => {},
     })
     expect(result).not.toBeNull()

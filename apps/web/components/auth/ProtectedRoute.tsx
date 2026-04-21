@@ -29,9 +29,11 @@ function UnauthenticatedRedirect() {
 }
 
 function isE2EAuthBypassEnabled(searchParams: ReturnType<typeof useSearchParams>): boolean {
+  const secret = process.env.NEXT_PUBLIC_E2E_AUTH_BYPASS_SECRET
   return (
     process.env.NODE_ENV !== 'production' &&
-    (process.env.NEXT_PUBLIC_E2E_AUTH_BYPASS === 'true' || searchParams.get('e2eBypass') === '1')
+    Boolean(secret) &&
+    searchParams.get('e2eBypassSecret') === secret
   )
 }
 

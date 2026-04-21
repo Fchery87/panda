@@ -60,7 +60,7 @@ describe('/api/e2e/project route', () => {
   const env = process.env as Record<string, string | undefined>
   const originalEnv = {
     NODE_ENV: env.NODE_ENV,
-    E2E_AUTH_BYPASS: env.E2E_AUTH_BYPASS,
+    E2E_AUTH_BYPASS_SECRET: env.E2E_AUTH_BYPASS_SECRET,
     NEXT_PUBLIC_CONVEX_URL: env.NEXT_PUBLIC_CONVEX_URL,
   }
 
@@ -74,23 +74,25 @@ describe('/api/e2e/project route', () => {
     queryImpl = null
     mutationImpl = null
     env.NODE_ENV = 'test'
-    env.E2E_AUTH_BYPASS = 'true'
+    env.E2E_AUTH_BYPASS_SECRET = 'test-e2e-secret'
     env.NEXT_PUBLIC_CONVEX_URL = 'https://example.convex.cloud'
   }
 
   function restoreEnv() {
     env.NODE_ENV = originalEnv.NODE_ENV
-    env.E2E_AUTH_BYPASS = originalEnv.E2E_AUTH_BYPASS
+    env.E2E_AUTH_BYPASS_SECRET = originalEnv.E2E_AUTH_BYPASS_SECRET
     env.NEXT_PUBLIC_CONVEX_URL = originalEnv.NEXT_PUBLIC_CONVEX_URL
   }
 
   test('rejects when E2E bypass is disabled', async () => {
     setTestEnv()
-    env.E2E_AUTH_BYPASS = 'false'
+    env.E2E_AUTH_BYPASS_SECRET = undefined
     try {
       const { GET } = await importFreshRoute()
 
-      const response = await GET(new Request('http://localhost:3000/api/e2e/project'))
+      const response = await GET(
+        new Request('http://localhost:3000/api/e2e/project?e2eBypassSecret=test-e2e-secret')
+      )
 
       expect(response.status).toBe(404)
     } finally {
@@ -105,7 +107,9 @@ describe('/api/e2e/project route', () => {
       const { GET } = await importFreshRoute()
 
       const response = await GET(
-        new Request('http://localhost:3000/api/e2e/project?name=Workbench%20E2E%20Fixture')
+        new Request(
+          'http://localhost:3000/api/e2e/project?name=Workbench%20E2E%20Fixture&e2eBypassSecret=test-e2e-secret'
+        )
       )
 
       expect(response.status).toBe(200)
@@ -125,7 +129,9 @@ describe('/api/e2e/project route', () => {
     try {
       const { GET } = await importFreshRoute()
 
-      const response = await GET(new Request('http://localhost:3000/api/e2e/project'))
+      const response = await GET(
+        new Request('http://localhost:3000/api/e2e/project?e2eBypassSecret=test-e2e-secret')
+      )
 
       expect(response.status).toBe(200)
       await expect(response.json()).resolves.toEqual({
@@ -179,7 +185,9 @@ describe('/api/e2e/project route', () => {
       const { GET } = await importFreshRoute()
 
       const response = await GET(
-        new Request('http://localhost:3000/api/e2e/project?ensureCapacity=1')
+        new Request(
+          'http://localhost:3000/api/e2e/project?ensureCapacity=1&e2eBypassSecret=test-e2e-secret'
+        )
       )
 
       expect(response.status).toBe(200)
@@ -204,7 +212,7 @@ describe('/api/e2e/project route', () => {
 
       const response = await GET(
         new Request(
-          'http://localhost:3000/api/e2e/project?name=Workbench%20E2E%20Fixture&filePath=e2e-fixture.ts&fileContent=export%20const%20value%20%3D%201%0A&seedRuntimeCheckpoint=1'
+          'http://localhost:3000/api/e2e/project?name=Workbench%20E2E%20Fixture&filePath=e2e-fixture.ts&fileContent=export%20const%20value%20%3D%201%0A&seedRuntimeCheckpoint=1&e2eBypassSecret=test-e2e-secret'
         )
       )
 
@@ -245,7 +253,7 @@ describe('/api/e2e/project route', () => {
 
       const response = await GET(
         new Request(
-          'http://localhost:3000/api/e2e/project?name=Workbench%20E2E%20Fixture&filePath=e2e-artifact.ts&fileContent=export%20const%20value%20%3D%201%0A&artifactContent=export%20const%20value%20%3D%202%0A'
+          'http://localhost:3000/api/e2e/project?name=Workbench%20E2E%20Fixture&filePath=e2e-artifact.ts&fileContent=export%20const%20value%20%3D%201%0A&artifactContent=export%20const%20value%20%3D%202%0A&e2eBypassSecret=test-e2e-secret'
         )
       )
 
@@ -292,7 +300,7 @@ describe('/api/e2e/project route', () => {
 
       const response = await GET(
         new Request(
-          'http://localhost:3000/api/e2e/project?name=Workbench%20E2E%20Fixture&autoApplyFiles=0&autoRunCommands=0'
+          'http://localhost:3000/api/e2e/project?name=Workbench%20E2E%20Fixture&autoApplyFiles=0&autoRunCommands=0&e2eBypassSecret=test-e2e-secret'
         )
       )
 
@@ -326,7 +334,7 @@ describe('/api/e2e/project route', () => {
 
       const response = await GET(
         new Request(
-          'http://localhost:3000/api/e2e/project?name=Workbench%20E2E%20Fixture&planStatus=awaiting_review&planDraft=%23%23%20Goal%0ASeed%20the%20plan%20artifact%0A%0A%23%23%20Implementation%20Plan%0A1.%20Open%20the%20plan%20panel%0A2.%20Approve%20the%20plan'
+          'http://localhost:3000/api/e2e/project?name=Workbench%20E2E%20Fixture&planStatus=awaiting_review&planDraft=%23%23%20Goal%0ASeed%20the%20plan%20artifact%0A%0A%23%23%20Implementation%20Plan%0A1.%20Open%20the%20plan%20panel%0A2.%20Approve%20the%20plan&e2eBypassSecret=test-e2e-secret'
         )
       )
 
@@ -418,7 +426,7 @@ describe('/api/e2e/project route', () => {
 
       const response = await GET(
         new Request(
-          'http://localhost:3000/api/e2e/project?name=Workbench%20E2E%20Fixture&structuredPlanningSession=1&structuredPlanningSessionPlan=%7B%22title%22%3A%22Structured%20Fixture%20Plan%22%2C%22summary%22%3A%22Seeded%20structured%20plan%22%2C%22acceptanceChecks%22%3A%5B%22Workspace%20plan%20tab%20opens%22%5D%7D'
+          'http://localhost:3000/api/e2e/project?name=Workbench%20E2E%20Fixture&structuredPlanningSession=1&structuredPlanningSessionPlan=%7B%22title%22%3A%22Structured%20Fixture%20Plan%22%2C%22summary%22%3A%22Seeded%20structured%20plan%22%2C%22acceptanceChecks%22%3A%5B%22Workspace%20plan%20tab%20opens%22%5D%7D&e2eBypassSecret=test-e2e-secret'
         )
       )
 
@@ -448,7 +456,9 @@ describe('/api/e2e/project route', () => {
     try {
       const { GET } = await importFreshRoute()
 
-      const response = await GET(new Request('http://localhost:3000/api/e2e/project'))
+      const response = await GET(
+        new Request('http://localhost:3000/api/e2e/project?e2eBypassSecret=test-e2e-secret')
+      )
 
       expect(response.status).toBe(500)
       await expect(response.json()).resolves.toEqual({
@@ -499,7 +509,9 @@ describe('/api/e2e/project route', () => {
     try {
       const { GET } = await importFreshRoute()
 
-      const response = await GET(new Request('http://localhost:3000/api/e2e/project'))
+      const response = await GET(
+        new Request('http://localhost:3000/api/e2e/project?e2eBypassSecret=test-e2e-secret')
+      )
 
       expect(response.status).toBe(200)
       await expect(response.json()).resolves.toEqual({
@@ -544,7 +556,9 @@ describe('/api/e2e/project route', () => {
     try {
       const { GET } = await importFreshRoute()
 
-      const response = await GET(new Request('http://localhost:3000/api/e2e/project'))
+      const response = await GET(
+        new Request('http://localhost:3000/api/e2e/project?e2eBypassSecret=test-e2e-secret')
+      )
 
       expect(response.status).toBe(200)
       await expect(response.json()).resolves.toEqual({
@@ -600,7 +614,9 @@ describe('/api/e2e/project route', () => {
       const { GET } = await importFreshRoute()
 
       const response = await GET(
-        new Request('http://localhost:3000/api/e2e/project?name=Loop%20Debug%20Fixture')
+        new Request(
+          'http://localhost:3000/api/e2e/project?name=Loop%20Debug%20Fixture&e2eBypassSecret=test-e2e-secret'
+        )
       )
 
       expect(response.status).toBe(200)

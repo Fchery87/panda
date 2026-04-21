@@ -13,6 +13,7 @@ export function persistPendingApprovalSpec(args: {
   projectId: Id<'projects'>
   chatId: Id<'chats'>
   runId?: Id<'agentRuns'>
+  planningSessionId?: string | null
   specPersistence: SpecPersistenceState
   createSpec: (args: ReturnType<typeof specToCreateInput>) => Promise<Id<'specifications'>>
 }): void {
@@ -22,6 +23,7 @@ export function persistPendingApprovalSpec(args: {
     projectId: args.projectId,
     chatId: args.chatId,
     runId: args.runId,
+    planningSessionId: args.planningSessionId,
   })
 
   void args
@@ -39,8 +41,13 @@ export function persistGeneratedSpec(args: {
   projectId: Id<'projects'>
   chatId: Id<'chats'>
   runId?: Id<'agentRuns'>
+  planningSessionId?: string | null
   specPersistence: SpecPersistenceState
   createSpec: (args: ReturnType<typeof specToCreateInput>) => Promise<Id<'specifications'>>
+  attachVerification?: (args: {
+    sessionId: string
+    verificationId: Id<'specifications'>
+  }) => Promise<unknown>
   updateSpec: (args: {
     specId: Id<'specifications'>
     updates: {
@@ -53,12 +60,19 @@ export function persistGeneratedSpec(args: {
       projectId: args.projectId,
       chatId: args.chatId,
       runId: args.runId,
+      planningSessionId: args.planningSessionId,
     })
 
     void args
       .createSpec(specInput)
       .then((specId) => {
         args.specPersistence.set(args.spec.id, specId)
+        if (args.planningSessionId && args.attachVerification) {
+          void args.attachVerification({
+            sessionId: args.planningSessionId,
+            verificationId: specId,
+          })
+        }
       })
       .catch((err: unknown) => {
         appLog.error('[useAgent] Failed to persist spec_generated:', err)

@@ -62,6 +62,8 @@ const planningSessionsApi = {
   completeIntake:
     (api as any).planningSessions?.completeIntake ?? 'planningSessions:completeIntake',
   acceptPlan: (api as any).planningSessions?.acceptPlan ?? 'planningSessions:acceptPlan',
+  getActiveByChat:
+    (api as any).planningSessions?.getActiveByChat ?? 'planningSessions:getActiveByChat',
 }
 
 const filesApi = {
@@ -164,17 +166,13 @@ function isE2EFixtureModeEnabled(request: Request): boolean {
     return false
   }
 
-  if (
-    process.env.E2E_AUTH_BYPASS === 'true' ||
-    process.env.NEXT_PUBLIC_E2E_AUTH_BYPASS === 'true'
-  ) {
-    return true
-  }
+  const secret = process.env.E2E_AUTH_BYPASS_SECRET
+  if (!secret) return false
 
   const url = new URL(request.url)
   return (
-    request.headers.get('x-panda-e2e-bypass') === 'true' ||
-    url.searchParams.get('e2eBypass') === '1'
+    request.headers.get('x-panda-e2e-bypass-secret') === secret ||
+    url.searchParams.get('e2eBypassSecret') === secret
   )
 }
 
@@ -348,20 +346,19 @@ async function seedStructuredPlanningSession(args: {
     generatedPlan,
   })
 
-  let effectivePlanStatus: GeneratedPlanArtifact['status'] = generatedPlan.status
   if (args.acceptPlan) {
     await args.convex.mutation(planningSessionsApi.acceptPlan, {
       sessionId,
     })
-    effectivePlanStatus = 'accepted'
   }
+
+  const sessionRecord = (await args.convex.query(planningSessionsApi.getActiveByChat, {
+    chatId: args.chatId,
+  })) as { generatedPlan?: GeneratedPlanArtifact | null } | null
 
   return {
     sessionId,
-    generatedPlan: {
-      ...generatedPlan,
-      status: effectivePlanStatus,
-    },
+    generatedPlan: sessionRecord?.generatedPlan ?? generatedPlan,
   }
 }
 

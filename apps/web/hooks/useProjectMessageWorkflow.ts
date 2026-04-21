@@ -3,10 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Id } from '@convex/_generated/dataModel'
 import { toast } from 'sonner'
-import {
-  canBuildFromPlan,
-  type PlanStatus,
-} from '@/lib/chat/planDraft'
+import { canBuildFromPlan, type PlanStatus } from '@/lib/chat/planDraft'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import type { GeneratedPlanArtifact } from '@/lib/planning/types'
 
@@ -34,6 +31,7 @@ type SendAgentMessageOptions = {
     sessionId: string
     plan: GeneratedPlanArtifact
   }
+  includeEditorContext?: boolean
   attachments?: UploadedAttachment[]
   attachmentsOnly?: boolean
   variantCount?: number
@@ -195,6 +193,7 @@ export function useProjectMessageWorkflow(args: {
       sessionId: string
       plan: GeneratedPlanArtifact
     }
+    includeEditorContext?: boolean
     variantCount?: number
     attachments?: UploadedAttachment[]
     attachmentsOnly?: boolean
@@ -209,6 +208,7 @@ export function useProjectMessageWorkflow(args: {
     void sendAgentMessage(pendingMessage.content, pendingMessage.contextFiles, {
       approvedPlanExecution: pendingMessage.approvedPlanExecution,
       approvedPlanExecutionContext: pendingMessage.approvedPlanExecutionContext,
+      includeEditorContext: pendingMessage.includeEditorContext,
       variantCount: pendingMessage.variantCount,
       attachments: pendingMessage.attachments,
       attachmentsOnly: pendingMessage.attachmentsOnly,
@@ -290,6 +290,7 @@ export function useProjectMessageWorkflow(args: {
                     approvedPlanExecution: options?.approvedPlanExecution,
                     approvedPlanExecutionContext:
                       approvedPlanExecutionPayload.approvedPlanExecutionContext,
+                    includeEditorContext: options?.includeEditorContext,
                     variantCount: options?.variantCount,
                     attachments: options?.attachments,
                     attachmentsOnly: options?.attachmentsOnly,
@@ -328,6 +329,7 @@ export function useProjectMessageWorkflow(args: {
       await sendAgentMessage(finalContent, contextFiles, {
         approvedPlanExecution: options?.approvedPlanExecution,
         approvedPlanExecutionContext: approvedPlanExecutionPayload.approvedPlanExecutionContext,
+        includeEditorContext: options?.includeEditorContext,
         variantCount: options?.variantCount,
         attachments: options?.attachments,
         attachmentsOnly: options?.attachmentsOnly,

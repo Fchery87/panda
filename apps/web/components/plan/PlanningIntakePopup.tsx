@@ -7,11 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { formatQuestionChoices } from '@/lib/planning/question-engine'
 import type { PlanningQuestion, GeneratedPlanArtifact, PlanningAnswer } from '@/lib/planning/types'
-import {
-  closePlanningPopup,
-  openPlanningPopup,
-  useProjectWorkspaceUi,
-} from '@/hooks/useProjectWorkspaceUi'
+import { useWorkspaceUiStore } from '@/stores/workspaceUiStore'
 
 type PlanningSessionView = {
   sessionId: string
@@ -153,7 +149,7 @@ export function PlanningIntakeSurface({
   onClearIntake,
   className,
 }: PlanningIntakeSurfaceProps) {
-  const { isPlanningPopupOpen } = useProjectWorkspaceUi()
+  const { isPlanningPopupOpen, openPlanningPopup, closePlanningPopup } = useWorkspaceUiStore()
 
   function handleClose() {
     closePlanningPopup()

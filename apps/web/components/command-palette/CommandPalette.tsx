@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   FileIcon,
   Command,
@@ -39,7 +39,7 @@ interface CommandPaletteProps {
 }
 
 export function CommandPalette({
-  projectId: _projectId,
+  projectId,
   files = [],
   onModeChange,
   currentMode: _currentMode,
@@ -48,6 +48,7 @@ export function CommandPalette({
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { setTheme } = useTheme()
 
   const shortcuts = useMemo(
@@ -189,14 +190,27 @@ export function CommandPalette({
         subtitle: file.path,
         icon: <FileIcon className="h-4 w-4" />,
         action: () => {
-          // Would need to integrate with file selection
-          void file.path
+          if (!projectId) return
+          const params = new URLSearchParams()
+          params.set('filePath', file.path)
+
+          const bypass = searchParams.get('e2eBypassSecret')
+          if (bypass) {
+            params.set('e2eBypassSecret', bypass)
+          }
+
+          const e2eBypass = searchParams.get('e2eBypass')
+          if (e2eBypass) {
+            params.set('e2eBypass', e2eBypass)
+          }
+
+          window.location.assign(`/projects/${projectId}?${params.toString()}`)
         },
       })),
     ]
 
     return list
-  }, [router, onModeChange, setTheme, files])
+  }, [router, onModeChange, setTheme, files, projectId, searchParams])
 
   // Filter commands based on query
   const filteredCommands = useMemo(() => {

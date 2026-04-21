@@ -50,6 +50,7 @@ export function applyNonTerminalAgentEvent(args: {
   projectId: Id<'projects'>
   chatId: Id<'chats'>
   runId: Id<'agentRuns'> | null
+  planningSessionId?: string | null
   planSteps: string[]
   completedPlanStepIndexesRef: MutableRefObject<number[]>
   specPersistence: SpecPersistenceState
@@ -60,6 +61,10 @@ export function applyNonTerminalAgentEvent(args: {
   estimateCompletionTokens: (content: string) => number
   appendRunEvent: (event: RunEventInput, options?: { forceFlush?: boolean }) => Promise<void>
   createSpec: (args: CreateSpecInput) => Promise<Id<'specifications'>>
+  attachVerification?: (args: {
+    sessionId: string
+    verificationId: Id<'specifications'>
+  }) => Promise<unknown>
   updateSpec: (args: { specId: Id<'specifications'>; updates: UpdateSpecInput }) => Promise<unknown>
   setStatus: Dispatch<SetStateAction<AgentStatus>>
   setCurrentIteration: Dispatch<SetStateAction<number>>
@@ -78,6 +83,7 @@ export function applyNonTerminalAgentEvent(args: {
     projectId,
     chatId,
     runId,
+    planningSessionId,
     planSteps,
     completedPlanStepIndexesRef,
     specPersistence,
@@ -86,6 +92,7 @@ export function applyNonTerminalAgentEvent(args: {
     estimateCompletionTokens,
     appendRunEvent,
     createSpec,
+    attachVerification,
     updateSpec,
     setStatus,
     setCurrentIteration,
@@ -266,6 +273,7 @@ export function applyNonTerminalAgentEvent(args: {
           projectId,
           chatId,
           runId: runId ?? undefined,
+          planningSessionId,
           specPersistence,
           createSpec,
         })
@@ -287,8 +295,10 @@ export function applyNonTerminalAgentEvent(args: {
           projectId,
           chatId,
           runId: runId ?? undefined,
+          planningSessionId,
           specPersistence,
           createSpec,
+          attachVerification,
           updateSpec,
         })
       }

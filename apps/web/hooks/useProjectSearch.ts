@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { SearchMatch } from '@/lib/agent/search/types'
 
 export interface ProjectSearchOptions {
@@ -46,6 +46,21 @@ export function useProjectSearch() {
 
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const isMountedRef = useRef(true)
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+        debounceTimerRef.current = null
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort()
+        abortControllerRef.current = null
+      }
+    }
+  }, [])
 
   const clearSearch = useCallback(() => {
     if (debounceTimerRef.current) {
@@ -84,6 +99,7 @@ export function useProjectSearch() {
     }
 
     if (!trimmed) {
+      if (!isMountedRef.current) return
       setState((prev) => ({
         ...prev,
         query: '',
@@ -98,6 +114,7 @@ export function useProjectSearch() {
       return
     }
 
+    if (!isMountedRef.current) return
     setState((prev) => ({
       ...prev,
       query: trimmed,
@@ -154,6 +171,7 @@ export function useProjectSearch() {
         matches: SearchMatch[]
       }
 
+      if (!isMountedRef.current) return
       setState((prev) => ({
         ...prev,
         isLoading: false,
@@ -166,6 +184,7 @@ export function useProjectSearch() {
       }))
     } catch (error) {
       if (controller.signal.aborted) return
+      if (!isMountedRef.current) return
       setState((prev) => ({
         ...prev,
         isLoading: false,

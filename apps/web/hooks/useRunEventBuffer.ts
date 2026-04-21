@@ -178,11 +178,8 @@ export function useRunEventBuffer<TEvent extends object>({
   )
 
   const cleanup = useCallback(() => {
-    if (runEventFlushTimerRef.current !== null) {
-      clearTimeout(runEventFlushTimerRef.current)
-      runEventFlushTimerRef.current = null
-    }
-  }, [])
+    void flushRunEventBuffer({ force: true, reason: 'cleanup' })
+  }, [flushRunEventBuffer])
 
   return {
     tracePersistenceStatus,

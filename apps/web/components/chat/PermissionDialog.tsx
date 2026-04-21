@@ -41,7 +41,9 @@ declare global {
 }
 
 function isE2EPermissionHookEnabled(): boolean {
-  return process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_E2E_AUTH_BYPASS === 'true'
+  return (
+    process.env.NODE_ENV !== 'production' && Boolean(process.env.NEXT_PUBLIC_E2E_AUTH_BYPASS_SECRET)
+  )
 }
 
 function emitE2EPermissionRequest(eventBus: typeof bus): void {

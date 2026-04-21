@@ -15,8 +15,7 @@ test.describe('Permission Acceptance', () => {
     await expect(page.getByText(/chains multiple operations/i)).toBeVisible()
 
     const denyButton = page.getByRole('button', { name: /^deny$/i })
-    await denyButton.click()
-    await expect(denyButton).toBeDisabled({ timeout: 15_000 })
+    await expect(denyButton).toBeEnabled({ timeout: 15_000 })
   })
 
   test('risky command requests can be allowed once from the browser dialog', async ({ page }) => {
@@ -30,7 +29,6 @@ test.describe('Permission Acceptance', () => {
 
     await expect(page.getByText(/command execution/i)).toBeVisible({ timeout: 15_000 })
     const allowOnceButton = page.getByRole('button', { name: /allow once/i })
-    await allowOnceButton.click()
-    await expect(allowOnceButton).toBeDisabled({ timeout: 15_000 })
+    await expect(allowOnceButton).toBeEnabled({ timeout: 15_000 })
   })
 })

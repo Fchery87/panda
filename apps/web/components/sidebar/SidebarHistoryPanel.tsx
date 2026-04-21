@@ -5,13 +5,13 @@ import { useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { useWorkspace } from '@/contexts/WorkspaceContext'
 import { IconNewChat, IconSearch, IconList } from '@/components/ui/icons'
 
 interface SidebarHistoryPanelProps {
   projectId: Id<'projects'>
   activeChatId?: Id<'chats'>
   onSelectChat: (chatId: Id<'chats'>) => void
+  onNewChat: () => void
 }
 
 type Scope = 'project' | 'all'
@@ -33,8 +33,8 @@ export function SidebarHistoryPanel({
   projectId,
   activeChatId,
   onSelectChat,
+  onNewChat,
 }: SidebarHistoryPanelProps) {
-  const { onNewChat } = useWorkspace()
   const [scope, setScope] = useState<Scope>('project')
   const [search, setSearch] = useState('')
 

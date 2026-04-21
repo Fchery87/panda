@@ -8,15 +8,17 @@ mock.module('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-mock.module('@/contexts/WorkspaceContext', () => ({
-  useWorkspace: () => ({ handleSectionChange: () => {} }),
-}))
-
 describe('ProjectWorkspaceLayout desktop shell', () => {
   test('renders the desktop right rail chat panel', () => {
     const html = renderToStaticMarkup(
       <ProjectWorkspaceLayout
         projectId={'project' as never}
+        activeSection="files"
+        isFlyoutOpen={false}
+        onSidebarSectionChange={() => {}}
+        onToggleFlyout={() => {}}
+        onSelectChat={() => {}}
+        onNewChat={() => {}}
         files={[]}
         selectedFilePath={null}
         openTabs={[]}

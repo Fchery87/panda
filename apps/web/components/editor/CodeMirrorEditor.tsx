@@ -14,6 +14,7 @@ import { Check, X } from 'lucide-react'
 import { getLanguageExtension } from './language-support'
 import { useLSP } from '@/hooks/useLSP'
 import { lspCompletion } from './lsp-completion'
+import { useEditorContextStore } from '@/stores/editorContextStore'
 
 interface CodeMirrorEditorProps {
   filePath: string
@@ -66,6 +67,58 @@ const jumpHighlightTheme = EditorView.theme({
   },
 })
 
+export function handleSelectionUpdate(
+  filePath: string,
+  update: {
+    selectionSet: boolean
+    state: {
+      selection: { main: { from: number; to: number } }
+      doc: {
+        lineAt: (pos: number) => { number: number }
+        sliceString: (start: number, end: number) => string
+      }
+    }
+  }
+) {
+  if (!update.selectionSet) return
+
+  const { from, to } = update.state.selection.main
+  if (from === to) {
+    useEditorContextStore.getState().setSelection(null)
+    return
+  }
+
+  const startLine = update.state.doc.lineAt(from).number
+  const endLine = update.state.doc.lineAt(to).number
+  const text = update.state.doc.sliceString(from, to)
+
+  useEditorContextStore.getState().setSelection({
+    filePath,
+    startLine,
+    endLine,
+    text,
+  })
+}
+
+export function createSelectionListener(filePath: string) {
+  return EditorView.updateListener.of((update) => {
+    handleSelectionUpdate(filePath, update)
+  })
+}
+
+function syncSelectionFromView(filePath: string, view: EditorView | null) {
+  if (!view) return
+
+  const selection = view.state.selection.main
+  handleSelectionUpdate(filePath, {
+    selectionSet: true,
+    state: {
+      selection: { main: { from: selection.from, to: selection.to } },
+      doc: view.state.doc,
+    },
+  })
+}
+
 export function CodeMirrorEditor({
   filePath,
   content,
@@ -77,9 +130,11 @@ export function CodeMirrorEditor({
 }: CodeMirrorEditorProps) {
   const editorViewRef = useRef<EditorView | null>(null)
   const clearHighlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const e2eBypassSecret = process.env.NEXT_PUBLIC_E2E_AUTH_BYPASS_SECRET
   const isE2EBypassMode =
     typeof window !== 'undefined' &&
-    new URL(window.location.href).searchParams.get('e2eBypass') === '1'
+    Boolean(e2eBypassSecret) &&
+    new URL(window.location.href).searchParams.get('e2eBypassSecret') === e2eBypassSecret
   const [inlineChatState, setInlineChatState] = useState<{
     isOpen: boolean
     selectedText: string
@@ -235,6 +290,20 @@ export function CodeMirrorEditor({
   }, [filePath, jumpTo])
 
   useEffect(() => {
+    const handleSelectionSync = () => {
+      syncSelectionFromView(filePath, editorViewRef.current)
+    }
+
+    window.addEventListener('mouseup', handleSelectionSync)
+    window.addEventListener('keyup', handleSelectionSync)
+
+    return () => {
+      window.removeEventListener('mouseup', handleSelectionSync)
+      window.removeEventListener('keyup', handleSelectionSync)
+    }
+  }, [filePath])
+
+  useEffect(() => {
     return () => {
       if (clearHighlightTimerRef.current) {
         clearTimeout(clearHighlightTimerRef.current)
@@ -272,6 +341,8 @@ export function CodeMirrorEditor({
     ]
   }, [diffState])
 
+  const selectionListener = useMemo(() => createSelectionListener(filePath), [filePath])
+
   // LSP completion extensions
   const lspExtensions = useMemo(() => {
     return lspCompletion({
@@ -304,6 +375,7 @@ export function CodeMirrorEditor({
         extensions={[
           jumpHighlightField,
           jumpHighlightTheme,
+          selectionListener,
           ...(!isE2EBypassMode
             ? Array.isArray(langExtension)
               ? langExtension
@@ -329,6 +401,8 @@ export function CodeMirrorEditor({
         }}
         onCreateEditor={(view) => {
           editorViewRef.current = view
+          ;((view.dom.parentElement ?? view.dom) as HTMLElement & { __cmView?: EditorView }).__cmView =
+            view
         }}
         onChange={handleChange}
         className="h-full text-sm"

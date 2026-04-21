@@ -543,6 +543,39 @@ export const getActiveByChat = query({
   },
 })
 
+export const getVerificationForSession = query({
+  args: { sessionId: v.string() },
+  handler: async (ctx, args) => {
+    const session = await getPlanningSessionOrThrow(ctx, args.sessionId)
+    await requireChatOwner(ctx, session.chatId)
+
+    const verifications = await ctx.db
+      .query('specifications')
+      .withIndex('by_planningSession', (q) => q.eq('planningSessionId', args.sessionId))
+      .take(1)
+
+    return verifications[0] ?? null
+  },
+})
+
+export const attachVerification = mutation({
+  args: {
+    sessionId: v.string(),
+    verificationId: v.id('specifications'),
+  },
+  handler: async (ctx, args) => {
+    const session = await getPlanningSessionOrThrow(ctx, args.sessionId)
+    await requireChatOwner(ctx, session.chatId)
+
+    await ctx.db.patch(session._id, {
+      verificationId: args.verificationId,
+      updatedAt: Date.now(),
+    })
+
+    return args.verificationId
+  },
+})
+
 export const startIntake = mutation({
   args: {
     chatId: v.id('chats'),
@@ -567,6 +600,7 @@ export const startIntake = mutation({
       questions: record.session.questions,
       answers: record.session.answers,
       generatedPlan: record.session.generatedPlan,
+      verificationId: undefined,
       startedAt: record.session.startedAt,
       completedAt: record.session.completedAt,
       acceptedAt: record.session.acceptedAt,

@@ -12,11 +12,8 @@ describe('Workbench integration wiring', () => {
   })
 
   it('passes currentChatId to desktop workbench so timeline history works', () => {
-    const pagePath = path.resolve(
-      import.meta.dir,
-      '../../app/(dashboard)/projects/[projectId]/page.tsx'
-    )
-    const pageSource = fs.readFileSync(pagePath, 'utf8')
+    const providerPath = path.resolve(import.meta.dir, '../projects/WorkspaceRuntimeProvider.tsx')
+    const pageSource = fs.readFileSync(providerPath, 'utf8')
     const layoutPath = path.resolve(import.meta.dir, '../projects/ProjectWorkspaceLayout.tsx')
     const layoutSource = fs.readFileSync(layoutPath, 'utf8')
 
@@ -25,10 +22,7 @@ describe('Workbench integration wiring', () => {
   })
 
   it('keeps plan execution detached from auto-opening the inspector', () => {
-    const pagePath = path.resolve(
-      import.meta.dir,
-      '../../app/(dashboard)/projects/[projectId]/page.tsx'
-    )
+    const pagePath = path.resolve(import.meta.dir, '../projects/WorkspaceRuntimeProvider.tsx')
     const source = fs.readFileSync(pagePath, 'utf8')
 
     const handleBuildFromPlanStart = source.indexOf('const handleBuildFromPlan = useCallback')
@@ -40,10 +34,7 @@ describe('Workbench integration wiring', () => {
   })
 
   it('threads pending artifact previews into the workspace editor path', () => {
-    const pagePath = path.resolve(
-      import.meta.dir,
-      '../../app/(dashboard)/projects/[projectId]/page.tsx'
-    )
+    const pagePath = path.resolve(import.meta.dir, '../projects/WorkspaceRuntimeProvider.tsx')
     const pageSource = fs.readFileSync(pagePath, 'utf8')
     const layoutPath = path.resolve(import.meta.dir, '../projects/ProjectWorkspaceLayout.tsx')
     const layoutSource = fs.readFileSync(layoutPath, 'utf8')
@@ -57,10 +48,7 @@ describe('Workbench integration wiring', () => {
   })
 
   it('tracks editor dirty state in page-owned tabs so artifact navigation can avoid stealing focus', () => {
-    const pagePath = path.resolve(
-      import.meta.dir,
-      '../../app/(dashboard)/projects/[projectId]/page.tsx'
-    )
+    const pagePath = path.resolve(import.meta.dir, '../projects/WorkspaceRuntimeProvider.tsx')
     const pageSource = fs.readFileSync(pagePath, 'utf8')
     const layoutPath = path.resolve(import.meta.dir, '../projects/ProjectWorkspaceLayout.tsx')
     const layoutSource = fs.readFileSync(layoutPath, 'utf8')

@@ -13,6 +13,8 @@ interface OpenTabLike {
 interface UseProjectRequestedFileSyncParams {
   files: ProjectFileLike[] | undefined
   requestedFilePath: string | null
+  selectedFilePath: string | null
+  openTabs: OpenTabLike[]
   setSelectedFilePath: (path: string) => void
   setSelectedFileLocation: (location: null) => void
   setCursorPosition: (position: { line: number; column: number } | null) => void
@@ -22,6 +24,8 @@ interface UseProjectRequestedFileSyncParams {
 export function useProjectRequestedFileSync({
   files,
   requestedFilePath,
+  selectedFilePath,
+  openTabs,
   setSelectedFilePath,
   setSelectedFileLocation,
   setCursorPosition,
@@ -29,6 +33,9 @@ export function useProjectRequestedFileSync({
 }: UseProjectRequestedFileSyncParams) {
   useEffect(() => {
     if (!requestedFilePath || !files?.some((file) => file.path === requestedFilePath)) return
+
+    const tabAlreadyOpen = openTabs.some((tab) => tab.path === requestedFilePath)
+    if (selectedFilePath === requestedFilePath && tabAlreadyOpen) return
 
     setSelectedFilePath(requestedFilePath)
     setSelectedFileLocation(null)
@@ -39,7 +46,9 @@ export function useProjectRequestedFileSync({
     })
   }, [
     files,
+    openTabs,
     requestedFilePath,
+    selectedFilePath,
     setCursorPosition,
     setOpenTabs,
     setSelectedFileLocation,

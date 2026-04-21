@@ -36,6 +36,7 @@ import { appLog } from '@/lib/logger'
 import { toast } from 'sonner'
 import type { GeneratedPlanArtifact } from '../lib/planning/types'
 import { spawnVariants } from '../lib/agent/parallelVariants'
+import { buildEditorContextBlock } from '../lib/agent/buildEditorContextBlock'
 
 import {
   buildAgentPromptContext,
@@ -59,6 +60,7 @@ import { useMemoryBank } from './useMemoryBank'
 import { useProjectContext } from './useProjectContext'
 import { useMessageHistory } from './useMessageHistory'
 import { useSpecManagement } from './useSpecManagement'
+import { useEditorContextStore } from '@/stores/editorContextStore'
 import type {
   Message,
   MessageAnnotationInfo,
@@ -91,6 +93,7 @@ type SendMessageOptions = {
     sessionId: string
     plan: GeneratedPlanArtifact
   }
+  includeEditorContext?: boolean
   variantCount?: number
   attachments?: UploadedAttachment[]
   attachmentsOnly?: boolean
@@ -112,6 +115,7 @@ export function buildPublicSendMessageOptions(options?: SendMessageOptions): {
     sessionId: string
     plan: GeneratedPlanArtifact
   }
+  includeEditorContext?: boolean
   variantCount?: number
   attachments?: UploadedAttachment[]
   attachmentsOnly?: boolean
@@ -120,10 +124,24 @@ export function buildPublicSendMessageOptions(options?: SendMessageOptions): {
     clearInput: true,
     approvedPlanExecution: options?.approvedPlanExecution,
     approvedPlanExecutionContext: options?.approvedPlanExecutionContext,
+    includeEditorContext: options?.includeEditorContext,
     variantCount: options?.variantCount,
     attachments: options?.attachments,
     attachmentsOnly: options?.attachmentsOnly,
   }
+}
+
+export function prependEditorContextToContent(content: string, includeEditorContext = true): string {
+  if (!includeEditorContext) return content
+
+  const { selectedFilePath, selection, openTabs } = useEditorContextStore.getState()
+  const block = buildEditorContextBlock({
+    activeFile: selectedFilePath,
+    selection,
+    openTabs,
+  })
+
+  return block ? `${block}\n\n${content}` : content
 }
 
 function logUseAgentError(message: string, error: unknown): void {
@@ -265,12 +283,17 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   // Convex queries & mutations
   const currentUser = useQuery(api.users.getCurrent)
   const settings = useQuery(api.settings.get)
+  const activePlanningSession = useQuery(
+    api.planningSessions.getActiveByChat,
+    chatId ? { chatId } : 'skip'
+  )
   const persistedModeUsage = useQuery(
     api.agentRuns.usageByChatMode,
     chatId ? { chatId, mode } : 'skip'
   )
   const addMessage = useMutation(api.messages.add)
   const createChatAttachments = useMutation(api.chatAttachments.createMany)
+  const attachVerification = useMutation(api.planningSessions.attachVerification)
   const createRun = useMutation(api.agentRuns.create)
   const appendRunEvents = useMutation(api.agentRuns.appendEvents)
   const completeRun = useMutation(api.agentRuns.complete)
@@ -341,6 +364,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     updateSpecMutation,
     specPersistenceRef,
   } = useSpecManagement(projectId, chatId, runtimeRef, setStatus)
+
+  const visiblePendingSpec = activePlanningSession?.generatedPlan ? null : pendingSpec
 
   // Message history hook
   const { messages, setMessages } = useMessageHistory(
@@ -500,11 +525,16 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           sessionId: string
           plan: GeneratedPlanArtifact
         }
+        includeEditorContext?: boolean
         attachments?: UploadedAttachment[]
         attachmentsOnly?: boolean
       }
     ) => {
-      const userContent = normalizeUserContent(rawContent, options)
+      const normalizedUserContent = normalizeUserContent(rawContent, options)
+      const userContent = prependEditorContextToContent(
+        normalizedUserContent,
+        options?.includeEditorContext ?? true
+      )
       if (!userContent || isRunningRef.current) return
       if (options?.clearInput !== false) {
         setInput('')
@@ -835,6 +865,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             projectId,
             chatId,
             runId: runIdRef.current,
+            planningSessionId: activePlanningSession?.sessionId ?? null,
             planSteps,
             completedPlanStepIndexesRef,
             specPersistence: specPersistenceRef.current,
@@ -848,6 +879,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               }),
             appendRunEvent,
             createSpec: createSpecMutation,
+            attachVerification,
             updateSpec: updateSpecMutation,
             setStatus,
             setCurrentIteration,
@@ -1058,6 +1090,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       architectBrainstormEnabled,
       planDraft,
       addMessage,
+      activePlanningSession?.sessionId,
+      attachVerification,
       createChatAttachments,
       beginRun,
       clearRun,
@@ -1097,7 +1131,11 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
 
   const sendMessageWithVariants = useCallback(
     async (rawContent: string, contextFiles?: string[], options?: SendMessageOptions) => {
-      const userContent = normalizeUserContent(rawContent, options)
+      const normalizedUserContent = normalizeUserContent(rawContent, options)
+      const userContent = prependEditorContextToContent(
+        normalizedUserContent,
+        options?.includeEditorContext ?? true
+      )
       if (!userContent || isRunningRef.current || !userId) return
 
       const variantCount = options?.variantCount ?? 2
@@ -1378,7 +1416,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     progressSteps,
     usageMetrics,
     currentSpec,
-    pendingSpec,
+    pendingSpec: visiblePendingSpec,
     pendingArtifacts,
     memoryBank: memoryBankContent,
     updateMemoryBank,

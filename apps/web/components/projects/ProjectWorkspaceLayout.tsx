@@ -20,7 +20,8 @@ import { ActiveAgentsPane } from '@/components/sidebar/ActiveAgentsPane'
 import { ProjectSearchPanel } from '@/components/workbench/ProjectSearchPanel'
 import { SourceControlPane } from '@/components/sidebar/SourceControlPane'
 import { SidebarHistoryPanel } from '@/components/sidebar/SidebarHistoryPanel'
-import { useWorkspace, type WorkspaceOpenTab } from '@/contexts/WorkspaceContext'
+import type { WorkspaceOpenTab } from '@/contexts/WorkspaceContext'
+import type { SidebarSection } from '@/components/sidebar/SidebarRail'
 import { cn } from '@/lib/utils'
 import type { FormalSpecification } from '@/lib/agent/spec/types'
 import type { ChatMode } from '@/lib/agent/prompt-library'
@@ -37,6 +38,12 @@ type FileRecord = {
 interface ProjectWorkspaceLayoutProps {
   projectId: Id<'projects'>
   activeChatId?: Id<'chats'>
+  activeSection: SidebarSection
+  isFlyoutOpen: boolean
+  onSidebarSectionChange: (section: SidebarSection) => void
+  onToggleFlyout: () => void
+  onSelectChat: (chatId: Id<'chats'>) => void
+  onNewChat: () => void
   files: FileRecord[]
   selectedFilePath: string | null
   selectedFileLocation?: {
@@ -96,6 +103,12 @@ interface ProjectWorkspaceLayoutProps {
 export function ProjectWorkspaceLayout({
   projectId,
   activeChatId,
+  activeSection,
+  isFlyoutOpen,
+  onSidebarSectionChange,
+  onToggleFlyout,
+  onSelectChat,
+  onNewChat,
   files,
   selectedFilePath,
   selectedFileLocation,
@@ -146,9 +159,6 @@ export function ProjectWorkspaceLayout({
   onOpenPreview,
   onOpenTerminal,
 }: ProjectWorkspaceLayoutProps) {
-  const { activeSection, isFlyoutOpen, handleSectionChange, toggleFlyout, onSelectChat } =
-    useWorkspace()
-
   // Dock tab definitions with badge counts
   const dockTabs = useMemo(
     () => [
@@ -169,6 +179,7 @@ export function ProjectWorkspaceLayout({
     <Workbench
       projectId={projectId}
       currentChatId={activeChatId}
+      isMobileLayout={isMobileLayout}
       files={files}
       selectedFilePath={selectedFilePath}
       selectedLocation={selectedFileLocation}
@@ -262,6 +273,7 @@ export function ProjectWorkspaceLayout({
           projectId={projectId}
           activeChatId={activeChatId}
           onSelectChat={onSelectChat}
+          onNewChat={onNewChat}
         />
       )}
     </SidebarFlyout>
@@ -345,8 +357,8 @@ export function ProjectWorkspaceLayout({
                 <SidebarRail
                   activeSection={activeSection}
                   isFlyoutOpen={isFlyoutOpen}
-                  onSectionChange={handleSectionChange}
-                  onToggleFlyout={toggleFlyout}
+                  onSectionChange={onSidebarSectionChange}
+                  onToggleFlyout={onToggleFlyout}
                   projectId={String(projectId)}
                   onHomeClick={() => onCenterTabChange?.('editor')}
                 />
@@ -398,7 +410,9 @@ export function ProjectWorkspaceLayout({
                             maxSize={40}
                             className="flex min-h-0 min-w-0 flex-col"
                           >
-                            {rightPanelContent}
+                            <div data-testid="right-panel" className="flex h-full min-h-0 flex-col">
+                              {rightPanelContent}
+                            </div>
                           </Panel>
                         </>
                       )}
@@ -452,11 +466,6 @@ export function ProjectWorkspaceLayout({
           </>
         )}
 
-        <CommandPalette
-          files={files.map((file) => ({ path: file.path }))}
-          onModeChange={onModeChange}
-          currentMode={chatMode}
-        />
       </div>
 
       <StatusBar

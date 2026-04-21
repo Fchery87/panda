@@ -11,7 +11,7 @@ import { WorkspaceHome } from './WorkspaceHome'
 import { DiffTab } from './DiffTab'
 import { LivePreview } from '@/components/preview/LivePreview'
 import { WorkspaceBanner } from './WorkspaceBanner'
-import { isWorkspacePlanTab, useWorkspace } from '@/contexts/WorkspaceContext'
+import { isWorkspacePlanTab } from '@/contexts/WorkspaceContext'
 import { useShortcuts } from '@/hooks/useShortcuts'
 
 import { PlanArtifactTab } from './PlanArtifactTab'
@@ -22,6 +22,7 @@ import type { WorkspaceOpenTab } from '@/contexts/WorkspaceContext'
 interface WorkbenchProps {
   projectId: Id<'projects'>
   currentChatId?: Id<'chats'>
+  isMobileLayout: boolean
   files: Array<{
     _id: Id<'files'>
     path: string
@@ -77,6 +78,7 @@ const innerLayoutPersistenceKey = 'panda-workbench-inner'
 export function Workbench({
   projectId: _projectId,
   currentChatId: _currentChatId,
+  isMobileLayout,
   files,
   selectedFilePath,
   selectedLocation,
@@ -104,8 +106,6 @@ export function Workbench({
   onOpenPreview,
   onOpenTerminal,
 }: WorkbenchProps) {
-  const { isMobileLayout: isMobile } = useWorkspace()
-
   const selectedFile = selectedFilePath ? files.find((f) => f.path === selectedFilePath) : undefined
   const selectedWorkspaceTab = openTabs.find((tab) => tab.path === selectedFilePath) ?? null
   const selectedPlanTab =
@@ -135,7 +135,7 @@ export function Workbench({
     [pendingDiffCount]
   )
 
-  if (isMobile) {
+  if (isMobileLayout) {
     // Mobile layout - simplified stacked view
     return (
       <div className="surface-0 h-full min-h-0 w-full min-w-0">

@@ -47,7 +47,7 @@ describe('/api/e2e/admin route', () => {
   const env = process.env as Record<string, string | undefined>
   const originalEnv = {
     NODE_ENV: env.NODE_ENV,
-    E2E_AUTH_BYPASS: env.E2E_AUTH_BYPASS,
+    E2E_AUTH_BYPASS_SECRET: env.E2E_AUTH_BYPASS_SECRET,
     NEXT_PUBLIC_CONVEX_URL: env.NEXT_PUBLIC_CONVEX_URL,
   }
 
@@ -57,19 +57,19 @@ describe('/api/e2e/admin route', () => {
     mutationError = null
     mutationImpl = null
     env.NODE_ENV = 'test'
-    env.E2E_AUTH_BYPASS = 'true'
+    env.E2E_AUTH_BYPASS_SECRET = 'test-e2e-secret'
     env.NEXT_PUBLIC_CONVEX_URL = 'https://example.convex.cloud'
   }
 
   function restoreEnv() {
     env.NODE_ENV = originalEnv.NODE_ENV
-    env.E2E_AUTH_BYPASS = originalEnv.E2E_AUTH_BYPASS
+    env.E2E_AUTH_BYPASS_SECRET = originalEnv.E2E_AUTH_BYPASS_SECRET
     env.NEXT_PUBLIC_CONVEX_URL = originalEnv.NEXT_PUBLIC_CONVEX_URL
   }
 
   test('rejects when E2E bypass is disabled', async () => {
     setTestEnv()
-    env.E2E_AUTH_BYPASS = 'false'
+    env.E2E_AUTH_BYPASS_SECRET = undefined
     try {
       const { POST } = await importFreshRoute()
 
@@ -89,7 +89,9 @@ describe('/api/e2e/admin route', () => {
       const { POST } = await importFreshRoute()
 
       const response = await POST(
-        new Request('http://localhost:3000/api/e2e/admin', { method: 'POST' })
+        new Request('http://localhost:3000/api/e2e/admin?e2eBypassSecret=test-e2e-secret', {
+          method: 'POST',
+        })
       )
 
       expect(response.status).toBe(200)

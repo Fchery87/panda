@@ -17,6 +17,7 @@ export interface SpecPersistenceContext {
   projectId: Id<'projects'>
   chatId: Id<'chats'>
   runId?: Id<'agentRuns'>
+  planningSessionId?: string
 }
 
 /**
@@ -31,6 +32,7 @@ export interface CreateSpecInput {
   projectId: Id<'projects'>
   chatId: Id<'chats'>
   runId?: Id<'agentRuns'>
+  planningSessionId?: string
   version: number
   tier: FormalSpecification['tier']
   status: SpecStatus
@@ -48,6 +50,7 @@ export interface UpdateSpecInput {
   status?: SpecStatus
   tier?: FormalSpecification['tier']
   runId?: Id<'agentRuns'>
+  planningSessionId?: string
   intent?: FormalSpecification['intent']
   plan?: FormalSpecification['plan']
   validation?: FormalSpecification['validation']
@@ -64,12 +67,14 @@ export function specToCreateInput(
     projectId: Id<'projects'>
     chatId: Id<'chats'>
     runId?: Id<'agentRuns'> | null
+    planningSessionId?: string | null
   }
 ): CreateSpecInput {
   const input: CreateSpecInput = {
     projectId: context.projectId,
     chatId: context.chatId,
     runId: context.runId ?? undefined,
+    planningSessionId: context.planningSessionId ?? undefined,
     version: spec.version,
     tier: spec.tier,
     status: spec.status,

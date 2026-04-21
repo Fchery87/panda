@@ -22,14 +22,10 @@ function isE2EAuthBypassEnabled(request: NextRequest): boolean {
     return false
   }
 
-  if (
-    process.env.E2E_AUTH_BYPASS === 'true' ||
-    process.env.NEXT_PUBLIC_E2E_AUTH_BYPASS === 'true'
-  ) {
-    return true
-  }
+  const secret = process.env.E2E_AUTH_BYPASS_SECRET
+  if (!secret) return false
 
-  return request.nextUrl.searchParams.get('e2eBypass') === '1'
+  return request.nextUrl.searchParams.get('e2eBypassSecret') === secret
 }
 
 async function getAdminDefaults() {

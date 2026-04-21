@@ -1,10 +1,21 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 import type { GeneratedPlanArtifact, GeneratedPlanSection } from '@/lib/planning/types'
 
+const E2E_BYPASS_SECRET = 'playwright-e2e-secret'
+
+function withE2EBypassSecret(input: string): string {
+  const url = new URL(input, 'http://localhost')
+  url.searchParams.set('e2eBypassSecret', E2E_BYPASS_SECRET)
+  return `${url.pathname}${url.search}`
+}
+
 async function ensureProjectCapacity(page: Page) {
-  const response = await page.request.get('/api/e2e/project?ensureCapacity=1&e2eBypass=1', {
-    headers: { 'x-panda-e2e-bypass': 'true' },
-  })
+  const response = await page.request.get(
+    withE2EBypassSecret('/api/e2e/project?ensureCapacity=1'),
+    {
+      headers: { 'x-panda-e2e-bypass-secret': E2E_BYPASS_SECRET },
+    }
+  )
   expect(response.ok()).toBe(true)
 }
 
@@ -53,7 +64,7 @@ export async function createAndOpenProject(page: Page): Promise<string> {
   await expect(projectLink).toBeVisible({ timeout: 15000 })
   const href = await projectLink.getAttribute('href')
   expect(href).toMatch(/^\/projects\/.+/)
-  const projectUrl = href!.includes('?') ? `${href!}&e2eBypass=1` : `${href!}?e2eBypass=1`
+  const projectUrl = withE2EBypassSecret(href!)
   const navigationDeadline = Date.now() + 120_000
   let lastNavigationError: unknown = null
 
@@ -78,6 +89,8 @@ export async function createAndOpenProject(page: Page): Promise<string> {
   })
   const reviewButton = page.getByRole('button', { name: /^review$/i }).first()
   const chatActionsButton = page.getByRole('button', { name: /chat actions/i }).first()
+  const openChatPanelButton = page.getByRole('button', { name: /open chat panel/i }).first()
+  const newTaskButton = page.getByRole('button', { name: /new task/i }).first()
   const chatComposer = page
     .getByPlaceholder(/planning & architecture|describe the code to write|type your message/i)
     .first()
@@ -87,6 +100,8 @@ export async function createAndOpenProject(page: Page): Promise<string> {
   while (Date.now() < readinessDeadline) {
     if (await reviewButton.isVisible().catch(() => false)) break
     if (await chatActionsButton.isVisible().catch(() => false)) break
+    if (await openChatPanelButton.isVisible().catch(() => false)) break
+    if (await newTaskButton.isVisible().catch(() => false)) break
     if (await chatComposer.isVisible().catch(() => false)) break
 
     const isLoading = await page
@@ -105,6 +120,8 @@ export async function createAndOpenProject(page: Page): Promise<string> {
   expect(
     (await reviewButton.isVisible().catch(() => false)) ||
       (await chatActionsButton.isVisible().catch(() => false)) ||
+      (await openChatPanelButton.isVisible().catch(() => false)) ||
+      (await newTaskButton.isVisible().catch(() => false)) ||
       (await chatComposer.isVisible().catch(() => false))
   ).toBe(true)
 
@@ -201,12 +218,22 @@ export async function expectPlanTabPresent(page: Page, title?: string) {
 }
 
 export async function clickPlanAcceptControl(page: Page | Locator) {
+  const openChatButton = page.getByRole('button', { name: /open chat panel/i }).first()
+  if (await openChatButton.isVisible().catch(() => false)) {
+    await openChatButton.click()
+  }
+
   const approveButton = page.getByRole('button', { name: /^approve(?: plan)?$/i }).first()
   await expect(approveButton).toBeVisible({ timeout: 15_000 })
   await approveButton.click()
 }
 
 export async function clickPlanBuildControl(page: Page | Locator) {
+  const openChatButton = page.getByRole('button', { name: /open chat panel/i }).first()
+  if (await openChatButton.isVisible().catch(() => false)) {
+    await openChatButton.click()
+  }
+
   const buildButton = page.getByRole('button', { name: /^(?:Build|Build from Plan)$/ }).first()
   await expect(buildButton).toBeVisible({ timeout: 15_000 })
   await expect(buildButton).toBeEnabled({ timeout: 15_000 })
@@ -290,10 +317,10 @@ export async function openWorkbenchProjectFixture(
     }
   }
 
-  params.set('e2eBypass', '1')
+  params.set('e2eBypassSecret', E2E_BYPASS_SECRET)
 
   let response = await page.request.get(`/api/e2e/project?${params.toString()}`, {
-    headers: { 'x-panda-e2e-bypass': 'true' },
+    headers: { 'x-panda-e2e-bypass-secret': E2E_BYPASS_SECRET },
   })
   const deadline = Date.now() + 60_000
   let lastErrorBody = ''
@@ -302,7 +329,7 @@ export async function openWorkbenchProjectFixture(
     lastErrorBody = await response.text().catch(() => '')
     await page.waitForTimeout(500)
     response = await page.request.get(`/api/e2e/project?${params.toString()}`, {
-      headers: { 'x-panda-e2e-bypass': 'true' },
+      headers: { 'x-panda-e2e-bypass-secret': E2E_BYPASS_SECRET },
     })
   }
 
@@ -322,7 +349,7 @@ export async function openWorkbenchProjectFixture(
   }
   expect(body.projectId).toBeTruthy()
 
-  const projectUrl = `/projects/${body.projectId}?e2eBypass=1`
+  const projectUrl = withE2EBypassSecret(`/projects/${body.projectId}`)
   const navigationDeadline = Date.now() + 120_000
   let lastNavigationError: unknown = null
 
@@ -347,37 +374,18 @@ export async function openWorkbenchProjectFixture(
     throw lastNavigationError
   }
 
-  const reviewButton = page.getByRole('button', { name: /^review$/i }).first()
-  const chatActionsButton = page.getByRole('button', { name: /chat actions/i }).first()
-  const chatComposer = page
-    .getByPlaceholder(/planning & architecture|describe the code to write|type your message/i)
-    .first()
-    .or(page.getByRole('textbox').first())
+  const breadcrumb = page.getByRole('navigation', { name: /breadcrumb/i }).first()
+  const commandPaletteButton = page.getByRole('button', { name: /open command palette/i }).first()
+  const workspaceHeading = page.getByRole('heading', { name: /workspace|get started/i }).first()
 
-  const readinessDeadline = Date.now() + 180_000
-  while (Date.now() < readinessDeadline) {
-    if (await reviewButton.isVisible().catch(() => false)) break
-    if (await chatActionsButton.isVisible().catch(() => false)) break
-    if (await chatComposer.isVisible().catch(() => false)) break
+  await expect(page).toHaveURL(/\/projects\/.+/, { timeout: 30_000 })
 
-    const isLoading = await page
-      .getByText(/loading project|loading/i)
-      .first()
-      .isVisible()
-      .catch(() => false)
-    if (isLoading) {
-      await page.waitForTimeout(500)
-      continue
-    }
+  await Promise.any([
+    breadcrumb.waitFor({ state: 'visible', timeout: 30_000 }),
+    commandPaletteButton.waitFor({ state: 'visible', timeout: 30_000 }),
+    workspaceHeading.waitFor({ state: 'visible', timeout: 30_000 }),
+  ])
 
-    await page.waitForTimeout(500)
-  }
-
-  expect(
-    (await reviewButton.isVisible().catch(() => false)) ||
-      (await chatActionsButton.isVisible().catch(() => false)) ||
-      (await chatComposer.isVisible().catch(() => false))
-  ).toBe(true)
   return body
 }
 

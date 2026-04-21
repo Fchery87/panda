@@ -9,6 +9,11 @@ test.describe('Sharing Acceptance', () => {
       planStatus: 'approved',
     })
 
+    const openChatButton = page.getByRole('button', { name: /open chat panel/i }).first()
+    if (await openChatButton.isVisible().catch(() => false)) {
+      await openChatButton.click()
+    }
+
     const menu = await openChatActionsMenu(page)
     await menu.getByRole('menuitem', { name: /^share$/i }).click()
 
@@ -17,6 +22,6 @@ test.describe('Sharing Acceptance', () => {
       timeout: 15_000,
     })
     await expect(dialog.getByText(/^current chat$/i)).toBeVisible()
-    await expect(dialog.getByRole('button', { name: /share chat/i })).toBeVisible()
+    await expect(dialog.getByRole('button', { name: /copy link|create share link|copy share url/i })).toBeVisible()
   })
 })

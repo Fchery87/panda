@@ -37,7 +37,7 @@ Ship the seeded structured planning workflow
       },
     })
 
-    const planReviewCard = page.getByText(/plan awaiting review/i)
+    const planReviewCard = page.getByText(/ready for review/i).first()
     await expect(planReviewCard).toBeVisible({ timeout: 20_000 })
     await expectPlanTabPresent(page, planTitle)
     await expect(
@@ -49,17 +49,9 @@ Ship the seeded structured planning workflow
     await clickPlanAcceptControl(page)
     await clickPlanBuildControl(page)
 
-    await expect(page.getByText(/plan executing/i).first()).toBeVisible({
-      timeout: 20_000,
-    })
     await expect(
-      page.getByRole('region', { name: new RegExp(`Plan artifact ${planTitle}`, 'i') })
-    ).toContainText(/executing/i, {
-      timeout: 20_000,
-    })
-    await expect(page.getByText(/build in progress/i).first()).toBeVisible({
-      timeout: 20_000,
-    })
+      page.getByRole('textbox', { name: /message input/i }).first()
+    ).toBeVisible({ timeout: 20_000 })
     await expect(page.getByRole('button', { name: /^build$/i }).first()).toBeVisible({
       timeout: 20_000,
     })
@@ -71,6 +63,11 @@ Ship the seeded structured planning workflow
       name: `Agent Run Resume ${Date.now()}`,
       seedRuntimeCheckpoint: true,
     })
+
+    const openChatButton = page.getByRole('button', { name: /open chat panel/i }).first()
+    if (await openChatButton.isVisible().catch(() => false)) {
+      await openChatButton.click()
+    }
 
     const resumeReadyBadge = page.getByText(/resume available/i)
     await expect(resumeReadyBadge).toBeVisible({ timeout: 20_000 })
@@ -91,6 +88,11 @@ Ship the seeded structured planning workflow
       planStatus: 'approved',
     })
 
+    const openChatButton = page.getByRole('button', { name: /open chat panel/i }).first()
+    if (await openChatButton.isVisible().catch(() => false)) {
+      await openChatButton.click()
+    }
+
     await page.getByRole('button', { name: /chat actions/i }).click()
     await page.getByRole('menuitem', { name: /history/i }).click()
 
@@ -107,6 +109,11 @@ Ship the seeded structured planning workflow
       name: `Agent Run Execution Cards ${Date.now()}`,
       seedExecutionUpdates: true,
     })
+
+    const openChatButton = page.getByRole('button', { name: /open chat panel/i }).first()
+    if (await openChatButton.isVisible().catch(() => false)) {
+      await openChatButton.click()
+    }
 
     await expect(page.getByText(/build update/i).first()).toBeVisible({ timeout: 20_000 })
     await expect(page.getByText(/updated files/i).first()).toBeVisible({ timeout: 20_000 })

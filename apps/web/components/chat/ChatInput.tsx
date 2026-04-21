@@ -5,7 +5,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
-import { IconSend, IconStop, IconEnhance, IconRevert } from '@/components/ui/icons'
+import {
+  IconSend,
+  IconStop,
+  IconEnhance,
+  IconRevert,
+  IconAttach,
+  IconClose,
+} from '@/components/ui/icons'
 
 import { useAction, useMutation, useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
@@ -17,6 +24,7 @@ import { MentionPicker } from './MentionPicker'
 import { ModelSelector, type AvailableModel } from './ModelSelector'
 import { VariantSelector } from './VariantSelector'
 import type { ChatMode } from '@/lib/agent/prompt-library'
+import { useEditorContextStore } from '@/stores/editorContextStore'
 
 /**
  * Enhance state for prompt enhancement button
@@ -77,6 +85,7 @@ interface ChatInputProps {
     mode: ChatMode,
     contextFiles?: string[],
     options?: {
+      includeEditorContext?: boolean
       variantCount?: number
       attachments?: UploadedAttachmentPayload[]
       attachmentsOnly?: boolean
@@ -126,8 +135,10 @@ export function ChatInput({
   const [input, setInput] = useState('')
   const [uncontrolledMode, setUncontrolledMode] = useState<ChatMode>('code')
   const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [includeEditorContext, setIncludeEditorContext] = useState(true)
   const [isUploadingAttachments, setIsUploadingAttachments] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const timeoutRefs = useRef<ReturnType<typeof setTimeout>[]>([])
 
   // @-mention picker state
   const [mentionQuery, setMentionQuery] = useState<string | null>(null)
@@ -136,6 +147,23 @@ export function ChatInput({
   // Enhance prompt state
   const [enhanceState, setEnhanceState] = useState<EnhanceState>('idle')
   const [preEnhanceText, setPreEnhanceText] = useState('')
+
+  const scheduleTextareaTask = useCallback((callback: () => void) => {
+    const timeout = setTimeout(() => {
+      timeoutRefs.current = timeoutRefs.current.filter((entry) => entry !== timeout)
+      callback()
+    }, 0)
+    timeoutRefs.current.push(timeout)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      for (const timeout of timeoutRefs.current) {
+        clearTimeout(timeout)
+      }
+      timeoutRefs.current = []
+    }
+  }, [])
 
   useEffect(() => {
     if (contextualPrompt) {
@@ -146,15 +174,15 @@ export function ChatInput({
       onContextualPromptHandled?.()
 
       // Auto-resize
-      setTimeout(() => {
+      scheduleTextareaTask(() => {
         if (textareaRef.current) {
           textareaRef.current.style.height = 'auto'
           textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`
           textareaRef.current.focus()
         }
-      }, 0)
+      })
     }
-  }, [contextualPrompt, onContextualPromptHandled])
+  }, [contextualPrompt, onContextualPromptHandled, scheduleTextareaTask])
 
   // Convex action for enhancing prompts
   const enhancePrompt = useAction(api.enhancePrompt.enhance)
@@ -167,6 +195,8 @@ export function ChatInput({
 
   const mode = controlledMode ?? uncontrolledMode
   const hasSendContent = input.trim().length > 0 || attachments.length > 0
+  const activeFile = useEditorContextStore((state) => state.selectedFilePath)
+  const selection = useEditorContextStore((state) => state.selection)
   const setMode = useCallback(
     (nextMode: ChatMode) => {
       onModeChange?.(nextMode)
@@ -282,6 +312,7 @@ export function ChatInput({
     })
 
     onSendMessage?.(nextMessage || input.trim(), mode, nextContextFiles, {
+      includeEditorContext,
       variantCount: variant === 'parallel:2' ? 2 : undefined,
       attachments: uploadedAttachments,
       attachmentsOnly: !message.trim() && uploadedAttachments.length > 0,
@@ -303,6 +334,7 @@ export function ChatInput({
     onSendMessage,
     projectId,
     generateAttachmentUploadUrl,
+    includeEditorContext,
     upsertFile,
   ])
 
@@ -364,15 +396,15 @@ export function ChatInput({
       setInput(newVal)
       setMentionQuery(null)
       // Restore focus
-      setTimeout(() => {
+      scheduleTextareaTask(() => {
         if (textareaRef.current) {
           textareaRef.current.focus()
           const pos = (before + `@${path} `).length
           textareaRef.current.setSelectionRange(pos, pos)
         }
-      }, 0)
+      })
     },
-    [input, mentionStart]
+    [input, mentionStart, scheduleTextareaTask]
   )
 
   const handleStop = useCallback(() => {
@@ -410,12 +442,12 @@ export function ChatInput({
         setEnhanceState('enhanced')
 
         // Auto-resize textarea after setting new content
-        setTimeout(() => {
+        scheduleTextareaTask(() => {
           if (textareaRef.current) {
             textareaRef.current.style.height = 'auto'
             textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`
           }
-        }, 0)
+        })
       } else {
         throw new Error('No enhanced prompt returned')
       }
@@ -425,7 +457,15 @@ export function ChatInput({
       setEnhanceState('idle')
       toast.error('Failed to enhance prompt. Please try again.')
     }
-  }, [input, enhanceState, enhancePrompt, preEnhanceText, adminDefaults, userSettings])
+  }, [
+    input,
+    enhanceState,
+    enhancePrompt,
+    preEnhanceText,
+    adminDefaults,
+    userSettings,
+    scheduleTextareaTask,
+  ])
 
   const handleRevert = useCallback(() => {
     if (preEnhanceText) {
@@ -434,14 +474,14 @@ export function ChatInput({
       setEnhanceState('idle')
 
       // Auto-resize textarea after reverting
-      setTimeout(() => {
+      scheduleTextareaTask(() => {
         if (textareaRef.current) {
           textareaRef.current.style.height = 'auto'
           textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`
         }
-      }, 0)
+      })
     }
-  }, [preEnhanceText])
+  }, [preEnhanceText, scheduleTextareaTask])
 
   useEffect(() => {
     if (textareaRef.current && !isStreaming) {
@@ -544,6 +584,22 @@ export function ChatInput({
 
       {/* Inline controls row */}
       <div className="mt-2 flex items-center gap-2">
+        {(activeFile || selection) && (
+          <button
+            type="button"
+            className="border-border text-muted-foreground hover:text-foreground flex items-center gap-1 border px-2 py-1 font-mono text-[11px]"
+            onClick={() => setIncludeEditorContext((value) => !value)}
+            title={
+              includeEditorContext ? 'Click to exclude editor context' : 'Click to include editor context'
+            }
+          >
+            {includeEditorContext ? <IconAttach className="h-3 w-3" /> : <IconClose className="h-3 w-3" />}
+            {selection
+              ? `${selection.filePath}:${selection.startLine}-${selection.endLine}`
+              : activeFile}
+          </button>
+        )}
+
         {attachmentsEnabled ? (
           <AttachmentButton
             attachments={attachments}

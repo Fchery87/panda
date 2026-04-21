@@ -9,6 +9,8 @@
   ],
   "scripts": {
     "dev": "concurrently \"bunx convex dev\" \"turbo run dev\"",
+    "prebuild": "bun run convex:codegen",
+    "pretypecheck": "bun run convex:codegen",
     "test": "bun test",
     "test:web": "cd apps/web && bun test",
     "test:e2e": "cd apps/web && bun run test:e2e",
@@ -23,6 +25,7 @@
     "security:audit": "bun audit --audit-level=moderate",
     "security:scan": "semgrep --config p/owasp-top-ten .",
     "security:secrets": "gitleaks detect --source .",
+    "convex:codegen": "bunx convex codegen",
     "convex:dev": "bunx convex dev",
     "convex:deploy": "bunx convex deploy"
   },

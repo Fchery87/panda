@@ -6,12 +6,14 @@ async function readProjectComponent(fileName: string) {
   return fs.readFileSync(path.resolve(import.meta.dir, fileName), 'utf-8')
 }
 
-async function readProjectPage() {
+async function readProjectLoader() {
   const fs = await import('node:fs')
-  return fs.readFileSync(
-    path.resolve(import.meta.dir, '../../app/(dashboard)/projects/[projectId]/page.tsx'),
-    'utf-8'
-  )
+  return fs.readFileSync(path.resolve(import.meta.dir, 'ProjectShellDataLoader.tsx'), 'utf-8')
+}
+
+async function readProvider() {
+  const fs = await import('node:fs')
+  return fs.readFileSync(path.resolve(import.meta.dir, 'WorkspaceRuntimeProvider.tsx'), 'utf-8')
 }
 
 async function readHook(fileName: string) {
@@ -28,9 +30,7 @@ describe('project chat wiring', () => {
     )
     expect(content).not.toContain('<PermissionDialog')
     expect(content).toContain('Run History')
-    expect(content).toContain('resetWorkspaceLabel')
     expect(content).toContain('projectId={projectId}')
-    expect(content).toContain('runHistoryCount?: number')
   })
 
   test('ProjectWorkspaceLayout renders the provided right panel content directly', async () => {
@@ -42,12 +42,10 @@ describe('project chat wiring', () => {
     )
   })
 
-  test('ProjectChatPanel keeps the planning inspector reachable when inline inspector rendering is disabled', async () => {
+  test('ProjectChatPanel keeps the planning inspector reachable', async () => {
     const content = await readProjectComponent('ProjectChatPanel.tsx')
 
     expect(content).toContain('const inspectorPanel = (')
-    expect(content).toContain('{renderInspectorInline ? inspectorPanel : null}')
-    expect(content).toContain('{!renderInspectorInline ? inspectorPanel : null}')
     expect(content).toContain('onStartPlanningIntake={onStartPlanningIntake}')
     expect(content).toContain('onAnswerPlanningQuestion={onAnswerPlanningQuestion}')
     expect(content).toContain('onClearPlanningIntake={onClearPlanningIntake}')
@@ -62,7 +60,7 @@ describe('project chat wiring', () => {
   })
 
   test('project page routes review/open actions into the non-inline chat inspector surface', async () => {
-    const pageContent = await readProjectPage()
+    const providerContent = await readProvider()
     const hookContent = await readHook('useWorkbenchChatState.ts')
 
     expect(hookContent).toContain('const openChatInspectorSurface = useCallback(')
@@ -70,15 +68,12 @@ describe('project chat wiring', () => {
     expect(hookContent).toContain('setIsRightPanelOpen(true)')
     expect(hookContent).toContain('setIsChatInspectorOpen(true)')
     expect(hookContent).toContain('setChatInspectorTab(tab)')
-    expect(pageContent).toContain('isInspectorOpen: isChatInspectorOpen')
-    expect(pageContent).toContain('onInspectorOpenChange: setIsChatInspectorOpen')
-    expect(pageContent).toContain('onInspectorTabChange: setChatInspectorTab')
-    expect(pageContent).toContain("openChatInspectorSurface('artifacts')")
-    expect(pageContent).toContain("onOpenPreview: () => setActiveCenterTab('preview')")
+    expect(providerContent).toContain("openChatInspectorSurface('artifacts')")
+    expect(providerContent).toContain("onOpenPreviewPanel: () => setActiveCenterTab('preview')")
   })
 
   test('project page persists architect intake messages and opens the plan inspector', async () => {
-    const content = await readProjectPage()
+    const content = await readProvider()
     const planningHookContent = await readHook('useProjectPlanningIntake.ts')
 
     expect(content).toContain('const addMessageMutation = useMutation(api.messages.add)')
@@ -102,11 +97,11 @@ describe('project chat wiring', () => {
   })
 
   test('project page derives changed file count from pending artifact previews instead of hardcoding zero', async () => {
-    const pageContent = await readProjectPage()
+    const providerContent = await readProvider()
     const hookContent = await readHook('useArtifactLifecycle.ts')
 
     expect(hookContent).toContain('const pendingChangedFilesCount = pendingArtifactPreviews.length')
-    expect(pageContent).toContain('changedFilesCount: pendingChangedFilesCount')
-    expect(pageContent).not.toContain('changedFilesCount={0}')
+    expect(providerContent).toContain('changedFilesCount: pendingChangedFilesCount')
+    expect(providerContent).not.toContain('changedFilesCount={0}')
   })
 })

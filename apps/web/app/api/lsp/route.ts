@@ -1,10 +1,15 @@
 // apps/web/app/api/lsp/route.ts
 import { spawn } from 'node:child_process'
 import type { WebSocket } from 'ws'
+import { isAuthenticatedNextjs } from '@/lib/auth/nextjs'
 
 export const dynamic = 'force-dynamic'
 
-export function GET() {
+export async function GET() {
+  if (!(await isAuthenticatedNextjs())) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   return new Response('WebSocket upgrade required', { status: 426 })
 }
 
@@ -12,7 +17,19 @@ export function GET() {
  * WebSocket handler for Language Server Protocol
  * Spawns typescript-language-server and proxies messages between WebSocket and LSP process
  */
-export function SOCKET(client: WebSocket) {
+export async function SOCKET(client: WebSocket, request?: Request) {
+  if (!(await isAuthenticatedNextjs())) {
+    client.close(1008, 'Unauthorized')
+    return
+  }
+
+  const requestUrl = request ? new URL(request.url) : null
+  const requestOrigin = request?.headers.get('origin')
+  if (requestUrl && requestOrigin && requestOrigin !== requestUrl.origin) {
+    client.close(1008, 'Invalid origin')
+    return
+  }
+
   console.log('[LSP] WebSocket connection established')
 
   // Spawn TypeScript language server

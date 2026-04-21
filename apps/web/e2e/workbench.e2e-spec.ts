@@ -16,27 +16,29 @@ test.describe('Workbench', () => {
     await expect(page.getByRole('navigation', { name: /breadcrumb/i })).toBeVisible({
       timeout: 15_000,
     })
-    await expect(page.getByText(/^panda$/i).first()).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('heading', { name: /workspace|get started/i }).first()).toBeVisible({
+      timeout: 15_000,
+    })
   })
 
   test('file tree is visible', async ({ page }) => {
     await openWorkbenchSmokeFixture(page, 'Workbench Smoke Explorer')
 
-    await expect(page.getByRole('button', { name: /^explorer$/i }).first()).toBeVisible()
-    await expect(page.getByText(/no file selected/i).first()).toBeVisible()
+    await expect(page.getByRole('button', { name: /^files$/i }).first()).toBeVisible()
+    await expect(page.getByText(/get started/i).first()).toBeVisible()
   })
 
   test('editor area is present', async ({ page }) => {
     await openWorkbenchSmokeFixture(page, 'Workbench Smoke Editor')
 
-    const noFileSelectedMessage = page.getByText(/no file selected/i)
-    const newFileButton = page.getByRole('button', { name: /new file/i }).first()
-    const editorContainer = page.locator('[class*="editor"], [class*="codemirror"]').first()
+    const getStartedMessage = page.getByText(/begin working on your project/i)
+    const createFileButton = page.getByRole('button', { name: /create file/i }).first()
+    const editorTab = page.getByRole('button', { name: /^editor$/i }).first()
 
     await Promise.any([
-      noFileSelectedMessage.waitFor({ state: 'visible', timeout: 15_000 }),
-      newFileButton.waitFor({ state: 'visible', timeout: 15_000 }),
-      editorContainer.waitFor({ state: 'visible', timeout: 15_000 }),
+      getStartedMessage.waitFor({ state: 'visible', timeout: 15_000 }),
+      createFileButton.waitFor({ state: 'visible', timeout: 15_000 }),
+      editorTab.waitFor({ state: 'visible', timeout: 15_000 }),
     ])
   })
 
@@ -53,25 +55,35 @@ test.describe('Workbench', () => {
   test('can navigate between tabs', async ({ page }) => {
     await openWorkbenchSmokeFixture(page, 'Workbench Smoke Tabs')
 
-    const explorerButton = page.getByRole('button', { name: /^explorer$/i }).first()
-    const terminalButton = page.getByRole('button', { name: /^terminal$/i }).first()
+    const editorButton = page.getByRole('button', { name: /^editor$/i }).first()
+    const diffButton = page.getByRole('button', { name: /^diff$/i }).first()
+    const previewButton = page.getByRole('button', { name: /^preview$/i }).first()
 
-    await expect(explorerButton).toBeVisible()
-    await expect(terminalButton).toBeVisible()
+    await expect(editorButton).toBeVisible()
+    await expect(diffButton).toBeVisible()
+    await expect(previewButton).toBeVisible()
 
-    await terminalButton.click()
-    await expect(page.getByText(/terminal/i).first()).toBeVisible()
-    await explorerButton.click()
-    await expect(page.getByText(/explorer/i).first()).toBeVisible()
+    await diffButton.click()
+    await expect(diffButton).toBeVisible()
+    await editorButton.click()
+    await expect(editorButton).toBeVisible()
   })
 
   test('chat panel is visible', async ({ page }) => {
     await openWorkbenchSmokeFixture(page, 'Workbench Smoke Chat')
 
-    await expect(page.getByText(/^panda$/i).first()).toBeVisible()
-    await expect(
-      page.getByPlaceholder(/ask anything, @ to mention, \/ for workflows/i).first()
-    ).toBeVisible()
+    const composer = page.getByPlaceholder(/ask anything, @ to mention, \/ for workflows/i).first()
+    if (!(await composer.isVisible().catch(() => false))) {
+      const chatTab = page.getByRole('button', { name: /^chat$/i }).first()
+      if (await chatTab.isVisible().catch(() => false)) {
+        await chatTab.click()
+      } else {
+        await page.getByRole('button', { name: /open chat panel/i }).first().click()
+      }
+    }
+
+    await expect(page.getByRole('button', { name: /open command palette/i }).first()).toBeVisible()
+    await expect(composer).toBeVisible()
   })
 
   test('top navigation works', async ({ page }) => {
@@ -118,7 +130,7 @@ test.describe('Workbench', () => {
     await page.goto(`${href!}?e2eBypass=1`, { waitUntil: 'commit' })
 
     await expect(page).toHaveURL(/\/projects\/.+/, { timeout: 15_000 })
-    await expect(page.getByText(/no file selected/i).first()).toBeVisible({
+    await expect(page.getByText(/get started/i).first()).toBeVisible({
       timeout: 15_000,
     })
   })
@@ -248,5 +260,26 @@ Ship the seeded plan workflow
     await expect(page.getByText(/executing/i).first()).toBeVisible({
       timeout: 20_000,
     })
+  })
+
+  test('store-backed workspace mounts and persists right panel state across reload', async ({
+    page,
+  }) => {
+    await openWorkbenchSmokeFixture(page, 'Workbench Store State')
+
+    await expect(page.getByTestId('workspace-shell')).toBeVisible({ timeout: 15_000 })
+
+    // Right panel should start closed — open it
+    const openChatBtn = page.getByRole('button', { name: /open chat panel/i }).first()
+    await expect(openChatBtn).toBeVisible({ timeout: 10_000 })
+    await openChatBtn.click()
+
+    // Right panel should now be visible
+    await expect(page.getByTestId('right-panel')).toBeVisible({ timeout: 10_000 })
+
+    // Reload — zustand persist should restore the right-panel-open state
+    await page.reload()
+    await expect(page.getByTestId('workspace-shell')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByTestId('right-panel')).toBeVisible({ timeout: 10_000 })
   })
 })

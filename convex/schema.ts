@@ -20,7 +20,15 @@ export const ChatMode = v.union(
   v.literal('review')
 )
 
-export type ChatModeType = 'ask' | 'plan' | 'code' | 'build'
+export type ChatModeType =
+  | 'ask'
+  | 'plan'
+  | 'architect'
+  | 'code'
+  | 'build'
+  | 'discuss'
+  | 'debug'
+  | 'review'
 
 export const PlanStatus = v.union(
   v.literal('idle'),
@@ -559,6 +567,7 @@ export default defineSchema({
     questions: v.array(PlanningQuestion),
     answers: v.array(PlanningAnswer),
     generatedPlan: v.optional(GeneratedPlanArtifact),
+    verificationId: v.optional(v.id('specifications')),
     startedAt: v.number(),
     completedAt: v.optional(v.number()),
     acceptedAt: v.optional(v.number()),
@@ -1043,6 +1052,7 @@ export default defineSchema({
     projectId: v.id('projects'),
     chatId: v.id('chats'),
     runId: v.optional(v.id('agentRuns')),
+    planningSessionId: v.optional(v.string()),
     version: v.number(),
     tier: v.union(v.literal('instant'), v.literal('ambient'), v.literal('explicit')),
     status: v.union(
@@ -1088,6 +1098,7 @@ export default defineSchema({
     .index('by_project', ['projectId'])
     .index('by_chat', ['chatId'])
     .index('by_run', ['runId'])
+    .index('by_planningSession', ['planningSessionId'])
     .index('by_status', ['projectId', 'status'])
     .index('by_tier', ['projectId', 'tier']),
 

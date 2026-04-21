@@ -18,17 +18,13 @@ function isE2EFixtureModeEnabled(request: Request): boolean {
     return false
   }
 
-  if (
-    process.env.E2E_AUTH_BYPASS === 'true' ||
-    process.env.NEXT_PUBLIC_E2E_AUTH_BYPASS === 'true'
-  ) {
-    return true
-  }
+  const secret = process.env.E2E_AUTH_BYPASS_SECRET
+  if (!secret) return false
 
   const url = new URL(request.url)
   return (
-    request.headers.get('x-panda-e2e-bypass') === 'true' ||
-    url.searchParams.get('e2eBypass') === '1'
+    request.headers.get('x-panda-e2e-bypass-secret') === secret ||
+    url.searchParams.get('e2eBypassSecret') === secret
   )
 }
 

@@ -11,9 +11,9 @@ import Link from 'next/link'
 import { ChatActionBar } from '@/components/chat/ChatActionBar'
 import { ChatInput } from '@/components/chat/ChatInput'
 import { MessageList } from '@/components/chat/MessageList'
-import type { AvailableModel } from '@/components/chat/ModelSelector'
-import { ProjectChatInspector, type InspectorTab } from '@/components/projects/ProjectChatInspector'
-import { SpecSurface, type SpecSurfaceMode } from '@/components/chat/SpecSurface'
+import { ProjectChatInspector } from '@/components/projects/ProjectChatInspector'
+import type { InspectorTab } from '@/components/projects/ProjectChatInspector'
+import { PlanVerificationDrawer } from '@/components/chat/PlanVerificationDrawer'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -23,244 +23,109 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
-import type { PersistedRunEventInfo, ToolCallInfo, Message } from '@/components/chat/types'
-import type { LiveProgressStep } from '@/components/chat/live-run-utils'
-import type { FormalSpecification } from '@/lib/agent/spec/types'
-import type { ChatMode } from '@/lib/agent/prompt-library'
-import type { PlanStatus } from '@/lib/chat/planDraft'
-import type { TracePersistenceStatus } from '@/hooks/useRunEventBuffer'
+import { useChatSessionStore } from '@/stores/chatSessionStore'
+import { useWorkspaceUiStore } from '@/stores/workspaceUiStore'
+import { useWorkspaceRuntime } from '@/contexts/WorkspaceRuntimeContext'
+import { derivePlanApprovalState } from '@/hooks/usePlanApproval'
 import { getChatModeSurfacePresentation } from '@/lib/chat/chat-mode-surface'
-import type { GeneratedPlanArtifact, PlanningAnswer, PlanningQuestion } from '@/lib/planning/types'
-
-type PlanningSessionView = {
-  sessionId: string
-  status: string
-  questions: PlanningQuestion[]
-  answers: PlanningAnswer[]
-  generatedPlan?: GeneratedPlanArtifact
-} | null
-
-// Removed ChatInspectorTab definition
-
-type SnapshotEvent = {
-  _id?: string
-  type: string
-  content?: string
-  createdAt?: number
-  snapshot?: {
-    hash?: string
-    step?: number
-    files?: string[]
-  }
-}
-
-interface InlineRateLimitError {
-  title: string
-  description: string
-}
 
 interface ProjectChatPanelProps {
   projectId: Id<'projects'>
-  activeChatId?: Id<'chats'>
-  activeChatPlanStatus?: PlanStatus
-  activeChatPlanUpdatedAt?: number
-  activeChatPlanLastGeneratedAt?: number
-  activeChatExists: boolean
-  chatMessages: Message[]
-  runEvents?: PersistedRunEventInfo[]
-  runHistoryCount?: number
-  chatMode: ChatMode
-  architectBrainstormEnabled: boolean
-  onArchitectBrainstormEnabledChange: (enabled: boolean) => void
-  onModeChange: (mode: ChatMode) => void
-  onSendMessage: (
-    content: string,
-    mode: ChatMode,
-    contextFiles?: string[],
-    options?: {
-      approvedPlanExecution?: boolean
-      attachments?: Array<{
-        storageId: Id<'_storage'>
-        path: string
-        filename: string
-        kind: 'file' | 'image'
-        contentType?: string
-        size?: number
-        url?: string
-      }>
-    }
-  ) => Promise<void>
-  onSuggestedAction: (prompt: string, targetMode?: ChatMode) => Promise<void>
-  isStreaming: boolean
-  onStopStreaming: () => void
-  filePaths: string[]
-  model?: string
-  onModelChange: (model: string) => void
-  availableModels: AvailableModel[]
-  variant: string
-  onVariantChange: (variant: string) => void
-  supportsReasoning: boolean
-  attachmentsEnabled?: boolean
-  inlineRateLimitError: InlineRateLimitError | null
-  onToggleInspector: () => void
-  onOpenHistory: () => void
-  onOpenShare: () => void
-  onOpenPreview?: () => void
-  onResetWorkspace: () => void
-  resetWorkspaceLabel?: string
-  onNewChat?: () => void
-  planDraft: string
-  onPlanReview: () => void
-  onPlanApprove: () => void
-  onBuildFromPlan: () => void
-  planApproveDisabled: boolean
-  planBuildDisabled: boolean
-  showInlinePlanReview: boolean
-  pendingSpec: FormalSpecification | null
-  onSpecApprove: (spec?: FormalSpecification) => void
-  onSpecEdit: () => void
-  onSpecCancel: () => void
-  showInlineSpecReview: boolean
-  specSurfaceMode: SpecSurfaceMode
-  onCloseSpecSurface: () => void
-  onEditPendingSpec: (spec: FormalSpecification) => void
-  onExecutePendingSpec: (spec: FormalSpecification) => void
-  oversightLevel: 'review' | 'autopilot'
-  onOversightLevelChange: (level: 'review' | 'autopilot') => void
-  isMobileLayout: boolean
-  isInspectorOpen: boolean
-  inspectorTab: InspectorTab
-  planningSession: PlanningSessionView
-  planningCurrentQuestion: PlanningQuestion | null
-  onStartPlanningIntake: () => Promise<unknown> | unknown
-  onAnswerPlanningQuestion: (input: {
-    questionId: string
-    selectedOptionId?: string
-    freeformValue?: string
-    source: 'suggestion' | 'freeform'
-  }) => Promise<unknown> | unknown
-  onClearPlanningIntake: () => Promise<unknown> | unknown
-  onInspectorOpenChange: (open: boolean) => void
-  onInspectorTabChange: (tab: InspectorTab) => void
-  liveSteps: LiveProgressStep[]
-  tracePersistenceStatus: TracePersistenceStatus
-  onOpenFile: (path: string) => void
-  onOpenArtifacts: () => void
-  currentSpec: FormalSpecification | null
-  onSpecClick: () => void
-  onPlanClick: () => void
-  onResumeRuntimeSession: (sessionID: string) => Promise<void>
-  snapshotEvents: SnapshotEvent[]
-  subagentToolCalls: ToolCallInfo[]
-  onPlanDraftChange: (value: string) => void
-  onSavePlanDraft: () => void
-  isSavingPlanDraft: boolean
-  memoryBank: string | null | undefined
-  onSaveMemoryBank: (content: string) => Promise<void>
-  lastUserPrompt?: string | null
-  lastAssistantReply?: string | null
-  onRunEvalScenario?: (scenario: {
-    input?: unknown
-    prompt?: string
-    expected?: unknown
-    mode?: string
-    evalMode?: 'read_only' | 'full'
-  }) => Promise<{
-    output: string
-    error?: string
-    usage?: { promptTokens: number; completionTokens: number; totalTokens: number }
-  }>
-  renderInspectorInline?: boolean
-  contextualPrompt?: string | null
-  onContextualPromptHandled?: () => void
-  hasProvider?: boolean
 }
 
-export function ProjectChatPanel({
-  projectId,
-  activeChatId,
-  activeChatPlanStatus,
-  activeChatPlanUpdatedAt,
-  activeChatPlanLastGeneratedAt,
-  activeChatExists,
-  chatMessages,
-  runEvents,
-  runHistoryCount = 0,
-  chatMode,
-  architectBrainstormEnabled,
-  onArchitectBrainstormEnabledChange,
-  onModeChange,
-  onSendMessage,
-  onSuggestedAction,
-  isStreaming,
-  onStopStreaming,
-  filePaths,
-  model,
-  onModelChange,
-  availableModels,
-  variant,
-  onVariantChange,
-  supportsReasoning,
-  attachmentsEnabled = false,
-  inlineRateLimitError,
-  onToggleInspector,
-  onOpenHistory,
-  onOpenShare,
-  onOpenPreview,
-  onResetWorkspace,
-  resetWorkspaceLabel = 'Reset Workspace',
-  onNewChat,
-  planDraft,
-  onPlanReview,
-  onPlanApprove,
-  onBuildFromPlan,
-  planApproveDisabled,
-  planBuildDisabled,
-  showInlinePlanReview,
-  pendingSpec,
-  onSpecApprove,
-  onSpecEdit,
-  onSpecCancel,
-  showInlineSpecReview,
-  specSurfaceMode,
-  onCloseSpecSurface,
-  onEditPendingSpec,
-  onExecutePendingSpec,
-  oversightLevel,
-  onOversightLevelChange,
-  isMobileLayout,
-  isInspectorOpen,
-  inspectorTab,
-  planningSession,
-  planningCurrentQuestion,
-  onStartPlanningIntake,
-  onAnswerPlanningQuestion,
-  onClearPlanningIntake,
-  onInspectorOpenChange,
-  onInspectorTabChange,
-  liveSteps,
-  tracePersistenceStatus,
-  onOpenFile,
-  onOpenArtifacts,
-  currentSpec,
-  onSpecClick,
-  onPlanClick,
-  onResumeRuntimeSession,
-  snapshotEvents,
-  subagentToolCalls,
-  onPlanDraftChange,
-  onSavePlanDraft,
-  isSavingPlanDraft,
-  memoryBank,
-  onSaveMemoryBank,
-  lastUserPrompt,
-  lastAssistantReply,
-  onRunEvalScenario,
-  renderInspectorInline = true,
-  contextualPrompt,
-  onContextualPromptHandled,
-  hasProvider = true,
-}: ProjectChatPanelProps) {
+export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
+  const {
+    activeChatId,
+    activeChatExists,
+    activeChatPlanStatus,
+    activeChatPlanUpdatedAt,
+    activeChatPlanLastGeneratedAt,
+    chatMessages,
+    runEvents,
+    liveSteps,
+    snapshotEvents,
+    subagentToolCalls,
+    inlineRateLimitError,
+    lastUserPrompt,
+    lastAssistantReply,
+    isStreaming,
+    currentSpec,
+    memoryBank,
+    tracePersistenceStatus,
+    model,
+    availableModels,
+    supportsReasoning,
+    hasProvider,
+    filePaths,
+    planDraft,
+    isSavingPlanDraft,
+    planApproveDisabled,
+    planBuildDisabled,
+    showInlinePlanReview,
+    planStatus,
+    planningSession,
+    planningCurrentQuestion,
+    onSendMessage,
+    onSuggestedAction,
+    onModeChange,
+    onStopStreaming,
+    onResumeRuntimeSession,
+    onRunEvalScenario,
+    onSaveMemoryBank,
+    onPlanApprove,
+    onBuildFromPlan,
+    onPlanDraftChange,
+    onSavePlanDraft,
+    onStartPlanningIntake,
+    onAnswerPlanningQuestion,
+    onClearPlanningIntake,
+    onOpenFile,
+    onResetWorkspace,
+    onNewChat,
+    onToggleInspector,
+    onOpenHistory,
+    onOpenPreviewPanel,
+    openRightPanelTab,
+  } = useWorkspaceRuntime()
+
+  // Store reads — these replace the equivalent props
+  const chatMode = useChatSessionStore((s) => s.chatMode)
+  const architectBrainstormEnabled = useChatSessionStore((s) => s.architectBrainstormEnabled)
+  const oversightLevel = useChatSessionStore((s) => s.oversightLevel)
+  const contextualPrompt = useChatSessionStore((s) => s.contextualPrompt)
+  const reasoningVariant = useChatSessionStore((s) => s.reasoningVariant)
+  const isInspectorOpen = useWorkspaceUiStore((s) => s.isChatInspectorOpen)
+  const inspectorTab = useWorkspaceUiStore((s) => s.chatInspectorTab as InspectorTab)
+  const specSurfaceMode = useWorkspaceUiStore((s) => s.specSurfaceMode)
+  const isMobileLayout = useWorkspaceUiStore((s) => s.isMobileLayout)
+
+  // Callbacks computed from stores — no prop needed
+  const onOversightLevelChange = useChatSessionStore((s) => s.setOversightLevel)
+  const onArchitectBrainstormEnabledChange = useChatSessionStore(
+    (s) => s.setArchitectBrainstormEnabled
+  )
+  const onModelChange = useChatSessionStore((s) => s.setUiSelectedModel) as unknown as (model: string) => void
+  const onVariantChange = useChatSessionStore((s) => s.setReasoningVariant)
+  const onInspectorOpenChange = useWorkspaceUiStore((s) => s.setChatInspectorOpen)
+  const onInspectorTabChange = useWorkspaceUiStore(
+    (s) => s.setChatInspectorTab as (tab: InspectorTab) => void
+  )
+  const onOpenArtifacts = () => openRightPanelTab('review')
+  const onPlanReview = () => openRightPanelTab('plan')
+  const onPlanClick = () => openRightPanelTab('plan')
+  const onSpecClick = () => useWorkspaceUiStore.getState().setSpecSurfaceMode('inspect')
+  const onCloseSpecSurface = () => useWorkspaceUiStore.getState().setSpecSurfaceMode('closed')
+  const onOpenShare = () => useWorkspaceUiStore.getState().setShareDialogOpen(true)
+  const onContextualPromptHandled = () =>
+    useChatSessionStore.getState().setContextualPrompt(null)
+
+  const runHistoryCount = (runEvents ?? []).length
+
+  const planApproval = derivePlanApprovalState({
+    planningSession: planningSession as never,
+    pendingSpec: null,
+  })
+
   const runtimeCheckpoints = useQuery(
     api.agentRuns.listRuntimeCheckpoints,
     activeChatId ? { chatId: activeChatId, limit: 6 } : 'skip'
@@ -274,7 +139,7 @@ export function ProjectChatPanel({
     | undefined
 
   const latestRecoverableCheckpoint = (runtimeCheckpoints ?? []).find(
-    (checkpoint) => checkpoint.reason !== 'complete' && typeof checkpoint.sessionID === 'string'
+    (cp) => cp.reason !== 'complete' && typeof cp.sessionID === 'string'
   )
 
   const inspectorPanel = (
@@ -284,7 +149,7 @@ export function ProjectChatPanel({
       isMobileLayout={isMobileLayout}
       isOpen={isInspectorOpen}
       tab={inspectorTab}
-      planningSession={planningSession}
+      planningSession={planningSession as never}
       planningCurrentQuestion={planningCurrentQuestion}
       onStartPlanningIntake={onStartPlanningIntake}
       onAnswerPlanningQuestion={onAnswerPlanningQuestion}
@@ -297,7 +162,7 @@ export function ProjectChatPanel({
       onOpenFile={onOpenFile}
       onOpenArtifacts={onOpenArtifacts}
       currentSpec={currentSpec}
-      planStatus={activeChatPlanStatus}
+      planStatus={planStatus}
       planDraft={planDraft}
       onSpecClick={onSpecClick}
       onPlanClick={onPlanClick}
@@ -320,6 +185,7 @@ export function ProjectChatPanel({
       onRunEvalScenario={onRunEvalScenario}
     />
   )
+
   const activeRole = getChatModeSurfacePresentation(chatMode)
 
   return (
@@ -352,29 +218,25 @@ export function ProjectChatPanel({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="rounded-none border-border font-mono">
-              {onNewChat && (
-                <DropdownMenuItem
-                  onClick={onNewChat}
-                  className="rounded-none text-xs uppercase tracking-wide"
-                >
-                  <IconNewChat className="mr-2 h-3.5 w-3.5" />
-                  New Chat
-                </DropdownMenuItem>
-              )}
+              <DropdownMenuItem
+                onClick={onNewChat}
+                className="rounded-none text-xs uppercase tracking-wide"
+              >
+                <IconNewChat className="mr-2 h-3.5 w-3.5" />
+                New Chat
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={onToggleInspector}
                 className="rounded-none text-xs uppercase tracking-wide"
               >
                 Review
               </DropdownMenuItem>
-              {onOpenPreview && (
-                <DropdownMenuItem
-                  onClick={onOpenPreview}
-                  className="rounded-none text-xs uppercase tracking-wide"
-                >
-                  Preview
-                </DropdownMenuItem>
-              )}
+              <DropdownMenuItem
+                onClick={onOpenPreviewPanel}
+                className="rounded-none text-xs uppercase tracking-wide"
+              >
+                Preview
+              </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={onOpenShare}
                 className="rounded-none text-xs uppercase tracking-wide"
@@ -393,13 +255,12 @@ export function ProjectChatPanel({
                 onClick={onResetWorkspace}
                 className="rounded-none text-xs uppercase tracking-wide"
               >
-                {resetWorkspaceLabel}
+                Clear Local Workspace
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
 
-        {/* Streaming accent line */}
         {isStreaming && (
           <motion.div
             initial={{ scaleX: 0 }}
@@ -441,7 +302,6 @@ export function ProjectChatPanel({
                   : 'Recover the latest paused run for this chat.'}
               </div>
             </div>
-
             <Button
               type="button"
               variant="outline"
@@ -514,7 +374,6 @@ export function ProjectChatPanel({
           liveSteps={liveSteps}
           runEvents={runEvents}
           currentSpec={currentSpec}
-          pendingSpec={pendingSpec}
           planStatus={activeChatPlanStatus}
           chatMode={chatMode}
         />
@@ -526,14 +385,9 @@ export function ProjectChatPanel({
         onPlanReview={onPlanReview}
         onPlanApprove={onPlanApprove}
         onBuildFromPlan={onBuildFromPlan}
-        planApproveDisabled={planApproveDisabled}
-        planBuildDisabled={planBuildDisabled}
-        showPlanReview={showInlinePlanReview}
-        pendingSpec={pendingSpec}
-        onSpecApprove={onSpecApprove}
-        onSpecEdit={() => pendingSpec && onSpecEdit()}
-        onSpecCancel={onSpecCancel}
-        showSpecReview={showInlineSpecReview}
+        planApproveDisabled={planApproveDisabled || !planApproval.canApprove}
+        planBuildDisabled={planBuildDisabled || !planApproval.canBuild}
+        showPlanReview={showInlinePlanReview || planApproval.status === 'awaiting_review'}
       />
       <ChatInput
         projectId={projectId}
@@ -549,26 +403,21 @@ export function ProjectChatPanel({
         model={model}
         onModelChange={onModelChange}
         availableModels={availableModels}
-        variant={variant}
+        variant={reasoningVariant ?? undefined}
         onVariantChange={onVariantChange}
         supportsReasoning={supportsReasoning}
-        attachmentsEnabled={attachmentsEnabled}
+        attachmentsEnabled={true}
         contextualPrompt={contextualPrompt}
         onContextualPromptHandled={onContextualPromptHandled}
       />
 
-      <SpecSurface
-        mode={pendingSpec ? specSurfaceMode : 'closed'}
-        spec={pendingSpec}
-        onApprove={onExecutePendingSpec}
-        onEdit={onEditPendingSpec}
-        onCancel={onSpecCancel}
+      <PlanVerificationDrawer
+        mode={currentSpec ? specSurfaceMode : 'closed'}
+        spec={currentSpec}
         onClose={onCloseSpecSurface}
       />
 
-      <AnimatePresence>{renderInspectorInline ? inspectorPanel : null}</AnimatePresence>
-
-      {!renderInspectorInline ? inspectorPanel : null}
+      <AnimatePresence>{inspectorPanel}</AnimatePresence>
     </div>
   )
 }

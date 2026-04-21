@@ -3,6 +3,7 @@ import type { ChildProcessWithoutNullStreams } from 'node:child_process'
 interface RegisteredProcess {
   child: ChildProcessWithoutNullStreams
   timeout: NodeJS.Timeout
+  killTimeout: NodeJS.Timeout | null
 }
 
 const globalRegistry = globalThis as typeof globalThis & {
@@ -17,13 +18,16 @@ export function registerJobProcess(
   child: ChildProcessWithoutNullStreams,
   timeout: NodeJS.Timeout
 ) {
-  registry.set(jobId, { child, timeout })
+  registry.set(jobId, { child, timeout, killTimeout: null })
 }
 
 export function cleanupJobProcess(jobId: string) {
   const entry = registry.get(jobId)
   if (!entry) return false
   clearTimeout(entry.timeout)
+  if (entry.killTimeout) {
+    clearTimeout(entry.killTimeout)
+  }
   registry.delete(jobId)
   return true
 }
@@ -35,7 +39,11 @@ export function cancelJobProcess(jobId: string) {
   clearTimeout(entry.timeout)
   entry.child.kill('SIGTERM')
 
-  setTimeout(() => {
+  if (entry.killTimeout) {
+    clearTimeout(entry.killTimeout)
+  }
+
+  entry.killTimeout = setTimeout(() => {
     if (!entry.child.killed) {
       entry.child.kill('SIGKILL')
     }

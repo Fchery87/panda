@@ -102,6 +102,7 @@ function createBaseArgs(overrides: Partial<Parameters<typeof applyNonTerminalAge
     projectId: 'project-1' as Id<'projects'>,
     chatId: 'chat-1' as Id<'chats'>,
     runId: 'run-1' as Id<'agentRuns'>,
+    planningSessionId: null,
     planSteps: ['Review requirements', 'Implement feature'],
     completedPlanStepIndexesRef: { current: [] },
     specPersistence: new SpecPersistenceState(),
@@ -112,6 +113,7 @@ function createBaseArgs(overrides: Partial<Parameters<typeof applyNonTerminalAge
       appendRunEvents.push(event)
     },
     createSpec: async () => 'spec-convex-1' as Id<'specifications'>,
+    attachVerification: async () => undefined,
     updateSpec: async () => undefined,
     setStatus: statusState.set,
     setCurrentIteration: iterationState.set,

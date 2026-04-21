@@ -1,6 +1,5 @@
 import { describe, expect, mock, test } from 'bun:test'
 import { renderToStaticMarkup } from 'react-dom/server'
-import type { Dispatch, SetStateAction } from 'react'
 import { FileTabs } from './FileTabs'
 import {
   PlanArtifactTab,
@@ -8,13 +7,7 @@ import {
   upsertPlanArtifactWorkspaceTab,
 } from './PlanArtifactTab'
 import { Workbench } from './Workbench'
-import {
-  WorkspaceProvider,
-  type WorkspaceContextValue,
-  type WorkspaceOpenTab,
-} from '@/contexts/WorkspaceContext'
 import type { GeneratedPlanArtifact } from '@/lib/planning/types'
-import type { ChatMode } from '@/lib/agent/prompt-library'
 
 const sampleArtifact: GeneratedPlanArtifact = {
   chatId: 'chat_sample',
@@ -44,45 +37,6 @@ This plan tab is synthetic for phase 3.1.
 mock.module('@/hooks/useShortcuts', () => ({
   useShortcuts: () => {},
 }))
-
-function noopDispatch<T>(value: SetStateAction<T>) {
-  void value
-}
-
-function createWorkspaceValue(
-  overrides: Partial<WorkspaceContextValue> = {}
-): WorkspaceContextValue {
-  return {
-    projectId: 'project' as never,
-    activeChatId: 'chat' as never,
-    chatMode: 'plan' as ChatMode,
-    onSelectChat: () => {},
-    onNewChat: () => {},
-    activeSection: 'files',
-    isFlyoutOpen: false,
-    handleSectionChange: () => {},
-    toggleFlyout: () => {},
-    selectedFilePath: null,
-    setSelectedFilePath: noopDispatch as Dispatch<SetStateAction<string | null>>,
-    selectedFileLocation: null,
-    setSelectedFileLocation: noopDispatch as Dispatch<
-      SetStateAction<{ line: number; column: number; nonce: number } | null>
-    >,
-    openTabs: [],
-    setOpenTabs: noopDispatch as Dispatch<SetStateAction<WorkspaceOpenTab[]>>,
-    cursorPosition: null,
-    setCursorPosition: noopDispatch as Dispatch<
-      SetStateAction<{ line: number; column: number } | null>
-    >,
-    isMobileLayout: false,
-    isCompactDesktopLayout: false,
-    mobilePrimaryPanel: 'workspace',
-    setMobilePrimaryPanel: noopDispatch as Dispatch<
-      SetStateAction<'workspace' | 'chat' | 'review'>
-    >,
-    ...overrides,
-  }
-}
 
 describe('PlanArtifactTab', () => {
   test('creates a virtual plan tab with a synthetic workspace path', () => {
@@ -144,37 +98,32 @@ describe('PlanArtifactTab', () => {
 
   test('Workbench renders a selected virtual plan tab instead of the file editor', () => {
     const planTab = createPlanArtifactWorkspaceTab(sampleArtifact)
-    const workspaceValue = createWorkspaceValue({
-      openTabs: [{ path: 'src/index.ts' }, planTab],
-      selectedFilePath: planTab.path,
-    })
 
     const html = renderToStaticMarkup(
-      <WorkspaceProvider value={workspaceValue}>
-        <Workbench
-          projectId={'project' as never}
-          files={[
-            {
-              _id: 'file_1' as never,
-              path: 'src/index.ts',
-              content: 'export const value = 1',
-              isBinary: false,
-              updatedAt: 1,
-            },
-          ]}
-          selectedFilePath={planTab.path}
-          openTabs={[{ path: 'src/index.ts' }, planTab]}
-          onSelectFile={() => {}}
-          onCloseTab={() => {}}
-          onCreateFile={() => {}}
-          onRenameFile={() => {}}
-          onDeleteFile={() => {}}
-          onSaveFile={() => {}}
-          onApplyPendingArtifact={() => {}}
-          onRejectPendingArtifact={() => {}}
-          onEditorDirtyChange={() => {}}
-        />
-      </WorkspaceProvider>
+      <Workbench
+        projectId={'project' as never}
+        isMobileLayout={false}
+        files={[
+          {
+            _id: 'file_1' as never,
+            path: 'src/index.ts',
+            content: 'export const value = 1',
+            isBinary: false,
+            updatedAt: 1,
+          },
+        ]}
+        selectedFilePath={planTab.path}
+        openTabs={[{ path: 'src/index.ts' }, planTab]}
+        onSelectFile={() => {}}
+        onCloseTab={() => {}}
+        onCreateFile={() => {}}
+        onRenameFile={() => {}}
+        onDeleteFile={() => {}}
+        onSaveFile={() => {}}
+        onApplyPendingArtifact={() => {}}
+        onRejectPendingArtifact={() => {}}
+        onEditorDirtyChange={() => {}}
+      />
     )
 
     expect(html).toContain('Plan Artifact')

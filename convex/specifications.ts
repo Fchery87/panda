@@ -169,6 +169,7 @@ export const create = mutation({
     projectId: v.id('projects'),
     chatId: v.id('chats'),
     runId: v.optional(v.id('agentRuns')),
+    planningSessionId: v.optional(v.string()),
     version: v.number(),
     tier: SpecTierValidator,
     status: SpecStatusValidator,
@@ -244,6 +245,7 @@ export const update = mutation({
       status: v.optional(SpecStatusValidator),
       tier: v.optional(SpecTierValidator),
       runId: v.optional(v.id('agentRuns')),
+      planningSessionId: v.optional(v.string()),
       intent: v.optional(
         v.object({
           goal: v.string(),
@@ -501,6 +503,7 @@ export const createVersion = mutation({
       projectId: parentSpec.projectId,
       chatId: parentSpec.chatId,
       runId: parentSpec.runId,
+      planningSessionId: parentSpec.planningSessionId,
       version: parentSpec.version + 1,
       tier: parentSpec.tier,
       status: 'draft',
