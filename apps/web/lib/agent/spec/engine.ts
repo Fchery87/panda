@@ -18,13 +18,7 @@ import type {
   SpecStep,
 } from './types'
 import { classifyIntent, type ClassificationContext, type ClassificationResult } from './classifier'
-import {
-  generateBuildSpec,
-  generateCodeSpec,
-  generateArchitectSpec,
-  generateDebugSpec,
-  generateReviewSpec,
-} from './templates'
+import { generateBuildSpec, generateCodeSpec, generateArchitectSpec } from './templates'
 import { validateSpec, type ValidationResult } from './validator'
 import { verifySpec, type SpecVerificationReport, type VerificationContext } from './verifier'
 import type { LLMProvider } from '../../llm/types'
@@ -686,26 +680,8 @@ export class SpecEngine {
           model,
         })
 
-      case 'debug':
-        return generateDebugSpec(userMessage, {
-          projectId: context.projectId,
-          chatId: context.chatId,
-          errorMessage: context.errorMessage,
-          stackTrace: context.stackTrace,
-          model,
-        })
-
-      case 'review':
-        return generateReviewSpec(userMessage, {
-          projectId: context.projectId,
-          chatId: context.chatId,
-          targetFiles: context.targetFiles,
-          model,
-        })
-
       case 'code':
       case 'ask':
-      case 'discuss':
       default:
         return generateCodeSpec(userMessage, {
           projectId: context.projectId,

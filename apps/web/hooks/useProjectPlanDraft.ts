@@ -3,23 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Id } from '@convex/_generated/dataModel'
 import { toast } from 'sonner'
-import {
-  type AgentStatus,
-  canApprovePlan,
-  deriveNextPlanDraft,
-  getNextPlanStatusAfterDraftChange,
-  getNextPlanStatusAfterGeneration,
-  type PlanStatus,
-} from '@/lib/chat/planDraft'
+import { type AgentStatus, deriveNextPlanDraft } from '@/lib/chat/planDraft'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import { serializeGeneratedPlanArtifact, type GeneratedPlanArtifact } from '@/lib/planning/types'
 
 type ProjectPlanChat = {
   _id: Id<'chats'>
-  planDraft?: string
-  planStatus?: PlanStatus
-  planUpdatedAt?: number
-  planLastGeneratedAt?: number
 }
 
 type ProjectPlanMessage = {
@@ -36,14 +25,13 @@ type ActivePlanningSession = {
 } | null
 
 export function getAuthoritativePlanDraftValue(args: {
-  activeChat: ProjectPlanChat | null
   activePlanningSession: ActivePlanningSession
 }): string {
   if (args.activePlanningSession?.generatedPlan) {
     return serializeGeneratedPlanArtifact(args.activePlanningSession.generatedPlan)
   }
 
-  return args.activeChat?.planDraft ?? ''
+  return ''
 }
 
 export function shouldDerivePlanDraftFromArchitectMessages(args: {
@@ -52,29 +40,17 @@ export function shouldDerivePlanDraftFromArchitectMessages(args: {
   currentPlanDraft: string
   lastSavedPlanDraft: string
 }): boolean {
-  if (args.activePlanningSession?.sessionId || args.activePlanningSession?.generatedPlan) {
+  if (!args.activeChat?._id) {
     return false
   }
 
-  const persistedDraft = args.activeChat?.planDraft?.trim() ?? ''
-  if (persistedDraft) {
+  if (args.activePlanningSession?.sessionId || args.activePlanningSession?.generatedPlan) {
     return false
   }
 
   const currentDraft = args.currentPlanDraft.trim()
   const lastSavedDraft = args.lastSavedPlanDraft.trim()
   return !currentDraft && !lastSavedDraft
-}
-
-export function shouldSyncStructuredPlanDraftMirror(args: {
-  activeChat: ProjectPlanChat | null
-  activePlanningSession: ActivePlanningSession
-  authoritativePlanDraft: string
-}): boolean {
-  if (!args.activeChat?._id) return false
-  if (!args.activePlanningSession?.generatedPlan) return false
-
-  return (args.activeChat.planDraft?.trim() ?? '') !== args.authoritativePlanDraft.trim()
 }
 
 export function shouldUseStructuredPlanApproval(args: {
@@ -88,71 +64,6 @@ export function shouldUseStructuredPlanApproval(args: {
   )
 }
 
-export async function persistProjectPlanDraft(args: {
-  activeChat: ProjectPlanChat | null
-  nextPlanDraft: string
-  updateChatMutation: (args: {
-    id: Id<'chats'>
-    planDraft?: string
-    planStatus?: PlanStatus
-    planLastGeneratedAt?: number
-    planSourceMessageId?: string
-    planApprovedAt?: number
-  }) => Promise<unknown>
-  lastSavedPlanDraft: string
-  options?: {
-    source?: 'manual' | 'generation'
-    planSourceMessageId?: string
-    forceSync?: boolean
-  }
-}): Promise<{ didPersist: boolean; nextLastSavedPlanDraft: string }> {
-  const chatId = args.activeChat?._id
-  if (!chatId) {
-    return {
-      didPersist: false,
-      nextLastSavedPlanDraft: args.lastSavedPlanDraft,
-    }
-  }
-
-  const trimmed = args.nextPlanDraft.trim()
-  const lastSaved = args.lastSavedPlanDraft.trim()
-  if (!args.options?.forceSync && trimmed === lastSaved) {
-    return {
-      didPersist: false,
-      nextLastSavedPlanDraft: args.lastSavedPlanDraft,
-    }
-  }
-
-  const source = args.options?.source ?? 'manual'
-  const planStatus =
-    source === 'generation'
-      ? (getNextPlanStatusAfterGeneration({
-          previousDraft: args.lastSavedPlanDraft,
-          nextDraft: args.nextPlanDraft,
-          currentStatus: args.activeChat?.planStatus,
-        }) ?? (trimmed ? 'awaiting_review' : 'idle'))
-      : getNextPlanStatusAfterDraftChange({
-          previousDraft: args.lastSavedPlanDraft,
-          nextDraft: args.nextPlanDraft,
-          currentStatus: args.activeChat?.planStatus,
-        })
-
-  await args.updateChatMutation({
-    id: chatId,
-    planDraft: args.nextPlanDraft,
-    planStatus,
-    ...(source === 'generation' ? { planLastGeneratedAt: Date.now() } : {}),
-    ...(source === 'generation' && args.options?.planSourceMessageId
-      ? { planSourceMessageId: args.options.planSourceMessageId }
-      : {}),
-  })
-
-  return {
-    didPersist: true,
-    nextLastSavedPlanDraft: args.nextPlanDraft,
-  }
-}
-
 export function useProjectPlanDraft(args: {
   activeChat: ProjectPlanChat | null
   activePlanningSession: ActivePlanningSession
@@ -160,14 +71,6 @@ export function useProjectPlanDraft(args: {
   architectBrainstormEnabled: boolean
   agentStatus: AgentStatus
   agentMessages: ProjectPlanMessage[]
-  updateChatMutation: (args: {
-    id: Id<'chats'>
-    planDraft?: string
-    planStatus?: PlanStatus
-    planLastGeneratedAt?: number
-    planSourceMessageId?: string
-    planApprovedAt?: number
-  }) => Promise<unknown>
   acceptPlanningSession?: () => Promise<unknown>
 }) {
   const {
@@ -177,80 +80,28 @@ export function useProjectPlanDraft(args: {
     architectBrainstormEnabled,
     agentStatus,
     agentMessages,
-    updateChatMutation,
     acceptPlanningSession,
   } = args
   const [planDraft, setPlanDraft] = useState('')
-  const [isSavingPlanDraft, setIsSavingPlanDraft] = useState(false)
+  const isSavingPlanDraft = false
   const lastSavedPlanDraftRef = useRef<string>('')
-  const planSaveTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
     const nextPlanDraft = getAuthoritativePlanDraftValue({
-      activeChat,
       activePlanningSession,
     })
     setPlanDraft(nextPlanDraft)
     lastSavedPlanDraftRef.current = nextPlanDraft
-  }, [activeChat, activePlanningSession])
+  }, [activePlanningSession])
 
-  const persistPlanDraft = useCallback(
-    async (
-      nextPlanDraft: string,
-      options?: {
-        source?: 'manual' | 'generation'
-        planSourceMessageId?: string
-        forceSync?: boolean
-      }
-    ) => {
-      try {
-        const result = await persistProjectPlanDraft({
-          activeChat,
-          nextPlanDraft,
-          updateChatMutation,
-          lastSavedPlanDraft: lastSavedPlanDraftRef.current,
-          options,
-        })
-        if (result.didPersist) {
-          lastSavedPlanDraftRef.current = result.nextLastSavedPlanDraft
-        }
-      } catch (error) {
-        toast.error('Failed to save plan draft', {
-          description: error instanceof Error ? error.message : 'Unknown error',
-        })
-      }
-    },
-    [activeChat, updateChatMutation]
-  )
-
-  useEffect(() => {
-    if (
-      !shouldSyncStructuredPlanDraftMirror({
-        activeChat,
-        activePlanningSession,
-        authoritativePlanDraft: planDraft,
-      })
-    ) {
-      return
-    }
-
-    void persistPlanDraft(planDraft, { source: 'generation', forceSync: true })
-  }, [activeChat, activePlanningSession, persistPlanDraft, planDraft])
-
-  const handleSavePlanDraft = useCallback(async () => {
-    setIsSavingPlanDraft(true)
-    try {
-      await persistPlanDraft(planDraft, { source: 'manual' })
-    } finally {
-      setIsSavingPlanDraft(false)
-    }
-  }, [persistPlanDraft, planDraft])
+  const handleSavePlanDraft = useCallback(() => {
+    lastSavedPlanDraftRef.current = planDraft
+  }, [planDraft])
 
   const handleApprovePlan = useCallback(async () => {
     const canApproveStructuredPlan =
       activePlanningSession?.generatedPlan?.status === 'ready_for_review'
-    const canApproveLegacyPlan = canApprovePlan(activeChat?.planStatus, planDraft)
-    if (!activeChat || (!canApproveStructuredPlan && !canApproveLegacyPlan)) return
+    if (!canApproveStructuredPlan) return
 
     const shouldUseStructuredApproval = shouldUseStructuredPlanApproval({
       activePlanningSession,
@@ -258,52 +109,23 @@ export function useProjectPlanDraft(args: {
     })
 
     try {
-      if (shouldUseStructuredApproval) {
-        const approvePlanningSession = acceptPlanningSession
-        if (!approvePlanningSession) {
-          throw new Error('Structured plan approval requires a planning session accept callback')
-        }
-
-        await approvePlanningSession()
-      } else if (canApproveStructuredPlan) {
+      if (!shouldUseStructuredApproval) {
         throw new Error('Structured plan approval requires a planning session accept callback')
-      } else {
-        await updateChatMutation({
-          id: activeChat._id,
-          planStatus: 'approved',
-          planApprovedAt: Date.now(),
-        })
       }
+
+      const approvePlanningSession = acceptPlanningSession
+      if (!approvePlanningSession) {
+        throw new Error('Structured plan approval requires a planning session accept callback')
+      }
+
+      await approvePlanningSession()
       toast.success('Plan approved')
     } catch (error) {
       toast.error('Failed to approve plan', {
         description: error instanceof Error ? error.message : 'Unknown error',
       })
     }
-  }, [acceptPlanningSession, activeChat, activePlanningSession, planDraft, updateChatMutation])
-
-  useEffect(() => {
-    if (!activeChat?._id) return
-    const trimmed = planDraft.trim()
-    const lastSaved = lastSavedPlanDraftRef.current.trim()
-    if (trimmed === lastSaved) return
-
-    if (planSaveTimerRef.current !== null) {
-      window.clearTimeout(planSaveTimerRef.current)
-      planSaveTimerRef.current = null
-    }
-
-    planSaveTimerRef.current = window.setTimeout(() => {
-      void persistPlanDraft(planDraft)
-    }, 750)
-
-    return () => {
-      if (planSaveTimerRef.current !== null) {
-        window.clearTimeout(planSaveTimerRef.current)
-        planSaveTimerRef.current = null
-      }
-    }
-  }, [activeChat?._id, planDraft, persistPlanDraft])
+  }, [acceptPlanningSession, activePlanningSession])
 
   useEffect(() => {
     if (
@@ -317,7 +139,7 @@ export function useProjectPlanDraft(args: {
       return
     }
 
-    const next = deriveNextPlanDraft({
+    const nextPlanDraft = deriveNextPlanDraft({
       mode: chatMode,
       agentStatus,
       currentPlanDraft: planDraft,
@@ -336,24 +158,10 @@ export function useProjectPlanDraft(args: {
           content: message.content,
         })),
     })
-    if (!next) return
-    if (planDraft.trim() !== lastSavedPlanDraftRef.current.trim()) return
+    if (!nextPlanDraft) return
 
-    setPlanDraft(next)
-    if (planSaveTimerRef.current !== null) {
-      window.clearTimeout(planSaveTimerRef.current)
-      planSaveTimerRef.current = null
-    }
-    const latestArchitectMessage = [...agentMessages]
-      .reverse()
-      .find(
-        (message) =>
-          message.role === 'assistant' && message.mode === 'plan' && message.content.trim()
-      )
-    void persistPlanDraft(next, {
-      source: 'generation',
-      planSourceMessageId: latestArchitectMessage?.id,
-    })
+    setPlanDraft(nextPlanDraft)
+    lastSavedPlanDraftRef.current = nextPlanDraft
   }, [
     activeChat,
     activePlanningSession,
@@ -361,7 +169,6 @@ export function useProjectPlanDraft(args: {
     agentStatus,
     architectBrainstormEnabled,
     chatMode,
-    persistPlanDraft,
     planDraft,
   ])
 

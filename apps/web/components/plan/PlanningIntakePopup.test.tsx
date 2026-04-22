@@ -30,7 +30,14 @@ mock.module('@/stores/workspaceUiStore', () => ({
       openPlanningPopup,
       closePlanningPopup,
     }),
-    { getState: () => ({ isPlanningPopupOpen: _isPlanningPopupOpen, planningSessionId: _planningSessionId, openPlanningPopup, closePlanningPopup }) }
+    {
+      getState: () => ({
+        isPlanningPopupOpen: _isPlanningPopupOpen,
+        planningSessionId: _planningSessionId,
+        openPlanningPopup,
+        closePlanningPopup,
+      }),
+    }
   ),
 }))
 import { buildDefaultPlanningQuestions } from '@/lib/planning/question-engine'

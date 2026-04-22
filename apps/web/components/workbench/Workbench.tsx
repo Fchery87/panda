@@ -50,6 +50,10 @@ interface WorkbenchProps {
   onEditorDirtyChange: (filePath: string, isDirty: boolean) => void
   onContextualChat?: (selection: string, filePath: string) => void
   onInlineChat?: (prompt: string, selectedText: string, filePath: string) => Promise<string | null>
+  onApprovePlan?: () => void
+  onBuildFromPlan?: () => void
+  planApproveDisabled?: boolean
+  planBuildDisabled?: boolean
   /** Called when user clicks "Home" tab in center */
   activeCenterTab?: 'editor' | 'diff' | 'preview' | 'logs' | 'tests'
   onCenterTabChange?: (tab: 'editor' | 'diff' | 'preview' | 'logs' | 'tests') => void
@@ -96,6 +100,10 @@ export function Workbench({
   onEditorDirtyChange,
   onContextualChat,
   onInlineChat,
+  onApprovePlan,
+  onBuildFromPlan,
+  planApproveDisabled = false,
+  planBuildDisabled = false,
   activeCenterTab = 'editor',
   onCenterTabChange,
   pendingDiffCount = 0,
@@ -157,7 +165,13 @@ export function Workbench({
               )}
               <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
                 {selectedPlanTab ? (
-                  <PlanArtifactTab artifact={selectedPlanTab.artifact} />
+                  <PlanArtifactTab
+                    artifact={selectedPlanTab.artifact}
+                    onApprove={onApprovePlan}
+                    onBuildFromPlan={onBuildFromPlan}
+                    approveDisabled={planApproveDisabled}
+                    buildDisabled={planBuildDisabled}
+                  />
                 ) : selectedFile ? (
                   <EditorContainer
                     filePath={selectedFile.path}
@@ -255,7 +269,13 @@ export function Workbench({
           {effectiveTab === 'editor' && (
             <>
               {selectedPlanTab ? (
-                <PlanArtifactTab artifact={selectedPlanTab.artifact} />
+                <PlanArtifactTab
+                  artifact={selectedPlanTab.artifact}
+                  onApprove={onApprovePlan}
+                  onBuildFromPlan={onBuildFromPlan}
+                  approveDisabled={planApproveDisabled}
+                  buildDisabled={planBuildDisabled}
+                />
               ) : selectedFile ? (
                 <div className="flex h-full min-h-0 min-w-0 flex-col">
                   {pendingArtifactPreview ? (

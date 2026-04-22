@@ -61,6 +61,10 @@ export interface WorkspaceUiState {
   setShareDialogOpen: (open: boolean) => void
   taskHeaderVisible: boolean
   setTaskHeaderVisible: (visible: boolean) => void
+  isComposerOpen: boolean
+  setComposerOpen: (open: boolean) => void
+  isShortcutHelpOpen: boolean
+  setShortcutHelpOpen: (open: boolean) => void
 
   isPlanningPopupOpen: boolean
   planningSessionId: string | null
@@ -86,6 +90,8 @@ const DEFAULTS = {
   specSurfaceMode: 'closed' as const,
   isShareDialogOpen: false,
   taskHeaderVisible: false,
+  isComposerOpen: false,
+  isShortcutHelpOpen: false,
   isPlanningPopupOpen: false,
   planningSessionId: null,
 }
@@ -117,6 +123,8 @@ export const useWorkspaceUiStore = create<WorkspaceUiState>()(
 
       setShareDialogOpen: (open) => set({ isShareDialogOpen: open }),
       setTaskHeaderVisible: (visible) => set({ taskHeaderVisible: visible }),
+      setComposerOpen: (open) => set({ isComposerOpen: open }),
+      setShortcutHelpOpen: (open) => set({ isShortcutHelpOpen: open }),
 
       openPlanningPopup: (sessionId) =>
         set((state) => ({
@@ -124,8 +132,7 @@ export const useWorkspaceUiStore = create<WorkspaceUiState>()(
           planningSessionId:
             sessionId ?? state.planningSessionId ?? `planning_${Date.now().toString(36)}`,
         })),
-      closePlanningPopup: () =>
-        set({ isPlanningPopupOpen: false, planningSessionId: null }),
+      closePlanningPopup: () => set({ isPlanningPopupOpen: false, planningSessionId: null }),
 
       reset: () => set(DEFAULTS),
     }),

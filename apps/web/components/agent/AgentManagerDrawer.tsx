@@ -75,9 +75,6 @@ function getModeLabel(mode: string): string {
     plan: 'Plan',
     code: 'Code',
     build: 'Build',
-    discuss: 'Discuss',
-    debug: 'Debug',
-    review: 'Review',
   }
   return labels[mode] || mode
 }

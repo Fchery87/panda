@@ -142,4 +142,3 @@ export function AgentSelector({ mode, onModeChange, disabled, className }: Agent
     </DropdownMenu>
   )
 }
-export { AgentSelector as ModeSelector }

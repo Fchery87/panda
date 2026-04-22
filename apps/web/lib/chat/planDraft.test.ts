@@ -4,8 +4,6 @@ import { type GeneratedPlanArtifact } from '../planning/types'
 import {
   buildApprovedPlanExecutionMessage,
   buildMessageWithPlanDraft,
-  canApprovePlan,
-  canBuildFromPlan,
   deriveNextPlanDraft,
   getNextPlanStatusAfterDraftChange,
   getNextPlanStatusAfterGeneration,
@@ -236,20 +234,5 @@ describe('planDraft helpers', () => {
         currentStatus: 'drafting',
       })
     ).toBeNull()
-  })
-
-  it('only allows approval when a non-empty draft is ready for review or stale', () => {
-    expect(canApprovePlan('awaiting_review', 'plan')).toBe(true)
-    expect(canApprovePlan('stale', 'plan')).toBe(true)
-    expect(canApprovePlan('drafting', 'plan')).toBe(false)
-    expect(canApprovePlan('approved', 'plan')).toBe(false)
-    expect(canApprovePlan('awaiting_review', '   ')).toBe(false)
-  })
-
-  it('only allows build when a non-empty draft is approved or executing', () => {
-    expect(canBuildFromPlan('approved', 'plan')).toBe(true)
-    expect(canBuildFromPlan('executing', 'plan')).toBe(true)
-    expect(canBuildFromPlan('stale', 'plan')).toBe(false)
-    expect(canBuildFromPlan('approved', '')).toBe(false)
   })
 })

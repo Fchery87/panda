@@ -49,7 +49,9 @@ describe('PlanArtifactTab', () => {
   })
 
   test('renders the generated plan artifact in the workspace area', () => {
-    const html = renderToStaticMarkup(<PlanArtifactTab artifact={sampleArtifact} />)
+    const html = renderToStaticMarkup(
+      <PlanArtifactTab artifact={sampleArtifact} onApprove={() => {}} />
+    )
 
     expect(html).toContain('Plan Artifact')
     expect(html).toContain(sampleArtifact.title)
@@ -57,6 +59,7 @@ describe('PlanArtifactTab', () => {
     expect(html).toContain('Sample plan artifact')
     expect(html).toContain('Acceptance checks')
     expect(html).toContain('Plan tab renders')
+    expect(html).toContain('Approve')
   })
 
   test('labels plan tabs distinctly beside file tabs', () => {

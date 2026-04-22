@@ -169,23 +169,3 @@ export function getNextPlanStatusAfterGeneration(args: {
   if (previousDraft === nextDraft) return null
   return 'awaiting_review'
 }
-
-export function canApprovePlan(
-  status: PlanStatus | null | undefined,
-  planDraft: PlanDraftSource
-): boolean {
-  const normalizedDraft = normalizePlanDraft(planDraft)
-  if (!normalizedDraft) return false
-  return status === 'awaiting_review' || status === 'stale'
-}
-
-export function canBuildFromPlan(
-  status: PlanStatus | null | undefined,
-  planDraft: PlanDraftSource
-): boolean {
-  const normalizedDraft = normalizePlanDraft(planDraft)
-  if (!normalizedDraft) return false
-  return (
-    status === 'approved' || status === 'executing' || status === 'partial' || status === 'failed'
-  )
-}

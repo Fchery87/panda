@@ -6,7 +6,8 @@ import type {
   StreamChunk,
   ToolCall,
 } from '../llm/types'
-import { AgentRuntime, shouldRewriteBuildResponse } from './runtime'
+import { AgentRuntime } from './runtime'
+import { shouldRewriteBuildResponse } from './runtime/rewrite-guardrails'
 import { buildApprovedPlanExecutionMessage } from '../chat/planDraft'
 
 function makeFinish(): StreamChunk {

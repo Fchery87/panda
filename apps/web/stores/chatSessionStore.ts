@@ -7,7 +7,6 @@ import type { ChatMode } from '@/lib/agent/prompt-library'
 export type OversightLevel = 'review' | 'autopilot'
 
 export interface UiModelSelection {
-  providerId: string
   modelId: string
 }
 
@@ -33,10 +32,10 @@ export interface ChatSessionState {
 
 const DEFAULTS = {
   activeChatId: null,
-  chatMode: 'build' as ChatMode,
-  architectBrainstormEnabled: false,
+  chatMode: 'plan' as ChatMode,
+  architectBrainstormEnabled: process.env.NEXT_PUBLIC_ENABLE_ARCHITECT_BRAINSTORM === 'true',
   uiSelectedModel: null,
-  reasoningVariant: null,
+  reasoningVariant: 'none',
   oversightLevel: 'review' as OversightLevel,
   contextualPrompt: null,
 }

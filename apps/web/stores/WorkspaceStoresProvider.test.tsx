@@ -48,7 +48,7 @@ describe('WorkspaceStoresProvider', () => {
       rerender(<WorkspaceStoresProvider projectId={'p2' as never}>x</WorkspaceStoresProvider>)
 
       expect(useEditorContextStore.getState().openTabs).toHaveLength(0)
-      expect(useChatSessionStore.getState().chatMode).toBe('build')
+      expect(useChatSessionStore.getState().chatMode).toBe('plan')
       expect(useWorkspaceUiStore.getState().isRightPanelOpen).toBe(true)
     } finally {
       cleanup()

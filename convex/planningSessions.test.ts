@@ -10,7 +10,6 @@ import {
   createPlanningSessionRecord,
   markPlanningExecutionRecord,
   markPlanningSessionStaleRecord,
-  serializeGeneratedPlanArtifact,
 } from './planningSessions'
 
 describe('planningSessions helpers', () => {
@@ -39,19 +38,10 @@ describe('planningSessions helpers', () => {
       ],
     })
 
-    expect(record.session.sessionId).toBe('planning_session_1')
-    expect(record.session.status).toBe('intake')
-    expect(record.session.questions.map((question) => question.id)).toEqual(['q-1', 'q-2'])
-    expect(record.session.answers).toEqual([])
-    expect(record.chatPatch).toMatchObject({
-      planDraft: undefined,
-      planStatus: 'drafting',
-      planApprovedAt: undefined,
-      planLastGeneratedAt: undefined,
-      planBuildRunId: undefined,
-      planUpdatedAt: 123,
-      updatedAt: 123,
-    })
+    expect(record.sessionId).toBe('planning_session_1')
+    expect(record.status).toBe('intake')
+    expect(record.questions.map((question) => question.id)).toEqual(['q-1', 'q-2'])
+    expect(record.answers).toEqual([])
   })
 
   it('replaces answers idempotently for each question', () => {
@@ -79,7 +69,7 @@ describe('planningSessions helpers', () => {
       ],
     })
 
-    const answeredOnce = applyPlanningAnswer(record.session, {
+    const answeredOnce = applyPlanningAnswer(record, {
       questionId: 'q-1',
       selectedOptionId: 'a',
       source: 'suggestion',
@@ -149,25 +139,15 @@ describe('planningSessions helpers', () => {
       generatedAt: 456,
     }
 
-    const next = completePlanningSessionRecord(record.session, generatedPlan, 789)
+    const next = completePlanningSessionRecord(record, generatedPlan, 789)
 
-    expect(next.session.status).toBe('ready_for_review')
-    expect(next.session.completedAt).toBe(789)
-    expect(next.session.generatedPlan).toMatchObject({
+    expect(next.status).toBe('ready_for_review')
+    expect(next.completedAt).toBe(789)
+    expect(next.generatedPlan).toMatchObject({
       chatId: 'chat_1',
       sessionId: 'planning_session_1',
       status: 'ready_for_review',
       generatedAt: 456,
-    })
-    expect(next.chatPatch).toMatchObject({
-      planDraft: serializeGeneratedPlanArtifact(generatedPlan),
-      planStatus: 'awaiting_review',
-      planSourceMessageId: 'planning_session_1',
-      planApprovedAt: undefined,
-      planLastGeneratedAt: 456,
-      planBuildRunId: undefined,
-      planUpdatedAt: 789,
-      updatedAt: 789,
     })
   })
 
@@ -240,7 +220,7 @@ describe('planningSessions helpers', () => {
       },
     ]
 
-    const session = { ...record.session, answers: completedAnswers, updatedAt: 104 }
+    const session = { ...record, answers: completedAnswers, updatedAt: 104 }
     const plan = buildStructuredPlanFromAnswers(session, 200)
 
     expect(plan.status).toBe('ready_for_review')
@@ -284,7 +264,7 @@ describe('planningSessions helpers', () => {
         },
       ],
     })
-    const partiallyAnswered = applyPlanningAnswer(record.session, {
+    const partiallyAnswered = applyPlanningAnswer(record, {
       questionId: 'outcome',
       freeformValue: 'fix the regression safely',
       source: 'freeform',
@@ -305,12 +285,14 @@ describe('planningSessions helpers', () => {
       status: 'ready_for_review',
       generatedAt: 200,
     })
-    expect(result.completedSession?.chatPatch).toMatchObject({
-      planStatus: 'awaiting_review',
-      planSourceMessageId: 'planning_session_1',
-      planLastGeneratedAt: 200,
+    expect(result.completedSession).toMatchObject({
+      status: 'ready_for_review',
+      sessionId: 'planning_session_1',
+      generatedPlan: {
+        generatedAt: 200,
+      },
     })
-    expect(result.completedSession?.chatPatch.planDraft).toContain(
+    expect(result.completedSession?.generatedPlan?.markdown).toContain(
       '# Implementation plan for fix the regression safely'
     )
   })
@@ -340,7 +322,7 @@ describe('planningSessions helpers', () => {
       ],
     })
 
-    const result = answerPlanningQuestionRecord(record.session, {
+    const result = answerPlanningQuestionRecord(record, {
       questionId: 'outcome',
       freeformValue: 'keep the fix minimal',
       source: 'freeform',
@@ -381,7 +363,7 @@ describe('planningSessions helpers', () => {
     })
 
     const readyForReviewSession: Parameters<typeof acceptPlanningSessionRecord>[0] = {
-      ...baseRecord.session,
+      ...baseRecord,
       status: 'ready_for_review',
       generatedPlan,
       completedAt: 456,
@@ -391,48 +373,31 @@ describe('planningSessions helpers', () => {
 
     const accepted = acceptPlanningSessionRecord(readyForReviewSession, 789)
 
-    expect(accepted.session.status).toBe('accepted')
-    expect(accepted.session.generatedPlan).toMatchObject({
+    expect(accepted.status).toBe('accepted')
+    expect(accepted.generatedPlan).toMatchObject({
       status: 'accepted',
     })
-    expect(accepted.session.acceptedAt).toBe(789)
-    expect(accepted.chatPatch).toMatchObject({
-      planStatus: 'approved',
-      planApprovedAt: 789,
-      planUpdatedAt: 789,
-      updatedAt: 789,
-    })
+    expect(accepted.acceptedAt).toBe(789)
 
-    const executing = markPlanningExecutionRecord(accepted.session, {
+    const executing = markPlanningExecutionRecord(accepted, {
       state: 'executing',
       runId: 'run_1' as Parameters<typeof markPlanningExecutionRecord>[1]['runId'],
       now: 900,
     })
 
-    expect(executing.session.status).toBe('executing')
-    expect(executing.session.generatedPlan).toMatchObject({
+    expect(executing.status).toBe('executing')
+    expect(executing.generatedPlan).toMatchObject({
       status: 'executing',
     })
-    expect(executing.chatPatch).toMatchObject({
-      planStatus: 'executing',
-      planBuildRunId: 'run_1',
-      planUpdatedAt: 900,
-      updatedAt: 900,
-    })
 
-    const partial = markPlanningExecutionRecord(executing.session, {
+    const partial = markPlanningExecutionRecord(executing, {
       state: 'partial',
       now: 901,
     })
 
-    expect(partial.session.status).toBe('executing')
-    expect(partial.session.generatedPlan).toMatchObject({
+    expect(partial.status).toBe('executing')
+    expect(partial.generatedPlan).toMatchObject({
       status: 'executing',
-    })
-    expect(partial.chatPatch).toMatchObject({
-      planStatus: 'partial',
-      planUpdatedAt: 901,
-      updatedAt: 901,
     })
   })
 
@@ -444,7 +409,7 @@ describe('planningSessions helpers', () => {
       questions: [],
     })
     const readyForReviewSession: Parameters<typeof markPlanningExecutionRecord>[0] = {
-      ...baseRecord.session,
+      ...baseRecord,
       status: 'ready_for_review',
       generatedPlan: {
         chatId: 'chat_1',
@@ -479,7 +444,7 @@ describe('planningSessions helpers', () => {
       questions: [],
     })
     const acceptedSession: Parameters<typeof markPlanningExecutionRecord>[0] = {
-      ...baseRecord.session,
+      ...baseRecord,
       status: 'accepted' as const,
       generatedPlan: {
         chatId: 'chat_1',
@@ -506,23 +471,13 @@ describe('planningSessions helpers', () => {
       now: 902,
     })
 
-    expect(completed.session.status).toBe('completed')
-    expect(completed.session.generatedPlan).toMatchObject({ status: 'completed' })
-    expect(completed.session.completedAt).toBe(901)
-    expect(completed.chatPatch).toMatchObject({
-      planStatus: 'completed',
-      planUpdatedAt: 901,
-      updatedAt: 901,
-    })
+    expect(completed.status).toBe('completed')
+    expect(completed.generatedPlan).toMatchObject({ status: 'completed' })
+    expect(completed.completedAt).toBe(901)
 
-    expect(failed.session.status).toBe('failed')
-    expect(failed.session.generatedPlan).toMatchObject({ status: 'failed' })
-    expect(failed.session.completedAt).toBe(902)
-    expect(failed.chatPatch).toMatchObject({
-      planStatus: 'failed',
-      planUpdatedAt: 902,
-      updatedAt: 902,
-    })
+    expect(failed.status).toBe('failed')
+    expect(failed.generatedPlan).toMatchObject({ status: 'failed' })
+    expect(failed.completedAt).toBe(902)
   })
 
   it('marks superseded planning sessions as stale', () => {
@@ -544,7 +499,7 @@ describe('planningSessions helpers', () => {
 
     const stale = markPlanningSessionStaleRecord(
       {
-        ...record.session,
+        ...record,
         status: 'accepted',
         completedAt: undefined,
         updatedAt: 123,

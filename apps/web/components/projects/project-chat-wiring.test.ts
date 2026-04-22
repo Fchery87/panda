@@ -6,11 +6,6 @@ async function readProjectComponent(fileName: string) {
   return fs.readFileSync(path.resolve(import.meta.dir, fileName), 'utf-8')
 }
 
-async function readProjectLoader() {
-  const fs = await import('node:fs')
-  return fs.readFileSync(path.resolve(import.meta.dir, 'ProjectShellDataLoader.tsx'), 'utf-8')
-}
-
 async function readProvider() {
   const fs = await import('node:fs')
   return fs.readFileSync(path.resolve(import.meta.dir, 'WorkspaceRuntimeProvider.tsx'), 'utf-8')

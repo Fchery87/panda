@@ -240,7 +240,7 @@ describe('createProjectPlanningSessionActions', () => {
     ])
   })
 
-  test('starts intake for an explicit chatId when the workflow creates a new architect chat', async () => {
+  test('starts intake for an explicit chatId when the workflow creates a new plan chat', async () => {
     const calls: Array<{ name: string; payload: unknown }> = []
     const actions = createProjectPlanningSessionActions({
       activeChatId: null,

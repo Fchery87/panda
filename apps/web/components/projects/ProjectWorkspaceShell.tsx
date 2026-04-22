@@ -62,7 +62,10 @@ export function ProjectWorkspaceShell({
   const isRightPanelOpen = useWorkspaceUiStore((s) => s.isRightPanelOpen)
 
   return (
-    <div data-testid="workspace-shell" className="fixed inset-0 top-0 z-10 flex flex-col overflow-hidden bg-background">
+    <div
+      data-testid="workspace-shell"
+      className="fixed inset-0 top-0 z-10 flex flex-col overflow-hidden bg-background"
+    >
       <div className="pointer-events-none absolute inset-x-0 top-11 z-40 px-3 py-2">
         <PermissionDialog className="pointer-events-auto ml-auto max-w-xl" />
       </div>

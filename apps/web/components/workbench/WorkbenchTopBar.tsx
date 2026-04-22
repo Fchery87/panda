@@ -86,6 +86,18 @@ export function WorkbenchTopBar({
           <Button
             variant="ghost"
             size="sm"
+            className="hidden h-7 rounded-none px-2 font-mono text-[10px] uppercase tracking-widest md:inline-flex"
+            aria-label="Back to projects"
+            title="Back to projects"
+            onClick={() => {
+              window.location.href = '/projects'
+            }}
+          >
+            Projects
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             className="hidden h-7 w-7 rounded-none p-0 md:flex"
             onClick={onToggleFlyout}
             title={isFlyoutOpen ? 'Close sidebar' : 'Open sidebar'}

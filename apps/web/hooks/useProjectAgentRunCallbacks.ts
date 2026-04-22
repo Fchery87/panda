@@ -3,26 +3,13 @@
 import { useCallback } from 'react'
 import type { Id } from '@convex/_generated/dataModel'
 import { derivePlanCompletionStatus } from '@/lib/agent/plan-progress'
-import type { PlanStatus } from '@/lib/chat/planDraft'
 
 interface ActivePlanningSessionLike {
   sessionId: string
 }
 
-interface ActiveChatLike {
-  _id: Id<'chats'>
-  planBuildRunId?: Id<'agentRuns'>
-  planStatus?: PlanStatus
-}
-
 interface UseProjectAgentRunCallbacksParams {
   activePlanningSession: ActivePlanningSessionLike | null
-  activeChat: ActiveChatLike | null | undefined
-  updateChatMutation: (args: {
-    id: Id<'chats'>
-    planBuildRunId?: Id<'agentRuns'>
-    planStatus?: PlanStatus
-  }) => Promise<unknown>
   markPlanningExecutionState: (args: {
     sessionId?: string
     state: 'executing' | 'completed' | 'failed' | 'partial'
@@ -33,8 +20,6 @@ interface UseProjectAgentRunCallbacksParams {
 
 export function useProjectAgentRunCallbacks({
   activePlanningSession,
-  activeChat,
-  updateChatMutation,
   markPlanningExecutionState,
   approvedPlanRunSessionsRef,
 }: UseProjectAgentRunCallbacksParams) {
@@ -59,21 +44,8 @@ export function useProjectAgentRunCallbacks({
         })
         return
       }
-
-      if (!activeChat?._id) return
-      await updateChatMutation({
-        id: activeChat._id,
-        planBuildRunId: runId,
-        planStatus: 'executing',
-      })
     },
-    [
-      activeChat,
-      activePlanningSession,
-      approvedPlanRunSessionsRef,
-      markPlanningExecutionState,
-      updateChatMutation,
-    ]
+    [activePlanningSession, approvedPlanRunSessionsRef, markPlanningExecutionState]
   )
 
   const handleRunCompleted = useCallback(
@@ -103,17 +75,8 @@ export function useProjectAgentRunCallbacks({
         })
         return
       }
-
-      if (!activeChat?._id || !activeChat.planBuildRunId) return
-      if (activeChat.planBuildRunId !== runId) return
-      if (activeChat.planStatus !== 'executing') return
-
-      await updateChatMutation({
-        id: activeChat._id,
-        planStatus: nextPlanStatus,
-      })
     },
-    [activeChat, approvedPlanRunSessionsRef, markPlanningExecutionState, updateChatMutation]
+    [approvedPlanRunSessionsRef, markPlanningExecutionState]
   )
 
   return {

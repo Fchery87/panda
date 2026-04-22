@@ -134,8 +134,24 @@ export async function openWorkbenchProject(page: Page): Promise<void> {
 
 export async function openChatActionsMenu(page: Page) {
   const actionsButton = page.getByRole('button', { name: /chat actions/i })
-  await expect(actionsButton).toBeVisible({ timeout: 15000 })
-  await actionsButton.click()
+  if (!(await actionsButton.isVisible().catch(() => false))) {
+    const openChatButton = page.getByRole('button', { name: /open chat panel/i }).first()
+    if (await openChatButton.isVisible().catch(() => false)) {
+      await openChatButton.click()
+    }
+    const mobileChatTab = page.getByRole('button', { name: /^chat$/i }).first()
+    if (await mobileChatTab.isVisible().catch(() => false)) {
+      await mobileChatTab.click()
+    }
+  }
+
+  if (await actionsButton.isVisible().catch(() => false)) {
+    await actionsButton.click()
+  } else {
+    const moreActionsButton = page.getByRole('button', { name: /more actions/i }).first()
+    await expect(moreActionsButton).toBeVisible({ timeout: 15000 })
+    await moreActionsButton.click()
+  }
 
   const menu = page.locator('[role="menu"]').last()
   await expect(menu).toBeVisible({ timeout: 15000 })
@@ -210,7 +226,7 @@ export async function typePlanningAnswer(page: Page, answer: string) {
 
 export async function expectPlanTabPresent(page: Page, title?: string) {
   const planTab = title
-    ? page.getByRole('tab', { name: new RegExp(`^Plan tab ${escapeRegExp(title)}$`) })
+    ? page.getByRole('tab', { name: new RegExp(`Plan tab .*${escapeRegExp(title)}`, 'i') })
     : page.getByRole('tab', { name: /^Plan tab /i }).first()
 
   await expect(planTab).toBeVisible({ timeout: 15_000 })
@@ -251,9 +267,8 @@ export async function openWorkbenchProjectFixture(
     autoRunCommands?: boolean
     seedRuntimeCheckpoint?: boolean
     seedExecutionUpdates?: boolean
-    planDraft?: string
-    planStatus?: 'awaiting_review' | 'approved' | 'stale' | 'executing' | 'completed' | 'failed'
     structuredPlanningSession?: {
+      status?: 'ready_for_review' | 'accepted'
       plan?: {
         title?: string
         summary?: string
@@ -298,14 +313,11 @@ export async function openWorkbenchProjectFixture(
   if (options?.seedExecutionUpdates) {
     params.set('seedExecutionUpdates', '1')
   }
-  if (options?.planDraft) {
-    params.set('planDraft', options.planDraft)
-  }
-  if (options?.planStatus) {
-    params.set('planStatus', options.planStatus)
-  }
   if (options?.structuredPlanningSession) {
     params.set('structuredPlanningSession', '1')
+    if (options.structuredPlanningSession.status) {
+      params.set('structuredPlanningSessionStatus', options.structuredPlanningSession.status)
+    }
     if (options.structuredPlanningSession.plan) {
       params.set(
         'structuredPlanningSessionPlan',
@@ -348,21 +360,22 @@ export async function openWorkbenchProjectFixture(
     planTabPath?: string
   }
   expect(body.projectId).toBeTruthy()
-
   const projectUrl = withE2EBypassSecret(`/projects/${body.projectId}`)
   const navigationDeadline = Date.now() + 120_000
   let lastNavigationError: unknown = null
 
   while (Date.now() < navigationDeadline) {
     try {
-      await page.goto(projectUrl, { waitUntil: 'domcontentloaded', timeout: 120_000 })
+      await page.goto(projectUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 })
       lastNavigationError = null
       break
     } catch (error) {
       lastNavigationError = error
+      const message = error instanceof Error ? error.message : String(error)
       if (
-        !(error instanceof Error) ||
-        (!error.message.includes('ERR_ABORTED') && !error.message.includes('frame was detached'))
+        !message.includes('ERR_ABORTED') &&
+        !message.includes('frame was detached') &&
+        !message.includes('Timeout')
       ) {
         throw error
       }
@@ -374,19 +387,47 @@ export async function openWorkbenchProjectFixture(
     throw lastNavigationError
   }
 
-  const breadcrumb = page.getByRole('navigation', { name: /breadcrumb/i }).first()
-  const commandPaletteButton = page.getByRole('button', { name: /open command palette/i }).first()
-  const workspaceHeading = page.getByRole('heading', { name: /workspace|get started/i }).first()
-
   await expect(page).toHaveURL(/\/projects\/.+/, { timeout: 30_000 })
 
-  await Promise.any([
-    breadcrumb.waitFor({ state: 'visible', timeout: 30_000 }),
-    commandPaletteButton.waitFor({ state: 'visible', timeout: 30_000 }),
-    workspaceHeading.waitFor({ state: 'visible', timeout: 30_000 }),
-  ])
+  const loadingText = page.getByText(/loading project/i).first()
+  const stillLoading = await loadingText.isVisible().catch(() => false)
+  if (stillLoading) {
+    await page.waitForTimeout(5_000)
+  }
+
+  await expect(page).toHaveURL(/\/projects\/.+/, { timeout: 30_000 })
+  await expect(page.getByText(/loading project/i).first()).not.toBeVisible({
+    timeout: 30_000,
+  })
+
+  const workspaceShell = page.getByTestId('workspace-shell')
+  const openChatPanelButton = page.getByRole('button', { name: /open chat panel/i }).first()
+  const newTaskButton = page.getByRole('button', { name: /new task/i }).first()
+  const commandPaletteButton = page.getByRole('button', { name: /open command palette/i }).first()
+
+  await expect(
+    workspaceShell.or(openChatPanelButton).or(newTaskButton).or(commandPaletteButton).first()
+  ).toBeVisible({ timeout: 30_000 })
 
   return body
+}
+
+export async function seedWorkbenchExecutionUpdates(page: Page, name: string) {
+  const params = new URLSearchParams({
+    name,
+    seedExecutionUpdates: '1',
+    e2eBypassSecret: E2E_BYPASS_SECRET,
+  })
+
+  const response = await page.request.get(`/api/e2e/project?${params.toString()}`, {
+    headers: { 'x-panda-e2e-bypass-secret': E2E_BYPASS_SECRET },
+  })
+
+  expect(response.ok()).toBe(true)
+  return (await response.json()) as {
+    projectId: string
+    chatId?: string
+  }
 }
 
 export async function triggerSpecReview(
@@ -413,6 +454,18 @@ export async function triggerSpecReview(
 }
 
 export async function emitPermissionRequest(page: Page) {
+  await page.waitForFunction(() => {
+    const hook = (
+      window as Window & {
+        __PANDA_E2E__?: {
+          emitPermissionRequest?: () => void
+        }
+      }
+    ).__PANDA_E2E__
+
+    return typeof hook?.emitPermissionRequest === 'function'
+  })
+
   await page.evaluate(() => {
     const hook = (
       window as Window & {

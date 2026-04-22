@@ -21,8 +21,6 @@ import type { FormalSpecification } from './spec/types'
 
 export type { ChatMode } from './chat-modes'
 
-type LegacyChatMode = ChatMode | 'discuss' | 'debug' | 'review'
-
 /**
  * Mode configuration
  * Note: structural tool permissions are enforced by the capability-based
@@ -581,22 +579,11 @@ export function getSystemPrompt(mode: ChatMode): string {
 }
 
 /**
- * Normalize persisted/legacy modes to the current 4-mode model.
+ * Normalize runtime chat modes.
  */
 export function normalizeChatMode(mode: unknown, fallback: ChatMode = 'code'): ChatMode {
   if (mode === 'ask' || mode === 'plan' || mode === 'code' || mode === 'build') {
     return mode
   }
-  if (mode === 'architect') return 'plan'
-  if (mode === 'discuss') return 'plan'
-  if (mode === 'debug') return 'code'
-  if (mode === 'review') return 'ask'
   return fallback
-}
-
-/**
- * Legacy support - maps old mode names to new ones
- */
-export function mapLegacyMode(mode: LegacyChatMode): ChatMode {
-  return normalizeChatMode(mode, 'code')
 }

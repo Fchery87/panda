@@ -8,7 +8,7 @@ import {
 } from './useProjectMessageWorkflow'
 
 describe('useProjectMessageWorkflow direct-send behavior', () => {
-  test('architect with no active chat creates the chat and then sends directly', () => {
+  test('plan with no active chat creates the chat and then sends directly', () => {
     expect(
       resolveMessageWorkflowAction({
         hasActiveChat: false,
@@ -18,7 +18,7 @@ describe('useProjectMessageWorkflow direct-send behavior', () => {
     ).toEqual({ type: 'create_chat_and_send_directly' })
   })
 
-  test('architect with an active planning session still sends directly', () => {
+  test('plan with an active planning session still sends directly', () => {
     expect(
       resolveMessageWorkflowAction({
         hasActiveChat: true,
@@ -46,7 +46,7 @@ describe('useProjectMessageWorkflow direct-send behavior', () => {
     ).toEqual({ type: 'create_chat_and_send_directly' })
   })
 
-  test('architect with no active chat creates chat and queues a direct send', async () => {
+  test('plan with no active chat creates chat and queues a direct send', async () => {
     const calls: string[] = []
 
     const handled = await executeMessageWorkflowAction({
@@ -139,7 +139,7 @@ describe('useProjectMessageWorkflow direct-send behavior', () => {
     ).toBe(false)
   })
 
-  test('architect create-chat direct send remains blocked when provider is unavailable', () => {
+  test('plan create-chat direct send remains blocked when provider is unavailable', () => {
     expect(
       shouldQueuePendingDirectSend({
         workflowAction: resolveMessageWorkflowAction({
@@ -208,11 +208,10 @@ describe('useProjectMessageWorkflow direct-send behavior', () => {
     })
   })
 
-  test('passes content through unchanged when only a raw planDraft is present (no structured artifact)', () => {
+  test('does not build an approved-plan execution payload without a structured artifact', () => {
     const result = buildApprovedPlanExecutionPayload({
       content: 'Execute the approved plan.',
       approvedPlanExecution: true,
-      planDraft: '# Approved Plan\n\n- Step 1',
     })
 
     expect(result.approvedPlanExecutionContext).toBeUndefined()

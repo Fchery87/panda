@@ -90,6 +90,7 @@ export function AgentCompletionBanner({
             <div className="flex shrink-0 items-center gap-1">
               {onReviewDiff && changedFilesCount > 0 && (
                 <Button
+                  data-testid="agent-completion-review-diff-button"
                   size="sm"
                   className="h-7 gap-1.5 rounded-none bg-primary px-3 font-mono text-[10px] uppercase tracking-widest text-primary-foreground hover:bg-primary/90"
                   onClick={onReviewDiff}

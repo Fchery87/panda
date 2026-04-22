@@ -1,4 +1,4 @@
-export type ChatMode = 'ask' | 'architect' | 'code' | 'build'
+export type ChatMode = 'ask' | 'plan' | 'code' | 'build'
 
 export type PermissionLevel = 'allow' | 'deny' | 'ask'
 

@@ -14,6 +14,7 @@ export type ProjectPlanningSessionRecord = {
   questions: PlanningQuestion[]
   answers: PlanningAnswer[]
   generatedPlan?: GeneratedPlanArtifact
+  updatedAt?: number
 } | null
 
 type PlanningExecutionState = 'executing' | 'completed' | 'failed' | 'partial'

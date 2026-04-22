@@ -37,7 +37,6 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
   const {
     activeChatId,
     activeChatExists,
-    activeChatPlanStatus,
     activeChatPlanUpdatedAt,
     activeChatPlanLastGeneratedAt,
     chatMessages,
@@ -104,7 +103,9 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
   const onArchitectBrainstormEnabledChange = useChatSessionStore(
     (s) => s.setArchitectBrainstormEnabled
   )
-  const onModelChange = useChatSessionStore((s) => s.setUiSelectedModel) as unknown as (model: string) => void
+  const onModelChange = useChatSessionStore((s) => s.setUiSelectedModel) as unknown as (
+    model: string
+  ) => void
   const onVariantChange = useChatSessionStore((s) => s.setReasoningVariant)
   const onInspectorOpenChange = useWorkspaceUiStore((s) => s.setChatInspectorOpen)
   const onInspectorTabChange = useWorkspaceUiStore(
@@ -116,14 +117,12 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
   const onSpecClick = () => useWorkspaceUiStore.getState().setSpecSurfaceMode('inspect')
   const onCloseSpecSurface = () => useWorkspaceUiStore.getState().setSpecSurfaceMode('closed')
   const onOpenShare = () => useWorkspaceUiStore.getState().setShareDialogOpen(true)
-  const onContextualPromptHandled = () =>
-    useChatSessionStore.getState().setContextualPrompt(null)
+  const onContextualPromptHandled = () => useChatSessionStore.getState().setContextualPrompt(null)
 
   const runHistoryCount = (runEvents ?? []).length
 
   const planApproval = derivePlanApprovalState({
     planningSession: planningSession as never,
-    pendingSpec: null,
   })
 
   const runtimeCheckpoints = useQuery(
@@ -374,13 +373,13 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
           liveSteps={liveSteps}
           runEvents={runEvents}
           currentSpec={currentSpec}
-          planStatus={activeChatPlanStatus}
+          planStatus={planStatus}
           chatMode={chatMode}
         />
       </div>
 
       <ChatActionBar
-        planStatus={activeChatPlanStatus}
+        planStatus={planStatus}
         planDraft={planDraft}
         onPlanReview={onPlanReview}
         onPlanApprove={onPlanApprove}

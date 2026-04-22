@@ -4,6 +4,7 @@ import {
   clickPlanBuildControl,
   expectPlanTabPresent,
   openWorkbenchProjectFixture,
+  seedWorkbenchExecutionUpdates,
 } from './helpers/workbench'
 
 test.describe('Agent Run Acceptance', () => {
@@ -37,8 +38,6 @@ Ship the seeded structured planning workflow
       },
     })
 
-    const planReviewCard = page.getByText(/ready for review/i).first()
-    await expect(planReviewCard).toBeVisible({ timeout: 20_000 })
     await expectPlanTabPresent(page, planTitle)
     await expect(
       page.getByRole('region', { name: new RegExp(`Plan artifact ${planTitle}`, 'i') })
@@ -49,9 +48,11 @@ Ship the seeded structured planning workflow
     await clickPlanAcceptControl(page)
     await clickPlanBuildControl(page)
 
-    await expect(
-      page.getByRole('textbox', { name: /message input/i }).first()
-    ).toBeVisible({ timeout: 20_000 })
+    const reviewTab = page.getByRole('button', { name: /^review$/i }).first()
+    if (await reviewTab.isVisible().catch(() => false)) {
+      await reviewTab.click()
+    }
+
     await expect(page.getByRole('button', { name: /^build$/i }).first()).toBeVisible({
       timeout: 20_000,
     })
@@ -69,7 +70,12 @@ Ship the seeded structured planning workflow
       await openChatButton.click()
     }
 
-    const resumeReadyBadge = page.getByText(/resume available/i)
+    const reviewTab = page.getByRole('button', { name: /^review$/i }).first()
+    if (await reviewTab.isVisible().catch(() => false)) {
+      await reviewTab.click()
+    }
+
+    const resumeReadyBadge = page.getByText(/resume available/i).first()
     await expect(resumeReadyBadge).toBeVisible({ timeout: 20_000 })
     await page.getByRole('button', { name: /recover run|resume run/i }).click()
 
@@ -84,8 +90,13 @@ Ship the seeded structured planning workflow
 
     await openWorkbenchProjectFixture(page, {
       name: `Agent Run History ${Date.now()}`,
-      planDraft: 'History fixture',
-      planStatus: 'approved',
+      structuredPlanningSession: {
+        status: 'accepted',
+        acceptPlan: true,
+        plan: {
+          markdown: 'History fixture',
+        },
+      },
     })
 
     const openChatButton = page.getByRole('button', { name: /open chat panel/i }).first()
@@ -103,19 +114,27 @@ Ship the seeded structured planning workflow
   })
 
   test('seeded execution updates render as transcript execution cards', async ({ page }) => {
-    test.setTimeout(120_000)
+    test.setTimeout(180_000)
+    const fixtureName = `Agent Run Execution Cards ${Date.now()}`
 
     await openWorkbenchProjectFixture(page, {
-      name: `Agent Run Execution Cards ${Date.now()}`,
-      seedExecutionUpdates: true,
+      name: fixtureName,
     })
+    await seedWorkbenchExecutionUpdates(page, fixtureName)
 
     const openChatButton = page.getByRole('button', { name: /open chat panel/i }).first()
     if (await openChatButton.isVisible().catch(() => false)) {
       await openChatButton.click()
     }
 
-    await expect(page.getByText(/build update/i).first()).toBeVisible({ timeout: 20_000 })
+    const reviewTab = page.getByRole('button', { name: /^review$/i }).first()
+    if (await reviewTab.isVisible().catch(() => false)) {
+      await reviewTab.click()
+    }
+
+    await expect(page.getByText(/build update|updated files/i).first()).toBeVisible({
+      timeout: 20_000,
+    })
     await expect(page.getByText(/updated files/i).first()).toBeVisible({ timeout: 20_000 })
     await expect(page.getByText(/ran verification/i).first()).toBeVisible({ timeout: 20_000 })
     await expect(page.getByText(/completed run/i).first()).toBeVisible({ timeout: 20_000 })

@@ -17,7 +17,7 @@ export function ProjectShellDataLoader({ projectId }: ProjectShellDataLoaderProp
   const chats = useQuery(api.chats.list, { projectId })
 
   if (project === null) return <ProjectNotFoundGuard />
-  if (project === undefined || !files) {
+  if (project === undefined || files === undefined || chats === undefined) {
     return <ProjectLoadingGuard projectLoaded={project !== undefined} />
   }
 

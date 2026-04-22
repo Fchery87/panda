@@ -1,8 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState, type SetStateAction } from 'react'
+import { useCallback, useMemo, useRef, type SetStateAction } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { useMutation, useQuery } from 'convex/react'
+import { useMutation } from 'convex/react'
 import { toast } from 'sonner'
 import { useHotkeys } from 'react-hotkeys-hook'
 
@@ -14,13 +14,11 @@ import { ProjectChatPanel } from '@/components/projects/ProjectChatPanel'
 import { WorkbenchRightPanel } from '@/components/workbench/WorkbenchRightPanel'
 import { derivePlanningSessionDebugSummary } from '@/components/plan/PlanningSessionDebugCard'
 import { AgentRuntimeProvider } from '@/contexts/AgentRuntimeContext'
-import {
-  WorkspaceRuntimeProvider as WorkspaceRuntimeContextProvider,
-} from '@/contexts/WorkspaceRuntimeContext'
+import { WorkspaceRuntimeProvider as WorkspaceRuntimeContextProvider } from '@/contexts/WorkspaceRuntimeContext'
 import { useCommandPaletteStore } from '@/stores/commandPaletteStore'
 import { useChatSessionStore } from '@/stores/chatSessionStore'
 import { useEditorContextStore } from '@/stores/editorContextStore'
-import { useWorkspaceUiStore } from '@/stores/workspaceUiStore'
+import { useWorkspaceUiStore, type RightPanelTab } from '@/stores/workspaceUiStore'
 import { useGit } from '@/hooks/useGit'
 import { useJobs } from '@/hooks/useJobs'
 import { useAgent } from '@/hooks/useAgent'
@@ -41,7 +39,7 @@ import { useProjectRequestedFileSync } from '@/hooks/useProjectRequestedFileSync
 import { useProjectWorkspaceActions } from '@/hooks/useProjectWorkspaceActions'
 import { useProjectAgentRunCallbacks } from '@/hooks/useProjectAgentRunCallbacks'
 import { useProjectShellWiring } from '@/hooks/useProjectShellWiring'
-import { canApprovePlan, canBuildFromPlan, type PlanStatus } from '@/lib/chat/planDraft'
+import type { PlanStatus } from '@/lib/chat/planDraft'
 import { resolveAgentPolicy } from '@/lib/chat/agentPolicy'
 import type { AgentPolicy } from '@/lib/agent/automationPolicy'
 import type { ChatMode } from '@/lib/agent/prompt-library'
@@ -65,13 +63,6 @@ interface Chat {
   projectId: Id<'projects'>
   title?: string
   mode: ChatMode
-  planDraft?: string
-  planStatus?: PlanStatus
-  planSourceMessageId?: string
-  planApprovedAt?: number
-  planLastGeneratedAt?: number
-  planBuildRunId?: Id<'agentRuns'>
-  planUpdatedAt?: number
   createdAt: number
   updatedAt: number
 }
@@ -96,8 +87,12 @@ function readAgentPolicyField(
 const FALLBACK_PROVIDER: LLMProvider = {
   name: 'No Provider',
   config: { provider: 'anthropic', auth: { apiKey: '' } },
-  async listModels() { return [] },
-  async complete() { throw new Error('No LLM provider configured') },
+  async listModels() {
+    return []
+  },
+  async complete() {
+    throw new Error('No LLM provider configured')
+  },
   async *completionStream() {
     yield { type: 'error' as const, error: 'No LLM provider configured' }
     throw new Error('No LLM provider configured')
@@ -134,10 +129,13 @@ export function WorkspaceRuntimeProvider({
     chatInspectorTab,
     setChatInspectorOpen,
     setChatInspectorTab,
-    specSurfaceMode: _specSurfaceMode,
     setSpecSurfaceMode,
     isShareDialogOpen,
     setShareDialogOpen,
+    isComposerOpen,
+    setComposerOpen,
+    isShortcutHelpOpen,
+    setShortcutHelpOpen,
     isBottomDockOpen: _isBottomDockOpen,
     setBottomDockOpen,
     activeBottomDockTab,
@@ -146,11 +144,10 @@ export function WorkspaceRuntimeProvider({
     setActiveCenterTab,
     isRightPanelOpen,
     setRightPanelOpen,
-    rightPanelTab,
     setRightPanelTab,
   } = useWorkspaceUiStore()
 
-  const { oversightLevel, setOversightLevel, setContextualPrompt } = useChatSessionStore()
+  const { oversightLevel, setContextualPrompt } = useChatSessionStore()
 
   const {
     selectedFilePath,
@@ -164,7 +161,7 @@ export function WorkspaceRuntimeProvider({
   } = useEditorContextStore()
 
   const handleSetRightPanelTab = useCallback(
-    (tab: SetStateAction<typeof rightPanelTab>) => {
+    (tab: SetStateAction<RightPanelTab>) => {
       const next =
         typeof tab === 'function' ? tab(useWorkspaceUiStore.getState().rightPanelTab) : tab
       if (next !== useWorkspaceUiStore.getState().rightPanelTab) setRightPanelTab(next)
@@ -236,15 +233,14 @@ export function WorkspaceRuntimeProvider({
 
   const { activeSection, isFlyoutOpen, handleSectionChange, toggleFlyout } = useSidebar()
 
-  const [isComposerOpen, setIsComposerOpen] = useState(false)
-  const [isShortcutHelpOpen, setIsShortcutHelpOpen] = useState(false)
   const approvedPlanRunSessionsRef = useRef(new Map<string, string>())
 
   useHotkeys(
     'mod+i',
     (e) => {
       e.preventDefault()
-      setIsComposerOpen((prev) => !prev)
+      const state = useWorkspaceUiStore.getState()
+      state.setComposerOpen(!state.isComposerOpen)
     },
     { enableOnFormTags: ['INPUT', 'TEXTAREA'] }
   )
@@ -252,7 +248,8 @@ export function WorkspaceRuntimeProvider({
     'mod+/',
     (e) => {
       e.preventDefault()
-      setIsShortcutHelpOpen((prev) => !prev)
+      const state = useWorkspaceUiStore.getState()
+      state.setShortcutHelpOpen(!state.isShortcutHelpOpen)
     },
     { enableOnFormTags: ['INPUT', 'TEXTAREA'] }
   )
@@ -269,11 +266,7 @@ export function WorkspaceRuntimeProvider({
     chatMode,
     setChatMode,
     architectBrainstormEnabled,
-    setArchitectBrainstormEnabled,
     uiSelectedModel,
-    setUiSelectedModel,
-    reasoningVariant,
-    setReasoningVariant,
     provider,
     selectedModel,
     availableModels,
@@ -292,11 +285,9 @@ export function WorkspaceRuntimeProvider({
   )
 
   const persistedPlanDraft = getAuthoritativePlanDraftValue({
-    activeChat,
     activePlanningSession: activePlanningSession
       ? {
           sessionId: activePlanningSession.sessionId,
-          status: activePlanningSession.status,
           generatedPlan: activePlanningSession.generatedPlan,
         }
       : null,
@@ -304,8 +295,6 @@ export function WorkspaceRuntimeProvider({
 
   const { handleRunCreated, handleRunCompleted } = useProjectAgentRunCallbacks({
     activePlanningSession,
-    activeChat,
-    updateChatMutation,
     markPlanningExecutionState: planningSession.markExecutionState,
     approvedPlanRunSessionsRef,
   })
@@ -336,16 +325,23 @@ export function WorkspaceRuntimeProvider({
       architectBrainstormEnabled,
       agentStatus: agent.status,
       agentMessages: agent.messages,
-      updateChatMutation,
       acceptPlanningSession: planningSession.acceptPlan,
     })
 
-  const canApproveCurrentPlan =
-    planningSession.canApprove ||
-    (!planningSession.generatedPlan && canApprovePlan(activeChat?.planStatus, planDraft))
-  const canBuildCurrentPlan =
-    planningSession.canBuild ||
-    (!planningSession.generatedPlan && canBuildFromPlan(activeChat?.planStatus, planDraft))
+  const canApproveCurrentPlan = planningSession.canApprove
+  const canBuildCurrentPlan = planningSession.canBuild
+
+  const normalizedPlanStatus: PlanStatus | undefined = planningSession.canApprove
+    ? 'awaiting_review'
+    : planningSession.generatedPlan?.status === 'accepted'
+      ? 'approved'
+      : planningSession.generatedPlan?.status === 'executing'
+        ? 'executing'
+        : planningSession.generatedPlan?.status === 'completed'
+          ? 'completed'
+          : planningSession.generatedPlan?.status === 'failed'
+            ? 'failed'
+            : undefined
 
   const healthStatus = agent.error
     ? ('error' as const)
@@ -364,7 +360,6 @@ export function WorkspaceRuntimeProvider({
       activeChat,
       chatMode,
       setChatMode,
-      planDraft,
       approvedPlanArtifact: activePlanningSession?.generatedPlan ?? null,
       activePlanningSessionId: activePlanningSession?.sessionId ?? null,
       providerAvailable: Boolean(provider),
@@ -386,7 +381,7 @@ export function WorkspaceRuntimeProvider({
   } = useArtifactLifecycle({
     projectId,
     activeChat,
-    autoApply: chatMode === 'build',
+    autoApply: false,
     selectedFilePath,
     openTabs,
     setOpenTabs,
@@ -557,9 +552,9 @@ export function WorkspaceRuntimeProvider({
       activeChatId: activeChat?._id,
       activeChatTitle: activeChat?.title,
       activeChatExists: Boolean(activeChat?._id),
-      activeChatPlanStatus: activeChat?.planStatus,
-      activeChatPlanUpdatedAt: activeChat?.planUpdatedAt,
-      activeChatPlanLastGeneratedAt: activeChat?.planLastGeneratedAt,
+      activeChatPlanStatus: normalizedPlanStatus,
+      activeChatPlanUpdatedAt: activePlanningSession?.updatedAt,
+      activeChatPlanLastGeneratedAt: activePlanningSession?.generatedPlan?.generatedAt,
 
       // Chat state
       chatMessages,
@@ -594,11 +589,11 @@ export function WorkspaceRuntimeProvider({
       planApproveDisabled: !canApproveCurrentPlan || agent.isLoading,
       planBuildDisabled: !canBuildCurrentPlan || agent.isLoading,
       showInlinePlanReview: agentPolicy.showPlanReview,
-      planStatus: activeChat?.planStatus,
+      planStatus: normalizedPlanStatus,
       canApprovePlan: canApproveCurrentPlan,
       canBuildPlan: canBuildCurrentPlan,
-      lastSavedAt: activeChat?.planUpdatedAt,
-      lastGeneratedAt: activeChat?.planLastGeneratedAt,
+      lastSavedAt: activePlanningSession?.updatedAt,
+      lastGeneratedAt: activePlanningSession?.generatedPlan?.generatedAt,
       planningDebug,
 
       // Planning session
@@ -635,20 +630,22 @@ export function WorkspaceRuntimeProvider({
       onPlanApprove: handleApprovePlan,
       onBuildFromPlan: handleBuildFromPlan,
       onPlanDraftChange: setPlanDraft,
-      onSavePlanDraft: () => { void handleSavePlanDraft() },
+      onSavePlanDraft: () => {
+        void handleSavePlanDraft()
+      },
 
       // Callbacks: planning session
       onStartPlanningIntake: handleStartPlanningIntake,
       onAnswerPlanningQuestion: planningSession.answerQuestion,
       onClearPlanningIntake: () =>
-        activePlanningSession?.sessionId
-          ? planningSession.clearIntake()
-          : Promise.resolve(null),
+        activePlanningSession?.sessionId ? planningSession.clearIntake() : Promise.resolve(null),
 
       // Callbacks: navigation / workspace
       onOpenFile: handleFileSelect,
       onResetWorkspace: handleResetWorkspace,
-      onNewChat: () => { void handleNewChat() },
+      onNewChat: () => {
+        void handleNewChat()
+      },
       onToggleInspector: () => openChatInspectorSurface(chatInspectorSurfaceTab),
       onOpenHistory: () => openChatInspectorSurface('run'),
       onComposerSubmit: (prompt: string, contextFiles?: string[]) =>
@@ -658,11 +655,25 @@ export function WorkspaceRuntimeProvider({
       onToggleFlyout: toggleFlyout,
       onToggleRightPanel: () => {
         const s = useWorkspaceUiStore.getState()
+        if (!s.isRightPanelOpen) {
+          s.setRightPanelTab('chat')
+          if (isMobileLayout) {
+            s.setMobilePrimaryPanel('chat')
+          }
+        } else if (isMobileLayout && s.mobilePrimaryPanel === 'chat') {
+          s.setMobilePrimaryPanel('workspace')
+        }
         s.setRightPanelOpen(!s.isRightPanelOpen)
       },
-      onNewTask: () => { void handleNewChat() },
-      onStartRuntime: () => { void handleStartRuntime() },
-      onStopRuntime: () => { void handleStopRuntime() },
+      onNewTask: () => {
+        void handleNewChat()
+      },
+      onStartRuntime: () => {
+        void handleStartRuntime()
+      },
+      onStopRuntime: () => {
+        void handleStopRuntime()
+      },
       onOpenPreviewPanel: () => setActiveCenterTab('preview'),
       onRevealInExplorer: (folderPath: string) => {
         const revealTarget = resolveExplorerRevealTarget({ folderPath, files })
@@ -675,8 +686,8 @@ export function WorkspaceRuntimeProvider({
       },
       onOpenCommandPalette: openCommandPalette,
       onSidebarSectionChange: handleSectionChange,
-      onComposerOpenChange: setIsComposerOpen,
-      onShortcutHelpOpenChange: setIsShortcutHelpOpen,
+      onComposerOpenChange: setComposerOpen,
+      onShortcutHelpOpenChange: setShortcutHelpOpen,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
@@ -760,7 +771,9 @@ export function WorkspaceRuntimeProvider({
     onSidebarSectionChange: handleSectionChange,
     onToggleFlyout: toggleFlyout,
     onSelectChat: handleSelectChat,
-    onNewChat: () => { void handleNewChat() },
+    onNewChat: () => {
+      void handleNewChat()
+    },
     files,
     selectedFilePath,
     selectedFileLocation,
@@ -793,6 +806,10 @@ export function WorkspaceRuntimeProvider({
     openSpecInspect: () => setSpecSurfaceMode('inspect'),
     onContextualChat: handleContextualChat,
     onInlineChat: handleInlineChat,
+    onApprovePlan: handleApprovePlan,
+    onBuildFromPlan: handleBuildFromPlan,
+    planApproveDisabled: !canApproveCurrentPlan || agent.isLoading,
+    planBuildDisabled: !canBuildCurrentPlan || agent.isLoading,
     isBottomDockOpen: _isBottomDockOpen,
     onBottomDockOpenChange: setBottomDockOpen,
     activeBottomDockTab,
@@ -800,8 +817,7 @@ export function WorkspaceRuntimeProvider({
     activeCenterTab,
     onCenterTabChange: setActiveCenterTab,
     isRightPanelOpen,
-    activeTaskTitle:
-      agent.isLoading ? (activeChat?.title ?? 'Active Task') : undefined,
+    activeTaskTitle: agent.isLoading ? (activeChat?.title ?? 'Active Task') : undefined,
     activeTaskStatus: agent.isLoading ? ('running' as const) : undefined,
     changedFilesCount: pendingChangedFilesCount,
     onReviewChanges: () => {
@@ -809,7 +825,9 @@ export function WorkspaceRuntimeProvider({
       openChatInspectorSurface('artifacts')
     },
     onStopAgent: () => agent.stop?.(),
-    onStartAgent: () => { void handleNewChat() },
+    onStartAgent: () => {
+      void handleNewChat()
+    },
     previewUrl: _previewUrl,
     isPreviewRunning,
     onOpenPreview: handleOpenPreview,

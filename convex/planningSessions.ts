@@ -26,26 +26,9 @@ type PlanningSessionStatus =
   | 'partial'
 type PlanningExecutionState = 'executing' | 'completed' | 'failed' | 'partial'
 type PlanningSessionDoc = Doc<'planningSessions'>
-type PlanningChatMirror = Pick<
-  Doc<'chats'>,
-  | 'planDraft'
-  | 'planStatus'
-  | 'planSourceMessageId'
-  | 'planApprovedAt'
-  | 'planLastGeneratedAt'
-  | 'planBuildRunId'
-  | 'planUpdatedAt'
-  | 'updatedAt'
->
-
-type PlanningSessionWithMirror = {
-  session: PlanningSessionDoc
-  chatPatch: Partial<PlanningChatMirror>
-}
-
 type AnswerPlanningQuestionResult = {
   session: PlanningSessionDoc
-  completedSession?: PlanningSessionWithMirror
+  completedSession?: PlanningSessionDoc
 }
 
 const TERMINAL_STATUSES: ReadonlySet<PlanningSessionStatus> = new Set([
@@ -85,62 +68,6 @@ function serializeGeneratedPlanArtifact(artifact: GeneratedPlanArtifact): string
   return lines.join('\n').trim()
 }
 
-function buildIntakeChatPatch(now: number): Partial<PlanningChatMirror> {
-  return {
-    planDraft: undefined,
-    planStatus: 'drafting',
-    planSourceMessageId: undefined,
-    planApprovedAt: undefined,
-    planLastGeneratedAt: undefined,
-    planBuildRunId: undefined,
-    planUpdatedAt: now,
-    updatedAt: now,
-  }
-}
-
-function buildGeneratedChatPatch(
-  generatedPlan: GeneratedPlanArtifact,
-  now: number
-): Partial<PlanningChatMirror> {
-  return {
-    planDraft: serializeGeneratedPlanArtifact(generatedPlan),
-    planStatus: 'awaiting_review',
-    planSourceMessageId: generatedPlan.sessionId,
-    planApprovedAt: undefined,
-    planLastGeneratedAt: generatedPlan.generatedAt,
-    planBuildRunId: undefined,
-    planUpdatedAt: now,
-    updatedAt: now,
-  }
-}
-
-function buildAcceptedChatPatch(now: number): Partial<PlanningChatMirror> {
-  return {
-    planStatus: 'approved',
-    planApprovedAt: now,
-    planUpdatedAt: now,
-    updatedAt: now,
-  }
-}
-
-function buildExecutionChatPatch(args: {
-  state: PlanningExecutionState
-  runId?: Id<'agentRuns'>
-  now: number
-}): Partial<PlanningChatMirror> {
-  const patch: Partial<PlanningChatMirror> = {
-    planStatus: args.state,
-    planUpdatedAt: args.now,
-    updatedAt: args.now,
-  }
-
-  if (args.state === 'executing' && args.runId) {
-    patch.planBuildRunId = args.runId
-  }
-
-  return patch
-}
-
 function createPlanningSessionRecord(args: {
   chatId: Id<'chats'>
   sessionId: string
@@ -153,12 +80,12 @@ function createPlanningSessionRecord(args: {
     order: number
   }>
   now: number
-}): PlanningSessionWithMirror {
+}): PlanningSessionDoc {
   const questions = [...args.questions].sort(
     (a, b) => a.order - b.order || a.id.localeCompare(b.id)
   )
 
-  const session: PlanningSessionDoc = {
+  return {
     _id: args.sessionId as Id<'planningSessions'>,
     _creationTime: args.now,
     chatId: args.chatId,
@@ -171,11 +98,6 @@ function createPlanningSessionRecord(args: {
     completedAt: undefined,
     acceptedAt: undefined,
     updatedAt: args.now,
-  }
-
-  return {
-    session,
-    chatPatch: buildIntakeChatPatch(args.now),
   }
 }
 
@@ -399,7 +321,7 @@ function answerPlanningQuestionRecord(
   )
 
   return {
-    session: completedSession.session,
+    session: completedSession,
     completedSession,
   }
 }
@@ -408,36 +330,27 @@ function completePlanningSessionRecord(
   session: PlanningSessionDoc,
   generatedPlan: GeneratedPlanArtifact,
   now: number
-): PlanningSessionWithMirror {
+): PlanningSessionDoc {
   return {
-    session: {
-      ...session,
-      status: 'ready_for_review',
-      generatedPlan,
-      completedAt: now,
-      updatedAt: now,
-    },
-    chatPatch: buildGeneratedChatPatch(generatedPlan, now),
+    ...session,
+    status: 'ready_for_review',
+    generatedPlan,
+    completedAt: now,
+    updatedAt: now,
   }
 }
 
-function acceptPlanningSessionRecord(
-  session: PlanningSessionDoc,
-  now: number
-): PlanningSessionWithMirror {
+function acceptPlanningSessionRecord(session: PlanningSessionDoc, now: number): PlanningSessionDoc {
   const nextGeneratedPlan = session.generatedPlan
     ? { ...session.generatedPlan, status: 'accepted' as const }
     : session.generatedPlan
 
   return {
-    session: {
-      ...session,
-      status: 'accepted',
-      generatedPlan: nextGeneratedPlan,
-      acceptedAt: now,
-      updatedAt: now,
-    },
-    chatPatch: buildAcceptedChatPatch(now),
+    ...session,
+    status: 'accepted',
+    generatedPlan: nextGeneratedPlan,
+    acceptedAt: now,
+    updatedAt: now,
   }
 }
 
@@ -448,7 +361,7 @@ function markPlanningExecutionRecord(
     runId?: Id<'agentRuns'>
     now: number
   }
-): PlanningSessionWithMirror {
+): PlanningSessionDoc {
   if (args.state === 'executing' && session.status !== 'accepted') {
     throw new Error('Planning sessions must be accepted before execution starts')
   }
@@ -465,15 +378,12 @@ function markPlanningExecutionRecord(
         : session.generatedPlan
 
   return {
-    session: {
-      ...session,
-      status: nextStatus,
-      generatedPlan: nextGeneratedPlan,
-      completedAt:
-        args.state === 'completed' || args.state === 'failed' ? args.now : session.completedAt,
-      updatedAt: args.now,
-    },
-    chatPatch: buildExecutionChatPatch(args),
+    ...session,
+    status: nextStatus,
+    generatedPlan: nextGeneratedPlan,
+    completedAt:
+      args.state === 'completed' || args.state === 'failed' ? args.now : session.completedAt,
+    updatedAt: args.now,
   }
 }
 
@@ -514,18 +424,6 @@ async function retireOlderPlanningSessions(
       updatedAt: staleSession.updatedAt,
     })
   }
-}
-
-async function patchChatMirror(
-  ctx: {
-    db: {
-      patch: (id: Id<'chats'>, updates: Partial<PlanningChatMirror>) => Promise<void>
-    }
-  },
-  chatId: Id<'chats'>,
-  chatPatch: Partial<PlanningChatMirror>
-): Promise<void> {
-  await ctx.db.patch(chatId, chatPatch)
 }
 
 export const getActiveByChat = query({
@@ -582,11 +480,11 @@ export const startIntake = mutation({
     questions: v.array(PlanningQuestionValidator),
   },
   handler: async (ctx, args) => {
-    const { chat } = await requireChatOwner(ctx, args.chatId)
+    await requireChatOwner(ctx, args.chatId)
     const now = Date.now()
     const sessionId = `planning_${now.toString(36)}_${Math.random().toString(36).slice(2, 10)}`
 
-    const record = createPlanningSessionRecord({
+    const session = createPlanningSessionRecord({
       chatId: args.chatId,
       sessionId,
       questions: args.questions,
@@ -594,17 +492,17 @@ export const startIntake = mutation({
     })
 
     await ctx.db.insert('planningSessions', {
-      chatId: record.session.chatId,
-      sessionId: record.session.sessionId,
-      status: record.session.status,
-      questions: record.session.questions,
-      answers: record.session.answers,
-      generatedPlan: record.session.generatedPlan,
+      chatId: session.chatId,
+      sessionId: session.sessionId,
+      status: session.status,
+      questions: session.questions,
+      answers: session.answers,
+      generatedPlan: session.generatedPlan,
       verificationId: undefined,
-      startedAt: record.session.startedAt,
-      completedAt: record.session.completedAt,
-      acceptedAt: record.session.acceptedAt,
-      updatedAt: record.session.updatedAt,
+      startedAt: session.startedAt,
+      completedAt: session.completedAt,
+      acceptedAt: session.acceptedAt,
+      updatedAt: session.updatedAt,
     })
 
     await retireOlderPlanningSessions(ctx, {
@@ -613,7 +511,6 @@ export const startIntake = mutation({
       now,
     })
 
-    await patchChatMirror(ctx, chat._id, record.chatPatch)
     return sessionId
   },
 })
@@ -628,7 +525,7 @@ export const answerQuestion = mutation({
   },
   handler: async (ctx, args) => {
     const session = await getPlanningSessionOrThrow(ctx, args.sessionId)
-    const { chat } = await requireChatOwner(ctx, session.chatId)
+    await requireChatOwner(ctx, session.chatId)
 
     const question = session.questions.find((entry) => entry.id === args.questionId)
     if (!question) {
@@ -664,13 +561,11 @@ export const answerQuestion = mutation({
 
     if (next.completedSession) {
       await ctx.db.patch(session._id, {
-        status: next.completedSession.session.status,
-        generatedPlan: next.completedSession.session.generatedPlan,
-        completedAt: next.completedSession.session.completedAt,
-        updatedAt: next.completedSession.session.updatedAt,
+        status: next.completedSession.status,
+        generatedPlan: next.completedSession.generatedPlan,
+        completedAt: next.completedSession.completedAt,
+        updatedAt: next.completedSession.updatedAt,
       })
-
-      await patchChatMirror(ctx, chat._id, next.completedSession.chatPatch)
     }
 
     return args.sessionId
@@ -681,7 +576,7 @@ export const clearIntake = mutation({
   args: { sessionId: v.string() },
   handler: async (ctx, args) => {
     const session = await getPlanningSessionOrThrow(ctx, args.sessionId)
-    const { chat } = await requireChatOwner(ctx, session.chatId)
+    await requireChatOwner(ctx, session.chatId)
     const now = Date.now()
 
     await ctx.db.patch(session._id, {
@@ -690,17 +585,6 @@ export const clearIntake = mutation({
       generatedPlan: undefined,
       completedAt: now,
       acceptedAt: undefined,
-      updatedAt: now,
-    })
-
-    await patchChatMirror(ctx, chat._id, {
-      planDraft: undefined,
-      planStatus: 'idle',
-      planSourceMessageId: undefined,
-      planApprovedAt: undefined,
-      planLastGeneratedAt: undefined,
-      planBuildRunId: undefined,
-      planUpdatedAt: now,
       updatedAt: now,
     })
 
@@ -715,7 +599,7 @@ export const completeIntake = mutation({
   },
   handler: async (ctx, args) => {
     const session = await getPlanningSessionOrThrow(ctx, args.sessionId)
-    const { chat } = await requireChatOwner(ctx, session.chatId)
+    await requireChatOwner(ctx, session.chatId)
     const now = Date.now()
 
     if (args.generatedPlan.chatId !== session.chatId) {
@@ -728,13 +612,12 @@ export const completeIntake = mutation({
     const nextSession = completePlanningSessionRecord(session, args.generatedPlan, now)
 
     await ctx.db.patch(session._id, {
-      status: nextSession.session.status,
-      generatedPlan: nextSession.session.generatedPlan,
-      completedAt: nextSession.session.completedAt,
-      updatedAt: nextSession.session.updatedAt,
+      status: nextSession.status,
+      generatedPlan: nextSession.generatedPlan,
+      completedAt: nextSession.completedAt,
+      updatedAt: nextSession.updatedAt,
     })
 
-    await patchChatMirror(ctx, chat._id, nextSession.chatPatch)
     return args.sessionId
   },
 })
@@ -743,7 +626,7 @@ export const acceptPlan = mutation({
   args: { sessionId: v.string() },
   handler: async (ctx, args) => {
     const session = await getPlanningSessionOrThrow(ctx, args.sessionId)
-    const { chat } = await requireChatOwner(ctx, session.chatId)
+    await requireChatOwner(ctx, session.chatId)
     const now = Date.now()
 
     if (!session.generatedPlan) {
@@ -753,13 +636,12 @@ export const acceptPlan = mutation({
     const nextSession = acceptPlanningSessionRecord(session, now)
 
     await ctx.db.patch(session._id, {
-      status: nextSession.session.status,
-      generatedPlan: nextSession.session.generatedPlan,
-      acceptedAt: nextSession.session.acceptedAt,
-      updatedAt: nextSession.session.updatedAt,
+      status: nextSession.status,
+      generatedPlan: nextSession.generatedPlan,
+      acceptedAt: nextSession.acceptedAt,
+      updatedAt: nextSession.updatedAt,
     })
 
-    await patchChatMirror(ctx, chat._id, nextSession.chatPatch)
     return args.sessionId
   },
 })
@@ -777,7 +659,7 @@ export const markExecutionState = mutation({
   },
   handler: async (ctx, args) => {
     const session = await getPlanningSessionOrThrow(ctx, args.sessionId)
-    const { chat } = await requireChatOwner(ctx, session.chatId)
+    await requireChatOwner(ctx, session.chatId)
     const now = Date.now()
 
     if (!session.generatedPlan && args.state !== 'partial') {
@@ -794,13 +676,12 @@ export const markExecutionState = mutation({
     )
 
     await ctx.db.patch(session._id, {
-      status: nextSession.session.status,
-      generatedPlan: nextSession.session.generatedPlan,
-      completedAt: nextSession.session.completedAt,
-      updatedAt: nextSession.session.updatedAt,
+      status: nextSession.status,
+      generatedPlan: nextSession.generatedPlan,
+      completedAt: nextSession.completedAt,
+      updatedAt: nextSession.updatedAt,
     })
 
-    await patchChatMirror(ctx, chat._id, nextSession.chatPatch)
     return args.sessionId
   },
 })
@@ -809,9 +690,7 @@ export {
   acceptPlanningSessionRecord,
   applyPlanningAnswer,
   answerPlanningQuestionRecord,
-  buildGeneratedChatPatch,
   buildStructuredPlanFromAnswers,
-  buildIntakeChatPatch,
   completePlanningSessionRecord,
   createPlanningSessionRecord,
   isTerminalPlanningSessionStatus,

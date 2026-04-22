@@ -7,16 +7,16 @@ describe('chatSessionStore', () => {
     useChatSessionStore.getState().reset()
   }
 
-  test('default mode is build', () => {
+  test('default mode is plan', () => {
     resetStore()
-    expect(useChatSessionStore.getState().chatMode).toBe('build')
+    expect(useChatSessionStore.getState().chatMode).toBe('plan')
   })
 
   test('changing chat clears the active model selection', () => {
     resetStore()
     const state = useChatSessionStore.getState()
 
-    state.setUiSelectedModel({ providerId: 'anthropic', modelId: 'claude-opus-4-7' })
+    state.setUiSelectedModel({ modelId: 'claude-opus-4-7' })
     state.setActiveChatId('chat_abc' as never)
 
     expect(useChatSessionStore.getState().uiSelectedModel).toBeNull()

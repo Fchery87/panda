@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import type { CompletionOptions, LLMProvider, ProviderConfig, StreamChunk } from '../llm/types'
-import { AgentRuntime, shouldRewriteDiscussResponse } from './runtime'
+import { AgentRuntime } from './runtime'
+import { shouldRewriteDiscussResponse } from './runtime/rewrite-guardrails'
 
 function makeFinish(): StreamChunk {
   return {
@@ -11,7 +12,7 @@ function makeFinish(): StreamChunk {
 }
 
 describe('Plan Mode rewrite guardrails', () => {
-  it('detects implementation output in discuss responses', () => {
+  it('detects implementation output in plan responses', () => {
     expect(shouldRewriteDiscussResponse('no code here')).toBe(false)
     expect(shouldRewriteDiscussResponse('```js\nconsole.log(1)\n```')).toBe(true)
     expect(shouldRewriteDiscussResponse('```tsx\nexport function X() {}\n```')).toBe(true)

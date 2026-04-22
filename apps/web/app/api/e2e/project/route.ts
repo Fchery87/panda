@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { ConvexHttpClient } from 'convex/browser'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
-import type { PlanStatus } from '@/lib/chat/planDraft'
 import { buildDefaultPlanningQuestions } from '@/lib/planning/question-engine'
 import {
   serializeGeneratedPlanArtifact,
@@ -28,15 +27,6 @@ const E2E_FIXTURE_NAME_PREFIXES = [
   'Open Test',
   'Searchable',
 ]
-const PLAN_STATUSES: PlanStatus[] = [
-  'idle',
-  'drafting',
-  'awaiting_review',
-  'approved',
-  'stale',
-  'executing',
-]
-
 const projectsApi = {
   list: (api as any).projects?.list ?? 'projects:list',
   remove: (api as any).projects?.remove ?? 'projects:remove',
@@ -416,17 +406,15 @@ export async function GET(request: Request) {
     const seedExecutionUpdates = url.searchParams.get('seedExecutionUpdates') === '1'
     const autoApplyFiles = url.searchParams.get('autoApplyFiles')
     const autoRunCommands = url.searchParams.get('autoRunCommands')
-    const planDraft = url.searchParams.get('planDraft')?.trim() || null
-    const requestedPlanStatus = url.searchParams.get('planStatus')?.trim() || null
     const structuredPlanningSession = url.searchParams.get('structuredPlanningSession') === '1'
+    const structuredPlanningSessionStatus = url.searchParams.get('structuredPlanningSessionStatus')
     const structuredPlanningSessionPlan = parseStructuredPlanningSessionPlan(
       url.searchParams.get('structuredPlanningSessionPlan')
     )
-    const acceptStructuredPlan = url.searchParams.get('acceptStructuredPlan') === '1'
-    const planStatus =
-      requestedPlanStatus && PLAN_STATUSES.includes(requestedPlanStatus as PlanStatus)
-        ? (requestedPlanStatus as PlanStatus)
-        : null
+    const acceptStructuredPlan =
+      url.searchParams.get('acceptStructuredPlan') === '1' ||
+      structuredPlanningSessionStatus === 'accepted' ||
+      structuredPlanningSessionStatus === 'approved'
 
     const convex = new ConvexHttpClient(convexUrl)
     let projects = await listFixtureProjects(convex)
@@ -511,7 +499,16 @@ export async function GET(request: Request) {
       }
     }
 
-    let chatId: Id<'chats'> | undefined
+    const chats = await convex.query(chatsApi.list, { projectId })
+    let chatId: Id<'chats'> | undefined = chats[0]?._id
+    if (!chatId) {
+      chatId = await convex.mutation(chatsApi.create, {
+        projectId,
+        title: DEFAULT_CHAT_TITLE,
+        mode: 'build',
+      })
+    }
+
     if (autoApplyFiles !== null || autoRunCommands !== null) {
       await convex.mutation(projectsApi.update, {
         id: projectId,
@@ -520,36 +517,6 @@ export async function GET(request: Request) {
           autoRunCommands: autoRunCommands === null ? false : autoRunCommands === '1',
           allowedCommandPrefixes: [],
         },
-      })
-    }
-
-    if (
-      filePath ||
-      artifactContent ||
-      seedRuntimeCheckpoint ||
-      seedExecutionUpdates ||
-      planDraft ||
-      planStatus ||
-      structuredPlanningSession ||
-      structuredPlanningSessionPlan
-    ) {
-      const chats = await convex.query(chatsApi.list, { projectId })
-      const existingChat = chats[0]
-      chatId =
-        existingChat?._id ??
-        (await convex.mutation(chatsApi.create, {
-          projectId,
-          title: DEFAULT_CHAT_TITLE,
-          mode: 'build',
-        }))
-    }
-
-    if (chatId && (planDraft || planStatus)) {
-      await convex.mutation(chatsApi.update, {
-        id: chatId,
-        ...(planDraft ? { planDraft } : {}),
-        ...(planStatus ? { planStatus } : {}),
-        ...(planDraft ? { planLastGeneratedAt: Date.now() } : {}),
       })
     }
 
@@ -639,7 +606,6 @@ export async function GET(request: Request) {
       ...(chatId ? { chatId } : {}),
       ...(filePath ? { filePath } : {}),
       ...(artifactContent !== null && filePath ? { artifactPath: filePath } : {}),
-      ...(planStatus ? { planStatus } : {}),
       ...(planningSessionId ? { planningSessionId } : {}),
       ...(structuredGeneratedPlan
         ? {

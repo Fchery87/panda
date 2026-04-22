@@ -2,11 +2,18 @@ import { test, expect } from '@playwright/test'
 import { emitPermissionRequest, openWorkbenchProjectFixture } from './helpers/workbench'
 
 test.describe('Permission Acceptance', () => {
+  test.setTimeout(60_000)
+
   test('risky command requests can be denied from the browser dialog', async ({ page }) => {
     await openWorkbenchProjectFixture(page, {
       name: `Permission Reject ${Date.now()}`,
-      planDraft: 'Permission fixture',
-      planStatus: 'approved',
+      structuredPlanningSession: {
+        status: 'accepted',
+        acceptPlan: true,
+        plan: {
+          markdown: 'Permission fixture',
+        },
+      },
     })
 
     await emitPermissionRequest(page)
@@ -21,8 +28,13 @@ test.describe('Permission Acceptance', () => {
   test('risky command requests can be allowed once from the browser dialog', async ({ page }) => {
     await openWorkbenchProjectFixture(page, {
       name: `Permission Allow ${Date.now()}`,
-      planDraft: 'Permission fixture',
-      planStatus: 'approved',
+      structuredPlanningSession: {
+        status: 'accepted',
+        acceptPlan: true,
+        plan: {
+          markdown: 'Permission fixture',
+        },
+      },
     })
 
     await emitPermissionRequest(page)

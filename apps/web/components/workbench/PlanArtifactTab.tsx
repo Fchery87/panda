@@ -3,6 +3,7 @@
 import { FileText, GitBranch, ListChecks } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { Button } from '@/components/ui/button'
 import type { WorkspaceOpenTab } from '@/contexts/WorkspaceContext'
 import type { GeneratedPlanArtifact } from '@/lib/planning/types'
 import { createWorkspacePlanTabRef } from '@/lib/planning/types'
@@ -10,6 +11,10 @@ import { cn } from '@/lib/utils'
 
 export interface PlanArtifactTabProps {
   artifact: GeneratedPlanArtifact
+  onApprove?: () => void
+  onBuildFromPlan?: () => void
+  approveDisabled?: boolean
+  buildDisabled?: boolean
   className?: string
 }
 
@@ -57,8 +62,22 @@ function formatPlanStatus(status: GeneratedPlanArtifact['status']): string {
   }
 }
 
-export function PlanArtifactTab({ artifact, className }: PlanArtifactTabProps) {
+export function PlanArtifactTab({
+  artifact,
+  onApprove,
+  onBuildFromPlan,
+  approveDisabled = false,
+  buildDisabled = false,
+  className,
+}: PlanArtifactTabProps) {
   const sectionContent = artifact.sections.slice().sort((left, right) => left.order - right.order)
+  const canApprove = artifact.status === 'ready_for_review' && !!onApprove
+  const canBuild =
+    (artifact.status === 'accepted' ||
+      artifact.status === 'executing' ||
+      artifact.status === 'failed' ||
+      artifact.status === 'completed') &&
+    !!onBuildFromPlan
 
   return (
     <section
@@ -81,6 +100,31 @@ export function PlanArtifactTab({ artifact, className }: PlanArtifactTabProps) {
           </span>
         </div>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{artifact.summary}</p>
+        {(canApprove || canBuild) && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {canApprove ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onApprove}
+                disabled={approveDisabled}
+                className="h-7 rounded-none px-3 font-mono text-xs"
+              >
+                Approve
+              </Button>
+            ) : null}
+            {canBuild ? (
+              <Button
+                size="sm"
+                onClick={onBuildFromPlan}
+                disabled={buildDisabled}
+                className="h-7 rounded-none px-3 font-mono text-xs"
+              >
+                Build
+              </Button>
+            ) : null}
+          </div>
+        )}
       </header>
 
       <div className="min-h-0 flex-1 overflow-auto">

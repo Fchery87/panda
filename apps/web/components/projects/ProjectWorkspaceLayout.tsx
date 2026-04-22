@@ -4,7 +4,6 @@ import { useMemo } from 'react'
 
 import type { Id } from '@convex/_generated/dataModel'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
-import { CommandPalette } from '@/components/command-palette/CommandPalette'
 import { StatusBar } from '@/components/workbench/StatusBar'
 import { Workbench } from '@/components/workbench/Workbench'
 import type { DiffFileEntry } from '@/components/workbench/DiffTab'
@@ -79,6 +78,10 @@ interface ProjectWorkspaceLayoutProps {
   openSpecInspect: () => void
   onContextualChat?: (selection: string, filePath: string) => void
   onInlineChat?: (prompt: string, selectedText: string, filePath: string) => Promise<string | null>
+  onApprovePlan?: () => void
+  onBuildFromPlan?: () => void
+  planApproveDisabled?: boolean
+  planBuildDisabled?: boolean
   // New: bottom dock and center tab state
   isBottomDockOpen?: boolean
   onBottomDockOpenChange?: (open: boolean) => void
@@ -132,14 +135,18 @@ export function ProjectWorkspaceLayout({
   pendingDiffEntries,
   onApplyPendingArtifact,
   onRejectPendingArtifact,
-  chatMode,
-  onModeChange,
+  chatMode: _chatMode,
+  onModeChange: _onModeChange,
   cursorPosition,
   isStreaming,
   currentSpec,
   openSpecInspect,
   onContextualChat,
   onInlineChat,
+  onApprovePlan,
+  onBuildFromPlan,
+  planApproveDisabled = false,
+  planBuildDisabled = false,
   // New props with defaults
   isBottomDockOpen = false,
   onBottomDockOpenChange,
@@ -197,6 +204,10 @@ export function ProjectWorkspaceLayout({
       onEditorDirtyChange={onEditorDirtyChange}
       onContextualChat={onContextualChat}
       onInlineChat={onInlineChat}
+      onApprovePlan={onApprovePlan}
+      onBuildFromPlan={onBuildFromPlan}
+      planApproveDisabled={planApproveDisabled}
+      planBuildDisabled={planBuildDisabled}
       activeCenterTab={activeCenterTab}
       onCenterTabChange={onCenterTabChange}
       pendingDiffCount={changedFilesCount}
@@ -401,7 +412,10 @@ export function ProjectWorkspaceLayout({
                       {/* Right context panel - chat + context */}
                       {isRightPanelOpen && (
                         <>
-                          <PanelResizeHandle className="h-full w-px bg-border transition-colors hover:bg-primary" />
+                          <PanelResizeHandle
+                            data-testid="workspace-right-resize-handle"
+                            className="h-full w-px bg-border transition-colors hover:bg-primary"
+                          />
                           <Panel
                             id="chat-panel"
                             order={3}
@@ -422,7 +436,10 @@ export function ProjectWorkspaceLayout({
                   {/* Bottom Dock */}
                   {isBottomDockOpen && (
                     <>
-                      <PanelResizeHandle className="h-px w-full bg-border transition-colors hover:bg-primary" />
+                      <PanelResizeHandle
+                        data-testid="workspace-bottom-resize-handle"
+                        className="h-px w-full bg-border transition-colors hover:bg-primary"
+                      />
                       <Panel
                         id="bottom-dock-panel"
                         order={2}
@@ -465,7 +482,6 @@ export function ProjectWorkspaceLayout({
             </div>
           </>
         )}
-
       </div>
 
       <StatusBar

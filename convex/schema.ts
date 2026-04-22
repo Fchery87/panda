@@ -12,23 +12,27 @@ import { v } from 'convex/values'
 export const ChatMode = v.union(
   v.literal('ask'),
   v.literal('plan'),
-  v.literal('architect'),
+  v.literal('code'),
+  v.literal('build')
+)
+
+export type ChatModeType = 'ask' | 'plan' | 'code' | 'build'
+
+/**
+ * Stored mode validator for historical rows created before legacy planning,
+ * diagnostics, and review modes were folded into the current four chat modes.
+ * Write APIs still accept only ChatMode.
+ */
+export const StoredChatMode = v.union(
+  v.literal('ask'),
+  v.literal('plan'),
   v.literal('code'),
   v.literal('build'),
+  v.literal('architect'),
   v.literal('discuss'),
   v.literal('debug'),
   v.literal('review')
 )
-
-export type ChatModeType =
-  | 'ask'
-  | 'plan'
-  | 'architect'
-  | 'code'
-  | 'build'
-  | 'discuss'
-  | 'debug'
-  | 'review'
 
 export const PlanStatus = v.union(
   v.literal('idle'),
@@ -207,7 +211,7 @@ export const MessageToolCall = v.object({
 })
 
 export const MessageAnnotation = v.object({
-  mode: v.optional(ChatMode),
+  mode: v.optional(StoredChatMode),
   attachmentsOnly: v.optional(v.boolean()),
   reasoningSummary: v.optional(v.string()),
   toolCalls: v.optional(v.array(MessageToolCall)),
@@ -545,7 +549,9 @@ export default defineSchema({
   chats: defineTable({
     projectId: v.id('projects'),
     title: v.optional(v.string()),
-    mode: ChatMode,
+    mode: StoredChatMode,
+    // Legacy plan mirror fields are retained only so historical chat rows
+    // validate. Planning sessions are the authoritative plan store.
     planDraft: v.optional(v.string()),
     planStatus: v.optional(PlanStatus),
     planSourceMessageId: v.optional(v.string()),
@@ -674,7 +680,7 @@ export default defineSchema({
     projectId: v.id('projects'),
     chatId: v.id('chats'),
     userId: v.id('users'),
-    mode: ChatMode,
+    mode: StoredChatMode,
     provider: v.optional(v.string()),
     model: v.optional(v.string()),
     status: v.union(
@@ -891,82 +897,7 @@ export default defineSchema({
     .index('by_created', ['createdAt'])
     .index('by_resource', ['resource', 'resourceId']),
 
-  // 20. Sessions table - agentic harness sessions
-  agentSessions: defineTable({
-    projectId: v.id('projects'),
-    parentSessionId: v.optional(v.id('agentSessions')),
-    status: v.union(v.literal('idle'), v.literal('busy'), v.literal('waiting'), v.literal('error')),
-    agent: v.string(),
-    model: v.optional(
-      v.object({
-        providerId: v.string(),
-        modelId: v.string(),
-      })
-    ),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-    compactionCount: v.optional(v.number()),
-  })
-    .index('by_project', ['projectId'])
-    .index('by_parent', ['parentSessionId'])
-    .index('by_status', ['projectId', 'status']),
-
-  // 21. Message Parts table - structured parts for agentic messages
-  messageParts: defineTable({
-    sessionId: v.id('agentSessions'),
-    messageId: v.id('messages'),
-    partType: v.union(
-      v.literal('text'),
-      v.literal('reasoning'),
-      v.literal('file'),
-      v.literal('tool'),
-      v.literal('subtask'),
-      v.literal('agent'),
-      v.literal('step_start'),
-      v.literal('step_finish'),
-      v.literal('snapshot'),
-      v.literal('patch'),
-      v.literal('retry'),
-      v.literal('compaction'),
-      v.literal('permission')
-    ),
-    data: v.record(v.string(), v.any()),
-    sequence: v.number(),
-    createdAt: v.number(),
-  })
-    .index('by_session', ['sessionId'])
-    .index('by_message', ['messageId'])
-    .index('by_session_sequence', ['sessionId', 'sequence']),
-
-  // 22. Permission Requests table - pending permission requests
-  permissionRequests: defineTable({
-    sessionId: v.id('agentSessions'),
-    messageId: v.id('messages'),
-    tool: v.string(),
-    pattern: v.string(),
-    metadata: v.optional(v.record(v.string(), v.any())),
-    decision: v.optional(v.union(v.literal('allow'), v.literal('deny'), v.literal('ask'))),
-    reason: v.optional(v.string()),
-    createdAt: v.number(),
-    decidedAt: v.optional(v.number()),
-  })
-    .index('by_session', ['sessionId'])
-    .index('by_decision', ['sessionId', 'decision']),
-
-  // 23. Snapshots table - git snapshots for undo
-  gitSnapshots: defineTable({
-    sessionId: v.id('agentSessions'),
-    messageId: v.id('messages'),
-    hash: v.string(),
-    step: v.number(),
-    files: v.array(v.string()),
-    createdAt: v.number(),
-  })
-    .index('by_session', ['sessionId'])
-    .index('by_hash', ['hash'])
-    .index('by_session_step', ['sessionId', 'step']),
-
-  // 24. Eval Suites table - reusable agent eval scenario collections
+  // 20. Eval Suites table - reusable agent eval scenario collections
   evalSuites: defineTable({
     projectId: v.id('projects'),
     userId: v.id('users'),

@@ -6,7 +6,7 @@ import { useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import { cn } from '@/lib/utils'
 import { File as FileIcon, Bot, Folder, Globe } from 'lucide-react'
-import { listSubagents } from '@/lib/agents/registry'
+import { agents } from '@/lib/agent/harness'
 
 interface MentionItem {
   id: string
@@ -30,16 +30,16 @@ export function MentionPicker({ filePaths, query, onSelect, onClose }: MentionPi
   const [activeIdx, setActiveIdx] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
 
-  const builtInSubagents = useMemo(() => listSubagents(), [])
+  const builtInSubagents = useMemo(() => agents.listSubagents(), [])
   const userSubagents = useQuery(api.subagents.list)
 
   const items = useMemo((): MentionItem[] => {
     const q = query.toLowerCase()
 
     const builtInAgentItems: MentionItem[] = builtInSubagents
-      .filter((a) => a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q))
+      .filter((a) => a.name.toLowerCase().includes(q))
       .map((a) => ({
-        id: `agent:${a.id}`,
+        id: `agent:${a.name.toLowerCase()}`,
         name: a.name,
         type: 'agent' as const,
         description: a.description,

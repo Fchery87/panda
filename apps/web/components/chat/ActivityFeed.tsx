@@ -43,12 +43,9 @@ function formatRelativeTime(timestamp: number): string {
 function getModeLabel(mode: string): string {
   const labels: Record<string, string> = {
     ask: 'Ask',
-    architect: 'Architect',
+    plan: 'Plan',
     code: 'Code',
     build: 'Build',
-    discuss: 'Discuss',
-    debug: 'Debug',
-    review: 'Review',
   }
   return labels[mode] || mode
 }
@@ -56,12 +53,9 @@ function getModeLabel(mode: string): string {
 function getModeBadgeColor(mode: string): string {
   const colors: Record<string, string> = {
     ask: 'bg-muted text-muted-foreground',
-    architect: 'bg-purple-500/20 text-purple-600',
+    plan: 'bg-purple-500/20 text-purple-600',
     code: 'bg-blue-500/20 text-blue-600',
     build: 'bg-green-500/20 text-green-600',
-    discuss: 'bg-yellow-500/20 text-yellow-600',
-    debug: 'bg-orange-500/20 text-orange-600',
-    review: 'bg-pink-500/20 text-pink-600',
   }
   return colors[mode] || 'bg-muted text-muted-foreground'
 }

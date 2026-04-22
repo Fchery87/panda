@@ -15,6 +15,7 @@ import { getDefaultProviderCapabilities } from '@/lib/llm/types'
 import { createE2EProvider, isE2ESpecApprovalModeEnabled } from '@/lib/llm/e2e-provider'
 import { appLog } from '@/lib/logger'
 import { useFreshProviderConfigs } from './useFreshProviderConfigs'
+import { useChatSessionStore } from '@/stores/chatSessionStore'
 
 type ChatSessionChat = {
   _id: Id<'chats'>
@@ -42,12 +43,18 @@ export function useProjectChatSession<TChat extends ChatSessionChat>(args: {
   projectAgentPolicy: AgentPolicy | null | undefined
 }) {
   const [activeChatId, setActiveChatId] = useState<Id<'chats'> | null>(null)
-  const [chatMode, setChatMode] = useState<ChatMode>('plan')
-  const [architectBrainstormEnabled, setArchitectBrainstormEnabled] = useState(
-    process.env.NEXT_PUBLIC_ENABLE_ARCHITECT_BRAINSTORM === 'true'
+  const chatMode = useChatSessionStore((state) => state.chatMode)
+  const setChatMode = useChatSessionStore((state) => state.setChatMode)
+  const architectBrainstormEnabled = useChatSessionStore(
+    (state) => state.architectBrainstormEnabled
   )
-  const [uiSelectedModel, setUiSelectedModel] = useState<string | null>(null)
-  const [reasoningVariant, setReasoningVariant] = useState('none')
+  const setArchitectBrainstormEnabled = useChatSessionStore(
+    (state) => state.setArchitectBrainstormEnabled
+  )
+  const uiSelectedModel = useChatSessionStore((state) => state.uiSelectedModel?.modelId ?? null)
+  const setUiSelectedModel = useChatSessionStore((state) => state.setUiSelectedModel)
+  const reasoningVariant = useChatSessionStore((state) => state.reasoningVariant ?? 'none')
+  const setReasoningVariant = useChatSessionStore((state) => state.setReasoningVariant)
 
   const settings = useQuery(api.settings.get) as ProviderSettings | undefined
   const effectiveSettings = useQuery(api.settings.getEffective) as
@@ -75,7 +82,7 @@ export function useProjectChatSession<TChat extends ChatSessionChat>(args: {
 
   useEffect(() => {
     if (!activeChat?.mode) return
-    setChatMode(normalizeChatMode(activeChat.mode, 'plan'))
+    useChatSessionStore.getState().setChatMode(normalizeChatMode(activeChat.mode, 'plan'))
   }, [activeChat?._id, activeChat?.mode])
 
   const effectiveAutomationPolicy = useMemo<AgentPolicy>(() => {
@@ -232,9 +239,10 @@ export function useProjectChatSession<TChat extends ChatSessionChat>(args: {
     architectBrainstormEnabled,
     setArchitectBrainstormEnabled,
     uiSelectedModel,
-    setUiSelectedModel,
+    setUiSelectedModel: (model: string | null) =>
+      setUiSelectedModel(model ? { modelId: model } : null),
     reasoningVariant,
-    setReasoningVariant,
+    setReasoningVariant: (variant: string | null) => setReasoningVariant(variant),
     provider,
     selectedModel,
     availableModels,

@@ -147,7 +147,7 @@ harness instead of only as a chat prompt style.
 ### Plan Workflow
 
 Structured planning now has a dedicated planning-session layer in Convex in
-addition to the legacy chat-level compatibility fields.
+instead of legacy chat-level compatibility fields.
 
 The planning session state machine is:
 
@@ -160,15 +160,9 @@ The planning session state machine is:
 - `failed`
 - `stale`
 
-The active chat still mirrors compatibility fields for the existing product
-surfaces:
-
-- `planDraft`
-- `planStatus`
-- `planSourceMessageId`
-- `planLastGeneratedAt`
-- `planApprovedAt`
-- `planBuildRunId`
+The active chat no longer mirrors plan draft, approval, or execution state. Plan
+review and build transitions read from `planningSessions` and the generated plan
+artifact.
 
 ### Architect Mode Contract
 
@@ -399,10 +393,6 @@ Important persistence surfaces used by the harness and delivery control plane:
 | `shipReports`               | Final readiness decisions                 |
 | `deliveryVerifications`     | Normalized verification records           |
 | `browserSessions`           | Persistent browser QA session metadata    |
-| `agentSessions`             | Harness session state management          |
-| `messageParts`              | Structured agentic message parts          |
-| `permissionRequests`        | Pending permission requests               |
-| `gitSnapshots`              | Git snapshot storage                      |
 
 ## Usage Example
 

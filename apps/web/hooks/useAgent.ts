@@ -39,14 +39,16 @@ import { spawnVariants } from '../lib/agent/parallelVariants'
 import { buildEditorContextBlock } from '../lib/agent/buildEditorContextBlock'
 
 import {
-  buildAgentPromptContext,
   buildAgentRuntimeConfig,
   createAgentCheckpointStore,
 } from '../lib/agent/session-controller'
-import { buildPromptMessagesWithModeSummary } from '../lib/agent/context/session-summary'
 import { reduceTerminalAgentEvent } from './useAgent-terminal-events'
 import { applyNonTerminalAgentEvent, type EventApplierMutableState } from './useAgent-event-applier'
 import { createRunLifecycle } from './useAgent-run-lifecycle'
+import {
+  buildAgentPreviousMessagesSnapshot,
+  buildAgentPromptBundle,
+} from './useAgent-prompt-context'
 import {
   buildAssistantAnnotations,
   buildTerminalErrorProgressStep,
@@ -131,7 +133,10 @@ export function buildPublicSendMessageOptions(options?: SendMessageOptions): {
   }
 }
 
-export function prependEditorContextToContent(content: string, includeEditorContext = true): string {
+export function prependEditorContextToContent(
+  content: string,
+  includeEditorContext = true
+): string {
   if (!includeEditorContext) return content
 
   const { selectedFilePath, selection, openTabs } = useEditorContextStore.getState()
@@ -546,8 +551,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       // IMPORTANT: Claude Code-style mode separation.
       // When in Plan mode, don't include Build messages in context (and vice versa),
       // otherwise the model continues implementation even after switching modes.
-      const previousMessagesSnapshot = buildPromptMessagesWithModeSummary({
-        currentMode: mode,
+      const previousMessagesSnapshot = buildAgentPreviousMessagesSnapshot({
+        mode,
         messages,
       })
 
@@ -683,26 +688,17 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           status: 'running',
         })
 
-        const promptContext = buildAgentPromptContext({
+        const { promptContext } = buildAgentPromptBundle({
           projectId,
           chatId,
           userId,
           projectName,
           projectDescription,
           mode,
-          provider: provider?.config?.provider || 'openai',
-          previousMessages: previousMessagesSnapshot.map((message) => ({
-            role: message.role === 'assistant' ? 'assistant' : 'user',
-            content: message.content,
-          })),
+          provider,
+          messages,
           projectOverviewContent,
-          // Note: projectFiles now only contains metadata (no content)
-          // Content is loaded on-demand via batchGet when needed
-          projectFiles: projectFiles?.map((file) => ({
-            path: file.path,
-            content: '', // Content loaded on-demand
-            updatedAt: file.updatedAt,
-          })),
+          projectFiles,
           memoryBankContent,
           userContent,
           contextFiles,
@@ -1139,28 +1135,17 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       if (!userContent || isRunningRef.current || !userId) return
 
       const variantCount = options?.variantCount ?? 2
-      const previousMessagesSnapshot = buildPromptMessagesWithModeSummary({
-        currentMode: mode,
-        messages,
-      })
-      const promptContext = buildAgentPromptContext({
+      const { promptContext } = buildAgentPromptBundle({
         projectId,
         chatId,
         userId,
         projectName,
         projectDescription,
         mode,
-        provider: provider?.config?.provider || 'openai',
-        previousMessages: previousMessagesSnapshot.map((message) => ({
-          role: message.role === 'assistant' ? 'assistant' : 'user',
-          content: message.content,
-        })),
+        provider,
+        messages,
         projectOverviewContent,
-        projectFiles: projectFiles?.map((file) => ({
-          path: file.path,
-          content: '',
-          updatedAt: file.updatedAt,
-        })),
+        projectFiles,
         memoryBankContent,
         userContent,
         contextFiles,
@@ -1349,23 +1334,17 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             ? scenario.input
             : JSON.stringify(scenario.input ?? '', null, 2)
 
-      const promptContext = buildAgentPromptContext({
+      const { promptContext } = buildAgentPromptBundle({
         projectId,
         chatId,
         userId,
         projectName,
         projectDescription,
         mode: scenarioMode,
-        provider: provider.config?.provider || 'openai',
-        previousMessages: [],
+        provider,
+        messages: [],
         projectOverviewContent,
-        // Note: projectFiles now only contains metadata (no content)
-        // Content is loaded on-demand via batchGet when needed
-        projectFiles: projectFiles?.map((file) => ({
-          path: file.path,
-          content: '', // Content loaded on-demand
-          updatedAt: file.updatedAt,
-        })),
+        projectFiles,
         memoryBankContent,
         userContent: textInput,
         architectBrainstormEnabled,

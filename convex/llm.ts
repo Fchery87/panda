@@ -40,7 +40,7 @@ interface ChatMessage {
 interface ChatRequest {
   messages: ChatMessage[]
   model?: string
-  mode?: 'discuss' | 'build'
+  mode?: 'plan' | 'build'
   temperature?: number
   maxTokens?: number
   provider?: 'openai' | 'openrouter' | 'together' | 'zai'
@@ -50,8 +50,8 @@ interface ChatRequest {
 /**
  * Get system prompt based on mode
  */
-function getSystemPrompt(mode: 'discuss' | 'build' = 'build'): string {
-  if (mode === 'discuss') {
+function getSystemPrompt(mode: 'plan' | 'build' = 'build'): string {
+  if (mode === 'plan') {
     return `You are an expert software architect and planning assistant. 
 Help users think through their approach, suggest best practices, and break down complex tasks.
 Be thoughtful and thorough. Don't write code unless specifically asked.`

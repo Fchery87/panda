@@ -113,11 +113,11 @@ describe('/api/e2e/project route', () => {
       )
 
       expect(response.status).toBe(200)
-      await expect(response.json()).resolves.toEqual({
+      await expect(response.json()).resolves.toMatchObject({
         projectId: 'project-existing',
         created: false,
       })
-      expect(queryCalls).toHaveLength(2)
+      expect(queryCalls).toHaveLength(3)
       expect(mutationCalls).toHaveLength(0)
     } finally {
       restoreEnv()
@@ -134,12 +134,12 @@ describe('/api/e2e/project route', () => {
       )
 
       expect(response.status).toBe(200)
-      await expect(response.json()).resolves.toEqual({
+      await expect(response.json()).resolves.toMatchObject({
         projectId: 'project-created',
         created: true,
       })
-      expect(queryCalls).toHaveLength(2)
-      expect(mutationCalls).toHaveLength(1)
+      expect(queryCalls).toHaveLength(3)
+      expect(mutationCalls).toHaveLength(2)
       expect(mutationCalls[0]?.args).toMatchObject({
         name: 'Workbench E2E Fixture',
         description: 'Deterministic browser E2E fixture project',
@@ -334,7 +334,7 @@ describe('/api/e2e/project route', () => {
 
       const response = await GET(
         new Request(
-          'http://localhost:3000/api/e2e/project?name=Workbench%20E2E%20Fixture&planStatus=awaiting_review&planDraft=%23%23%20Goal%0ASeed%20the%20plan%20artifact%0A%0A%23%23%20Implementation%20Plan%0A1.%20Open%20the%20plan%20panel%0A2.%20Approve%20the%20plan&e2eBypassSecret=test-e2e-secret'
+          'http://localhost:3000/api/e2e/project?name=Workbench%20E2E%20Fixture&structuredPlanningSession=1&structuredPlanningSessionStatus=ready_for_review&structuredPlanningSessionPlan=%7B%22markdown%22%3A%22%23%23%20Goal%5CnSeed%20the%20plan%20artifact%5Cn%5Cn%23%23%20Implementation%20Plan%5Cn1.%20Open%20the%20plan%20panel%5Cn2.%20Approve%20the%20plan%22%7D&e2eBypassSecret=test-e2e-secret'
         )
       )
 
@@ -343,18 +343,27 @@ describe('/api/e2e/project route', () => {
         projectId: 'project-existing',
         created: false,
         chatId: expect.any(String),
-        planStatus: 'awaiting_review',
+        planningSessionId: expect.any(String),
+        generatedPlanStatus: 'ready_for_review',
       })
-      expect(queryCalls).toHaveLength(3)
-      expect(mutationCalls).toHaveLength(1)
+      expect(queryCalls).toHaveLength(4)
+      expect(mutationCalls).toHaveLength(6)
       expect(mutationCalls[0]).toMatchObject({
         name: expect.any(String),
         args: {
-          id: expect.any(String),
-          planStatus: 'awaiting_review',
-          planDraft:
-            '## Goal\nSeed the plan artifact\n\n## Implementation Plan\n1. Open the plan panel\n2. Approve the plan',
-          planLastGeneratedAt: expect.any(Number),
+          chatId: expect.any(String),
+          questions: expect.any(Array),
+        },
+      })
+      expect(mutationCalls[5]).toMatchObject({
+        name: expect.any(String),
+        args: {
+          sessionId: expect.any(String),
+          generatedPlan: expect.objectContaining({
+            status: 'ready_for_review',
+            markdown:
+              '## Goal\nSeed the plan artifact\n\n## Implementation Plan\n1. Open the plan panel\n2. Approve the plan',
+          }),
         },
       })
     } finally {
@@ -514,7 +523,7 @@ describe('/api/e2e/project route', () => {
       )
 
       expect(response.status).toBe(200)
-      await expect(response.json()).resolves.toEqual({
+      await expect(response.json()).resolves.toMatchObject({
         projectId: 'project-created-after-cleanup',
         created: true,
       })
@@ -561,7 +570,7 @@ describe('/api/e2e/project route', () => {
       )
 
       expect(response.status).toBe(200)
-      await expect(response.json()).resolves.toEqual({
+      await expect(response.json()).resolves.toMatchObject({
         projectId: 'project-created-after-legacy-cleanup',
         created: true,
       })
@@ -620,7 +629,7 @@ describe('/api/e2e/project route', () => {
       )
 
       expect(response.status).toBe(200)
-      await expect(response.json()).resolves.toEqual({
+      await expect(response.json()).resolves.toMatchObject({
         projectId: 'project-created-after-proactive-cleanup',
         created: true,
       })

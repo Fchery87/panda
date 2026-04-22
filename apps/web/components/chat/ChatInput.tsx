@@ -587,13 +587,19 @@ export function ChatInput({
         {(activeFile || selection) && (
           <button
             type="button"
-            className="border-border text-muted-foreground hover:text-foreground flex items-center gap-1 border px-2 py-1 font-mono text-[11px]"
+            className="flex items-center gap-1 border border-border px-2 py-1 font-mono text-[11px] text-muted-foreground hover:text-foreground"
             onClick={() => setIncludeEditorContext((value) => !value)}
             title={
-              includeEditorContext ? 'Click to exclude editor context' : 'Click to include editor context'
+              includeEditorContext
+                ? 'Click to exclude editor context'
+                : 'Click to include editor context'
             }
           >
-            {includeEditorContext ? <IconAttach className="h-3 w-3" /> : <IconClose className="h-3 w-3" />}
+            {includeEditorContext ? (
+              <IconAttach className="h-3 w-3" />
+            ) : (
+              <IconClose className="h-3 w-3" />
+            )}
             {selection
               ? `${selection.filePath}:${selection.startLine}-${selection.endLine}`
               : activeFile}

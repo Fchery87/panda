@@ -54,14 +54,19 @@ describe('prompt-library — natural flow (INTENT RULES)', () => {
   })
 })
 
-describe('prompt-library — legacy mode normalization', () => {
-  it('maps discuss to architect', () => {
-    expect(normalizeChatMode('discuss', 'code')).toBe('plan')
+describe('prompt-library — mode normalization', () => {
+  it('keeps canonical modes intact', () => {
+    expect(normalizeChatMode('plan', 'code')).toBe('plan')
+    expect(normalizeChatMode('build', 'ask')).toBe('build')
   })
 
-  it('maps debug to code and review to ask', () => {
-    expect(normalizeChatMode('debug', 'ask')).toBe('code')
-    expect(normalizeChatMode('review', 'code')).toBe('ask')
+  it('falls back for legacy architect mode', () => {
+    expect(normalizeChatMode('architect', 'code')).toBe('code')
+  })
+
+  it('falls back for unsupported modes', () => {
+    expect(normalizeChatMode('discuss', 'code')).toBe('code')
+    expect(normalizeChatMode('review', 'ask')).toBe('ask')
   })
 })
 

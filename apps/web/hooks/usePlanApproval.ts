@@ -1,5 +1,3 @@
-import type { FormalSpecification } from '@/lib/agent/spec/types'
-
 import type { ProjectPlanningSessionRecord } from './useProjectPlanningSession'
 
 export type UnifiedPlanStatus =
@@ -19,7 +17,6 @@ export interface PlanApprovalState {
 
 export function derivePlanApprovalState(args: {
   planningSession: ProjectPlanningSessionRecord
-  pendingSpec: Pick<FormalSpecification, 'status'> | null
 }): PlanApprovalState {
   const planStatus = args.planningSession?.generatedPlan?.status
 
@@ -41,10 +38,6 @@ export function derivePlanApprovalState(args: {
 
   if (planStatus === 'failed') {
     return { status: 'failed', canApprove: false, canBuild: true }
-  }
-
-  if (args.pendingSpec) {
-    return { status: 'awaiting_review', canApprove: true, canBuild: false }
   }
 
   return { status: 'idle', canApprove: false, canBuild: false }

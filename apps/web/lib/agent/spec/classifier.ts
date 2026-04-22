@@ -515,19 +515,14 @@ function performHeuristicScoring(
   if (context.mode) {
     switch (context.mode) {
       case 'ask':
-      case 'discuss':
         instantScore += 2
         break
       case 'code':
-      case 'debug':
         ambientScore += 1
         break
       case 'build':
       case 'plan':
         explicitScore += 2
-        break
-      case 'review':
-        instantScore += 1
         break
     }
   }

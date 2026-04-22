@@ -30,11 +30,7 @@ workbench state, delivery control, evals, and sharing.
 | `sessionSummaries`          | Session handoff summaries       |
 | `harnessRuntimeCheckpoints` | Runtime resume snapshots        |
 | `checkpoints`               | Versioned checkpoints           |
-| `agentSessions`             | Harness session state           |
-| `messageParts`              | Structured message parts        |
-| `permissionRequests`        | Pending approvals               |
 | `permissionAuditLog`        | Permission audit history        |
-| `gitSnapshots`              | Git snapshots for undo          |
 | `deliveryStates`            | Delivery control-plane state    |
 | `deliveryTasks`             | Delivery tasks and evidence     |
 | `reviewReports`             | Review findings and decisions   |

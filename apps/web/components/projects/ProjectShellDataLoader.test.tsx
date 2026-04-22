@@ -20,25 +20,31 @@ describe('ProjectShellDataLoader structure', () => {
 
   test('renders ProjectLoadingGuard when project or files are not ready', async () => {
     const content = await readLoader()
-    expect(content).toContain('if (project === undefined || !files)')
+    expect(content).toContain(
+      'if (project === undefined || files === undefined || chats === undefined)'
+    )
     expect(content).toContain('<ProjectLoadingGuard projectLoaded={project !== undefined} />')
   })
 
   test('delegates all logic to WorkspaceRuntimeProvider', async () => {
     const content = await readLoader()
-    expect(content).toContain("import { WorkspaceRuntimeProvider } from '@/components/projects/WorkspaceRuntimeProvider'")
+    expect(content).toContain(
+      "import { WorkspaceRuntimeProvider } from '@/components/projects/WorkspaceRuntimeProvider'"
+    )
     expect(content).toContain('<WorkspaceRuntimeProvider')
   })
 
   test('wraps children in AgentRuntimeProvider', async () => {
     const content = await readProvider()
-    expect(content).toContain("import { AgentRuntimeProvider } from '@/contexts/AgentRuntimeContext'")
+    expect(content).toContain(
+      "import { AgentRuntimeProvider } from '@/contexts/AgentRuntimeContext'"
+    )
     expect(content).toContain('<AgentRuntimeProvider')
   })
 
   test('reads UI state from workspaceUiStore instead of prop drilling', async () => {
     const content = await readProvider()
-    expect(content).toContain("import { useWorkspaceUiStore } from '@/stores/workspaceUiStore'")
+    expect(content).toContain("from '@/stores/workspaceUiStore'")
     expect(content).toContain('useWorkspaceUiStore()')
     expect(content).not.toContain("from '@/hooks/buildWorkspaceContextValue'")
     expect(content).not.toContain("from '@/hooks/buildProjectChatPanelProps'")
@@ -57,11 +63,12 @@ describe('ProjectShellDataLoader structure', () => {
     expect(content).toContain('useEditorContextStore()')
   })
 
-  test('uses plan-draft helpers to gate approval and build actions', async () => {
+  test('uses planning-session state to gate approval and build actions', async () => {
     const content = await readProvider()
-    expect(content).toContain("import { canApprovePlan, canBuildFromPlan")
-    expect(content).toContain('canApprovePlan(')
-    expect(content).toContain('canBuildFromPlan(')
+    expect(content).toContain('const canApproveCurrentPlan = planningSession.canApprove')
+    expect(content).toContain('const canBuildCurrentPlan = planningSession.canBuild')
+    expect(content).not.toContain('canApprovePlan(')
+    expect(content).not.toContain('canBuildFromPlan(')
   })
 
   test('does not import deleted prop-builder hooks', async () => {

@@ -3,14 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Id } from '@convex/_generated/dataModel'
 import { toast } from 'sonner'
-import { canBuildFromPlan, type PlanStatus } from '@/lib/chat/planDraft'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import type { GeneratedPlanArtifact } from '@/lib/planning/types'
 
 type MessageWorkflowChat = {
   _id: Id<'chats'>
   mode: ChatMode
-  planStatus?: PlanStatus
 }
 
 type ExecutablePlanArtifact = Pick<GeneratedPlanArtifact, 'status'>
@@ -47,38 +45,31 @@ export function shouldQueuePendingDirectSend(args: {
 export function buildApprovedPlanExecutionPayload(args: {
   content: string
   approvedPlanExecution?: boolean
-  planDraft?: string
   approvedPlanArtifact?: GeneratedPlanArtifact | null
   activePlanningSessionId?: string | null
 }): Pick<SendAgentMessageOptions, 'approvedPlanExecutionContext'> & { content: string } {
   const shouldExecuteApprovedPlan = Boolean(args.approvedPlanExecution)
+  const artifact = args.approvedPlanArtifact
 
-  if (
-    shouldExecuteApprovedPlan &&
-    args.activePlanningSessionId &&
-    args.approvedPlanArtifact &&
-    args.approvedPlanArtifact.sessionId === args.activePlanningSessionId
-  ) {
-    return {
-      content: args.content,
-      approvedPlanExecutionContext: {
-        sessionId: args.activePlanningSessionId,
-        plan: args.approvedPlanArtifact,
-      },
-    }
+  if (!shouldExecuteApprovedPlan || !artifact) {
+    return { content: args.content }
+  }
+  if (!isExecutablePlanArtifact(artifact)) {
+    return { content: args.content }
   }
 
-  if (shouldExecuteApprovedPlan && args.approvedPlanArtifact) {
-    return {
-      content: args.content,
-      approvedPlanExecutionContext: {
-        sessionId: args.approvedPlanArtifact.sessionId ?? 'legacy',
-        plan: args.approvedPlanArtifact,
-      },
-    }
-  }
+  const sessionId =
+    args.activePlanningSessionId && artifact.sessionId === args.activePlanningSessionId
+      ? args.activePlanningSessionId
+      : (artifact.sessionId ?? args.activePlanningSessionId ?? '')
 
-  return { content: args.content }
+  return {
+    content: args.content,
+    approvedPlanExecutionContext: {
+      sessionId,
+      plan: artifact,
+    },
+  }
 }
 
 type MessageWorkflowAction = { type: 'create_chat_and_send_directly' } | { type: 'send_directly' }
@@ -144,7 +135,6 @@ export function useProjectMessageWorkflow(args: {
   activeChat: MessageWorkflowChat | null
   chatMode: ChatMode
   setChatMode: (mode: ChatMode) => void
-  planDraft: string
   approvedPlanArtifact?: GeneratedPlanArtifact | null
   activePlanningSessionId?: string | null
   providerAvailable: boolean
@@ -153,11 +143,7 @@ export function useProjectMessageWorkflow(args: {
     title: string
     mode: ChatMode
   }) => Promise<Id<'chats'>>
-  updateChatMutation: (args: {
-    id: Id<'chats'>
-    mode?: ChatMode
-    planStatus?: PlanStatus
-  }) => Promise<unknown>
+  updateChatMutation: (args: { id: Id<'chats'>; mode?: ChatMode }) => Promise<unknown>
   markPlanningExecutionState?: (args: { sessionId: string; state: 'executing' }) => Promise<unknown>
   sendAgentMessage: (
     content: string,
@@ -172,7 +158,6 @@ export function useProjectMessageWorkflow(args: {
     activeChat,
     chatMode,
     setChatMode,
-    planDraft,
     approvedPlanArtifact,
     activePlanningSessionId,
     providerAvailable,
@@ -242,8 +227,7 @@ export function useProjectMessageWorkflow(args: {
           ? buildApprovedPlanExecutionPayload({
               content: trimmed,
               approvedPlanExecution:
-                options?.approvedPlanExecution || activeChat?.planStatus === 'executing',
-              planDraft,
+                options?.approvedPlanExecution || isExecutablePlanArtifact(approvedPlanArtifact),
               approvedPlanArtifact,
               activePlanningSessionId,
             })
@@ -339,7 +323,6 @@ export function useProjectMessageWorkflow(args: {
       activeChat,
       createChatMutation,
       approvedPlanArtifact,
-      planDraft,
       projectId,
       providerAvailable,
       activePlanningSessionId,
@@ -367,9 +350,7 @@ export function useProjectMessageWorkflow(args: {
 
   const handleBuildFromPlan = useCallback(async () => {
     if (!activeChat) return
-    const canBuildFromArtifact = isExecutablePlanArtifact(approvedPlanArtifact)
-    const canBuildFromLegacyDraft = canBuildFromPlan(activeChat.planStatus, planDraft)
-    if (!canBuildFromArtifact && !canBuildFromLegacyDraft) {
+    if (!activePlanningSessionId || !isExecutablePlanArtifact(approvedPlanArtifact)) {
       toast.error('Approve the current plan before building')
       return
     }
@@ -381,7 +362,7 @@ export function useProjectMessageWorkflow(args: {
         markPlanningExecutionState,
       })
 
-      if (activePlanningSessionId && canBuildFromArtifact && !shouldUseStructuredTransition) {
+      if (activePlanningSessionId && !shouldUseStructuredTransition) {
         throw new Error('Structured plan execution requires a planning session transition callback')
       }
 
@@ -405,11 +386,7 @@ export function useProjectMessageWorkflow(args: {
           })
         }
       } else {
-        await updateChatMutation({
-          id: activeChat._id,
-          mode: 'build',
-          planStatus: 'executing',
-        })
+        throw new Error('Structured plan execution requires a planning session transition callback')
       }
       setChatMode('build')
       await handleSendMessage(
@@ -427,7 +404,6 @@ export function useProjectMessageWorkflow(args: {
     activeChat,
     activePlanningSessionId,
     approvedPlanArtifact,
-    planDraft,
     setChatMode,
     updateChatMutation,
     markPlanningExecutionState,
