@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useQuery, usePaginatedQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
@@ -11,7 +11,6 @@ import type {
   ToolCallInfo,
 } from '@/components/chat/types'
 import { mapLatestRunProgressSteps, type LiveProgressStep } from '@/components/chat/live-run-utils'
-import type { InspectorTab } from '@/components/projects/ProjectChatInspector'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import { normalizeChatMode } from '@/lib/agent/prompt-library'
 import { isRateLimitError, getUserFacingAgentError } from '@/lib/chat/error-messages'
@@ -36,19 +35,6 @@ interface AgentRunEvent extends PersistedRunEventInfo {
 }
 
 type MobilePrimaryPanel = 'workspace' | 'chat' | 'review'
-type ChatInspectorTab =
-  | 'run'
-  | 'plan'
-  | 'artifacts'
-  | 'memory'
-  | 'evals'
-  | 'tasks'
-  | 'qa'
-  | 'state'
-  | 'browser'
-  | 'activity'
-  | 'decisions'
-type RightPanelTab = 'chat' | 'plan' | 'review' | 'inspect' | 'run' | 'comments'
 
 interface UseWorkbenchChatStateArgs {
   activeChat: {
@@ -72,13 +58,12 @@ interface UseWorkbenchChatStateArgs {
   }
   isMobileLayout: boolean
   mobilePrimaryPanel: MobilePrimaryPanel
-  chatInspectorTab: ChatInspectorTab
   setMobileUnreadCount: React.Dispatch<React.SetStateAction<number>>
-  setIsChatInspectorOpen: (open: boolean) => void
-  setChatInspectorTab: React.Dispatch<React.SetStateAction<ChatInspectorTab>>
-  setIsRightPanelOpen: React.Dispatch<React.SetStateAction<boolean>>
-  setMobilePrimaryPanel: (panel: MobilePrimaryPanel) => void
-  setRightPanelTab: React.Dispatch<React.SetStateAction<RightPanelTab>>
+  _setIsRightPanelOpen: React.Dispatch<React.SetStateAction<boolean>>
+  _setMobilePrimaryPanel: (panel: MobilePrimaryPanel) => void
+  _setRightPanelTab: React.Dispatch<
+    React.SetStateAction<'chat' | 'plan' | 'review' | 'inspect' | 'run' | 'comments'>
+  >
 }
 
 export function useWorkbenchChatState({
@@ -87,13 +72,10 @@ export function useWorkbenchChatState({
   agent,
   isMobileLayout,
   mobilePrimaryPanel,
-  chatInspectorTab,
   setMobileUnreadCount,
-  setIsChatInspectorOpen,
-  setChatInspectorTab,
-  setIsRightPanelOpen,
-  setMobilePrimaryPanel,
-  setRightPanelTab,
+  _setIsRightPanelOpen,
+  _setMobilePrimaryPanel,
+  _setRightPanelTab,
 }: UseWorkbenchChatStateArgs) {
   const lastAssistantMessageIdRef = useRef<string | null>(null)
   const lastAgentMessagesRef = useRef<Message[]>([])
@@ -213,40 +195,6 @@ export function useWorkbenchChatState({
     return getUserFacingAgentError(agent.error)
   }, [agent.error])
 
-  const chatInspectorSurfaceTab: InspectorTab = useMemo(() => {
-    if (
-      chatInspectorTab === 'run' ||
-      chatInspectorTab === 'plan' ||
-      chatInspectorTab === 'artifacts' ||
-      chatInspectorTab === 'memory' ||
-      chatInspectorTab === 'evals'
-    ) {
-      return chatInspectorTab
-    }
-
-    return 'run'
-  }, [chatInspectorTab])
-
-  const openChatInspectorSurface = useCallback(
-    (tab: InspectorTab) => {
-      setRightPanelTab('chat')
-      setIsRightPanelOpen(true)
-      setIsChatInspectorOpen(true)
-      setChatInspectorTab(tab)
-      if (isMobileLayout) {
-        setMobilePrimaryPanel('chat')
-      }
-    },
-    [
-      isMobileLayout,
-      setChatInspectorTab,
-      setIsChatInspectorOpen,
-      setIsRightPanelOpen,
-      setMobilePrimaryPanel,
-      setRightPanelTab,
-    ]
-  )
-
   useEffect(() => {
     if (!isMobileLayout || mobilePrimaryPanel === 'chat') {
       setMobileUnreadCount(0)
@@ -280,7 +228,5 @@ export function useWorkbenchChatState({
     latestUserPrompt,
     latestAssistantReply,
     inlineRateLimitError,
-    chatInspectorSurfaceTab,
-    openChatInspectorSurface,
   }
 }

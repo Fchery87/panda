@@ -8,7 +8,7 @@ import { StatusBar } from '@/components/workbench/StatusBar'
 import { Workbench } from '@/components/workbench/Workbench'
 import type { DiffFileEntry } from '@/components/workbench/DiffTab'
 import { BottomDock, type BottomDockTab } from '@/components/layout/BottomDock'
-import { TaskHeader, type TaskStatus } from '@/components/layout/TaskHeader'
+import type { TaskStatus } from '@/components/layout/TaskHeader'
 import { Terminal } from '@/components/workbench/Terminal'
 import { AgentEventsPanel } from '@/components/panels/AgentEventsPanel'
 import { SidebarRail } from '@/components/sidebar/SidebarRail'
@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils'
 import type { FormalSpecification } from '@/lib/agent/spec/types'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import type { WorkspaceArtifactPreview } from '@/components/workbench/artifact-preview'
+import type { WorkspaceFocusState } from '@/components/workbench/workspace-focus'
 
 type FileRecord = {
   _id: Id<'files'>
@@ -101,6 +102,9 @@ interface ProjectWorkspaceLayoutProps {
   isPreviewRunning?: boolean
   onOpenPreview?: () => void
   onOpenTerminal?: () => void
+  focusState?: WorkspaceFocusState | null
+  onFocusPrimaryAction?: () => void
+  onFocusSecondaryAction?: () => void
 }
 
 export function ProjectWorkspaceLayout({
@@ -156,15 +160,18 @@ export function ProjectWorkspaceLayout({
   onCenterTabChange,
   isRightPanelOpen,
   activeTaskTitle,
-  activeTaskStatus,
+  activeTaskStatus: _activeTaskStatus,
   changedFilesCount = 0,
-  onReviewChanges,
-  onStopAgent,
+  onReviewChanges: _onReviewChanges,
+  onStopAgent: _onStopAgent,
   onStartAgent,
   previewUrl,
   isPreviewRunning,
   onOpenPreview,
   onOpenTerminal,
+  focusState = null,
+  onFocusPrimaryAction,
+  onFocusSecondaryAction,
 }: ProjectWorkspaceLayoutProps) {
   // Dock tab definitions with badge counts
   const dockTabs = useMemo(
@@ -217,6 +224,9 @@ export function ProjectWorkspaceLayout({
       isPreviewRunning={isPreviewRunning}
       onOpenPreview={onOpenPreview}
       onOpenTerminal={onOpenTerminal}
+      focusState={focusState}
+      onFocusPrimaryAction={onFocusPrimaryAction}
+      onFocusSecondaryAction={onFocusSecondaryAction}
     />
   )
 
@@ -292,17 +302,6 @@ export function ProjectWorkspaceLayout({
 
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      {/* Task Header - visible when agent has active work */}
-      {activeTaskTitle && activeTaskStatus && (
-        <TaskHeader
-          title={activeTaskTitle}
-          status={activeTaskStatus}
-          changedFilesCount={changedFilesCount}
-          onReviewChanges={onReviewChanges}
-          onStop={onStopAgent}
-        />
-      )}
-
       <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
         {isMobileLayout ? (
           <div className="relative flex h-full min-h-0 min-w-0 flex-col">

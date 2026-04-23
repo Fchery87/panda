@@ -93,7 +93,7 @@ export default function SettingsPage() {
       <div className="mx-auto flex max-w-6xl gap-0 px-4 py-6 lg:gap-8">
         {/* Sidebar Navigation */}
         <nav className="hidden w-52 shrink-0 lg:block" aria-label="Settings sections">
-          <div className="sticky top-24 space-y-1">
+          <div className="surface-1 sticky top-24 space-y-1 border border-border p-4">
             <Button
               variant="ghost"
               size="sm"
@@ -104,7 +104,7 @@ export default function SettingsPage() {
               Back to Projects
             </Button>
 
-            <div className="mb-4 flex items-center gap-3">
+            <div className="mb-4 flex items-center gap-3 border-b border-border pb-4">
               <span className="h-px w-6 bg-primary" />
               <span className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">
                 Configuration
@@ -120,10 +120,10 @@ export default function SettingsPage() {
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
                   className={cn(
-                    'flex w-full items-center gap-2.5 rounded-none px-3 py-2 text-left font-mono text-sm transition-colors',
+                    'flex w-full items-center gap-2.5 rounded-none border px-3 py-2 text-left font-mono text-sm transition-colors',
                     isActive
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                      ? 'border-primary/40 bg-primary/10 text-primary'
+                      : 'border-transparent text-muted-foreground hover:border-border hover:bg-accent hover:text-foreground'
                   )}
                 >
                   <Icon className="h-4 w-4" />
@@ -180,8 +180,8 @@ export default function SettingsPage() {
         {/* Content Area */}
         <div className="min-w-0 flex-1">
           {isDirty && (
-            <div className="mb-4 border border-border bg-muted/20 px-3 py-2 font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              Unsaved changes
+            <div className="mb-4 border border-primary/30 bg-primary/5 px-3 py-2 font-mono text-xs uppercase tracking-[0.18em] text-primary">
+              Unsaved changes ready to review
             </div>
           )}
 

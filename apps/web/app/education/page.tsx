@@ -128,29 +128,26 @@ export default function EducationPage() {
                   </div>
 
                   <h1 className="text-display text-4xl sm:text-5xl lg:text-6xl">
-                    One workspace. Four surfaces. Zero context switching.
+                    One workbench. One active thread of work. Clear review points throughout.
                   </h1>
 
                   <p className="max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-                    Panda&apos;s browser workbench is built around{' '}
-                    <span className="font-mono text-foreground">Explorer</span>,{' '}
-                    <span className="font-mono text-foreground">Workspace</span>,{' '}
-                    <span className="font-mono text-foreground">Chat Panel</span>, and{' '}
-                    <span className="font-mono text-foreground">Inspector</span>. Each surface
-                    handles a specific job — navigating files, editing code, orchestrating the
-                    agent, and reviewing state — and they all update each other in real time.
+                    Panda keeps the current objective, active work, review state, and changed work
+                    inside one browser-native coding workbench. You move between context, planning,
+                    execution, and inspection without leaving the project or rebuilding the mental
+                    model.
                   </p>
 
                   <div className="flex flex-wrap gap-3">
                     <Link href="/projects">
                       <Button className="shadow-sharp-md rounded-none font-mono tracking-wide">
-                        Try It in the Workbench
+                        Open the Workbench
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
                     </Link>
                     <a href="#interface-map">
                       <Button variant="outline" className="rounded-none font-mono tracking-wide">
-                        See the Interface Map
+                        See the operating model
                       </Button>
                     </a>
                   </div>
@@ -175,7 +172,7 @@ export default function EducationPage() {
                           Explorer selects context
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Browse files and search the project tree.
+                          Browse files and search until the right code is on screen.
                         </p>
                       </div>
                     </div>
@@ -183,10 +180,10 @@ export default function EducationPage() {
                       <Wrench className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                       <div>
                         <p className="font-mono text-xs uppercase tracking-wide">
-                          Workspace executes work
+                          Workspace holds the active work
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Edit code, run terminal commands, inspect diffs.
+                          Edit code, inspect changes, and keep the current objective visible.
                         </p>
                       </div>
                     </div>
@@ -194,10 +191,10 @@ export default function EducationPage() {
                       <Bot className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                       <div>
                         <p className="font-mono text-xs uppercase tracking-wide">
-                          Chat orchestrates the agent
+                          Chat directs the agent
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Prompt, review plans, manage execution in one thread.
+                          Prompt, review plans, and manage execution in one thread.
                         </p>
                       </div>
                     </div>
@@ -205,10 +202,10 @@ export default function EducationPage() {
                       <Shield className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                       <div>
                         <p className="font-mono text-xs uppercase tracking-wide">
-                          Inspector reviews state
+                          Operational rail reviews state
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Track runs, plans, memory, and evaluations.
+                          Inspect runs, plans, changed work, memory, and eval checks.
                         </p>
                       </div>
                     </div>
@@ -279,11 +276,11 @@ export default function EducationPage() {
                   <span className="text-label text-muted-foreground">Interface Map</span>
                 </div>
                 <h2 className="text-display text-3xl sm:text-4xl">
-                  The four surfaces of the Panda workbench
+                  The operating surfaces of the Panda workbench
                 </h2>
               </div>
               <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                Explorer → Workspace → Chat → Inspector
+                Explorer {'->'} Workspace {'->'} Chat {'->'} Operational Rail
               </div>
             </div>
 
@@ -298,7 +295,10 @@ export default function EducationPage() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: index * 0.08 }}
-                    className="hover:bg-surface-1 group block border border-transparent bg-background p-6 transition-colors"
+                    className={cn(
+                      'hover:bg-surface-1 group block border border-transparent bg-background p-6 transition-colors',
+                      section.id === 'workspace' && 'md:col-span-2'
+                    )}
                   >
                     <div className="mb-4 flex items-center justify-between">
                       <span className="font-mono text-xs font-semibold uppercase tracking-widest text-primary">
@@ -337,15 +337,15 @@ export default function EducationPage() {
                 <span className="text-label text-muted-foreground">Workflow</span>
               </div>
               <h2 className="text-display max-w-3xl text-3xl sm:text-4xl">
-                From idea to shipped code in six steps
+                From request to inspected result in six steps
               </h2>
               <p className="mt-4 max-w-2xl text-muted-foreground">
-                This is the default Panda workflow. It works the same way for every project — pick
-                context, review the plan, build with oversight, and ship verified output.
+                This is Panda&apos;s default workflow: pick context, review the plan, execute with
+                oversight, inspect the work, and keep moving without losing the current thread.
               </p>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-6">
+            <div className="grid gap-4 lg:grid-cols-2">
               {workflowSteps.map((step, index) => (
                 <motion.div
                   key={step.title}
@@ -355,7 +355,7 @@ export default function EducationPage() {
                   transition={{ delay: index * 0.05 }}
                   className={cn(
                     'border border-border bg-background p-4',
-                    index === 0 || index === 3 || index === 5 ? 'surface-1' : ''
+                    index % 2 === 1 ? 'surface-1' : ''
                   )}
                 >
                   <div className="mb-3 flex items-center justify-between">
@@ -545,34 +545,36 @@ export default function EducationPage() {
                   </span>
                 </div>
                 <h2 className="text-display text-3xl">
-                  Understand what happened and what comes next
+                  Review what happened and decide what comes next
                 </h2>
               </div>
               <div className="lg:col-span-8">
                 <p className="text-base leading-relaxed text-muted-foreground">
-                  The Inspector keeps the current run, saved plan, project memory, and eval tooling
-                  close to the active chat. Instead of scattering state across separate pages,
-                  everything you need to review lives in one surface.
+                  Panda&apos;s operational rail keeps the current run, saved plan, changed work,
+                  project memory, and eval tooling close to the active chat. Instead of scattering
+                  review state across separate pages, everything you need to inspect lives in one
+                  surface.
                 </p>
                 <div className="mt-6 grid gap-4 sm:grid-cols-3">
                   <div className="border border-border bg-background p-4">
                     <div className="mb-2 font-mono text-xs font-bold text-primary">RUN</div>
                     <p className="text-sm text-muted-foreground">
-                      Inspect persisted run events, progress, and execution history.
+                      Inspect persisted run events, progress, and recovery state.
                     </p>
                   </div>
                   <div className="border border-border bg-background p-4">
                     <div className="mb-2 font-mono text-xs font-bold text-primary">PLAN</div>
                     <p className="text-sm text-muted-foreground">
-                      Review, approve, and build from the current implementation plan.
+                      Review, approve, and build from the current execution contract.
                     </p>
                   </div>
                   <div className="border border-border bg-background p-4">
                     <div className="mb-2 font-mono text-xs font-bold text-primary">
-                      MEMORY / EVALS
+                      CHANGES / NOTES
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Preserve context across runs and validate repeatable agent behavior.
+                      Inspect changed work, preserve project context, and validate repeatable
+                      behavior.
                     </p>
                   </div>
                 </div>
@@ -641,8 +643,8 @@ export default function EducationPage() {
         {/* Power-user tips + CTA */}
         <section className="py-16 lg:py-20">
           <div className="container">
-            <div className="grid gap-6 lg:grid-cols-12">
-              <div className="lg:col-span-6">
+            <div className="grid gap-px bg-border lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <div className="bg-background p-5 lg:p-8">
                 <div className="border border-border bg-background p-5">
                   <h2 className="mb-4 font-mono text-xs font-semibold uppercase tracking-widest text-primary">
                     Power-user tips
@@ -654,20 +656,21 @@ export default function EducationPage() {
                     </li>
                     <li>Use the chat actions menu to open run history or share the active chat.</li>
                     <li>
-                      Open the inspector when you need Run, Plan, Memory, or Evals without leaving
-                      the project page.
+                      Open the operational rail when you need Run, Plan, Changes, Memory, or Evals
+                      without leaving the project page.
                     </li>
                     <li>Review the plan before using Build for larger implementation tasks.</li>
                   </ul>
                 </div>
               </div>
 
-              <div className="lg:col-span-6">
+              <div className="surface-1 p-5 lg:p-8">
                 <div className="shadow-sharp-md surface-1 border border-border p-5">
                   <h2 className="mb-3 text-xl font-semibold">Ready to try it?</h2>
                   <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
-                    Panda keeps navigation, editing, execution, approval, and review in one
-                    synchronized browser workspace. Each surface updates the others as you work.
+                    Panda keeps navigation, editing, execution, approval, and changed-work review in
+                    one synchronized browser workbench. The current objective stays visible while
+                    the work moves.
                   </p>
                   <Link href="/projects">
                     <Button className="rounded-none font-mono tracking-wide">
@@ -715,8 +718,8 @@ export default function EducationPage() {
           <div className="container text-center">
             <h2 className="text-display mb-4 text-3xl sm:text-4xl">Start building with Panda</h2>
             <p className="mx-auto mb-8 max-w-lg text-muted-foreground">
-              Create a project, review the plan, approve what matters, and keep shipping. No desktop
-              install required.
+              Create a project, review the plan, approve what matters, inspect the work, and keep
+              moving. No desktop install required.
             </p>
             <Link href="/projects">
               <Button className="shadow-sharp-md rounded-none font-mono tracking-wide">

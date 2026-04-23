@@ -45,36 +45,36 @@ export const landingFeatures: LandingFeature[] = [
   {
     id: 'plan-review',
     number: '01',
-    title: 'Plan Review Before Execution',
+    title: 'Review Before Execution',
     description:
-      'Move from architecting to building with saved plans, explicit approval gates, and build-from-plan execution.',
+      'Move from request to approved execution with saved plans, explicit review gates, and a build contract you can inspect first.',
     iconKey: 'bot',
     size: 'small',
   },
   {
     id: 'artifacts',
     number: '02',
-    title: 'Files, Diffs, and Artifacts',
+    title: 'One Operational Workspace',
     description:
-      'Open files, edit in place, review generated artifacts, and apply updates from the same browser workspace.',
+      'Edit files, inspect diffs, review generated artifacts, and keep the current objective in view without leaving the browser.',
     iconKey: 'fileCode',
     size: 'large',
   },
   {
     id: 'runs',
     number: '03',
-    title: 'Runs You Can Resume',
+    title: 'Runs You Can Recover',
     description:
-      'Track run progress, inspect history, recover paused execution from checkpoints, and keep work moving.',
+      'Track run progress, inspect history, recover paused execution from checkpoints, and continue without losing context.',
     iconKey: 'terminal',
     size: 'large',
   },
   {
     id: 'approvals',
     number: '04',
-    title: 'Browser-Native Approvals and Sharing',
+    title: 'Approvals, Memory, and Sharing',
     description:
-      'Review risky commands in the browser, keep project state synced live, and share the active chat with one link.',
+      'Review risky actions in the browser, keep persistent project context close at hand, and share the active work thread when needed.',
     iconKey: 'zap',
     size: 'small',
   },
@@ -99,8 +99,13 @@ export const interfaceMap: EducationSurfaceSection[] = [
     label: '02',
     title: 'Workspace',
     iconKey: 'workspace',
-    summary: 'Edit files, inspect timeline context, and run terminal commands in one place.',
-    bullets: ['Tabbed editor + timeline', 'Integrated terminal', 'Responsive workbench layout'],
+    summary:
+      'Edit files, inspect changed work, and keep the current objective visible in one operational canvas.',
+    bullets: [
+      'Tabbed editor + diff review',
+      'Integrated terminal + preview',
+      'Responsive workbench shell',
+    ],
   },
   {
     id: 'chat',
@@ -108,21 +113,21 @@ export const interfaceMap: EducationSurfaceSection[] = [
     title: 'Chat Panel',
     iconKey: 'chat',
     summary:
-      'Talk to the agent, move between planning and build flows, and keep the active run visible while you work.',
+      'Direct the agent, move between planning and execution, and keep the active thread close to the work itself.',
     bullets: [
       'Message history + streaming input',
       'Mode, model, and file-context controls',
-      'Plan review and build actions',
+      'Planning, approval, and build actions',
     ],
   },
   {
     id: 'inspector',
     label: '04',
-    title: 'Inspector',
+    title: 'Operational Rail',
     iconKey: 'inspector',
     summary:
-      'Inspect run history, plan state, memory, and eval surfaces without leaving the project session.',
-    bullets: ['Run timeline and history', 'Plan panel with approval state', 'Memory and eval tabs'],
+      'Review run history, plan state, changed work, memory, and eval checks without leaving the active project session.',
+    bullets: ['Run and recovery', 'Plan and changed-work review', 'Memory and eval checks'],
   },
 ]
 
@@ -157,8 +162,8 @@ export const workspaceDetails: EducationDetail[] = [
   },
   {
     name: 'Timeline',
-    role: 'Chat-linked timeline view (`Timeline chatId={currentChatId}`).',
-    userValue: 'Understand what changed and when in the context of the active conversation.',
+    role: 'Change and run context tied to the active work thread.',
+    userValue: 'Understand what changed and when without switching into a different tool.',
   },
   {
     name: 'Terminal',
@@ -180,8 +185,9 @@ export const chatDetails: EducationDetail[] = [
   },
   {
     name: 'Plan Review Card',
-    role: 'Inline review surface for approved, awaiting-review, and executing plan states.',
-    userValue: 'Move from planning to execution without losing the active chat context.',
+    role: 'Inline plan state entry point tied to the rail and execution actions.',
+    userValue:
+      'Move from planning to execution without losing the active thread or project context.',
   },
   {
     name: 'Permission Requests',
@@ -190,21 +196,27 @@ export const chatDetails: EducationDetail[] = [
   },
   {
     name: 'Share + History Actions',
-    role: 'Chat actions that open the share dialog and run-history inspector.',
-    userValue: 'Review past execution and share the active chat without leaving the project.',
+    role: 'Chat actions that route into history, review, and sharing from the current thread.',
+    userValue:
+      'Inspect past execution and share the active work thread without leaving the project.',
   },
 ]
 
 export const specDetails: EducationDetail[] = [
   {
     name: 'Run Tab',
-    role: 'Shows persisted run history and current execution progress.',
+    role: 'Shows persisted run history, execution progress, and recovery signals.',
     userValue: 'Use it to inspect what happened, not just what the agent said.',
   },
   {
     name: 'Plan Tab',
     role: 'Editable plan surface with review, approval, and build-from-plan controls.',
     userValue: 'This is where planning turns into an execution contract.',
+  },
+  {
+    name: 'Changes Tab',
+    role: 'Changed-work review surface for generated artifacts and diff inspection.',
+    userValue: 'Inspect the current work before continuing or sharing results.',
   },
   {
     name: 'Memory Tab',
@@ -241,13 +253,13 @@ export const workflowSteps: EducationWorkflowStep[] = [
     id: 'review-and-approve',
     title: 'Review and approve the plan',
     description:
-      'For structured work, review the saved plan in the inspector and approve it before build execution starts.',
+      'For structured work, review the saved plan in the operational rail and approve it before build execution starts.',
   },
   {
     id: 'inspect-or-resume',
     title: 'Inspect or resume the run',
     description:
-      'Open the inspector to view Run, Plan, Memory, and Evals. Recover a paused run when Panda surfaces a resumable checkpoint.',
+      'Use the operational rail to inspect Run, Plan, Changes, Memory, and Evals. Recover a paused run when Panda surfaces a resumable checkpoint.',
   },
   {
     id: 'share-verify-repeat',

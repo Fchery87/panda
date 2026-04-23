@@ -10,7 +10,6 @@ import { CenterTabBar, type CenterTabBarTab } from './CenterTabBar'
 import { WorkspaceHome } from './WorkspaceHome'
 import { DiffTab } from './DiffTab'
 import { LivePreview } from '@/components/preview/LivePreview'
-import { WorkspaceBanner } from './WorkspaceBanner'
 import { isWorkspacePlanTab } from '@/contexts/WorkspaceContext'
 import { useShortcuts } from '@/hooks/useShortcuts'
 
@@ -18,6 +17,7 @@ import { PlanArtifactTab } from './PlanArtifactTab'
 import type { WorkspaceArtifactPreview } from './artifact-preview'
 import type { DiffFileEntry } from './DiffTab'
 import type { WorkspaceOpenTab } from '@/contexts/WorkspaceContext'
+import type { WorkspaceFocusState } from './workspace-focus'
 
 interface WorkbenchProps {
   projectId: Id<'projects'>
@@ -69,6 +69,9 @@ interface WorkbenchProps {
   isPreviewRunning?: boolean
   onOpenPreview?: () => void
   onOpenTerminal?: () => void
+  focusState?: WorkspaceFocusState | null
+  onFocusPrimaryAction?: () => void
+  onFocusSecondaryAction?: () => void
 }
 
 const CENTER_TABS: CenterTabBarTab[] = [
@@ -113,6 +116,9 @@ export function Workbench({
   isPreviewRunning = false,
   onOpenPreview,
   onOpenTerminal,
+  focusState = null,
+  onFocusPrimaryAction,
+  onFocusSecondaryAction,
 }: WorkbenchProps) {
   const selectedFile = selectedFilePath ? files.find((f) => f.path === selectedFilePath) : undefined
   const selectedWorkspaceTab = openTabs.find((tab) => tab.path === selectedFilePath) ?? null
@@ -184,6 +190,7 @@ export function Workbench({
                   />
                 ) : (
                   <WorkspaceHome
+                    focusState={focusState}
                     recentFiles={recentFiles}
                     pendingDiffs={pendingDiffCount}
                     activeAgents={isAgentRunning ? 1 : 0}
@@ -193,6 +200,8 @@ export function Workbench({
                     onStartAgent={onStartAgent}
                     onOpenPreview={onOpenPreview}
                     onOpenTerminal={onOpenTerminal}
+                    onFocusPrimaryAction={onFocusPrimaryAction}
+                    onFocusSecondaryAction={onFocusSecondaryAction}
                   />
                 )}
               </div>
@@ -250,20 +259,6 @@ export function Workbench({
           />
         )}
 
-        {/* Workspace Banner */}
-        <WorkspaceBanner
-          state={
-            effectiveTab === 'diff' || pendingDiffCount === 0
-              ? 'idle'
-              : isAgentRunning
-                ? 'agent-running'
-                : 'agent-complete'
-          }
-          changedFilesCount={pendingDiffCount}
-          onReviewDiff={() => onCenterTabChange?.('diff')}
-          onOpenPreview={() => onCenterTabChange?.('preview')}
-        />
-
         {/* Tab Content */}
         <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
           {effectiveTab === 'editor' && (
@@ -300,6 +295,7 @@ export function Workbench({
                 </div>
               ) : (
                 <WorkspaceHome
+                  focusState={focusState}
                   recentFiles={recentFiles}
                   pendingDiffs={pendingDiffCount}
                   activeAgents={isAgentRunning ? 1 : 0}
@@ -310,6 +306,8 @@ export function Workbench({
                   onStartAgent={onStartAgent}
                   onOpenPreview={onOpenPreview}
                   onOpenTerminal={onOpenTerminal}
+                  onFocusPrimaryAction={onFocusPrimaryAction}
+                  onFocusSecondaryAction={onFocusSecondaryAction}
                 />
               )}
             </>

@@ -99,10 +99,11 @@ export function MessageList({
             'px-6 text-center sm:px-8'
           )}
         >
-          <div className="text-sm text-muted-foreground">
-            <p className="mb-2 font-medium">No messages yet</p>
-            <p className="max-w-[28ch] text-xs leading-relaxed">
-              Start a conversation to begin chatting with the AI assistant.
+          <div className="max-w-sm border border-border bg-background/80 px-6 py-6 text-sm text-muted-foreground">
+            <p className="mb-2 font-medium text-foreground">No messages yet</p>
+            <p className="max-w-[32ch] text-xs leading-relaxed">
+              Start a conversation to define the next task, review a plan, or continue the active
+              work thread.
             </p>
           </div>
         </div>

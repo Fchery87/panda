@@ -116,5 +116,8 @@ describe('ProjectChatInspector', () => {
     expect(html).toContain('Structured content should flow through the inspector.')
     expect(html).toContain('Show the artifact title in the plan panel')
     expect(html).toContain('Structured Review')
+    expect(html).toContain('Plan status')
+    expect(html).toContain('Acceptance checks')
+    expect(html).toContain('Plan summary')
   })
 })

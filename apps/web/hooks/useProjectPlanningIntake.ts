@@ -14,8 +14,6 @@ interface UseProjectPlanningIntakeParams {
     content: string
     annotations: Array<{ mode: 'plan' }>
   }) => Promise<unknown>
-  setIsChatInspectorOpen: (open: boolean) => void
-  setChatInspectorTab: (tab: 'run' | 'artifacts' | 'plan' | 'memory' | 'evals') => void
   openRightPanelTab: (tab: 'chat' | 'review' | 'plan') => void
 }
 
@@ -24,8 +22,6 @@ export function useProjectPlanningIntake({
   planningQuestions,
   startIntake,
   addMessage,
-  setIsChatInspectorOpen,
-  setChatInspectorTab,
   openRightPanelTab,
 }: UseProjectPlanningIntakeParams) {
   return useCallback(async () => {
@@ -41,18 +37,8 @@ export function useProjectPlanningIntake({
       })
     }
 
-    setIsChatInspectorOpen(true)
-    setChatInspectorTab('plan')
     openRightPanelTab('plan')
 
     return sessionId
-  }, [
-    activeChatId,
-    addMessage,
-    openRightPanelTab,
-    planningQuestions,
-    setChatInspectorTab,
-    setIsChatInspectorOpen,
-    startIntake,
-  ])
+  }, [activeChatId, addMessage, openRightPanelTab, planningQuestions, startIntake])
 }

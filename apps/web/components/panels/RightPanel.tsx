@@ -18,6 +18,8 @@ interface RightPanelProps {
   onInspectorTabChange?: (tab: string) => void
   isInspectorOpen?: boolean
   onInspectorToggle?: () => void
+  inspectorTitle?: string
+  inspectorSummary?: string
 }
 
 const DRAWER_VARIANTS = {
@@ -35,6 +37,8 @@ export function RightPanel({
   onInspectorTabChange,
   isInspectorOpen = false,
   onInspectorToggle,
+  inspectorTitle = 'Operational Rail',
+  inspectorSummary = 'Review plan state, run history, evidence, and notes in one place.',
 }: RightPanelProps) {
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col bg-background">
@@ -69,6 +73,26 @@ export function RightPanel({
             transition={DRAWER_TRANSITION}
             className="flex min-h-0 flex-col overflow-hidden border-t border-border"
           >
+            <div className="surface-1 border-b border-border px-3 py-2.5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                    Review Surface
+                  </div>
+                  <h2 className="text-sm font-medium text-foreground">{inspectorTitle}</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={onInspectorToggle}
+                  className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  Collapse
+                </button>
+              </div>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                {inspectorSummary}
+              </p>
+            </div>
             <TabBar
               tabs={inspectorTabs}
               activeTab={activeInspectorTab ?? ''}

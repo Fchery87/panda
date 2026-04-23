@@ -79,25 +79,86 @@ export function InspectorRunContent({
   subagentToolCalls,
   planningDebug,
 }: InspectorRunContentProps) {
+  const hasActivePlan = Boolean(planStatus && planStatus !== 'idle')
+  const hasSpec = Boolean(currentSpec)
+  const hasSnapshots = snapshotEvents.length > 0
+  const hasSubagents = subagentToolCalls.length > 0
+
   return (
     <div className="m-0 space-y-3">
-      <RunProgressPanel
-        chatId={chatId}
-        liveSteps={liveSteps}
-        isStreaming={isStreaming}
-        tracePersistenceStatus={tracePersistenceStatus}
-        onOpenFile={onOpenFile}
-        onOpenArtifacts={onOpenArtifacts}
-        currentSpec={currentSpec}
-        planStatus={planStatus}
-        planDraft={planDraft}
-        onSpecClick={onSpecClick}
-        onPlanClick={onPlanClick}
-        onResumeRuntimeSession={onResumeRuntimeSession}
-        planningDebug={planningDebug}
-      />
-      <SnapshotTimeline events={snapshotEvents} />
-      <SubagentPanel toolCalls={subagentToolCalls} />
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="border border-border bg-background/70 px-3 py-2">
+          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            Execution
+          </div>
+          <div className="mt-1 text-sm font-medium text-foreground">
+            {isStreaming ? 'Running' : 'Idle'}
+          </div>
+        </div>
+        <div className="border border-border bg-background/70 px-3 py-2">
+          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            Plan context
+          </div>
+          <div className="mt-1 text-sm font-medium text-foreground">
+            {hasActivePlan ? planStatus?.replace('_', ' ') : 'None'}
+          </div>
+        </div>
+        <div className="border border-border bg-background/70 px-3 py-2">
+          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            Snapshots
+          </div>
+          <div className="mt-1 text-sm font-medium text-foreground">
+            {hasSnapshots ? `${snapshotEvents.length} captured` : 'No snapshots'}
+          </div>
+        </div>
+        <div className="border border-border bg-background/70 px-3 py-2">
+          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            Constraints
+          </div>
+          <div className="mt-1 text-sm font-medium text-foreground">
+            {hasSpec ? (currentSpec?.status ?? 'Spec attached') : 'No active spec'}
+          </div>
+        </div>
+      </div>
+
+      <div className="border border-border bg-background/80">
+        <div className="surface-1 border-b border-border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          Run timeline
+        </div>
+        <div className="p-3">
+          <RunProgressPanel
+            chatId={chatId}
+            liveSteps={liveSteps}
+            isStreaming={isStreaming}
+            tracePersistenceStatus={tracePersistenceStatus}
+            onOpenFile={onOpenFile}
+            onOpenArtifacts={onOpenArtifacts}
+            currentSpec={currentSpec}
+            planStatus={planStatus}
+            planDraft={planDraft}
+            onSpecClick={onSpecClick}
+            onPlanClick={onPlanClick}
+            onResumeRuntimeSession={onResumeRuntimeSession}
+            planningDebug={planningDebug}
+          />
+        </div>
+      </div>
+
+      <div className="border border-border bg-background/80">
+        <div className="surface-1 border-b border-border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          Recovery and delegation
+        </div>
+        <div className="space-y-3 p-3">
+          {hasSnapshots ? <SnapshotTimeline events={snapshotEvents} /> : null}
+          {hasSubagents ? <SubagentPanel toolCalls={subagentToolCalls} /> : null}
+          {!hasSnapshots && !hasSubagents ? (
+            <p className="font-mono text-xs text-muted-foreground">
+              Recovery checkpoints and delegated subagent activity will appear here when they are
+              available.
+            </p>
+          ) : null}
+        </div>
+      </div>
     </div>
   )
 }
@@ -131,22 +192,63 @@ export function InspectorPlanContent({
   approveDisabled,
   buildDisabled,
 }: InspectorPlanContentProps) {
+  const generatedSummary = generatedPlanArtifact?.summary?.trim() || null
+  const acceptanceCheckCount = generatedPlanArtifact?.acceptanceChecks.length ?? 0
+
   return (
-    <div className="m-0 border border-border bg-background">
-      <PlanPanel
-        planDraft={planDraft}
-        generatedPlanArtifact={generatedPlanArtifact}
-        planStatus={planStatus ?? 'idle'}
-        onChange={onPlanDraftChange}
-        onSave={onSavePlanDraft}
-        onApprove={onApprovePlan}
-        onBuildFromPlan={onBuildFromPlan}
-        isSaving={isSavingPlanDraft}
-        lastSavedAt={lastSavedAt ?? null}
-        lastGeneratedAt={lastGeneratedAt ?? null}
-        approveDisabled={approveDisabled}
-        buildDisabled={buildDisabled}
-      />
+    <div className="m-0 space-y-3">
+      <div className="grid gap-2 sm:grid-cols-3">
+        <div className="border border-border bg-background/70 px-3 py-2">
+          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            Plan status
+          </div>
+          <div className="mt-1 text-sm font-medium text-foreground">
+            {(planStatus ?? 'idle').replace('_', ' ')}
+          </div>
+        </div>
+        <div className="border border-border bg-background/70 px-3 py-2">
+          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            Acceptance checks
+          </div>
+          <div className="mt-1 text-sm font-medium text-foreground">
+            {acceptanceCheckCount || 'None yet'}
+          </div>
+        </div>
+        <div className="border border-border bg-background/70 px-3 py-2">
+          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            Draft state
+          </div>
+          <div className="mt-1 text-sm font-medium text-foreground">
+            {isSavingPlanDraft ? 'Saving' : lastSavedAt ? 'Saved' : 'Unsaved'}
+          </div>
+        </div>
+      </div>
+
+      {generatedSummary ? (
+        <div className="border border-border bg-background/80 px-3 py-3">
+          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            Plan summary
+          </div>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{generatedSummary}</p>
+        </div>
+      ) : null}
+
+      <div className="m-0 border border-border bg-background">
+        <PlanPanel
+          planDraft={planDraft}
+          generatedPlanArtifact={generatedPlanArtifact}
+          planStatus={planStatus ?? 'idle'}
+          onChange={onPlanDraftChange}
+          onSave={onSavePlanDraft}
+          onApprove={onApprovePlan}
+          onBuildFromPlan={onBuildFromPlan}
+          isSaving={isSavingPlanDraft}
+          lastSavedAt={lastSavedAt ?? null}
+          lastGeneratedAt={lastGeneratedAt ?? null}
+          approveDisabled={approveDisabled}
+          buildDisabled={buildDisabled}
+        />
+      </div>
     </div>
   )
 }
@@ -161,8 +263,19 @@ export function InspectorMemoryContent({
   onSaveMemoryBank,
 }: InspectorMemoryContentProps) {
   return (
-    <div className="m-0 border border-border bg-background">
-      <MemoryBankEditor memoryBank={memoryBank} onSave={onSaveMemoryBank} />
+    <div className="m-0 space-y-3">
+      <div className="border border-border bg-background/80 px-3 py-3">
+        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          Project memory
+        </div>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          Keep durable instructions and project context here so future runs stay aligned without
+          repeating yourself.
+        </p>
+      </div>
+      <div className="border border-border bg-background">
+        <MemoryBankEditor memoryBank={memoryBank} onSave={onSaveMemoryBank} />
+      </div>
     </div>
   )
 }
@@ -193,14 +306,25 @@ export function InspectorEvalsContent({
   onRunEvalScenario,
 }: InspectorEvalsContentProps) {
   return (
-    <div className="m-0 border border-border bg-background">
-      <EvalPanel
-        projectId={projectId}
-        chatId={chatId}
-        lastUserPrompt={lastUserPrompt}
-        lastAssistantReply={lastAssistantReply}
-        onRunScenario={onRunEvalScenario}
-      />
+    <div className="m-0 space-y-3">
+      <div className="border border-border bg-background/80 px-3 py-3">
+        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          Eval checks
+        </div>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          Re-run common prompts and verification scenarios without leaving the active project
+          context.
+        </p>
+      </div>
+      <div className="border border-border bg-background">
+        <EvalPanel
+          projectId={projectId}
+          chatId={chatId}
+          lastUserPrompt={lastUserPrompt}
+          lastAssistantReply={lastAssistantReply}
+          onRunScenario={onRunEvalScenario}
+        />
+      </div>
     </div>
   )
 }

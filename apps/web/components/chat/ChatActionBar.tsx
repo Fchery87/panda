@@ -82,7 +82,7 @@ export function ChatActionBar({
           exit={{ opacity: 0, y: 8 }}
           transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
           className={cn(
-            'border-y px-3 py-2',
+            'border-y px-3 py-2.5',
             planStatus === 'partial' && 'border-warning/30 bg-warning/5',
             planStatus === 'completed' && 'border-emerald-500/30 bg-emerald-500/5',
             planStatus === 'failed' && 'border-destructive/30 bg-destructive/5',
@@ -93,6 +93,14 @@ export function ChatActionBar({
             className
           )}
         >
+          <div className="mb-2 flex items-center justify-between gap-3 border-b border-border/60 pb-2">
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Plan controls
+            </span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              {planStatus?.replace('_', ' ')}
+            </span>
+          </div>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex min-w-0 flex-1 items-center gap-2">
               {planStatus === 'completed' ? (
@@ -173,6 +181,14 @@ export function ChatActionBar({
           transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
           className={cn('border-y border-primary/30 bg-primary/5 px-3 py-2', className)}
         >
+          <div className="mb-2 flex items-center justify-between gap-3 border-b border-border/60 pb-2">
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Spec controls
+            </span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              execution contract
+            </span>
+          </div>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex min-w-0 flex-1 items-center gap-2">
               {pendingSpec?.tier === 'explicit' ? (

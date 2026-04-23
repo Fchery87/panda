@@ -30,13 +30,17 @@ describe('educationSections', () => {
 
     expect(interfaceMap.map((section) => section.bullets)).toEqual([
       ['File tree navigation', 'Project search panel', 'Fast file selection for editor + chat'],
-      ['Tabbed editor + timeline', 'Integrated terminal', 'Responsive workbench layout'],
+      [
+        'Tabbed editor + diff review',
+        'Integrated terminal + preview',
+        'Responsive workbench shell',
+      ],
       [
         'Message history + streaming input',
         'Mode, model, and file-context controls',
-        'Plan review and build actions',
+        'Planning, approval, and build actions',
       ],
-      ['Run timeline and history', 'Plan panel with approval state', 'Memory and eval tabs'],
+      ['Run and recovery', 'Plan and changed-work review', 'Memory and eval checks'],
     ])
   })
 

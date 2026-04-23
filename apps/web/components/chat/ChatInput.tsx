@@ -491,7 +491,26 @@ export function ChatInput({
 
   return (
     <div className="surface-2 shrink-0 border-t border-border p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:p-3 sm:pb-3">
-      <div className="relative">
+      <div className="mb-2 flex items-start justify-between gap-3 px-1">
+        <div>
+          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            Direct Panda
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Keep the next request close to the current code and approval state.
+          </p>
+        </div>
+        <div className="hidden items-center gap-2 md:flex">
+          <span className="border border-border bg-background/70 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            @{filePaths.length} files
+          </span>
+          <span className="border border-border bg-background/70 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            {attachments.length} attachments
+          </span>
+        </div>
+      </div>
+
+      <div className="relative border border-border bg-background/90">
         {/* @-mention picker */}
         {mentionQuery !== null && (
           <MentionPicker
@@ -511,9 +530,9 @@ export function ChatInput({
           placeholder="Ask anything, @ to mention, / for workflows"
           disabled={isStreaming || isUploadingAttachments}
           className={cn(
-            'max-h-[200px] min-h-[68px] resize-none pr-10 sm:min-h-[80px]',
-            'rounded-none border border-border bg-background',
-            'focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary',
+            'max-h-[200px] min-h-[72px] resize-none border-0 pr-10 shadow-none sm:min-h-[88px]',
+            'rounded-none bg-background',
+            'focus-visible:ring-0',
             'font-mono text-sm placeholder:text-muted-foreground/50'
           )}
           rows={1}
@@ -583,11 +602,11 @@ export function ChatInput({
       </div>
 
       {/* Inline controls row */}
-      <div className="mt-2 flex items-center gap-2">
+      <div className="mt-2 flex flex-wrap items-center gap-2 border border-border bg-background/80 px-2 py-2">
         {(activeFile || selection) && (
           <button
             type="button"
-            className="flex items-center gap-1 border border-border px-2 py-1 font-mono text-[11px] text-muted-foreground hover:text-foreground"
+            className="flex items-center gap-1 border border-border bg-background/70 px-2 py-1 font-mono text-[11px] text-muted-foreground hover:text-foreground"
             onClick={() => setIncludeEditorContext((value) => !value)}
             title={
               includeEditorContext
@@ -652,24 +671,28 @@ export function ChatInput({
           </button>
         )}
 
-        <div className="flex-1" />
+        <div className="ml-auto flex items-center gap-2">
+          <span className="hidden font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground sm:inline">
+            Enter to send
+          </span>
 
-        {!isStreaming && (
-          <Button
-            size="icon"
-            onClick={handleSendWithReset}
-            disabled={!hasSendContent}
-            aria-label="Send message"
-            className={cn(
-              'transition-sharp h-7 w-7 rounded-none',
-              hasSendContent
-                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                : 'bg-secondary text-muted-foreground'
-            )}
-          >
-            <IconSend className="h-3 w-3" weight="fill" />
-          </Button>
-        )}
+          {!isStreaming && (
+            <Button
+              size="icon"
+              onClick={handleSendWithReset}
+              disabled={!hasSendContent}
+              aria-label="Send message"
+              className={cn(
+                'transition-sharp h-7 w-7 rounded-none',
+                hasSendContent
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  : 'bg-secondary text-muted-foreground'
+              )}
+            >
+              <IconSend className="h-3 w-3" weight="fill" />
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   )

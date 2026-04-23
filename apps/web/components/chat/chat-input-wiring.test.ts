@@ -28,7 +28,7 @@ describe('chat input wiring', () => {
     )
     expect(content).toContain('disabled={!hasSendContent}')
     expect(content).toContain(
-      "hasSendContent\n                ? 'bg-primary text-primary-foreground hover:bg-primary/90'"
+      "hasSendContent\n                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'"
     )
   })
 

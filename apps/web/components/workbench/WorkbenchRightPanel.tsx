@@ -60,11 +60,37 @@ export function WorkbenchRightPanel({ projectId }: WorkbenchRightPanelProps) {
   const activeInspectorTab = isDrawerOpen ? activeTab : undefined
 
   const inspectorTabs: InspectorTabDef[] = [
-    { id: 'plan', label: 'Plan' },
-    { id: 'review', label: 'Review' },
     { id: 'run', label: 'Run' },
+    { id: 'plan', label: 'Plan' },
+    { id: 'review', label: 'Changes' },
     { id: 'comments', label: 'Notes' },
   ]
+
+  const inspectorTitle =
+    activeTab === 'run'
+      ? 'Run and Recovery'
+      : activeTab === 'plan'
+        ? 'Plan and Approval'
+        : activeTab === 'review'
+          ? 'Changed Work'
+          : 'Memory and Evals'
+
+  const inspectorSummary =
+    activeTab === 'run'
+      ? 'Track execution progress, snapshots, and resumable sessions.'
+      : activeTab === 'plan'
+        ? 'Review the implementation contract and move into execution deliberately.'
+        : activeTab === 'review'
+          ? 'Inspect artifacts and changed work before continuing.'
+          : 'Keep persistent context and eval checks close to the active chat.'
+
+  const reviewSummary = activeChatId
+    ? 'Generated artifacts and changed work from the current chat session appear here for inspection.'
+    : 'Open or create a chat to review generated artifacts and changed work.'
+
+  const notesSummary = memoryBank?.trim()
+    ? 'Project memory is available. Use the rail to maintain context and run repeatable eval checks.'
+    : 'No persistent memory yet. Capture durable context and verification checks here.'
 
   const getInspectorContent = () => {
     switch (activeTab) {
@@ -85,7 +111,19 @@ export function WorkbenchRightPanel({ projectId }: WorkbenchRightPanelProps) {
           />
         )
       case 'review':
-        return <ArtifactPanel projectId={projectId} chatId={activeChatId} position="right" />
+        return (
+          <div className="flex h-full min-h-0 flex-col overflow-hidden">
+            <div className="surface-0 border-b border-border px-3 py-3">
+              <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                Changed work and artifacts
+              </div>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{reviewSummary}</p>
+            </div>
+            <div className="min-h-0 flex-1 overflow-auto">
+              <ArtifactPanel projectId={projectId} chatId={activeChatId} position="right" />
+            </div>
+          </div>
+        )
       case 'run':
         return (
           <InspectorRunContent
@@ -109,8 +147,11 @@ export function WorkbenchRightPanel({ projectId }: WorkbenchRightPanelProps) {
       case 'comments':
         return (
           <div className="flex h-full flex-col overflow-hidden">
-            <div className="surface-1 border-b border-border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              Notes — memory, evals
+            <div className="surface-0 border-b border-border px-3 py-3">
+              <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                Notes, memory, evals
+              </div>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{notesSummary}</p>
             </div>
             <div className="min-h-0 flex-1 overflow-auto">
               <InspectorMemoryContent memoryBank={memoryBank} onSaveMemoryBank={onSaveMemoryBank} />
@@ -138,6 +179,8 @@ export function WorkbenchRightPanel({ projectId }: WorkbenchRightPanelProps) {
       onInspectorTabChange={(tab) => setActiveTab(tab as RightPanelTabId)}
       isInspectorOpen={isDrawerOpen}
       onInspectorToggle={() => setActiveTab('chat')}
+      inspectorTitle={inspectorTitle}
+      inspectorSummary={inspectorSummary}
     />
   )
 }

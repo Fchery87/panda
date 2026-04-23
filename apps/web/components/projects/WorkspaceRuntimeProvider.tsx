@@ -46,6 +46,7 @@ import type { ChatMode } from '@/lib/agent/prompt-library'
 import type { LLMProvider } from '@/lib/llm/types'
 import { resolveExplorerRevealTarget } from '@/lib/workbench-navigation'
 import { buildDefaultPlanningQuestions } from '@/lib/planning/question-engine'
+import type { WorkspaceFocusState } from '@/components/workbench/workspace-focus'
 
 interface File {
   _id: Id<'files'>
@@ -126,9 +127,6 @@ export function WorkspaceRuntimeProvider({
     setMobileUnreadCount,
     isMobileKeyboardOpen,
     setIsMobileKeyboardOpen,
-    chatInspectorTab,
-    setChatInspectorOpen,
-    setChatInspectorTab,
     setSpecSurfaceMode,
     isShareDialogOpen,
     setShareDialogOpen,
@@ -207,20 +205,6 @@ export function WorkspaceRuntimeProvider({
       if (next !== prev) setMobileUnreadCount(next)
     },
     [setMobileUnreadCount]
-  )
-  const handleSetChatInspectorOpen = useCallback(
-    (open: boolean) => {
-      if (open !== useWorkspaceUiStore.getState().isChatInspectorOpen) setChatInspectorOpen(open)
-    },
-    [setChatInspectorOpen]
-  )
-  const handleSetChatInspectorTab = useCallback(
-    (tab: SetStateAction<typeof chatInspectorTab>) => {
-      const prev = useWorkspaceUiStore.getState().chatInspectorTab
-      const next = typeof tab === 'function' ? tab(prev) : tab
-      if (next !== prev) setChatInspectorTab(next)
-    },
-    [setChatInspectorTab]
   )
 
   const { openRightPanelTab } = useWorkbenchPanelState({
@@ -452,21 +436,16 @@ export function WorkspaceRuntimeProvider({
     latestUserPrompt,
     latestAssistantReply,
     inlineRateLimitError,
-    chatInspectorSurfaceTab,
-    openChatInspectorSurface,
   } = useWorkbenchChatState({
     activeChat,
     chatMode,
     agent,
     isMobileLayout,
     mobilePrimaryPanel,
-    chatInspectorTab,
     setMobileUnreadCount: handleSetMobileUnreadCount,
-    setIsChatInspectorOpen: handleSetChatInspectorOpen,
-    setChatInspectorTab: handleSetChatInspectorTab,
-    setIsRightPanelOpen: handleSetRightPanelOpen,
-    setMobilePrimaryPanel: handleSetMobilePrimaryPanel,
-    setRightPanelTab: handleSetRightPanelTab,
+    _setIsRightPanelOpen: handleSetRightPanelOpen,
+    _setMobilePrimaryPanel: handleSetMobilePrimaryPanel,
+    _setRightPanelTab: handleSetRightPanelTab,
   })
 
   const {
@@ -529,8 +508,6 @@ export function WorkspaceRuntimeProvider({
     planningQuestions,
     startIntake: planningSession.startIntake,
     addMessage: addMessageMutation,
-    setIsChatInspectorOpen: handleSetChatInspectorOpen,
-    setChatInspectorTab: handleSetChatInspectorTab,
     openRightPanelTab,
   })
 
@@ -646,8 +623,8 @@ export function WorkspaceRuntimeProvider({
       onNewChat: () => {
         void handleNewChat()
       },
-      onToggleInspector: () => openChatInspectorSurface(chatInspectorSurfaceTab),
-      onOpenHistory: () => openChatInspectorSurface('run'),
+      onToggleInspector: () => openRightPanelTab('run'),
+      onOpenHistory: () => openRightPanelTab('run'),
       onComposerSubmit: (prompt: string, contextFiles?: string[]) =>
         handleSendMessage(prompt, 'build', contextFiles),
 
@@ -747,8 +724,6 @@ export function WorkspaceRuntimeProvider({
       handleFileSelect,
       handleResetWorkspace,
       handleNewChat,
-      openChatInspectorSurface,
-      chatInspectorSurfaceTab,
       toggleFlyout,
       handleStartRuntime,
       handleStopRuntime,
@@ -760,6 +735,163 @@ export function WorkspaceRuntimeProvider({
       setCursorPosition,
     ]
   )
+
+  const workspaceFocusState = useMemo<WorkspaceFocusState | null>(() => {
+    if (agent.isLoading) {
+      const latestStep = [...liveRunSteps].reverse().find((step) => step.content?.trim())
+      return {
+        kind: 'executing',
+        kicker: 'Run',
+        objective:
+          latestUserPrompt?.trim() ||
+          activeChat?.title ||
+          activePlanningSession?.generatedPlan?.title ||
+          'Executing current task',
+        statusLabel: 'Executing',
+        tone: 'progress',
+        detail:
+          latestStep?.content?.trim() ||
+          'Panda is actively working through the current task in this project.',
+        nextStep: 'Monitor progress or open the run rail for more detail.',
+        primaryAction: { id: 'open_run', label: 'Open Run' },
+        secondaryAction:
+          isPreviewRunning && _previewUrl
+            ? { id: 'open_preview', label: 'Open Preview' }
+            : undefined,
+      }
+    }
+
+    if (planningSession.currentQuestion) {
+      return {
+        kind: 'planning-intake',
+        kicker: 'Planning',
+        objective: activeChat?.title || 'Define the implementation plan',
+        statusLabel: 'Intake active',
+        tone: 'attention',
+        detail: planningSession.currentQuestion.prompt,
+        nextStep: 'Answer the next planning question so Panda can draft a grounded plan.',
+        primaryAction: { id: 'open_plan', label: 'Continue Planning' },
+      }
+    }
+
+    if (canApproveCurrentPlan && activePlanningSession?.generatedPlan) {
+      return {
+        kind: 'plan-review',
+        kicker: 'Plan',
+        objective: activePlanningSession.generatedPlan.title,
+        statusLabel: 'Ready for review',
+        tone: 'attention',
+        detail: 'A generated implementation plan is ready to inspect before execution starts.',
+        nextStep: 'Review the plan, confirm the scope, then approve it when you are satisfied.',
+        primaryAction: { id: 'open_plan', label: 'Review Plan' },
+      }
+    }
+
+    if (canBuildCurrentPlan && activePlanningSession?.generatedPlan) {
+      return {
+        kind: 'plan-approved',
+        kicker: 'Execution',
+        objective: activePlanningSession.generatedPlan.title,
+        statusLabel: 'Ready to build',
+        tone: 'progress',
+        detail: 'The approved plan is ready to execute from the current project context.',
+        nextStep: 'Start the build from the approved plan when you are ready.',
+        primaryAction: { id: 'build_from_plan', label: 'Build from Plan' },
+        secondaryAction: { id: 'open_plan', label: 'Open Plan' },
+      }
+    }
+
+    if (pendingChangedFilesCount > 0) {
+      return {
+        kind: 'review-ready',
+        kicker: 'Review',
+        objective: activeChat?.title || 'Inspect the latest results',
+        statusLabel: 'Changes ready',
+        tone: 'success',
+        detail: `${pendingChangedFilesCount} changed file${pendingChangedFilesCount !== 1 ? 's are' : ' is'} ready for inspection in the diff view.`,
+        nextStep: 'Inspect the latest changes before continuing with the next task.',
+        primaryAction: { id: 'review_changes', label: 'Inspect Changes' },
+        secondaryAction:
+          isPreviewRunning && _previewUrl
+            ? { id: 'open_preview', label: 'Open Preview' }
+            : undefined,
+      }
+    }
+
+    return null
+  }, [
+    _previewUrl,
+    activeChat?.title,
+    activePlanningSession?.generatedPlan,
+    agent.isLoading,
+    canApproveCurrentPlan,
+    canBuildCurrentPlan,
+    isPreviewRunning,
+    latestUserPrompt,
+    liveRunSteps,
+    pendingChangedFilesCount,
+    planningSession.currentQuestion,
+  ])
+
+  const handleFocusPrimaryAction = useCallback(() => {
+    const actionId = workspaceFocusState?.primaryAction?.id
+    if (!actionId) return
+
+    switch (actionId) {
+      case 'open_plan':
+        openRightPanelTab('plan')
+        break
+      case 'build_from_plan':
+        void handleBuildFromPlan()
+        break
+      case 'open_run':
+        openRightPanelTab('run')
+        break
+      case 'review_changes':
+        setActiveCenterTab('diff')
+        openRightPanelTab('review')
+        break
+      case 'open_preview':
+        handleOpenPreview()
+        break
+    }
+  }, [
+    handleBuildFromPlan,
+    handleOpenPreview,
+    openRightPanelTab,
+    setActiveCenterTab,
+    workspaceFocusState,
+  ])
+
+  const handleFocusSecondaryAction = useCallback(() => {
+    const actionId = workspaceFocusState?.secondaryAction?.id
+    if (!actionId) return
+
+    switch (actionId) {
+      case 'open_plan':
+        openRightPanelTab('plan')
+        break
+      case 'open_preview':
+        handleOpenPreview()
+        break
+      case 'review_changes':
+        setActiveCenterTab('diff')
+        openRightPanelTab('review')
+        break
+      case 'open_run':
+        openRightPanelTab('run')
+        break
+      case 'build_from_plan':
+        void handleBuildFromPlan()
+        break
+    }
+  }, [
+    handleBuildFromPlan,
+    handleOpenPreview,
+    openRightPanelTab,
+    setActiveCenterTab,
+    workspaceFocusState,
+  ])
 
   // --- Assemble layout props ---
 
@@ -822,7 +954,7 @@ export function WorkspaceRuntimeProvider({
     changedFilesCount: pendingChangedFilesCount,
     onReviewChanges: () => {
       setActiveCenterTab('diff')
-      openChatInspectorSurface('artifacts')
+      openRightPanelTab('review')
     },
     onStopAgent: () => agent.stop?.(),
     onStartAgent: () => {
@@ -832,6 +964,9 @@ export function WorkspaceRuntimeProvider({
     isPreviewRunning,
     onOpenPreview: handleOpenPreview,
     onOpenTerminal: handleOpenTerminal,
+    focusState: workspaceFocusState,
+    onFocusPrimaryAction: handleFocusPrimaryAction,
+    onFocusSecondaryAction: handleFocusSecondaryAction,
   }
 
   return (

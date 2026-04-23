@@ -37,13 +37,12 @@ describe('project chat wiring', () => {
     )
   })
 
-  test('ProjectChatPanel keeps the planning inspector reachable', async () => {
+  test('ProjectChatPanel routes planning and review actions into the right rail instead of mounting an inline inspector', async () => {
     const content = await readProjectComponent('ProjectChatPanel.tsx')
 
-    expect(content).toContain('const inspectorPanel = (')
-    expect(content).toContain('onStartPlanningIntake={onStartPlanningIntake}')
-    expect(content).toContain('onAnswerPlanningQuestion={onAnswerPlanningQuestion}')
-    expect(content).toContain('onClearPlanningIntake={onClearPlanningIntake}')
+    expect(content).not.toContain('const inspectorPanel = (')
+    expect(content).toContain("const onPlanReview = () => openRightPanelTab('plan')")
+    expect(content).not.toContain('ProjectChatInspector')
   })
 
   test('ProjectChatInspector passes the active generated plan artifact into PlanPanel', async () => {
@@ -54,28 +53,24 @@ describe('project chat wiring', () => {
     expect(content).toContain('generatedPlanArtifact={planningSession?.generatedPlan ?? null}')
   })
 
-  test('project page routes review/open actions into the non-inline chat inspector surface', async () => {
+  test('project page routes review/open actions directly into the shared right rail', async () => {
     const providerContent = await readProvider()
-    const hookContent = await readHook('useWorkbenchChatState.ts')
 
-    expect(hookContent).toContain('const openChatInspectorSurface = useCallback(')
-    expect(hookContent).toContain("setRightPanelTab('chat')")
-    expect(hookContent).toContain('setIsRightPanelOpen(true)')
-    expect(hookContent).toContain('setIsChatInspectorOpen(true)')
-    expect(hookContent).toContain('setChatInspectorTab(tab)')
-    expect(providerContent).toContain("openChatInspectorSurface('artifacts')")
+    expect(providerContent).toContain("onToggleInspector: () => openRightPanelTab('run')")
+    expect(providerContent).toContain("onOpenHistory: () => openRightPanelTab('run')")
+    expect(providerContent).toContain("openRightPanelTab('review')")
     expect(providerContent).toContain("onOpenPreviewPanel: () => setActiveCenterTab('preview')")
   })
 
-  test('project page persists architect intake messages and opens the plan inspector', async () => {
+  test('project page persists architect intake messages and opens the plan rail', async () => {
     const content = await readProvider()
     const planningHookContent = await readHook('useProjectPlanningIntake.ts')
 
     expect(content).toContain('const addMessageMutation = useMutation(api.messages.add)')
     expect(content).toContain('const handleStartPlanningIntake = useProjectPlanningIntake({')
     expect(content).toContain('addMessage: addMessageMutation')
-    expect(planningHookContent).toContain('setIsChatInspectorOpen(true)')
-    expect(planningHookContent).toContain("setChatInspectorTab('plan')")
+    expect(planningHookContent).toContain("openRightPanelTab('plan')")
+    expect(planningHookContent).not.toContain('setIsChatInspectorOpen')
     expect(planningHookContent).toContain('await addMessage({')
     expect(planningHookContent).toContain("role: 'user'")
     expect(planningHookContent).toContain('content: taskSummary')
@@ -89,6 +84,13 @@ describe('project chat wiring', () => {
       'if (!agent.isLoading && agent.messages.length === 0 && convexMessages?.length)'
     )
     expect(content).toContain('attachments: msg.attachments')
+  })
+
+  test('useWorkbenchChatState no longer manages a separate inline inspector surface', async () => {
+    const content = await readHook('useWorkbenchChatState.ts')
+
+    expect(content).not.toContain('openChatInspectorSurface')
+    expect(content).not.toContain('chatInspectorSurfaceTab')
   })
 
   test('project page derives changed file count from pending artifact previews instead of hardcoding zero', async () => {

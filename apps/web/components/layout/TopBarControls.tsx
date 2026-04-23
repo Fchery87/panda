@@ -3,12 +3,6 @@
 import { IconBell, IconQuickAction, IconNewChat } from '@/components/ui/icons'
 import { Button } from '@/components/ui/button'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
   WorkspaceHealthIndicator,
   type WorkspaceHealthStatus,
 } from '@/components/layout/WorkspaceHealthIndicator'
@@ -42,8 +36,8 @@ interface TopBarControlsProps {
 export function TopBarControls({
   branch: _branch,
   model: _model,
-  runMode = 'local',
-  onRunModeChange,
+  runMode: _runMode = 'local',
+  onRunModeChange: _onRunModeChange,
   healthStatus = 'ready',
   onNewTask,
   isAgentRunning: _isAgentRunning = false,
@@ -70,42 +64,6 @@ export function TopBarControls({
         repoLabel={repoLabel}
       />
 
-      {/* Run mode selector */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="hidden h-7 gap-1 rounded-none px-2 font-mono text-[10px] uppercase tracking-widest xl:flex"
-          >
-            {runMode}
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="rounded-none border-border font-mono text-xs">
-          <DropdownMenuItem
-            onClick={() => onRunModeChange?.('local')}
-            className="rounded-none text-xs"
-          >
-            Local
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => onRunModeChange?.('worktree')}
-            className="rounded-none text-xs"
-          >
-            Worktree
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => onRunModeChange?.('cloud')}
-            className="rounded-none text-xs"
-          >
-            Cloud
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* Divider */}
-      <div className="h-5 w-px bg-border" />
-
       {(onStartRuntime || onStopRuntime || onOpenPreview) && (
         <div className="hidden items-center gap-1 md:flex">
           {isRuntimeRunning ? (
@@ -127,33 +85,25 @@ export function TopBarControls({
               Start App
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 rounded-none px-2 font-mono text-[10px] uppercase tracking-widest"
-            onClick={isRuntimeRunning ? onStopRuntime : onStartRuntime}
-          >
-            {isRuntimeRunning ? 'Stop App' : 'Run Dev'}
-          </Button>
           <div className="h-5 w-px bg-border" />
         </div>
       )}
 
       {/* Notifications */}
-      <button
-        type="button"
-        onClick={onNotificationsClick}
-        className="relative flex h-7 w-7 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
-        title="Notifications"
-        aria-label="Notifications"
-      >
-        <IconBell className="h-4 w-4" />
-        {notificationCount > 0 && (
+      {notificationCount > 0 ? (
+        <button
+          type="button"
+          onClick={onNotificationsClick}
+          className="relative flex h-7 w-7 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+          title="Notifications"
+          aria-label="Notifications"
+        >
+          <IconBell className="h-4 w-4" />
           <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center bg-primary px-0.5 font-mono text-[8px] font-bold text-primary-foreground">
             {notificationCount > 9 ? '9+' : notificationCount}
           </span>
-        )}
-      </button>
+        </button>
+      ) : null}
 
       {/* Chat panel toggle */}
       <button

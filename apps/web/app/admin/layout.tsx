@@ -124,10 +124,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     href={item.href}
                     aria-current={isActiveAdminRoute(pathname, item.href) ? 'page' : undefined}
                     className={cn(
-                      'flex items-center gap-3 rounded-none border-l-2 border-transparent px-3 py-2 text-sm font-medium transition-colors',
+                      'flex items-center gap-3 rounded-none border border-transparent px-3 py-2 text-sm font-medium transition-colors',
                       isActiveAdminRoute(pathname, item.href)
-                        ? 'border-primary bg-muted text-foreground'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                        ? 'border-primary/40 bg-muted text-foreground'
+                        : 'text-muted-foreground hover:border-border hover:bg-muted hover:text-foreground'
                     )}
                   >
                     <item.icon className="h-4 w-4" />

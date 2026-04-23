@@ -1,6 +1,6 @@
 'use client'
 
-import { AnimatePresence, motion } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
@@ -11,8 +11,6 @@ import Link from 'next/link'
 import { ChatActionBar } from '@/components/chat/ChatActionBar'
 import { ChatInput } from '@/components/chat/ChatInput'
 import { MessageList } from '@/components/chat/MessageList'
-import { ProjectChatInspector } from '@/components/projects/ProjectChatInspector'
-import type { InspectorTab } from '@/components/projects/ProjectChatInspector'
 import { PlanVerificationDrawer } from '@/components/chat/PlanVerificationDrawer'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -37,48 +35,30 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
   const {
     activeChatId,
     activeChatExists,
-    activeChatPlanUpdatedAt,
-    activeChatPlanLastGeneratedAt,
     chatMessages,
     runEvents,
     liveSteps,
-    snapshotEvents,
-    subagentToolCalls,
     inlineRateLimitError,
-    lastUserPrompt,
-    lastAssistantReply,
     isStreaming,
     currentSpec,
-    memoryBank,
-    tracePersistenceStatus,
     model,
     availableModels,
     supportsReasoning,
     hasProvider,
     filePaths,
     planDraft,
-    isSavingPlanDraft,
     planApproveDisabled,
     planBuildDisabled,
     showInlinePlanReview,
     planStatus,
     planningSession,
-    planningCurrentQuestion,
     onSendMessage,
     onSuggestedAction,
     onModeChange,
     onStopStreaming,
     onResumeRuntimeSession,
-    onRunEvalScenario,
-    onSaveMemoryBank,
     onPlanApprove,
     onBuildFromPlan,
-    onPlanDraftChange,
-    onSavePlanDraft,
-    onStartPlanningIntake,
-    onAnswerPlanningQuestion,
-    onClearPlanningIntake,
-    onOpenFile,
     onResetWorkspace,
     onNewChat,
     onToggleInspector,
@@ -93,8 +73,6 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
   const oversightLevel = useChatSessionStore((s) => s.oversightLevel)
   const contextualPrompt = useChatSessionStore((s) => s.contextualPrompt)
   const reasoningVariant = useChatSessionStore((s) => s.reasoningVariant)
-  const isInspectorOpen = useWorkspaceUiStore((s) => s.isChatInspectorOpen)
-  const inspectorTab = useWorkspaceUiStore((s) => s.chatInspectorTab as InspectorTab)
   const specSurfaceMode = useWorkspaceUiStore((s) => s.specSurfaceMode)
   const isMobileLayout = useWorkspaceUiStore((s) => s.isMobileLayout)
 
@@ -107,14 +85,7 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
     model: string
   ) => void
   const onVariantChange = useChatSessionStore((s) => s.setReasoningVariant)
-  const onInspectorOpenChange = useWorkspaceUiStore((s) => s.setChatInspectorOpen)
-  const onInspectorTabChange = useWorkspaceUiStore(
-    (s) => s.setChatInspectorTab as (tab: InspectorTab) => void
-  )
-  const onOpenArtifacts = () => openRightPanelTab('review')
   const onPlanReview = () => openRightPanelTab('plan')
-  const onPlanClick = () => openRightPanelTab('plan')
-  const onSpecClick = () => useWorkspaceUiStore.getState().setSpecSurfaceMode('inspect')
   const onCloseSpecSurface = () => useWorkspaceUiStore.getState().setSpecSurfaceMode('closed')
   const onOpenShare = () => useWorkspaceUiStore.getState().setShareDialogOpen(true)
   const onContextualPromptHandled = () => useChatSessionStore.getState().setContextualPrompt(null)
@@ -141,50 +112,6 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
     (cp) => cp.reason !== 'complete' && typeof cp.sessionID === 'string'
   )
 
-  const inspectorPanel = (
-    <ProjectChatInspector
-      projectId={projectId}
-      chatId={activeChatId}
-      isMobileLayout={isMobileLayout}
-      isOpen={isInspectorOpen}
-      tab={inspectorTab}
-      planningSession={planningSession as never}
-      planningCurrentQuestion={planningCurrentQuestion}
-      onStartPlanningIntake={onStartPlanningIntake}
-      onAnswerPlanningQuestion={onAnswerPlanningQuestion}
-      onClearPlanningIntake={onClearPlanningIntake}
-      onOpenChange={onInspectorOpenChange}
-      onTabChange={onInspectorTabChange}
-      liveSteps={liveSteps}
-      isStreaming={isStreaming}
-      tracePersistenceStatus={tracePersistenceStatus}
-      onOpenFile={onOpenFile}
-      onOpenArtifacts={onOpenArtifacts}
-      currentSpec={currentSpec}
-      planStatus={planStatus}
-      planDraft={planDraft}
-      onSpecClick={onSpecClick}
-      onPlanClick={onPlanClick}
-      onResumeRuntimeSession={onResumeRuntimeSession}
-      snapshotEvents={snapshotEvents}
-      subagentToolCalls={subagentToolCalls}
-      onPlanDraftChange={onPlanDraftChange}
-      onSavePlanDraft={onSavePlanDraft}
-      onApprovePlan={onPlanApprove}
-      onBuildFromPlan={onBuildFromPlan}
-      isSavingPlanDraft={isSavingPlanDraft}
-      lastSavedAt={activeChatPlanUpdatedAt ?? null}
-      lastGeneratedAt={activeChatPlanLastGeneratedAt ?? null}
-      approveDisabled={planApproveDisabled}
-      buildDisabled={planBuildDisabled}
-      memoryBank={memoryBank}
-      onSaveMemoryBank={onSaveMemoryBank}
-      lastUserPrompt={lastUserPrompt}
-      lastAssistantReply={lastAssistantReply}
-      onRunEvalScenario={onRunEvalScenario}
-    />
-  )
-
   const activeRole = getChatModeSurfacePresentation(chatMode)
 
   return (
@@ -194,70 +121,74 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
         isMobileLayout ? 'border-t' : 'border-l'
       )}
     >
-      <div className="relative flex shrink-0 items-center justify-between border-b border-border bg-muted/30 px-3 py-2">
-        <span className="font-mono text-[11px] font-medium uppercase tracking-[0.24em] text-foreground">
-          Panda · {activeRole.label}
-        </span>
+      <div className="relative border-b border-border bg-muted/30 px-3 py-2.5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="font-mono text-[11px] font-medium uppercase tracking-[0.24em] text-foreground">
+              Panda · {activeRole.label}
+            </div>
+          </div>
 
-        <div className="flex items-center gap-1.5">
-          <OversightToggle
-            level={oversightLevel}
-            onChange={onOversightLevelChange}
-            disabled={isStreaming}
-          />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 rounded-none p-0"
-                aria-label="Chat actions"
-              >
-                <IconOverflow className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="rounded-none border-border font-mono">
-              <DropdownMenuItem
-                onClick={onNewChat}
-                className="rounded-none text-xs uppercase tracking-wide"
-              >
-                <IconNewChat className="mr-2 h-3.5 w-3.5" />
-                New Chat
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={onToggleInspector}
-                className="rounded-none text-xs uppercase tracking-wide"
-              >
-                Review
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={onOpenPreviewPanel}
-                className="rounded-none text-xs uppercase tracking-wide"
-              >
-                Preview
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={onOpenShare}
-                className="rounded-none text-xs uppercase tracking-wide"
-              >
-                Share
-              </DropdownMenuItem>
-              {activeChatExists && (
+          <div className="flex items-center gap-1.5">
+            <OversightToggle
+              level={oversightLevel}
+              onChange={onOversightLevelChange}
+              disabled={isStreaming}
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 rounded-none p-0"
+                  aria-label="Chat actions"
+                >
+                  <IconOverflow className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="rounded-none border-border font-mono">
                 <DropdownMenuItem
-                  onClick={onOpenHistory}
+                  onClick={onNewChat}
                   className="rounded-none text-xs uppercase tracking-wide"
                 >
-                  Run History ({runHistoryCount})
+                  <IconNewChat className="mr-2 h-3.5 w-3.5" />
+                  New Chat
                 </DropdownMenuItem>
-              )}
-              <DropdownMenuItem
-                onClick={onResetWorkspace}
-                className="rounded-none text-xs uppercase tracking-wide"
-              >
-                Clear Local Workspace
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <DropdownMenuItem
+                  onClick={onToggleInspector}
+                  className="rounded-none text-xs uppercase tracking-wide"
+                >
+                  Review
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={onOpenPreviewPanel}
+                  className="rounded-none text-xs uppercase tracking-wide"
+                >
+                  Preview
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={onOpenShare}
+                  className="rounded-none text-xs uppercase tracking-wide"
+                >
+                  Share
+                </DropdownMenuItem>
+                {activeChatExists && (
+                  <DropdownMenuItem
+                    onClick={onOpenHistory}
+                    className="rounded-none text-xs uppercase tracking-wide"
+                  >
+                    Run History ({runHistoryCount})
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem
+                  onClick={onResetWorkspace}
+                  className="rounded-none text-xs uppercase tracking-wide"
+                >
+                  Clear Local Workspace
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
         {isStreaming && (
@@ -415,8 +346,6 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
         spec={currentSpec}
         onClose={onCloseSpecSurface}
       />
-
-      <AnimatePresence>{inspectorPanel}</AnimatePresence>
     </div>
   )
 }
