@@ -831,9 +831,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             })
           }
           if (typeof requestAnimationFrame === 'function') {
-            rafFlushRef.current = requestAnimationFrame(() => {
-              setTimeout(flush, 0)
-            })
+            rafFlushRef.current = requestAnimationFrame(flush)
           } else {
             rafFlushRef.current = setTimeout(flush, 50) as unknown as number
           }

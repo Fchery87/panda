@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useEffect, useMemo, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useTheme } from 'next-themes'
@@ -73,26 +73,113 @@ interface StreamingChatMarkdownProps {
   batchMs?: number
 }
 
-function useBatchedContent(content: string, batchMs: number): string {
-  const [batchedContent, setBatchedContent] = useState(content)
+function getRevealStep(remaining: number, batchMs: number): number {
+  if (batchMs <= 0) return remaining
+  if (remaining > 160) return 32
+  if (remaining > 80) return 20
+  if (remaining > 32) return 12
+  if (remaining > 12) return 6
+  return 3
+}
+
+function useStreamingReveal(content: string, batchMs = 16): string {
+  const [visibleContent, setVisibleContent] = useState(content)
+  const visibleContentRef = useRef(content)
+  const frameRef = useRef<number | null>(null)
+  const timeoutRef = useRef<number | null>(null)
+  const reducedMotionRef = useRef(false)
 
   useEffect(() => {
-    if (content === batchedContent) return
-    if (batchMs <= 0) {
-      setBatchedContent(content)
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
       return
     }
 
-    const timeoutId = window.setTimeout(() => {
-      setBatchedContent(content)
-    }, batchMs)
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const updateReducedMotion = () => {
+      reducedMotionRef.current = mediaQuery.matches
+    }
+
+    updateReducedMotion()
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', updateReducedMotion)
+      return () => {
+        mediaQuery.removeEventListener('change', updateReducedMotion)
+      }
+    }
+
+    mediaQuery.addListener(updateReducedMotion)
+    return () => {
+      mediaQuery.removeListener(updateReducedMotion)
+    }
+  }, [])
+
+  useEffect(() => {
+    const stop = () => {
+      if (frameRef.current !== null) {
+        cancelAnimationFrame(frameRef.current)
+        frameRef.current = null
+      }
+      if (timeoutRef.current !== null) {
+        window.clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
+      }
+    }
+
+    if (reducedMotionRef.current || batchMs <= 0) {
+      stop()
+      visibleContentRef.current = content
+      setVisibleContent(content)
+      return
+    }
+
+    const currentVisible = visibleContentRef.current
+    if (content.length < currentVisible.length || !content.startsWith(currentVisible)) {
+      stop()
+      visibleContentRef.current = content
+      setVisibleContent(content)
+      return
+    }
+
+    if (content === currentVisible) {
+      stop()
+      return
+    }
+
+    const revealNextFrame = () => {
+      const remaining = content.length - visibleContentRef.current.length
+      if (remaining <= 0) {
+        frameRef.current = null
+        timeoutRef.current = null
+        return
+      }
+
+      const step = getRevealStep(remaining, batchMs)
+      const nextVisible = content.slice(0, visibleContentRef.current.length + step)
+
+      visibleContentRef.current = nextVisible
+      setVisibleContent(nextVisible)
+
+      if (nextVisible.length < content.length) {
+        timeoutRef.current = window.setTimeout(() => {
+          frameRef.current = requestAnimationFrame(revealNextFrame)
+        }, batchMs)
+      } else {
+        frameRef.current = null
+        timeoutRef.current = null
+      }
+    }
+
+    if (frameRef.current === null) {
+      frameRef.current = requestAnimationFrame(revealNextFrame)
+    }
 
     return () => {
-      window.clearTimeout(timeoutId)
+      stop()
     }
-  }, [batchMs, batchedContent, content])
+  }, [batchMs, content])
 
-  return batchedContent
+  return visibleContent
 }
 
 function useMarkdownComponents(resolvedTheme: string | undefined): Components {
@@ -301,8 +388,8 @@ export function StreamingChatMarkdown({
 }: StreamingChatMarkdownProps) {
   const { resolvedTheme } = useTheme()
   const components = useMarkdownComponents(resolvedTheme)
-  const batchedContent = useBatchedContent(content, batchMs)
-  const blocks = useMemo(() => parseStreamingMarkdown(batchedContent), [batchedContent])
+  const revealedContent = useStreamingReveal(content, batchMs)
+  const blocks = useMemo(() => parseStreamingMarkdown(revealedContent), [revealedContent])
 
   return (
     <div
