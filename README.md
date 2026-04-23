@@ -11,20 +11,21 @@
 ## Overview
 
 Panda is a browser-native coding workspace built for AI-assisted development. It
-combines chat-driven planning, plan approval, build execution, file editing,
-delivery-state tracking, resume checkpoints, shared chat history, and admin
-controls in one web app.
+combines a canonical 4-mode workflow (`ask`, `plan`, `code`, `build`),
+structured plan approval, build execution, file editing, runtime checkpoints,
+shared chat history, and admin controls in one web app.
 
 ## Current Product Surface
 
-- Landing page plus an education page that explains the four workbench surfaces
+- Landing page plus an education page that explains the workbench workflow
 - Project list and per-project workbench routes
-- Plan review before execution, with approved build-from-plan runs
+- Structured planning sessions with approved build-from-plan runs
 - Browser-native file editing, diffs, artifacts, and terminal jobs
 - Permission review for risky commands in the web UI
 - Shared chat links for public, read-only conversation review
 - Admin console pages for users, analytics, system controls, and security
-- Convex-backed delivery state, QA, ship, and checkpoint history
+- Convex-backed persistence for plans, messages, runs, checkpoints, specs, and
+  sharing
 
 ## Tech Stack
 
@@ -97,6 +98,23 @@ bun run test:e2e
 bun run build
 ```
 
+## Canonical Workflow
+
+Panda is optimized for this flow:
+
+1. Direct the AI
+2. Review the generated plan
+3. Approve the plan
+4. Watch execution happen
+5. Inspect what changed
+
+Modes:
+
+- `ask` - read-only Q&A
+- `plan` - planning and review
+- `code` - direct code changes
+- `build` - full-access execution
+
 ## Repository Shape
 
 ```text
@@ -106,6 +124,15 @@ panda/
 ├── docs/            # Active docs + historical archive index
 └── packages/sdk/    # Shared SDK package
 ```
+
+## Notes For Contributors
+
+- Treat `planningSessions` as the canonical planning system.
+- Treat the 4-mode model as canonical across UI, runtime, and tests.
+- Use Zustand for local shell/chat-session state and Convex for persisted
+  product data.
+- Run `bun run typecheck && bun run lint && bun run format:check && bun test`
+  before finishing changes.
 
 ## Key Docs
 

@@ -4,8 +4,8 @@
 
 ## Database Schema
 
-Panda.ai uses 38 tables in Convex for data persistence across auth, projects,
-workbench state, delivery control, evals, and sharing.
+Panda.ai uses 28 tables in Convex for data persistence across auth, projects,
+planning, execution, evals, admin, and sharing.
 
 ### Core tables
 
@@ -15,7 +15,7 @@ workbench state, delivery control, evals, and sharing.
 | `projects`         | Code projects and project policy state        |
 | `files`            | Current file contents                         |
 | `fileSnapshots`    | Version history for files                     |
-| `chats`            | Chat sessions and plan state                  |
+| `chats`            | Chat sessions and active mode                 |
 | `planningSessions` | Structured plan intake and approval flow      |
 | `messages`         | Chat messages                                 |
 | `artifacts`        | AI-generated file and command artifacts       |
@@ -23,23 +23,14 @@ workbench state, delivery control, evals, and sharing.
 | `agentRuns`        | Agent run lifecycle tracking                  |
 | `agentRunEvents`   | Persisted runtime events and timeline entries |
 
-### Harness and delivery tables
+### Harness and runtime tables
 
-| Table                       | Purpose                         |
-| --------------------------- | ------------------------------- |
-| `sessionSummaries`          | Session handoff summaries       |
-| `harnessRuntimeCheckpoints` | Runtime resume snapshots        |
-| `checkpoints`               | Versioned checkpoints           |
-| `permissionAuditLog`        | Permission audit history        |
-| `deliveryStates`            | Delivery control-plane state    |
-| `deliveryTasks`             | Delivery tasks and evidence     |
-| `reviewReports`             | Review findings and decisions   |
-| `qaReports`                 | QA evidence and defects         |
-| `shipReports`               | Ship readiness decisions        |
-| `deliveryDecisions`         | Control-plane decisions         |
-| `deliveryVerifications`     | Normalized verification log     |
-| `orchestrationWaves`        | Delivery orchestration tracking |
-| `browserSessions`           | Browser QA session metadata     |
+| Table                       | Purpose                   |
+| --------------------------- | ------------------------- |
+| `sessionSummaries`          | Session handoff summaries |
+| `harnessRuntimeCheckpoints` | Runtime resume snapshots  |
+| `checkpoints`               | Versioned checkpoints     |
+| `permissionAuditLog`        | Permission audit history  |
 
 ### Settings, providers, and sharing
 
@@ -82,16 +73,13 @@ workbench state, delivery control, evals, and sharing.
 - `create` - Create new chat
 - `list` - List project chats
 - `get` - Get chat by ID
-- `updatePlan` - Update plan draft and approval state
+- `update` - Update chat title or mode
+- `remove` - Delete a chat and cascade related state
+- `fork` - Fork a chat up to a message boundary
 
-### Planning and delivery
+### Planning (`planningSessions.ts`)
 
 - `planningSessions.ts` - plan intake, answers, approval, execution state
-- `deliveryStates.ts` - delivery lifecycle source of truth
-- `deliveryTasks.ts` - task tracking and evidence
-- `reviewReports.ts` - review findings and decisions
-- `qaReports.ts` - QA evidence and defects
-- `shipReports.ts` - ship readiness and closure
 - `specifications.ts` - formal spec records
 
 ### Messages (`messages.ts`)
@@ -112,6 +100,7 @@ workbench state, delivery control, evals, and sharing.
 ### Settings (`settings.ts`)
 
 - `get` - Get user settings
+- `getEffective` - Get resolved settings with effective defaults
 - `update` - Update settings
 - `updateProvider` - Update provider config
 - `updateAgentDefaults` - Update auto-apply defaults
@@ -121,6 +110,11 @@ workbench state, delivery control, evals, and sharing.
 - `artifacts.ts` - generated file/command artifact persistence
 - `agentRuns.ts` - agent run lifecycle and event stream
 - `jobs.ts` - terminal job execution and logs
+- `messages.ts` - persisted chat transcript and annotations
+- `chatAttachments.ts` - attachment upload metadata and storage references
+- `sessionSummaries.ts` - summarized handoff context
+- `memoryBank.ts` - persistent project memory bank content
+- `projectOverview.ts` - generated project summary content
 
 ### Agent Runs (`agentRuns.ts`)
 
@@ -135,6 +129,10 @@ workbench state, delivery control, evals, and sharing.
 - `sharing.ts` - share chats and resolve shared sessions
 - `admin.ts` - admin console queries and mutations
 - `github.ts` - repository import and GitHub integration
+- `providers.ts` - provider token and integration helpers
+- `subagents.ts` - custom subagent CRUD and access control
+- `mcpServers.ts` - MCP server management
+- `evals.ts` - eval suite and run orchestration
 
 ## Environment Variables
 

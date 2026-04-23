@@ -1,7 +1,7 @@
 # AGENTS.md - AI Agent Instructions for Panda.ai
 
-> **Version:** 1.0  
-> **Last Updated:** 2026-04-14  
+> **Version:** 1.1  
+> **Last Updated:** 2026-04-22  
 > **Maintainer:** AI Development Team  
 > **Status:** Active web platform
 
@@ -22,9 +22,12 @@ When working on this codebase:
 3. **Follow the brutalist design system** - Sharp corners, monospace fonts,
    precise spacing
 
-4. **Use Convex for all data** - No local state for persistent data
+4. **Keep the 4-mode workflow canonical** - `ask`, `plan`, `code`, `build`
 
-5. **Test your changes** - Add/update tests as needed
+5. **Use Convex for persistent data** - Keep client session and shell state in
+   Zustand
+
+6. **Test your changes** - Add/update tests as needed
 
 ---
 
@@ -92,7 +95,7 @@ Authentication:  Convex Auth with Google OAuth
 UI Components:   shadcn/ui (30+ components)
 Styling:         Tailwind CSS 3.4 + brutalist custom theme
 Animations:      Framer Motion
-State:           Zustand (client-only) + Convex (server)
+State:           Zustand (client session/shell) + Convex (persistent data)
 Testing:         Bun test runner + Playwright (E2E)
 Package Mgr:     Bun 1.2.0
 Monorepo:        TurboRepo 2.4
@@ -118,7 +121,7 @@ panda-ai/
 │       │   ├── ui/           # shadcn/ui components (base)
 │       │   ├── chat/          # Chat components
 │       │   │   ├── RunProgressPanel.tsx    # Unified run progress
-│       │   │   ├── AgentSelector.tsx        # Agent dropdown
+│       │   │   ├── AgentSelector.tsx        # 4-mode selector
 │       │   │   ├── MemoryBankEditor.tsx    # Project memory
 │       │   │   └── ReasoningPanel.tsx     # Thinking display
 │       │   ├── workbench/    # Workbench panels
@@ -141,8 +144,8 @@ panda-ai/
 │       │   │   │   ├── task-tool.ts    # Subagent delegation
 │       │   │   │   ├── mcp.ts          # MCP support
 │       │   │   │   └── snapshots.ts    # Git snapshots
-│       │   │   ├── runtime.ts       # Legacy runtime
-│       │   │   ├── tools.ts       # Tool definitions
+│       │   │   ├── runtime.ts       # Runtime adapter/orchestration
+│       │   │   ├── tools.ts         # Tool definitions
 │       │   │   └── prompt-library.ts
 │       │   └── diff.ts       # Diff computation
 │       ├── hooks/            # Custom React hooks
@@ -150,7 +153,7 @@ panda-ai/
 │       ├── e2e/             # Playwright E2E tests
 │       └── convex/           # Generated types
 ├── convex/                   # Backend
-│   ├── schema.ts            # Database schema (38 tables)
+│   ├── schema.ts            # Database schema (28 tables)
 │   ├── *.ts                # Queries, mutations, actions
 │   └── _generated/         # Auto-generated
 ├── docs/
@@ -199,7 +202,7 @@ export const create = mutation({...})
 
 // Types/Interfaces: PascalCase
 interface Project { }
-type ChatMode = 'ask' | 'architect' | 'code' | 'build'
+type ChatMode = 'ask' | 'plan' | 'code' | 'build'
 
 // Constants: UPPER_SNAKE_CASE
 const MAX_RETRY_ATTEMPTS = 3
@@ -406,17 +409,23 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 ### Database Schema
 
-We have 9 tables defined in `convex/schema.ts`:
+Convex currently defines 28 tables in `convex/schema.ts`.
+
+Core product tables:
 
 - `users` - User accounts
 - `projects` - Code projects
 - `files` - Project files
 - `fileSnapshots` - Version history
 - `chats` - Conversation threads
+- `planningSessions` - Structured plan intake, review, and approval state
 - `messages` - Chat messages
 - `artifacts` - AI-generated changes
 - `jobs` - Terminal commands
 - `settings` - User preferences
+
+Additional active tables cover runs, checkpoints, sharing, evals, specs,
+attachments, admin, provider tokens, and MCP servers.
 
 ### Creating a Query
 
@@ -526,7 +535,8 @@ export const streamChat = httpAction(async (ctx, req) => {
 
 ### Zustand for Client State
 
-Use Zustand for UI state that doesn't need to persist:
+Use Zustand for client-side shell state and per-session chat controls that
+should not be the product source of truth:
 
 ```typescript
 // stores/uiStore.ts
@@ -552,13 +562,15 @@ export const useUIStore = create<UIState>((set) => ({
 
 ### Convex for Persistent State
 
-**ALWAYS** use Convex for data that should persist:
+**ALWAYS** use Convex for data that should persist across sessions or devices:
 
 - User settings
 - Projects
 - Files
 - Chat history
 - Artifacts
+- Planning sessions
+- Agent runs and run events
 
 **NEVER** use localStorage or Zustand for these.
 
@@ -687,10 +699,13 @@ export default function Error({ error, reset }: {
 ## Agentic Harness
 
 Panda uses an OpenCode-style agentic harness located in `lib/agent/harness/`.
+The canonical workflow is: direct the AI, review its plan, approve the plan,
+watch execution, inspect changes.
 
 ### Key Components
 
-- **Agent Registry** - Built-in agents (build, plan, ask) + custom subagents
+- **Agent Registry** - Built-in agents (`ask`, `plan`, `code`, `build`) + custom
+  subagents
 - **Permission System** - Pattern-based allow/deny/ask for tools
 - **Context Compaction** - Auto-summarization at 90% token limit
 - **Plugin System** - Lifecycle hooks for extensibility
@@ -700,7 +715,7 @@ Panda uses an OpenCode-style agentic harness located in `lib/agent/harness/`.
 ### Chat Panel Components
 
 - **RunProgressPanel** - Unified live/historical run progress
-- **AgentSelector** - Dropdown for agent selection
+- **AgentSelector** - Dropdown for canonical mode selection
 - **MemoryBankEditor** - Project memory management
 - **ReasoningPanel** - Model thinking display
 
@@ -846,14 +861,14 @@ Before finishing ANY task, verify:
 
 ---
 
-## Emergency Contacts
+## Recovery
 
 If you break something:
 
 1. **Check git status** - See what changed
 2. **Run quality checks** - Identify the issue
-3. **Revert if needed** - `git checkout -- <file>`
-4. **Fix forward** - Apply the fix, verify checks pass
+3. **Fix forward first** - Apply the smallest correct fix and verify it
+4. **Only revert your own changes when necessary**
 5. **Ask for help** - Document the issue clearly
 
 ---
