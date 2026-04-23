@@ -43,6 +43,30 @@ export interface EventApplierMutableState {
   }
 }
 
+function buildSpecRunEvent(
+  eventType: 'spec_pending_approval' | 'spec_generated',
+  spec: FormalSpecification
+) {
+  return {
+    type: eventType,
+    content: spec.intent.goal,
+    status: spec.status,
+  } as const
+}
+
+function updateAssistantMessage(
+  messages: Message[],
+  assistantMessageId: string,
+  updater: (message: Message) => Message
+): Message[] {
+  const existingIndex = messages.findIndex((message) => message.id === assistantMessageId)
+  if (existingIndex < 0) return messages
+
+  const updated = [...messages]
+  updated[existingIndex] = updater(updated[existingIndex]!)
+  return updated
+}
+
 export function applyNonTerminalAgentEvent(args: {
   event: AgentEvent
   mode: ChatMode
@@ -151,20 +175,15 @@ export function applyNonTerminalAgentEvent(args: {
       })
       if (!mutable.rewriteNoticeShown) {
         mutable.rewriteNoticeShown = true
-        setMessages((prev) => {
-          const existingIndex = prev.findIndex((m) => m.id === assistantMessageId)
-          if (existingIndex < 0) return prev
-          const updated = [...prev]
-          const existing = updated[existingIndex]!
-          updated[existingIndex] = {
+        setMessages((prev) =>
+          updateAssistantMessage(prev, assistantMessageId, (existing) => ({
             ...existing,
             mode,
             toolCalls: [],
             content:
               (existing.content ? existing.content + '\n\n' : '') + '— Rewriting to match mode… —',
-          }
-          return updated
-        })
+          }))
+        )
       }
       return true
     }
@@ -175,34 +194,26 @@ export function applyNonTerminalAgentEvent(args: {
         if (mutable.replaceOnNextText) {
           mutable.replaceOnNextText = false
           mutable.assistantContent = ''
-          setMessages((prev) => {
-            const existingIndex = prev.findIndex((m) => m.id === assistantMessageId)
-            if (existingIndex < 0) return prev
-            const updated = [...prev]
-            updated[existingIndex] = {
-              ...updated[existingIndex]!,
+          setMessages((prev) =>
+            updateAssistantMessage(prev, assistantMessageId, (existing) => ({
+              ...existing,
               content: '',
               reasoningContent: '',
               mode,
               toolCalls: [],
-            }
-            return updated
-          })
+            }))
+          )
         } else if (!mutable.assistantContent) {
-          setMessages((prev) => {
-            const existingIndex = prev.findIndex((m) => m.id === assistantMessageId)
-            if (existingIndex < 0) return prev
-            const existing = prev[existingIndex]!
-            if (existing.content === '— Executing tools… —') {
-              const updated = [...prev]
-              updated[existingIndex] = {
-                ...existing,
-                content: '',
-              }
-              return updated
-            }
-            return prev
-          })
+          setMessages((prev) =>
+            updateAssistantMessage(prev, assistantMessageId, (existing) =>
+              existing.content === '— Executing tools… —'
+                ? {
+                    ...existing,
+                    content: '',
+                  }
+                : existing
+            )
+          )
         }
         mutable.assistantContent += event.content
         mutable.runUsage = {
@@ -263,11 +274,7 @@ export function applyNonTerminalAgentEvent(args: {
         setPendingSpec(event.spec)
         setCurrentSpec(event.spec)
         setStatus('idle')
-        void appendRunEvent({
-          type: event.type,
-          content: event.spec.intent.goal,
-          status: event.spec.status,
-        })
+        void appendRunEvent(buildSpecRunEvent(event.type, event.spec))
         persistPendingApprovalSpec({
           spec: event.spec,
           projectId,
@@ -285,11 +292,7 @@ export function applyNonTerminalAgentEvent(args: {
       if (event.spec) {
         setPendingSpec(null)
         setCurrentSpec(event.spec)
-        void appendRunEvent({
-          type: event.type,
-          content: event.spec.intent.goal,
-          status: event.spec.status,
-        })
+        void appendRunEvent(buildSpecRunEvent(event.type, event.spec))
         persistGeneratedSpec({
           spec: event.spec,
           projectId,
@@ -366,25 +369,21 @@ export function applyNonTerminalAgentEvent(args: {
           args: toolInfo.args,
           status: toolInfo.status,
         })
-        setMessages((prev) => {
-          const existingIndex = prev.findIndex((m) => m.id === assistantMessageId)
-          if (existingIndex >= 0) {
-            const updated = [...prev]
-            const existing = updated[existingIndex]!
+        setMessages((prev) =>
+          updateAssistantMessage(prev, assistantMessageId, (existing) => {
             const needsPlaceholder =
               !mutable.assistantContent &&
               !existing.content &&
               mutable.assistantToolCalls.length <= 1
-            updated[existingIndex] = {
+
+            return {
               ...existing,
               mode,
               toolCalls: mutable.assistantToolCalls,
               content: needsPlaceholder ? '— Executing tools… —' : existing.content,
             }
-            return updated
-          }
-          return prev
-        })
+          })
+        )
       }
       return true
     }
@@ -393,18 +392,12 @@ export function applyNonTerminalAgentEvent(args: {
       if (event.toolResult) {
         setToolCalls((prev) => applyToolResult(prev, event.toolResult!))
         mutable.assistantToolCalls = applyToolResult(mutable.assistantToolCalls, event.toolResult)
-        setMessages((prev) => {
-          const existingIndex = prev.findIndex((m) => m.id === assistantMessageId)
-          if (existingIndex >= 0) {
-            const updated = [...prev]
-            updated[existingIndex] = {
-              ...updated[existingIndex],
-              toolCalls: mutable.assistantToolCalls,
-            }
-            return updated
-          }
-          return prev
-        })
+        setMessages((prev) =>
+          updateAssistantMessage(prev, assistantMessageId, (existing) => ({
+            ...existing,
+            toolCalls: mutable.assistantToolCalls,
+          }))
+        )
         void appendRunEvent({
           type: 'tool_result',
           toolCallId: event.toolResult.toolCallId,

@@ -61,6 +61,57 @@ function CodeBlock({ lang, code, resolvedTheme }: CodeBlockProps) {
 }
 
 const INLINE_CODE_CLASS = 'rounded bg-muted px-1 py-0.5 font-mono text-xs text-foreground'
+const MARKDOWN_ROOT_CLASS =
+  'min-w-0 break-words text-[13px] leading-relaxed [overflow-wrap:anywhere] xl:text-sm'
+const LIST_CLASS = 'mb-2 min-w-0 space-y-1 pl-4 text-[13px] leading-6 last:mb-0 xl:text-sm'
+const BLOCKQUOTE_CLASS = 'my-2 border-l-2 border-primary/40 pl-3 text-muted-foreground'
+const TABLE_WRAPPER_CLASS = 'my-3 overflow-x-auto rounded-none border border-border bg-muted/20'
+const TABLE_CLASS = 'min-w-full border-collapse text-left text-[13px] xl:text-sm'
+
+function renderMarkdownList(
+  items: string[],
+  ordered: boolean,
+  components: Components,
+  keyPrefix: string
+): React.ReactNode {
+  const ListTag = ordered ? 'ol' : 'ul'
+  const itemClassName = ordered
+    ? 'list-decimal marker:font-mono marker:text-muted-foreground'
+    : 'list-disc marker:text-primary/70'
+
+  return (
+    <ListTag className={LIST_CLASS}>
+      {items.map((item, index) => (
+        <li key={`${keyPrefix}-${index}`} className={itemClassName}>
+          <MarkdownBlock content={item} components={components} />
+        </li>
+      ))}
+    </ListTag>
+  )
+}
+
+function renderMarkdownTable(rows: string[][], components: Components): React.ReactNode {
+  return (
+    <div className={TABLE_WRAPPER_CLASS}>
+      <table className={TABLE_CLASS}>
+        <tbody>
+          {rows.map((row, rowIndex) => (
+            <tr
+              key={`streaming-row-${rowIndex}`}
+              className="border-b border-border/70 last:border-b-0"
+            >
+              {row.map((cell, cellIndex) => (
+                <td key={`streaming-cell-${rowIndex}-${cellIndex}`} className="px-3 py-2 align-top">
+                  <MarkdownBlock content={cell} components={components} />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
 
 interface ChatMarkdownProps {
   content: string
@@ -219,19 +270,11 @@ function useMarkdownComponents(resolvedTheme: string | undefined): Components {
       },
 
       ul({ children }) {
-        return (
-          <ul className="mb-2 min-w-0 space-y-1 pl-4 text-[13px] leading-6 last:mb-0 xl:text-sm">
-            {children}
-          </ul>
-        )
+        return <ul className={LIST_CLASS}>{children}</ul>
       },
 
       ol({ children }) {
-        return (
-          <ol className="mb-2 min-w-0 space-y-1 pl-4 text-[13px] leading-6 last:mb-0 xl:text-sm">
-            {children}
-          </ol>
-        )
+        return <ol className={LIST_CLASS}>{children}</ol>
       },
 
       li({ children }) {
@@ -260,11 +303,7 @@ function useMarkdownComponents(resolvedTheme: string | undefined): Components {
       },
 
       blockquote({ children }) {
-        return (
-          <blockquote className="my-2 border-l-2 border-primary/40 pl-3 text-muted-foreground">
-            {children}
-          </blockquote>
-        )
+        return <blockquote className={BLOCKQUOTE_CLASS}>{children}</blockquote>
       },
 
       h1({ children }) {
@@ -312,53 +351,17 @@ const StreamingMarkdownRenderer = memo(function StreamingMarkdownRenderer({
     case 'code':
       return <CodeBlock lang={block.language} code={block.code} resolvedTheme={resolvedTheme} />
     case 'list':
-      return block.ordered ? (
-        <ol className="mb-2 min-w-0 space-y-1 pl-4 text-[13px] leading-6 last:mb-0 xl:text-sm">
-          {block.items.map((item, index) => (
-            <li
-              key={`streaming-ol-${index}`}
-              className="list-decimal marker:font-mono marker:text-muted-foreground"
-            >
-              <MarkdownBlock content={item} components={components} />
-            </li>
-          ))}
-        </ol>
-      ) : (
-        <ul className="mb-2 min-w-0 space-y-1 pl-4 text-[13px] leading-6 last:mb-0 xl:text-sm">
-          {block.items.map((item, index) => (
-            <li key={`streaming-ul-${index}`} className="list-disc marker:text-primary/70">
-              <MarkdownBlock content={item} components={components} />
-            </li>
-          ))}
-        </ul>
+      return renderMarkdownList(
+        block.items,
+        block.ordered,
+        components,
+        block.ordered ? 'streaming-ol' : 'streaming-ul'
       )
     case 'table':
-      return (
-        <div className="my-3 overflow-x-auto rounded-none border border-border bg-muted/20">
-          <table className="min-w-full border-collapse text-left text-[13px] xl:text-sm">
-            <tbody>
-              {block.rows.map((row, rowIndex) => (
-                <tr
-                  key={`streaming-row-${rowIndex}`}
-                  className="border-b border-border/70 last:border-b-0"
-                >
-                  {row.map((cell, cellIndex) => (
-                    <td
-                      key={`streaming-cell-${rowIndex}-${cellIndex}`}
-                      className="px-3 py-2 align-top"
-                    >
-                      <MarkdownBlock content={cell} components={components} />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )
+      return renderMarkdownTable(block.rows, components)
     case 'quote':
       return (
-        <blockquote className="my-2 border-l-2 border-primary/40 pl-3 text-muted-foreground">
+        <blockquote className={BLOCKQUOTE_CLASS}>
           <MarkdownBlock content={block.content} components={components} />
         </blockquote>
       )
@@ -370,12 +373,7 @@ export function ChatMarkdown({ content, className }: ChatMarkdownProps) {
   const components = useMarkdownComponents(resolvedTheme)
 
   return (
-    <div
-      className={cn(
-        'min-w-0 break-words text-[13px] leading-relaxed [overflow-wrap:anywhere] xl:text-sm',
-        className
-      )}
-    >
+    <div className={cn(MARKDOWN_ROOT_CLASS, className)}>
       <MarkdownBlock content={content} components={components} />
     </div>
   )
@@ -392,12 +390,7 @@ export function StreamingChatMarkdown({
   const blocks = useMemo(() => parseStreamingMarkdown(revealedContent), [revealedContent])
 
   return (
-    <div
-      className={cn(
-        'min-w-0 break-words text-[13px] leading-relaxed [overflow-wrap:anywhere] xl:text-sm',
-        className
-      )}
-    >
+    <div className={cn(MARKDOWN_ROOT_CLASS, className)}>
       {blocks.map((block, index) => (
         <StreamingMarkdownRenderer
           key={`stream-block-${index}-${block.type}-${block.isSettled ? 'settled' : 'live'}`}

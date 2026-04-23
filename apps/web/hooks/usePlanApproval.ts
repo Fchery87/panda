@@ -15,30 +15,24 @@ export interface PlanApprovalState {
   canBuild: boolean
 }
 
+const PLAN_APPROVAL_STATES: Record<string, PlanApprovalState> = {
+  ready_for_review: { status: 'awaiting_review', canApprove: true, canBuild: false },
+  accepted: { status: 'approved', canApprove: false, canBuild: true },
+  executing: { status: 'executing', canApprove: false, canBuild: false },
+  completed: { status: 'completed', canApprove: false, canBuild: false },
+  failed: { status: 'failed', canApprove: false, canBuild: true },
+}
+
+const DEFAULT_PLAN_APPROVAL_STATE: PlanApprovalState = {
+  status: 'idle',
+  canApprove: false,
+  canBuild: false,
+}
+
 export function derivePlanApprovalState(args: {
   planningSession: ProjectPlanningSessionRecord
 }): PlanApprovalState {
   const planStatus = args.planningSession?.generatedPlan?.status
 
-  if (planStatus === 'ready_for_review') {
-    return { status: 'awaiting_review', canApprove: true, canBuild: false }
-  }
-
-  if (planStatus === 'accepted') {
-    return { status: 'approved', canApprove: false, canBuild: true }
-  }
-
-  if (planStatus === 'executing') {
-    return { status: 'executing', canApprove: false, canBuild: false }
-  }
-
-  if (planStatus === 'completed') {
-    return { status: 'completed', canApprove: false, canBuild: false }
-  }
-
-  if (planStatus === 'failed') {
-    return { status: 'failed', canApprove: false, canBuild: true }
-  }
-
-  return { status: 'idle', canApprove: false, canBuild: false }
+  return (planStatus && PLAN_APPROVAL_STATES[planStatus]) || DEFAULT_PLAN_APPROVAL_STATE
 }

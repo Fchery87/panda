@@ -48,6 +48,17 @@ describe('ChatMarkdown', () => {
     expect(markup).toContain('<ul')
   })
 
+  test('renders a trailing ordered list tail without waiting for markdown to settle', () => {
+    const markup = renderToStaticMarkup(
+      <StreamingChatMarkdown content={'Before list\n\n1. first\n2. second'} batchMs={0} />
+    )
+
+    expect(markup).toContain('Before list')
+    expect(markup).toContain('first')
+    expect(markup).toContain('second')
+    expect(markup).toContain('<ol')
+  })
+
   test('renders a trailing table tail in a stable table shell', () => {
     const markup = renderToStaticMarkup(
       <StreamingChatMarkdown

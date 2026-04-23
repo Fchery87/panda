@@ -55,6 +55,21 @@ export function buildAgentPreviousMessagesSnapshot(args: {
   })
 }
 
+function toPromptContextMessage(message: PromptHistoryMessage) {
+  return {
+    role: message.role === 'assistant' ? 'assistant' : 'user',
+    content: message.content,
+  } as const
+}
+
+function toPromptContextFile(file: ProjectFileMetadata) {
+  return {
+    path: file.path,
+    content: '',
+    updatedAt: file.updatedAt,
+  }
+}
+
 export function buildAgentPromptBundle(args: BuildAgentPromptBundleArgs): AgentPromptBundle {
   const providerType = (args.provider?.config?.provider || 'openai') as ProviderType
   const previousMessagesSnapshot = buildAgentPreviousMessagesSnapshot({
@@ -70,16 +85,9 @@ export function buildAgentPromptBundle(args: BuildAgentPromptBundleArgs): AgentP
     projectDescription: args.projectDescription,
     mode: args.mode,
     provider: providerType,
-    previousMessages: previousMessagesSnapshot.map((message) => ({
-      role: message.role === 'assistant' ? 'assistant' : 'user',
-      content: message.content,
-    })),
+    previousMessages: previousMessagesSnapshot.map(toPromptContextMessage),
     projectOverviewContent: args.projectOverviewContent,
-    projectFiles: args.projectFiles?.map((file) => ({
-      path: file.path,
-      content: '',
-      updatedAt: file.updatedAt,
-    })),
+    projectFiles: args.projectFiles?.map(toPromptContextFile),
     memoryBankContent: args.memoryBankContent,
     userContent: args.userContent,
     contextFiles: args.contextFiles,

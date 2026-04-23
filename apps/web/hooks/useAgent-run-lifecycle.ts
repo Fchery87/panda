@@ -26,64 +26,61 @@ export function createRunLifecycle(args: {
 }) {
   let runFinalized = false
 
-  async function finalizeRunCompleted(summary?: string, usage?: TokenUsageInfo): Promise<void> {
+  async function finalizeRun(argsForOutcome: {
+    outcome: 'completed' | 'failed' | 'stopped'
+    flushReason: string
+    finalize: (runId: Id<'agentRuns'>) => Promise<unknown>
+  }): Promise<void> {
     if (!args.runIdRef.current || runFinalized) return
     const currentRunId = args.runIdRef.current
     runFinalized = true
-    await args.flushRunEventBuffer({ force: true, reason: 'complete' })
-    await args.completeRun({
-      runId: currentRunId,
-      summary,
-      usage,
-    })
+    await args.flushRunEventBuffer({ force: true, reason: argsForOutcome.flushReason })
+    await argsForOutcome.finalize(currentRunId)
     args.clearRun()
     if (args.onRunCompleted) {
       await args.onRunCompleted({
         runId: currentRunId,
-        outcome: 'completed',
+        outcome: argsForOutcome.outcome,
         completedPlanStepIndexes: args.getCompletedPlanStepIndexes(),
         planTotalSteps: args.getPlanTotalSteps(),
       })
     }
+  }
+
+  async function finalizeRunCompleted(summary?: string, usage?: TokenUsageInfo): Promise<void> {
+    await finalizeRun({
+      outcome: 'completed',
+      flushReason: 'complete',
+      finalize: (runId) =>
+        args.completeRun({
+          runId,
+          summary,
+          usage,
+        }),
+    })
   }
 
   async function finalizeRunFailed(message: string): Promise<void> {
-    if (!args.runIdRef.current || runFinalized) return
-    const currentRunId = args.runIdRef.current
-    runFinalized = true
-    await args.flushRunEventBuffer({ force: true, reason: 'fail' })
-    await args.failRun({
-      runId: currentRunId,
-      error: message,
+    await finalizeRun({
+      outcome: 'failed',
+      flushReason: 'fail',
+      finalize: (runId) =>
+        args.failRun({
+          runId,
+          error: message,
+        }),
     })
-    args.clearRun()
-    if (args.onRunCompleted) {
-      await args.onRunCompleted({
-        runId: currentRunId,
-        outcome: 'failed',
-        completedPlanStepIndexes: args.getCompletedPlanStepIndexes(),
-        planTotalSteps: args.getPlanTotalSteps(),
-      })
-    }
   }
 
   async function finalizeRunStopped(): Promise<void> {
-    if (!args.runIdRef.current || runFinalized) return
-    const currentRunId = args.runIdRef.current
-    runFinalized = true
-    await args.flushRunEventBuffer({ force: true, reason: 'stop' })
-    await args.stopRun({
-      runId: currentRunId,
+    await finalizeRun({
+      outcome: 'stopped',
+      flushReason: 'stop',
+      finalize: (runId) =>
+        args.stopRun({
+          runId,
+        }),
     })
-    args.clearRun()
-    if (args.onRunCompleted) {
-      await args.onRunCompleted({
-        runId: currentRunId,
-        outcome: 'stopped',
-        completedPlanStepIndexes: args.getCompletedPlanStepIndexes(),
-        planTotalSteps: args.getPlanTotalSteps(),
-      })
-    }
   }
 
   return {

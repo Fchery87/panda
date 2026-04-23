@@ -101,6 +101,12 @@ type SendMessageOptions = {
   attachmentsOnly?: boolean
 }
 
+type PublicSendMessageOptions = SendMessageOptions & {
+  clearInput: true
+}
+
+const SPEC_APPROVAL_CANCELLED_ERROR = 'Specification approval cancelled'
+
 function normalizeUserContent(rawContent: string, options?: SendMessageOptions): string {
   const trimmed = rawContent.trim()
   if (trimmed) return trimmed
@@ -110,18 +116,9 @@ function normalizeUserContent(rawContent: string, options?: SendMessageOptions):
   return ''
 }
 
-export function buildPublicSendMessageOptions(options?: SendMessageOptions): {
-  clearInput: true
-  approvedPlanExecution?: boolean
-  approvedPlanExecutionContext?: {
-    sessionId: string
-    plan: GeneratedPlanArtifact
-  }
-  includeEditorContext?: boolean
-  variantCount?: number
-  attachments?: UploadedAttachment[]
-  attachmentsOnly?: boolean
-} {
+export function buildPublicSendMessageOptions(
+  options?: SendMessageOptions
+): PublicSendMessageOptions {
   return {
     clearInput: true,
     approvedPlanExecution: options?.approvedPlanExecution,
@@ -130,6 +127,37 @@ export function buildPublicSendMessageOptions(options?: SendMessageOptions): {
     variantCount: options?.variantCount,
     attachments: options?.attachments,
     attachmentsOnly: options?.attachmentsOnly,
+  }
+}
+
+export function buildSendMessageContent(rawContent: string, options?: SendMessageOptions): string {
+  return prependEditorContextToContent(
+    normalizeUserContent(rawContent, options),
+    options?.includeEditorContext ?? true
+  )
+}
+
+export function buildSpecCancelledRunEvent(): {
+  type: 'spec_cancelled'
+  content: string
+  status: 'stopped'
+} {
+  return {
+    type: 'spec_cancelled',
+    content: SPEC_APPROVAL_CANCELLED_ERROR,
+    status: 'stopped',
+  }
+}
+
+export function buildFailedRunEvent(error: string): {
+  type: 'error'
+  error: string
+  status: 'failed'
+} {
+  return {
+    type: 'error',
+    error,
+    status: 'failed',
   }
 }
 
@@ -151,6 +179,24 @@ export function prependEditorContextToContent(
 
 function logUseAgentError(message: string, error: unknown): void {
   appLog.error(`[useAgent] ${message}`, error)
+}
+
+function createFallbackToolContext(
+  projectId: Id<'projects'>,
+  chatId: Id<'chats'>,
+  userId: Id<'users'>,
+  convexClient: AgentConvexClient,
+  artifactQueue: {
+    addFileArtifact: (path: string, content: string, originalContent?: string | null) => void
+    addCommandArtifact: (command: string, cwd?: string) => void
+  }
+) {
+  return createToolContext(projectId, chatId, userId, convexClient, artifactQueue, {
+    files: { batchGet: api.files.batchGet, list: api.files.list },
+    jobs: { create: api.jobs.create, updateStatus: api.jobs.updateStatus },
+    artifacts: { create: api.artifacts.create },
+    memoryBank: { update: api.memoryBank.update },
+  })
 }
 
 /**
@@ -399,26 +445,21 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   // Get user ID from auth
   const userId = currentUser?._id ?? null
 
+  const getToolContext = useCallback(
+    (activeUserId: Id<'users'>) =>
+      toolContextRef.current ??
+      createFallbackToolContext(projectId, chatId, activeUserId, convexClient, artifactQueue.current),
+    [projectId, chatId, convexClient]
+  )
+
   // Initialize tool context (will be populated when Convex client is available)
   useEffect(() => {
     if (!userId) return
 
     registerDefaultPlugins()
 
-    toolContextRef.current = createToolContext(
-      projectId,
-      chatId,
-      userId,
-      convexClient,
-      artifactQueue.current,
-      {
-        files: { batchGet: api.files.batchGet, list: api.files.list },
-        jobs: { create: api.jobs.create, updateStatus: api.jobs.updateStatus },
-        artifacts: { create: api.artifacts.create },
-        memoryBank: { update: api.memoryBank.update },
-      }
-    )
-  }, [projectId, chatId, convexClient, userId])
+    toolContextRef.current = getToolContext(userId)
+  }, [getToolContext, userId])
 
   const usageMetrics = useTokenUsageMetrics({
     mode,
@@ -535,11 +576,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         attachmentsOnly?: boolean
       }
     ) => {
-      const normalizedUserContent = normalizeUserContent(rawContent, options)
-      const userContent = prependEditorContextToContent(
-        normalizedUserContent,
-        options?.includeEditorContext ?? true
-      )
+      const userContent = buildSendMessageContent(rawContent, options)
       if (!userContent || isRunningRef.current) return
       if (options?.clearInput !== false) {
         setInput('')
@@ -576,6 +613,21 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       setError(null)
       setProgressSteps([])
       completedPlanStepIndexesRef.current = []
+
+      const resetSpecCancellationState = () => {
+        setStatus('idle')
+        setError(null)
+        setPendingSpec(null)
+        setCurrentSpec(null)
+        isRunningRef.current = false
+      }
+
+      const resetFailureState = (description: string) => {
+        setStatus('error')
+        setError(description)
+        isRunningRef.current = false
+        specPersistenceRef.current.clear()
+      }
 
       // Add user message to local state
       const userMessageId = `msg-${Date.now()}-user`
@@ -723,14 +775,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           throw new Error('User not authenticated')
         }
 
-        const toolContext =
-          toolContextRef.current ??
-          createToolContext(projectId, chatId, userId, convexClient, artifactQueue.current, {
-            files: { batchGet: api.files.batchGet, list: api.files.list },
-            jobs: { create: api.jobs.create, updateStatus: api.jobs.updateStatus },
-            artifacts: { create: api.artifacts.create },
-            memoryBank: { update: api.memoryBank.update },
-          })
+        const toolContext = getToolContext(userId)
 
         // Create agent runtime
         const runtimeSettings = getReasoningRuntimeSettings()
@@ -770,6 +815,20 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         let pendingPaint = false
         let replaceOnNextText = false
         let rewriteNoticeShown = false
+        const shouldProcessTerminalEvent = (eventType: 'complete' | 'error'): boolean => {
+          const terminalEvent = reduceTerminalAgentEvent(
+            {
+              runFinalized: runLifecycle.isFinalized(),
+              terminalStatus: terminalAgentStatus,
+            },
+            eventType
+          )
+          if (!terminalEvent.shouldProcess) {
+            return false
+          }
+          terminalAgentStatus = terminalEvent.terminalStatus
+          return true
+        }
         const buildUsageAnnotations = () => {
           const context = computeContextMetrics({
             usedTokens: usageMetrics.session.totalTokens + runUsage.totalTokens,
@@ -898,18 +957,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
 
           switch (event.type) {
             case 'complete':
-              {
-                const terminalEvent = reduceTerminalAgentEvent(
-                  {
-                    runFinalized: runLifecycle.isFinalized(),
-                    terminalStatus: terminalAgentStatus,
-                  },
-                  'complete'
-                )
-                if (!terminalEvent.shouldProcess) {
-                  break
-                }
-                terminalAgentStatus = terminalEvent.terminalStatus
+              if (!shouldProcessTerminalEvent('complete')) {
+                break
               }
               setPendingSpec(null)
               setStatus('complete')
@@ -957,55 +1006,25 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               break
 
             case 'error': {
-              {
-                const terminalEvent = reduceTerminalAgentEvent(
-                  {
-                    runFinalized: runLifecycle.isFinalized(),
-                    terminalStatus: terminalAgentStatus,
-                  },
-                  'error'
-                )
-                if (!terminalEvent.shouldProcess) {
-                  break
-                }
-                terminalAgentStatus = terminalEvent.terminalStatus
+              if (!shouldProcessTerminalEvent('error')) {
+                break
               }
-              if (event.error === 'Specification approval cancelled') {
-                setStatus('idle')
-                setError(null)
-                setPendingSpec(null)
-                setCurrentSpec(null)
-                isRunningRef.current = false
-                await appendRunEvent(
-                  {
-                    type: 'spec_cancelled',
-                    content: 'Specification approval cancelled',
-                    status: 'stopped',
-                  },
-                  { forceFlush: true }
-                )
+              if (event.error === SPEC_APPROVAL_CANCELLED_ERROR) {
+                resetSpecCancellationState()
+                await appendRunEvent(buildSpecCancelledRunEvent(), { forceFlush: true })
                 await runLifecycle.finalizeRunStopped()
                 break
               }
               const userFacing = getUserFacingAgentError(event.error)
-              setStatus('error')
-              setError(userFacing.description)
+              resetFailureState(userFacing.description)
               const errorStep: ProgressStep = buildTerminalErrorProgressStep({
                 title: userFacing.title,
                 description: userFacing.description,
               })
               setProgressSteps((prev) => [...prev, errorStep].slice(-30))
-              isRunningRef.current = false
-              specPersistenceRef.current.clear()
-              await appendRunEvent(
-                {
-                  type: 'error',
-                  error: event.error || 'Unknown error',
-                  status: 'failed',
-                },
-                { forceFlush: true }
-              )
-              await runLifecycle.finalizeRunFailed(event.error || 'Unknown error')
+              const errorMessage = event.error || 'Unknown error'
+              await appendRunEvent(buildFailedRunEvent(errorMessage), { forceFlush: true })
+              await runLifecycle.finalizeRunFailed(errorMessage)
               toast.error(userFacing.title, {
                 description: userFacing.description,
               })
@@ -1022,21 +1041,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
-        if (message === 'Specification approval cancelled') {
-          setStatus('idle')
-          setError(null)
-          setPendingSpec(null)
-          setCurrentSpec(null)
-          isRunningRef.current = false
+        if (message === SPEC_APPROVAL_CANCELLED_ERROR) {
+          resetSpecCancellationState()
           specPersistenceRef.current.clear()
-          await appendRunEvent(
-            {
-              type: 'spec_cancelled',
-              content: 'Specification approval cancelled',
-              status: 'stopped',
-            },
-            { forceFlush: true }
-          )
+          await appendRunEvent(buildSpecCancelledRunEvent(), { forceFlush: true })
           if (runIdRef.current) {
             await flushRunEventBuffer({ force: true, reason: 'spec-cancel' })
             await stopRun({
@@ -1047,18 +1055,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           return
         }
         const userFacing = getUserFacingAgentError(message)
-        setStatus('error')
-        setError(userFacing.description)
-        isRunningRef.current = false
-        specPersistenceRef.current.clear()
-        await appendRunEvent(
-          {
-            type: 'error',
-            error: message,
-            status: 'failed',
-          },
-          { forceFlush: true }
-        )
+        resetFailureState(userFacing.description)
+        await appendRunEvent(buildFailedRunEvent(message), { forceFlush: true })
         if (runIdRef.current) {
           try {
             await flushRunEventBuffer({ force: true, reason: 'fail' })
@@ -1093,10 +1091,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       appendRunEvent,
       completeRun,
       convex,
-      convexClient,
       failRun,
       flushRunEventBuffer,
       stopRun,
+      getToolContext,
       userId,
       runIdRef,
       getReasoningRuntimeSettings,
@@ -1125,11 +1123,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
 
   const sendMessageWithVariants = useCallback(
     async (rawContent: string, contextFiles?: string[], options?: SendMessageOptions) => {
-      const normalizedUserContent = normalizeUserContent(rawContent, options)
-      const userContent = prependEditorContextToContent(
-        normalizedUserContent,
-        options?.includeEditorContext ?? true
-      )
+      const userContent = buildSendMessageContent(rawContent, options)
       if (!userContent || isRunningRef.current || !userId) return
 
       const variantCount = options?.variantCount ?? 2
@@ -1153,14 +1147,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         activeSpec: currentSpec ?? undefined,
       })
 
-      const toolContext =
-        toolContextRef.current ??
-        createToolContext(projectId, chatId, userId, convexClient, artifactQueue.current, {
-          files: { batchGet: api.files.batchGet, list: api.files.list },
-          jobs: { create: api.jobs.create, updateStatus: api.jobs.updateStatus },
-          artifacts: { create: api.artifacts.create },
-          memoryBank: { update: api.memoryBank.update },
-        })
+      const toolContext = getToolContext(userId)
 
       const runtimeSettings = getReasoningRuntimeSettings()
       setInput('')
@@ -1241,7 +1228,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       architectBrainstormEnabled,
       planDraft,
       currentSpec,
-      convexClient,
+      getToolContext,
       getReasoningRuntimeSettings,
       specApprovalMode,
       model,
@@ -1297,14 +1284,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         throw new Error('Provider unavailable')
       }
 
-      const toolContext =
-        toolContextRef.current ??
-        createToolContext(projectId, chatId, userId, convexClient, artifactQueue.current, {
-          files: { batchGet: api.files.batchGet, list: api.files.list },
-          jobs: { create: api.jobs.create, updateStatus: api.jobs.updateStatus },
-          artifacts: { create: api.artifacts.create },
-          memoryBank: { update: api.memoryBank.update },
-        })
+      const toolContext = getToolContext(userId)
 
       const runtimeSettings = getReasoningRuntimeSettings()
       const runtime = createAgentRuntime(
@@ -1360,7 +1340,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       provider,
       projectId,
       chatId,
-      convexClient,
+      getToolContext,
       getReasoningRuntimeSettings,
       model,
       mode,

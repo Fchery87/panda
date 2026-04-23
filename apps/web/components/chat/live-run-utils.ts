@@ -195,6 +195,32 @@ function summarizeArgs(args: Record<string, unknown> | undefined): string | unde
   return serialized.length > 140 ? `${serialized.slice(0, 137)}...` : serialized
 }
 
+function buildErrorDetails(error: string | undefined): LiveProgressDetails | undefined {
+  return error
+    ? {
+        errorExcerpt: error,
+      }
+    : undefined
+}
+
+function buildReplayProgressStep(
+  id: string,
+  content: string,
+  status: LiveProgressStep['status'],
+  category: LiveProgressStep['category'],
+  createdAt: number,
+  details?: LiveProgressDetails
+): LiveProgressStep {
+  return {
+    id,
+    content,
+    status,
+    category,
+    details,
+    createdAt,
+  }
+}
+
 export function describeStepMeta(step: LiveProgressStep): {
   primary: string
   secondary: string | null
@@ -313,24 +339,20 @@ export function extractTargetFilePaths(
 
   if (toolName === 'read_files') {
     const paths = args.paths
-    if (Array.isArray(paths)) {
-      return paths.filter((p): p is string => typeof p === 'string')
-    }
-    return []
+    return Array.isArray(paths) ? paths.filter((p): p is string => typeof p === 'string') : []
   }
 
   if (toolName === 'write_files') {
     const files = args.files
-    if (Array.isArray(files)) {
-      return files
-        .map((file) =>
-          typeof file === 'object' && file !== null && 'path' in file
-            ? (file.path as unknown)
-            : undefined
-        )
-        .filter((p): p is string => typeof p === 'string')
-    }
-    return []
+    return Array.isArray(files)
+      ? files
+          .map((file) =>
+            typeof file === 'object' && file !== null && 'path' in file
+              ? (file.path as unknown)
+              : undefined
+          )
+          .filter((p): p is string => typeof p === 'string')
+      : []
   }
 
   return []
@@ -378,35 +400,29 @@ export function mapRunEventsToProgressSteps(events: PersistedRunEventInfo[]): Li
     }
 
     if (event.type === 'spec_verification') {
-      const step: LiveProgressStep = {
-        id: event._id ?? `spec-verification-${index}`,
-        content: event.content ?? 'Specification verification completed',
-        status: event.status === 'verified' ? 'completed' : 'error',
-        category: 'complete',
-        details: event.error
-          ? {
-              errorExcerpt: event.error,
-            }
-          : undefined,
-        createdAt: event.createdAt ?? Date.now(),
-      }
-      return [step]
+      return [
+        buildReplayProgressStep(
+          event._id ?? `spec-verification-${index}`,
+          event.content ?? 'Specification verification completed',
+          event.status === 'verified' ? 'completed' : 'error',
+          'complete',
+          event.createdAt ?? Date.now(),
+          buildErrorDetails(event.error)
+        ),
+      ]
     }
 
     if (event.type === 'error') {
-      const step: LiveProgressStep = {
-        id: event._id ?? `run-error-${index}`,
-        content: 'Run failed',
-        status: 'error',
-        category: 'complete',
-        details: event.error
-          ? {
-              errorExcerpt: event.error,
-            }
-          : undefined,
-        createdAt: event.createdAt ?? Date.now(),
-      }
-      return [step]
+      return [
+        buildReplayProgressStep(
+          event._id ?? `run-error-${index}`,
+          'Run failed',
+          'error',
+          'complete',
+          event.createdAt ?? Date.now(),
+          buildErrorDetails(event.error)
+        ),
+      ]
     }
 
     return []

@@ -24,6 +24,16 @@ export interface ProgressStep {
   createdAt: number
 }
 
+function createProgressId(): string {
+  return `progress-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+function buildErrorDetails(description: string): NonNullable<ProgressStep['details']> {
+  return {
+    errorExcerpt: description,
+  }
+}
+
 function summarizeArgs(args: Record<string, unknown> | undefined): string | undefined {
   if (!args) return undefined
   const serialized = JSON.stringify(args)
@@ -45,7 +55,7 @@ export function buildProgressStep(args: {
   completedPlanStepIndexes: number[]
 }): ProgressStep {
   return {
-    id: `progress-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: createProgressId(),
     content: args.content,
     status: args.progressStatus ?? 'running',
     category: args.progressCategory ?? 'other',
@@ -190,16 +200,15 @@ export function buildSnapshotProgressStep(args: {
 
 export function buildVerificationProgressStep(args: { passed?: boolean }): ProgressStep {
   return {
-    id: `progress-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: createProgressId(),
     content: args.passed ? 'Specification verified' : 'Specification failed',
     status: args.passed ? 'completed' : 'error',
     category: 'complete',
     details: args.passed
       ? undefined
-      : {
-          errorExcerpt:
-            'Specification verification failed. Review unmet checks in the run history.',
-        },
+      : buildErrorDetails(
+          'Specification verification failed. Review unmet checks in the run history.'
+        ),
     createdAt: Date.now(),
   }
 }
@@ -209,13 +218,11 @@ export function buildTerminalErrorProgressStep(args: {
   description: string
 }): ProgressStep {
   return {
-    id: `progress-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: createProgressId(),
     content: args.title,
     status: 'error',
     category: 'complete',
-    details: {
-      errorExcerpt: args.description,
-    },
+    details: buildErrorDetails(args.description),
     createdAt: Date.now(),
   }
 }
