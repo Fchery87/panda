@@ -377,6 +377,11 @@ export function getPromptForMode(context: PromptContext): CompletionMessage[] {
   const messages: CompletionMessage[] = []
 
   let systemPrompt = getSystemPromptForMode(context.chatMode)
+  const ritual = CHAT_MODE_CONFIGS[context.chatMode]?.handoffRitual?.systemMessage
+  if (ritual && (context.chatMode === 'code' || context.chatMode === 'build')) {
+    systemPrompt = `${systemPrompt}\n\n## Execution Ritual\n${ritual}`
+  }
+
   const resolvedSkills = resolveAgentSkillsForPromptContext(context)
 
   const brainstormEnabled =

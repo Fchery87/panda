@@ -95,7 +95,8 @@ export function buildAgentPromptContext(args: {
             hasDraftPlan: Boolean(args.planDraft?.trim()),
           }
         : undefined,
-    approvedPlanExecution: args.mode === 'build' ? args.approvedPlanExecutionContext : undefined,
+    approvedPlanExecution:
+      args.mode === 'build' || args.mode === 'code' ? args.approvedPlanExecutionContext : undefined,
     activeSpec: args.activeSpec,
   }
 }

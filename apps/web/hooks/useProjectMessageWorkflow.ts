@@ -223,7 +223,7 @@ export function useProjectMessageWorkflow(args: {
       setMobilePrimaryPanel('chat')
 
       const approvedPlanExecutionPayload =
-        mode === 'build'
+        mode === 'build' || mode === 'code'
           ? buildApprovedPlanExecutionPayload({
               content: trimmed,
               approvedPlanExecution:
