@@ -305,7 +305,10 @@ function buildArchitectPlanningContext(context: PromptContext): string {
 }
 
 function buildApprovedPlanExecutionContext(context: PromptContext): string {
-  if (context.chatMode !== 'build' || !context.approvedPlanExecution) {
+  if (
+    (context.chatMode !== 'build' && context.chatMode !== 'code') ||
+    !context.approvedPlanExecution
+  ) {
     return ''
   }
 

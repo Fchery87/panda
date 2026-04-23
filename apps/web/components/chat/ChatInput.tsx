@@ -25,6 +25,8 @@ import { ModelSelector, type AvailableModel } from './ModelSelector'
 import { VariantSelector } from './VariantSelector'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import { useEditorContextStore } from '@/stores/editorContextStore'
+import { useChatSessionStore } from '@/stores/chatSessionStore'
+import { OversightToggle } from './OversightToggle'
 
 /**
  * Enhance state for prompt enhancement button
@@ -197,6 +199,8 @@ export function ChatInput({
   const hasSendContent = input.trim().length > 0 || attachments.length > 0
   const activeFile = useEditorContextStore((state) => state.selectedFilePath)
   const selection = useEditorContextStore((state) => state.selection)
+  const oversightLevel = useChatSessionStore((state) => state.oversightLevel)
+  const setOversightLevel = useChatSessionStore((state) => state.setOversightLevel)
   const setMode = useCallback(
     (nextMode: ChatMode) => {
       onModeChange?.(nextMode)
@@ -491,22 +495,19 @@ export function ChatInput({
 
   return (
     <div className="surface-2 shrink-0 border-t border-border p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:p-3 sm:pb-3">
-      <div className="mb-2 flex items-start justify-between gap-3 px-1">
-        <div>
-          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            Direct Panda
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Keep the next request close to the current code and approval state.
-          </p>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-1">
+        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          Direct Panda
         </div>
-        <div className="hidden items-center gap-2 md:flex">
+        <div className="flex items-center gap-2">
           <span className="border border-border bg-background/70 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
             @{filePaths.length} files
           </span>
-          <span className="border border-border bg-background/70 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            {attachments.length} attachments
-          </span>
+          {attachments.length > 0 ? (
+            <span className="border border-border bg-background/70 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              {attachments.length} attachments
+            </span>
+          ) : null}
         </div>
       </div>
 
@@ -671,7 +672,14 @@ export function ChatInput({
           </button>
         )}
 
-        <div className="ml-auto flex items-center gap-2">
+        <OversightToggle
+          level={oversightLevel}
+          onChange={setOversightLevel}
+          disabled={isStreaming}
+          className="ml-auto"
+        />
+
+        <div className="flex items-center gap-2">
           <span className="hidden font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground sm:inline">
             Enter to send
           </span>

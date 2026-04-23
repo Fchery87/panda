@@ -84,6 +84,79 @@ describe('Plan Mode rewrite guardrails', () => {
     expect(streamedText).toContain('Key files: apps/web/app/auth/page.tsx')
   })
 
+  it('keeps fence state across split streaming chunks (no leakage when fence spans chunks)', async () => {
+    // Real streaming splits chunks mid-fence. The filter must keep `inArchitectFence`
+    // true across chunks until it sees the closing ```; otherwise the body of the
+    // code block leaks through as raw text.
+    let callCount = 0
+    const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }
+
+    const provider: LLMProvider = {
+      name: 'fake',
+      config,
+      async listModels() {
+        return []
+      },
+      async complete() {
+        throw new Error('not used')
+      },
+      async *completionStream(_options: CompletionOptions): AsyncGenerator<StreamChunk> {
+        callCount += 1
+        // Three chunks: opens fence, body (no markers), closes fence.
+        yield { type: 'text', content: "I'll create the file:\n```html\n<!DOCTYPE " }
+        yield { type: 'text', content: 'html>\n<html lang="en">\n<body>SECRET_CODE</body>\n</html>' }
+        yield { type: 'text', content: '\n```\nDone.' }
+        yield makeFinish()
+      },
+    }
+
+    const runtime = new AgentRuntime(
+      { provider, model: 'fake-model' },
+      {
+        projectId: 'p',
+        chatId: 'c',
+        userId: 'u',
+        readFiles: async () => [],
+        applyPatch: async () => ({ success: true, appliedHunks: 1, fuzzyMatches: 0 }),
+        writeFiles: async () => [],
+        runCommand: async () => ({ stdout: '', stderr: '', exitCode: 0, durationMs: 0 }),
+        updateMemoryBank: async () => ({ success: true }),
+      }
+    )
+
+    const events: any[] = []
+    for await (const evt of runtime.run({
+      projectId: 'p',
+      chatId: 'c',
+      userId: 'u',
+      chatMode: 'plan',
+      provider: 'zai',
+      userMessage: 'help me plan',
+    })) {
+      events.push(evt)
+    }
+
+    expect(callCount).toBe(1)
+
+    const streamedText = events
+      .filter((e: any) => e.type === 'text')
+      .map((e: any) => e.content ?? '')
+      .join('')
+
+    // Body of the fence must NOT leak through.
+    expect(streamedText).not.toContain('SECRET_CODE')
+    expect(streamedText).not.toContain('<!DOCTYPE')
+    expect(streamedText).not.toContain('<html lang')
+    // Surrounding prose must survive.
+    expect(streamedText).toContain("I'll create the file:")
+    expect(streamedText).toContain('Done.')
+    // Exactly one collapsed marker should appear (not duplicated per chunk).
+    const markerCount = (
+      streamedText.match(/\[code collapsed — use Build mode to execute\]/g) ?? []
+    ).length
+    expect(markerCount).toBe(1)
+  })
+
   it('does not stream fenced code to the UI', async () => {
     // Architect mode uses inline filtering — no reset or second LLM call.
     // Text before the fence streams; the fence and its body are silently dropped.

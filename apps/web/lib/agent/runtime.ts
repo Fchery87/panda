@@ -640,10 +640,8 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
             const markerIdx = chunk.indexOf('```')
             if (markerIdx === -1) {
               if (!inArchitectFence) filtered += chunk
-              else {
-                filtered += '\n[code collapsed — use Build mode to execute]\n'
-                inArchitectFence = false
-              }
+              // Inside fence with no closing marker in this chunk: silently drop
+              // the chunk and keep waiting for the closing fence in a later chunk.
               break
             }
             if (!inArchitectFence) {

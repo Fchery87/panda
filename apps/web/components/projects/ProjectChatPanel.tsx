@@ -6,7 +6,6 @@ import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { AlertTriangle, History, RotateCcw } from 'lucide-react'
 import { IconOverflow, IconNewChat } from '@/components/ui/icons'
-import { OversightToggle } from '@/components/chat/OversightToggle'
 import Link from 'next/link'
 import { ChatActionBar } from '@/components/chat/ChatActionBar'
 import { ChatInput } from '@/components/chat/ChatInput'
@@ -70,14 +69,12 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
   // Store reads — these replace the equivalent props
   const chatMode = useChatSessionStore((s) => s.chatMode)
   const architectBrainstormEnabled = useChatSessionStore((s) => s.architectBrainstormEnabled)
-  const oversightLevel = useChatSessionStore((s) => s.oversightLevel)
   const contextualPrompt = useChatSessionStore((s) => s.contextualPrompt)
   const reasoningVariant = useChatSessionStore((s) => s.reasoningVariant)
   const specSurfaceMode = useWorkspaceUiStore((s) => s.specSurfaceMode)
   const isMobileLayout = useWorkspaceUiStore((s) => s.isMobileLayout)
 
   // Callbacks computed from stores — no prop needed
-  const onOversightLevelChange = useChatSessionStore((s) => s.setOversightLevel)
   const onArchitectBrainstormEnabledChange = useChatSessionStore(
     (s) => s.setArchitectBrainstormEnabled
   )
@@ -130,11 +127,6 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
           </div>
 
           <div className="flex items-center gap-1.5">
-            <OversightToggle
-              level={oversightLevel}
-              onChange={onOversightLevelChange}
-              disabled={isStreaming}
-            />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
