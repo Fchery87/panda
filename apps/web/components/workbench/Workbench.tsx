@@ -26,10 +26,11 @@ interface WorkbenchProps {
   files: Array<{
     _id: Id<'files'>
     path: string
-    content?: string
-    isBinary: boolean
+    isBinary?: boolean
     updatedAt: number
   }>
+  selectedFileContent?: string
+  selectedFileContentLoaded?: boolean
   selectedFilePath: string | null
   selectedLocation?: {
     line: number
@@ -87,6 +88,8 @@ export function Workbench({
   currentChatId: _currentChatId,
   isMobileLayout,
   files,
+  selectedFileContent,
+  selectedFileContentLoaded = true,
   selectedFilePath,
   selectedLocation,
   openTabs = [],
@@ -124,6 +127,7 @@ export function Workbench({
   const selectedWorkspaceTab = openTabs.find((tab) => tab.path === selectedFilePath) ?? null
   const selectedPlanTab =
     selectedWorkspaceTab && isWorkspacePlanTab(selectedWorkspaceTab) ? selectedWorkspaceTab : null
+  const selectedEditorContent = selectedFileContent ?? ''
 
   const recentFiles = useMemo(() => {
     return openTabs
@@ -178,16 +182,18 @@ export function Workbench({
                     approveDisabled={planApproveDisabled}
                     buildDisabled={planBuildDisabled}
                   />
-                ) : selectedFile ? (
+                ) : selectedFile && selectedFileContentLoaded ? (
                   <EditorContainer
                     filePath={selectedFile.path}
-                    content={selectedFile.content ?? ''}
+                    content={selectedEditorContent}
                     jumpTo={selectedLocation}
                     onSave={(content) => onSaveFile(selectedFile.path, content)}
                     onDirtyChange={(isDirty) => onEditorDirtyChange(selectedFile.path, isDirty)}
                     onContextualChat={onContextualChat}
                     onInlineChat={onInlineChat}
                   />
+                ) : selectedFile ? (
+                  <FileContentLoadingState filePath={selectedFile.path} />
                 ) : (
                   <WorkspaceHome
                     focusState={focusState}
@@ -271,7 +277,7 @@ export function Workbench({
                   approveDisabled={planApproveDisabled}
                   buildDisabled={planBuildDisabled}
                 />
-              ) : selectedFile ? (
+              ) : selectedFile && selectedFileContentLoaded ? (
                 <div className="flex h-full min-h-0 min-w-0 flex-col">
                   {pendingArtifactPreview ? (
                     <PendingArtifactOverlay
@@ -283,7 +289,7 @@ export function Workbench({
                     <div className="min-h-0 min-w-0 flex-1">
                       <EditorContainer
                         filePath={selectedFile.path}
-                        content={selectedFile.content ?? ''}
+                        content={selectedEditorContent}
                         jumpTo={selectedLocation}
                         onSave={(content) => onSaveFile(selectedFile.path, content)}
                         onDirtyChange={(isDirty) => onEditorDirtyChange(selectedFile.path, isDirty)}
@@ -293,6 +299,8 @@ export function Workbench({
                     </div>
                   )}
                 </div>
+              ) : selectedFile ? (
+                <FileContentLoadingState filePath={selectedFile.path} />
               ) : (
                 <WorkspaceHome
                   focusState={focusState}
@@ -325,6 +333,18 @@ export function Workbench({
             <LivePreview className="dot-grid h-full" url={previewUrl} />
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+function FileContentLoadingState({ filePath }: { filePath: string }) {
+  return (
+    <div className="surface-0 flex h-full items-center justify-center p-6">
+      <div className="surface-1 shadow-sharp-sm border border-border p-4">
+        <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+          Loading {filePath}
+        </p>
       </div>
     </div>
   )

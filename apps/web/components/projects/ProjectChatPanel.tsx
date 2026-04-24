@@ -25,6 +25,10 @@ import { useWorkspaceUiStore } from '@/stores/workspaceUiStore'
 import { useWorkspaceRuntime } from '@/contexts/WorkspaceRuntimeContext'
 import { derivePlanApprovalState } from '@/hooks/usePlanApproval'
 import { getChatModeSurfacePresentation } from '@/lib/chat/chat-mode-surface'
+import {
+  findLatestRecoverableCheckpoint,
+  type RuntimeCheckpointSummary,
+} from '@/components/chat/runtime-checkpoints'
 
 interface ProjectChatPanelProps {
   projectId: Id<'projects'>
@@ -94,20 +98,11 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
   })
 
   const runtimeCheckpoints = useQuery(
-    api.agentRuns.listRuntimeCheckpoints,
+    api.agentRuns.listRuntimeCheckpointSummaries,
     activeChatId ? { chatId: activeChatId, limit: 6 } : 'skip'
-  ) as
-    | Array<{
-        _id: string
-        reason?: 'step' | 'complete' | 'error'
-        savedAt?: number
-        sessionID?: string
-      }>
-    | undefined
+  ) as RuntimeCheckpointSummary[] | undefined
 
-  const latestRecoverableCheckpoint = (runtimeCheckpoints ?? []).find(
-    (cp) => cp.reason !== 'complete' && typeof cp.sessionID === 'string'
-  )
+  const latestRecoverableCheckpoint = findLatestRecoverableCheckpoint(runtimeCheckpoints)
 
   const activeRole = getChatModeSurfacePresentation(chatMode)
 

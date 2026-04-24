@@ -104,7 +104,10 @@ describe('Plan Mode rewrite guardrails', () => {
         callCount += 1
         // Three chunks: opens fence, body (no markers), closes fence.
         yield { type: 'text', content: "I'll create the file:\n```html\n<!DOCTYPE " }
-        yield { type: 'text', content: 'html>\n<html lang="en">\n<body>SECRET_CODE</body>\n</html>' }
+        yield {
+          type: 'text',
+          content: 'html>\n<html lang="en">\n<body>SECRET_CODE</body>\n</html>',
+        }
         yield { type: 'text', content: '\n```\nDone.' }
         yield makeFinish()
       },

@@ -66,7 +66,6 @@ interface FileTreeProps {
   files: Array<{
     _id: string
     path: string
-    content: string
     isBinary: boolean
     updatedAt: number
   }>

@@ -1,9 +1,12 @@
 'use client'
 
-import { Fragment } from 'react'
-import { motion } from 'framer-motion'
+import { Fragment, useState } from 'react'
+import { useQuery } from 'convex/react'
+import { motion, useReducedMotion } from 'framer-motion'
 import Image from 'next/image'
 import { toast } from 'sonner'
+import { api } from '@convex/_generated/api'
+import type { Id } from '@convex/_generated/dataModel'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
@@ -25,6 +28,8 @@ interface MessageBubbleProps {
   failedCriteria?: Array<{ id: string; description: string }>
 }
 
+type MessageAttachment = NonNullable<Message['attachments']>[number]
+
 function formatTimestamp(timestamp: number): string {
   const date = new Date(timestamp)
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -33,6 +38,115 @@ function formatTimestamp(timestamp: number): string {
 function redactFencedCodeBlocks(content: string): string {
   if (!content.includes('```')) return content
   return content.replace(/```[\s\S]*?```/g, '[code omitted in Build mode — see artifacts]')
+}
+
+function MessageAttachmentItem({
+  attachment,
+  index,
+}: {
+  attachment: MessageAttachment
+  index: number
+}) {
+  const [shouldResolveFileUrl, setShouldResolveFileUrl] = useState(false)
+  const shouldResolveUrl = attachment.kind === 'image' || shouldResolveFileUrl
+  const queriedUrl = useQuery(
+    api.messages.getAttachmentUrl,
+    shouldResolveUrl && attachment._id
+      ? { attachmentId: attachment._id as Id<'chatAttachments'> }
+      : 'skip'
+  )
+  const url = attachment.url ?? queriedUrl ?? undefined
+  const sizeLabel = formatAttachmentSize(attachment.size)
+
+  if (attachment.kind === 'image' && url) {
+    return (
+      <a
+        key={`${attachment.filename}-${index}`}
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="surface-1 flex w-full max-w-md flex-col gap-2 border border-border p-2"
+      >
+        <div className="relative aspect-[4/3] w-full overflow-hidden border border-border bg-muted">
+          <Image
+            src={url}
+            alt={attachment.filename}
+            fill
+            sizes="(max-width: 768px) 100vw, 28rem"
+            className="object-cover"
+            unoptimized
+          />
+        </div>
+        <div className="flex items-center justify-between gap-2 font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
+          <span className="truncate text-foreground">{attachment.filename}</span>
+          <span className="shrink-0">Open</span>
+        </div>
+      </a>
+    )
+  }
+
+  const isResolvingFileUrl = shouldResolveFileUrl && queriedUrl === undefined && !url
+  const isUnavailable = Boolean(shouldResolveFileUrl && queriedUrl === null && !url)
+
+  if (url) {
+    return (
+      <a
+        key={`${attachment.filename}-${index}`}
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="surface-1 flex w-full max-w-md items-center gap-3 border border-border px-3 py-2 text-left hover:bg-muted/50"
+      >
+        <div className="flex h-9 w-9 items-center justify-center border border-border bg-muted text-muted-foreground">
+          <FileText className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1 font-mono text-[11px] uppercase tracking-wide">
+          <div className="truncate text-foreground">{attachment.filename}</div>
+          <div className="truncate text-muted-foreground">
+            {[attachment.contentType, sizeLabel].filter(Boolean).join(' · ') || 'Stored attachment'}
+          </div>
+        </div>
+        <Download className="h-4 w-4 shrink-0 text-muted-foreground" />
+      </a>
+    )
+  }
+
+  return (
+    <button
+      key={`${attachment.filename}-${index}`}
+      type="button"
+      onClick={() => setShouldResolveFileUrl(true)}
+      disabled={isResolvingFileUrl || isUnavailable || !attachment._id}
+      className={cn(
+        'surface-1 flex w-full max-w-md items-center gap-3 border border-border px-3 py-2 text-left',
+        !isResolvingFileUrl && !isUnavailable && attachment._id && 'hover:bg-muted/50',
+        (isResolvingFileUrl || isUnavailable || !attachment._id) && 'cursor-not-allowed opacity-75'
+      )}
+    >
+      <div className="flex h-9 w-9 items-center justify-center border border-border bg-muted text-muted-foreground">
+        <FileText className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1 font-mono text-[11px] uppercase tracking-wide">
+        <div className="truncate text-foreground">{attachment.filename}</div>
+        <div className="truncate text-muted-foreground">
+          {[attachment.contentType, sizeLabel].filter(Boolean).join(' · ') || 'Stored attachment'}
+        </div>
+      </div>
+      {isResolvingFileUrl ? (
+        <span className="shrink-0 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+          Loading
+        </span>
+      ) : isUnavailable || !attachment._id ? (
+        <span className="shrink-0 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+          Unavailable
+        </span>
+      ) : (
+        <span className="shrink-0 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+          Load
+        </span>
+      )}
+    </button>
+  )
 }
 
 function renderInlineFormatting(text: string) {
@@ -268,6 +382,7 @@ export function MessageBubble({
   disableActions = false,
   failedCriteria = [],
 }: MessageBubbleProps) {
+  const shouldReduceMotion = useReducedMotion()
   const isUser = message.role === 'user'
   const attachmentsOnly = message.annotations?.attachmentsOnly === true
   const isAssistant = message.role === 'assistant'
@@ -320,9 +435,9 @@ export function MessageBubble({
     >
       {/* Avatar */}
       <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.2 }}
+        initial={shouldReduceMotion ? { opacity: 0 } : { scale: 0.8, opacity: 0 }}
+        animate={shouldReduceMotion ? { opacity: 1 } : { scale: 1, opacity: 1 }}
+        transition={{ duration: shouldReduceMotion ? 0.01 : 0.2 }}
       >
         <Avatar className={cn('h-7 w-7 shrink-0 xl:h-8 xl:w-8', isUser && 'bg-primary/10')}>
           {isUser ? (
@@ -397,9 +512,12 @@ export function MessageBubble({
 
         {!attachmentsOnly ? (
           <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.2, delay: 0.05 }}
+            initial={shouldReduceMotion ? { opacity: 0 } : { scale: 0.95, opacity: 0 }}
+            animate={shouldReduceMotion ? { opacity: 1 } : { scale: 1, opacity: 1 }}
+            transition={{
+              duration: shouldReduceMotion ? 0.01 : 0.2,
+              delay: shouldReduceMotion ? 0 : 0.05,
+            }}
             className={cn(
               'relative min-w-0 rounded-none border px-4 py-2.5 text-sm leading-relaxed',
               'px-3 py-2 text-[13px] xl:px-4 xl:py-2.5 xl:text-sm',
@@ -452,7 +570,11 @@ export function MessageBubble({
                     isUser ? 'bg-primary-foreground' : 'bg-foreground'
                   )}
                   animate={{ opacity: [1, 0, 1] }}
-                  transition={{ duration: 0.8, repeat: Infinity, ease: 'easeInOut' }}
+                  transition={{
+                    duration: shouldReduceMotion ? 0.01 : 0.8,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                  }}
                 />
               )}
             </div>
@@ -461,57 +583,13 @@ export function MessageBubble({
 
         {message.attachments && message.attachments.length > 0 ? (
           <div className="grid w-full gap-2">
-            {message.attachments.map((attachment, index) => {
-              const sizeLabel = formatAttachmentSize(attachment.size)
-              if (attachment.kind === 'image' && attachment.url) {
-                return (
-                  <a
-                    key={`${attachment.filename}-${index}`}
-                    href={attachment.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="surface-1 flex w-full max-w-md flex-col gap-2 border border-border p-2"
-                  >
-                    <div className="relative aspect-[4/3] w-full overflow-hidden border border-border bg-muted">
-                      <Image
-                        src={attachment.url}
-                        alt={attachment.filename}
-                        fill
-                        sizes="(max-width: 768px) 100vw, 28rem"
-                        className="object-cover"
-                        unoptimized
-                      />
-                    </div>
-                    <div className="flex items-center justify-between gap-2 font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
-                      <span className="truncate text-foreground">{attachment.filename}</span>
-                      <span className="shrink-0">Open</span>
-                    </div>
-                  </a>
-                )
-              }
-
-              return (
-                <a
-                  key={`${attachment.filename}-${index}`}
-                  href={attachment.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="surface-1 flex w-full max-w-md items-center gap-3 border border-border px-3 py-2"
-                >
-                  <div className="flex h-9 w-9 items-center justify-center border border-border bg-muted text-muted-foreground">
-                    <FileText className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0 flex-1 font-mono text-[11px] uppercase tracking-wide">
-                    <div className="truncate text-foreground">{attachment.filename}</div>
-                    <div className="truncate text-muted-foreground">
-                      {[attachment.contentType, sizeLabel].filter(Boolean).join(' · ') ||
-                        'Stored attachment'}
-                    </div>
-                  </div>
-                  <Download className="h-4 w-4 shrink-0 text-muted-foreground" />
-                </a>
-              )
-            })}
+            {message.attachments.map((attachment, index) => (
+              <MessageAttachmentItem
+                key={attachment._id ?? `${attachment.filename}-${index}`}
+                attachment={attachment}
+                index={index}
+              />
+            ))}
           </div>
         ) : null}
 

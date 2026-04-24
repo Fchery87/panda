@@ -76,7 +76,7 @@ describe('transcript blocks', () => {
           _id: 'event-1',
           runId: 'run-1',
           type: 'snapshot',
-          content: 'Snapshot saved',
+          contentPreview: 'Snapshot saved',
           snapshot: {
             hash: 'abc123',
             step: 1,
@@ -128,7 +128,7 @@ describe('transcript blocks', () => {
         {
           _id: 'event-1',
           type: 'progress_step',
-          content: 'Tool completed: write_files',
+          contentPreview: 'Tool completed: write_files',
           status: 'completed',
           progressCategory: 'tool',
           progressToolName: 'write_files',
@@ -138,7 +138,7 @@ describe('transcript blocks', () => {
         {
           _id: 'event-2',
           type: 'progress_step',
-          content: 'Tool completed: run_command',
+          contentPreview: 'Tool completed: run_command',
           status: 'completed',
           progressCategory: 'tool',
           progressToolName: 'run_command',
@@ -147,7 +147,7 @@ describe('transcript blocks', () => {
         {
           _id: 'event-3',
           type: 'progress_step',
-          content: 'Run complete',
+          contentPreview: 'Run complete',
           status: 'completed',
           progressCategory: 'complete',
           createdAt: 340,

@@ -110,11 +110,11 @@ describe('PlanArtifactTab', () => {
           {
             _id: 'file_1' as never,
             path: 'src/index.ts',
-            content: 'export const value = 1',
             isBinary: false,
             updatedAt: 1,
           },
         ]}
+        selectedFileContent="export const value = 1"
         selectedFilePath={planTab.path}
         openTabs={[{ path: 'src/index.ts' }, planTab]}
         onSelectFile={() => {}}

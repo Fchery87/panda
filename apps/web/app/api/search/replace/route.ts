@@ -1,6 +1,6 @@
 // apps/web/app/api/search/replace/route.ts
 import { readFile, writeFile } from 'node:fs/promises'
-import { resolve } from 'node:path'
+import { isAbsolute, relative, resolve } from 'node:path'
 import { isAuthenticatedNextjs } from '@/lib/auth/nextjs'
 
 const MAX_REGEX_PATTERN_LENGTH = 256
@@ -33,6 +33,17 @@ interface ReplaceResult {
   replacements: number
 }
 
+function resolveWorkspacePath(filePath: string): string | null {
+  const absPath = resolve(/*turbopackIgnore: true*/ process.cwd(), filePath)
+  const relativePath = relative(/*turbopackIgnore: true*/ process.cwd(), absPath)
+
+  if (relativePath === '' || relativePath.startsWith('..') || isAbsolute(relativePath)) {
+    return null
+  }
+
+  return absPath
+}
+
 export async function POST(req: Request) {
   if (!(await isAuthenticatedNextjs())) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
@@ -47,15 +58,13 @@ export async function POST(req: Request) {
     )
   }
 
-  // Prevent path traversal
-  const cwd = process.cwd()
-  const absPath = resolve(cwd, body.filePath)
-  if (!absPath.startsWith(cwd)) {
+  const absPath = resolveWorkspacePath(body.filePath)
+  if (!absPath) {
     return Response.json({ error: 'Path traversal not allowed' }, { status: 400 })
   }
 
   try {
-    const content = await readFile(absPath, 'utf-8')
+    const content = await readFile(/*turbopackIgnore: true*/ absPath, 'utf-8')
 
     if (Buffer.byteLength(content, 'utf8') > MAX_FILE_SIZE_BYTES) {
       return Response.json({ error: 'File too large for replace' }, { status: 413 })
@@ -79,7 +88,7 @@ export async function POST(req: Request) {
     })
 
     if (replacements > 0) {
-      await writeFile(absPath, newContent, 'utf-8')
+      await writeFile(/*turbopackIgnore: true*/ absPath, newContent, 'utf-8')
     }
 
     const result: ReplaceResult = { filePath: body.filePath, replacements }

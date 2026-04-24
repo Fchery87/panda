@@ -1,7 +1,7 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { ChatMode, PersistedRunEvent, RuntimeCheckpointPayload, TokenUsage } from './schema'
-import type { Id } from './_generated/dataModel'
+import type { Doc, Id } from './_generated/dataModel'
 import { requireAgentRunOwner, requireChatOwner, requireProjectOwner } from './lib/authz'
 import { trackUserAnalytics } from './lib/userAnalytics'
 
@@ -56,6 +56,50 @@ function parseRuntimeCheckpointEnvelope(checkpoint: unknown): RuntimeCheckpointE
   }
 
   return { version, sessionID, agentName, reason, savedAt }
+}
+
+function previewText(value: string | undefined): string | undefined {
+  return value === undefined ? undefined : value.slice(0, 500)
+}
+
+function toRunEventSummary(event: Doc<'agentRunEvents'>) {
+  return {
+    _id: event._id,
+    runId: event.runId,
+    chatId: event.chatId,
+    sequence: event.sequence,
+    type: event.type,
+    status: event.status,
+    progressCategory: event.progressCategory,
+    progressToolName: event.progressToolName,
+    progressHasArtifactTarget: event.progressHasArtifactTarget,
+    targetFilePaths: event.targetFilePaths,
+    toolCallId: event.toolCallId,
+    toolName: event.toolName,
+    durationMs: event.durationMs,
+    planStepIndex: event.planStepIndex,
+    planStepTitle: event.planStepTitle,
+    planTotalSteps: event.planTotalSteps,
+    completedPlanStepIndexes: event.completedPlanStepIndexes,
+    usage: event.usage,
+    snapshot: event.snapshot,
+    createdAt: event.createdAt,
+    contentPreview: previewText(event.content),
+    errorPreview: previewText(event.error),
+  }
+}
+
+function toRuntimeCheckpointSummary(checkpoint: Doc<'harnessRuntimeCheckpoints'>) {
+  return {
+    _id: checkpoint._id,
+    runId: checkpoint.runId,
+    chatId: checkpoint.chatId,
+    sessionID: checkpoint.sessionID,
+    reason: checkpoint.reason,
+    savedAt: checkpoint.savedAt,
+    agentName: checkpoint.agentName,
+    version: checkpoint.version,
+  }
 }
 
 export const create = mutation({
@@ -237,10 +281,12 @@ export const usageByChatMode = query({
   },
   handler: async (ctx, args) => {
     await requireChatOwner(ctx, args.chatId)
+    // Recent estimate only; this keeps the reactive query bounded on chat mount.
     const runs = await ctx.db
       .query('agentRuns')
       .withIndex('by_chat_started', (q) => q.eq('chatId', args.chatId))
-      .collect()
+      .order('desc')
+      .take(50)
 
     const usage = {
       promptTokens: 0,
@@ -282,6 +328,24 @@ export const listEventsByChat = query({
       .take(limit)
 
     return events.reverse()
+  },
+})
+
+export const listEventSummariesByChat = query({
+  args: {
+    chatId: v.id('chats'),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await requireChatOwner(ctx, args.chatId)
+    const limit = Math.max(1, Math.min(args.limit ?? 60, 200))
+    const events = await ctx.db
+      .query('agentRunEvents')
+      .withIndex('by_chat_created', (q) => q.eq('chatId', args.chatId))
+      .order('desc')
+      .take(limit)
+
+    return events.reverse().map(toRunEventSummary)
   },
 })
 
@@ -408,5 +472,41 @@ export const listRuntimeCheckpoints = query({
     }
 
     throw new Error('runId or chatId is required to list runtime checkpoints')
+  },
+})
+
+export const listRuntimeCheckpointSummaries = query({
+  args: {
+    runId: v.optional(v.id('agentRuns')),
+    chatId: v.optional(v.id('chats')),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = Math.max(1, Math.min(args.limit ?? 20, 200))
+
+    if (args.runId) {
+      await requireAgentRunOwner(ctx, args.runId)
+      const checkpoints = await ctx.db
+        .query('harnessRuntimeCheckpoints')
+        .withIndex('by_run_saved', (q) => q.eq('runId', args.runId))
+        .order('desc')
+        .take(limit)
+
+      return checkpoints.map(toRuntimeCheckpointSummary)
+    }
+
+    if (args.chatId) {
+      const chatId = args.chatId
+      await requireChatOwner(ctx, args.chatId)
+      const checkpoints = await ctx.db
+        .query('harnessRuntimeCheckpoints')
+        .withIndex('by_chat_saved', (q) => q.eq('chatId', chatId))
+        .order('desc')
+        .take(limit)
+
+      return checkpoints.map(toRuntimeCheckpointSummary)
+    }
+
+    throw new Error('runId or chatId is required to list runtime checkpoint summaries')
   },
 })

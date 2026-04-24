@@ -1,10 +1,10 @@
 import type { Message, ToolCallInfo } from '@/components/chat/types'
 import {
   deriveChatMilestoneSummaries,
-  mapLatestRunProgressSteps,
+  mapLatestRunSummaryProgressSteps,
   type LiveProgressStep,
 } from '@/components/chat/live-run-utils'
-import type { PersistedRunEventInfo } from '@/components/chat/types'
+import type { PersistedRunEventSummaryInfo } from '@/components/chat/types'
 import type { ChatMode } from '@/lib/agent/chat-modes'
 import { getTranscriptModePolicy } from './transcript-policy'
 
@@ -142,7 +142,7 @@ export function buildTranscriptFeedItems(args: {
   messages: Message[]
   chatMode: ChatMode
   liveSteps?: LiveProgressStep[]
-  runEvents?: PersistedRunEventInfo[]
+  runEvents?: PersistedRunEventSummaryInfo[]
   currentSpec?: unknown
   pendingSpec?: unknown
   planStatus?: unknown
@@ -163,7 +163,7 @@ export function buildTranscriptFeedItems(args: {
   const steps =
     args.liveSteps && args.liveSteps.length > 0
       ? args.liveSteps
-      : mapLatestRunProgressSteps(args.runEvents ?? [])
+      : mapLatestRunSummaryProgressSteps(args.runEvents ?? [])
 
   const summaries = deriveChatMilestoneSummaries(steps)
   if (summaries.length === 0) {

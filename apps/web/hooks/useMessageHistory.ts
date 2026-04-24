@@ -71,11 +71,13 @@ export function useMessageHistory(
   chatId: Id<'chats'> | undefined,
   mode: ChatMode,
   getReasoningRuntimeSettings: () => { showReasoningPanel: boolean },
-  isRunningRef: React.RefObject<boolean>
+  isRunningRef: React.RefObject<boolean>,
+  enabled = true
 ): UseMessageHistoryResult {
+  const queryArgs = enabled && chatId ? { chatId } : 'skip'
   const { results: persistedMessages, status: messagesPaginationStatus } = usePaginatedQuery(
-    api.messages.listPaginated,
-    chatId ? { chatId } : 'skip',
+    api.messages.listPaginatedLite,
+    queryArgs,
     { initialNumItems: 50 }
   )
 
@@ -83,7 +85,7 @@ export function useMessageHistory(
 
   // Hydrate local chat state from Convex when chat changes.
   useEffect(() => {
-    if (!persistedMessages || isRunningRef.current) return
+    if (!enabled || !persistedMessages || isRunningRef.current) return
     const runtimeSettings = getReasoningRuntimeSettings()
 
     const hydrated: Message[] = persistedMessages
@@ -148,7 +150,7 @@ export function useMessageHistory(
       })
 
     setMessages(hydrated)
-  }, [chatId, persistedMessages, getReasoningRuntimeSettings, mode, isRunningRef])
+  }, [chatId, enabled, persistedMessages, getReasoningRuntimeSettings, mode, isRunningRef])
 
   return { messages, setMessages, persistedMessages, messagesPaginationStatus }
 }

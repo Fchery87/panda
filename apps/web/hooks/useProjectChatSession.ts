@@ -19,6 +19,7 @@ import { useChatSessionStore } from '@/stores/chatSessionStore'
 
 type ChatSessionChat = {
   _id: Id<'chats'>
+  title?: string
   mode: ChatMode
 }
 
@@ -66,19 +67,40 @@ export function useProjectChatSession<TChat extends ChatSessionChat>(args: {
   settingsRef.current = settings
   const settingsProviderVersion = settings?.updatedAt ?? null
   const userAgentDefaults = readAgentPolicyField(settings, 'agentDefaults')
+  const activeChatMissingFromRecent = Boolean(
+    activeChatId && args.chats && !args.chats.some((chat) => chat._id === activeChatId)
+  )
+  const fetchedActiveChat = useQuery(
+    api.chats.get,
+    activeChatId && activeChatMissingFromRecent ? { id: activeChatId } : 'skip'
+  )
+
+  const availableChats = useMemo<ChatSessionChat[] | undefined>(() => {
+    if (!args.chats) return undefined
+    if (!activeChatId || !fetchedActiveChat) return args.chats
+    if (args.chats.some((chat) => chat._id === activeChatId)) return args.chats
+    return [
+      ...args.chats,
+      {
+        _id: fetchedActiveChat._id,
+        title: fetchedActiveChat.title,
+        mode: normalizeChatMode(fetchedActiveChat.mode, 'plan'),
+      },
+    ]
+  }, [args.chats, activeChatId, fetchedActiveChat])
 
   useEffect(() => {
-    if (!args.chats || args.chats.length === 0) return
-    if (!activeChatId || !args.chats.some((chat) => chat._id === activeChatId)) {
-      setActiveChatId(args.chats[0]._id)
+    if (!availableChats || availableChats.length === 0) return
+    if (!activeChatId) {
+      setActiveChatId(availableChats[0]._id)
     }
-  }, [args.chats, activeChatId])
+  }, [availableChats, activeChatId])
 
   const activeChat = useMemo(() => {
-    if (!args.chats || args.chats.length === 0) return null
-    if (activeChatId) return args.chats.find((chat) => chat._id === activeChatId) ?? args.chats[0]
-    return args.chats[0]
-  }, [args.chats, activeChatId])
+    if (!availableChats || availableChats.length === 0) return null
+    if (activeChatId) return availableChats.find((chat) => chat._id === activeChatId) ?? null
+    return availableChats[0]
+  }, [availableChats, activeChatId])
 
   useEffect(() => {
     if (!activeChat?.mode) return

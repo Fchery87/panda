@@ -60,14 +60,19 @@ function clampTimeout(value: number | undefined): number {
 }
 
 function resolveWorkingDirectory(workingDirectory?: string): string {
-  const root = process.cwd()
+  const root = /* turbopackIgnore: true */ process.cwd()
   if (!workingDirectory) return root
 
-  const resolved = path.resolve(root, workingDirectory)
-  if (!resolved.startsWith(root)) {
+  const resolved = path.resolve(/*turbopackIgnore: true*/ process.cwd(), workingDirectory)
+  if (!isWithinWorkspace(resolved)) {
     throw new Error('Invalid workingDirectory: must stay within project root')
   }
   return resolved
+}
+
+function isWithinWorkspace(targetPath: string): boolean {
+  const relativePath = path.relative(/*turbopackIgnore: true*/ process.cwd(), targetPath)
+  return relativePath === '' || (!relativePath.startsWith('..') && !path.isAbsolute(relativePath))
 }
 
 function tokenizeSegment(command: string): string[] {
@@ -315,14 +320,14 @@ async function executeCommandGraph(
   if (redirect) {
     const result = await executeCommandGraph(redirect.baseCommand, cwd, timeoutMs, jobId)
     if (result.exitCode === 0) {
-      const targetPath = path.resolve(cwd, redirect.targetFile)
-      if (!targetPath.startsWith(cwd)) {
+      const targetPath = path.resolve(/*turbopackIgnore: true*/ cwd, redirect.targetFile)
+      if (!isWithinWorkspace(targetPath)) {
         throw new Error('Redirect target must stay within project root')
       }
       if (redirect.append) {
-        await appendFile(targetPath, result.stdout, 'utf8')
+        await appendFile(/*turbopackIgnore: true*/ targetPath, result.stdout, 'utf8')
       } else {
-        await writeFile(targetPath, result.stdout, 'utf8')
+        await writeFile(/*turbopackIgnore: true*/ targetPath, result.stdout, 'utf8')
       }
     }
     return result

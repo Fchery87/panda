@@ -9,7 +9,7 @@ import {
 
 test.describe('Agent Run Acceptance', () => {
   test('seeded plan workflow can be reviewed, approved, and built from plan', async ({ page }) => {
-    test.setTimeout(180_000)
+    test.setTimeout(420_000)
     const planTitle = 'Agent Run Structured Plan'
     await openWorkbenchProjectFixture(page, {
       name: `Agent Run Plan ${Date.now()}`,

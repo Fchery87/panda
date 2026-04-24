@@ -81,9 +81,19 @@ describe('project chat wiring', () => {
     const content = await readHook('useWorkbenchChatState.ts')
 
     expect(content).toContain(
-      'if (!agent.isLoading && agent.messages.length === 0 && convexMessages?.length)'
+      'if (!agent.isLoading && agent.messages.length === 0 && persistedChatMessages.length)'
     )
     expect(content).toContain('attachments: msg.attachments')
+  })
+
+  test('workspace disables useAgent persisted message hydration', async () => {
+    const providerContent = await readProvider()
+    const agentHookContent = await readHook('useAgent.ts')
+
+    expect(providerContent).toContain('hydratePersistedMessages: false')
+    expect(providerContent).toContain('getPromptHistoryMessages: () =>')
+    expect(providerContent).toContain('promptHistoryMessagesRef.current = messages')
+    expect(agentHookContent).toContain('hydratePersistedMessages = true')
   })
 
   test('useWorkbenchChatState no longer manages a separate inline inspector surface', async () => {

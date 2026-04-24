@@ -21,6 +21,7 @@ export interface WorkbenchRightPanelProps {
 export function WorkbenchRightPanel({ projectId }: WorkbenchRightPanelProps) {
   const {
     activeChatId,
+    runEvents,
     liveSteps,
     isStreaming,
     tracePersistenceStatus,
@@ -129,6 +130,7 @@ export function WorkbenchRightPanel({ projectId }: WorkbenchRightPanelProps) {
           <InspectorRunContent
             chatId={activeChatId}
             liveSteps={liveSteps}
+            runEvents={runEvents}
             isStreaming={isStreaming}
             tracePersistenceStatus={tracePersistenceStatus}
             onOpenFile={onOpenFile}

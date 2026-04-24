@@ -666,14 +666,11 @@ export const markExecutionState = mutation({
       throw new Error('Cannot update execution state before a plan is generated')
     }
 
-    const nextSession = markPlanningExecutionRecord(
-      {
-        ...session,
-        status: args.state === 'partial' ? session.status : args.state,
-        updatedAt: now,
-      },
-      { state: args.state, runId: args.runId, now }
-    )
+    const nextSession = markPlanningExecutionRecord(session, {
+      state: args.state,
+      runId: args.runId,
+      now,
+    })
 
     await ctx.db.patch(session._id, {
       status: nextSession.status,

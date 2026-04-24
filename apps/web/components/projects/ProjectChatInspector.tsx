@@ -8,7 +8,7 @@ import { MemoryBankEditor } from '@/components/chat/MemoryBankEditor'
 import { RunProgressPanel } from '@/components/chat/RunProgressPanel'
 import { SnapshotTimeline } from '@/components/chat/SnapshotTimeline'
 import { SubagentPanel } from '@/components/chat/SubagentPanel'
-import type { ToolCallInfo } from '@/components/chat/types'
+import type { PersistedRunEventSummaryInfo, ToolCallInfo } from '@/components/chat/types'
 import { PlanningIntakeSurface } from '@/components/plan/PlanningIntakePopup'
 import { PlanPanel } from '@/components/plan/PlanPanel'
 import { ArtifactPanel } from '@/components/artifacts/ArtifactPanel'
@@ -47,6 +47,7 @@ type SnapshotEvent = {
 export interface InspectorRunContentProps {
   chatId?: Id<'chats'> | null
   liveSteps: LiveProgressStep[]
+  runEvents?: PersistedRunEventSummaryInfo[]
   isStreaming: boolean
   tracePersistenceStatus: TracePersistenceStatus
   onOpenFile: (path: string) => void
@@ -65,6 +66,7 @@ export interface InspectorRunContentProps {
 export function InspectorRunContent({
   chatId,
   liveSteps,
+  runEvents,
   isStreaming,
   tracePersistenceStatus,
   onOpenFile,
@@ -129,6 +131,7 @@ export function InspectorRunContent({
           <RunProgressPanel
             chatId={chatId}
             liveSteps={liveSteps}
+            runEvents={runEvents}
             isStreaming={isStreaming}
             tracePersistenceStatus={tracePersistenceStatus}
             onOpenFile={onOpenFile}
@@ -366,6 +369,7 @@ export function ProjectChatInspector({
   onOpenChange,
   onTabChange,
   liveSteps,
+  runEvents,
   isStreaming,
   tracePersistenceStatus,
   onOpenFile,
@@ -448,6 +452,7 @@ export function ProjectChatInspector({
           <InspectorRunContent
             chatId={chatId}
             liveSteps={liveSteps}
+            runEvents={runEvents}
             isStreaming={isStreaming}
             tracePersistenceStatus={tracePersistenceStatus}
             onOpenFile={onOpenFile}

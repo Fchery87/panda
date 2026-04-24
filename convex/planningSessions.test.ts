@@ -530,6 +530,9 @@ describe('planningSessions source surface', () => {
     expect(planningSource).toContain('export const completeIntake = mutation({')
     expect(planningSource).toContain('export const acceptPlan = mutation({')
     expect(planningSource).toContain('export const markExecutionState = mutation({')
+    expect(planningSource).not.toContain(
+      "status: args.state === 'partial' ? session.status : args.state"
+    )
     expect(planningSource).toContain("withIndex('by_sessionId'")
     expect(planningSource).toContain('await retireOlderPlanningSessions(ctx, {')
     expect(planningSource).toContain("status: 'stale'")

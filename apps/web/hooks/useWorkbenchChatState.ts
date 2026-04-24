@@ -7,13 +7,17 @@ import type { Id } from '@convex/_generated/dataModel'
 import type {
   Message,
   MessageAnnotationInfo,
-  PersistedRunEventInfo,
+  PersistedRunEventSummaryInfo,
   ToolCallInfo,
 } from '@/components/chat/types'
-import { mapLatestRunProgressSteps, type LiveProgressStep } from '@/components/chat/live-run-utils'
+import {
+  mapLatestRunSummaryProgressSteps,
+  type LiveProgressStep,
+} from '@/components/chat/live-run-utils'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import { normalizeChatMode } from '@/lib/agent/prompt-library'
 import { isRateLimitError, getUserFacingAgentError } from '@/lib/chat/error-messages'
+import { logConvexPayload } from '@/lib/convex/payload-metrics'
 
 interface ConvexMessage {
   _id: Id<'messages'>
@@ -26,9 +30,8 @@ interface ConvexMessage {
   createdAt: number
 }
 
-interface AgentRunEvent extends PersistedRunEventInfo {
+interface AgentRunEventSummary extends PersistedRunEventSummaryInfo {
   _id: Id<'agentRunEvents'>
-  _creationTime: number
   runId: Id<'agentRuns'>
   sequence: number
   createdAt: number
@@ -56,6 +59,7 @@ interface UseWorkbenchChatStateArgs {
     progressSteps: LiveProgressStep[]
     error: string | null
   }
+  onPersistedMessagesChange?: (messages: Message[]) => void
   isMobileLayout: boolean
   mobilePrimaryPanel: MobilePrimaryPanel
   setMobileUnreadCount: React.Dispatch<React.SetStateAction<number>>
@@ -70,6 +74,7 @@ export function useWorkbenchChatState({
   activeChat,
   chatMode,
   agent,
+  onPersistedMessagesChange,
   isMobileLayout,
   mobilePrimaryPanel,
   setMobileUnreadCount,
@@ -79,47 +84,67 @@ export function useWorkbenchChatState({
 }: UseWorkbenchChatStateArgs) {
   const lastAssistantMessageIdRef = useRef<string | null>(null)
   const lastAgentMessagesRef = useRef<Message[]>([])
+  const lastAgentMessagesChatIdRef = useRef<Id<'chats'> | null>(null)
 
   const convexMessagesPage = usePaginatedQuery(
-    api.messages.listPaginated,
+    api.messages.listPaginatedLite,
     activeChat ? { chatId: activeChat._id } : 'skip',
-    { initialNumItems: 100 }
+    { initialNumItems: 50 }
   )
   const convexMessages = convexMessagesPage.results as ConvexMessage[] | undefined
 
+  useEffect(() => {
+    logConvexPayload('chat.messages.active', convexMessages)
+  }, [convexMessages])
+
+  const persistedChatMessages: Message[] = useMemo(
+    () =>
+      convexMessages
+        ?.filter((msg) => !activeChat || msg.chatId === activeChat._id)
+        .map((msg) => {
+          const firstAnnotation = msg.annotations?.[0]
+          return {
+            _id: msg._id,
+            role: msg.role,
+            content: msg.content,
+            reasoningContent: firstAnnotation?.reasoningSummary,
+            attachments: msg.attachments,
+            annotations: firstAnnotation
+              ? {
+                  ...firstAnnotation,
+                  mode: normalizeChatMode(firstAnnotation.mode, chatMode),
+                }
+              : undefined,
+            toolCalls: firstAnnotation?.toolCalls,
+            createdAt: msg.createdAt,
+          }
+        }) || [],
+    [activeChat, chatMode, convexMessages]
+  )
+
+  useEffect(() => {
+    onPersistedMessagesChange?.(persistedChatMessages)
+  }, [onPersistedMessagesChange, persistedChatMessages])
+
   const runEvents = useQuery(
-    api.agentRuns.listEventsByChat,
-    activeChat ? { chatId: activeChat._id, limit: 120 } : 'skip'
-  ) as AgentRunEvent[] | undefined
+    api.agentRuns.listEventSummariesByChat,
+    activeChat ? { chatId: activeChat._id, limit: 60 } : 'skip'
+  ) as AgentRunEventSummary[] | undefined
+
+  useEffect(() => {
+    logConvexPayload('chat.runEvents.summary', runEvents)
+  }, [runEvents])
 
   const chatMessages: Message[] = useMemo(() => {
-    const mapConvexMessages = (source: ConvexMessage[] | undefined) =>
-      source?.map((msg) => {
-        const firstAnnotation = msg.annotations?.[0]
-        return {
-          _id: msg._id,
-          role: msg.role,
-          content: msg.content,
-          reasoningContent: firstAnnotation?.reasoningSummary,
-          attachments: msg.attachments,
-          annotations: firstAnnotation
-            ? {
-                ...firstAnnotation,
-                mode: normalizeChatMode(firstAnnotation.mode, chatMode),
-              }
-            : undefined,
-          toolCalls: firstAnnotation?.toolCalls,
-          createdAt: msg.createdAt,
-        }
-      }) || []
-
     if (!activeChat) {
-      return mapConvexMessages(convexMessages)
+      lastAgentMessagesChatIdRef.current = null
+      return persistedChatMessages
     }
 
-    if (!agent.isLoading && agent.messages.length === 0 && convexMessages?.length) {
+    if (!agent.isLoading && agent.messages.length === 0 && persistedChatMessages.length) {
       lastAgentMessagesRef.current = []
-      return mapConvexMessages(convexMessages)
+      lastAgentMessagesChatIdRef.current = null
+      return persistedChatMessages
     }
 
     const mapped = agent.messages
@@ -139,18 +164,23 @@ export function useWorkbenchChatState({
 
     if (mapped.length > 0) {
       lastAgentMessagesRef.current = mapped
+      lastAgentMessagesChatIdRef.current = activeChat._id
       return mapped
     }
 
-    if (lastAgentMessagesRef.current.length > 0 && !convexMessages?.length) {
+    if (
+      lastAgentMessagesChatIdRef.current === activeChat._id &&
+      lastAgentMessagesRef.current.length > 0 &&
+      persistedChatMessages.length === 0
+    ) {
       return lastAgentMessagesRef.current
     }
 
     return mapped
-  }, [agent.isLoading, agent.messages, activeChat, chatMode, convexMessages])
+  }, [agent.isLoading, agent.messages, activeChat, persistedChatMessages])
 
   const replayProgressSteps = useMemo(
-    () => mapLatestRunProgressSteps(runEvents ?? []).slice(-24),
+    () => mapLatestRunSummaryProgressSteps(runEvents ?? []).slice(-24),
     [runEvents]
   )
 

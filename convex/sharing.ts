@@ -5,7 +5,8 @@
  * Generates unique shareable links.
  */
 
-import { mutation, query } from './_generated/server'
+import { mutation, query, type QueryCtx } from './_generated/server'
+import { paginationOptsValidator } from 'convex/server'
 import { v } from 'convex/values'
 import { Id } from './_generated/dataModel'
 import { requireChatOwner } from './lib/authz'
@@ -21,6 +22,19 @@ function generateShareId(): string {
     result += chars.charAt(Math.floor(Math.random() * chars.length))
   }
   return result
+}
+
+async function getPublicSharedChat(ctx: QueryCtx, shareId: string) {
+  const sharedChat = await ctx.db
+    .query('sharedChats')
+    .withIndex('by_shareId', (q) => q.eq('shareId', shareId))
+    .first()
+
+  if (!sharedChat || !sharedChat.isPublic) {
+    return null
+  }
+
+  return sharedChat
 }
 
 export const shareChat = mutation({
@@ -159,6 +173,64 @@ export const getSharedChat = query({
         createdAt: m.createdAt,
       })),
       sharedAt: sharedChat.createdAt,
+    }
+  },
+})
+
+export const getSharedChatHeader = query({
+  args: {
+    shareId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const sharedChat = await getPublicSharedChat(ctx, args.shareId)
+    if (!sharedChat) {
+      return null
+    }
+
+    const chat = await ctx.db.get(sharedChat.chatId)
+    if (!chat) {
+      return null
+    }
+
+    return {
+      chat: {
+        title: chat.title,
+        mode: chat.mode,
+        createdAt: chat.createdAt,
+      },
+      sharedAt: sharedChat.createdAt,
+    }
+  },
+})
+
+export const listSharedMessagesPaginated = query({
+  args: {
+    shareId: v.string(),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    const sharedChat = await getPublicSharedChat(ctx, args.shareId)
+    if (!sharedChat) {
+      return {
+        page: [],
+        isDone: true,
+        continueCursor: '',
+      }
+    }
+
+    const page = await ctx.db
+      .query('messages')
+      .withIndex('by_created', (q) => q.eq('chatId', sharedChat.chatId))
+      .order('asc')
+      .paginate(args.paginationOpts)
+
+    return {
+      ...page,
+      page: page.page.map((message) => ({
+        role: message.role,
+        content: message.content,
+        createdAt: message.createdAt,
+      })),
     }
   },
 })

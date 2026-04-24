@@ -159,6 +159,33 @@ export const upsert = mutation({
   },
 })
 
+// rename (mutation) - move a file without requiring file content in the payload
+export const rename = mutation({
+  args: {
+    id: v.id('files'),
+    projectId: v.id('projects'),
+    path: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { file: existing } = await requireFileOwner(ctx, args.id)
+    if (existing.projectId !== args.projectId) {
+      throw new Error('File does not belong to the specified project')
+    }
+
+    const pathConflict = await ctx.db
+      .query('files')
+      .withIndex('by_path', (q) => q.eq('projectId', args.projectId).eq('path', args.path))
+      .unique()
+
+    if (pathConflict && pathConflict._id !== args.id) {
+      throw new Error(`File already exists at path: ${args.path}`)
+    }
+
+    await ctx.db.patch(args.id, { path: args.path, updatedAt: Date.now() })
+    return args.id
+  },
+})
+
 // remove (mutation) - delete file and its snapshots
 export const remove = mutation({
   args: { id: v.id('files') },

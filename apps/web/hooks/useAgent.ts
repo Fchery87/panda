@@ -101,6 +101,13 @@ type SendMessageOptions = {
   attachmentsOnly?: boolean
 }
 
+type PromptHistoryMessageInput = {
+  role: 'user' | 'assistant' | 'tool'
+  content: string
+  mode?: ChatMode
+  toolCalls?: ToolCallInfo[]
+}
+
 type PublicSendMessageOptions = SendMessageOptions & {
   clearInput: true
 }
@@ -212,6 +219,8 @@ interface UseAgentOptions {
   model?: string
   architectBrainstormEnabled?: boolean
   planDraft?: string
+  hydratePersistedMessages?: boolean
+  getPromptHistoryMessages?: () => PromptHistoryMessageInput[]
   automationPolicy?: AgentPolicy
   specApprovalMode?: 'interactive' | 'auto_approve'
   onRunCreated?: (args: {
@@ -322,6 +331,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     model = 'gpt-4o',
     architectBrainstormEnabled = false,
     planDraft,
+    hydratePersistedMessages = true,
+    getPromptHistoryMessages,
     automationPolicy,
     specApprovalMode,
     onRunCreated,
@@ -401,6 +412,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const toolContextRef = useRef<ReturnType<typeof createToolContext> | null>(null)
   const rafFlushRef = useRef<number | null>(null)
   const runtimeRef = useRef<AgentRuntimeLike | null>(null)
+  const localMessagesChatIdRef = useRef<Id<'chats'> | null>(null)
 
   // Spec management hook
   const {
@@ -423,8 +435,14 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     chatId,
     mode,
     getReasoningRuntimeSettings,
-    isRunningRef
+    isRunningRef,
+    hydratePersistedMessages
   )
+
+  useEffect(() => {
+    if (hydratePersistedMessages) return
+    setMessages([])
+  }, [chatId, hydratePersistedMessages, setMessages])
 
   // Create artifact queue helpers
   const artifactQueue = useRef({
@@ -448,7 +466,13 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const getToolContext = useCallback(
     (activeUserId: Id<'users'>) =>
       toolContextRef.current ??
-      createFallbackToolContext(projectId, chatId, activeUserId, convexClient, artifactQueue.current),
+      createFallbackToolContext(
+        projectId,
+        chatId,
+        activeUserId,
+        convexClient,
+        artifactQueue.current
+      ),
     [projectId, chatId, convexClient]
   )
 
@@ -588,9 +612,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       // IMPORTANT: Claude Code-style mode separation.
       // When in Plan mode, don't include Build messages in context (and vice versa),
       // otherwise the model continues implementation even after switching modes.
+      const promptHistoryMessages = getPromptHistoryMessages?.() ?? messages
       const previousMessagesSnapshot = buildAgentPreviousMessagesSnapshot({
         mode,
-        messages,
+        messages: promptHistoryMessages,
       })
 
       const estimatedPromptTokens = estimatePromptTokens({
@@ -630,6 +655,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       }
 
       // Add user message to local state
+      localMessagesChatIdRef.current = chatId
       const userMessageId = `msg-${Date.now()}-user`
       setMessages((prev) => [
         ...prev,
@@ -748,7 +774,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           projectDescription,
           mode,
           provider,
-          messages,
+          messages: promptHistoryMessages,
           projectOverviewContent,
           projectFiles,
           memoryBankContent,
@@ -1074,6 +1100,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     },
     [
       messages,
+      getPromptHistoryMessages,
       chatId,
       projectId,
       mode,
@@ -1135,7 +1162,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         projectDescription,
         mode,
         provider,
-        messages,
+        messages: getPromptHistoryMessages?.() ?? messages,
         projectOverviewContent,
         projectFiles,
         memoryBankContent,
@@ -1150,6 +1177,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       const toolContext = getToolContext(userId)
 
       const runtimeSettings = getReasoningRuntimeSettings()
+      localMessagesChatIdRef.current = chatId
       setInput('')
       setError(null)
       setStatus('thinking')
@@ -1217,6 +1245,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       userId,
       mode,
       messages,
+      getPromptHistoryMessages,
       projectId,
       chatId,
       projectName,
@@ -1362,8 +1391,11 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     }
   }, [stop, runEventBufferCleanup])
 
+  const returnedMessages =
+    hydratePersistedMessages || localMessagesChatIdRef.current === chatId ? messages : []
+
   return {
-    messages,
+    messages: returnedMessages,
     input,
     setInput,
     status,

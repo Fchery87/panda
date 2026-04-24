@@ -30,8 +30,7 @@ import type { WorkspaceFocusState } from '@/components/workbench/workspace-focus
 type FileRecord = {
   _id: Id<'files'>
   path: string
-  content: string
-  isBinary: boolean
+  isBinary?: boolean
   updatedAt: number
 }
 
@@ -45,6 +44,8 @@ interface ProjectWorkspaceLayoutProps {
   onSelectChat: (chatId: Id<'chats'>) => void
   onNewChat: () => void
   files: FileRecord[]
+  selectedFileContent?: string
+  selectedFileContentLoaded?: boolean
   selectedFilePath: string | null
   selectedFileLocation?: {
     line: number
@@ -117,6 +118,8 @@ export function ProjectWorkspaceLayout({
   onSelectChat,
   onNewChat,
   files,
+  selectedFileContent,
+  selectedFileContentLoaded = true,
   selectedFilePath,
   selectedFileLocation,
   openTabs,
@@ -195,6 +198,8 @@ export function ProjectWorkspaceLayout({
       currentChatId={activeChatId}
       isMobileLayout={isMobileLayout}
       files={files}
+      selectedFileContent={selectedFileContent}
+      selectedFileContentLoaded={selectedFileContentLoaded}
       selectedFilePath={selectedFilePath}
       selectedLocation={selectedFileLocation}
       openTabs={openTabs}
@@ -239,8 +244,7 @@ export function ProjectWorkspaceLayout({
               files={files.map((file) => ({
                 _id: file._id,
                 path: file.path,
-                content: file.content,
-                isBinary: file.isBinary,
+                isBinary: file.isBinary ?? false,
                 updatedAt: file.updatedAt,
               }))}
               selectedPath={selectedFilePath}
@@ -251,7 +255,7 @@ export function ProjectWorkspaceLayout({
             />
           </div>
           <ExplorerOutline
-            fileContent={files.find((file) => file.path === selectedFilePath)?.content}
+            fileContent={selectedFileContent}
             filePath={selectedFilePath}
             onSelectSymbol={(line) => {
               if (selectedFilePath) {

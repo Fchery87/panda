@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { MessageBubble } from './MessageBubble'
 import { TranscriptEventRow } from './TranscriptEventRow'
 import { cn } from '@/lib/utils'
-import type { Message, PersistedRunEventInfo } from './types'
+import { Button } from '@/components/ui/button'
+import type { Message, PersistedRunEventSummaryInfo } from './types'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import type { LiveProgressStep } from './live-run-utils'
 import type { FormalSpecification } from '@/lib/agent/spec/types'
@@ -18,7 +19,7 @@ interface MessageListProps {
   isStreaming?: boolean
   onSuggestedAction?: (prompt: string, targetMode?: ChatMode) => void
   liveSteps?: LiveProgressStep[]
-  runEvents?: PersistedRunEventInfo[]
+  runEvents?: PersistedRunEventSummaryInfo[]
   currentSpec?: FormalSpecification | null
   pendingSpec?: FormalSpecification | null
   planStatus?: PlanStatus | null
@@ -37,6 +38,8 @@ export function MessageList({
   chatMode,
 }: MessageListProps) {
   const parentRef = useRef<HTMLDivElement>(null)
+  const [isPinnedToBottom, setIsPinnedToBottom] = useState(true)
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false)
   const transcriptPolicy = getTranscriptModePolicy(chatMode)
   const feedItems = useMemo(
     () =>
@@ -82,13 +85,45 @@ export function MessageList({
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
-    if (feedItems.length > 0) {
+    if (feedItems.length > 0 && isPinnedToBottom) {
       virtualizer.scrollToIndex(feedItems.length - 1, {
         align: 'end',
         behavior: isStreaming ? 'auto' : 'smooth',
       })
+      setShowJumpToLatest(false)
+    } else if (feedItems.length > 0 && !isPinnedToBottom) {
+      setShowJumpToLatest(true)
     }
-  }, [feedItems.length, isStreaming, virtualizer])
+  }, [feedItems.length, isPinnedToBottom, isStreaming, virtualizer])
+
+  const updatePinnedState = () => {
+    const element = parentRef.current
+    if (!element) return
+    const distanceFromBottom = element.scrollHeight - element.scrollTop - element.clientHeight
+    const isPinned = distanceFromBottom < 80
+    setIsPinnedToBottom(isPinned)
+    if (isPinned) {
+      setShowJumpToLatest(false)
+    }
+  }
+
+  const handleJumpToLatest = () => {
+    if (feedItems.length === 0) return
+    virtualizer.scrollToIndex(feedItems.length - 1, {
+      align: 'end',
+      behavior: 'smooth',
+    })
+    setIsPinnedToBottom(true)
+    setShowJumpToLatest(false)
+  }
+
+  useEffect(() => {
+    const element = parentRef.current
+    if (!element) return
+    updatePinnedState()
+    element.addEventListener('scroll', updatePinnedState, { passive: true })
+    return () => element.removeEventListener('scroll', updatePinnedState)
+  }, [feedItems.length])
 
   if (feedItems.length === 0) {
     return (
@@ -112,7 +147,7 @@ export function MessageList({
   }
 
   return (
-    <div ref={parentRef} className="h-full min-h-0 min-w-0 overflow-auto">
+    <div ref={parentRef} className="relative h-full min-h-0 min-w-0 overflow-auto">
       <div
         className="relative w-full"
         style={{ height: `${virtualizer.getTotalSize()}px` }}
@@ -146,6 +181,19 @@ export function MessageList({
           )
         })}
       </div>
+      {showJumpToLatest ? (
+        <div className="pointer-events-none sticky bottom-3 z-10 flex justify-center px-3">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={handleJumpToLatest}
+            className="shadow-sharp-sm pointer-events-auto rounded-none border-primary/40 bg-background/95 font-mono text-[10px] uppercase tracking-[0.18em]"
+          >
+            Jump To Latest
+          </Button>
+        </div>
+      ) : null}
     </div>
   )
 }

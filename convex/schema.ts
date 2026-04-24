@@ -1047,6 +1047,7 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index('by_message', ['messageId'])
+    .index('by_chat_message', ['chatId', 'messageId'])
     .index('by_chat_created', ['chatId', 'createdAt'])
     .index('by_project_created', ['projectId', 'createdAt']),
 })

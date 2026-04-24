@@ -6,13 +6,14 @@ import type { SearchRequest, SearchResponse } from './types'
 const RESULT_DENYLIST_WARNING = 'Some matches were filtered due to protected paths.'
 
 function resolveCwd(workingDirectory?: string): string {
-  const root = process.cwd()
+  const root = /* turbopackIgnore: true */ process.cwd()
   if (!workingDirectory) return root
 
   const normalizedWorkingDirectory = toWorkspaceRelativePath(workingDirectory)
-  const resolved = path.resolve(root, normalizedWorkingDirectory)
+  const resolved = path.resolve(/*turbopackIgnore: true*/ process.cwd(), normalizedWorkingDirectory)
+  const relativePath = path.relative(/*turbopackIgnore: true*/ process.cwd(), resolved)
 
-  if (!resolved.startsWith(root)) {
+  if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
     throw new Error('Invalid workingDirectory: must stay within project root')
   }
 

@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useRef, type SetStateAction } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { useMutation } from 'convex/react'
+import { useMutation, useQuery } from 'convex/react'
 import { toast } from 'sonner'
 import { useHotkeys } from 'react-hotkeys-hook'
 
@@ -47,14 +47,14 @@ import type { LLMProvider } from '@/lib/llm/types'
 import { resolveExplorerRevealTarget } from '@/lib/workbench-navigation'
 import { buildDefaultPlanningQuestions } from '@/lib/planning/question-engine'
 import type { WorkspaceFocusState } from '@/components/workbench/workspace-focus'
+import type { Message } from '@/components/chat/types'
 
-interface File {
+interface ProjectFileMetadata {
   _id: Id<'files'>
   _creationTime: number
   projectId: Id<'projects'>
   path: string
-  content: string
-  isBinary: boolean
+  isBinary?: boolean
   updatedAt: number
 }
 
@@ -103,7 +103,7 @@ const FALLBACK_PROVIDER: LLMProvider = {
 interface WorkspaceRuntimeProviderProps {
   projectId: Id<'projects'>
   project: Project
-  files: File[]
+  files: ProjectFileMetadata[]
   chats: Chat[] | undefined
 }
 
@@ -218,6 +218,7 @@ export function WorkspaceRuntimeProvider({
   const { activeSection, isFlyoutOpen, handleSectionChange, toggleFlyout } = useSidebar()
 
   const approvedPlanRunSessionsRef = useRef(new Map<string, string>())
+  const promptHistoryMessagesRef = useRef<Message[]>([])
 
   useHotkeys(
     'mod+i',
@@ -293,6 +294,14 @@ export function WorkspaceRuntimeProvider({
     provider: provider ?? FALLBACK_PROVIDER,
     model: selectedModel,
     planDraft: persistedPlanDraft,
+    hydratePersistedMessages: false,
+    getPromptHistoryMessages: () =>
+      promptHistoryMessagesRef.current.map((message) => ({
+        role: message.role === 'system' ? 'assistant' : message.role,
+        content: message.content,
+        mode: message.annotations?.mode,
+        toolCalls: message.toolCalls,
+      })),
     automationPolicy: effectiveAutomationPolicy,
     specApprovalMode: agentPolicy.specApprovalMode,
     onRunCreated: handleRunCreated,
@@ -398,6 +407,13 @@ export function WorkspaceRuntimeProvider({
   })
 
   const requestedFilePath = searchParams.get('filePath')
+  const selectedFile = useQuery(
+    api.files.getByPath,
+    selectedFilePath ? { projectId, path: selectedFilePath } : 'skip'
+  )
+  const selectedFileContentLoaded = !selectedFilePath || selectedFile !== undefined
+  const selectedFileContent = selectedFile?.content ?? ''
+
   useProjectRequestedFileSync({
     files,
     requestedFilePath,
@@ -440,6 +456,9 @@ export function WorkspaceRuntimeProvider({
     activeChat,
     chatMode,
     agent,
+    onPersistedMessagesChange: (messages) => {
+      promptHistoryMessagesRef.current = messages
+    },
     isMobileLayout,
     mobilePrimaryPanel,
     setMobileUnreadCount: handleSetMobileUnreadCount,
@@ -907,6 +926,8 @@ export function WorkspaceRuntimeProvider({
       void handleNewChat()
     },
     files,
+    selectedFileContent,
+    selectedFileContentLoaded,
     selectedFilePath,
     selectedFileLocation,
     openTabs,

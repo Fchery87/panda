@@ -17,6 +17,32 @@ export const list = query({
   },
 })
 
+export const listRecent = query({
+  args: {
+    projectId: v.id('projects'),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
+    const limit = Math.max(1, Math.min(args.limit ?? 25, 100))
+    const chats = await ctx.db
+      .query('chats')
+      .withIndex('by_updated', (q) => q.eq('projectId', args.projectId))
+      .order('desc')
+      .take(limit)
+
+    return chats.map((chat) => ({
+      _id: chat._id,
+      _creationTime: chat._creationTime,
+      projectId: chat.projectId,
+      title: chat.title,
+      mode: chat.mode,
+      createdAt: chat.createdAt,
+      updatedAt: chat.updatedAt,
+    }))
+  },
+})
+
 // get (query) - get chat by id
 export const get = query({
   args: { id: v.id('chats') },

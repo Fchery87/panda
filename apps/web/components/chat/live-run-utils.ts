@@ -2,7 +2,7 @@ import {
   derivePlanProgressMetadata,
   parsePlanSteps as parsePlanStepsFromDraft,
 } from '@/lib/agent/plan-progress'
-import type { PersistedRunEventInfo } from '@/components/chat/types'
+import type { PersistedRunEventInfo, PersistedRunEventSummaryInfo } from '@/components/chat/types'
 
 export type LiveProgressCategory = 'analysis' | 'rewrite' | 'tool' | 'complete' | 'other'
 
@@ -429,6 +429,77 @@ export function mapRunEventsToProgressSteps(events: PersistedRunEventInfo[]): Li
   })
 }
 
+export function mapRunEventSummariesToProgressSteps(
+  events: PersistedRunEventSummaryInfo[]
+): LiveProgressStep[] {
+  return events.flatMap((event, index) => {
+    if (event.type === 'progress_step' && typeof event.contentPreview === 'string') {
+      const step: LiveProgressStep = {
+        id: event._id ?? `progress-replay-${index}`,
+        content: event.contentPreview,
+        status: event.status === 'completed' || event.status === 'error' ? event.status : 'running',
+        category:
+          event.progressCategory === 'analysis' ||
+          event.progressCategory === 'rewrite' ||
+          event.progressCategory === 'tool' ||
+          event.progressCategory === 'complete'
+            ? event.progressCategory
+            : 'other',
+        details:
+          event.progressToolName ||
+          event.toolCallId ||
+          event.durationMs !== undefined ||
+          event.errorPreview ||
+          event.targetFilePaths ||
+          event.progressHasArtifactTarget !== undefined
+            ? {
+                toolName: event.progressToolName,
+                toolCallId: event.toolCallId,
+                durationMs: event.durationMs,
+                errorExcerpt: event.errorPreview,
+                targetFilePaths: event.targetFilePaths,
+                hasArtifactTarget: event.progressHasArtifactTarget,
+              }
+            : undefined,
+        planStepIndex: event.planStepIndex,
+        planStepTitle: event.planStepTitle,
+        planTotalSteps: event.planTotalSteps,
+        completedPlanStepIndexes: event.completedPlanStepIndexes,
+        createdAt: event.createdAt ?? Date.now(),
+      }
+      return [step]
+    }
+
+    if (event.type === 'spec_verification') {
+      return [
+        buildReplayProgressStep(
+          event._id ?? `spec-verification-${index}`,
+          event.contentPreview ?? 'Specification verification completed',
+          event.status === 'verified' ? 'completed' : 'error',
+          'complete',
+          event.createdAt ?? Date.now(),
+          buildErrorDetails(event.errorPreview)
+        ),
+      ]
+    }
+
+    if (event.type === 'error') {
+      return [
+        buildReplayProgressStep(
+          event._id ?? `run-error-${index}`,
+          'Run failed',
+          'error',
+          'complete',
+          event.createdAt ?? Date.now(),
+          buildErrorDetails(event.errorPreview)
+        ),
+      ]
+    }
+
+    return []
+  })
+}
+
 export function mapLatestRunProgressSteps(events: PersistedRunEventInfo[]): LiveProgressStep[] {
   const latestRunId = [...events]
     .reverse()
@@ -438,6 +509,19 @@ export function mapLatestRunProgressSteps(events: PersistedRunEventInfo[]): Live
     latestRunId === undefined ? events : events.filter((event) => event.runId === latestRunId)
 
   return mapRunEventsToProgressSteps(scopedEvents)
+}
+
+export function mapLatestRunSummaryProgressSteps(
+  events: PersistedRunEventSummaryInfo[]
+): LiveProgressStep[] {
+  const latestRunId = [...events]
+    .reverse()
+    .find((event) => typeof event.runId === 'string' && event.runId.length > 0)?.runId
+
+  const scopedEvents =
+    latestRunId === undefined ? events : events.filter((event) => event.runId === latestRunId)
+
+  return mapRunEventSummariesToProgressSteps(scopedEvents)
 }
 
 export function reconcileProgressSteps(

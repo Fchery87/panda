@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Brain, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -25,6 +25,7 @@ export function ReasoningPanel({
   redacted = false,
 }: ReasoningPanelProps) {
   const [open, setOpen] = useState(false)
+  const shouldReduceMotion = useReducedMotion()
   const preview = teaser ?? buildTeaser(content)
   const label = redacted ? 'Thinking retained' : 'Thinking'
 
@@ -53,10 +54,10 @@ export function ReasoningPanel({
       <AnimatePresence initial={false}>
         {open && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            initial={shouldReduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+            animate={shouldReduceMotion ? { opacity: 1 } : { height: 'auto', opacity: 1 }}
+            exit={shouldReduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+            transition={{ duration: shouldReduceMotion ? 0.01 : 0.2 }}
             className="overflow-hidden border-t border-border"
           >
             <div className="whitespace-pre-wrap break-words px-3 py-2 font-mono text-[11px] leading-5 text-muted-foreground/90">

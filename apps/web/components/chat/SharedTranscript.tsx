@@ -1,6 +1,6 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { Bot, User } from 'lucide-react'
 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -16,14 +16,19 @@ interface SharedTranscriptProps {
 }
 
 export function SharedTranscript({ messages }: SharedTranscriptProps) {
+  const shouldReduceMotion = useReducedMotion()
+
   return (
     <div className="space-y-4">
       {messages.map((message, index) => (
         <motion.div
           key={`${message.role}-${index}`}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: index * 0.05 }}
+          initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 10 }}
+          animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+          transition={{
+            delay: shouldReduceMotion ? 0 : index * 0.05,
+            duration: shouldReduceMotion ? 0.01 : undefined,
+          }}
           className={cn('flex gap-3', message.role === 'user' ? 'flex-row-reverse' : 'flex-row')}
         >
           <Avatar className="h-8 w-8 rounded-none">

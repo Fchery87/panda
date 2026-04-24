@@ -1,10 +1,15 @@
 'use client'
 
-import React, { useRef, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { X, Blocks } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import React, { useEffect, useRef } from 'react'
+import { Blocks } from 'lucide-react'
 import { ChatInput } from './ChatInput'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 interface ComposerOverlayProps {
   isOpen: boolean
@@ -14,71 +19,47 @@ interface ComposerOverlayProps {
 }
 
 export function ComposerOverlay({ isOpen, onClose, onSubmit, isStreaming }: ComposerOverlayProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
+  const lastFocusedElementRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose()
-      }
+    if (isOpen) {
+      lastFocusedElementRef.current = document.activeElement as HTMLElement | null
     }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
   }, [isOpen, onClose])
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      onClose()
+      window.setTimeout(() => {
+        lastFocusedElementRef.current?.focus()
+      }, 0)
+    }
+  }
+
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <React.Fragment>
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-50 bg-background/40 backdrop-blur-sm"
-            onClick={onClose}
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent className="top-[26%] max-w-3xl translate-y-0 rounded-none border-border p-0 shadow-2xl">
+        <DialogHeader className="border-b border-border bg-muted/30 px-4 py-3">
+          <DialogTitle className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider">
+            <Blocks className="h-4 w-4 text-primary" aria-hidden="true" />
+            Multi-File Composer
+          </DialogTitle>
+          <DialogDescription className="font-mono text-xs text-muted-foreground">
+            Draft a build-mode prompt with attached context without leaving the current workspace.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="bg-background p-4">
+          <ChatInput
+            onSendMessage={(msg, mode, ctx) => {
+              onSubmit(msg, ctx)
+              onClose()
+            }}
+            isStreaming={isStreaming}
+            mode="build"
           />
-
-          {/* Composer floating window */}
-          <motion.div
-            ref={containerRef}
-            initial={{ opacity: 0, y: 20, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.98 }}
-            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed left-1/2 top-1/4 z-50 w-full max-w-3xl -translate-x-1/2 rounded-none border border-border bg-background shadow-2xl"
-          >
-            <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
-              <div className="flex items-center gap-2">
-                <Blocks className="h-4 w-4 text-primary" />
-                <span className="font-mono text-xs uppercase tracking-wider">
-                  Multi-File Composer
-                </span>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 rounded-none text-muted-foreground hover:bg-muted"
-                onClick={onClose}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-
-            <div className="bg-background p-4">
-              <ChatInput
-                onSendMessage={(msg, mode, ctx) => {
-                  onSubmit(msg, ctx)
-                  onClose()
-                }}
-                isStreaming={isStreaming}
-                mode="build"
-              />
-            </div>
-          </motion.div>
-        </React.Fragment>
-      )}
-    </AnimatePresence>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }

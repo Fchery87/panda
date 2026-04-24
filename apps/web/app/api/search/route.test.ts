@@ -97,6 +97,20 @@ describe('/api/search route', () => {
     expect(payload.error).toContain('not searchable')
   })
 
+  it('rejects absolute sibling working directories that only share the workspace prefix', async () => {
+    const response = await POST(
+      makeJsonRequest({
+        type: 'text',
+        query: 'x',
+        workingDirectory: `${process.cwd()}-sibling`,
+      })
+    )
+
+    expect(response.status).toBe(400)
+    const payload = (await response.json()) as { error: string }
+    expect(payload.error).toContain('Invalid workingDirectory')
+  })
+
   it('handles ast search requests', async () => {
     const response = await POST(
       makeJsonRequest({

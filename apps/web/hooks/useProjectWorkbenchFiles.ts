@@ -10,8 +10,7 @@ import { toast } from 'sonner'
 type ProjectWorkbenchFile = {
   _id: Id<'files'>
   path: string
-  content: string
-  isBinary: boolean
+  isBinary?: boolean
 }
 
 type OpenProjectTab = {
@@ -61,6 +60,7 @@ export function useProjectWorkbenchFiles(args: {
   } = args
 
   const upsertFileMutation = useMutation(api.files.upsert)
+  const renameFileMutation = useMutation(api.files.rename)
   const deleteFileMutation = useMutation(api.files.remove)
   const updateProjectMutation = useMutation(api.projects.update)
 
@@ -171,14 +171,27 @@ export function useProjectWorkbenchFiles(args: {
           return
         }
 
+        const targetIds = new Set(targetFiles.map((file) => file._id))
+        const renamedPaths = new Set(
+          targetFiles.map((file) => renamePathPrefix(file.path, oldPath, newPath))
+        )
+        const conflict = allFiles.find(
+          (file) => !targetIds.has(file._id) && renamedPaths.has(file.path)
+        )
+
+        if (conflict) {
+          toast.error('Failed to rename file', {
+            description: `File already exists at path: ${conflict.path}`,
+          })
+          return
+        }
+
         await Promise.all(
           targetFiles.map((file) =>
-            upsertFileMutation({
+            renameFileMutation({
               id: file._id,
               projectId,
               path: renamePathPrefix(file.path, oldPath, newPath),
-              content: file.content,
-              isBinary: file.isBinary,
             })
           )
         )
@@ -209,7 +222,7 @@ export function useProjectWorkbenchFiles(args: {
       selectedFilePath,
       setSelectedFileLocation,
       setSelectedFilePath,
-      upsertFileMutation,
+      renameFileMutation,
     ]
   )
 

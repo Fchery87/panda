@@ -36,4 +36,28 @@ describe('POST /api/search/replace', () => {
     const res = await POST(req)
     expect(res.status).toBe(400)
   })
+
+  it('rejects absolute sibling paths that only share the workspace prefix', async () => {
+    mock.module('@/lib/auth/nextjs', () => ({
+      isAuthenticatedNextjs: () => Promise.resolve(true),
+    }))
+
+    const { POST } = await import('./route')
+    const siblingPath = `${process.cwd()}-sibling/package.json`
+    const req = new Request('http://localhost/api/search/replace', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filePath: siblingPath,
+        searchText: 'panda',
+        replaceText: 'bear',
+      }),
+    })
+
+    const res = await POST(req)
+    const body = (await res.json()) as { error?: string }
+
+    expect(res.status).toBe(400)
+    expect(body.error).toBe('Path traversal not allowed')
+  })
 })

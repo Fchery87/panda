@@ -6,6 +6,12 @@ import { useMutation } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { GitFork, MoreHorizontal } from 'lucide-react'
@@ -22,7 +28,6 @@ export function ChatHistoryActions({
   className,
 }: ChatHistoryActionsProps) {
   const [isLoading, setIsLoading] = React.useState(false)
-  const [showMenu, setShowMenu] = React.useState(false)
 
   const forkChat = useMutation(api.chats.fork)
 
@@ -33,7 +38,6 @@ export function ChatHistoryActions({
       toast.success('Chat forked!', {
         description: 'A copy of this conversation has been created',
       })
-      setShowMenu(false)
     } catch (error) {
       toast.error('Failed to fork chat')
       appLog.error(error)
@@ -43,31 +47,29 @@ export function ChatHistoryActions({
   }
 
   return (
-    <div className={cn('relative', className)}>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => setShowMenu(!showMenu)}
-        className="h-7 rounded-none px-2 font-mono text-xs"
-      >
-        <MoreHorizontal className="h-3.5 w-3.5" />
-      </Button>
-
-      {showMenu && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-          <div className="absolute right-0 top-full z-50 mt-1 min-w-[160px] border border-border bg-background shadow-lg">
-            <button
-              onClick={handleFork}
-              disabled={isLoading}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left font-mono text-xs transition-colors hover:bg-muted disabled:opacity-50"
-            >
-              <GitFork className="h-3.5 w-3.5" />
-              Fork this chat
-            </button>
-          </div>
-        </>
-      )}
-    </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label="Open chat history actions"
+          className={cn('h-7 rounded-none px-2 font-mono text-xs', className)}
+        >
+          <MoreHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="rounded-none border-border font-mono">
+        <DropdownMenuItem
+          onSelect={() => {
+            void handleFork()
+          }}
+          disabled={isLoading}
+          className="rounded-none text-xs uppercase tracking-wide"
+        >
+          <GitFork className="mr-2 h-3.5 w-3.5" aria-hidden="true" />
+          Fork This Chat
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }

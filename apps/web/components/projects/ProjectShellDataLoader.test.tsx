@@ -11,6 +11,19 @@ async function readProvider() {
   return fs.readFileSync(path.resolve(import.meta.dir, 'WorkspaceRuntimeProvider.tsx'), 'utf-8')
 }
 
+async function readWorkbench() {
+  const fs = await import('node:fs')
+  return fs.readFileSync(path.resolve(import.meta.dir, '../workbench/Workbench.tsx'), 'utf-8')
+}
+
+async function readChatSessionHook() {
+  const fs = await import('node:fs')
+  return fs.readFileSync(
+    path.resolve(import.meta.dir, '../../hooks/useProjectChatSession.ts'),
+    'utf-8'
+  )
+}
+
 describe('ProjectShellDataLoader structure', () => {
   test('renders ProjectNotFoundGuard when project is null', async () => {
     const content = await readLoader()
@@ -32,6 +45,46 @@ describe('ProjectShellDataLoader structure', () => {
       "import { WorkspaceRuntimeProvider } from '@/components/projects/WorkspaceRuntimeProvider'"
     )
     expect(content).toContain('<WorkspaceRuntimeProvider')
+  })
+
+  test('loads file metadata at project boot instead of file contents', async () => {
+    const content = await readLoader()
+    expect(content).toContain('api.files.listMetadata')
+    expect(content).not.toContain('api.files.list, { projectId }')
+  })
+
+  test('loads bounded chat summaries at project boot', async () => {
+    const content = await readLoader()
+    expect(content).toContain('api.chats.listRecent')
+    expect(content).toContain('{ projectId, limit: 25 }')
+    expect(content).not.toContain('api.chats.list, { projectId }')
+  })
+
+  test('fetches selected older chat without unbounding project boot', async () => {
+    const content = await readChatSessionHook()
+    expect(content).toContain('const activeChatMissingFromRecent =')
+    expect(content).toContain('api.chats.get')
+    expect(content).toContain('const availableChats =')
+    expect(content).toContain('...args.chats')
+    expect(content).toContain('normalizeChatMode(fetchedActiveChat.mode,')
+    expect(content).not.toContain('api.chats.list')
+  })
+
+  test('keeps provider file state metadata-only', async () => {
+    const content = await readProvider()
+    expect(content).toContain('interface ProjectFileMetadata')
+    expect(content).not.toContain('interface File')
+    expect(content).not.toContain('content: string')
+  })
+
+  test('tracks selected file content load state separately from content value', async () => {
+    const providerContent = await readProvider()
+    const workbenchContent = await readWorkbench()
+
+    expect(providerContent).toContain('const selectedFileContentLoaded =')
+    expect(providerContent).toContain('const selectedFileContent = selectedFile?.content ??')
+    expect(workbenchContent).toContain('selectedFileContentLoaded')
+    expect(workbenchContent).toContain('<FileContentLoadingState filePath={selectedFile.path} />')
   })
 
   test('wraps children in AgentRuntimeProvider', async () => {

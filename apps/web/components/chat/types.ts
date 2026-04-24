@@ -58,6 +58,7 @@ export interface PersistedRunEventInfo {
   runId?: string
   type: string
   content?: string
+  contentPreview?: string
   status?: string
   progressCategory?: string
   progressToolName?: string
@@ -68,6 +69,37 @@ export interface PersistedRunEventInfo {
   args?: Record<string, unknown>
   output?: string
   error?: string
+  errorPreview?: string
+  durationMs?: number
+  planStepIndex?: number
+  planStepTitle?: string
+  planTotalSteps?: number
+  completedPlanStepIndexes?: number[]
+  usage?: TokenUsageInfo
+  snapshot?: {
+    hash: string
+    step: number
+    files: string[]
+    timestamp: number
+  }
+  createdAt?: number
+}
+
+export interface PersistedRunEventSummaryInfo {
+  _id?: string
+  runId?: string
+  chatId?: string
+  sequence?: number
+  type: string
+  contentPreview?: string
+  status?: string
+  progressCategory?: string
+  progressToolName?: string
+  progressHasArtifactTarget?: boolean
+  targetFilePaths?: string[]
+  toolCallId?: string
+  toolName?: string
+  errorPreview?: string
   durationMs?: number
   planStepIndex?: number
   planStepTitle?: string

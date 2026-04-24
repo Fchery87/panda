@@ -52,6 +52,8 @@ playwright-report/
 .worktrees/
 .eslintcache
 .opencode/
+.bg-shell/
+.gsd/
 
 # Generated files
 convex/_generated/**

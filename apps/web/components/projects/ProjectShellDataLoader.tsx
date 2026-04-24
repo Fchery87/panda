@@ -1,11 +1,13 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 
 import { ProjectLoadingGuard, ProjectNotFoundGuard } from '@/components/projects/ProjectPageGuards'
 import { WorkspaceRuntimeProvider } from '@/components/projects/WorkspaceRuntimeProvider'
+import { logConvexPayload } from '@/lib/convex/payload-metrics'
 
 interface ProjectShellDataLoaderProps {
   projectId: Id<'projects'>
@@ -13,8 +15,16 @@ interface ProjectShellDataLoaderProps {
 
 export function ProjectShellDataLoader({ projectId }: ProjectShellDataLoaderProps) {
   const project = useQuery(api.projects.get, { id: projectId })
-  const files = useQuery(api.files.list, { projectId })
-  const chats = useQuery(api.chats.list, { projectId })
+  const files = useQuery(api.files.listMetadata, { projectId })
+  const chats = useQuery(api.chats.listRecent, { projectId, limit: 25 })
+
+  useEffect(() => {
+    logConvexPayload('project.files.metadata', files)
+  }, [files])
+
+  useEffect(() => {
+    logConvexPayload('project.chats.recent', chats)
+  }, [chats])
 
   if (project === null) return <ProjectNotFoundGuard />
   if (project === undefined || files === undefined || chats === undefined) {

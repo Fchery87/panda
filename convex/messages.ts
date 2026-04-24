@@ -8,6 +8,30 @@ import { trackUserAnalytics } from './lib/userAnalytics'
 
 type MessageDoc = Doc<'messages'>
 type ChatAttachmentDoc = Doc<'chatAttachments'>
+type ChatAttachmentMetadata = Pick<
+  ChatAttachmentDoc,
+  | '_id'
+  | 'storageId'
+  | 'kind'
+  | 'filename'
+  | 'contentType'
+  | 'size'
+  | 'contextFilePath'
+  | 'createdAt'
+>
+
+function toAttachmentMetadata(attachment: ChatAttachmentDoc): ChatAttachmentMetadata {
+  return {
+    _id: attachment._id,
+    storageId: attachment.storageId,
+    kind: attachment.kind,
+    filename: attachment.filename,
+    contentType: attachment.contentType,
+    size: attachment.size,
+    contextFilePath: attachment.contextFilePath,
+    createdAt: attachment.createdAt,
+  }
+}
 
 async function enrichMessageWithAttachments(args: {
   message: MessageDoc
@@ -86,6 +110,59 @@ export const listPaginated = query({
         })
       ),
     }
+  },
+})
+
+// listPaginatedLite (query) - paginated messages with attachment metadata only.
+export const listPaginatedLite = query({
+  args: {
+    chatId: v.id('chats'),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    await requireChatOwner(ctx, args.chatId)
+    const page = await ctx.db
+      .query('messages')
+      .withIndex('by_created', (q) => q.eq('chatId', args.chatId))
+      .order('asc')
+      .paginate(args.paginationOpts)
+
+    const attachmentsByMessage = new Map<Id<'messages'>, ChatAttachmentMetadata[]>()
+
+    await Promise.all(
+      page.page.map(async (message) => {
+        const attachments = await ctx.db
+          .query('chatAttachments')
+          .withIndex('by_chat_message', (q) =>
+            q.eq('chatId', args.chatId).eq('messageId', message._id)
+          )
+          .collect()
+
+        if (attachments.length > 0) {
+          attachmentsByMessage.set(message._id, attachments.map(toAttachmentMetadata))
+        }
+      })
+    )
+
+    return {
+      ...page,
+      page: page.page.map((message) => ({
+        ...message,
+        attachments: attachmentsByMessage.get(message._id) ?? [],
+      })),
+    }
+  },
+})
+
+export const getAttachmentUrl = query({
+  args: { attachmentId: v.id('chatAttachments') },
+  handler: async (ctx, args) => {
+    const attachment = await ctx.db.get(args.attachmentId)
+    if (!attachment) return null
+
+    await requireMessageOwner(ctx, attachment.messageId)
+
+    return await ctx.storage.getUrl(attachment.storageId)
   },
 })
 

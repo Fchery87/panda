@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
@@ -140,11 +140,15 @@ export function ChatInput({
   const [includeEditorContext, setIncludeEditorContext] = useState(true)
   const [isUploadingAttachments, setIsUploadingAttachments] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const mentionPickerRef = useRef<import('./MentionPicker').MentionPickerHandle | null>(null)
   const timeoutRefs = useRef<ReturnType<typeof setTimeout>[]>([])
+  const shouldReduceMotion = useReducedMotion()
 
   // @-mention picker state
   const [mentionQuery, setMentionQuery] = useState<string | null>(null)
   const [mentionStart, setMentionStart] = useState<number>(-1)
+  const [activeMentionDescendant, setActiveMentionDescendant] = useState<string | undefined>()
+  const mentionListId = 'chat-input-mentions'
 
   // Enhance prompt state
   const [enhanceState, setEnhanceState] = useState<EnhanceState>('idle')
@@ -323,6 +327,7 @@ export function ChatInput({
     })
     setInput('')
     setMentionQuery(null)
+    setActiveMentionDescendant(undefined)
     setAttachments([])
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
@@ -351,8 +356,33 @@ export function ChatInput({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      // Don't send on Enter if mention picker is open (handled by picker itself)
-      if (mentionQuery !== null) return
+      if (mentionQuery !== null && mentionPickerRef.current?.hasItems()) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault()
+          mentionPickerRef.current.moveActive('next')
+          return
+        }
+
+        if (e.key === 'ArrowUp') {
+          e.preventDefault()
+          mentionPickerRef.current.moveActive('prev')
+          return
+        }
+
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          mentionPickerRef.current.selectActive()
+          return
+        }
+
+        if (e.key === 'Escape') {
+          e.preventDefault()
+          setMentionQuery(null)
+          setActiveMentionDescendant(undefined)
+          return
+        }
+      }
+
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault()
         handleSendWithReset()
@@ -381,6 +411,7 @@ export function ChatInput({
         setMentionStart(cursor - atMatch[0].length)
       } else {
         setMentionQuery(null)
+        setActiveMentionDescendant(undefined)
       }
     },
     [filePaths]
@@ -399,6 +430,7 @@ export function ChatInput({
       const newVal = `${before}@${path} ${after}`
       setInput(newVal)
       setMentionQuery(null)
+      setActiveMentionDescendant(undefined)
       // Restore focus
       scheduleTextareaTask(() => {
         if (textareaRef.current) {
@@ -515,10 +547,12 @@ export function ChatInput({
         {/* @-mention picker */}
         {mentionQuery !== null && (
           <MentionPicker
+            ref={mentionPickerRef}
             filePaths={filePaths}
             query={mentionQuery}
+            listId={mentionListId}
+            onActiveDescendantChange={setActiveMentionDescendant}
             onSelect={handleMentionSelect}
-            onClose={() => setMentionQuery(null)}
           />
         )}
 
@@ -528,6 +562,10 @@ export function ChatInput({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           aria-label="Message input"
+          aria-autocomplete={mentionQuery !== null ? 'list' : 'none'}
+          aria-controls={mentionQuery !== null ? mentionListId : undefined}
+          aria-expanded={mentionQuery !== null}
+          aria-activedescendant={mentionQuery !== null ? activeMentionDescendant : undefined}
           placeholder="Ask anything, @ to mention, / for workflows"
           disabled={isStreaming || isUploadingAttachments}
           className={cn(
@@ -543,10 +581,10 @@ export function ChatInput({
           {isStreaming ? (
             <motion.div
               key="stop"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              transition={{ duration: 0.1 }}
+              initial={shouldReduceMotion ? { opacity: 0 } : { scale: 0.8, opacity: 0 }}
+              animate={shouldReduceMotion ? { opacity: 1 } : { scale: 1, opacity: 1 }}
+              exit={shouldReduceMotion ? { opacity: 0 } : { scale: 0.8, opacity: 0 }}
+              transition={{ duration: shouldReduceMotion ? 0.01 : 0.1 }}
               className="absolute bottom-3 right-3"
             >
               <Button
@@ -566,10 +604,10 @@ export function ChatInput({
                 {input.trim() && (
                   <motion.div
                     key="enhance"
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.8, opacity: 0 }}
-                    transition={{ duration: 0.1 }}
+                    initial={shouldReduceMotion ? { opacity: 0 } : { scale: 0.8, opacity: 0 }}
+                    animate={shouldReduceMotion ? { opacity: 1 } : { scale: 1, opacity: 1 }}
+                    exit={shouldReduceMotion ? { opacity: 0 } : { scale: 0.8, opacity: 0 }}
+                    transition={{ duration: shouldReduceMotion ? 0.01 : 0.1 }}
                     className="absolute bottom-3 right-3"
                   >
                     <Button

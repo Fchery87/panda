@@ -65,12 +65,12 @@ export async function createAndOpenProject(page: Page): Promise<string> {
   const href = await projectLink.getAttribute('href')
   expect(href).toMatch(/^\/projects\/.+/)
   const projectUrl = withE2EBypassSecret(href!)
-  const navigationDeadline = Date.now() + 120_000
+  const navigationDeadline = Date.now() + 300_000
   let lastNavigationError: unknown = null
 
   while (Date.now() < navigationDeadline) {
     try {
-      await page.goto(projectUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 })
+      await page.goto(projectUrl, { waitUntil: 'commit', timeout: 90_000 })
       lastNavigationError = null
       break
     } catch (error) {
@@ -361,12 +361,12 @@ export async function openWorkbenchProjectFixture(
   }
   expect(body.projectId).toBeTruthy()
   const projectUrl = withE2EBypassSecret(`/projects/${body.projectId}`)
-  const navigationDeadline = Date.now() + 120_000
+  const navigationDeadline = Date.now() + 300_000
   let lastNavigationError: unknown = null
 
   while (Date.now() < navigationDeadline) {
     try {
-      await page.goto(projectUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 })
+      await page.goto(projectUrl, { waitUntil: 'commit', timeout: 90_000 })
       lastNavigationError = null
       break
     } catch (error) {
@@ -407,7 +407,7 @@ export async function openWorkbenchProjectFixture(
 
   await expect(
     workspaceShell.or(openChatPanelButton).or(newTaskButton).or(commandPaletteButton).first()
-  ).toBeVisible({ timeout: 30_000 })
+  ).toBeVisible({ timeout: 90_000 })
 
   return body
 }

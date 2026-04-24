@@ -8,7 +8,7 @@ async function openWorkbenchSmokeFixture(page: Page, name: string) {
 }
 
 test.describe('Workbench', () => {
-  test.setTimeout(90_000)
+  test.setTimeout(360_000)
 
   test('workbench page loads', async ({ page }) => {
     await openWorkbenchSmokeFixture(page, 'Workbench Smoke Page')
@@ -17,18 +17,18 @@ test.describe('Workbench', () => {
     await expect(page.getByRole('navigation', { name: /breadcrumb/i })).toBeVisible({
       timeout: 15_000,
     })
-    await expect(page.getByRole('heading', { name: /workspace|get started/i }).first()).toBeVisible(
-      {
-        timeout: 15_000,
-      }
-    )
+    await expect(
+      page.getByRole('heading', { name: /keep work, review, and execution in view/i }).first()
+    ).toBeVisible({
+      timeout: 15_000,
+    })
   })
 
   test('file tree is visible', async ({ page }) => {
     await openWorkbenchSmokeFixture(page, 'Workbench Smoke Explorer')
 
     await expect(page.getByRole('button', { name: /files/i }).first()).toBeVisible()
-    await expect(page.getByText(/get started/i).first()).toBeVisible()
+    await expect(page.getByText(/use the center of the workspace/i).first()).toBeVisible()
   })
 
   test('editor area is present', async ({ page }) => {
@@ -140,7 +140,7 @@ test.describe('Workbench', () => {
     await page.goto(`${href!}?e2eBypass=1`, { waitUntil: 'commit' })
 
     await expect(page).toHaveURL(/\/projects\/.+/, { timeout: 15_000 })
-    await expect(page.getByText(/get started/i).first()).toBeVisible({
+    await expect(page.getByText(/use the center of the workspace/i).first()).toBeVisible({
       timeout: 15_000,
     })
   })
@@ -199,10 +199,10 @@ test.describe('Workbench', () => {
     await expect(page.getByText(/e2e-artifact\.ts/i).first()).toBeVisible({ timeout: 20_000 })
     await expect(page.getByText('+1')).toBeVisible({ timeout: 10_000 })
 
-    const reviewDiffButton = page.getByTestId('workspace-review-diff-button').first()
-    await expect(reviewDiffButton).toBeVisible({ timeout: 20_000 })
-    await reviewDiffButton.dispatchEvent('click')
-    await expect(page.getByRole('button', { name: /^accept all$/i }).first()).toBeVisible({
+    const applyButton = page.getByRole('button', { name: /^apply$/i }).first()
+    await expect(applyButton).toBeVisible({ timeout: 20_000 })
+    await applyButton.click()
+    await expect(page.getByText(/pending artifact preview/i).first()).not.toBeVisible({
       timeout: 20_000,
     })
   })

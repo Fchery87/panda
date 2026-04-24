@@ -1,6 +1,6 @@
 'use client'
 
-import { useQuery } from 'convex/react'
+import { usePaginatedQuery, useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -8,7 +8,16 @@ import { SharedTranscript } from '@/components/chat/SharedTranscript'
 import { Button } from '@/components/ui/button'
 
 export function SharedChatContent({ shareId }: { shareId: string }) {
-  const sharedChat = useQuery(api.sharing.getSharedChat, { shareId })
+  const sharedChat = useQuery(api.sharing.getSharedChatHeader, { shareId })
+  const {
+    results: messages,
+    status,
+    loadMore,
+  } = usePaginatedQuery(
+    api.sharing.listSharedMessagesPaginated,
+    { shareId },
+    { initialNumItems: 50 }
+  )
 
   if (sharedChat === undefined) {
     return (
@@ -41,7 +50,20 @@ export function SharedChatContent({ shareId }: { shareId: string }) {
           </div>
         </header>
 
-        <SharedTranscript messages={sharedChat.messages} />
+        <SharedTranscript messages={messages} />
+
+        {status === 'CanLoadMore' && (
+          <div className="mt-6 flex justify-center">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => loadMore(50)}
+              className="shadow-sharp-sm rounded-none border-border font-mono text-xs"
+            >
+              Load more messages
+            </Button>
+          </div>
+        )}
 
         <footer className="mt-8 border-t border-border pt-4 text-center">
           <p className="mb-3 font-mono text-xs text-muted-foreground">Shared via Panda.ai</p>

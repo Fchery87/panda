@@ -72,4 +72,17 @@ describe('/api/jobs/execute route', () => {
     // status 200 means it passed the whitelist and SSRF checks
     expect(response.status).toBe(200)
   })
+
+  it('rejects absolute sibling working directories that only share the workspace prefix', async () => {
+    const response = await POST(
+      makeJsonRequest({
+        command: 'pwd',
+        workingDirectory: `${process.cwd()}-sibling`,
+      })
+    )
+
+    expect(response.status).toBe(400)
+    const payload = (await response.json()) as { error: string }
+    expect(payload.error).toContain('Invalid workingDirectory')
+  })
 })

@@ -21,7 +21,7 @@ import {
   formatElapsed,
   groupProgressSteps,
   reconcileProgressSteps,
-  mapRunEventsToProgressSteps,
+  mapRunEventSummariesToProgressSteps,
   parsePlanSteps,
   type LiveProgressStep,
 } from './live-run-utils'
@@ -30,10 +30,17 @@ import type { PlanStatus } from '@/lib/chat/planDraft'
 import { SpecBadgeMini } from '../workbench/SpecBadge'
 import type { PlanningSessionDebugSummary } from '@/components/plan/PlanningSessionDebugCard'
 import { PlanningSessionDebugCard } from '@/components/plan/PlanningSessionDebugCard'
+import type { PersistedRunEventSummaryInfo } from './types'
+import {
+  findLatestRecoverableCheckpoint,
+  type RuntimeCheckpointSummary,
+} from './runtime-checkpoints'
+import { logConvexPayload } from '@/lib/convex/payload-metrics'
 
 interface RunProgressPanelProps {
   chatId?: Id<'chats'> | null
   liveSteps?: LiveProgressStep[]
+  runEvents?: PersistedRunEventSummaryInfo[]
   isStreaming?: boolean
   tracePersistenceStatus?: 'live' | 'degraded'
   onOpenFile?: (path: string) => void
@@ -64,6 +71,7 @@ const STORAGE_KEY = 'panda.runProgress.isOpen'
 export function RunProgressPanel({
   chatId,
   liveSteps: externalLiveSteps,
+  runEvents,
   isStreaming = false,
   tracePersistenceStatus = 'live',
   onOpenFile,
@@ -90,21 +98,14 @@ export function RunProgressPanel({
   })
   const [nowMs, setNowMs] = useState(() => Date.now())
 
-  const queriedEvents = useQuery(
-    api.agentRuns.listEventsByChat,
-    chatId ? { chatId, limit: 60 } : 'skip'
-  )
   const runtimeCheckpoints = useQuery(
-    api.agentRuns.listRuntimeCheckpoints,
+    api.agentRuns.listRuntimeCheckpointSummaries,
     chatId ? { chatId, limit: 6 } : 'skip'
-  ) as
-    | Array<{
-        _id: string
-        reason?: 'step' | 'complete' | 'error'
-        savedAt?: number
-        sessionID?: string
-      }>
-    | undefined
+  ) as RuntimeCheckpointSummary[] | undefined
+
+  useEffect(() => {
+    logConvexPayload('chat.runtimeCheckpoints.summary', runtimeCheckpoints)
+  }, [runtimeCheckpoints])
 
   useEffect(() => {
     if (!isStreaming) return
@@ -136,9 +137,9 @@ export function RunProgressPanel({
   }, [isOpen, hasLoadedPreference])
 
   const historicalSteps = useMemo(() => {
-    if (!queriedEvents) return []
-    return mapRunEventsToProgressSteps(queriedEvents)
-  }, [queriedEvents])
+    if (!runEvents) return []
+    return mapRunEventSummariesToProgressSteps(runEvents)
+  }, [runEvents])
 
   const steps = useMemo(() => {
     if (isStreaming && externalLiveSteps && externalLiveSteps.length > 0) {
@@ -163,11 +164,8 @@ export function RunProgressPanel({
   const elapsedMs = startedAt ? Math.max(0, nowMs - startedAt) : 0
   const toolCount = steps.filter((s) => s.category === 'tool').length
   const interruptCount = steps.filter((s) => /interrupt|permission/i.test(s.content)).length
-  const latestRuntimeCheckpoint = runtimeCheckpoints?.[0]
-  const hasRecoverableCheckpoint =
-    !!latestRuntimeCheckpoint &&
-    latestRuntimeCheckpoint.reason !== 'complete' &&
-    typeof latestRuntimeCheckpoint.sessionID === 'string'
+  const latestRuntimeCheckpoint = findLatestRecoverableCheckpoint(runtimeCheckpoints)
+  const hasRecoverableCheckpoint = !!latestRuntimeCheckpoint
 
   if (!isStreaming && steps.length === 0 && !runtimeCheckpoints?.length) {
     return null

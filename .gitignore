@@ -61,6 +61,8 @@ coverage/
 *.gguf
 models/
 checkpoints/
+.bg-shell/
+.gsd/
 
 # Temporary files
 *.tmp
