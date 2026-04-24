@@ -1,7 +1,7 @@
 # AGENTS.md - AI Agent Instructions for Panda.ai
 
-> **Version:** 1.1  
-> **Last Updated:** 2026-04-22  
+> **Version:** 1.2  
+> **Last Updated:** 2026-04-24  
 > **Maintainer:** AI Development Team  
 > **Status:** Active web platform
 
@@ -28,6 +28,9 @@ When working on this codebase:
    Zustand
 
 6. **Test your changes** - Add/update tests as needed
+
+7. **Protect Convex bandwidth** - Default to metadata, summaries, pagination,
+   and lazy detail loading for realtime queries
 
 ---
 
@@ -427,6 +430,42 @@ Core product tables:
 Additional active tables cover runs, checkpoints, sharing, evals, specs,
 attachments, admin, provider tokens, and MCP servers.
 
+### Convex Bandwidth Rules
+
+Convex live queries resend result payloads as data changes. Treat payload shape
+as part of the product contract.
+
+**Default patterns:**
+
+- Use metadata queries for project file trees. Load file content only when a
+  file is opened, saved, downloaded, or needed for runtime execution.
+- Use recent or paginated chat lists. Do not subscribe to all chats on project
+  boot.
+- Use paginated message lists for transcripts. Keep the active workspace to one
+  visible persisted transcript subscription.
+- Return attachment metadata in message lists. Resolve signed storage URLs only
+  when rendering an image preview or when the user opens/downloads a file.
+- Use run event summaries for progress UI. Do not return full tool arguments,
+  command output, full event content, or full errors to timeline surfaces by
+  default.
+- Use runtime checkpoint summaries for badges and panels. Load full checkpoint
+  payloads only in resume flows.
+- Bound usage and analytics queries. Prefer `take(...)`, pagination, or stored
+  counters over `.collect()` on tables that grow with user activity.
+
+**Before adding or changing a Convex query, ask:**
+
+- Is this query live in the UI?
+- Can the result grow with project size, chat length, attachments, runs, or
+  time?
+- Does the caller need full documents, or only summary fields?
+- Should this be paginated, capped, or fetched lazily on interaction?
+- Does a regression guard need to prevent future broad-query use?
+
+Use `NEXT_PUBLIC_DEBUG_CONVEX_PAYLOADS=1` in development to log byte counts for
+hot Convex payloads. The logger reports labels and sizes only; never log raw
+message text, file content, provider settings, tokens, or secrets.
+
 ### Creating a Query
 
 ```typescript
@@ -622,6 +661,8 @@ test('landing page loads', async ({ page }) => {
 ```bash
 cd apps/web
 bun run test:e2e           # Run all E2E tests
+PLAYWRIGHT_REUSE_SERVER=true bunx playwright test e2e/workbench.e2e-spec.ts e2e/sharing.e2e-spec.ts
+# Use direct Playwright commands for targeted specs when port 3000 is already running.
 bun run test:e2e:ui        # Run with UI mode
 bun run test:e2e:debug     # Debug mode
 ```
@@ -858,6 +899,14 @@ Before finishing ANY task, verify:
 - [ ] Error handling in place
 - [ ] Loading states implemented
 - [ ] Console is clean (no errors/warnings)
+
+For Convex bandwidth-sensitive changes, also verify:
+
+- [ ] Project boot does not subscribe to full file contents
+- [ ] Chat and shared-chat transcripts are paginated or bounded
+- [ ] Run progress and checkpoint UI use summaries by default
+- [ ] Attachment URLs are resolved lazily and authorized
+- [ ] Bandwidth guard tests cover any newly optimized query boundary
 
 ---
 

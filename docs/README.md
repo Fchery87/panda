@@ -13,6 +13,8 @@ This directory contains the current source-of-truth docs for the Panda web app.
   post-cleanup theme and layout modernization brief
 - [docs/CHAT_TRANSCRIPT_POLICY.md](./CHAT_TRANSCRIPT_POLICY.md) - transcript vs
   inspector behavior
+- [docs/plans/2026-04-23-convex-bandwidth-optimization.md](./plans/2026-04-23-convex-bandwidth-optimization.md) -
+  Convex payload-shape and bandwidth remediation plan
 - [docs/DEPLOYMENT.md](./DEPLOYMENT.md) - production deployment guide
 - [docs/GOOGLE_OAUTH_SETUP.md](./GOOGLE_OAUTH_SETUP.md) - Google OAuth setup
 - [convex/README.md](../convex/README.md) - backend schema and function map

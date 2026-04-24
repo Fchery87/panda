@@ -131,6 +131,12 @@ panda/
 - Treat the 4-mode model as canonical across UI, runtime, and tests.
 - Use Zustand for local shell/chat-session state and Convex for persisted
   product data.
+- Keep Convex live queries narrow. Project boot should subscribe to metadata,
+  summaries, and paginated results; fetch large file contents, transcript
+  history, run event details, attachment URLs, and runtime checkpoints only when
+  the UI needs them.
+- Prefer bounded queries over `.collect()` on user- or chat-growing tables. If a
+  broad query is unavoidable, document why and add a regression guard.
 - Run `bun run typecheck && bun run lint && bun run format:check && bun test`
   before finishing changes.
 
@@ -141,7 +147,8 @@ panda/
 - [docs/AGENTIC_HARNESS.md](./docs/AGENTIC_HARNESS.md) - harness architecture
 - [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) - deployment guide
 - [docs/GOOGLE_OAUTH_SETUP.md](./docs/GOOGLE_OAUTH_SETUP.md) - auth setup
-- [VALIDATION_TASKS.md](./VALIDATION_TASKS.md) - current verification record
+- [docs/plans/2026-04-23-convex-bandwidth-optimization.md](./docs/plans/2026-04-23-convex-bandwidth-optimization.md) -
+  Convex bandwidth remediation plan and payload-shape invariants
 
 ## Current Verification Snapshot
 
