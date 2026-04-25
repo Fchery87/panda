@@ -5,6 +5,39 @@ import { fileURLToPath } from 'node:url'
 const configDir = path.dirname(fileURLToPath(import.meta.url))
 const workspaceRoot = path.resolve(configDir, '../..')
 
+const bunPackageStoreDir = path.join(workspaceRoot, 'node_modules/.bun')
+
+const codeMirrorPackageVersions = {
+  '@codemirror/autocomplete': '6.20.1',
+  '@codemirror/commands': '6.10.1',
+  '@codemirror/language': '6.12.1',
+  '@codemirror/lint': '6.9.3',
+  '@codemirror/merge': '6.12.1',
+  '@codemirror/search': '6.6.0',
+  '@codemirror/state': '6.6.0',
+  '@codemirror/theme-one-dark': '6.1.3',
+  '@codemirror/view': '6.40.0',
+} as const
+
+export const codeMirrorResolveAlias = Object.fromEntries(
+  Object.entries(codeMirrorPackageVersions).map(([packageName, version]) => [
+    packageName,
+    path.join(
+      bunPackageStoreDir,
+      `${packageName.replace('/', '+')}@${version}`,
+      'node_modules',
+      packageName
+    ),
+  ])
+) as Record<keyof typeof codeMirrorPackageVersions, string>
+
+export const codeMirrorTurbopackResolveAlias = Object.fromEntries(
+  Object.entries(codeMirrorPackageVersions).map(([packageName, version]) => [
+    packageName,
+    `./node_modules/.bun/${packageName.replace('/', '+')}@${version}/node_modules/${packageName}`,
+  ])
+) as Record<keyof typeof codeMirrorPackageVersions, string>
+
 interface SecurityHeaderOptions {
   isDev?: boolean
   isHttpsDeployment?: boolean
@@ -75,6 +108,15 @@ const nextConfig: NextConfig = {
   },
   turbopack: {
     root: workspaceRoot,
+    resolveAlias: codeMirrorTurbopackResolveAlias,
+  },
+  webpack(config) {
+    config.resolve ??= {}
+    config.resolve.alias = {
+      ...(config.resolve.alias ?? {}),
+      ...codeMirrorResolveAlias,
+    }
+    return config
   },
   env: {
     NEXT_PUBLIC_CONVEX_URL: process.env.NEXT_PUBLIC_CONVEX_URL,
