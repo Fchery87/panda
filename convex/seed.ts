@@ -80,7 +80,7 @@ export const seedUserSettings = mutation({
       .first()
 
     const settingsData = {
-      theme: 'system',
+      theme: 'system' as const,
       language: 'en',
       defaultProvider: 'crofai',
       defaultModel: 'greg',
