@@ -34,7 +34,14 @@ function getWebcontainerInstance(): Promise<WebContainer> {
     bootPromise = bootWebcontainerWithTimeout({
       boot: async () => {
         console.log('[WebContainer] Importing @webcontainer/api...')
-        const { WebContainer } = await import('@webcontainer/api')
+        const { WebContainer, configureAPIKey } = await import('@webcontainer/api')
+
+        const apiKey = process.env.NEXT_PUBLIC_WEBCONTAINER_API_KEY
+        if (apiKey) {
+          console.log('[WebContainer] Configuring API key...')
+          configureAPIKey(apiKey)
+        }
+
         console.log('[WebContainer] Calling WebContainer.boot({ coep: "credentialless" })...')
         return WebContainer.boot({ coep: 'credentialless' })
       },
