@@ -99,6 +99,8 @@ UI Components:   shadcn/ui (30+ components)
 Styling:         Tailwind CSS 3.4 + brutalist custom theme
 Animations:      Framer Motion
 State:           Zustand (client session/shell) + Convex (persistent data)
+Browser Runtime: WebContainer API for browser-side project execution
+Model Catalog:   models.dev for live provider and model metadata
 Testing:         Bun test runner + Playwright (E2E)
 Package Mgr:     Bun 1.2.0
 Monorepo:        TurboRepo 2.4
@@ -134,6 +136,7 @@ panda-ai/
 │       │   └── settings/     # Settings components
 │       ├── lib/
 │       │   ├── llm/          # LLM provider registry
+│       │   ├── webcontainer/ # Browser runtime boot, fs sync, and processes
 │       │   ├── agent/        # Agent runtime and delivery logic
 │       │   │   ├── harness/   # OpenCode-style agentic harness
 │       │   │   │   ├── types.ts          # Core types
@@ -1005,9 +1008,15 @@ test.describe('Feature', () => {
 quality. 🐼
 
 <!-- convex-ai-start -->
+
 This project uses [Convex](https://convex.dev) as its backend.
 
-When working on Convex code, **always read `convex/_generated/ai/guidelines.md` first** for important guidelines on how to correctly use Convex APIs and patterns. The file contains rules that override what you may have learned about Convex from training data.
+When working on Convex code, **always read `convex/_generated/ai/guidelines.md`
+first** for important guidelines on how to correctly use Convex APIs and
+patterns. The file contains rules that override what you may have learned about
+Convex from training data.
 
-Convex agent skills for common tasks can be installed by running `npx convex ai-files install`.
+Convex agent skills for common tasks can be installed by running
+`npx convex ai-files install`.
+
 <!-- convex-ai-end -->

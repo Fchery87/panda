@@ -38,6 +38,8 @@ shared chat history, and admin controls in one web app.
 | UI              | shadcn/ui + custom brutalist theme |
 | Animation       | Framer Motion                      |
 | Editor          | CodeMirror 6                       |
+| Browser Runtime | WebContainer API                   |
+| Model Catalog   | models.dev                         |
 | Testing         | Bun test + Playwright              |
 | Package Manager | Bun                                |
 | Monorepo        | Turborepo                          |
@@ -71,6 +73,10 @@ NEXT_PUBLIC_CONVEX_URL=https://<your-project>.convex.cloud
 OPENAI_API_KEY=sk-...
 # or
 OPENROUTER_API_KEY=sk-...
+
+# Optional browser-side project execution
+NEXT_PUBLIC_WEBCONTAINER_ENABLED=true
+NEXT_PUBLIC_WEBCONTAINER_API_KEY=
 
 # Optional auth configuration
 AUTH_GOOGLE_ID=your-client-id.apps.googleusercontent.com
@@ -145,6 +151,10 @@ panda/
 - [docs/README.md](./docs/README.md) - docs index and archive guidance
 - [AGENTS.md](./AGENTS.md) - working rules for AI agents in this repo
 - [docs/AGENTIC_HARNESS.md](./docs/AGENTIC_HARNESS.md) - harness architecture
+- [docs/WEBCONTAINER_RUNTIME.md](./docs/WEBCONTAINER_RUNTIME.md) - browser-side
+  execution runtime
+- [docs/LLM_PROVIDER_CATALOG.md](./docs/LLM_PROVIDER_CATALOG.md) - live LLM
+  provider and model catalog behavior
 - [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) - deployment guide
 - [docs/GOOGLE_OAUTH_SETUP.md](./docs/GOOGLE_OAUTH_SETUP.md) - auth setup
 - [docs/plans/2026-04-23-convex-bandwidth-optimization.md](./docs/plans/2026-04-23-convex-bandwidth-optimization.md) -

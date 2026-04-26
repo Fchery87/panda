@@ -9,6 +9,10 @@ This directory contains the current source-of-truth docs for the Panda web app.
 - [VALIDATION_TASKS.md](../VALIDATION_TASKS.md) - current verification record
 - [docs/AGENTIC_HARNESS.md](./AGENTIC_HARNESS.md) - harness architecture and
   delivery control plane
+- [docs/WEBCONTAINER_RUNTIME.md](./WEBCONTAINER_RUNTIME.md) - WebContainer
+  runtime setup, fallback behavior, and debugging checklist
+- [docs/LLM_PROVIDER_CATALOG.md](./LLM_PROVIDER_CATALOG.md) - live `models.dev`
+  provider catalog and hydrated model selector behavior
 - [docs/PANDA_WORKBENCH_MODERNIZATION_BRIEF.md](./PANDA_WORKBENCH_MODERNIZATION_BRIEF.md) -
   post-cleanup theme and layout modernization brief
 - [docs/CHAT_TRANSCRIPT_POLICY.md](./CHAT_TRANSCRIPT_POLICY.md) - transcript vs
@@ -28,3 +32,5 @@ Panda is a browser-only AI coding workbench with:
 - login and shared-chat routes
 - admin console pages for users, analytics, system, and security
 - Convex-backed persistence for chat, files, runs, delivery state, and sharing
+- optional browser-side project command execution through WebContainer
+- live LLM provider and model metadata from `models.dev`

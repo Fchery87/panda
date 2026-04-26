@@ -105,6 +105,11 @@ planning, execution, evals, admin, and sharing.
 - `updateProvider` - Update provider config
 - `updateAgentDefaults` - Update auto-apply defaults
 
+Provider configs store user-controlled values such as API keys, enabled state,
+base URL overrides, selected defaults, and available model IDs. The web app
+hydrates these saved configs with the live `models.dev` catalog at render time,
+so Convex does not need to persist every newly discovered provider immediately.
+
 ### Artifacts and runs
 
 - `artifacts.ts` - generated file/command artifact persistence
@@ -174,4 +179,6 @@ bunx convex deploy
 - [AGENTS.md](../AGENTS.md) - AI agent instructions
 - [docs/README.md](../docs/README.md) - docs index and archive guidance
 - [docs/AGENTIC_HARNESS.md](../docs/AGENTIC_HARNESS.md) - Agent harness docs
+- [docs/LLM_PROVIDER_CATALOG.md](../docs/LLM_PROVIDER_CATALOG.md) - LLM provider
+  catalog and settings hydration behavior
 - [docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md) - Deployment guide

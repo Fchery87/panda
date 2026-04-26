@@ -59,6 +59,16 @@ Why required:
 Optional (feature/provider specific):
 
 - Any frontend-visible `NEXT_PUBLIC_*` variables you add for UI/runtime behavior
+- `NEXT_PUBLIC_WEBCONTAINER_ENABLED=true` enables browser-side project command
+  execution where browser isolation requirements are met. Set it exactly to
+  `false` to force the server-backed execution path.
+- `NEXT_PUBLIC_WEBCONTAINER_API_KEY` is optional and only needed for
+  WebContainer deployments that require a StackBlitz API key.
+
+Project workspace routes include the extra isolation headers and content
+security policy allowances required by WebContainer. Non-project routes keep the
+default stricter headers. See [WebContainer Runtime](./WEBCONTAINER_RUNTIME.md)
+for the runtime states and debugging checklist.
 
 ## 3.2 Convex production env vars (set in Convex dashboard/CLI)
 
@@ -220,6 +230,22 @@ Fix:
   `development`)
 - Redeploy after correction
 
+## 9.5 WebContainer stays unsupported
+
+Symptoms:
+
+- Project workspace status shows WebContainer as unsupported
+- Browser-side terminal execution does not start
+
+Fix:
+
+- Confirm `NEXT_PUBLIC_WEBCONTAINER_ENABLED` is not set to `false`
+- Confirm the route is a project workspace route
+- Confirm the deployment serves the project route with cross-origin isolation
+  headers
+- Use the server-backed execution path as the fallback when the browser runtime
+  is unavailable
+
 ## 10. Operational recommendations
 
 - Keep production and staging Convex projects separate
@@ -227,6 +253,8 @@ Fix:
 - Enforce branch protection + required CI checks
 - Add post-deploy smoke tests (auth + critical data paths)
 - Keep deployment docs in sync when workflow/env names change
+- Keep WebContainer-specific security headers scoped to project workspace routes
+  unless every route needs browser-side execution support
 
 ## 11. Reference commands
 
