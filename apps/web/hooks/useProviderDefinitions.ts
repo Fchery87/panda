@@ -20,9 +20,24 @@ function catalogToDefinitions(catalog: ProviderCatalogEntry[]): ProviderDefiniti
 }
 
 /**
+ * Merge dynamic catalog definitions with static SHARED_PROVIDER_DEFINITIONS.
+ * Catalog entries win when both exist for the same provider ID, but static
+ * entries that aren't in the catalog (e.g. crof.ai) are preserved.
+ */
+function mergeDefinitions(
+  catalogDefs: ProviderDefinition[],
+  staticDefs: ProviderDefinition[]
+): ProviderDefinition[] {
+  const catalogIds = new Set(catalogDefs.map((d) => d.value))
+  const missingFromCatalog = staticDefs.filter((s) => !catalogIds.has(s.value))
+  return [...catalogDefs, ...missingFromCatalog]
+}
+
+/**
  * Returns a dynamic provider+model list fetched from models.dev via
- * getProviderCatalog(). Falls back to the static SHARED_PROVIDER_DEFINITIONS
- * while the catalog is loading or on error.
+ * getProviderCatalog(), merged with static SHARED_PROVIDER_DEFINITIONS
+ * to ensure Panda-specific providers (crof.ai, etc.) are always included.
+ * Falls back to static definitions while loading or on error.
  */
 export function useProviderDefinitions(): ProviderDefinition[] {
   const [definitions, setDefinitions] = useState<ProviderDefinition[]>(getSharedProviderDefinitions)
@@ -34,7 +49,9 @@ export function useProviderDefinitions(): ProviderDefinition[] {
       try {
         const catalog = await getProviderCatalog()
         if (cancelled || catalog.length === 0) return
-        setDefinitions(catalogToDefinitions(catalog))
+        const catalogDefs = catalogToDefinitions(catalog)
+        const merged = mergeDefinitions(catalogDefs, getSharedProviderDefinitions())
+        setDefinitions(merged)
       } catch {
         // Keep static fallback on error
       }

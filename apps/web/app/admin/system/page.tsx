@@ -440,7 +440,7 @@ export default function AdminSystemPage() {
                     enhancementModel: config.enhancementModel,
                   })
                 }
-                availableProviders={getEnhancementProviderOptions()}
+                availableProviders={getEnhancementProviderOptions(providerDefinitions)}
               />
             </>
           )}

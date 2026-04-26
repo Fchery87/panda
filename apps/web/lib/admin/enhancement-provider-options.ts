@@ -1,3 +1,4 @@
+import type { ProviderDefinition } from '@/lib/llm/provider-definitions'
 import { getSharedProviderDefinitions } from '@/lib/llm/provider-definitions'
 
 export interface EnhancementProviderOption {
@@ -17,9 +18,16 @@ const enhancementProviderKeys = new Set([
   'chutes',
 ])
 
-export function getEnhancementProviderOptions(): Record<string, EnhancementProviderOption> {
+/**
+ * Build enhancement provider options from a provider list.
+ * When called without arguments, falls back to static SHARED_PROVIDER_DEFINITIONS.
+ */
+export function getEnhancementProviderOptions(
+  providers?: ProviderDefinition[]
+): Record<string, EnhancementProviderOption> {
+  const source = providers ?? getSharedProviderDefinitions()
   return Object.fromEntries(
-    getSharedProviderDefinitions()
+    source
       .filter((provider) => enhancementProviderKeys.has(provider.value))
       .map((provider) => [
         provider.value,
