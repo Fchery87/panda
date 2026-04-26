@@ -48,6 +48,7 @@ export function WorkbenchRightPanel({ projectId }: WorkbenchRightPanelProps) {
     onRunEvalScenario,
     planningDebug,
     openRightPanelTab,
+    writeFileToRuntime,
   } = useWorkspaceRuntime()
 
   const activeTab = useWorkspaceUiStore((s) => s.rightPanelTab)
@@ -121,7 +122,12 @@ export function WorkbenchRightPanel({ projectId }: WorkbenchRightPanelProps) {
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{reviewSummary}</p>
             </div>
             <div className="min-h-0 flex-1 overflow-auto">
-              <ArtifactPanel projectId={projectId} chatId={activeChatId} position="right" />
+              <ArtifactPanel
+                projectId={projectId}
+                chatId={activeChatId}
+                position="right"
+                writeFileToRuntime={writeFileToRuntime}
+              />
             </div>
           </div>
         )

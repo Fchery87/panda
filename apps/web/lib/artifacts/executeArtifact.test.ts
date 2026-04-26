@@ -62,4 +62,29 @@ describe('artifact execution helpers', () => {
       status: 'completed',
     })
   })
+
+  it('writes file artifacts through to the runtime when provided', async () => {
+    const runtimeWrites: Array<{ path: string; content: string }> = []
+
+    await applyArtifact({
+      artifactId: 'artifact_1' as never,
+      action: {
+        type: 'file_write',
+        payload: { filePath: 'src/app.ts', content: 'export const value = 1' },
+      },
+      projectId: 'project_1' as never,
+      convex: { query: async () => null } as never,
+      upsertFile: (async () => undefined) as never,
+      createAndExecuteJob: (async () => ({ jobId: 'job_1' })) as never,
+      updateJobStatus: (async () => undefined) as never,
+      updateArtifactStatus: (async () => undefined) as never,
+      writeFileToRuntime: async (path, content) => {
+        runtimeWrites.push({ path, content })
+      },
+    })
+
+    expect(runtimeWrites).toEqual([
+      { path: 'src/app.ts', content: 'export const value = 1' },
+    ])
+  })
 })

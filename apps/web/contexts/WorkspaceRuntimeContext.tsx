@@ -181,6 +181,7 @@ export interface WorkspaceRuntimeValue {
   onSidebarSectionChange: (section: SidebarSection) => void
   onComposerOpenChange: (open: boolean) => void
   onShortcutHelpOpenChange: (open: boolean) => void
+  writeFileToRuntime?: (path: string, content: string) => Promise<unknown>
 }
 
 const WorkspaceRuntimeContext = createContext<WorkspaceRuntimeValue | null>(null)

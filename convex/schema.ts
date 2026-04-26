@@ -460,13 +460,6 @@ export const BrowserSessionStatus = v.union(
   v.literal('failed')
 )
 
-export const RuntimePreview = v.object({
-  status: v.union(v.literal('starting'), v.literal('running')),
-  previewUrl: v.string(),
-  activeCommand: v.string(),
-  updatedAt: v.number(),
-})
-
 export default defineSchema({
   // Auth tables (accounts, sessions, verification codes, etc.)
   ...authTables,
@@ -508,8 +501,6 @@ export default defineSchema({
     createdAt: v.number(),
     lastOpenedAt: v.optional(v.number()),
     repoUrl: v.optional(v.string()),
-    // Deprecated: retained until existing project documents are backfilled without this field.
-    runtimePreview: v.optional(v.union(v.null(), RuntimePreview)),
     agentPolicy: v.optional(
       v.union(
         v.null(),

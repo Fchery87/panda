@@ -32,6 +32,7 @@ interface ArtifactPanelProps {
   isOpen?: boolean
   onClose?: () => void
   position?: 'right' | 'floating'
+  writeFileToRuntime?: (path: string, content: string) => Promise<unknown>
 }
 
 type ArtifactCardData = React.ComponentProps<typeof ArtifactCard>['artifact']
@@ -58,6 +59,7 @@ export function ArtifactPanel({
   isOpen = true,
   onClose,
   position = 'right',
+  writeFileToRuntime,
 }: ArtifactPanelProps) {
   const records = useQuery(api.artifacts.list, chatId ? { chatId } : 'skip') as
     | ArtifactRecord[]
@@ -128,6 +130,7 @@ export function ArtifactPanel({
               ...updates,
             }),
           updateArtifactStatus,
+          writeFileToRuntime,
         })
         toast.success(result.kind === 'file' ? 'Applied file change' : 'Executed command', {
           description: result.description,
@@ -148,6 +151,7 @@ export function ArtifactPanel({
       createAndExecuteJob,
       updateJobStatus,
       updateArtifactStatus,
+      writeFileToRuntime,
     ]
   )
 
@@ -180,6 +184,7 @@ export function ArtifactPanel({
                 ...updates,
               }),
             updateArtifactStatus,
+            writeFileToRuntime,
           })
         } catch (error) {
           toast.error('Failed to apply artifact', {
@@ -199,6 +204,7 @@ export function ArtifactPanel({
     createAndExecuteJob,
     updateJobStatus,
     updateArtifactStatus,
+    writeFileToRuntime,
   ])
 
   const handleRejectAll = useCallback(async () => {

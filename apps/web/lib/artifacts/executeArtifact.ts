@@ -75,6 +75,7 @@ interface ApplyArtifactOptions {
     id: Id<'artifacts'>
     status: ArtifactRecordStatus
   }) => Promise<unknown>
+  writeFileToRuntime?: (path: string, content: string) => Promise<unknown>
 }
 
 export async function applyArtifact({
@@ -86,6 +87,7 @@ export async function applyArtifact({
   createAndExecuteJob,
   updateJobStatus,
   updateArtifactStatus,
+  writeFileToRuntime,
 }: ApplyArtifactOptions): Promise<{ kind: 'file' | 'command'; description: string }> {
   await updateArtifactStatus({ id: artifactId, status: 'in_progress' })
 
@@ -103,6 +105,8 @@ export async function applyArtifact({
         content: action.payload.content,
         isBinary: false,
       })
+
+      await writeFileToRuntime?.(action.payload.filePath, action.payload.content)
 
       await updateArtifactStatus({ id: artifactId, status: 'completed' })
       return { kind: 'file', description: action.payload.filePath }

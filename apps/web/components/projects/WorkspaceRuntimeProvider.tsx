@@ -227,6 +227,14 @@ export function WorkspaceRuntimeProvider({
   const approvedPlanRunSessionsRef = useRef(new Map<string, string>())
   const promptHistoryMessagesRef = useRef<Message[]>([])
 
+  const writeFileToRuntime = useMemo(
+    () =>
+      webcontainer.status === 'ready' && webcontainer.instance
+        ? (path: string, content: string) => writeFileToContainer(webcontainer.instance!, path, content)
+        : undefined,
+    [webcontainer.instance, webcontainer.status]
+  )
+
   useHotkeys(
     'mod+i',
     (e) => {
@@ -389,6 +397,7 @@ export function WorkspaceRuntimeProvider({
     setSelectedFileLocation,
     setCursorPosition,
     setMobilePrimaryPanel,
+    writeFileToRuntime,
   })
 
   const activePlanArtifact = planningSession.generatedPlan
@@ -491,10 +500,7 @@ export function WorkspaceRuntimeProvider({
     setCursorPosition,
     setOpenTabs,
     setMobilePrimaryPanel: handleSetMobilePrimaryPanel,
-    writeFileToRuntime:
-      webcontainer.status === 'ready' && webcontainer.instance
-        ? (path, content) => writeFileToContainer(webcontainer.instance!, path, content)
-        : undefined,
+    writeFileToRuntime,
   })
 
   const { jobs, isAnyJobRunning, createAndExecute, cancelJob } = useJobs(projectId)
@@ -692,6 +698,7 @@ export function WorkspaceRuntimeProvider({
       onSidebarSectionChange: handleSectionChange,
       onComposerOpenChange: setComposerOpen,
       onShortcutHelpOpenChange: setShortcutHelpOpen,
+      writeFileToRuntime,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
@@ -759,6 +766,7 @@ export function WorkspaceRuntimeProvider({
       setSelectedFilePath,
       setSelectedFileLocation,
       setCursorPosition,
+      writeFileToRuntime,
     ]
   )
 

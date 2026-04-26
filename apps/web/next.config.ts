@@ -60,12 +60,17 @@ export function buildSecurityHeaders({
 }: SecurityHeaderOptions = {}) {
   const csp = [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}${webcontainer ? " 'wasm-unsafe-eval' blob:" : ''}`,
+    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}${webcontainer ? " 'wasm-unsafe-eval' blob: https://*.stackblitz.com https://*.staticblitz.com" : ''}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data: https:",
     "connect-src 'self' https: wss:",
-    ...(webcontainer ? ["worker-src 'self' blob:"] : []),
+    ...(webcontainer
+      ? [
+          "worker-src 'self' blob: https://*.stackblitz.com https://*.staticblitz.com",
+          'frame-src https://stackblitz.com https://*.stackblitz.com https://*.staticblitz.com',
+        ]
+      : []),
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

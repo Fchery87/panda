@@ -59,6 +59,7 @@ interface UseArtifactLifecycleArgs {
   setSelectedFileLocation: (loc: FileLocation) => void
   setCursorPosition: (pos: CursorPosition) => void
   setMobilePrimaryPanel: (panel: MobilePrimaryPanel) => void
+  writeFileToRuntime?: (path: string, content: string) => Promise<unknown>
 }
 
 export function useArtifactLifecycle({
@@ -72,6 +73,7 @@ export function useArtifactLifecycle({
   setSelectedFileLocation,
   setCursorPosition,
   setMobilePrimaryPanel,
+  writeFileToRuntime,
 }: UseArtifactLifecycleArgs) {
   const convex = useConvex()
   const seenPendingArtifactIdsRef = useRef<Set<string>>(new Set())
@@ -174,6 +176,7 @@ export function useArtifactLifecycle({
               ...updates,
             }),
           updateArtifactStatus: updateArtifactStatusMutation,
+          writeFileToRuntime,
         })
         toast.success('Applied pending artifact', {
           description:
@@ -193,6 +196,7 @@ export function useArtifactLifecycle({
       updateArtifactStatusMutation,
       updateJobStatusMutation,
       upsertFileMutation,
+      writeFileToRuntime,
     ]
   )
 
