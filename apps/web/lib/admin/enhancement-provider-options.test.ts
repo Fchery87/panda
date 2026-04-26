@@ -10,5 +10,6 @@ describe('enhancement provider options', () => {
     expect(providers.anthropic.name).toBe('Anthropic')
     expect(providers.openrouter.availableModels).toContain('qwen/qwen3-coder:free')
     expect(providers.groq.enabled).toBe(true)
+    expect(providers.crofai.availableModels).toContain('kimi-k2.5')
   })
 })

@@ -4,6 +4,11 @@ export interface ProviderDefinition {
   models: string[]
 }
 
+export interface ProviderDefinitionConfig {
+  name?: string
+  availableModels?: string[]
+}
+
 export const SHARED_PROVIDER_DEFINITIONS: ProviderDefinition[] = [
   {
     value: 'openai',
@@ -97,4 +102,41 @@ export const SHARED_PROVIDER_DEFINITIONS: ProviderDefinition[] = [
 
 export function getSharedProviderDefinitions(): ProviderDefinition[] {
   return SHARED_PROVIDER_DEFINITIONS
+}
+
+function normalizeModelIds(modelIds: string[] | undefined): string[] {
+  const seen = new Set<string>()
+  const normalized: string[] = []
+
+  for (const modelId of modelIds ?? []) {
+    const trimmed = modelId.trim()
+    if (!trimmed || seen.has(trimmed)) continue
+    seen.add(trimmed)
+    normalized.push(trimmed)
+  }
+
+  return normalized
+}
+
+export function buildProviderDefinitionsFromConfigs(
+  definitions: ProviderDefinition[],
+  providerConfigs: Record<string, ProviderDefinitionConfig> | undefined
+): ProviderDefinition[] {
+  if (!providerConfigs) return definitions
+
+  const mergedById = new Map(definitions.map((definition) => [definition.value, definition]))
+
+  for (const [providerKey, config] of Object.entries(providerConfigs)) {
+    const freshModels = normalizeModelIds(config.availableModels)
+    if (freshModels.length === 0) continue
+
+    const existing = mergedById.get(providerKey)
+    mergedById.set(providerKey, {
+      value: providerKey,
+      label: config.name || existing?.label || providerKey,
+      models: normalizeModelIds([...freshModels, ...(existing?.models ?? [])]),
+    })
+  }
+
+  return Array.from(mergedById.values())
 }

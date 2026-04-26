@@ -36,6 +36,7 @@ import { AdminSubNav, AdminPageHeader } from '@/components/admin/AdminSubNav'
 import { readAdminEnumQueryParam, useAdminQueryUpdater } from '@/lib/admin/query-state'
 import { getEnhancementProviderOptions } from '@/lib/admin/enhancement-provider-options'
 import { useProviderDefinitions } from '@/hooks/useProviderDefinitions'
+import { useFreshProviderConfigs } from '@/hooks/useFreshProviderConfigs'
 
 const NO_PROVIDER_SELECTED = '__no-provider-selected__'
 const NO_MODEL_SELECTED = '__no-model-selected__'
@@ -53,7 +54,12 @@ export default function AdminSystemPage() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const providerDefinitions = useProviderDefinitions()
+  const userSettings = useQuery(api.settings.get) as
+    | { providerConfigs?: Record<string, unknown> }
+    | null
+    | undefined
+  const freshProviderConfigs = useFreshProviderConfigs(userSettings?.providerConfigs)
+  const providerDefinitions = useProviderDefinitions(freshProviderConfigs)
 
   const activeTab = readAdminEnumQueryParam(searchParams, 'tab', systemTabs, 'features')
   const settings = useQuery(api.admin.getSettings)

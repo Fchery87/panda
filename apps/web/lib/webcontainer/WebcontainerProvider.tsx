@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import type { WebContainer } from '@webcontainer/api'
 import { bootWebcontainerWithTimeout } from './boot'
 
@@ -77,7 +77,8 @@ export function WebcontainerProvider({ children }: { children: React.ReactNode }
       })
       .catch((bootError: unknown) => {
         if (!isMounted) return
-        const message = bootError instanceof Error ? bootError.message : 'Failed to boot WebContainer'
+        const message =
+          bootError instanceof Error ? bootError.message : 'Failed to boot WebContainer'
         if (process.env.NODE_ENV !== 'production') {
           console.warn('WebContainer boot failed; falling back to server execution.', {
             crossOriginIsolated: window.crossOriginIsolated,

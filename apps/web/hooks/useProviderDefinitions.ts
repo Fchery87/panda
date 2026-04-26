@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react'
 import { getProviderCatalog, type ProviderCatalogEntry } from '@/lib/llm/provider-catalog'
 import {
+  buildProviderDefinitionsFromConfigs,
   getSharedProviderDefinitions,
+  type ProviderDefinitionConfig,
   type ProviderDefinition,
 } from '@/lib/llm/provider-definitions'
 
@@ -39,7 +41,9 @@ function mergeDefinitions(
  * to ensure Panda-specific providers (crof.ai, etc.) are always included.
  * Falls back to static definitions while loading or on error.
  */
-export function useProviderDefinitions(): ProviderDefinition[] {
+export function useProviderDefinitions(
+  providerConfigs?: Record<string, ProviderDefinitionConfig>
+): ProviderDefinition[] {
   const [definitions, setDefinitions] = useState<ProviderDefinition[]>(getSharedProviderDefinitions)
 
   useEffect(() => {
@@ -47,11 +51,37 @@ export function useProviderDefinitions(): ProviderDefinition[] {
 
     const sync = async () => {
       try {
-        const catalog = await getProviderCatalog()
-        if (cancelled || catalog.length === 0) return
-        const catalogDefs = catalogToDefinitions(catalog)
-        const merged = mergeDefinitions(catalogDefs, getSharedProviderDefinitions())
-        setDefinitions(merged)
+        const [catalog, knownModels] = await Promise.all([
+          getProviderCatalog(),
+          fetch('/api/providers/known-models')
+            .then((res) => (res.ok ? (res.json() as Promise<Record<string, string[]>>) : {}))
+            .catch(() => ({}) as Record<string, string[]>),
+        ])
+
+        if (cancelled) return
+
+        let merged = getSharedProviderDefinitions()
+
+        if (catalog.length > 0) {
+          const catalogDefs = catalogToDefinitions(catalog)
+          merged = mergeDefinitions(catalogDefs, merged)
+        }
+
+        // Apply fresh models for known providers if available
+        const modelsMap = knownModels as Record<string, string[]>
+        if (Object.keys(modelsMap).length > 0) {
+          merged = merged.map((def) => {
+            if (modelsMap[def.value]) {
+              return {
+                ...def,
+                models: Array.from(new Set([...modelsMap[def.value], ...def.models])),
+              }
+            }
+            return def
+          })
+        }
+
+        setDefinitions(buildProviderDefinitionsFromConfigs(merged, providerConfigs))
       } catch {
         // Keep static fallback on error
       }
@@ -61,7 +91,7 @@ export function useProviderDefinitions(): ProviderDefinition[] {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [providerConfigs])
 
-  return definitions
+  return buildProviderDefinitionsFromConfigs(definitions, providerConfigs)
 }

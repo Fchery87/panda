@@ -16,6 +16,7 @@ const enhancementProviderKeys = new Set([
   'groq',
   'zai',
   'chutes',
+  'crofai',
 ])
 
 /**
