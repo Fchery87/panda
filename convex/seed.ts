@@ -79,12 +79,7 @@ export const seedUserSettings = mutation({
       .withIndex('by_user', (q) => q.eq('userId', user._id))
       .first()
 
-    if (existing) {
-      throw new Error('User settings already exist. Delete them first if you want to re-seed.')
-    }
-
-    const id = await ctx.db.insert('settings', {
-      userId: user._id,
+    const settingsData = {
       theme: 'system',
       language: 'en',
       defaultProvider: 'crofai',
@@ -181,8 +176,16 @@ export const seedUserSettings = mutation({
         },
       },
       updatedAt: Date.now(),
-    })
+    }
 
-    return { success: true, id }
+    let id: string
+    if (existing) {
+      await ctx.db.patch(existing._id, settingsData)
+      id = existing._id
+    } else {
+      id = await ctx.db.insert('settings', { userId: user._id, ...settingsData })
+    }
+
+    return { success: true, id, mode: existing ? 'patched' : 'created' }
   },
 })
