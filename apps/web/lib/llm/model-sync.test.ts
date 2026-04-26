@@ -122,6 +122,52 @@ describe('hydrateProvidersWithCatalog', () => {
     expect(hydrated.anthropic.availableModels).toEqual(['claude-opus-4-6', 'claude-sonnet-4-5'])
     expect(hydrated.anthropic.defaultModel).toBe('claude-sonnet-4-5')
   })
+
+  it('adds configured models.dev providers that were not in older saved settings', () => {
+    const providers: Record<string, ProviderModelConfig> = {}
+    const catalog = [
+      {
+        id: 'futurelab',
+        name: 'Future Lab',
+        description: 'Future Lab provider',
+        baseUrl: 'https://api.futurelab.dev/v1',
+        logoUrl: 'https://models.dev/logos/futurelab.svg',
+        models: [
+          {
+            id: 'future-code-1',
+            name: 'Future Code 1',
+            provider: 'futurelab',
+            maxTokens: 8192,
+            contextWindow: 128000,
+            capabilities: {
+              streaming: true,
+              functionCalling: true,
+              vision: false,
+              jsonMode: true,
+              toolUse: true,
+            },
+          },
+        ],
+        defaultModel: 'future-code-1',
+        hasSpecialImplementation: false,
+        providerType: 'futurelab',
+      },
+    ] satisfies ProviderCatalogEntry[]
+
+    const hydrated = hydrateProvidersWithCatalog(providers, catalog, 123)
+
+    expect(hydrated.futurelab).toMatchObject({
+      provider: 'futurelab',
+      name: 'Future Lab',
+      description: 'Future Lab provider',
+      baseUrl: 'https://api.futurelab.dev/v1',
+      enabled: false,
+      defaultModel: 'future-code-1',
+      availableModels: ['future-code-1'],
+      modelsLastSyncedAt: 123,
+      modelsSource: 'catalog',
+    })
+  })
 })
 
 describe('applyProviderModelSync', () => {

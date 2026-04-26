@@ -62,6 +62,7 @@ export function ProviderCard({
 }: ProviderCardProps) {
   const [showApiKey, setShowApiKey] = React.useState(false)
   const [isExpanded, setIsExpanded] = React.useState(defaultExpanded || !!provider.apiKey)
+  const contentId = React.useId()
   const availableModels = React.useMemo(
     () => normalizeModelIds(provider.availableModels),
     [provider.availableModels]
@@ -100,43 +101,54 @@ export function ProviderCard({
 
   return (
     <Card className={cn('w-full', className)}>
-      <button
-        type="button"
-        className="flex w-full items-center justify-between px-6 py-4 text-left"
-        onClick={() => setIsExpanded(!isExpanded)}
-        aria-expanded={isExpanded}
-      >
-        <div className="flex items-center gap-3">
-          <CardTitle className="text-base">{provider.name}</CardTitle>
-          <Badge variant={provider.enabled ? 'default' : 'secondary'} className="rounded-none">
-            {provider.enabled ? 'On' : 'Off'}
-          </Badge>
-          {provider.apiKey && provider.testStatus === 'success' && (
-            <Check className="h-3.5 w-3.5 text-green-500" />
-          )}
-          {provider.apiKey && provider.testStatus === 'error' && (
-            <X className="h-3.5 w-3.5 text-red-500" />
-          )}
-        </div>
+      <div className="flex w-full items-center justify-between gap-3 px-6 py-4">
+        <button
+          type="button"
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+          onClick={() => setIsExpanded(!isExpanded)}
+          aria-expanded={isExpanded}
+          aria-controls={contentId}
+        >
+          <span className="flex min-w-0 flex-wrap items-center gap-3">
+            <CardTitle className="text-base">{provider.name}</CardTitle>
+            <Badge variant={provider.enabled ? 'default' : 'secondary'} className="rounded-none">
+              {provider.enabled ? 'On' : 'Off'}
+            </Badge>
+            {provider.apiKey && provider.testStatus === 'success' && (
+              <Check className="h-3.5 w-3.5 text-green-500" />
+            )}
+            {provider.apiKey && provider.testStatus === 'error' && (
+              <X className="h-3.5 w-3.5 text-red-500" />
+            )}
+          </span>
+        </button>
         <div className="flex items-center gap-3">
           <Switch
             checked={provider.enabled}
             onCheckedChange={(checked) => {
               onChange({ enabled: checked })
             }}
-            onClick={(e) => e.stopPropagation()}
           />
-          <ChevronDown
-            className={cn(
-              'h-4 w-4 text-muted-foreground transition-transform duration-200',
-              isExpanded && 'rotate-180'
-            )}
-          />
+          <button
+            type="button"
+            className="flex h-8 w-8 items-center justify-center"
+            onClick={() => setIsExpanded(!isExpanded)}
+            aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${provider.name} settings`}
+            aria-expanded={isExpanded}
+            aria-controls={contentId}
+          >
+            <ChevronDown
+              className={cn(
+                'h-4 w-4 text-muted-foreground transition-transform duration-200',
+                isExpanded && 'rotate-180'
+              )}
+            />
+          </button>
         </div>
-      </button>
+      </div>
 
       {isExpanded && (
-        <CardContent className="space-y-4 border-t border-border pt-4">
+        <CardContent id={contentId} className="space-y-4 border-t border-border pt-4">
           <p className="-mt-1 mb-3 text-sm text-muted-foreground">{provider.description}</p>
           {/* API Key Input */}
           <div className="space-y-2">

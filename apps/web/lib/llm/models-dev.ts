@@ -11,7 +11,7 @@ import { appLog } from '@/lib/logger'
 import type { ModelInfo, ProviderType } from './types'
 
 export interface ModelsDevModel {
-  id: string
+  id?: string
   name: string
   family?: string
   attachment?: boolean
@@ -118,7 +118,8 @@ export function mapModelsDevToModelInfo(providerId: string, data: ModelsDevRespo
   const pandaProviderId = PROVIDER_ID_MAP[providerId] || (providerId as ProviderType)
   const providerName = provider.name || provider.provider_name || providerId
 
-  return Object.values(provider.models).map((model) => {
+  return Object.entries(provider.models).map(([modelKey, model]) => {
+    const modelId = model.id || modelKey
     // Support both new API format (cost, limit) and old format (pricing, context_length)
     const contextWindow =
       model.limit?.context || model.context_length || model.top_provider?.context_length || 8192
@@ -137,10 +138,10 @@ export function mapModelsDevToModelInfo(providerId: string, data: ModelsDevRespo
     const capabilities = parseCapabilities(model.capabilities || [])
 
     return {
-      id: model.id,
-      name: model.name || model.id,
+      id: modelId,
+      name: model.name || modelId,
       provider: pandaProviderId,
-      description: `${model.name || model.id} via ${providerName}`,
+      description: `${model.name || modelId} via ${providerName}`,
       maxTokens,
       contextWindow,
       capabilities: {

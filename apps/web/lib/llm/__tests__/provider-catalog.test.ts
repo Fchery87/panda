@@ -89,6 +89,25 @@ describe('buildCatalogFromResponse', () => {
     expect(catalog[0]?.models.map((model) => model.id)).toEqual(['gpt-5.5', 'gpt-4o'])
     expect(catalog[0]?.defaultModel).toBe('gpt-5.5')
   })
+
+  it('uses models.dev record keys as model IDs when model.id is omitted', () => {
+    const catalog = buildCatalogFromResponse({
+      futurelab: {
+        id: 'futurelab',
+        name: 'Future Lab',
+        api: 'https://api.futurelab.dev/v1',
+        models: {
+          'future-code-1': {
+            name: 'Future Code 1',
+            release_date: '2026-04-01',
+          },
+        },
+      },
+    } as ModelsDevResponse)
+
+    expect(catalog[0]?.models[0]?.id).toBe('future-code-1')
+    expect(catalog[0]?.defaultModel).toBe('future-code-1')
+  })
 })
 
 describe('searchCatalog', () => {

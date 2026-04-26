@@ -101,6 +101,26 @@ export function hydrateProvidersWithCatalog<T extends ProviderModelConfig>(
     nextProviders[providerKey] = nextConfig
   }
 
+  for (const entry of catalog) {
+    if (nextProviders[entry.id]) continue
+
+    const availableModels = normalizeModelIds(entry.models.map((model) => model.id))
+    if (availableModels.length === 0) continue
+
+    nextProviders[entry.id] = {
+      provider: entry.providerType,
+      name: entry.name,
+      description: entry.description,
+      baseUrl: entry.baseUrl,
+      enabled: false,
+      defaultModel: entry.defaultModel || availableModels[0],
+      availableModels,
+      modelsLastSyncedAt: syncedAt,
+      modelsSource: 'catalog',
+    } as T
+    changed = true
+  }
+
   return changed ? nextProviders : providers
 }
 
