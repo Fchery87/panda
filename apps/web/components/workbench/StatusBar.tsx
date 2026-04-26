@@ -42,6 +42,7 @@ interface StatusBarProps {
   agentStatus?: AgentStatus
   /** Callback when agent status badge is clicked (focus chat panel) */
   onAgentStatusClick?: () => void
+  webcontainerStatus?: 'idle' | 'booting' | 'ready' | 'error' | 'unsupported'
 }
 
 function getLanguageFromPath(path: string | null | undefined): string {
@@ -95,6 +96,7 @@ export function StatusBar({
   activeModel,
   agentStatus = 'idle',
   onAgentStatusClick,
+  webcontainerStatus = 'unsupported',
 }: StatusBarProps) {
   const displayLanguage = language || getLanguageFromPath(filePath)
   const filename = filePath?.split('/').pop() || 'No file'
@@ -135,6 +137,19 @@ export function StatusBar({
         {activeModel && (
           <span className="hidden text-muted-foreground/70 sm:inline">{activeModel}</span>
         )}
+
+        <span className="hidden text-muted-foreground/70 md:inline" aria-live="polite">
+          WC:{' '}
+          {webcontainerStatus === 'booting'
+            ? 'Booting'
+            : webcontainerStatus === 'ready'
+              ? 'Ready'
+              : webcontainerStatus === 'error'
+                ? 'Fallback'
+                : webcontainerStatus === 'unsupported'
+                  ? 'Server'
+                  : 'Idle'}
+        </span>
 
         <button
           type="button"

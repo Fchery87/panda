@@ -41,7 +41,6 @@ interface WorkbenchTopBarProps {
   onNewTask: () => void
   onStartRuntime?: () => void
   onStopRuntime?: () => void
-  onOpenPreview?: () => void
   onResetWorkspace: () => void
   onOpenShareDialog: () => void
   onRevealInExplorer: (folderPath: string) => void
@@ -97,7 +96,6 @@ export function WorkbenchTopBar({
   onNewTask,
   onStartRuntime,
   onStopRuntime,
-  onOpenPreview,
   onResetWorkspace,
   onOpenShareDialog,
   onRevealInExplorer,
@@ -199,7 +197,6 @@ export function WorkbenchTopBar({
             isRightPanelOpen={isRightPanelOpen}
             onStartRuntime={onStartRuntime}
             onStopRuntime={onStopRuntime}
-            onOpenPreview={onOpenPreview}
             isRuntimeRunning={isRuntimeRunning}
           />
           <div className="h-5 w-px bg-border" />

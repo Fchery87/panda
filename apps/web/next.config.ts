@@ -41,6 +41,7 @@ export const codeMirrorTurbopackResolveAlias = Object.fromEntries(
 interface SecurityHeaderOptions {
   isDev?: boolean
   isHttpsDeployment?: boolean
+  webcontainer?: boolean
 }
 
 function inferHttpsDeployment(): boolean {
@@ -55,14 +56,16 @@ function inferHttpsDeployment(): boolean {
 export function buildSecurityHeaders({
   isDev = process.env.NODE_ENV !== 'production',
   isHttpsDeployment = inferHttpsDeployment(),
+  webcontainer = false,
 }: SecurityHeaderOptions = {}) {
   const csp = [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
+    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}${webcontainer ? " 'wasm-unsafe-eval' blob:" : ''}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data: https:",
     "connect-src 'self' https: wss:",
+    ...(webcontainer ? ["worker-src 'self' blob:"] : []),
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -76,6 +79,13 @@ export function buildSecurityHeaders({
     { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
     { key: 'Content-Security-Policy', value: csp },
   ]
+
+  if (webcontainer) {
+    headers.push(
+      { key: 'Cross-Origin-Embedder-Policy', value: 'credentialless' },
+      { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' }
+    )
+  }
 
   if (isHttpsDeployment) {
     headers.splice(4, 0, {
@@ -124,7 +134,11 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: '/:path*',
+        source: '/projects/:path*',
+        headers: buildSecurityHeaders({ webcontainer: true }),
+      },
+      {
+        source: '/((?!projects(?:/|$)).*)',
         headers: buildSecurityHeaders(),
       },
     ]

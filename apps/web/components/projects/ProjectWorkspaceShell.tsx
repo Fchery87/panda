@@ -43,7 +43,6 @@ export function ProjectWorkspaceShell({
     onNewTask,
     onStartRuntime,
     onStopRuntime,
-    onOpenPreviewPanel,
     onResetWorkspace,
     onRevealInExplorer,
     onOpenCommandPalette,
@@ -95,7 +94,6 @@ export function ProjectWorkspaceShell({
         onNewTask={onNewTask}
         onStartRuntime={onStartRuntime}
         onStopRuntime={onStopRuntime}
-        onOpenPreview={onOpenPreviewPanel}
         onResetWorkspace={onResetWorkspace}
         onOpenShareDialog={() => onShareDialogOpenChange(true)}
         onRevealInExplorer={onRevealInExplorer}

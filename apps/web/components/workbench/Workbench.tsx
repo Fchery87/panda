@@ -9,7 +9,6 @@ import { EditorContainer } from '../editor/EditorContainer'
 import { CenterTabBar, type CenterTabBarTab } from './CenterTabBar'
 import { WorkspaceHome } from './WorkspaceHome'
 import { DiffTab } from './DiffTab'
-import { LivePreview } from '@/components/preview/LivePreview'
 import { isWorkspacePlanTab } from '@/contexts/WorkspaceContext'
 import { useShortcuts } from '@/hooks/useShortcuts'
 
@@ -56,19 +55,14 @@ interface WorkbenchProps {
   planApproveDisabled?: boolean
   planBuildDisabled?: boolean
   /** Called when user clicks "Home" tab in center */
-  activeCenterTab?: 'editor' | 'diff' | 'preview' | 'logs' | 'tests'
-  onCenterTabChange?: (tab: 'editor' | 'diff' | 'preview' | 'logs' | 'tests') => void
+  activeCenterTab?: 'editor' | 'diff' | 'logs' | 'tests'
+  onCenterTabChange?: (tab: 'editor' | 'diff' | 'logs' | 'tests') => void
   /** Number of pending diffs for the workspace home view */
   pendingDiffCount?: number
   /** Whether an agent is actively running */
   isAgentRunning?: boolean
   /** Called when user wants to start a new agent task (e.g. from WorkspaceHome) */
   onStartAgent?: () => void
-  /** Best-effort preview URL derived from workspace jobs */
-  previewUrl?: string | null
-  /** Explicit runtime status for the preview environment */
-  isPreviewRunning?: boolean
-  onOpenPreview?: () => void
   onOpenTerminal?: () => void
   focusState?: WorkspaceFocusState | null
   onFocusPrimaryAction?: () => void
@@ -78,7 +72,6 @@ interface WorkbenchProps {
 const CENTER_TABS: CenterTabBarTab[] = [
   { id: 'editor', label: 'Editor' },
   { id: 'diff', label: 'Diff' },
-  { id: 'preview', label: 'Preview' },
 ]
 
 const innerLayoutPersistenceKey = 'panda-workbench-inner'
@@ -115,9 +108,6 @@ export function Workbench({
   pendingDiffCount = 0,
   isAgentRunning = false,
   onStartAgent,
-  previewUrl,
-  isPreviewRunning = false,
-  onOpenPreview,
   onOpenTerminal,
   focusState = null,
   onFocusPrimaryAction,
@@ -200,11 +190,8 @@ export function Workbench({
                     recentFiles={recentFiles}
                     pendingDiffs={pendingDiffCount}
                     activeAgents={isAgentRunning ? 1 : 0}
-                    devServerRunning={isPreviewRunning}
-                    previewUrl={previewUrl}
                     onOpenFile={onSelectFile}
                     onStartAgent={onStartAgent}
-                    onOpenPreview={onOpenPreview}
                     onOpenTerminal={onOpenTerminal}
                     onFocusPrimaryAction={onFocusPrimaryAction}
                     onFocusSecondaryAction={onFocusSecondaryAction}
@@ -307,12 +294,9 @@ export function Workbench({
                   recentFiles={recentFiles}
                   pendingDiffs={pendingDiffCount}
                   activeAgents={isAgentRunning ? 1 : 0}
-                  devServerRunning={isPreviewRunning}
-                  previewUrl={previewUrl}
                   onOpenFile={onSelectFile}
                   onOpenDiffView={() => onCenterTabChange?.('diff')}
                   onStartAgent={onStartAgent}
-                  onOpenPreview={onOpenPreview}
                   onOpenTerminal={onOpenTerminal}
                   onFocusPrimaryAction={onFocusPrimaryAction}
                   onFocusSecondaryAction={onFocusSecondaryAction}
@@ -327,10 +311,6 @@ export function Workbench({
               pendingDiffCount={pendingDiffCount}
               agentLabel="Agent"
             />
-          )}
-
-          {effectiveTab === 'preview' && (
-            <LivePreview className="dot-grid h-full" url={previewUrl} />
           )}
         </div>
       </div>

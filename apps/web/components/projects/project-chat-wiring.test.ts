@@ -59,7 +59,7 @@ describe('project chat wiring', () => {
     expect(providerContent).toContain("onToggleInspector: () => openRightPanelTab('run')")
     expect(providerContent).toContain("onOpenHistory: () => openRightPanelTab('run')")
     expect(providerContent).toContain("openRightPanelTab('review')")
-    expect(providerContent).toContain("onOpenPreviewPanel: () => setActiveCenterTab('preview')")
+    expect(providerContent).not.toContain('onOpenPreviewPanel')
   })
 
   test('project page persists architect intake messages and opens the plan rail', async () => {

@@ -12,11 +12,12 @@
 
 import { appLog } from '@/lib/logger'
 import type { ToolDefinition, ToolCall, ToolResult } from '../llm/types'
+import type { WebContainer } from '@webcontainer/api'
 import type { Capability } from '@/lib/agent/harness/permission/types'
 import { analyzeCommand, isCommandPipelineSafe } from './command-analysis'
 import { executeOracleSearch } from './harness/oracle'
 import { repairJSON, safeJSONParse } from './harness/tool-repair'
-import { startRuntimePreview } from '@/lib/workbench/runtime-preview-state'
+import { spawnInContainer } from '@/lib/webcontainer/process-adapter'
 
 export interface AgentToolDefinition extends ToolDefinition {
   capability: Capability
@@ -437,6 +438,7 @@ export interface ToolContext {
       endColumn?: number
     }>
   }>
+  webcontainer?: WebContainer | null
 }
 
 interface WriteFileSpec {
@@ -514,12 +516,14 @@ export function createToolContext(
     memoryBank: {
       update: ToolApiRef
     }
-  }
+  },
+  options: { webcontainer?: WebContainer | null } = {}
 ): ToolContext {
   return {
     projectId,
     chatId,
     userId,
+    webcontainer: options.webcontainer ?? null,
 
     // Read files using Convex batchGet query
     readFiles: async (paths: string[]) => {
@@ -676,7 +680,13 @@ export function createToolContext(
       const startTime = Date.now()
 
       try {
-        startRuntimePreview(projectId, command)
+        if (options.webcontainer) {
+          const result = await spawnInContainer(options.webcontainer, command)
+          return {
+            ...result,
+            durationMs: Date.now() - startTime,
+          }
+        }
 
         if (api.artifacts.create) {
           await convexClient.mutation(api.artifacts.create, {

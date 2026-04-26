@@ -66,7 +66,6 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
     onNewChat,
     onToggleInspector,
     onOpenHistory,
-    onOpenPreviewPanel,
     openRightPanelTab,
   } = useWorkspaceRuntime()
 
@@ -146,12 +145,6 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
                   className="rounded-none text-xs uppercase tracking-wide"
                 >
                   Review
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={onOpenPreviewPanel}
-                  className="rounded-none text-xs uppercase tracking-wide"
-                >
-                  Preview
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={onOpenShare}

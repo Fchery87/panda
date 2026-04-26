@@ -2,7 +2,7 @@
 
 import { TabBar } from '@/components/ui/tab-bar'
 
-export type CenterTabBarTabId = 'editor' | 'diff' | 'preview' | 'logs' | 'tests'
+export type CenterTabBarTabId = 'editor' | 'diff' | 'logs' | 'tests'
 
 export interface CenterTabBarTab {
   id: CenterTabBarTabId

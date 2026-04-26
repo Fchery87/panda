@@ -7,10 +7,18 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { useJobs, type Job, type JobStatus } from '@/hooks/useJobs'
-import { startRuntimePreview } from '@/lib/workbench/runtime-preview-state'
+import { useJobs, type JobStatus } from '@/hooks/useJobs'
+import { useWebcontainer } from '@/lib/webcontainer/WebcontainerProvider'
 import { toast } from 'sonner'
 import { executeQueuedJob } from '@/lib/jobs/executeJob'
+import {
+  createLocalTerminalJob,
+  getTerminalRunningCount,
+  isLocalTerminalJobId,
+  mergeTerminalJobs,
+  type LocalTerminalJob,
+  type TerminalJob,
+} from './terminal-execution'
 import type { Id } from '../../../../convex/_generated/dataModel'
 import {
   TerminalSquare,
@@ -125,7 +133,7 @@ const LogEntry: React.FC<{
 
 // Job card component
 const JobCard: React.FC<{
-  job: Job
+  job: TerminalJob
   isExpanded: boolean
   onToggle: () => void
   onCancel?: () => void
@@ -256,12 +264,11 @@ const JobCard: React.FC<{
 }
 
 export function Terminal({ projectId }: TerminalProps) {
+  const webcontainer = useWebcontainer()
   const {
     jobs,
-    runningJobs,
     streamingLogs,
     isLoading,
-    isAnyJobRunning,
     createAndExecute,
     updateJobStatus,
     cancelJob,
@@ -270,6 +277,7 @@ export function Terminal({ projectId }: TerminalProps) {
 
   const [command, setCommand] = useState('')
   const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set())
+  const [localJobs, setLocalJobs] = useState<LocalTerminalJob[]>([])
   const [isExecuting, setIsExecuting] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
@@ -301,13 +309,52 @@ export function Terminal({ projectId }: TerminalProps) {
 
     setIsExecuting(true)
     try {
-      startRuntimePreview(projectId, command.trim())
+      const trimmedCommand = command.trim()
+      if (webcontainer.status === 'ready' && webcontainer.instance) {
+        const localJob = createLocalTerminalJob(trimmedCommand)
+        setLocalJobs((prev) => [localJob, ...prev])
+        setExpandedJobs((prev) => new Set(prev).add(localJob._id))
+
+        const result = await executeQueuedJob({
+          jobId: localJob._id as never,
+          command: trimmedCommand,
+          updateJobStatus: async () => undefined,
+          webcontainer: webcontainer.instance,
+          onOutput: (chunk) => {
+            setLocalJobs((prev) =>
+              prev.map((job) =>
+                job._id === localJob._id ? { ...job, logs: [...job.logs, chunk] } : job
+              )
+            )
+          },
+        })
+
+        setLocalJobs((prev) =>
+          prev.map((job) =>
+            job._id === localJob._id
+              ? {
+                  ...job,
+                  status: result.exitCode === 0 ? 'completed' : 'failed',
+                  output: result.stdout || undefined,
+                  error: result.stderr || undefined,
+                  completedAt: Date.now(),
+                  logs: [
+                    ...job.logs,
+                    `[${new Date().toISOString()}] Exit code: ${result.exitCode}`,
+                  ],
+                }
+              : job
+          )
+        )
+        setCommand('')
+        return
+      }
 
       // Create job and get the jobId
       const result = await createAndExecute({
         projectId: projectId as Id<'projects'>,
         type: 'cli',
-        command: command.trim(),
+        command: trimmedCommand,
       })
 
       if (result?.jobId) {
@@ -315,7 +362,7 @@ export function Terminal({ projectId }: TerminalProps) {
         setExpandedJobs((prev) => new Set(prev).add(result.jobId))
         await executeQueuedJob({
           jobId: result.jobId,
-          command: command.trim(),
+          command: trimmedCommand,
           updateJobStatus,
         })
       }
@@ -330,7 +377,9 @@ export function Terminal({ projectId }: TerminalProps) {
   }
 
   // Handle cancel job
-  const handleCancelJob = async (jobId: Id<'jobs'>) => {
+  const handleCancelJob = async (jobId: TerminalJob['_id']) => {
+    if (isLocalTerminalJobId(jobId)) return
+
     try {
       await cancelJob(jobId)
     } catch (error) {
@@ -339,7 +388,17 @@ export function Terminal({ projectId }: TerminalProps) {
   }
 
   // Handle delete job
-  const handleDeleteJob = async (jobId: Id<'jobs'>) => {
+  const handleDeleteJob = async (jobId: TerminalJob['_id']) => {
+    if (isLocalTerminalJobId(jobId)) {
+      setLocalJobs((prev) => prev.filter((job) => job._id !== jobId))
+      setExpandedJobs((prev) => {
+        const next = new Set(prev)
+        next.delete(jobId)
+        return next
+      })
+      return
+    }
+
     try {
       await removeJob(jobId)
       // Remove from expanded set
@@ -358,6 +417,9 @@ export function Terminal({ projectId }: TerminalProps) {
     inputRef.current?.focus()
   }, [])
 
+  const terminalJobs = mergeTerminalJobs(jobs, localJobs)
+  const runningJobCount = getTerminalRunningCount(terminalJobs)
+
   return (
     <div className="surface-0 dot-grid flex h-full flex-col">
       {/* Terminal Header */}
@@ -369,21 +431,21 @@ export function Terminal({ projectId }: TerminalProps) {
               Terminal
             </span>
           </div>
-          {isAnyJobRunning && (
+          {runningJobCount > 0 && (
             <Badge
               variant="outline"
               className="border-primary/30 bg-primary/20 text-xs text-primary"
             >
               <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-              {runningJobs.length} running
+              {runningJobCount} running
             </Badge>
           )}
         </div>
 
         <div className="flex items-center gap-2">
-          {jobs.length > 0 && (
+          {terminalJobs.length > 0 && (
             <span className="text-xs text-muted-foreground">
-              {jobs.length} job{jobs.length !== 1 ? 's' : ''}
+              {terminalJobs.length} job{terminalJobs.length !== 1 ? 's' : ''}
             </span>
           )}
         </div>
@@ -397,7 +459,7 @@ export function Terminal({ projectId }: TerminalProps) {
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
               Loading jobs...
             </div>
-          ) : jobs.length === 0 ? (
+          ) : terminalJobs.length === 0 ? (
             <div className="surface-1 shadow-sharp-md flex h-40 flex-col items-center justify-center border border-border text-muted-foreground/60">
               <TerminalSquare className="mb-2 h-8 w-8 opacity-50" />
               <span className="font-mono text-sm uppercase tracking-[0.18em]">No jobs yet</span>
@@ -405,7 +467,7 @@ export function Terminal({ projectId }: TerminalProps) {
             </div>
           ) : (
             <AnimatePresence mode="popLayout">
-              {jobs.map((job) => (
+              {terminalJobs.map((job) => (
                 <JobCard
                   key={job._id}
                   job={job}

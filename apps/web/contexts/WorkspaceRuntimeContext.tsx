@@ -176,7 +176,6 @@ export interface WorkspaceRuntimeValue {
   onNewTask: () => void
   onStartRuntime: () => void
   onStopRuntime: () => void
-  onOpenPreviewPanel: () => void
   onRevealInExplorer: (folderPath: string) => void
   onOpenCommandPalette: () => void
   onSidebarSectionChange: (section: SidebarSection) => void

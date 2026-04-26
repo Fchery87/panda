@@ -37,6 +37,7 @@ import { toast } from 'sonner'
 import type { GeneratedPlanArtifact } from '../lib/planning/types'
 import { spawnVariants } from '../lib/agent/parallelVariants'
 import { buildEditorContextBlock } from '../lib/agent/buildEditorContextBlock'
+import type { WebContainer } from '@webcontainer/api'
 
 import {
   buildAgentRuntimeConfig,
@@ -196,14 +197,23 @@ function createFallbackToolContext(
   artifactQueue: {
     addFileArtifact: (path: string, content: string, originalContent?: string | null) => void
     addCommandArtifact: (command: string, cwd?: string) => void
-  }
+  },
+  webcontainer?: WebContainer | null
 ) {
-  return createToolContext(projectId, chatId, userId, convexClient, artifactQueue, {
-    files: { batchGet: api.files.batchGet, list: api.files.list },
-    jobs: { create: api.jobs.create, updateStatus: api.jobs.updateStatus },
-    artifacts: { create: api.artifacts.create },
-    memoryBank: { update: api.memoryBank.update },
-  })
+  return createToolContext(
+    projectId,
+    chatId,
+    userId,
+    convexClient,
+    artifactQueue,
+    {
+      files: { batchGet: api.files.batchGet, list: api.files.list },
+      jobs: { create: api.jobs.create, updateStatus: api.jobs.updateStatus },
+      artifacts: { create: api.artifacts.create },
+      memoryBank: { update: api.memoryBank.update },
+    },
+    { webcontainer }
+  )
 }
 
 /**
@@ -233,6 +243,7 @@ interface UseAgentOptions {
     completedPlanStepIndexes: number[]
     planTotalSteps: number
   }) => void | Promise<void>
+  webcontainer?: WebContainer | null
 }
 
 /**
@@ -337,6 +348,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     specApprovalMode,
     onRunCreated,
     onRunCompleted,
+    webcontainer,
   } = options
 
   const convex = useConvex()
@@ -471,9 +483,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         chatId,
         activeUserId,
         convexClient,
-        artifactQueue.current
+        artifactQueue.current,
+        webcontainer
       ),
-    [projectId, chatId, convexClient]
+    [projectId, chatId, convexClient, webcontainer]
   )
 
   // Initialize tool context (will be populated when Convex client is available)

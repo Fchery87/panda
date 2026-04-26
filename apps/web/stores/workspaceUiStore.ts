@@ -4,7 +4,7 @@ import { persist } from 'zustand/middleware'
 import type { BottomDockTab } from '@/components/layout/BottomDock'
 
 export type RightPanelTab = 'chat' | 'plan' | 'review' | 'inspect' | 'run' | 'comments'
-export type CenterTab = 'editor' | 'diff' | 'preview' | 'logs' | 'tests'
+export type CenterTab = 'editor' | 'diff' | 'logs' | 'tests'
 export type MobilePrimaryPanel = 'workspace' | 'chat' | 'review'
 
 export type ChatInspectorTab =

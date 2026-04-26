@@ -508,6 +508,7 @@ export default defineSchema({
     createdAt: v.number(),
     lastOpenedAt: v.optional(v.number()),
     repoUrl: v.optional(v.string()),
+    // Deprecated: retained until existing project documents are backfilled without this field.
     runtimePreview: v.optional(v.union(v.null(), RuntimePreview)),
     agentPolicy: v.optional(
       v.union(

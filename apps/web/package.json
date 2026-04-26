@@ -52,6 +52,7 @@
     "@tanstack/react-virtual": "^3.13.23",
     "@uiw/codemirror-themes": "^4.25.4",
     "@uiw/react-codemirror": "^4.23.0",
+    "@webcontainer/api": "^1.6.4",
     "ai": "^4.1.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",

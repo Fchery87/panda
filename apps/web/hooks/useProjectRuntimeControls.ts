@@ -3,13 +3,6 @@
 import { useCallback } from 'react'
 import type { Id } from '@convex/_generated/dataModel'
 
-type RuntimePreview = {
-  status: 'starting' | 'running'
-  previewUrl: string
-  activeCommand: string
-  updatedAt: number
-} | null
-
 type JobRecord = {
   _id: Id<'jobs'>
   command: string
@@ -18,7 +11,6 @@ type JobRecord = {
 
 interface UseProjectRuntimeControlsParams {
   projectId: Id<'projects'>
-  runtimePreview: RuntimePreview
   files: Array<{ path: string }> | undefined
   jobs: JobRecord[]
   createAndExecute: (input: {
@@ -28,8 +20,6 @@ interface UseProjectRuntimeControlsParams {
     workingDirectory?: string
   }) => Promise<{ jobId: Id<'jobs'>; command: string; workingDirectory?: string } | undefined>
   cancelJob: (jobId: Id<'jobs'>) => Promise<Id<'jobs'>>
-  updateProjectRuntimePreview: (runtimePreview: RuntimePreview) => Promise<unknown>
-  setActiveCenterTab: (tab: 'editor' | 'diff' | 'preview' | 'logs' | 'tests') => void
   setIsBottomDockOpen: (value: boolean | ((prev: boolean) => boolean)) => void
   setActiveBottomDockTab: (tab: 'terminal' | 'agent-events') => void
   toast: {
@@ -39,27 +29,20 @@ interface UseProjectRuntimeControlsParams {
 
 export function useProjectRuntimeControls({
   projectId,
-  runtimePreview,
   files,
   jobs,
   createAndExecute,
   cancelJob,
-  updateProjectRuntimePreview,
-  setActiveCenterTab,
   setIsBottomDockOpen,
   setActiveBottomDockTab,
   toast,
 }: UseProjectRuntimeControlsParams) {
-  const previewUrl = runtimePreview?.previewUrl ?? null
-  const isPreviewRunning = runtimePreview?.status === 'running'
-
-  const handleOpenPreview = useCallback(() => {
-    setActiveCenterTab('preview')
-  }, [setActiveCenterTab])
+  const isRuntimeRunning = jobs.some((job) => job.status === 'queued' || job.status === 'running')
 
   const handleStartRuntime = useCallback(async () => {
-    if (runtimePreview?.status === 'starting' || runtimePreview?.status === 'running') {
-      setActiveCenterTab('preview')
+    if (isRuntimeRunning) {
+      setIsBottomDockOpen(true)
+      setActiveBottomDockTab('terminal')
       return
     }
 
@@ -68,13 +51,6 @@ export function useProjectRuntimeControls({
       : 'npm run dev'
 
     try {
-      await updateProjectRuntimePreview({
-        status: 'starting',
-        previewUrl: 'http://localhost:3000',
-        activeCommand: defaultCommand,
-        updatedAt: Date.now(),
-      })
-
       const result = await createAndExecute({
         projectId,
         type: 'build',
@@ -84,44 +60,37 @@ export function useProjectRuntimeControls({
       if (result?.jobId) {
         setIsBottomDockOpen(true)
         setActiveBottomDockTab('terminal')
-        setActiveCenterTab('preview')
       }
     } catch (error) {
       toast.error('Failed to start dev server', {
         description: error instanceof Error ? error.message : 'Unknown error',
       })
-      await updateProjectRuntimePreview(null)
     }
   }, [
     createAndExecute,
     files,
+    isRuntimeRunning,
     projectId,
-    runtimePreview?.status,
     setActiveBottomDockTab,
-    setActiveCenterTab,
     setIsBottomDockOpen,
     toast,
-    updateProjectRuntimePreview,
   ])
 
   const handleStopRuntime = useCallback(async () => {
-    const activeCommand = runtimePreview?.activeCommand
     const runningRuntimeJob = jobs.find(
-      (job) =>
-        job.command === activeCommand && (job.status === 'queued' || job.status === 'running')
+      (job) => job.status === 'queued' || job.status === 'running'
     )
 
     try {
       if (runningRuntimeJob) {
         await cancelJob(runningRuntimeJob._id)
       }
-      await updateProjectRuntimePreview(null)
     } catch (error) {
       toast.error('Failed to stop dev server', {
         description: error instanceof Error ? error.message : 'Unknown error',
       })
     }
-  }, [cancelJob, jobs, runtimePreview?.activeCommand, toast, updateProjectRuntimePreview])
+  }, [cancelJob, jobs, toast])
 
   const handleOpenTerminal = useCallback(() => {
     setIsBottomDockOpen(true)
@@ -129,9 +98,7 @@ export function useProjectRuntimeControls({
   }, [setActiveBottomDockTab, setIsBottomDockOpen])
 
   return {
-    previewUrl,
-    isPreviewRunning,
-    handleOpenPreview,
+    isRuntimeRunning,
     handleOpenTerminal,
     handleStartRuntime,
     handleStopRuntime,

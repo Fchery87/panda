@@ -1,95 +1,6 @@
-import type { MutationCtx } from './_generated/server'
 import { query, mutation, action } from './_generated/server'
 import { v } from 'convex/values'
 import { requireJobOwner, requireProjectOwner } from './lib/authz'
-
-const DEFAULT_PREVIEW_PORT = 3000
-
-const DEV_SERVER_PATTERNS = [
-  /\bnext\s+dev\b/iu,
-  /\bvite\b/iu,
-  /\bbun\s+run\s+dev\b/iu,
-  /\bnpm\s+run\s+dev\b/iu,
-  /\bpnpm\s+dev\b/iu,
-  /\byarn\s+dev\b/iu,
-]
-
-function parsePreviewPort(command: string): number {
-  const patterns = [
-    /\bPORT=(\d{2,5})\b/u,
-    /--port(?:=|\s+)(\d{2,5})/u,
-    /(?:^|\s)-p\s+(\d{2,5})(?:\s|$)/u,
-  ]
-
-  for (const pattern of patterns) {
-    const value = command.match(pattern)?.[1]
-    if (!value) continue
-    const port = Number.parseInt(value, 10)
-    if (Number.isInteger(port) && port > 0 && port <= 65_535) {
-      return port
-    }
-  }
-
-  return DEFAULT_PREVIEW_PORT
-}
-
-function getRuntimePreviewFromCommand(command: string) {
-  const trimmed = command.trim()
-  if (!trimmed) return null
-
-  const isDevServer = DEV_SERVER_PATTERNS.some((pattern) => pattern.test(trimmed))
-  if (!isDevServer) return null
-
-  return {
-    status: 'starting' as const,
-    previewUrl: `http://localhost:${parsePreviewPort(trimmed)}`,
-    activeCommand: trimmed,
-    updatedAt: Date.now(),
-  }
-}
-
-async function syncProjectRuntimePreview(
-  ctx: MutationCtx,
-  projectId: string,
-  command: string,
-  status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled',
-  currentRuntimePreview:
-    | {
-        status: 'starting' | 'running'
-        previewUrl: string
-        activeCommand: string
-        updatedAt: number
-      }
-    | null
-    | undefined
-) {
-  const runtimePreview = getRuntimePreviewFromCommand(command)
-  if (!runtimePreview) return
-
-  if (status === 'queued') {
-    await ctx.db.patch(projectId as never, {
-      runtimePreview,
-    })
-    return
-  }
-
-  if (status === 'running') {
-    await ctx.db.patch(projectId as never, {
-      runtimePreview: {
-        ...(currentRuntimePreview ?? runtimePreview),
-        status: 'running',
-        updatedAt: Date.now(),
-      },
-    })
-    return
-  }
-
-  if (currentRuntimePreview?.activeCommand === command) {
-    await ctx.db.patch(projectId as never, {
-      runtimePreview: null,
-    })
-  }
-}
 
 // list (query) - list jobs by projectId
 export const list = query({
@@ -149,7 +60,7 @@ export const create = mutation({
     command: v.string(),
   },
   handler: async (ctx, args) => {
-    const { project } = await requireProjectOwner(ctx, args.projectId)
+    await requireProjectOwner(ctx, args.projectId)
     const now = Date.now()
 
     const jobId = await ctx.db.insert('jobs', {
@@ -159,14 +70,6 @@ export const create = mutation({
       command: args.command,
       createdAt: now,
     })
-
-    await syncProjectRuntimePreview(
-      ctx,
-      args.projectId,
-      args.command,
-      'queued',
-      project.runtimePreview
-    )
 
     return jobId
   },
@@ -188,7 +91,7 @@ export const createAndExecute = mutation({
     workingDirectory: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { project } = await requireProjectOwner(ctx, args.projectId)
+    await requireProjectOwner(ctx, args.projectId)
     const now = Date.now()
 
     const jobId = await ctx.db.insert('jobs', {
@@ -198,14 +101,6 @@ export const createAndExecute = mutation({
       command: args.command,
       createdAt: now,
     })
-
-    await syncProjectRuntimePreview(
-      ctx,
-      args.projectId,
-      args.command,
-      'queued',
-      project.runtimePreview
-    )
 
     // Return the jobId so the client can trigger execution
     return { jobId, command: args.command, workingDirectory: args.workingDirectory }
@@ -230,7 +125,7 @@ export const updateStatus = mutation({
     completedAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { job, project } = await requireJobOwner(ctx, args.id)
+    const { job } = await requireJobOwner(ctx, args.id)
     if (job.status === 'cancelled' && args.status !== 'cancelled') {
       return args.id
     }
@@ -246,13 +141,6 @@ export const updateStatus = mutation({
     if (args.completedAt !== undefined) updates.completedAt = args.completedAt
 
     await ctx.db.patch(args.id, updates)
-    await syncProjectRuntimePreview(
-      ctx,
-      job.projectId,
-      job.command,
-      args.status,
-      project.runtimePreview
-    )
 
     return args.id
   },
@@ -265,7 +153,7 @@ export const appendLog = mutation({
     log: v.string(),
   },
   handler: async (ctx, args) => {
-    const { job, project } = await requireJobOwner(ctx, args.id)
+    const { job } = await requireJobOwner(ctx, args.id)
 
     const currentLogs = job.logs || []
 
@@ -287,7 +175,7 @@ export const appendLog = mutation({
 export const cancel = mutation({
   args: { id: v.id('jobs') },
   handler: async (ctx, args) => {
-    const { job, project } = await requireJobOwner(ctx, args.id)
+    const { job } = await requireJobOwner(ctx, args.id)
 
     if (job.status !== 'queued' && job.status !== 'running') {
       throw new Error('Can only cancel queued or running jobs')
@@ -302,14 +190,6 @@ export const cancel = mutation({
       logs: [...currentLogs, `[${new Date(now).toISOString()}] Job cancelled by user`],
     })
 
-    await syncProjectRuntimePreview(
-      ctx,
-      job.projectId,
-      job.command,
-      'cancelled',
-      project.runtimePreview
-    )
-
     return args.id
   },
 })
@@ -318,15 +198,7 @@ export const cancel = mutation({
 export const remove = mutation({
   args: { id: v.id('jobs') },
   handler: async (ctx, args) => {
-    const { job, project } = await requireJobOwner(ctx, args.id)
-
-    await syncProjectRuntimePreview(
-      ctx,
-      job.projectId,
-      job.command,
-      'cancelled',
-      project.runtimePreview
-    )
+    await requireJobOwner(ctx, args.id)
 
     await ctx.db.delete(args.id)
 

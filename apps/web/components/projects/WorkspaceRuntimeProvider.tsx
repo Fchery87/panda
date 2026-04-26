@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useRef, type SetStateAction } from 'react'
+import { useCallback, useEffect, useMemo, useRef, type SetStateAction } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useMutation, useQuery } from 'convex/react'
 import { toast } from 'sonner'
@@ -39,6 +39,8 @@ import { useProjectRequestedFileSync } from '@/hooks/useProjectRequestedFileSync
 import { useProjectWorkspaceActions } from '@/hooks/useProjectWorkspaceActions'
 import { useProjectAgentRunCallbacks } from '@/hooks/useProjectAgentRunCallbacks'
 import { useProjectShellWiring } from '@/hooks/useProjectShellWiring'
+import { useWebcontainer } from '@/lib/webcontainer/WebcontainerProvider'
+import { mountProjectFiles, writeFileToContainer } from '@/lib/webcontainer/fs-sync'
 import type { PlanStatus } from '@/lib/chat/planDraft'
 import { resolveAgentPolicy } from '@/lib/chat/agentPolicy'
 import type { AgentPolicy } from '@/lib/agent/automationPolicy'
@@ -54,6 +56,7 @@ interface ProjectFileMetadata {
   _creationTime: number
   projectId: Id<'projects'>
   path: string
+  content?: string | null
   isBinary?: boolean
   updatedAt: number
 }
@@ -74,7 +77,6 @@ interface Project {
   description?: string
   agentPolicy?: AgentPolicy
   agentDefaults?: AgentPolicy
-  runtimePreview?: unknown
 }
 
 function readAgentPolicyField(
@@ -114,6 +116,11 @@ export function WorkspaceRuntimeProvider({
   chats,
 }: WorkspaceRuntimeProviderProps) {
   const searchParams = useSearchParams()
+  const webcontainer = useWebcontainer()
+  const containerFiles = useQuery(
+    api.files.list,
+    webcontainer.status === 'ready' ? { projectId } : 'skip'
+  ) as ProjectFileMetadata[] | undefined
 
   const openCommandPalette = useCommandPaletteStore((state) => state.open)
   const { status: gitStatus, refreshStatus: refreshGitStatus } = useGit()
@@ -243,7 +250,6 @@ export function WorkspaceRuntimeProvider({
   const createChatMutation = useMutation(api.chats.create)
   const addMessageMutation = useMutation(api.messages.add)
   const updateChatMutation = useMutation(api.chats.update)
-  const updateProjectMutation = useMutation(api.projects.update)
 
   const {
     setActiveChatId,
@@ -306,6 +312,7 @@ export function WorkspaceRuntimeProvider({
     specApprovalMode: agentPolicy.specApprovalMode,
     onRunCreated: handleRunCreated,
     onRunCompleted: handleRunCompleted,
+    webcontainer: webcontainer.status === 'ready' ? webcontainer.instance : null,
   })
 
   const selectedChatModel = uiSelectedModel || selectedModel
@@ -484,32 +491,34 @@ export function WorkspaceRuntimeProvider({
     setCursorPosition,
     setOpenTabs,
     setMobilePrimaryPanel: handleSetMobilePrimaryPanel,
+    writeFileToRuntime:
+      webcontainer.status === 'ready' && webcontainer.instance
+        ? (path, content) => writeFileToContainer(webcontainer.instance!, path, content)
+        : undefined,
   })
 
-  const runtimePreview = ((project as { runtimePreview?: unknown }).runtimePreview ?? null) as never
   const { jobs, isAnyJobRunning, createAndExecute, cancelJob } = useJobs(projectId)
 
-  const {
-    previewUrl: _previewUrl,
-    isPreviewRunning,
-    handleOpenPreview,
-    handleOpenTerminal,
-    handleStartRuntime,
-    handleStopRuntime,
-  } = useProjectRuntimeControls({
-    projectId,
-    runtimePreview,
-    files,
-    jobs,
-    createAndExecute,
-    cancelJob,
-    updateProjectRuntimePreview: (nextRuntimePreview) =>
-      updateProjectMutation({ id: projectId, runtimePreview: nextRuntimePreview }),
-    setActiveCenterTab,
-    setIsBottomDockOpen: handleSetBottomDockOpen,
-    setActiveBottomDockTab,
-    toast,
-  })
+  const { isRuntimeRunning, handleOpenTerminal, handleStartRuntime, handleStopRuntime } =
+    useProjectRuntimeControls({
+      projectId,
+      files,
+      jobs,
+      createAndExecute,
+      cancelJob,
+      setIsBottomDockOpen: handleSetBottomDockOpen,
+      setActiveBottomDockTab,
+      toast,
+    })
+
+  useEffect(() => {
+    if (webcontainer.status !== 'ready' || !webcontainer.instance || !containerFiles) return
+    void mountProjectFiles(webcontainer.instance, containerFiles).catch((error) => {
+      toast.error('Failed to mount project files', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      })
+    })
+  }, [containerFiles, webcontainer.instance, webcontainer.status])
 
   const { handleContextualChat, handleInlineChat } = useProjectInlineEditing({
     projectId: String(projectId),
@@ -598,7 +607,7 @@ export function WorkspaceRuntimeProvider({
 
       // Runtime / system
       isAnyJobRunning,
-      isRuntimeRunning: isPreviewRunning,
+      isRuntimeRunning,
       isAgentRunning: agent.isLoading,
       gitStatus,
       healthStatus,
@@ -670,7 +679,6 @@ export function WorkspaceRuntimeProvider({
       onStopRuntime: () => {
         void handleStopRuntime()
       },
-      onOpenPreviewPanel: () => setActiveCenterTab('preview'),
       onRevealInExplorer: (folderPath: string) => {
         const revealTarget = resolveExplorerRevealTarget({ folderPath, files })
         if (!revealTarget) return
@@ -723,7 +731,7 @@ export function WorkspaceRuntimeProvider({
       planningSession.answerQuestion,
       planningSession.clearIntake,
       isAnyJobRunning,
-      isPreviewRunning,
+      isRuntimeRunning,
       gitStatus,
       healthStatus,
       healthDetail,
@@ -746,7 +754,6 @@ export function WorkspaceRuntimeProvider({
       toggleFlyout,
       handleStartRuntime,
       handleStopRuntime,
-      setActiveCenterTab,
       handleSectionChange,
       openCommandPalette,
       setSelectedFilePath,
@@ -773,10 +780,6 @@ export function WorkspaceRuntimeProvider({
           'Panda is actively working through the current task in this project.',
         nextStep: 'Monitor progress or open the run rail for more detail.',
         primaryAction: { id: 'open_run', label: 'Open Run' },
-        secondaryAction:
-          isPreviewRunning && _previewUrl
-            ? { id: 'open_preview', label: 'Open Preview' }
-            : undefined,
       }
     }
 
@@ -830,22 +833,16 @@ export function WorkspaceRuntimeProvider({
         detail: `${pendingChangedFilesCount} changed file${pendingChangedFilesCount !== 1 ? 's are' : ' is'} ready for inspection in the diff view.`,
         nextStep: 'Inspect the latest changes before continuing with the next task.',
         primaryAction: { id: 'review_changes', label: 'Inspect Changes' },
-        secondaryAction:
-          isPreviewRunning && _previewUrl
-            ? { id: 'open_preview', label: 'Open Preview' }
-            : undefined,
       }
     }
 
     return null
   }, [
-    _previewUrl,
     activeChat?.title,
     activePlanningSession?.generatedPlan,
     agent.isLoading,
     canApproveCurrentPlan,
     canBuildCurrentPlan,
-    isPreviewRunning,
     latestUserPrompt,
     liveRunSteps,
     pendingChangedFilesCount,
@@ -870,17 +867,8 @@ export function WorkspaceRuntimeProvider({
         setActiveCenterTab('diff')
         openRightPanelTab('review')
         break
-      case 'open_preview':
-        handleOpenPreview()
-        break
     }
-  }, [
-    handleBuildFromPlan,
-    handleOpenPreview,
-    openRightPanelTab,
-    setActiveCenterTab,
-    workspaceFocusState,
-  ])
+  }, [handleBuildFromPlan, openRightPanelTab, setActiveCenterTab, workspaceFocusState])
 
   const handleFocusSecondaryAction = useCallback(() => {
     const actionId = workspaceFocusState?.secondaryAction?.id
@@ -889,9 +877,6 @@ export function WorkspaceRuntimeProvider({
     switch (actionId) {
       case 'open_plan':
         openRightPanelTab('plan')
-        break
-      case 'open_preview':
-        handleOpenPreview()
         break
       case 'review_changes':
         setActiveCenterTab('diff')
@@ -904,13 +889,7 @@ export function WorkspaceRuntimeProvider({
         void handleBuildFromPlan()
         break
     }
-  }, [
-    handleBuildFromPlan,
-    handleOpenPreview,
-    openRightPanelTab,
-    setActiveCenterTab,
-    workspaceFocusState,
-  ])
+  }, [handleBuildFromPlan, openRightPanelTab, setActiveCenterTab, workspaceFocusState])
 
   // --- Assemble layout props ---
 
@@ -981,13 +960,11 @@ export function WorkspaceRuntimeProvider({
     onStartAgent: () => {
       void handleNewChat()
     },
-    previewUrl: _previewUrl,
-    isPreviewRunning,
-    onOpenPreview: handleOpenPreview,
     onOpenTerminal: handleOpenTerminal,
     focusState: workspaceFocusState,
     onFocusPrimaryAction: handleFocusPrimaryAction,
     onFocusSecondaryAction: handleFocusSecondaryAction,
+    webcontainerStatus: webcontainer.status,
   }
 
   return (

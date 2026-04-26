@@ -69,4 +69,48 @@ describe('executeQueuedJob', () => {
       global.fetch = originalFetch
     }
   })
+
+  it('runs inside WebContainer without touching the server job lifecycle', async () => {
+    const statusCalls: string[] = []
+    let fetchCalled = false
+    global.fetch = (async () => {
+      fetchCalled = true
+      return new Response('{}')
+    }) as typeof fetch
+
+    const output = new ReadableStream<string>({
+      start(controller) {
+        controller.enqueue('local output')
+        controller.close()
+      },
+    })
+    const webcontainer = {
+      spawn: async () => ({
+        output,
+        exit: Promise.resolve(0),
+      }),
+    }
+
+    try {
+      const result = await executeQueuedJob({
+        jobId: 'job_3' as never,
+        command: 'bun run test',
+        updateJobStatus: (async (_jobId: string, status: string) => {
+          statusCalls.push(status)
+        }) as never,
+        webcontainer: webcontainer as never,
+      })
+
+      expect(result).toMatchObject({
+        stdout: 'local output',
+        stderr: '',
+        exitCode: 0,
+        timedOut: false,
+      })
+      expect(statusCalls).toEqual([])
+      expect(fetchCalled).toBe(false)
+    } finally {
+      global.fetch = originalFetch
+    }
+  })
 })

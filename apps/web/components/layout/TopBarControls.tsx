@@ -29,7 +29,6 @@ interface TopBarControlsProps {
   repoLabel?: string
   onStartRuntime?: () => void
   onStopRuntime?: () => void
-  onOpenPreview?: () => void
   isRuntimeRunning?: boolean
 }
 
@@ -51,7 +50,6 @@ export function TopBarControls({
   repoLabel,
   onStartRuntime,
   onStopRuntime,
-  onOpenPreview,
   isRuntimeRunning = false,
 }: TopBarControlsProps) {
   return (
@@ -64,16 +62,16 @@ export function TopBarControls({
         repoLabel={repoLabel}
       />
 
-      {(onStartRuntime || onStopRuntime || onOpenPreview) && (
+      {(onStartRuntime || onStopRuntime) && (
         <div className="hidden items-center gap-1 md:flex">
           {isRuntimeRunning ? (
             <Button
               variant="ghost"
               size="sm"
               className="h-7 rounded-none px-2 font-mono text-[10px] uppercase tracking-widest"
-              onClick={onOpenPreview}
+              onClick={onStopRuntime}
             >
-              Preview
+              Stop App
             </Button>
           ) : (
             <Button

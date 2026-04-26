@@ -47,6 +47,7 @@ export function useProjectWorkbenchFiles(args: {
   setCursorPosition: (position: EditorLocation | null) => void
   setOpenTabs: Dispatch<SetStateAction<OpenProjectTab[]>>
   setMobilePrimaryPanel: (panel: 'workspace' | 'chat') => void
+  writeFileToRuntime?: (path: string, content: string) => Promise<void>
 }) {
   const {
     projectId,
@@ -57,6 +58,7 @@ export function useProjectWorkbenchFiles(args: {
     setCursorPosition,
     setOpenTabs,
     setMobilePrimaryPanel,
+    writeFileToRuntime,
   } = args
 
   const upsertFileMutation = useMutation(api.files.upsert)
@@ -284,6 +286,7 @@ export function useProjectWorkbenchFiles(args: {
           content,
           isBinary: false,
         })
+        await writeFileToRuntime?.(filePath, content)
         toast.success(`Saved ${filePath}`)
       } catch (error) {
         toast.error('Failed to save file', {
@@ -291,7 +294,7 @@ export function useProjectWorkbenchFiles(args: {
         })
       }
     },
-    [files, projectId, upsertFileMutation]
+    [files, projectId, upsertFileMutation, writeFileToRuntime]
   )
 
   const handleEditorDirtyChange = useCallback(

@@ -1,6 +1,8 @@
 'use client'
 
 import type { Id } from '@convex/_generated/dataModel'
+import type { WebContainer } from '@webcontainer/api'
+import { spawnInContainer } from '@/lib/webcontainer/process-adapter'
 
 type JobStatus = 'running' | 'completed' | 'failed'
 
@@ -19,6 +21,8 @@ interface ExecuteJobOptions {
       completedAt?: number
     }
   ) => Promise<unknown>
+  webcontainer?: WebContainer | null
+  onOutput?: (chunk: string) => void
 }
 
 interface ExecuteJobResult {
@@ -34,9 +38,20 @@ export async function executeQueuedJob({
   command,
   workingDirectory,
   updateJobStatus,
+  webcontainer,
+  onOutput,
 }: ExecuteJobOptions): Promise<ExecuteJobResult> {
   const startedAt = Date.now()
   const startedLog = `[${new Date(startedAt).toISOString()}] Running: ${command}`
+
+  if (webcontainer) {
+    const result = await spawnInContainer(webcontainer, command, { onOutput })
+    return {
+      ...result,
+      durationMs: Date.now() - startedAt,
+      timedOut: false,
+    }
+  }
 
   await updateJobStatus(jobId, 'running', {
     startedAt,

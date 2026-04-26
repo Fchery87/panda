@@ -89,8 +89,8 @@ interface ProjectWorkspaceLayoutProps {
   onBottomDockOpenChange?: (open: boolean) => void
   activeBottomDockTab?: BottomDockTab
   onBottomDockTabChange?: (tab: BottomDockTab) => void
-  activeCenterTab?: 'editor' | 'diff' | 'preview' | 'logs' | 'tests'
-  onCenterTabChange?: (tab: 'editor' | 'diff' | 'preview' | 'logs' | 'tests') => void
+  activeCenterTab?: 'editor' | 'diff' | 'logs' | 'tests'
+  onCenterTabChange?: (tab: 'editor' | 'diff' | 'logs' | 'tests') => void
   isRightPanelOpen?: boolean
   // Task header
   activeTaskTitle?: string
@@ -99,13 +99,11 @@ interface ProjectWorkspaceLayoutProps {
   onReviewChanges?: () => void
   onStopAgent?: () => void
   onStartAgent?: () => void
-  previewUrl?: string | null
-  isPreviewRunning?: boolean
-  onOpenPreview?: () => void
   onOpenTerminal?: () => void
   focusState?: WorkspaceFocusState | null
   onFocusPrimaryAction?: () => void
   onFocusSecondaryAction?: () => void
+  webcontainerStatus?: 'idle' | 'booting' | 'ready' | 'error' | 'unsupported'
 }
 
 export function ProjectWorkspaceLayout({
@@ -168,13 +166,11 @@ export function ProjectWorkspaceLayout({
   onReviewChanges: _onReviewChanges,
   onStopAgent: _onStopAgent,
   onStartAgent,
-  previewUrl,
-  isPreviewRunning,
-  onOpenPreview,
   onOpenTerminal,
   focusState = null,
   onFocusPrimaryAction,
   onFocusSecondaryAction,
+  webcontainerStatus,
 }: ProjectWorkspaceLayoutProps) {
   // Dock tab definitions with badge counts
   const dockTabs = useMemo(
@@ -225,9 +221,6 @@ export function ProjectWorkspaceLayout({
       pendingDiffCount={changedFilesCount}
       isAgentRunning={isStreaming}
       onStartAgent={onStartAgent}
-      previewUrl={previewUrl}
-      isPreviewRunning={isPreviewRunning}
-      onOpenPreview={onOpenPreview}
       onOpenTerminal={onOpenTerminal}
       focusState={focusState}
       onFocusPrimaryAction={onFocusPrimaryAction}
@@ -500,6 +493,7 @@ export function ProjectWorkspaceLayout({
         }
         specConstraintsTotal={currentSpec?.intent.acceptanceCriteria.length}
         onSpecClick={currentSpec ? openSpecInspect : undefined}
+        webcontainerStatus={webcontainerStatus}
       />
     </div>
   )

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { existsSync } from 'node:fs'
+import path from 'node:path'
 import nextConfig, {
   buildSecurityHeaders,
   codeMirrorResolveAlias,
@@ -38,6 +39,27 @@ describe('buildSecurityHeaders', () => {
     expect(csp).toContain('unsafe-eval')
     expect(headers.some((header) => header.key === 'Strict-Transport-Security')).toBe(false)
   })
+
+  it('adds WebContainer isolation and CSP allowances only when requested', () => {
+    const headers = buildSecurityHeaders({
+      isDev: false,
+      isHttpsDeployment: true,
+      webcontainer: true,
+    })
+    const csp = headers.find((header) => header.key === 'Content-Security-Policy')?.value
+
+    expect(csp).toContain("'wasm-unsafe-eval'")
+    expect(csp).toContain('blob:')
+    expect(csp).toContain("worker-src 'self' blob:")
+    expect(headers).toContainEqual({
+      key: 'Cross-Origin-Embedder-Policy',
+      value: 'credentialless',
+    })
+    expect(headers).toContainEqual({
+      key: 'Cross-Origin-Opener-Policy',
+      value: 'same-origin',
+    })
+  })
 })
 
 describe('CodeMirror bundler aliases', () => {
@@ -69,7 +91,7 @@ describe('CodeMirror bundler aliases', () => {
       const alias = codeMirrorTurbopackResolveAlias[packageName]
       expect(alias).toStartWith('./node_modules/.bun/')
       expect(alias).not.toStartWith('/')
-      expect(existsSync(alias.replace('./', '../../'))).toBe(true)
+      expect(existsSync(path.resolve(import.meta.dir, '../..', alias))).toBe(true)
     }
   })
 
@@ -88,5 +110,22 @@ describe('CodeMirror bundler aliases', () => {
     }
 
     expect(config.resolve?.alias).toMatchObject(codeMirrorResolveAlias)
+  })
+})
+
+describe('headers', () => {
+  it('scopes WebContainer isolation to project workspace routes', async () => {
+    const headers = await nextConfig.headers?.()
+
+    expect(headers?.[0]?.source).toBe('/projects/:path*')
+    expect(headers?.[0]?.headers).toContainEqual({
+      key: 'Cross-Origin-Embedder-Policy',
+      value: 'credentialless',
+    })
+    expect(headers?.[1]?.source).toBe('/((?!projects(?:/|$)).*)')
+    expect(headers?.[1]?.headers).not.toContainEqual({
+      key: 'Cross-Origin-Embedder-Policy',
+      value: 'credentialless',
+    })
   })
 })
