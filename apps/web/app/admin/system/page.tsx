@@ -35,7 +35,7 @@ import { AdminSubNav, AdminPageHeader } from '@/components/admin/AdminSubNav'
 
 import { readAdminEnumQueryParam, useAdminQueryUpdater } from '@/lib/admin/query-state'
 import { getEnhancementProviderOptions } from '@/lib/admin/enhancement-provider-options'
-import { getSharedProviderDefinitions } from '@/lib/llm/provider-definitions'
+import { useProviderDefinitions } from '@/hooks/useProviderDefinitions'
 
 const NO_PROVIDER_SELECTED = '__no-provider-selected__'
 const NO_MODEL_SELECTED = '__no-model-selected__'
@@ -53,6 +53,7 @@ export default function AdminSystemPage() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const providerDefinitions = useProviderDefinitions()
 
   const activeTab = readAdminEnumQueryParam(searchParams, 'tab', systemTabs, 'features')
   const settings = useQuery(api.admin.getSettings)
@@ -333,7 +334,7 @@ export default function AdminSystemPage() {
                             <SelectItem value={NO_PROVIDER_SELECTED}>
                               No default set (users must configure)
                             </SelectItem>
-                            {getSharedProviderDefinitions().map((provider) => (
+                            {providerDefinitions.map((provider) => (
                               <SelectItem key={provider.value} value={provider.value}>
                                 {provider.label}
                               </SelectItem>
@@ -379,7 +380,7 @@ export default function AdminSystemPage() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value={NO_MODEL_SELECTED}>Select model...</SelectItem>
-                            {getSharedProviderDefinitions()
+                            {providerDefinitions
                               .find((p) => p.value === globalLLMConfig.globalDefaultProvider)
                               ?.models.map((model) => (
                                 <SelectItem key={model} value={model}>
@@ -411,7 +412,7 @@ export default function AdminSystemPage() {
                         <div className="space-y-1">
                           <Label className="text-xs text-muted-foreground">Provider</Label>
                           <p className="font-medium">
-                            {getSharedProviderDefinitions().find(
+                            {providerDefinitions.find(
                               (p) => p.value === globalLLMConfig.globalDefaultProvider
                             )?.label || globalLLMConfig.globalDefaultProvider}
                           </p>

@@ -15,7 +15,7 @@ import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
 import { AlertCircle, Save, Bot, X } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { getSharedProviderDefinitions } from '@/lib/llm/provider-definitions'
+import { useProviderDefinitions } from '@/hooks/useProviderDefinitions'
 
 interface GlobalLLMConfigProps {
   settings:
@@ -34,11 +34,11 @@ interface GlobalLLMConfigProps {
   }) => void
 }
 
-const defaultProviders = getSharedProviderDefinitions()
 const NO_PROVIDER_SELECTED = '__no-provider-selected__'
 const NO_MODEL_SELECTED = '__no-model-selected__'
 
 export function GlobalLLMConfig({ settings, onSave }: GlobalLLMConfigProps) {
+  const defaultProviders = useProviderDefinitions()
   const [config, setConfig] = React.useState({
     provider: settings?.globalDefaultProvider || '',
     model: settings?.globalDefaultModel || '',
