@@ -8,8 +8,9 @@
 import { mutation, query, type QueryCtx } from './_generated/server'
 import { paginationOptsValidator } from 'convex/server'
 import { v } from 'convex/values'
-import { Id } from './_generated/dataModel'
+import type { Id } from './_generated/dataModel'
 import { requireChatOwner } from './lib/authz'
+import { getCurrentUserId, requireAuth } from './lib/auth'
 
 function generateShareId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -42,11 +43,7 @@ export const shareChat = mutation({
     chatId: v.id('chats'),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity()
-    if (!identity) {
-      throw new Error('Not authenticated')
-    }
-
+    const userId = await requireAuth(ctx)
     const chat = await ctx.db.get(args.chatId)
     if (!chat) {
       throw new Error('Chat not found')
@@ -57,12 +54,7 @@ export const shareChat = mutation({
       throw new Error('Project not found')
     }
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_tokenIdentifier', (q) => q.eq('tokenIdentifier', identity.subject))
-      .first()
-
-    if (!user || project.createdBy !== user._id) {
+    if (project.createdBy !== userId) {
       throw new Error('Not authorized to share this chat')
     }
 
@@ -87,7 +79,7 @@ export const shareChat = mutation({
       await ctx.db.insert('sharedChats', {
         chatId: args.chatId,
         shareId,
-        createdBy: user._id,
+        createdBy: userId,
         createdAt: Date.now(),
         isPublic: true,
       })
@@ -104,19 +96,7 @@ export const unshareChat = mutation({
     chatId: v.id('chats'),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity()
-    if (!identity) {
-      throw new Error('Not authenticated')
-    }
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_tokenIdentifier', (q) => q.eq('tokenIdentifier', identity.subject))
-      .first()
-
-    if (!user) {
-      throw new Error('User not found')
-    }
+    const userId = await requireAuth(ctx)
 
     const sharedChat = await ctx.db
       .query('sharedChats')
@@ -127,7 +107,7 @@ export const unshareChat = mutation({
       return false
     }
 
-    if (sharedChat.createdBy !== user._id) {
+    if (sharedChat.createdBy !== userId) {
       throw new Error('Not authorized to unshare this chat')
     }
 
@@ -261,23 +241,12 @@ export const getChatShareStatus = query({
 export const listMySharedChats = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity()
-    if (!identity) {
-      return []
-    }
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_tokenIdentifier', (q) => q.eq('tokenIdentifier', identity.subject))
-      .first()
-
-    if (!user) {
-      return []
-    }
+    const userId = await getCurrentUserId(ctx)
+    if (!userId) return []
 
     const sharedChats = await ctx.db
       .query('sharedChats')
-      .withIndex('by_creator', (q) => q.eq('createdBy', user._id))
+      .withIndex('by_creator', (q) => q.eq('createdBy', userId))
       .collect()
 
     return sharedChats.map((sc) => ({

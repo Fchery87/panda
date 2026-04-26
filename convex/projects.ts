@@ -1,8 +1,60 @@
 import { query, mutation } from './_generated/server'
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
+import type { MutationCtx } from './_generated/server'
 import { requireAuth, getCurrentUserId } from './lib/auth'
 import { trackUserAnalytics } from './lib/userAnalytics'
+
+type IndexQueryBuilder = {
+  eq: (fieldName: string, value: unknown) => IndexQueryBuilder
+}
+
+async function deleteByIndex<TableName extends Parameters<MutationCtx['db']['query']>[0]>(
+  ctx: MutationCtx,
+  table: TableName,
+  indexName: string,
+  buildQuery: (q: IndexQueryBuilder) => unknown
+): Promise<number> {
+  const rows = await ctx.db
+    .query(table)
+    .withIndex(indexName as never, buildQuery as never)
+    .collect()
+
+  for (const row of rows) {
+    await ctx.db.delete(row._id)
+  }
+
+  return rows.length
+}
+
+async function deleteFileWithSnapshots(ctx: MutationCtx, fileId: Id<'files'>): Promise<void> {
+  await deleteByIndex(ctx, 'fileSnapshots', 'by_file', (q) => q.eq('fileId', fileId))
+  await ctx.db.delete(fileId)
+}
+
+async function deleteChatChildren(ctx: MutationCtx, chatId: Id<'chats'>): Promise<number> {
+  const messages = await ctx.db
+    .query('messages')
+    .withIndex('by_chat', (q) => q.eq('chatId', chatId))
+    .collect()
+
+  for (const message of messages) {
+    await deleteByIndex(ctx, 'chatAttachments', 'by_message', (q) => q.eq('messageId', message._id))
+    await deleteByIndex(ctx, 'artifacts', 'by_message', (q) => q.eq('messageId', message._id))
+    await ctx.db.delete(message._id)
+  }
+
+  await deleteByIndex(ctx, 'artifacts', 'by_chat', (q) => q.eq('chatId', chatId))
+  await deleteByIndex(ctx, 'planningSessions', 'by_chat', (q) => q.eq('chatId', chatId))
+  await deleteByIndex(ctx, 'checkpoints', 'by_chat', (q) => q.eq('chatId', chatId))
+  await deleteByIndex(ctx, 'sharedChats', 'by_chat', (q) => q.eq('chatId', chatId))
+  await deleteByIndex(ctx, 'agentRunEvents', 'by_chat_created', (q) => q.eq('chatId', chatId))
+  await deleteByIndex(ctx, 'harnessRuntimeCheckpoints', 'by_chat_saved', (q) => q.eq('chatId', chatId))
+  await deleteByIndex(ctx, 'sessionSummaries', 'by_chat', (q) => q.eq('chatId', chatId))
+  await deleteByIndex(ctx, 'specifications', 'by_chat', (q) => q.eq('chatId', chatId))
+
+  return messages.length
+}
 
 // list (query) - list all projects for current user
 export const list = query({
@@ -137,27 +189,15 @@ export const remove = mutation({
       throw new Error('Project not found or access denied')
     }
 
-    // Delete all files associated with this project
     const files = await ctx.db
       .query('files')
       .withIndex('by_project', (q) => q.eq('projectId', args.id))
       .collect()
 
     for (const file of files) {
-      // Delete file snapshots
-      const snapshots = await ctx.db
-        .query('fileSnapshots')
-        .withIndex('by_file', (q) => q.eq('fileId', file._id))
-        .collect()
-
-      for (const snapshot of snapshots) {
-        await ctx.db.delete(snapshot._id)
-      }
-
-      await ctx.db.delete(file._id)
+      await deleteFileWithSnapshots(ctx, file._id)
     }
 
-    // Delete all chats associated with this project
     const chats = await ctx.db
       .query('chats')
       .withIndex('by_project', (q) => q.eq('projectId', args.id))
@@ -166,42 +206,37 @@ export const remove = mutation({
     let deletedMessageCount = 0
 
     for (const chat of chats) {
-      // Delete all messages for this chat
-      const messages = await ctx.db
-        .query('messages')
-        .withIndex('by_chat', (q) => q.eq('chatId', chat._id))
-        .collect()
-
-      deletedMessageCount += messages.length
-
-      for (const message of messages) {
-        // Delete artifacts associated with this message
-        const artifacts = await ctx.db
-          .query('artifacts')
-          .withIndex('by_message', (q) => q.eq('messageId', message._id))
-          .collect()
-
-        for (const artifact of artifacts) {
-          await ctx.db.delete(artifact._id)
-        }
-
-        await ctx.db.delete(message._id)
-      }
-
+      deletedMessageCount += await deleteChatChildren(ctx, chat._id)
       await ctx.db.delete(chat._id)
     }
 
-    // Delete all jobs associated with this project
-    const jobs = await ctx.db
-      .query('jobs')
-      .withIndex('by_project', (q) => q.eq('projectId', args.id))
+    await deleteByIndex(ctx, 'jobs', 'by_project', (q) => q.eq('projectId', args.id))
+    await deleteByIndex(ctx, 'agentRuns', 'by_project_started', (q) => q.eq('projectId', args.id))
+    await deleteByIndex(ctx, 'harnessRuntimeCheckpoints', 'by_project_session_saved', (q) =>
+      q.eq('projectId', args.id)
+    )
+    await deleteByIndex(ctx, 'sessionSummaries', 'by_project', (q) => q.eq('projectId', args.id))
+    await deleteByIndex(ctx, 'checkpoints', 'by_project', (q) => q.eq('projectId', args.id))
+    await deleteByIndex(ctx, 'specifications', 'by_project', (q) => q.eq('projectId', args.id))
+    await deleteByIndex(ctx, 'chatAttachments', 'by_project_created', (q) =>
+      q.eq('projectId', args.id)
+    )
+
+    const evalRuns = await ctx.db
+      .query('evalRuns')
+      .withIndex('by_project_started', (q) => q.eq('projectId', args.id))
       .collect()
 
-    for (const job of jobs) {
-      await ctx.db.delete(job._id)
+    for (const evalRun of evalRuns) {
+      await deleteByIndex(ctx, 'evalRunResults', 'by_run_sequence', (q) => q.eq('runId', evalRun._id))
+      await ctx.db.delete(evalRun._id)
     }
 
-    // Finally, delete the project
+    await deleteByIndex(ctx, 'evalRunResults', 'by_project_created', (q) =>
+      q.eq('projectId', args.id)
+    )
+    await deleteByIndex(ctx, 'evalSuites', 'by_project_updated', (q) => q.eq('projectId', args.id))
+
     await ctx.db.delete(args.id)
 
     await trackUserAnalytics(ctx, userId, {

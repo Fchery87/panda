@@ -9,15 +9,10 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { ArtifactCard } from './ArtifactCard'
 import { cn } from '@/lib/utils'
-import { useConvex, useMutation, useQuery } from 'convex/react'
-import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { toast } from 'sonner'
-import {
-  applyArtifact,
-  getPrimaryArtifactAction,
-  type ArtifactAction,
-} from '@/lib/artifacts/executeArtifact'
+import { getPrimaryArtifactAction, type ArtifactAction } from '@/lib/artifacts/executeArtifact'
+import { useArtifactController } from '@/hooks/useArtifactController'
 
 type ArtifactRecord = {
   _id: Id<'artifacts'>
@@ -61,15 +56,8 @@ export function ArtifactPanel({
   position = 'right',
   writeFileToRuntime,
 }: ArtifactPanelProps) {
-  const records = useQuery(api.artifacts.list, chatId ? { chatId } : 'skip') as
-    | ArtifactRecord[]
-    | undefined
-
-  const convex = useConvex()
-  const upsertFile = useMutation(api.files.upsert)
-  const createAndExecuteJob = useMutation(api.jobs.createAndExecute)
-  const updateJobStatus = useMutation(api.jobs.updateStatus)
-  const updateArtifactStatus = useMutation(api.artifacts.updateStatus)
+  const artifactController = useArtifactController({ projectId, chatId, writeFileToRuntime })
+  const records = artifactController.records as ArtifactRecord[] | undefined
 
   const [isApplying, setIsApplying] = useState(false)
 
@@ -116,25 +104,12 @@ export function ArtifactPanel({
 
       setIsApplying(true)
       try {
-        const result = await applyArtifact({
-          artifactId: asArtifactId(artifact.id),
-          action: artifact.action,
-          projectId,
-          convex,
-          upsertFile,
-          createAndExecuteJob,
-          updateJobStatus: (jobId, status, updates) =>
-            updateJobStatus({
-              id: jobId,
-              status,
-              ...updates,
-            }),
-          updateArtifactStatus,
-          writeFileToRuntime,
-        })
-        toast.success(result.kind === 'file' ? 'Applied file change' : 'Executed command', {
-          description: result.description,
-        })
+        const result = await artifactController.applyOne(asArtifactId(artifact.id))
+        if (result) {
+          toast.success(result.kind === 'file' ? 'Applied file change' : 'Executed command', {
+            description: result.description,
+          })
+        }
       } catch (error) {
         toast.error('Failed to apply artifact', {
           description: error instanceof Error ? error.message : String(error),
@@ -145,13 +120,7 @@ export function ArtifactPanel({
     },
     [
       pendingArtifacts,
-      projectId,
-      convex,
-      upsertFile,
-      createAndExecuteJob,
-      updateJobStatus,
-      updateArtifactStatus,
-      writeFileToRuntime,
+      artifactController,
     ]
   )
 
@@ -159,9 +128,9 @@ export function ArtifactPanel({
     async (id: string) => {
       const artifact = pendingArtifacts.find((a) => a.id === id)
       if (!artifact) return
-      await updateArtifactStatus({ id: asArtifactId(artifact.id), status: 'rejected' })
+      await artifactController.rejectOne(asArtifactId(artifact.id))
     },
-    [pendingArtifacts, updateArtifactStatus]
+    [pendingArtifacts, artifactController]
   )
 
   const handleApplyAll = useCallback(async () => {
@@ -170,22 +139,7 @@ export function ArtifactPanel({
     try {
       for (const artifact of pendingArtifacts) {
         try {
-          await applyArtifact({
-            artifactId: asArtifactId(artifact.id),
-            action: artifact.action,
-            projectId,
-            convex,
-            upsertFile,
-            createAndExecuteJob,
-            updateJobStatus: (jobId, status, updates) =>
-              updateJobStatus({
-                id: jobId,
-                status,
-                ...updates,
-              }),
-            updateArtifactStatus,
-            writeFileToRuntime,
-          })
+          await artifactController.applyOne(asArtifactId(artifact.id))
         } catch (error) {
           toast.error('Failed to apply artifact', {
             description: error instanceof Error ? error.message : String(error),
@@ -198,26 +152,16 @@ export function ArtifactPanel({
     }
   }, [
     pendingArtifacts,
-    projectId,
-    convex,
-    upsertFile,
-    createAndExecuteJob,
-    updateJobStatus,
-    updateArtifactStatus,
-    writeFileToRuntime,
+    artifactController,
   ])
 
   const handleRejectAll = useCallback(async () => {
-    for (const artifact of pendingArtifacts) {
-      await updateArtifactStatus({ id: asArtifactId(artifact.id), status: 'rejected' })
-    }
-  }, [pendingArtifacts, updateArtifactStatus])
+    await artifactController.rejectAll()
+  }, [artifactController])
 
   const handleClearAll = useCallback(async () => {
-    for (const artifact of pendingArtifacts) {
-      await updateArtifactStatus({ id: asArtifactId(artifact.id), status: 'rejected' })
-    }
-  }, [pendingArtifacts, updateArtifactStatus])
+    await artifactController.rejectAll()
+  }, [artifactController])
 
   if (!isOpen) return null
 

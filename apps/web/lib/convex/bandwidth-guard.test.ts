@@ -15,6 +15,12 @@ describe('Convex bandwidth guards', () => {
     expect(loader).not.toMatch(propertyAccess('api.chats.list'))
   })
 
+  test('keeps WebContainer runtime boot off full reactive file content lists', () => {
+    const runtimeProvider = source('components/projects/WorkspaceRuntimeProvider.tsx')
+
+    expect(runtimeProvider).not.toMatch(propertyAccess('api.files.list'))
+  })
+
   test('keeps UI progress surfaces off full runtime checkpoint queries', () => {
     const progressPanel = source('components/chat/RunProgressPanel.tsx')
     const chatPanel = source('components/projects/ProjectChatPanel.tsx')

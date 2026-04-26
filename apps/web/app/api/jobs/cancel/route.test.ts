@@ -17,6 +17,8 @@ mock.module('@/lib/jobs/processRegistry', () => ({
 
 let POST: typeof import('./route').POST
 
+process.env.PANDA_ENABLE_LOCAL_WORKSPACE_API = 'true'
+
 beforeAll(async () => {
   ;({ POST } = await import('./route'))
 })
@@ -37,6 +39,15 @@ describe('/api/jobs/cancel route', () => {
     isAuthenticated = true
 
     expect(response.status).toBe(401)
+  })
+
+  it('returns 404 when local workspace APIs are not enabled', async () => {
+    delete process.env.PANDA_ENABLE_LOCAL_WORKSPACE_API
+
+    const response = await POST(makeJsonRequest({ jobId: 'job_123' }))
+    process.env.PANDA_ENABLE_LOCAL_WORKSPACE_API = 'true'
+
+    expect(response.status).toBe(404)
   })
 
   it('requires a jobId', async () => {

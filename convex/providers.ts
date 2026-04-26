@@ -7,6 +7,7 @@
 
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
+import { getCurrentUserId, requireAuth } from './lib/auth'
 
 /**
  * Get OAuth tokens for a provider
@@ -16,23 +17,12 @@ export const getProviderTokens = query({
     provider: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity()
-    if (!identity) {
-      return null
-    }
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_tokenIdentifier', (q) => q.eq('tokenIdentifier', identity.subject))
-      .first()
-
-    if (!user) {
-      return null
-    }
+    const userId = await getCurrentUserId(ctx)
+    if (!userId) return null
 
     const tokenRecord = await ctx.db
       .query('providerTokens')
-      .withIndex('by_user_provider', (q) => q.eq('userId', user._id).eq('provider', args.provider))
+      .withIndex('by_user_provider', (q) => q.eq('userId', userId).eq('provider', args.provider))
       .first()
 
     if (!tokenRecord) {
@@ -74,24 +64,12 @@ export const storeProviderTokens = mutation({
     scope: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity()
-    if (!identity) {
-      throw new Error('Not authenticated')
-    }
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_tokenIdentifier', (q) => q.eq('tokenIdentifier', identity.subject))
-      .first()
-
-    if (!user) {
-      throw new Error('User not found')
-    }
+    const userId = await requireAuth(ctx)
 
     // Check if tokens already exist for this provider
     const existing = await ctx.db
       .query('providerTokens')
-      .withIndex('by_user_provider', (q) => q.eq('userId', user._id).eq('provider', args.provider))
+      .withIndex('by_user_provider', (q) => q.eq('userId', userId).eq('provider', args.provider))
       .first()
 
     const now = Date.now()
@@ -110,7 +88,7 @@ export const storeProviderTokens = mutation({
 
     // Create new token record
     const tokenId = await ctx.db.insert('providerTokens', {
-      userId: user._id,
+      userId,
       provider: args.provider,
       accessToken: args.accessToken,
       refreshToken: args.refreshToken,
@@ -132,23 +110,11 @@ export const deleteProviderTokens = mutation({
     provider: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity()
-    if (!identity) {
-      throw new Error('Not authenticated')
-    }
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_tokenIdentifier', (q) => q.eq('tokenIdentifier', identity.subject))
-      .first()
-
-    if (!user) {
-      throw new Error('User not found')
-    }
+    const userId = await requireAuth(ctx)
 
     const existing = await ctx.db
       .query('providerTokens')
-      .withIndex('by_user_provider', (q) => q.eq('userId', user._id).eq('provider', args.provider))
+      .withIndex('by_user_provider', (q) => q.eq('userId', userId).eq('provider', args.provider))
       .first()
 
     if (existing) {
@@ -166,23 +132,12 @@ export const deleteProviderTokens = mutation({
 export const listConnectedProviders = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity()
-    if (!identity) {
-      return []
-    }
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_tokenIdentifier', (q) => q.eq('tokenIdentifier', identity.subject))
-      .first()
-
-    if (!user) {
-      return []
-    }
+    const userId = await getCurrentUserId(ctx)
+    if (!userId) return []
 
     const tokens = await ctx.db
       .query('providerTokens')
-      .withIndex('by_user', (q) => q.eq('userId', user._id))
+      .withIndex('by_user', (q) => q.eq('userId', userId))
       .collect()
 
     return tokens.map((t) => ({

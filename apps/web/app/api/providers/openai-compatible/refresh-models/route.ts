@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+import {
+  buildModelsUrl,
+  requireAuthenticatedProviderRoute,
+  validateOpenAICompatibleBaseUrl,
+} from '../security'
+
 export async function POST(request: NextRequest) {
   try {
+    const authError = await requireAuthenticatedProviderRoute()
+    if (authError) return authError
+
     const body = await request.json()
     const { apiKey, baseUrl } = body
 
@@ -9,24 +18,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'API key required' }, { status: 400 })
     }
 
-    if (!baseUrl || typeof baseUrl !== 'string') {
-      return NextResponse.json({ error: 'Base URL required' }, { status: 400 })
-    }
+    const baseUrlValidation = validateOpenAICompatibleBaseUrl(baseUrl)
+    if (!baseUrlValidation.ok) return baseUrlValidation.response
 
-    let url: URL
-    try {
-      url = new URL(baseUrl)
-    } catch {
-      return NextResponse.json({ error: 'Invalid base URL' }, { status: 400 })
-    }
-
-    if (url.protocol !== 'https:') {
-      return NextResponse.json({ error: 'Only HTTPS URLs allowed' }, { status: 400 })
-    }
-
-    const modelsPath = baseUrl.endsWith('/models')
-      ? baseUrl
-      : `${baseUrl.replace(/\/+$/, '')}/models`
+    const modelsPath = buildModelsUrl(baseUrlValidation.url)
 
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 15000)

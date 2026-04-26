@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { isAuthenticatedNextjs } from '@/lib/auth/nextjs'
+import { requireLocalWorkspaceApiEnabled } from '../../local-workspace-gate'
 
 const execFileAsync = promisify(execFile)
 
@@ -17,6 +18,9 @@ export async function POST(req: Request) {
   if (!(await isAuthenticatedNextjs())) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  const workspaceApiGate = requireLocalWorkspaceApiEnabled()
+  if (workspaceApiGate) return workspaceApiGate
 
   const body = (await req.json()) as DiffRequest
   if (!body.to || !isValidHash(body.to) || (body.from && !isValidHash(body.from))) {

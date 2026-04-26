@@ -9,6 +9,8 @@ mock.module('@/lib/auth/nextjs', () => ({
 
 let POST: typeof import('./route').POST
 
+process.env.PANDA_ENABLE_LOCAL_WORKSPACE_API = 'true'
+
 beforeAll(async () => {
   ;({ POST } = await import('./route'))
 })
@@ -33,6 +35,15 @@ describe('/api/search route', () => {
     expect(response.status).toBe(401)
     const payload = (await response.json()) as { error: string }
     expect(payload.error).toContain('Unauthorized')
+  })
+
+  it('returns 404 when local workspace APIs are not enabled', async () => {
+    delete process.env.PANDA_ENABLE_LOCAL_WORKSPACE_API
+
+    const response = await POST(makeJsonRequest({ type: 'text', query: 'hello' }))
+    process.env.PANDA_ENABLE_LOCAL_WORKSPACE_API = 'true'
+
+    expect(response.status).toBe(404)
   })
 
   it('rejects invalid JSON', async () => {

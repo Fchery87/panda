@@ -2,6 +2,7 @@
 import { spawn } from 'node:child_process'
 import type { WebSocket } from 'ws'
 import { isAuthenticatedNextjs } from '@/lib/auth/nextjs'
+import { requireLocalWorkspaceApiEnabled } from '../local-workspace-gate'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,6 +10,9 @@ export async function GET() {
   if (!(await isAuthenticatedNextjs())) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  const workspaceApiGate = requireLocalWorkspaceApiEnabled()
+  if (workspaceApiGate) return workspaceApiGate
 
   return new Response('WebSocket upgrade required', { status: 426 })
 }
@@ -20,6 +24,11 @@ export async function GET() {
 export async function SOCKET(client: WebSocket, request?: Request) {
   if (!(await isAuthenticatedNextjs())) {
     client.close(1008, 'Unauthorized')
+    return
+  }
+
+  if (requireLocalWorkspaceApiEnabled()) {
+    client.close(1008, 'Local workspace API is not available')
     return
   }
 

@@ -13,6 +13,12 @@ const DISALLOWED_PROVIDER_SECRET_KEYS = new Set([
 type ProviderConfigMap = Record<string, Record<string, unknown>>
 type SettingsCtx = QueryCtx | MutationCtx
 
+function toClientProviderConfigs(
+  providerConfigs: ProviderConfigMap | undefined
+): ProviderConfigMap {
+  return sanitizeProviderConfigsForStorage(providerConfigs) ?? {}
+}
+
 function sanitizeProviderConfigsForStorage(
   providerConfigs: ProviderConfigMap | undefined
 ): ProviderConfigMap | undefined {
@@ -157,12 +163,6 @@ export const getEffective = query({
       usingGlobalDefaults = true
     }
 
-    // Merge provider configs
-    let effectiveProviderConfigs = userSettings?.providerConfigs || {}
-    if (!allowOverrides && adminSettings.globalProviderConfigs) {
-      effectiveProviderConfigs = adminSettings.globalProviderConfigs
-    }
-
     return {
       // Base settings
       theme: userSettings?.theme ?? 'system',
@@ -172,7 +172,7 @@ export const getEffective = query({
       // Provider configuration
       defaultProvider: effectiveProvider,
       defaultModel: effectiveModel,
-      providerConfigs: effectiveProviderConfigs,
+      providerConfigs: toClientProviderConfigs(userSettings?.providerConfigs as ProviderConfigMap | undefined),
 
       // Admin settings info
       allowUserOverrides: adminSettings.allowUserOverrides,

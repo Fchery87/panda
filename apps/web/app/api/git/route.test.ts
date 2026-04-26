@@ -5,7 +5,24 @@ mock.module('@/lib/auth/nextjs', () => ({
   isAuthenticatedNextjs: () => Promise.resolve(true),
 }))
 
+process.env.PANDA_ENABLE_LOCAL_WORKSPACE_API = 'true'
+
 describe('POST /api/git', () => {
+  it('returns 404 when local workspace APIs are not enabled', async () => {
+    delete process.env.PANDA_ENABLE_LOCAL_WORKSPACE_API
+
+    const { POST } = await import('./route')
+    const req = new Request('http://localhost/api/git', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command: 'status' }),
+    })
+
+    const res = await POST(req)
+    process.env.PANDA_ENABLE_LOCAL_WORKSPACE_API = 'true'
+    expect(res.status).toBe(404)
+  })
+
   it('supports status command', async () => {
     const { POST } = await import('./route')
     const req = new Request('http://localhost/api/git', {

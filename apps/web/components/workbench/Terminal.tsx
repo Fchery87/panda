@@ -12,7 +12,6 @@ import { useWebcontainer } from '@/lib/webcontainer/WebcontainerProvider'
 import { toast } from 'sonner'
 import { executeQueuedJob } from '@/lib/jobs/executeJob'
 import {
-  createLocalTerminalJob,
   getTerminalRunningCount,
   isLocalTerminalJobId,
   mergeTerminalJobs,
@@ -311,43 +310,23 @@ export function Terminal({ projectId }: TerminalProps) {
     try {
       const trimmedCommand = command.trim()
       if (webcontainer.status === 'ready' && webcontainer.instance) {
-        const localJob = createLocalTerminalJob(trimmedCommand)
-        setLocalJobs((prev) => [localJob, ...prev])
-        setExpandedJobs((prev) => new Set(prev).add(localJob._id))
-
-        const result = await executeQueuedJob({
-          jobId: localJob._id as never,
+        const result = await createAndExecute({
+          projectId: projectId as Id<'projects'>,
+          type: 'cli',
           command: trimmedCommand,
-          updateJobStatus: async () => undefined,
-          webcontainer: webcontainer.instance,
-          onOutput: (chunk) => {
-            setLocalJobs((prev) =>
-              prev.map((job) =>
-                job._id === localJob._id ? { ...job, logs: [...job.logs, chunk] } : job
-              )
-            )
-          },
         })
 
-        setLocalJobs((prev) =>
-          prev.map((job) =>
-            job._id === localJob._id
-              ? {
-                  ...job,
-                  status: result.exitCode === 0 ? 'completed' : 'failed',
-                  output: result.stdout || undefined,
-                  error: result.stderr || undefined,
-                  completedAt: Date.now(),
-                  logs: [
-                    ...job.logs,
-                    `[${new Date().toISOString()}] Exit code: ${result.exitCode}`,
-                  ],
-                }
-              : job
-          )
-        )
-        setCommand('')
-        return
+        if (result?.jobId) {
+          setExpandedJobs((prev) => new Set(prev).add(result.jobId))
+          await executeQueuedJob({
+            jobId: result.jobId,
+            command: trimmedCommand,
+            updateJobStatus,
+            webcontainer: webcontainer.instance,
+          })
+          setCommand('')
+          return
+        }
       }
 
       // Create job and get the jobId

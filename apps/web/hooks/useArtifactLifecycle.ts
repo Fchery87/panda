@@ -1,8 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import { useConvex, useMutation, useQuery } from 'convex/react'
-import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { toast } from 'sonner'
 import {
@@ -12,7 +10,7 @@ import {
   type WorkspaceArtifactPreview,
 } from '@/components/workbench/artifact-preview'
 import { getPrimaryArtifactAction } from '@/lib/artifacts/executeArtifact'
-import { applyArtifact } from '@/lib/artifacts/executeArtifact'
+import { useArtifactController } from './useArtifactController'
 
 type ArtifactAction = ReturnType<typeof getPrimaryArtifactAction>
 
@@ -75,14 +73,14 @@ export function useArtifactLifecycle({
   setMobilePrimaryPanel,
   writeFileToRuntime,
 }: UseArtifactLifecycleArgs) {
-  const convex = useConvex()
   const seenPendingArtifactIdsRef = useRef<Set<string>>(new Set())
   const autoApplyQueueRef = useRef<Set<string>>(new Set())
-
-  const artifactRecords = useQuery(
-    api.artifacts.list,
-    activeChat ? { chatId: activeChat._id } : 'skip'
-  ) as ArtifactRecord[] | undefined
+  const artifactController = useArtifactController({
+    projectId,
+    chatId: activeChat?._id,
+    writeFileToRuntime,
+  })
+  const artifactRecords = artifactController.records as ArtifactRecord[] | undefined
 
   const pendingArtifactPreviews = useMemo(
     () => deriveWorkspaceArtifactPreviews((artifactRecords ?? []).map((record) => ({ ...record }))),
@@ -100,11 +98,6 @@ export function useArtifactLifecycle({
   )
 
   const pendingChangedFilesCount = pendingArtifactPreviews.length
-
-  const upsertFileMutation = useMutation(api.files.upsert)
-  const createAndExecuteJobMutation = useMutation(api.jobs.createAndExecute)
-  const updateJobStatusMutation = useMutation(api.jobs.updateStatus)
-  const updateArtifactStatusMutation = useMutation(api.artifacts.updateStatus)
 
   useEffect(() => {
     seenPendingArtifactIdsRef.current.clear()
@@ -162,22 +155,7 @@ export function useArtifactLifecycle({
       if (!record || !action) return
 
       try {
-        await applyArtifact({
-          artifactId: record._id,
-          action,
-          projectId,
-          convex,
-          upsertFile: upsertFileMutation,
-          createAndExecuteJob: createAndExecuteJobMutation,
-          updateJobStatus: (jobId, status, updates) =>
-            updateJobStatusMutation({
-              id: jobId,
-              status,
-              ...updates,
-            }),
-          updateArtifactStatus: updateArtifactStatusMutation,
-          writeFileToRuntime,
-        })
+        await artifactController.applyOne(record._id)
         toast.success('Applied pending artifact', {
           description:
             action.type === 'file_write' ? action.payload.filePath : action.payload.command,
@@ -190,13 +168,7 @@ export function useArtifactLifecycle({
     },
     [
       artifactRecords,
-      convex,
-      createAndExecuteJobMutation,
-      projectId,
-      updateArtifactStatusMutation,
-      updateJobStatusMutation,
-      upsertFileMutation,
-      writeFileToRuntime,
+      artifactController,
     ]
   )
 
@@ -216,12 +188,9 @@ export function useArtifactLifecycle({
 
   const handleRejectPendingArtifact = useCallback(
     async (artifactId: string) => {
-      await updateArtifactStatusMutation({
-        id: artifactId as Id<'artifacts'>,
-        status: 'rejected',
-      })
+      await artifactController.rejectOne(artifactId)
     },
-    [updateArtifactStatusMutation]
+    [artifactController]
   )
 
   return {

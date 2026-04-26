@@ -17,4 +17,15 @@ describe('settings public admin defaults', () => {
       'systemMaintenance: adminSettings.systemMaintenance ?? false'
     )
   })
+
+  test('does not return raw global provider configs from effective user settings', () => {
+    const source = fs.readFileSync(path.resolve(import.meta.dir, 'settings.ts'), 'utf8')
+
+    const getEffectiveStart = source.indexOf('export const getEffective = query({')
+    const getAdminDefaultsStart = source.indexOf('export const getAdminDefaults = query({')
+    const getEffectiveBlock = source.slice(getEffectiveStart, getAdminDefaultsStart)
+
+    expect(getEffectiveBlock).not.toContain('effectiveProviderConfigs = adminSettings.globalProviderConfigs')
+    expect(getEffectiveBlock).not.toContain('providerConfigs: effectiveProviderConfigs')
+  })
 })

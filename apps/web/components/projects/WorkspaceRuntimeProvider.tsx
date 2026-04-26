@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, type SetStateAction } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { useMutation, useQuery } from 'convex/react'
+import { useConvex, useMutation, useQuery } from 'convex/react'
 import { toast } from 'sonner'
 import { useHotkeys } from 'react-hotkeys-hook'
 
@@ -116,11 +116,9 @@ export function WorkspaceRuntimeProvider({
   chats,
 }: WorkspaceRuntimeProviderProps) {
   const searchParams = useSearchParams()
+  const convex = useConvex()
   const webcontainer = useWebcontainer()
-  const containerFiles = useQuery(
-    api.files.list,
-    webcontainer.status === 'ready' ? { projectId } : 'skip'
-  ) as ProjectFileMetadata[] | undefined
+  const mountedRuntimeProjectRef = useRef<string | null>(null)
 
   const openCommandPalette = useCommandPaletteStore((state) => state.open)
   const { status: gitStatus, refreshStatus: refreshGitStatus } = useGit()
@@ -518,13 +516,29 @@ export function WorkspaceRuntimeProvider({
     })
 
   useEffect(() => {
-    if (webcontainer.status !== 'ready' || !webcontainer.instance || !containerFiles) return
-    void mountProjectFiles(webcontainer.instance, containerFiles).catch((error) => {
-      toast.error('Failed to mount project files', {
-        description: error instanceof Error ? error.message : 'Unknown error',
+    if (webcontainer.status !== 'ready' || !webcontainer.instance) return
+    if (mountedRuntimeProjectRef.current === projectId) return
+
+    mountedRuntimeProjectRef.current = projectId
+    const instance = webcontainer.instance
+    const filePaths = files.map((file) => file.path)
+
+    void convex
+      .query(api.files.batchGet, { projectId, paths: filePaths })
+      .then((runtimeFiles) => {
+        const filesToMount = runtimeFiles
+          .filter((file) => file.exists && file.content !== null)
+          .map((file) => ({ path: file.path, content: file.content }))
+
+        return mountProjectFiles(instance, filesToMount)
       })
-    })
-  }, [containerFiles, webcontainer.instance, webcontainer.status])
+      .catch((error) => {
+        mountedRuntimeProjectRef.current = null
+        toast.error('Failed to mount project files', {
+          description: error instanceof Error ? error.message : 'Unknown error',
+        })
+      })
+  }, [convex, files, projectId, webcontainer.instance, webcontainer.status])
 
   const { handleContextualChat, handleInlineChat } = useProjectInlineEditing({
     projectId: String(projectId),

@@ -6,6 +6,7 @@ import { isAuthenticatedNextjs } from '@/lib/auth/nextjs'
 import { redactError } from '@/lib/security/redact'
 import { cleanupJobProcess, registerJobProcess } from '@/lib/jobs/processRegistry'
 import { analyzeCommand } from '@/lib/agent/command-analysis'
+import { requireLocalWorkspaceApiEnabled } from '../../local-workspace-gate'
 
 interface ExecuteRequest {
   jobId?: string
@@ -349,6 +350,9 @@ export async function POST(req: NextRequest) {
   if (!(await isAuthenticatedNextjs())) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  const workspaceApiGate = requireLocalWorkspaceApiEnabled()
+  if (workspaceApiGate) return workspaceApiGate
 
   let body: ExecuteRequest
   try {

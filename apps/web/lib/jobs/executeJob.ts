@@ -45,11 +45,34 @@ export async function executeQueuedJob({
   const startedLog = `[${new Date(startedAt).toISOString()}] Running: ${command}`
 
   if (webcontainer) {
-    const result = await spawnInContainer(webcontainer, command, { onOutput })
-    return {
-      ...result,
-      durationMs: Date.now() - startedAt,
-      timedOut: false,
+    await updateJobStatus(jobId, 'running', {
+      startedAt,
+      logs: [startedLog],
+    })
+
+    try {
+      const result = await spawnInContainer(webcontainer, command, { onOutput })
+      const payload = {
+        ...result,
+        durationMs: Date.now() - startedAt,
+        timedOut: false,
+      }
+
+      await updateJobStatus(jobId, payload.exitCode === 0 ? 'completed' : 'failed', {
+        completedAt: Date.now(),
+        output: payload.stdout || undefined,
+        error: payload.stderr || undefined,
+        logs: [startedLog, `[${new Date().toISOString()}] Exit code: ${payload.exitCode}`],
+      })
+
+      return payload
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'WebContainer execution failed'
+      await updateJobStatus(jobId, 'failed', {
+        completedAt: Date.now(),
+        error: message,
+      })
+      throw error
     }
   }
 

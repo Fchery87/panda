@@ -2,6 +2,7 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import { isAbsolute, relative, resolve } from 'node:path'
 import { isAuthenticatedNextjs } from '@/lib/auth/nextjs'
+import { requireLocalWorkspaceApiEnabled } from '../../local-workspace-gate'
 
 const MAX_REGEX_PATTERN_LENGTH = 256
 const MAX_FILE_SIZE_BYTES = 1024 * 1024
@@ -48,6 +49,9 @@ export async function POST(req: Request) {
   if (!(await isAuthenticatedNextjs())) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  const workspaceApiGate = requireLocalWorkspaceApiEnabled()
+  if (workspaceApiGate) return workspaceApiGate
 
   const body = (await req.json()) as ReplaceRequest
 

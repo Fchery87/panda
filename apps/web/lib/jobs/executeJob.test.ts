@@ -70,8 +70,8 @@ describe('executeQueuedJob', () => {
     }
   })
 
-  it('runs inside WebContainer without touching the server job lifecycle', async () => {
-    const statusCalls: string[] = []
+  it('runs inside WebContainer through the same job lifecycle without touching the server route', async () => {
+    const statusCalls: Array<[string, string, Record<string, unknown> | undefined]> = []
     let fetchCalled = false
     global.fetch = (async () => {
       fetchCalled = true
@@ -95,8 +95,12 @@ describe('executeQueuedJob', () => {
       const result = await executeQueuedJob({
         jobId: 'job_3' as never,
         command: 'bun run test',
-        updateJobStatus: (async (_jobId: string, status: string) => {
-          statusCalls.push(status)
+        updateJobStatus: (async (
+          jobId: string,
+          status: string,
+          updates?: Record<string, unknown>
+        ) => {
+          statusCalls.push([jobId, status, updates])
         }) as never,
         webcontainer: webcontainer as never,
       })
@@ -107,7 +111,11 @@ describe('executeQueuedJob', () => {
         exitCode: 0,
         timedOut: false,
       })
-      expect(statusCalls).toEqual([])
+      expect(statusCalls[0]?.[0]).toBe('job_3')
+      expect(statusCalls[0]?.[1]).toBe('running')
+      expect(String(statusCalls[0]?.[2]?.logs)).toContain('Running: bun run test')
+      expect(statusCalls[1]?.[1]).toBe('completed')
+      expect(statusCalls[1]?.[2]?.output).toBe('local output')
       expect(fetchCalled).toBe(false)
     } finally {
       global.fetch = originalFetch
