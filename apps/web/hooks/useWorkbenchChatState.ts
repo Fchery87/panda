@@ -7,6 +7,7 @@ import type { Id } from '@convex/_generated/dataModel'
 import type {
   Message,
   MessageAnnotationInfo,
+  LatestRunReceiptInfo,
   PersistedRunEventSummaryInfo,
   ToolCallInfo,
 } from '@/components/chat/types'
@@ -131,9 +132,18 @@ export function useWorkbenchChatState({
     activeChat ? { chatId: activeChat._id, limit: 60 } : 'skip'
   ) as AgentRunEventSummary[] | undefined
 
+  const latestRunReceipt = useQuery(
+    api.agentRuns.getLatestReceiptByChat,
+    activeChat ? { chatId: activeChat._id } : 'skip'
+  ) as LatestRunReceiptInfo | null | undefined
+
   useEffect(() => {
     logConvexPayload('chat.runEvents.summary', runEvents)
   }, [runEvents])
+
+  useEffect(() => {
+    logConvexPayload('chat.runReceipt.latest', latestRunReceipt)
+  }, [latestRunReceipt])
 
   const chatMessages: Message[] = useMemo(() => {
     if (!activeChat) {
@@ -251,6 +261,7 @@ export function useWorkbenchChatState({
   return {
     convexMessages,
     runEvents,
+    latestRunReceipt,
     chatMessages,
     liveRunSteps,
     snapshotRunEvents,

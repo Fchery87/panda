@@ -22,6 +22,7 @@ export function WorkbenchRightPanel({ projectId }: WorkbenchRightPanelProps) {
   const {
     activeChatId,
     runEvents,
+    latestRunReceipt,
     liveSteps,
     isStreaming,
     tracePersistenceStatus,
@@ -137,6 +138,7 @@ export function WorkbenchRightPanel({ projectId }: WorkbenchRightPanelProps) {
             chatId={activeChatId}
             liveSteps={liveSteps}
             runEvents={runEvents}
+            latestRunReceipt={latestRunReceipt}
             isStreaming={isStreaming}
             tracePersistenceStatus={tracePersistenceStatus}
             onOpenFile={onOpenFile}

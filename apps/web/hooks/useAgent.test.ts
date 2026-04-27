@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import {
   buildFailedRunEvent,
   buildPublicSendMessageOptions,
+  buildResolvedRoutingDecision,
   buildSendMessageContent,
   buildSpecCancelledRunEvent,
 } from './useAgent'
@@ -89,5 +90,33 @@ describe('useAgent run event builders', () => {
       error: 'boom',
       status: 'failed',
     })
+  })
+})
+
+describe('buildResolvedRoutingDecision', () => {
+  it('uses deterministic routing for automatic sends', () => {
+    const decision = buildResolvedRoutingDecision({
+      content: 'fix the failing login test',
+      requestedMode: 'ask',
+      oversightLevel: 'review',
+    })
+
+    expect(decision.requestedMode).toBe('ask')
+    expect(decision.resolvedMode).toBe('code')
+    expect(decision.source).toBe('deterministic_rules')
+  })
+
+  it('preserves explicitly selected modes as manual overrides', () => {
+    const decision = buildResolvedRoutingDecision({
+      content: 'fix the failing login test',
+      requestedMode: 'ask',
+      oversightLevel: 'review',
+      manualOverride: true,
+    })
+
+    expect(decision.requestedMode).toBe('ask')
+    expect(decision.resolvedMode).toBe('ask')
+    expect(decision.source).toBe('manual_override')
+    expect(decision.webcontainerRequired).toBe(false)
   })
 })

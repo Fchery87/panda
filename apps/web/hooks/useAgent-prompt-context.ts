@@ -10,6 +10,7 @@ import {
 } from '@/lib/agent/context/session-summary'
 import type { GeneratedPlanArtifact } from '@/lib/planning/types'
 import type { FormalSpecification } from '@/lib/agent/spec/types'
+import type { ContextAuditRecord } from '@/lib/agent/receipt'
 
 interface ProjectFileMetadata {
   path: string
@@ -43,6 +44,7 @@ export interface AgentPromptBundle {
   providerType: ProviderType
   previousMessagesSnapshot: PromptHistoryMessage[]
   promptContext: PromptContext
+  contextAudit: ContextAuditRecord
 }
 
 export function buildAgentPreviousMessagesSnapshot(args: {
@@ -97,9 +99,26 @@ export function buildAgentPromptBundle(args: BuildAgentPromptBundleArgs): AgentP
     activeSpec: args.activeSpec ?? undefined,
   })
 
+  const contextAudit: ContextAuditRecord = {
+    filesConsidered:
+      args.projectFiles?.map((file) => ({
+        path: file.path,
+        relevanceScore: 0,
+      })) ?? [],
+    filesLoaded: [],
+    filesExcluded: [],
+    memoryBankIncluded: Boolean(args.memoryBankContent),
+    specIncluded: Boolean(args.activeSpec),
+    planIncluded: Boolean(args.planDraft || args.approvedPlanExecutionContext),
+    sessionSummaryIncluded: Boolean(promptContext.sessionSummary),
+    compactionOccurred: false,
+    truncated: false,
+  }
+
   return {
     providerType,
     previousMessagesSnapshot,
     promptContext,
+    contextAudit,
   }
 }

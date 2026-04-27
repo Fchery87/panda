@@ -23,7 +23,9 @@ function makeJsonRequest(body: unknown): Request {
 describe('POST /api/providers/openai-compatible/test', () => {
   it('returns 401 when unauthenticated', async () => {
     isAuthenticated = false
-    const response = await POST(makeJsonRequest({ apiKey: 'test-key', baseUrl: 'https://api.example.com/v1' }) as any)
+    const response = await POST(
+      makeJsonRequest({ apiKey: 'test-key', baseUrl: 'https://api.example.com/v1' }) as any
+    )
     isAuthenticated = true
 
     expect(response.status).toBe(401)

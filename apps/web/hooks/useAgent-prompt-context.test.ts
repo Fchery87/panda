@@ -56,6 +56,17 @@ describe('buildAgentPromptBundle', () => {
     expect(bundle.promptContext.memoryBank).toBe('Remember brutalist UI.')
     expect(bundle.promptContext.userMessage).toContain('Ship the editor')
     expect(bundle.promptContext.userMessage).toContain('File: apps/web/app/page.tsx')
+    expect(bundle.contextAudit).toEqual({
+      filesConsidered: [{ path: 'apps/web/app/page.tsx', relevanceScore: 0 }],
+      filesLoaded: [],
+      filesExcluded: [],
+      memoryBankIncluded: true,
+      specIncluded: false,
+      planIncluded: false,
+      sessionSummaryIncluded: false,
+      compactionOccurred: false,
+      truncated: false,
+    })
   })
 
   test('defaults provider to openai and forwards approved plan execution context', () => {

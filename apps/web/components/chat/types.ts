@@ -11,6 +11,7 @@ export interface ToolCallInfo {
 }
 
 import type { ChatMode } from '@/lib/agent/prompt-library'
+import type { ExecutionReceipt } from '@/lib/agent/receipt'
 import type { ContextWindowSource } from '@/lib/llm/model-metadata'
 
 export type TokenSource = 'exact' | 'estimated'
@@ -113,6 +114,14 @@ export interface PersistedRunEventSummaryInfo {
     timestamp: number
   }
   createdAt?: number
+}
+
+export interface LatestRunReceiptInfo {
+  runId: string
+  status: string
+  startedAt: number
+  completedAt?: number
+  receipt: ExecutionReceipt | null
 }
 
 export interface SuggestedAction {

@@ -1,9 +1,7 @@
 # AGENTS.md - AI Agent Instructions for Panda.ai
 
-> **Version:** 2.0
-> **Last Updated:** 2026-04-26
-> **Maintainer:** AI Development Team
-> **Status:** Active web platform
+> **Version:** 2.0 **Last Updated:** 2026-04-26 **Maintainer:** AI Development
+> Team **Status:** Active web platform
 
 ---
 
@@ -87,11 +85,11 @@ Our UI follows a strict brutalist aesthetic:
 
 ```typescript
 const designTokens = {
-  borderRadius: 'rounded-none',     // Always sharp
-  fontMono: 'font-mono',            // Monospace for UI elements
-  spacing: 'space-y-4',             // Precise, uniform (space-y-8 for sections)
-  border: 'border-border',          // Thin, sharp
-  shadow: 'shadow-sharp-md',        // Sharp, directional
+  borderRadius: 'rounded-none', // Always sharp
+  fontMono: 'font-mono', // Monospace for UI elements
+  spacing: 'space-y-4', // Precise, uniform (space-y-8 for sections)
+  border: 'border-border', // Thin, sharp
+  shadow: 'shadow-sharp-md', // Sharp, directional
   surface1: 'surface-1',
   surface2: 'surface-2',
 }
@@ -124,8 +122,8 @@ discrete, independently verifiable unit of work.
 **Plan**: Define what you are about to do and how you will know it is done.  
 **Execute**: Write the code or make the change.  
 **Validate**: Run the gate. If it fails, do not advance.  
-**Repair**: Read the actual error output. Apply the smallest correct fix.
-Re-run the gate.  
+**Repair**: Read the actual error output. Apply the smallest correct fix. Re-run
+the gate.  
 **Document**: Update `STATUS.md` with what was done, any decisions made, and any
 future work discovered. Then begin the next milestone.
 
@@ -154,10 +152,12 @@ these three files in the repo root before writing any code:
 # Spec: [Task Name]
 
 ## Deliverables
+
 - [ ] Concrete outcome 1
 - [ ] Concrete outcome 2
 
 ## Constraints
+
 - Must not change X
 - Must preserve Y behavior
 
@@ -170,12 +170,13 @@ these three files in the repo root before writing any code:
 # Plan: [Task Name]
 
 ## Milestone 1: [Name]
-What: ...
-Acceptance criteria: ...
-Validation: `bun run typecheck && bun test path/to/relevant`
-Status: [ ] pending / [x] complete
+
+What: ... Acceptance criteria: ... Validation:
+`bun run typecheck && bun test path/to/relevant` Status: [ ] pending / [x]
+complete
 
 ## Milestone 2: [Name]
+
 ...
 ```
 
@@ -185,15 +186,19 @@ Status: [ ] pending / [x] complete
 # Status: [Task Name]
 
 ## Current milestone: [Name]
+
 ## Last completed: [Name] — [date]
 
 ## Decision log
+
 - [decision] because [reason]
 
 ## Known issues
+
 - [issue]
 
 ## Future work (out of scope, log here)
+
 - [item]
 ```
 
@@ -207,7 +212,8 @@ The harness auto-compacts context when approaching its threshold
 
 - Write the current milestone's status and any pending decisions to `STATUS.md`
 - The compacted context will have `STATUS.md` as ground truth for re-entry
-- Never rely on in-context memory for decisions that span more than one milestone
+- Never rely on in-context memory for decisions that span more than one
+  milestone
 
 If you re-enter a run after compaction, read `STATUS.md` and `PLAN.md` first to
 reconstruct your position before taking any action.
@@ -580,7 +586,8 @@ as part of the product contract.
 **Before adding or changing a Convex query, ask:**
 
 - Is this query live in the UI?
-- Can the result grow with project size, chat length, attachments, runs, or time?
+- Can the result grow with project size, chat length, attachments, runs, or
+  time?
 - Does the caller need full documents, or only summary fields?
 - Should this be paginated, capped, or fetched lazily on interaction?
 
@@ -661,7 +668,10 @@ export const streamChat = httpAction(async (ctx, req) => {
     },
   })
   return new Response(stream, {
-    headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+    },
   })
 })
 ```
@@ -808,7 +818,8 @@ export default function Error({ error, reset }: { error: Error; reset: () => voi
 
 ### Adding a New Convex Function
 
-**Plan**: Know the table, the index needed, and the access pattern before writing.
+**Plan**: Know the table, the index needed, and the access pattern before
+writing.
 
 1. Add to existing file or create new one in `convex/`
 2. Define using `query()`, `mutation()`, or `action()`
@@ -859,16 +870,16 @@ Do not add provider-specific logic to harness code.
 
 - **Agent Registry** — Built-in agents (`ask`, `plan`, `code`, `build`) + custom
   subagents. Each agent maps to a phase of the execution loop.
-- **Permission System** — Pattern-based allow/deny/ask for tools. Reviewed before
-  starting any long task.
+- **Permission System** — Pattern-based allow/deny/ask for tools. Reviewed
+  before starting any long task.
 - **Context Compaction** (`compaction.ts`) — Auto-summarizes at the context
   threshold. Before this triggers, write milestone state to `STATUS.md`.
 - **Plugin System** — Lifecycle hooks for extensibility. The spec/plan/status
   tracking pattern can be implemented as plugins.
 - **MCP Support** — Connect to external MCP servers.
 - **Git Snapshots / Worktrees** (`snapshots.ts`) — Per-step undo + worktree
-  isolation for parallel work streams. Use worktrees when running vertical tasks;
-  define the merge contract in `PLAN.md` before branching.
+  isolation for parallel work streams. Use worktrees when running vertical
+  tasks; define the merge contract in `PLAN.md` before branching.
 
 ### Horizontal vs Vertical Task Flows
 
@@ -904,7 +915,11 @@ gates before merging. Merge contract defined in `PLAN.md` upfront.
 import { Runtime, agents, permissions } from '@/lib/agent/harness'
 
 const agent = agents.get('build')
-const decision = permissions.checkPermission(agent.permission, 'write_files', 'src/*')
+const decision = permissions.checkPermission(
+  agent.permission,
+  'write_files',
+  'src/*'
+)
 ```
 
 See `docs/AGENTIC_HARNESS.md` for complete documentation.
@@ -981,21 +996,25 @@ const tools = {
 ❌ **Use innerHTML** — Always React components  
 ❌ **Proceed past a failing validation gate** — Repair before advancing  
 ❌ **Scope-creep mid-run** — Discovered improvements go to `STATUS.md` as future
-   work, not into the current run  
-❌ **Rely on in-context memory across milestones** — Externalize to `STATUS.md`  
-❌ **Patch blindly after 3 failed repairs** — Escalate with a full error report  
-❌ **Add provider-specific logic to harness code** — The harness is LLM-agnostic  
+work, not into the current run  
+❌ **Rely on in-context memory across milestones** — Externalize to
+`STATUS.md`  
+❌ **Patch blindly after 3 failed repairs** — Escalate with a full error
+report  
+❌ **Add provider-specific logic to harness code** — The harness is LLM-agnostic
 
 ### ALWAYS Do These
 
-✅ **Run the validation gate after every milestone** — Not just before committing  
+✅ **Run the validation gate after every milestone** — Not just before
+committing  
 ✅ **Freeze scope in SPEC.md before multi-file work** — Write it first, start
-   coding second  
+coding second  
 ✅ **Externalize progress to STATUS.md** — Before context compacts, before
-   stopping for any reason  
+stopping for any reason  
 ✅ **Use git worktrees for parallel work streams** — Isolation prevents merge
-   chaos  
-✅ **Read actual error output before repairing** — The error message is the spec  
+chaos  
+✅ **Read actual error output before repairing** — The error message is the
+spec  
 ✅ **Run all quality checks** — `typecheck && lint && format:check && test`  
 ✅ **Use semantic HTML** — Proper headings, buttons, labels  
 ✅ **Handle errors** — Try/catch with user feedback  
@@ -1003,7 +1022,7 @@ const tools = {
 ✅ **Use loading states** — Never leave users waiting blindly  
 ✅ **Follow the design system** — Brutalist aesthetic consistently  
 ✅ **Write tests alongside code** — Per milestone, not at the end  
-✅ **Use proper types** — No `any`, explicit return types  
+✅ **Use proper types** — No `any`, explicit return types
 
 ---
 
@@ -1170,9 +1189,11 @@ test.describe('Feature', () => {
 # Spec: [Task Name]
 
 ## Deliverables
+
 - [ ] ...
 
 ## Constraints
+
 - ...
 
 ## Out of scope (log here during the run, do not act on)
@@ -1184,12 +1205,12 @@ test.describe('Feature', () => {
 # Plan: [Task Name]
 
 ## Milestone 1: [Name]
-What: ...
-Acceptance criteria: ...
-Validation: `bun run typecheck && bun test path/to/...`
-Status: [ ] pending
+
+What: ... Acceptance criteria: ... Validation:
+`bun run typecheck && bun test path/to/...` Status: [ ] pending
 
 ## Milestone 2: [Name]
+
 ...
 ```
 
@@ -1199,22 +1220,26 @@ Status: [ ] pending
 # Status: [Task Name]
 
 ## Current milestone: [Name]
+
 ## Last completed: [Name] — [date]
 
 ## Decision log
+
 - [decision] because [reason]
 
 ## Known issues
+
 - [issue]
 
 ## Future work (out of scope, log here)
+
 - [item]
 ```
 
 ---
 
-**The standard is a fully green pass at every gate. Durability and discipline are
-what make long tasks succeed.**
+**The standard is a fully green pass at every gate. Durability and discipline
+are what make long tasks succeed.**
 
 <!-- convex-ai-start -->
 

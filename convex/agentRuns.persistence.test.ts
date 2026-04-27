@@ -27,5 +27,8 @@ describe('agentRuns persistence', () => {
     expect(agentRunsSource).toContain('const normalizedEvents = [...args.events].sort')
     expect(agentRunsSource).toContain('return normalizedEvents.length')
     expect(agentRunsSource).toContain('mode: ChatMode,')
+    expect(agentRunsSource).toContain('export const getLatestReceiptByChat = query({')
+    expect(agentRunsSource).toContain('.take(1)')
+    expect(agentRunsSource).toContain('receipt: run.receipt ?? null')
   })
 })

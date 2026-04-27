@@ -228,7 +228,8 @@ export function WorkspaceRuntimeProvider({
   const writeFileToRuntime = useMemo(
     () =>
       webcontainer.status === 'ready' && webcontainer.instance
-        ? (path: string, content: string) => writeFileToContainer(webcontainer.instance!, path, content)
+        ? (path: string, nextContent: string) =>
+            writeFileToContainer(webcontainer.instance!, path, nextContent)
         : undefined,
     [webcontainer.instance, webcontainer.status]
   )
@@ -459,6 +460,7 @@ export function WorkspaceRuntimeProvider({
 
   const {
     runEvents,
+    latestRunReceipt,
     chatMessages,
     liveRunSteps,
     snapshotRunEvents,
@@ -584,6 +586,7 @@ export function WorkspaceRuntimeProvider({
       // Chat state
       chatMessages,
       runEvents,
+      latestRunReceipt,
       liveSteps: liveRunSteps,
       snapshotEvents: snapshotRunEvents,
       subagentToolCalls,
@@ -721,6 +724,7 @@ export function WorkspaceRuntimeProvider({
       activeChat,
       chatMessages,
       runEvents,
+      latestRunReceipt,
       liveRunSteps,
       snapshotRunEvents,
       subagentToolCalls,

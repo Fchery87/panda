@@ -113,7 +113,7 @@ so Convex does not need to persist every newly discovered provider immediately.
 ### Artifacts and runs
 
 - `artifacts.ts` - generated file/command artifact persistence
-- `agentRuns.ts` - agent run lifecycle and event stream
+- `agentRuns.ts` - agent run lifecycle, event stream, and execution receipts
 - `jobs.ts` - terminal job execution and logs
 - `messages.ts` - persisted chat transcript and annotations
 - `chatAttachments.ts` - attachment upload metadata and storage references
@@ -124,10 +124,21 @@ so Convex does not need to persist every newly discovered provider immediately.
 ### Agent Runs (`agentRuns.ts`)
 
 - `create` - Create new run
-- `list` - List runs
-- `get` - Get run
-- `update` - Update run status
-- `listEvents` - Get run events
+- `complete` - Atomically mark a run completed with optional summary, usage, and
+  typed receipt
+- `fail` - Atomically mark a run failed with error and optional typed receipt
+- `stop` - Atomically mark a running run stopped with optional typed receipt
+- `listByChat` - List recent runs for a chat
+- `listEventSummariesByChat` - Return bounded run-event summaries for progress
+  UI
+- `getLatestReceiptByChat` - Return the latest run receipt metadata for the run
+  inspector
+
+Execution receipts are versioned Convex-validated records stored on `agentRuns`.
+They include requested and resolved modes, routing decision metadata, bounded
+context audit records, WebContainer/native execution summaries, approval audit
+records, token counts, duration, and result status. Receipt builders must redact
+secrets and cap arrays before writing to Convex.
 
 ### Sharing and admin
 
@@ -179,6 +190,8 @@ bunx convex deploy
 - [AGENTS.md](../AGENTS.md) - AI agent instructions
 - [docs/README.md](../docs/README.md) - docs index and archive guidance
 - [docs/AGENTIC_HARNESS.md](../docs/AGENTIC_HARNESS.md) - Agent harness docs
+- [docs/CHAT_TRANSCRIPT_POLICY.md](../docs/CHAT_TRANSCRIPT_POLICY.md) - Chat and
+  inspector boundary policy
 - [docs/LLM_PROVIDER_CATALOG.md](../docs/LLM_PROVIDER_CATALOG.md) - LLM provider
   catalog and settings hydration behavior
 - [docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md) - Deployment guide

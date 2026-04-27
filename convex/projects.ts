@@ -49,7 +49,9 @@ async function deleteChatChildren(ctx: MutationCtx, chatId: Id<'chats'>): Promis
   await deleteByIndex(ctx, 'checkpoints', 'by_chat', (q) => q.eq('chatId', chatId))
   await deleteByIndex(ctx, 'sharedChats', 'by_chat', (q) => q.eq('chatId', chatId))
   await deleteByIndex(ctx, 'agentRunEvents', 'by_chat_created', (q) => q.eq('chatId', chatId))
-  await deleteByIndex(ctx, 'harnessRuntimeCheckpoints', 'by_chat_saved', (q) => q.eq('chatId', chatId))
+  await deleteByIndex(ctx, 'harnessRuntimeCheckpoints', 'by_chat_saved', (q) =>
+    q.eq('chatId', chatId)
+  )
   await deleteByIndex(ctx, 'sessionSummaries', 'by_chat', (q) => q.eq('chatId', chatId))
   await deleteByIndex(ctx, 'specifications', 'by_chat', (q) => q.eq('chatId', chatId))
 
@@ -228,7 +230,9 @@ export const remove = mutation({
       .collect()
 
     for (const evalRun of evalRuns) {
-      await deleteByIndex(ctx, 'evalRunResults', 'by_run_sequence', (q) => q.eq('runId', evalRun._id))
+      await deleteByIndex(ctx, 'evalRunResults', 'by_run_sequence', (q) =>
+        q.eq('runId', evalRun._id)
+      )
       await ctx.db.delete(evalRun._id)
     }
 

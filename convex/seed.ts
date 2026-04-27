@@ -2,7 +2,9 @@ import { mutation } from './_generated/server'
 import { v } from 'convex/values'
 
 function isAdminBootstrapEnabled(): boolean {
-  return process.env.CONVEX_ALLOW_ADMIN_BOOTSTRAP === 'true' && process.env.NODE_ENV !== 'production'
+  return (
+    process.env.CONVEX_ALLOW_ADMIN_BOOTSTRAP === 'true' && process.env.NODE_ENV !== 'production'
+  )
 }
 
 export const makeFirstAdmin = mutation({
@@ -14,7 +16,10 @@ export const makeFirstAdmin = mutation({
       throw new Error('Admin bootstrap is disabled')
     }
 
-    const existingAdmin = await ctx.db.query('users').withIndex('by_admin', (q) => q.eq('isAdmin', true)).first()
+    const existingAdmin = await ctx.db
+      .query('users')
+      .withIndex('by_admin', (q) => q.eq('isAdmin', true))
+      .first()
     if (existingAdmin) {
       throw new Error('Admin bootstrap has already been completed')
     }

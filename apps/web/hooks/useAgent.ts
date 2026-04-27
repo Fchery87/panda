@@ -30,6 +30,14 @@ import type { FormalSpecification } from '../lib/agent/spec/types'
 import { getUserFacingAgentError } from '../lib/chat/error-messages'
 import { buildHarnessSessionPermissions, type AgentPolicy } from '../lib/agent/automationPolicy'
 import { normalizeChatMode, type ChatMode } from '../lib/agent/prompt-library'
+import { buildExecutionReceipt, type ContextAuditRecord } from '../lib/agent/receipt'
+import {
+  createInitialRoutingInput,
+  decideRouting,
+  getDefaultThreadState,
+  type RoutingDecision,
+  type WebContainerStatus,
+} from '../lib/agent/routing'
 import { parsePlanSteps } from '../lib/agent/plan-progress'
 import { registerDefaultPlugins } from '../lib/agent/harness/plugins'
 import { appLog } from '@/lib/logger'
@@ -80,6 +88,8 @@ type AgentStatus = 'idle' | 'thinking' | 'streaming' | 'executing_tools' | 'comp
 
 type RunEventInput = PersistedRunEventInfo
 
+type TerminalReceiptStatus = 'complete' | 'error' | 'aborted' | 'approval_timeout'
+
 type UploadedAttachment = {
   storageId: Id<'_storage'>
   kind: 'file' | 'image'
@@ -100,6 +110,7 @@ type SendMessageOptions = {
   variantCount?: number
   attachments?: UploadedAttachment[]
   attachmentsOnly?: boolean
+  manualModeOverride?: boolean
 }
 
 type PromptHistoryMessageInput = {
@@ -135,7 +146,32 @@ export function buildPublicSendMessageOptions(
     variantCount: options?.variantCount,
     attachments: options?.attachments,
     attachmentsOnly: options?.attachmentsOnly,
+    manualModeOverride: options?.manualModeOverride,
   }
+}
+
+export function buildResolvedRoutingDecision(args: {
+  content: string
+  requestedMode: ChatMode
+  oversightLevel: 'review' | 'autopilot'
+  manualOverride?: boolean
+  webcontainerStatus?: WebContainerStatus
+}): RoutingDecision {
+  const baseThreadState = getDefaultThreadState()
+  const threadState = {
+    ...baseThreadState,
+    webcontainerStatus: args.webcontainerStatus ?? baseThreadState.webcontainerStatus,
+  }
+
+  return decideRouting(
+    createInitialRoutingInput({
+      message: args.content,
+      requestedMode: args.requestedMode,
+      threadState,
+      oversightLevel: args.oversightLevel,
+      manualOverride: args.manualOverride,
+    })
+  )
 }
 
 export function buildSendMessageContent(rawContent: string, options?: SendMessageOptions): string {
@@ -611,6 +647,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         includeEditorContext?: boolean
         attachments?: UploadedAttachment[]
         attachmentsOnly?: boolean
+        manualModeOverride?: boolean
       }
     ) => {
       const userContent = buildSendMessageContent(rawContent, options)
@@ -625,9 +662,58 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       // IMPORTANT: Claude Code-style mode separation.
       // When in Plan mode, don't include Build messages in context (and vice versa),
       // otherwise the model continues implementation even after switching modes.
+      const routingDecision = buildResolvedRoutingDecision({
+        content: userContent,
+        requestedMode: mode,
+        oversightLevel:
+          automationPolicy?.autoApplyFiles || automationPolicy?.autoRunCommands
+            ? 'autopilot'
+            : 'review',
+        manualOverride: options?.manualModeOverride,
+      })
+      const requestedMode = routingDecision.requestedMode
+      const resolvedMode = routingDecision.resolvedMode
+      const runEventsForReceipt: RunEventInput[] = []
+      let runStartedAt = Date.now()
+      let contextAudit: ContextAuditRecord | null = null
+
+      const appendObservedRunEvent = async (
+        event: RunEventInput,
+        eventOptions?: { forceFlush?: boolean }
+      ) => {
+        runEventsForReceipt.push(event)
+        await appendRunEvent(event, eventOptions)
+      }
+
+      const buildTerminalReceipt = (resultStatus: TerminalReceiptStatus) =>
+        buildExecutionReceipt({
+          routingDecision,
+          providerModel: `${provider?.config?.provider ?? 'unknown'}:${model}`,
+          contextSources: contextAudit ?? {
+            filesConsidered: [],
+            filesLoaded: [],
+            filesExcluded: [],
+            memoryBankIncluded: false,
+            specIncluded: false,
+            planIncluded: false,
+            sessionSummaryIncluded: false,
+            compactionOccurred: false,
+            truncated: false,
+          },
+          runEvents: runEventsForReceipt,
+          usage: runUsage,
+          startedAt: runStartedAt,
+          completedAt: Date.now(),
+          resultStatus,
+          webcontainer: {
+            used: Boolean(webcontainer),
+            unavailableReason: webcontainer ? undefined : 'WebContainer unavailable or not used',
+          },
+        })
+
       const promptHistoryMessages = getPromptHistoryMessages?.() ?? messages
       const previousMessagesSnapshot = buildAgentPreviousMessagesSnapshot({
-        mode,
+        mode: resolvedMode,
         messages: promptHistoryMessages,
       })
 
@@ -677,10 +763,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           _id: userMessageId,
           role: 'user',
           content: userContent,
-          mode,
+          mode: requestedMode,
           createdAt: Date.now(),
           annotations: {
-            mode,
+            mode: requestedMode,
             attachmentsOnly: options?.attachmentsOnly,
           },
           attachments: options?.attachments?.map((attachment) => ({
@@ -702,7 +788,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           content: userContent,
           annotations: [
             {
-              mode,
+              mode: requestedMode,
               attachmentsOnly: options?.attachmentsOnly,
               model,
               provider: provider?.config?.provider,
@@ -748,11 +834,12 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           projectId,
           chatId,
           userId,
-          mode,
+          mode: resolvedMode,
           provider: provider?.config?.provider,
           model,
           userMessage: userContent,
         })
+        runStartedAt = Date.now()
         beginRun(runId)
         if (onRunCreated) {
           await onRunCreated({
@@ -773,19 +860,19 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           getPlanTotalSteps: () => planSteps.length,
         })
 
-        await appendRunEvent({
+        await appendObservedRunEvent({
           type: 'run_started',
           content: userContent,
           status: 'running',
         })
 
-        const { promptContext } = buildAgentPromptBundle({
+        const promptBundle = buildAgentPromptBundle({
           projectId,
           chatId,
           userId,
           projectName,
           projectDescription,
-          mode,
+          mode: resolvedMode,
           provider,
           messages: promptHistoryMessages,
           projectOverviewContent,
@@ -798,13 +885,15 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           approvedPlanExecutionContext: options?.approvedPlanExecutionContext,
           activeSpec: currentSpec ?? undefined,
         })
+        const { promptContext } = promptBundle
+        contextAudit = promptBundle.contextAudit
 
         // Create runtime config with deduplication
         // Note: maxToolCallsPerIteration is set high to allow batch file generation
         // The AI should be able to generate as many files as needed in one iteration
         const runtimeConfig = buildAgentRuntimeConfig({
           runId,
-          mode,
+          mode: resolvedMode,
           harnessSessionID: options?.harnessSessionID,
           specApprovalMode,
         })
@@ -874,7 +963,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             contextWindow: contextWindowResolution.contextWindow,
           })
           return {
-            mode,
+            mode: resolvedMode,
             model,
             provider: provider?.config?.provider,
             tokenCount: runUsage.totalTokens,
@@ -905,7 +994,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                     ...updated[existingIndex],
                     content: assistantContent,
                     reasoningContent: runtimeSettings.showReasoningPanel ? assistantReasoning : '',
-                    mode,
+                    mode: resolvedMode,
                     createdAt: updated[existingIndex]!.createdAt,
                     toolCalls: assistantToolCalls,
                     annotations: buildUsageAnnotations(),
@@ -919,7 +1008,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                     role: 'assistant',
                     content: assistantContent,
                     reasoningContent: runtimeSettings.showReasoningPanel ? assistantReasoning : '',
-                    mode,
+                    mode: resolvedMode,
                     createdAt: Date.now(),
                     toolCalls: assistantToolCalls,
                     annotations: buildUsageAnnotations(),
@@ -952,7 +1041,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
 
           const handledNonTerminalEvent = applyNonTerminalAgentEvent({
             event,
-            mode,
+            mode: resolvedMode,
             assistantMessageId,
             projectId,
             chatId,
@@ -969,7 +1058,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                 model,
                 content,
               }),
-            appendRunEvent,
+            appendRunEvent: appendObservedRunEvent,
             createSpec: createSpecMutation,
             attachVerification,
             updateSpec: updateSpecMutation,
@@ -1009,7 +1098,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               // Persist assistant message to Convex
               try {
                 const annotations: MessageAnnotationInfo = buildAssistantAnnotations({
-                  mode,
+                  mode: resolvedMode,
                   model,
                   provider: provider?.config?.provider,
                   toolCalls: assistantToolCalls,
@@ -1026,7 +1115,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                   content: assistantContent,
                   annotations: [annotations],
                 })
-                await appendRunEvent(
+                const receipt = buildTerminalReceipt('complete')
+                await appendObservedRunEvent(
                   {
                     type: 'assistant_message',
                     content: assistantContent,
@@ -1037,7 +1127,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                 )
                 await runLifecycle.finalizeRunCompleted(
                   assistantContent,
-                  event.usage as TokenUsageInfo | undefined
+                  event.usage as TokenUsageInfo | undefined,
+                  receipt
                 )
               } catch (err) {
                 logUseAgentError('Failed to persist assistant message', err)
@@ -1050,8 +1141,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               }
               if (event.error === SPEC_APPROVAL_CANCELLED_ERROR) {
                 resetSpecCancellationState()
-                await appendRunEvent(buildSpecCancelledRunEvent(), { forceFlush: true })
-                await runLifecycle.finalizeRunStopped()
+                await appendObservedRunEvent(buildSpecCancelledRunEvent(), { forceFlush: true })
+                await runLifecycle.finalizeRunStopped(buildTerminalReceipt('aborted'))
                 break
               }
               const userFacing = getUserFacingAgentError(event.error)
@@ -1062,8 +1153,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               })
               setProgressSteps((prev) => [...prev, errorStep].slice(-30))
               const errorMessage = event.error || 'Unknown error'
-              await appendRunEvent(buildFailedRunEvent(errorMessage), { forceFlush: true })
-              await runLifecycle.finalizeRunFailed(errorMessage)
+              await appendObservedRunEvent(buildFailedRunEvent(errorMessage), { forceFlush: true })
+              await runLifecycle.finalizeRunFailed(errorMessage, buildTerminalReceipt('error'))
               toast.error(userFacing.title, {
                 description: userFacing.description,
               })
@@ -1076,18 +1167,19 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         if (isRunningRef.current) {
           setStatus('idle')
           isRunningRef.current = false
-          await runLifecycle.finalizeRunStopped()
+          await runLifecycle.finalizeRunStopped(buildTerminalReceipt('aborted'))
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
         if (message === SPEC_APPROVAL_CANCELLED_ERROR) {
           resetSpecCancellationState()
           specPersistenceRef.current.clear()
-          await appendRunEvent(buildSpecCancelledRunEvent(), { forceFlush: true })
+          await appendObservedRunEvent(buildSpecCancelledRunEvent(), { forceFlush: true })
           if (runIdRef.current) {
             await flushRunEventBuffer({ force: true, reason: 'spec-cancel' })
             await stopRun({
               runId: runIdRef.current,
+              receipt: buildTerminalReceipt('aborted'),
             })
             clearRun()
           }
@@ -1095,11 +1187,15 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         }
         const userFacing = getUserFacingAgentError(message)
         resetFailureState(userFacing.description)
-        await appendRunEvent(buildFailedRunEvent(message), { forceFlush: true })
+        await appendObservedRunEvent(buildFailedRunEvent(message), { forceFlush: true })
         if (runIdRef.current) {
           try {
             await flushRunEventBuffer({ force: true, reason: 'fail' })
-            await failRun({ runId: runIdRef.current, error: message })
+            await failRun({
+              runId: runIdRef.current,
+              error: message,
+              receipt: buildTerminalReceipt('error'),
+            })
           } catch (runErr) {
             logUseAgentError('Failed to finalize run failure', runErr)
           } finally {
@@ -1158,6 +1254,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       setPendingSpec,
       specApprovalMode,
       specPersistenceRef,
+      webcontainer,
     ]
   )
 

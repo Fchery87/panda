@@ -25,7 +25,9 @@ describe('settings public admin defaults', () => {
     const getAdminDefaultsStart = source.indexOf('export const getAdminDefaults = query({')
     const getEffectiveBlock = source.slice(getEffectiveStart, getAdminDefaultsStart)
 
-    expect(getEffectiveBlock).not.toContain('effectiveProviderConfigs = adminSettings.globalProviderConfigs')
+    expect(getEffectiveBlock).not.toContain(
+      'effectiveProviderConfigs = adminSettings.globalProviderConfigs'
+    )
     expect(getEffectiveBlock).not.toContain('providerConfigs: effectiveProviderConfigs')
   })
 })

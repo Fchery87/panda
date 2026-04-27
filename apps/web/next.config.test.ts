@@ -50,8 +50,12 @@ describe('buildSecurityHeaders', () => {
 
     expect(csp).toContain("'wasm-unsafe-eval'")
     expect(csp).toContain('blob:')
-    expect(csp).toContain("worker-src 'self' blob: https://*.stackblitz.com https://*.staticblitz.com")
-    expect(csp).toContain('frame-src https://stackblitz.com https://*.stackblitz.com https://*.staticblitz.com')
+    expect(csp).toContain(
+      "worker-src 'self' blob: https://*.stackblitz.com https://*.staticblitz.com"
+    )
+    expect(csp).toContain(
+      'frame-src https://stackblitz.com https://*.stackblitz.com https://*.staticblitz.com'
+    )
     expect(csp).toContain('https://*.staticblitz.com')
     expect(headers).toContainEqual({
       key: 'Cross-Origin-Embedder-Policy',

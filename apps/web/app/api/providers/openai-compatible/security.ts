@@ -18,22 +18,31 @@ export async function requireAuthenticatedProviderRoute(): Promise<NextResponse 
   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 }
 
-export function validateOpenAICompatibleBaseUrl(baseUrl: unknown):
-  | { ok: true; url: URL }
-  | { ok: false; response: NextResponse } {
+export function validateOpenAICompatibleBaseUrl(
+  baseUrl: unknown
+): { ok: true; url: URL } | { ok: false; response: NextResponse } {
   if (!baseUrl || typeof baseUrl !== 'string') {
-    return { ok: false, response: NextResponse.json({ error: 'Base URL required' }, { status: 400 }) }
+    return {
+      ok: false,
+      response: NextResponse.json({ error: 'Base URL required' }, { status: 400 }),
+    }
   }
 
   let url: URL
   try {
     url = new URL(baseUrl)
   } catch {
-    return { ok: false, response: NextResponse.json({ error: 'Invalid base URL' }, { status: 400 }) }
+    return {
+      ok: false,
+      response: NextResponse.json({ error: 'Invalid base URL' }, { status: 400 }),
+    }
   }
 
   if (url.protocol !== 'https:') {
-    return { ok: false, response: NextResponse.json({ error: 'Only HTTPS URLs allowed' }, { status: 400 }) }
+    return {
+      ok: false,
+      response: NextResponse.json({ error: 'Only HTTPS URLs allowed' }, { status: 400 }),
+    }
   }
 
   if (RESTRICTED_HOST_PATTERNS.some((pattern) => pattern.test(url.hostname))) {

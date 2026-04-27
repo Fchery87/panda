@@ -2,7 +2,12 @@
 
 import { createContext, useContext } from 'react'
 import type { Id } from '@convex/_generated/dataModel'
-import type { Message, PersistedRunEventSummaryInfo, ToolCallInfo } from '@/components/chat/types'
+import type {
+  LatestRunReceiptInfo,
+  Message,
+  PersistedRunEventSummaryInfo,
+  ToolCallInfo,
+} from '@/components/chat/types'
 import type { LiveProgressStep } from '@/components/chat/live-run-utils'
 import type { AvailableModel } from '@/components/chat/ModelSelector'
 import type { FormalSpecification } from '@/lib/agent/spec/types'
@@ -51,6 +56,7 @@ export interface WorkspaceRuntimeValue {
   // Chat messages + run state (from useWorkbenchChatState)
   chatMessages: Message[]
   runEvents: PersistedRunEventSummaryInfo[] | undefined
+  latestRunReceipt: LatestRunReceiptInfo | null | undefined
   liveSteps: LiveProgressStep[]
   snapshotEvents: SnapshotEvent[]
   subagentToolCalls: ToolCallInfo[]

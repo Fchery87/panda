@@ -8,7 +8,11 @@ import { MemoryBankEditor } from '@/components/chat/MemoryBankEditor'
 import { RunProgressPanel } from '@/components/chat/RunProgressPanel'
 import { SnapshotTimeline } from '@/components/chat/SnapshotTimeline'
 import { SubagentPanel } from '@/components/chat/SubagentPanel'
-import type { PersistedRunEventSummaryInfo, ToolCallInfo } from '@/components/chat/types'
+import type {
+  LatestRunReceiptInfo,
+  PersistedRunEventSummaryInfo,
+  ToolCallInfo,
+} from '@/components/chat/types'
 import { PlanningIntakeSurface } from '@/components/plan/PlanningIntakePopup'
 import { PlanPanel } from '@/components/plan/PlanPanel'
 import { ArtifactPanel } from '@/components/artifacts/ArtifactPanel'
@@ -48,6 +52,7 @@ export interface InspectorRunContentProps {
   chatId?: Id<'chats'> | null
   liveSteps: LiveProgressStep[]
   runEvents?: PersistedRunEventSummaryInfo[]
+  latestRunReceipt?: LatestRunReceiptInfo | null
   isStreaming: boolean
   tracePersistenceStatus: TracePersistenceStatus
   onOpenFile: (path: string) => void
@@ -67,6 +72,7 @@ export function InspectorRunContent({
   chatId,
   liveSteps,
   runEvents,
+  latestRunReceipt,
   isStreaming,
   tracePersistenceStatus,
   onOpenFile,
@@ -132,6 +138,7 @@ export function InspectorRunContent({
             chatId={chatId}
             liveSteps={liveSteps}
             runEvents={runEvents}
+            latestRunReceipt={latestRunReceipt?.receipt ?? null}
             isStreaming={isStreaming}
             tracePersistenceStatus={tracePersistenceStatus}
             onOpenFile={onOpenFile}
@@ -370,6 +377,7 @@ export function ProjectChatInspector({
   onTabChange,
   liveSteps,
   runEvents,
+  latestRunReceipt,
   isStreaming,
   tracePersistenceStatus,
   onOpenFile,
@@ -453,6 +461,7 @@ export function ProjectChatInspector({
             chatId={chatId}
             liveSteps={liveSteps}
             runEvents={runEvents}
+            latestRunReceipt={latestRunReceipt}
             isStreaming={isStreaming}
             tracePersistenceStatus={tracePersistenceStatus}
             onOpenFile={onOpenFile}

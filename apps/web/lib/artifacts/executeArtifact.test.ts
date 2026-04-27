@@ -83,8 +83,6 @@ describe('artifact execution helpers', () => {
       },
     })
 
-    expect(runtimeWrites).toEqual([
-      { path: 'src/app.ts', content: 'export const value = 1' },
-    ])
+    expect(runtimeWrites).toEqual([{ path: 'src/app.ts', content: 'export const value = 1' }])
   })
 })

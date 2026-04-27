@@ -145,6 +145,104 @@ export const PersistedRunEvent = v.object({
   snapshot: v.optional(PersistedRunSnapshot),
 })
 
+export const RoutingConfidence = v.union(v.literal('high'), v.literal('medium'), v.literal('low'))
+
+export const RoutingDecisionSource = v.union(
+  v.literal('manual_override'),
+  v.literal('deterministic_rules')
+)
+
+export const ExecutionReceiptRoutingDecision = v.object({
+  requestedMode: ChatMode,
+  resolvedMode: ChatMode,
+  agent: ChatMode,
+  confidence: RoutingConfidence,
+  rationale: v.string(),
+  requiresApproval: v.boolean(),
+  webcontainerRequired: v.boolean(),
+  suggestedSkills: v.array(v.string()),
+  source: RoutingDecisionSource,
+})
+
+export const ContextAuditRecord = v.object({
+  filesConsidered: v.array(
+    v.object({
+      path: v.string(),
+      relevanceScore: v.number(),
+    })
+  ),
+  filesLoaded: v.array(
+    v.object({
+      path: v.string(),
+      tokenCount: v.number(),
+    })
+  ),
+  filesExcluded: v.array(
+    v.object({
+      path: v.string(),
+      reason: v.union(v.literal('budget'), v.literal('low_relevance'), v.literal('redacted')),
+    })
+  ),
+  memoryBankIncluded: v.boolean(),
+  specIncluded: v.boolean(),
+  planIncluded: v.boolean(),
+  sessionSummaryIncluded: v.boolean(),
+  compactionOccurred: v.boolean(),
+  truncated: v.boolean(),
+})
+
+export const ExecutionReceiptCommandSummary = v.object({
+  command: v.string(),
+  redacted: v.boolean(),
+})
+
+export const ExecutionReceiptApprovalRecord = v.object({
+  tool: v.string(),
+  decision: v.string(),
+  reason: v.optional(v.string()),
+  timestamp: v.number(),
+})
+
+export const ExecutionReceiptV1 = v.object({
+  version: v.literal(1),
+  mode: ChatMode,
+  requestedMode: ChatMode,
+  resolvedMode: ChatMode,
+  agent: ChatMode,
+  routingDecision: ExecutionReceiptRoutingDecision,
+  providerModel: v.optional(v.string()),
+  contextSources: ContextAuditRecord,
+  webcontainer: v.object({
+    used: v.boolean(),
+    unavailableReason: v.optional(v.string()),
+    filesWritten: v.array(v.string()),
+    commandsRun: v.array(ExecutionReceiptCommandSummary),
+    terminalSessionId: v.optional(v.string()),
+    truncated: v.boolean(),
+  }),
+  nativeExecution: v.object({
+    filesRead: v.array(v.string()),
+    toolsUsed: v.array(v.string()),
+    approvalsRequested: v.array(ExecutionReceiptApprovalRecord),
+    truncated: v.boolean(),
+  }),
+  tokens: v.object({
+    input: v.number(),
+    output: v.number(),
+    cached: v.number(),
+  }),
+  estimatedCost: v.optional(v.number()),
+  durationMs: v.number(),
+  resultStatus: v.union(
+    v.literal('complete'),
+    v.literal('error'),
+    v.literal('aborted'),
+    v.literal('approval_timeout')
+  ),
+})
+
+export const ExecutionReceipt = v.union(ExecutionReceiptV1)
+
 export const RuntimeCheckpointState = v.object({
   sessionID: v.string(),
   messages: v.array(v.any()),
@@ -685,6 +783,7 @@ export default defineSchema({
     summary: v.optional(v.string()),
     error: v.optional(v.string()),
     usage: v.optional(TokenUsage),
+    receipt: v.optional(ExecutionReceipt),
     startedAt: v.number(),
     completedAt: v.optional(v.number()),
   })

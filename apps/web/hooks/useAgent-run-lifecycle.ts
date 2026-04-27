@@ -1,8 +1,9 @@
-import type { Id } from '@convex/_generated/dataModel'
+import type { Doc, Id } from '@convex/_generated/dataModel'
 import type { MutableRefObject } from 'react'
 import type { PersistedRunEventInfo, TokenUsageInfo } from '@/components/chat/types'
 
 type RunEventInput = PersistedRunEventInfo
+type ExecutionReceiptInput = NonNullable<Doc<'agentRuns'>['receipt']>
 
 export function createRunLifecycle(args: {
   runIdRef: MutableRefObject<Id<'agentRuns'> | null>
@@ -12,9 +13,14 @@ export function createRunLifecycle(args: {
     runId: Id<'agentRuns'>
     summary?: string
     usage?: RunEventInput['usage']
+    receipt?: ExecutionReceiptInput
   }) => Promise<unknown>
-  failRun: (args: { runId: Id<'agentRuns'>; error: string }) => Promise<unknown>
-  stopRun: (args: { runId: Id<'agentRuns'> }) => Promise<unknown>
+  failRun: (args: {
+    runId: Id<'agentRuns'>
+    error: string
+    receipt?: ExecutionReceiptInput
+  }) => Promise<unknown>
+  stopRun: (args: { runId: Id<'agentRuns'>; receipt?: ExecutionReceiptInput }) => Promise<unknown>
   onRunCompleted?: (args: {
     runId: Id<'agentRuns'>
     outcome: 'completed' | 'failed' | 'stopped'
@@ -47,7 +53,11 @@ export function createRunLifecycle(args: {
     }
   }
 
-  async function finalizeRunCompleted(summary?: string, usage?: TokenUsageInfo): Promise<void> {
+  async function finalizeRunCompleted(
+    summary?: string,
+    usage?: TokenUsageInfo,
+    receipt?: ExecutionReceiptInput
+  ): Promise<void> {
     await finalizeRun({
       outcome: 'completed',
       flushReason: 'complete',
@@ -56,11 +66,15 @@ export function createRunLifecycle(args: {
           runId,
           summary,
           usage,
+          receipt,
         }),
     })
   }
 
-  async function finalizeRunFailed(message: string): Promise<void> {
+  async function finalizeRunFailed(
+    message: string,
+    receipt?: ExecutionReceiptInput
+  ): Promise<void> {
     await finalizeRun({
       outcome: 'failed',
       flushReason: 'fail',
@@ -68,17 +82,19 @@ export function createRunLifecycle(args: {
         args.failRun({
           runId,
           error: message,
+          receipt,
         }),
     })
   }
 
-  async function finalizeRunStopped(): Promise<void> {
+  async function finalizeRunStopped(receipt?: ExecutionReceiptInput): Promise<void> {
     await finalizeRun({
       outcome: 'stopped',
       flushReason: 'stop',
       finalize: (runId) =>
         args.stopRun({
           runId,
+          receipt,
         }),
     })
   }

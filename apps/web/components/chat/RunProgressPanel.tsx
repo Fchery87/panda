@@ -31,6 +31,8 @@ import { SpecBadgeMini } from '../workbench/SpecBadge'
 import type { PlanningSessionDebugSummary } from '@/components/plan/PlanningSessionDebugCard'
 import { PlanningSessionDebugCard } from '@/components/plan/PlanningSessionDebugCard'
 import type { PersistedRunEventSummaryInfo } from './types'
+import type { ExecutionReceipt } from '@/lib/agent/receipt'
+import { RunReceiptPanel } from './RunReceiptPanel'
 import {
   findLatestRecoverableCheckpoint,
   type RuntimeCheckpointSummary,
@@ -41,6 +43,7 @@ interface RunProgressPanelProps {
   chatId?: Id<'chats'> | null
   liveSteps?: LiveProgressStep[]
   runEvents?: PersistedRunEventSummaryInfo[]
+  latestRunReceipt?: ExecutionReceipt | null
   isStreaming?: boolean
   tracePersistenceStatus?: 'live' | 'degraded'
   onOpenFile?: (path: string) => void
@@ -72,6 +75,7 @@ export function RunProgressPanel({
   chatId,
   liveSteps: externalLiveSteps,
   runEvents,
+  latestRunReceipt,
   isStreaming = false,
   tracePersistenceStatus = 'live',
   onOpenFile,
@@ -167,7 +171,7 @@ export function RunProgressPanel({
   const latestRuntimeCheckpoint = findLatestRecoverableCheckpoint(runtimeCheckpoints)
   const hasRecoverableCheckpoint = !!latestRuntimeCheckpoint
 
-  if (!isStreaming && steps.length === 0 && !runtimeCheckpoints?.length) {
+  if (!isStreaming && steps.length === 0 && !runtimeCheckpoints?.length && !latestRunReceipt) {
     return null
   }
 
@@ -201,6 +205,11 @@ export function RunProgressPanel({
       </button>
 
       <div className="mt-2.5 flex flex-wrap items-center gap-2">
+        {latestRunReceipt ? (
+          <span className="shadow-sharp-sm border border-primary/50 bg-primary/5 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.22em] text-primary">
+            Routed {latestRunReceipt.requestedMode} -&gt; {latestRunReceipt.resolvedMode}
+          </span>
+        ) : null}
         <span
           className={cn(
             'shadow-sharp-sm border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.22em]',
@@ -426,6 +435,12 @@ export function RunProgressPanel({
           })}
         </div>
       )}
+
+      {isOpen ? (
+        <div className="mt-2">
+          <RunReceiptPanel receipt={latestRunReceipt ?? null} />
+        </div>
+      ) : null}
 
       {process.env.NODE_ENV !== 'production' && planningDebug ? (
         <div className="mt-2">

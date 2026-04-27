@@ -33,6 +33,7 @@ type SendAgentMessageOptions = {
   attachments?: UploadedAttachment[]
   attachmentsOnly?: boolean
   variantCount?: number
+  manualModeOverride?: boolean
 }
 
 export function shouldQueuePendingDirectSend(args: {
@@ -182,6 +183,7 @@ export function useProjectMessageWorkflow(args: {
     variantCount?: number
     attachments?: UploadedAttachment[]
     attachmentsOnly?: boolean
+    manualModeOverride?: boolean
   } | null>(null)
   const pendingMessageDispatchRef = useRef<string | null>(null)
 
@@ -197,6 +199,7 @@ export function useProjectMessageWorkflow(args: {
       variantCount: pendingMessage.variantCount,
       attachments: pendingMessage.attachments,
       attachmentsOnly: pendingMessage.attachmentsOnly,
+      manualModeOverride: pendingMessage.manualModeOverride,
     }).finally(() => {
       setPendingMessage((current) => (current?.id === pendingMessage.id ? null : current))
       if (pendingMessageDispatchRef.current === pendingMessage.id) {
@@ -278,6 +281,7 @@ export function useProjectMessageWorkflow(args: {
                     variantCount: options?.variantCount,
                     attachments: options?.attachments,
                     attachmentsOnly: options?.attachmentsOnly,
+                    manualModeOverride: options?.manualModeOverride,
                   })
                 }
               : undefined,
@@ -317,6 +321,7 @@ export function useProjectMessageWorkflow(args: {
         variantCount: options?.variantCount,
         attachments: options?.attachments,
         attachmentsOnly: options?.attachmentsOnly,
+        manualModeOverride: options?.manualModeOverride,
       })
     },
     [

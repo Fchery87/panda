@@ -21,8 +21,8 @@ export function bootWebcontainerWithTimeout({
     new Promise<never>((_resolve, reject) =>
       setTimeout(
         () => reject(new Error(`WebContainer boot timed out after ${timeoutMs}ms`)),
-        timeoutMs,
-      ),
+        timeoutMs
+      )
     ),
   ])
 }

@@ -63,12 +63,12 @@ Each stream must pass its validation gate independently before merging.
 
 ## Where to Go Next
 
-| Need | File |
-|---|---|
-| Code conventions, design system, patterns | `AGENTS.md` |
-| Convex backend rules | `convex/_generated/ai/guidelines.md` |
-| Harness architecture | `docs/AGENTIC_HARNESS.md` |
-| Schema | `convex/schema.ts` |
+| Need                                      | File                                 |
+| ----------------------------------------- | ------------------------------------ |
+| Code conventions, design system, patterns | `AGENTS.md`                          |
+| Convex backend rules                      | `convex/_generated/ai/guidelines.md` |
+| Harness architecture                      | `docs/AGENTIC_HARNESS.md`            |
+| Schema                                    | `convex/schema.ts`                   |
 
 ---
 

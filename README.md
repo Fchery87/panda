@@ -15,6 +15,11 @@ combines a canonical 4-mode workflow (`ask`, `plan`, `code`, `build`),
 structured plan approval, build execution, file editing, runtime checkpoints,
 shared chat history, and admin controls in one web app.
 
+The current agent runtime includes deterministic routing and typed execution
+receipts. Routing records both the user-requested mode and the resolved
+execution mode, while receipts provide a bounded audit trail for context, tools,
+commands, approvals, token usage, execution duration, and result status.
+
 ## Current Product Surface
 
 - Landing page plus an education page that explains the workbench workflow
@@ -22,6 +27,8 @@ shared chat history, and admin controls in one web app.
 - Structured planning sessions with approved build-from-plan runs
 - Browser-native file editing, diffs, artifacts, and terminal jobs
 - Permission review for risky commands in the web UI
+- Deterministic mode routing with `requestedMode` and `resolvedMode` audit data
+- Structured execution receipts in the run inspector
 - Shared chat links for public, read-only conversation review
 - Admin console pages for users, analytics, system controls, and security
 - Convex-backed persistence for plans, messages, runs, checkpoints, specs, and
@@ -121,6 +128,24 @@ Modes:
 - `code` - direct code changes
 - `build` - full-access execution
 
+Routing is rules-first and deterministic. Manual mode selection remains
+authoritative for composer sends, while programmatic sends can resolve to a more
+appropriate mode when a clear intent is detected. WebContainer readiness does
+not globally block `code` or `build`; Panda falls back to the server-backed path
+when browser execution is unavailable.
+
+## Execution Receipts
+
+Every terminal agent run can persist a typed receipt alongside the final run
+state. Receipts are designed for auditability and Convex bandwidth safety:
+
+- versioned and validated in Convex
+- persisted atomically when runs complete, fail, or stop
+- bounded to avoid unbounded live-query payloads
+- command summaries redact common secret forms before storage or rendering
+- WebContainer and native/server execution are reported separately
+- approval decisions are captured when present in the run event stream
+
 ## Repository Shape
 
 ```text
@@ -135,6 +160,10 @@ panda/
 
 - Treat `planningSessions` as the canonical planning system.
 - Treat the 4-mode model as canonical across UI, runtime, and tests.
+- Keep routing deterministic unless a future LLM classifier is explicitly added
+  behind a feature flag.
+- Keep execution receipt fields typed, bounded, and redacted before they enter
+  Convex.
 - Use Zustand for local shell/chat-session state and Convex for persisted
   product data.
 - Keep Convex live queries narrow. Project boot should subscribe to metadata,
@@ -153,6 +182,8 @@ panda/
 - [docs/AGENTIC_HARNESS.md](./docs/AGENTIC_HARNESS.md) - harness architecture
 - [docs/WEBCONTAINER_RUNTIME.md](./docs/WEBCONTAINER_RUNTIME.md) - browser-side
   execution runtime
+- [docs/CHAT_TRANSCRIPT_POLICY.md](./docs/CHAT_TRANSCRIPT_POLICY.md) - chat vs
+  inspector boundaries for progress, tools, and receipts
 - [docs/LLM_PROVIDER_CATALOG.md](./docs/LLM_PROVIDER_CATALOG.md) - live LLM
   provider and model catalog behavior
 - [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) - deployment guide
@@ -160,10 +191,11 @@ panda/
 - [docs/plans/2026-04-23-convex-bandwidth-optimization.md](./docs/plans/2026-04-23-convex-bandwidth-optimization.md) -
   Convex bandwidth remediation plan and payload-shape invariants
 
-## Current Verification Snapshot
+## Verification Records
 
-See [VALIDATION_TASKS.md](./VALIDATION_TASKS.md) for the latest command-level
-status and health score.
+Historical verification snapshots may exist in
+[VALIDATION_TASKS.md](./VALIDATION_TASKS.md). Treat the current CI output and
+the latest task-local validation notes as authoritative when they differ.
 
 ## License
 

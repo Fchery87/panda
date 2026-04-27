@@ -91,6 +91,7 @@ interface ChatInputProps {
       variantCount?: number
       attachments?: UploadedAttachmentPayload[]
       attachmentsOnly?: boolean
+      manualModeOverride?: boolean
     }
   ) => void
   isStreaming?: boolean
@@ -324,6 +325,7 @@ export function ChatInput({
       variantCount: variant === 'parallel:2' ? 2 : undefined,
       attachments: uploadedAttachments,
       attachmentsOnly: !message.trim() && uploadedAttachments.length > 0,
+      manualModeOverride: true,
     })
     setInput('')
     setMentionQuery(null)

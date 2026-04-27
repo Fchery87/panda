@@ -22,10 +22,7 @@ const KNOWN_PROVIDERS_WITH_ENV: KnownProviderEnv[] = [
   },
 ]
 
-async function fetchModelsForProvider(
-  apiKey: string,
-  baseUrl: string
-): Promise<string[]> {
+async function fetchModelsForProvider(apiKey: string, baseUrl: string): Promise<string[]> {
   const modelsPath = `${baseUrl.replace(/\/+$/, '')}/models`
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 10000)

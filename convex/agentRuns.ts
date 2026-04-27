@@ -1,6 +1,12 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
-import { ChatMode, PersistedRunEvent, RuntimeCheckpointPayload, TokenUsage } from './schema'
+import {
+  ChatMode,
+  ExecutionReceipt,
+  PersistedRunEvent,
+  RuntimeCheckpointPayload,
+  TokenUsage,
+} from './schema'
 import type { Doc, Id } from './_generated/dataModel'
 import { requireAgentRunOwner, requireChatOwner, requireProjectOwner } from './lib/authz'
 import { trackUserAnalytics } from './lib/userAnalytics'
@@ -187,6 +193,7 @@ export const complete = mutation({
     runId: v.id('agentRuns'),
     summary: v.optional(v.string()),
     usage: v.optional(TokenUsage),
+    receipt: v.optional(ExecutionReceipt),
   },
   handler: async (ctx, args) => {
     const { userId } = await requireAgentRunOwner(ctx, args.runId)
@@ -196,6 +203,7 @@ export const complete = mutation({
       status: 'completed',
       summary: args.summary,
       usage: args.usage,
+      receipt: args.receipt,
       completedAt,
     })
 
@@ -211,6 +219,7 @@ export const fail = mutation({
   args: {
     runId: v.id('agentRuns'),
     error: v.string(),
+    receipt: v.optional(ExecutionReceipt),
   },
   handler: async (ctx, args) => {
     await requireAgentRunOwner(ctx, args.runId)
@@ -218,6 +227,7 @@ export const fail = mutation({
     await ctx.db.patch(args.runId, {
       status: 'failed',
       error: args.error,
+      receipt: args.receipt,
       completedAt: Date.now(),
     })
 
@@ -228,6 +238,7 @@ export const fail = mutation({
 export const stop = mutation({
   args: {
     runId: v.id('agentRuns'),
+    receipt: v.optional(ExecutionReceipt),
   },
   handler: async (ctx, args) => {
     const { run } = await requireAgentRunOwner(ctx, args.runId)
@@ -235,6 +246,7 @@ export const stop = mutation({
 
     await ctx.db.patch(args.runId, {
       status: 'stopped',
+      receipt: args.receipt,
       completedAt: Date.now(),
     })
 
@@ -255,6 +267,31 @@ export const listByChat = query({
       .withIndex('by_chat_started', (q) => q.eq('chatId', args.chatId))
       .order('desc')
       .take(limit)
+  },
+})
+
+export const getLatestReceiptByChat = query({
+  args: {
+    chatId: v.id('chats'),
+  },
+  handler: async (ctx, args) => {
+    await requireChatOwner(ctx, args.chatId)
+    const runs = await ctx.db
+      .query('agentRuns')
+      .withIndex('by_chat_started', (q) => q.eq('chatId', args.chatId))
+      .order('desc')
+      .take(1)
+    const run = runs[0]
+
+    if (!run) return null
+
+    return {
+      runId: run._id,
+      status: run.status,
+      startedAt: run.startedAt,
+      completedAt: run.completedAt,
+      receipt: run.receipt ?? null,
+    }
   },
 })
 

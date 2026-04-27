@@ -172,7 +172,9 @@ export const getEffective = query({
       // Provider configuration
       defaultProvider: effectiveProvider,
       defaultModel: effectiveModel,
-      providerConfigs: toClientProviderConfigs(userSettings?.providerConfigs as ProviderConfigMap | undefined),
+      providerConfigs: toClientProviderConfigs(
+        userSettings?.providerConfigs as ProviderConfigMap | undefined
+      ),
 
       // Admin settings info
       allowUserOverrides: adminSettings.allowUserOverrides,

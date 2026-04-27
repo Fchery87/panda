@@ -118,10 +118,7 @@ export function ArtifactPanel({
         setIsApplying(false)
       }
     },
-    [
-      pendingArtifacts,
-      artifactController,
-    ]
+    [pendingArtifacts, artifactController]
   )
 
   const handleReject = useCallback(
@@ -150,10 +147,7 @@ export function ArtifactPanel({
     } finally {
       setIsApplying(false)
     }
-  }, [
-    pendingArtifacts,
-    artifactController,
-  ])
+  }, [pendingArtifacts, artifactController])
 
   const handleRejectAll = useCallback(async () => {
     await artifactController.rejectAll()

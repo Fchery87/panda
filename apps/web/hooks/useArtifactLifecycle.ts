@@ -166,10 +166,7 @@ export function useArtifactLifecycle({
         })
       }
     },
-    [
-      artifactRecords,
-      artifactController,
-    ]
+    [artifactRecords, artifactController]
   )
 
   useEffect(() => {
