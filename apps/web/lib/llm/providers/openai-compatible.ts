@@ -72,6 +72,11 @@ type TogetherModel = {
   supports_vision?: boolean
 }
 type OpenRouterModelsResponse = { data?: OpenRouterModel[] }
+type ProxyStreamEvent = StreamChunk | { type: 'error'; error?: string }
+
+function shouldUseBrowserProxy(): boolean {
+  return typeof window !== 'undefined'
+}
 
 function normalizeFinishReason(value: unknown): FinishReason {
   switch (value) {
@@ -129,6 +134,10 @@ export class OpenAICompatibleProvider implements LLMProvider {
    * Create a non-streaming completion
    */
   async complete(options: CompletionOptions): Promise<CompletionResponse> {
+    if (shouldUseBrowserProxy()) {
+      return await this.proxyComplete(options)
+    }
+
     const result = await generateText({
       model: this.client(options.model),
       messages: this.convertMessages(options.messages),
@@ -161,6 +170,11 @@ export class OpenAICompatibleProvider implements LLMProvider {
    * Yields chunks of text, tool calls, and finish events
    */
   async *completionStream(options: CompletionOptions): AsyncGenerator<StreamChunk> {
+    if (shouldUseBrowserProxy()) {
+      yield* this.proxyCompletionStream(options)
+      return
+    }
+
     // Detect Z.ai provider
     const isZai = this.config.auth.baseUrl?.includes('z.ai') ?? false
 
@@ -271,6 +285,74 @@ export class OpenAICompatibleProvider implements LLMProvider {
         type: 'error',
         error: formatProviderError(outerError),
       }
+    }
+  }
+
+  private async proxyComplete(options: CompletionOptions): Promise<CompletionResponse> {
+    const response = await fetch('/api/llm/openai-compatible', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'complete',
+        config: this.config,
+        options,
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error(await readProxyError(response))
+    }
+
+    return (await response.json()) as CompletionResponse
+  }
+
+  private async *proxyCompletionStream(options: CompletionOptions): AsyncGenerator<StreamChunk> {
+    const response = await fetch('/api/llm/openai-compatible', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'stream',
+        config: this.config,
+        options,
+      }),
+    })
+
+    if (!response.ok) {
+      yield { type: 'error', error: await readProxyError(response) }
+      return
+    }
+
+    const reader = response.body?.getReader()
+    if (!reader) {
+      yield { type: 'error', error: 'LLM proxy response did not include a stream body' }
+      return
+    }
+
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const events = buffer.split('\n\n')
+        buffer = events.pop() ?? ''
+
+        for (const event of events) {
+          const chunk = parseProxyStreamEvent(event)
+          if (!chunk) continue
+          yield chunk
+          if (chunk.type === 'error') return
+        }
+      }
+
+      buffer += decoder.decode()
+      const finalChunk = parseProxyStreamEvent(buffer)
+      if (finalChunk) yield finalChunk
+    } finally {
+      reader.releaseLock()
     }
   }
 
@@ -643,6 +725,32 @@ export class OpenAICompatibleProvider implements LLMProvider {
       },
     ]
   }
+}
+
+async function readProxyError(response: Response): Promise<string> {
+  const fallback = `LLM proxy request failed with status ${response.status}`
+  try {
+    const body = (await response.json()) as { error?: unknown; detail?: unknown }
+    if (typeof body.error === 'string') return body.error
+    if (typeof body.detail === 'string') return body.detail
+    return fallback
+  } catch {
+    return fallback
+  }
+}
+
+function parseProxyStreamEvent(event: string): ProxyStreamEvent | null {
+  for (const line of event.split('\n')) {
+    if (!line.startsWith('data: ')) continue
+    const data = line.slice(6)
+    if (!data || data === '[DONE]') return null
+    try {
+      return JSON.parse(data) as ProxyStreamEvent
+    } catch {
+      return { type: 'error', error: 'Malformed LLM proxy stream event' }
+    }
+  }
+  return null
 }
 
 /**
