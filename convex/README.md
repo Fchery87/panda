@@ -129,6 +129,8 @@ so Convex does not need to persist every newly discovered provider immediately.
 - `fail` - Atomically mark a run failed with error and optional typed receipt
 - `stop` - Atomically mark a running run stopped with optional typed receipt
 - `listByChat` - List recent runs for a chat
+- `listRecentSummariesByProject` - Return bounded run summaries for the session
+  rail and background-work state
 - `listEventSummariesByChat` - Return bounded run-event summaries for progress
   UI
 - `getLatestReceiptByChat` - Return the latest run receipt metadata for the run
@@ -139,6 +141,12 @@ They include requested and resolved modes, routing decision metadata, bounded
 context audit records, WebContainer/native execution summaries, approval audit
 records, token counts, duration, and result status. Receipt builders must redact
 secrets and cap arrays before writing to Convex.
+
+The chat-first workspace reads run state through summary queries by default. The
+session rail uses recent project-level run summaries plus recent chat summaries;
+chat timeline and proof surfaces use bounded event summaries and receipt
+metadata. Full run details, checkpoint payloads, file contents, and attachment
+URLs should remain lazy detail fetches instead of project-boot subscriptions.
 
 ### Sharing and admin
 
@@ -192,6 +200,8 @@ bunx convex deploy
 - [docs/AGENTIC_HARNESS.md](../docs/AGENTIC_HARNESS.md) - Agent harness docs
 - [docs/CHAT_TRANSCRIPT_POLICY.md](../docs/CHAT_TRANSCRIPT_POLICY.md) - Chat and
   inspector boundary policy
+- [docs/plans/2026-04-26-chat-first-workspace-ia.md](../docs/plans/2026-04-26-chat-first-workspace-ia.md) -
+  Chat-first workspace IA and run proof surface contract
 - [docs/LLM_PROVIDER_CATALOG.md](../docs/LLM_PROVIDER_CATALOG.md) - LLM provider
   catalog and settings hydration behavior
 - [docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md) - Deployment guide

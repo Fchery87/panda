@@ -1,31 +1,28 @@
 # Validation Tasks & Health Record - Panda
 
-**Last Updated:** 2026-04-14  
-**Scope:** Current repo health snapshot after docs refresh
+**Last Updated:** 2026-04-27  
+**Scope:** Current repo health snapshot after chat-first workspace redesign
 
 ---
 
 ## Current Verification Status
 
-| Command                | Status    | Notes                                                                                                                                              |
-| ---------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `bun run typecheck`    | PASS      | Turbo typecheck is green for `@panda-ai/sdk` and `@panda-ai/web`.                                                                                  |
-| `bun run lint`         | PASS      | ESLint exits 0, but there are 3 existing React hook warnings in `ChatInput.tsx` and `useAgent.ts`.                                                 |
-| `bun run format:check` | PASS      | The touched docs and `SpecBadge.tsx` are formatted. `.opencode/` is ignored from Prettier now.                                                     |
-| `bun test`             | FAIL      | One existing failure remains in `Harness adapter guardrail parity > auto-approves allowlisted run_command calls from harness session permissions`. |
-| `bun run build`        | FAIL      | Convex codegen failed with `TypeError: fetch failed` during the web prebuild step.                                                                 |
-| `bun run test:e2e`     | Not rerun | Not part of this docs refresh pass.                                                                                                                |
+| Command                 | Status | Notes                                                                         |
+| ----------------------- | ------ | ----------------------------------------------------------------------------- |
+| `bun run typecheck`     | PASS   | Green after the chat-first workspace redesign.                                |
+| `bun run lint`          | PASS   | ESLint completed with zero warnings after the redesign.                       |
+| `bun run format:check`  | PASS   | Repository formatting check passed.                                           |
+| `bun test`              | PASS   | 1035 tests passed after the redesign.                                         |
+| `npx convex dev --once` | PASS   | Convex functions became ready; plan-limit warning was non-fatal.              |
+| `bun run test:e2e`      | PASS   | 23 Playwright tests passed after resolving a stale local server on port 3000. |
 
 ---
 
 ## Open Issues
 
-1. Resolve the remaining harness adapter parity test failure.
-2. Clear the existing React hook warnings in
-   `apps/web/components/chat/ChatInput.tsx` and `apps/web/hooks/useAgent.ts`.
-3. Fix or isolate the Convex codegen fetch failure, then re-run the full repo
-   validation gate.
-4. Re-run the full repo validation gate once those issues are addressed.
+No active validation blocker is recorded for the completed chat-first workspace
+redesign. Re-run the full gate after future code changes before treating this
+snapshot as current.
 
 ---
 
@@ -36,6 +33,7 @@
 - [docs/README.md](./docs/README.md)
 - [docs/AGENTIC_HARNESS.md](./docs/AGENTIC_HARNESS.md)
 - [docs/CHAT_TRANSCRIPT_POLICY.md](./docs/CHAT_TRANSCRIPT_POLICY.md)
+- [docs/plans/2026-04-26-chat-first-workspace-ia.md](./docs/plans/2026-04-26-chat-first-workspace-ia.md)
 - [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)
 - [docs/GOOGLE_OAUTH_SETUP.md](./docs/GOOGLE_OAUTH_SETUP.md)
 - [convex/README.md](./convex/README.md)
@@ -45,8 +43,8 @@
 ## Notes
 
 - Historical plans and review snapshots remain in `docs/plans/` and the root
-  review/log markdown files, but they are explicitly labeled as archive
-  material.
-- The docs refresh did not change runtime code behavior.
-- The production build currently depends on network-accessible Convex codegen
-  during `apps/web` prebuild.
+  review/log markdown files. Prefer the chat-first IA for current workspace
+  behavior.
+- Runtime artifacts `SPEC.md`, `PLAN.md`, and `STATUS.md` may remain while the
+  redesign branch is under review; remove them before merge unless the team
+  wants them committed as audit evidence.

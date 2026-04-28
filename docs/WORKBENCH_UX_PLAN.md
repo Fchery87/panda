@@ -5,6 +5,11 @@
 > **Target:** Reduce god component from 1749→~300 lines, consolidate 21 tabs to
 > ~12, establish cross-page design continuity, enforce surface elevation tiers
 
+This is a historical restructure plan. The current workspace contract is the
+chat-first IA: chat is the primary session timeline, proof is consolidated into
+`Run`, `Changes`, `Context`, and `Preview`, and mobile uses `Work`, `Chat`,
+`Proof`, and `Preview` destinations.
+
 ---
 
 ## Architecture Context

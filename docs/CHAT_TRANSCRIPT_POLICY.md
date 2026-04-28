@@ -1,31 +1,39 @@
 # Chat Transcript Policy
 
 This document defines what belongs in Panda's main chat transcript versus the
-run inspector.
+proof surfaces.
 
 ## Main rule
 
-The main chat should answer one of these questions:
+The main chat is the session timeline. It should answer one of these questions:
 
 - What is the assistant doing?
 - What does it need from me?
 - What changed?
 - What should I review next?
 
-If a line does not answer one of those questions, it belongs in the inspector.
+If a line does not answer one of those questions, it belongs in a proof surface.
+
+The current proof surfaces are:
+
+- `Run` - progress, validation evidence, recovery state, approvals, and
+  receipts.
+- `Changes` - artifacts, diffs, generated files, and review actions.
+- `Context` - plans, memory, specs, and context audit state.
+- `Preview` - browser/runtime preview.
 
 ## Surfaced Panda modes
 
-The Panda front-end currently exposes these user-facing modes:
+The Panda front-end currently exposes the canonical 4-mode workflow:
 
-- `Ask`
-- `Plan`
-- `Build`
-- `Builder` (under Advanced)
+- `ask`
+- `plan`
+- `code`
+- `build`
 
-Internal enum values like `ask`, `architect`, `code`, and `build` can still
-exist in the runtime, but the transcript contract should be described in terms
-of the surfaced product modes.
+Legacy labels such as `Architect`, `Build`, or `Builder` can appear in older
+plans or compatibility code. Current transcript and proof behavior should be
+described in terms of the canonical mode values.
 
 ## By mode
 
@@ -35,28 +43,42 @@ of the surfaced product modes.
   approval actions
 - Keep in inspector: tool activity, raw progress events, snapshots, debug labels
 
-### Build
+### Code
 
 - Allow in chat: concise progress summaries, changed-file or artifact summaries,
   approvals
-- Keep in inspector: tool calls, detailed execution trace, snapshots, raw
-  progress categories
+- Keep in proof: tool calls, detailed execution trace, snapshots, raw progress
+  categories
 
-### Builder
+### Build
 
-- Allow in chat: milestone summaries, blockers, approvals, outcomes
-- Keep in inspector: tool calls, snapshots, progress steps, skill matches, raw
-  event categories
+- Allow in chat: milestone summaries, blockers, validation summaries, approvals,
+  outcomes, receipt entry points, and next action
+- Keep in proof: tool calls, snapshots, progress steps, skill matches, raw event
+  categories, and full receipt details
 
 ## Internal mode note
 
-- Internal `ask` behavior should remain conversational and maps to the surfaced
-  Ask experience.
-- Internal `architect` behavior maps to the surfaced Plan experience.
-- Internal `code` behavior is the implementation path behind the surfaced Build
-  mode.
-- Internal `build` behavior is the specialist execution path behind the surfaced
-  Builder mode.
+- `ask` remains conversational and read-only.
+- `plan` produces planning, clarifications, and reviewable plan state.
+- `code` is direct implementation work.
+- `build` is full-access execution work with stronger proof and validation
+  expectations.
+
+## Timeline stages
+
+Chat timeline rows should be derived from the bounded run timeline contract:
+
+- intent
+- routing
+- planning
+- execution
+- validation
+- receipt
+- next action
+
+The transcript should summarize these stages by default. The `Run` proof surface
+owns detailed event inspection.
 
 ## Never show in the main transcript
 

@@ -1,11 +1,33 @@
 # Chat-First Workspace Information Architecture
 
+> Status: implemented and verified  
+> Last updated: 2026-04-27
+
 ## Reader And Action
 
 Reader: Panda maintainers and future agents implementing the workspace redesign.
 
-Post-read action: implement the chat-first workspace without adding a parallel
-cockpit, duplicate state model, or editor-first shell.
+Post-read action: preserve and extend the implemented chat-first workspace
+without adding a parallel cockpit, duplicate state model, or editor-first shell.
+
+## Implementation Notes
+
+The workspace redesign is implemented. Current user-facing contracts:
+
+- Desktop primary surface: chat/session timeline.
+- Proof surface tabs: `Run`, `Changes`, `Context`, and `Preview`.
+- Mobile destinations: `Work`, `Chat`, `Proof`, and `Preview`.
+- Chat timeline stages: intent, routing, planning, execution, validation,
+  receipt, and next action.
+- Session rail state is derived from bounded recent chat and run summaries.
+- Run proof and chat timeline share the same bounded run model rather than
+  maintaining duplicate agent state.
+
+Verification for the completed redesign included:
+
+- `bun run typecheck && bun run lint && bun run format:check && bun test`
+- `npx convex dev --once`
+- `bun run test:e2e`
 
 ## Purpose
 
@@ -110,11 +132,11 @@ The left side is a navigation rail, not a task-card dashboard.
 Mobile keeps chat primary. It does not hide proof or changed work; it moves them
 behind clear bottom tabs.
 
-Recommended mobile tabs:
+Implemented mobile destinations:
 
-- `Chat`: conversation timeline and composer.
 - `Work`: files, changed work, and artifact review.
-- `Run`: progress, recovery, receipt, validation, context.
+- `Chat`: conversation timeline and composer.
+- `Proof`: progress, recovery, receipt, validation, and context.
 - `Preview`: browser/app preview when available.
 
 ## Current Surface Mapping

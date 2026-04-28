@@ -1,9 +1,14 @@
 # Panda Workbench Modernization Brief
 
-> Status: proposed  
+> Status: historical; superseded for current workspace behavior by the
+> chat-first workspace IA  
 > Date: 2026-04-22  
 > Scope: theme, shell hierarchy, and layout modernization for the active Panda
 > workbench after cleanup/refactor convergence.
+
+The current implemented workspace follows the chat-first IA documented in
+`docs/plans/2026-04-26-chat-first-workspace-ia.md`. Keep this brief as product
+and visual strategy context, not as the active shell contract.
 
 ## Executive Direction
 

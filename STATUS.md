@@ -78,15 +78,9 @@
 
 ## Known issues
 
-- Existing planning files described the completed routing and receipt milestone;
-  they have been replaced with the new chat-first workspace scope.
-- The exact session rail behavior for background/parallel work needs design in
-  Milestone 1 before implementation.
-- The existing `ReviewPanel` receives slot content, so the actual run content
-  owner must be identified before code changes.
-- Each UI/design milestone now carries an explicit `frontend-design` skill
-  requirement; future agents should treat that as part of the acceptance
-  process.
+- No active blocker is recorded for the completed chat-first workspace redesign.
+- Root task artifacts (`SPEC.md`, `PLAN.md`, and `STATUS.md`) should be removed
+  before merge unless the team wants to keep them as audit evidence.
 
 ## Validation log
 
@@ -135,6 +129,8 @@
   Result: Convex functions ready.
 - 2026-04-27 Milestone 8 E2E validation: `bun run test:e2e` passed after
   stopping a stale Next server on port 3000. Result: 23 passed, 0 failed.
+- 2026-04-27 documentation refresh validation: `bun run format:check` passed.
+  Result: all matched files use Prettier code style.
 
 ## Future work
 

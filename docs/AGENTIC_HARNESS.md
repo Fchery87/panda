@@ -1,7 +1,7 @@
 # AGENTIC_HARNESS.md - Panda Agentic Harness
 
-> **Version:** 1.2  
-> **Last Updated:** 2026-04-07  
+> **Version:** 1.3  
+> **Last Updated:** 2026-04-27  
 > **Status:** Implemented
 
 ---
@@ -17,6 +17,11 @@ surface one-to-one.
 The harness executes work through provider-agnostic agents while Convex owns
 truth for delivery lifecycle, task tracking, review gates, QA evidence, ship
 readiness, browser session metadata, and durable runtime checkpoints.
+
+The current workspace presents this runtime through a chat-first session
+timeline. Chat owns intent and the narrative record; the proof surface owns run
+detail, changes, context, and preview. This keeps the harness provider-agnostic
+while making execution inspectable from one coherent workspace flow.
 
 ## Architecture
 
@@ -358,16 +363,29 @@ for await (const event of runtime.run(sessionID, userMessage)) {
 
 ## Integration with UI
 
-### RunProgressPanel
+### Chat Timeline And Proof Surfaces
 
-Unified component combining live + historical progress:
+The UI derives chat timeline rows from a bounded run timeline view model. The
+visible stages are intent, routing, planning, execution, validation, receipt,
+and next action. Low-level run events remain inspectable, but they are not the
+default transcript experience.
 
-- Shows live progress during streaming
-- Displays historical events after completion
-- Groups by category (analysis, rewrite, tool, complete)
-- Clickable file paths and artifact links
-- Shows plan approval/execution state
-- Shows plan step progress when executing an approved plan
+The right-side proof surface is consolidated into four views:
+
+- `Run` - live/historical progress, validation evidence, recovery state,
+  approvals, and receipt summaries.
+- `Changes` - artifacts, diffs, generated files, and review actions.
+- `Context` - plan context, memory, specifications, context audit, and relevant
+  decisions.
+- `Preview` - browser/runtime preview and runtime availability.
+
+The session rail uses bounded run and chat summaries to show quiet state markers
+for active, blocked, review-ready, running, and completed work. It must not
+subscribe to raw logs, full event arguments, full checkpoint payloads, or full
+file contents.
+
+Mobile preserves the same contract through `Work`, `Chat`, `Proof`, and
+`Preview` destinations, with chat as the default primary panel.
 
 ### AgentSelector
 

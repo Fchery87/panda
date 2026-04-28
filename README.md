@@ -11,24 +11,34 @@
 ## Overview
 
 Panda is a browser-native coding workspace built for AI-assisted development. It
-combines a canonical 4-mode workflow (`ask`, `plan`, `code`, `build`),
-structured plan approval, build execution, file editing, runtime checkpoints,
-shared chat history, and admin controls in one web app.
+combines a chat-first workspace, canonical 4-mode workflow (`ask`, `plan`,
+`code`, `build`), structured plan approval, build execution, file editing,
+runtime checkpoints, shared chat history, and admin controls in one web app.
 
-The current agent runtime includes deterministic routing and typed execution
-receipts. Routing records both the user-requested mode and the resolved
-execution mode, while receipts provide a bounded audit trail for context, tools,
-commands, approvals, token usage, execution duration, and result status.
+The current workspace is organized around one session timeline. User intent
+enters through chat, Panda routes it, work executes, proof accumulates, and the
+user reviews the result through focused `Run`, `Changes`, `Context`, and
+`Preview` surfaces. Mobile keeps the same contract through `Work`, `Chat`,
+`Proof`, and `Preview` destinations.
+
+The current agent runtime includes deterministic routing, bounded session
+summaries, and typed execution receipts. Routing records both the user-requested
+mode and the resolved execution mode, while receipts provide a bounded audit
+trail for context, tools, commands, approvals, token usage, execution duration,
+and result status.
 
 ## Current Product Surface
 
 - Landing page plus an education page that explains the workbench workflow
-- Project list and per-project workbench routes
+- Project list and per-project chat-first workbench routes
 - Structured planning sessions with approved build-from-plan runs
-- Browser-native file editing, diffs, artifacts, and terminal jobs
+- Browser-native file editing, diffs, artifacts, previews, and terminal jobs
 - Permission review for risky commands in the web UI
 - Deterministic mode routing with `requestedMode` and `resolvedMode` audit data
-- Structured execution receipts in the run inspector
+- Run timeline summaries in chat with structured execution receipts in proof
+  surfaces
+- Quiet session rail state for active, blocked, review-ready, running, and
+  completed work
 - Shared chat links for public, read-only conversation review
 - Admin console pages for users, analytics, system controls, and security
 - Convex-backed persistence for plans, messages, runs, checkpoints, specs, and
@@ -121,6 +131,16 @@ Panda is optimized for this flow:
 4. Watch execution happen
 5. Inspect what changed
 
+Workspace surfaces:
+
+- Chat is the primary session timeline and composer surface.
+- `Run` shows progress, validation evidence, recovery state, and receipts.
+- `Changes` shows artifacts, diffs, generated files, and review actions.
+- `Context` shows planning, memory, specifications, and context audit state.
+- `Preview` shows the browser/runtime preview when available.
+- Mobile navigation exposes `Work`, `Chat`, `Proof`, and `Preview` without
+  changing the underlying workspace contract.
+
 Modes:
 
 - `ask` - read-only Q&A
@@ -146,6 +166,11 @@ state. Receipts are designed for auditability and Convex bandwidth safety:
 - WebContainer and native/server execution are reported separately
 - approval decisions are captured when present in the run event stream
 
+Run timeline rows in chat are derived from the same bounded run model as the
+proof surfaces. The visible stages are intent, routing, planning, execution,
+validation, receipt, and next action. Low-level tool events remain available in
+inspection surfaces instead of becoming the default transcript experience.
+
 ## Repository Shape
 
 ```text
@@ -164,6 +189,10 @@ panda/
   behind a feature flag.
 - Keep execution receipt fields typed, bounded, and redacted before they enter
   Convex.
+- Keep the workspace chat-first: chat is primary, proof is focused, and the
+  editor supports inspection and spot edits rather than replacing the session
+  timeline.
+- Keep proof tabs consolidated as `Run`, `Changes`, `Context`, and `Preview`.
 - Use Zustand for local shell/chat-session state and Convex for persisted
   product data.
 - Keep Convex live queries narrow. Project boot should subscribe to metadata,
@@ -184,6 +213,8 @@ panda/
   execution runtime
 - [docs/CHAT_TRANSCRIPT_POLICY.md](./docs/CHAT_TRANSCRIPT_POLICY.md) - chat vs
   inspector boundaries for progress, tools, and receipts
+- [docs/plans/2026-04-26-chat-first-workspace-ia.md](./docs/plans/2026-04-26-chat-first-workspace-ia.md) -
+  current chat-first workspace information architecture and implementation notes
 - [docs/LLM_PROVIDER_CATALOG.md](./docs/LLM_PROVIDER_CATALOG.md) - live LLM
   provider and model catalog behavior
 - [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) - deployment guide
@@ -196,6 +227,12 @@ panda/
 Historical verification snapshots may exist in
 [VALIDATION_TASKS.md](./VALIDATION_TASKS.md). Treat the current CI output and
 the latest task-local validation notes as authoritative when they differ.
+
+The chat-first workspace redesign was last verified with:
+
+- `bun run typecheck && bun run lint && bun run format:check && bun test`
+- `npx convex dev --once`
+- `bun run test:e2e`
 
 ## License
 
