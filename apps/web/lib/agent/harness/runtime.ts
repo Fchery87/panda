@@ -86,6 +86,7 @@ import { sanitizeText } from './stream-sanitizer'
 import { runPreflight } from './preflight'
 import { getGrammarsForModel } from '../providers/model-capabilities'
 import type { ChatMode } from '../chat-modes'
+import type { TerminationReason } from './errors'
 
 /**
  * Runtime state
@@ -254,6 +255,7 @@ export interface RuntimeEvent {
   usage?: { input: number; output: number; reasoning: number }
   cost?: number
   error?: string
+  terminationReason?: TerminationReason
   // Warning event fields
   message?: string
   pluginName?: string
@@ -615,6 +617,7 @@ export class Runtime {
       yield {
         type: 'error',
         error: `Preflight failed [${preflightResult.error.code}]: ${preflightResult.error.message}`,
+        terminationReason: { kind: 'preflight-failed', code: preflightResult.error.code },
       }
       return
     }
@@ -722,6 +725,10 @@ export class Runtime {
                 error:
                   'Agent completed its response without executing tools. ' +
                   'If you expected file changes, try rephrasing your request or switching to a different mode.',
+                terminationReason: {
+                  kind: 'no-tool-calls-in-build-mode',
+                  narrationTurns: this.state.consecutiveNarrationTurns,
+                },
               }
               this.state.isComplete = true
               await this.saveCheckpoint(agent.name, 'error')
@@ -746,6 +753,7 @@ export class Runtime {
         yield {
           type: 'error',
           error: `Agent reached maximum steps (${maxSteps}) without completing`,
+          terminationReason: { kind: 'step-budget-exhausted', budget: maxSteps },
         }
         return
       }
@@ -1021,9 +1029,14 @@ export class Runtime {
       })
 
       if (sanitized.kind === 'error') {
+        const terminationReason: TerminationReason =
+          sanitized.error.kind === 'LEAKED_UNDECLARED_GRAMMAR'
+            ? { kind: 'tool-call-leak-detected', grammarId: sanitized.error.grammarId }
+            : { kind: 'tool-call-leak-detected', grammarId: 'unknown' }
         yield {
           type: 'error',
           error: `Grammar leak detected: ${sanitized.error.kind} — ${JSON.stringify(sanitized.error)}`,
+          terminationReason,
         }
         return { finishReason: 'error', messageID }
       }

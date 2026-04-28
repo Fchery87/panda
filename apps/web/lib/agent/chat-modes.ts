@@ -4,6 +4,15 @@ export interface HandoffRitual {
   systemMessage: string
 }
 
+export interface ModeTransitionRitual {
+  fromMode: ChatMode | null
+  toMode: ChatMode
+  approvedPlanId: string | null
+  activeSpecId: string | null
+  firstAction: string
+  systemMessage: string
+}
+
 export interface ChatModeConfig {
   description: string
   fileAccess: 'read-only' | 'read-write'
@@ -113,4 +122,36 @@ export function getAdvancedChatModes(): ChatMode[] {
 
 export function getDefaultHarnessAgent(mode: ChatMode): ChatModeConfig['runtime']['primaryAgent'] {
   return CHAT_MODE_CONFIGS[mode].runtime.primaryAgent
+}
+
+export function buildModeTransitionRitual(args: {
+  fromMode?: ChatMode | null
+  toMode: ChatMode
+  approvedPlanId?: string | null
+  activeSpecId?: string | null
+}): ModeTransitionRitual {
+  const config = CHAT_MODE_CONFIGS[args.toMode]
+  const firstAction = config.requiresToolCalls
+    ? 'call an appropriate tool before narrating progress'
+    : 'answer directly within the current mode boundaries'
+  const lines = [
+    `Previous mode: ${args.fromMode ?? 'none'}`,
+    `Current mode: ${args.toMode}`,
+    `Approved plan: ${args.approvedPlanId ?? 'none'}`,
+    `Active spec: ${args.activeSpecId ?? 'none'}`,
+    `First action: ${firstAction}.`,
+  ]
+
+  if (config.handoffRitual?.systemMessage) {
+    lines.push('', config.handoffRitual.systemMessage)
+  }
+
+  return {
+    fromMode: args.fromMode ?? null,
+    toMode: args.toMode,
+    approvedPlanId: args.approvedPlanId ?? null,
+    activeSpecId: args.activeSpecId ?? null,
+    firstAction,
+    systemMessage: lines.join('\n'),
+  }
 }

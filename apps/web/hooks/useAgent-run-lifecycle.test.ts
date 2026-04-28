@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import type { Doc, Id } from '@convex/_generated/dataModel'
 
 import { createRunLifecycle } from './useAgent-run-lifecycle'
+import type { TerminationReason } from '@/lib/agent/harness/errors'
 
 type ExecutionReceipt = NonNullable<Doc<'agentRuns'>['receipt']>
 
@@ -66,8 +67,17 @@ function createHarness() {
       usage?: unknown
       receipt?: ExecutionReceipt
     }>,
-    fail: [] as Array<{ runId: Id<'agentRuns'>; error: string; receipt?: ExecutionReceipt }>,
-    stop: [] as Array<{ runId: Id<'agentRuns'>; receipt?: ExecutionReceipt }>,
+    fail: [] as Array<{
+      runId: Id<'agentRuns'>
+      error: string
+      receipt?: ExecutionReceipt
+      terminationReason?: TerminationReason
+    }>,
+    stop: [] as Array<{
+      runId: Id<'agentRuns'>
+      receipt?: ExecutionReceipt
+      terminationReason?: TerminationReason
+    }>,
     clear: 0,
     completed: [] as Array<{
       runId: Id<'agentRuns'>
@@ -178,6 +188,36 @@ describe('createRunLifecycle', () => {
         outcome: 'stopped',
         completedPlanStepIndexes: [0, 2],
         planTotalSteps: 3,
+      },
+    ])
+  })
+
+  test('persists typed termination reasons for failed and stopped runs', async () => {
+    const failed = createHarness()
+    const failureReason: TerminationReason = {
+      kind: 'preflight-failed',
+      code: 'UNMANIFESTED_MODEL',
+    }
+    await failed.lifecycle.finalizeRunFailed('preflight failed', undefined, failureReason)
+
+    expect(failed.calls.fail).toEqual([
+      {
+        runId: failed.runId,
+        error: 'preflight failed',
+        receipt: undefined,
+        terminationReason: failureReason,
+      },
+    ])
+
+    const stopped = createHarness()
+    const stopReason: TerminationReason = { kind: 'user-abort' }
+    await stopped.lifecycle.finalizeRunStopped(undefined, stopReason)
+
+    expect(stopped.calls.stop).toEqual([
+      {
+        runId: stopped.runId,
+        receipt: undefined,
+        terminationReason: stopReason,
       },
     ])
   })

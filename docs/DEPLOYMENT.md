@@ -7,7 +7,7 @@
 
 ## 1. Architecture and deployment model
 
-Panda is a web-only product split into:
+Panda is a browser-first product with server-backed fallback, split into:
 
 - Frontend: Next.js app in `apps/web`
 - Backend: Convex functions in `convex/`

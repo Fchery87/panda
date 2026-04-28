@@ -6,6 +6,28 @@ interface BootWebcontainerWithTimeoutOptions {
   timeoutMs: number
 }
 
+type WebcontainerBootTelemetryStatus = 'ready' | 'error' | 'unsupported' | 'unavailable'
+type WebcontainerExecutionPath = 'browser-webcontainer' | 'server-fallback'
+type WebcontainerBootReasonCategory =
+  | 'boot-success'
+  | 'boot-error'
+  | 'unsupported-runtime'
+  | 'unavailable-runtime'
+
+interface WebcontainerBootTelemetryInput {
+  status: WebcontainerBootTelemetryStatus
+  startedAt: number
+  endedAt: number
+  error?: unknown
+}
+
+interface WebcontainerBootTelemetry {
+  status: WebcontainerBootTelemetryStatus
+  executionPath: WebcontainerExecutionPath
+  durationMs: number
+  reasonCategory: WebcontainerBootReasonCategory
+}
+
 /**
  * Race a full WebContainer import+boot sequence against a hard timeout.
  *
@@ -25,4 +47,30 @@ export function bootWebcontainerWithTimeout({
       )
     ),
   ])
+}
+
+export function buildWebcontainerBootTelemetry({
+  status,
+  startedAt,
+  endedAt,
+}: WebcontainerBootTelemetryInput): WebcontainerBootTelemetry {
+  const durationMs = Math.max(0, endedAt - startedAt)
+  const executionPath: WebcontainerExecutionPath =
+    status === 'ready' ? 'browser-webcontainer' : 'server-fallback'
+
+  const reasonCategory: WebcontainerBootReasonCategory =
+    status === 'ready'
+      ? 'boot-success'
+      : status === 'unsupported'
+        ? 'unsupported-runtime'
+        : status === 'unavailable'
+          ? 'unavailable-runtime'
+          : 'boot-error'
+
+  return {
+    status,
+    executionPath,
+    durationMs,
+    reasonCategory,
+  }
 }

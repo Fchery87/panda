@@ -40,6 +40,7 @@ export function buildAgentPromptContext(args: {
     plan: GeneratedPlanArtifact
   }
   activeSpec?: FormalSpecification
+  previousMode?: ChatMode | null
 }): PromptContext {
   const projectOverview =
     args.mode === 'plan' && args.projectFiles
@@ -98,6 +99,14 @@ export function buildAgentPromptContext(args: {
     approvedPlanExecution:
       args.mode === 'build' || args.mode === 'code' ? args.approvedPlanExecutionContext : undefined,
     activeSpec: args.activeSpec,
+    modeTransition:
+      args.mode === 'build' || args.mode === 'code'
+        ? {
+            fromMode: args.previousMode ?? null,
+            approvedPlanId: args.approvedPlanExecutionContext?.sessionId ?? null,
+            activeSpecId: args.activeSpec?.id ?? null,
+          }
+        : undefined,
   }
 }
 

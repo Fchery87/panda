@@ -235,10 +235,7 @@ export function PlanningIntakePopup({
   return (
     <section
       aria-label="Planning intake popup"
-      className={cn(
-        'shadow-sharp-lg border border-border bg-[linear-gradient(180deg,rgba(250,204,21,0.08),transparent_26%),var(--background)]',
-        className
-      )}
+      className={cn('shadow-sharp-lg border border-border bg-background', className)}
     >
       <div className="border-b border-border px-4 py-3">
         <div className="flex items-start justify-between gap-3">

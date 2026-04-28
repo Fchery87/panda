@@ -46,6 +46,7 @@ import type { GeneratedPlanArtifact } from '../lib/planning/types'
 import { spawnVariants } from '../lib/agent/parallelVariants'
 import { buildEditorContextBlock } from '../lib/agent/buildEditorContextBlock'
 import type { WebContainer } from '@webcontainer/api'
+import type { TerminationReason } from '../lib/agent/harness/errors'
 
 import {
   buildAgentRuntimeConfig,
@@ -87,6 +88,29 @@ import type {
 type AgentStatus = 'idle' | 'thinking' | 'streaming' | 'executing_tools' | 'complete' | 'error'
 
 type RunEventInput = PersistedRunEventInfo
+
+function inferTerminationReasonFromError(message: string): TerminationReason | undefined {
+  const preflightMatch = message.match(/Preflight failed \[([^\]]+)\]/)
+  if (preflightMatch?.[1]) {
+    return { kind: 'preflight-failed', code: preflightMatch[1] }
+  }
+
+  const maxStepsMatch = message.match(/maximum steps \((\d+)\)/i)
+  if (maxStepsMatch?.[1]) {
+    return { kind: 'step-budget-exhausted', budget: Number(maxStepsMatch[1]) }
+  }
+
+  const grammarMatch = message.match(/"grammarId":"([^"]+)"/)
+  if (message.includes('Grammar leak detected')) {
+    return { kind: 'tool-call-leak-detected', grammarId: grammarMatch?.[1] ?? 'unknown' }
+  }
+
+  if (message.includes('without executing tools')) {
+    return { kind: 'no-tool-calls-in-build-mode', narrationTurns: 3 }
+  }
+
+  return undefined
+}
 
 type TerminalReceiptStatus = 'complete' | 'error' | 'aborted' | 'approval_timeout'
 
@@ -884,6 +908,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           planDraft,
           approvedPlanExecutionContext: options?.approvedPlanExecutionContext,
           activeSpec: currentSpec ?? undefined,
+          previousMode: requestedMode === resolvedMode ? null : requestedMode,
         })
         const { promptContext } = promptBundle
         contextAudit = promptBundle.contextAudit
@@ -1142,7 +1167,9 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               if (event.error === SPEC_APPROVAL_CANCELLED_ERROR) {
                 resetSpecCancellationState()
                 await appendObservedRunEvent(buildSpecCancelledRunEvent(), { forceFlush: true })
-                await runLifecycle.finalizeRunStopped(buildTerminalReceipt('aborted'))
+                await runLifecycle.finalizeRunStopped(buildTerminalReceipt('aborted'), {
+                  kind: 'user-abort',
+                })
                 break
               }
               const userFacing = getUserFacingAgentError(event.error)
@@ -1154,7 +1181,11 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               setProgressSteps((prev) => [...prev, errorStep].slice(-30))
               const errorMessage = event.error || 'Unknown error'
               await appendObservedRunEvent(buildFailedRunEvent(errorMessage), { forceFlush: true })
-              await runLifecycle.finalizeRunFailed(errorMessage, buildTerminalReceipt('error'))
+              await runLifecycle.finalizeRunFailed(
+                errorMessage,
+                buildTerminalReceipt('error'),
+                event.terminationReason ?? inferTerminationReasonFromError(errorMessage)
+              )
               toast.error(userFacing.title, {
                 description: userFacing.description,
               })
@@ -1167,7 +1198,9 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         if (isRunningRef.current) {
           setStatus('idle')
           isRunningRef.current = false
-          await runLifecycle.finalizeRunStopped(buildTerminalReceipt('aborted'))
+          await runLifecycle.finalizeRunStopped(buildTerminalReceipt('aborted'), {
+            kind: 'user-abort',
+          })
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
@@ -1180,6 +1213,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             await stopRun({
               runId: runIdRef.current,
               receipt: buildTerminalReceipt('aborted'),
+              terminationReason: { kind: 'user-abort' },
             })
             clearRun()
           }
@@ -1195,6 +1229,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               runId: runIdRef.current,
               error: message,
               receipt: buildTerminalReceipt('error'),
+              terminationReason: inferTerminationReasonFromError(message),
             })
           } catch (runErr) {
             logUseAgentError('Failed to finalize run failure', runErr)

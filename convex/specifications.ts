@@ -452,6 +452,90 @@ export const getLatestByChat = query({
   },
 })
 
+export const getProvenanceSummaryByChat = query({
+  args: {
+    chatId: v.id('chats'),
+  },
+  handler: async (ctx, args) => {
+    await requireChatOwner(ctx, args.chatId)
+
+    const specs = await ctx.db
+      .query('specifications')
+      .withIndex('by_chat', (q) => q.eq('chatId', args.chatId))
+      .order('desc')
+      .take(1)
+    const spec = specs[0] ?? null
+
+    const planningSessions = spec?.planningSessionId
+      ? await ctx.db
+          .query('planningSessions')
+          .withIndex('by_sessionId', (q) => q.eq('sessionId', spec.planningSessionId!))
+          .take(1)
+      : []
+    const planningSession = planningSessions[0] ?? null
+
+    const planningVerification = spec?.planningSessionId
+      ? await ctx.db
+          .query('specifications')
+          .withIndex('by_planningSession', (q) =>
+            q.eq('planningSessionId', spec.planningSessionId!)
+          )
+          .order('desc')
+          .take(1)
+      : []
+    const verification = planningVerification[0] ?? spec
+
+    const run = spec?.runId ? await ctx.db.get(spec.runId) : null
+
+    return {
+      specification: spec
+        ? {
+            _id: spec._id,
+            status: spec.status,
+            version: spec.version,
+            tier: spec.tier,
+            planningSessionId: spec.planningSessionId,
+            runId: spec.runId,
+            intentGoal: spec.intent.goal,
+            provenance: spec.provenance,
+            approvedAt: spec.approvedAt,
+            approvedBy: spec.approvedBy,
+            signature: spec.signature,
+          }
+        : null,
+      planningSession: planningSession
+        ? {
+            sessionId: planningSession.sessionId,
+            status: planningSession.status,
+            verificationId: planningSession.verificationId,
+            acceptedAt: planningSession.acceptedAt,
+            updatedAt: planningSession.updatedAt,
+            planTitle: planningSession.generatedPlan?.title,
+            planStatus: planningSession.generatedPlan?.status,
+          }
+        : null,
+      verification: verification
+        ? {
+            _id: verification._id,
+            status: verification.status,
+            runId: verification.runId,
+          }
+        : null,
+      run: run
+        ? {
+            _id: run._id,
+            status: run.status,
+            mode: run.mode,
+            startedAt: run.startedAt,
+            completedAt: run.completedAt,
+            terminationReason: run.terminationReason,
+            receipt: run?.receipt ?? null,
+          }
+        : null,
+    }
+  },
+})
+
 /**
  * Create a new version of an existing specification
  * Archives the old version and creates a new one with incremented version number

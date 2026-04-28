@@ -10,7 +10,7 @@ describe('RightPanel', () => {
     expect(html).not.toContain('Preview')
   })
 
-  test('renders the operational rail header when inspector content is open', () => {
+  test('renders the evidence surface header when inspector content is open', () => {
     const html = renderToStaticMarkup(
       <RightPanel
         chatContent={<div>chat</div>}
@@ -21,8 +21,7 @@ describe('RightPanel', () => {
       />
     )
 
-    expect(html).toContain('Review Surface')
-    expect(html).toContain('Operational Rail')
-    expect(html).toContain('Review plan state, run history, evidence, and notes in one place.')
+    expect(html).toContain('Evidence Surface')
+    expect(html).toContain('Run proof, receipts, snapshots, subagents, specs, and validation.')
   })
 })

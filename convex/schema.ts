@@ -145,6 +145,17 @@ export const PersistedRunEvent = v.object({
   snapshot: v.optional(PersistedRunSnapshot),
 })
 
+export const TerminationReason = v.union(
+  v.object({ kind: v.literal('completed') }),
+  v.object({ kind: v.literal('user-abort') }),
+  v.object({ kind: v.literal('step-budget-exhausted'), budget: v.number() }),
+  v.object({ kind: v.literal('stream-idle'), idleMs: v.number() }),
+  v.object({ kind: v.literal('no-tool-calls-in-build-mode'), narrationTurns: v.number() }),
+  v.object({ kind: v.literal('network-timeout'), cause: v.string() }),
+  v.object({ kind: v.literal('preflight-failed'), code: v.string() }),
+  v.object({ kind: v.literal('tool-call-leak-detected'), grammarId: v.string() })
+)
+
 export const RoutingConfidence = v.union(v.literal('high'), v.literal('medium'), v.literal('low'))
 
 export const RoutingDecisionSource = v.union(
@@ -782,6 +793,7 @@ export default defineSchema({
     userMessage: v.optional(v.string()),
     summary: v.optional(v.string()),
     error: v.optional(v.string()),
+    terminationReason: v.optional(TerminationReason),
     usage: v.optional(TokenUsage),
     receipt: v.optional(ExecutionReceipt),
     startedAt: v.number(),
@@ -869,8 +881,8 @@ export default defineSchema({
   providerTokens: defineTable({
     userId: v.id('users'),
     provider: v.string(),
-    accessToken: v.string(),
-    refreshToken: v.optional(v.string()),
+    accessTokenEnvelope: v.string(),
+    refreshTokenEnvelope: v.optional(v.string()),
     expiresAt: v.optional(v.number()),
     scope: v.optional(v.string()),
     createdAt: v.number(),
@@ -1067,7 +1079,8 @@ export default defineSchema({
     projectId: v.optional(v.id('projects')),
   })
     .index('by_session', ['sessionID'])
-    .index('by_session_tool', ['sessionID', 'tool']),
+    .index('by_session_tool', ['sessionID', 'tool'])
+    .index('by_project_timestamp', ['projectId', 'timestamp']),
 
   // 28. Specifications table - SpecNative formal specifications
   specifications: defineTable({

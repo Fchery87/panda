@@ -78,7 +78,7 @@ export function WorkbenchRightPanel({ projectId }: WorkbenchRightPanelProps) {
           ? 'Context and Memory'
           : activeTab === 'preview'
             ? 'Preview'
-            : 'Review Surface'
+            : 'Evidence Surface'
 
   const inspectorSummary =
     activeTab === 'run'

@@ -9,10 +9,10 @@
 ## Overview
 
 Panda.ai implements an OpenCode-inspired agentic harness that provides a
-provider-agnostic execution system for Panda’s web-only workbench. The harness
-is adapted to Panda’s current browser product, Convex-backed persistence model,
-and plan-review/build workflow rather than trying to mirror another interface
-surface one-to-one.
+provider-agnostic execution system for Panda's browser-first workbench with
+server-backed fallback. The harness is adapted to Panda's current browser
+product, Convex-backed persistence model, and plan-review/build workflow rather
+than trying to mirror another interface surface one-to-one.
 
 The harness executes work through provider-agnostic agents while Convex owns
 truth for delivery lifecycle, task tracking, review gates, QA evidence, ship
@@ -96,35 +96,44 @@ interface AgentConfig {
 - `plan` - Read-only analysis and planning
 - `ask` - Quick Q&A
 
+The canonical user-facing modes are `ask`, `plan`, `code`, and `build`. Other
+names in this section are internal agent or delivery-role names, not separate
+product modes.
+
 ### Agent Role Mapping
 
 Chat modes route to appropriate agents:
 
-- `architect` → planning, architecture review, and spec creation
+- `plan` → planning, architecture review, and spec creation
 - `code` → direct implementation with tool calls
 - `build` → full-access structured execution
 - `ask` → quick Q&A, no tool calls
 
 ## Delivery Control Plane
 
-The harness integrates with a delivery state machine managed in Convex. The key
-principle is that the harness can execute work, but Convex owns truth for
-delivery lifecycle and gating.
+The harness can integrate with a delivery state machine managed in Convex. The
+key principle is that the harness can execute work, but Convex owns truth for
+persisted lifecycle and gating.
 
-### Canonical Entities
+Current schema coverage is narrower than the original delivery-control proposal.
+`agentRuns`, `agentRunEvents`, `planningSessions`, `specifications`,
+`permissionAuditLog`, and `harnessRuntimeCheckpoints` are active persisted
+surfaces. Delivery tables listed below are target concepts unless the schema
+adds them later.
 
-- `deliveryStates` - initiative-level source of truth for phase, status, gates,
-  summary, and active role
-- `deliveryTasks` - tracked execution units with evidence, requirements, and
-  latest run/review/QA links
-- `reviewReports` - executive review findings and decisions
-- `qaReports` - browser QA evidence, assertions, and defects
-- `shipReports` - final readiness decisions
-- `deliveryVerifications` - normalized verification log across review, QA, and
-  ship
-- `browserSessions` - persistent browser-session metadata for QA reuse
-- `harnessRuntimeCheckpoints` - durable runtime resume snapshots tied to chat
-  and run identity
+### Delivery Entity Status
+
+| Concept                                       | Current status | Notes                                                                    |
+| --------------------------------------------- | -------------- | ------------------------------------------------------------------------ |
+| `agentRuns`                                   | Implemented    | Canonical run lifecycle and receipt persistence.                         |
+| `agentRunEvents`                              | Implemented    | Persisted run progress and event summaries.                              |
+| `planningSessions`                            | Implemented    | Canonical planning intake, approval, and execution state.                |
+| `specifications`                              | Implemented    | Formal specs and spec history.                                           |
+| `permissionAuditLog`                          | Implemented    | Permission decision audit history.                                       |
+| `harnessRuntimeCheckpoints`                   | Implemented    | Durable runtime resume snapshots.                                        |
+| `deliveryStates` / `deliveryTasks`            | Target concept | Do not document as current schema until implemented.                     |
+| `reviewReports` / `qaReports` / `shipReports` | Target concept | Use current run/receipt/eval surfaces unless dedicated tables are added. |
+| `deliveryVerifications` / `browserSessions`   | Target concept | Future governance extension, not current table coverage.                 |
 
 ### Control-Plane Rules
 
@@ -169,9 +178,9 @@ The active chat no longer mirrors plan draft, approval, or execution state. Plan
 review and build transitions read from `planningSessions` and the generated plan
 artifact.
 
-### Architect Mode Contract
+### Plan Mode Contract
 
-For explicit planning requests, Architect Mode now produces a plan artifact with
+For explicit planning requests, `plan` mode now produces a plan artifact with
 these sections:
 
 - `Goal`
@@ -241,8 +250,8 @@ surface when an active planning session exists. It shows:
 
 ### Planning Context Grounding
 
-Architect mode now receives a targeted planning context bundle in addition to
-the general repo overview. This bundle prioritizes:
+`plan` mode now receives a targeted planning context bundle in addition to the
+general repo overview. This bundle prioritizes:
 
 - routes and app entry points
 - schema and API boundary files
@@ -399,18 +408,15 @@ Dropdown for agent selection:
 
 Important persistence surfaces used by the harness and delivery control plane:
 
-| Table                       | Purpose                                   |
-| --------------------------- | ----------------------------------------- |
-| `agentRuns`                 | Canonical run lifecycle per chat turn     |
-| `agentRunEvents`            | Persisted run timeline and progress       |
-| `harnessRuntimeCheckpoints` | Durable runtime resume state              |
-| `deliveryStates`            | Initiative-level delivery source of truth |
-| `deliveryTasks`             | Canonical tracked tasks                   |
-| `reviewReports`             | Implementation and architecture reviews   |
-| `qaReports`                 | Route-aware QA evidence                   |
-| `shipReports`               | Final readiness decisions                 |
-| `deliveryVerifications`     | Normalized verification records           |
-| `browserSessions`           | Persistent browser QA session metadata    |
+| Table                       | Purpose                               |
+| --------------------------- | ------------------------------------- |
+| `agentRuns`                 | Canonical run lifecycle per chat turn |
+| `agentRunEvents`            | Persisted run timeline and progress   |
+| `harnessRuntimeCheckpoints` | Durable runtime resume state          |
+
+Delivery-specific tables such as `deliveryStates`, `deliveryTasks`,
+`reviewReports`, `qaReports`, `shipReports`, `deliveryVerifications`, and
+`browserSessions` are target concepts, not current schema entries.
 
 ## Usage Example
 
@@ -460,3 +466,9 @@ for await (const event of runtime.run(sessionID, userMessage)) {
 
 - [AGENTS.md](../AGENTS.md) - AI agent instructions for this codebase
 - [README.md](../README.md) - Project overview
+- [docs/ARCHITECTURE_CONTRACT.md](./ARCHITECTURE_CONTRACT.md) - canonical
+  vocabulary and source-of-truth map
+- [docs/SECURITY_TRUST_BOUNDARIES.md](./SECURITY_TRUST_BOUNDARIES.md) - trust
+  boundaries and redaction policy
+- [docs/CONVEX_BACKEND_GOVERNANCE.md](./CONVEX_BACKEND_GOVERNANCE.md) - Convex
+  data governance rules

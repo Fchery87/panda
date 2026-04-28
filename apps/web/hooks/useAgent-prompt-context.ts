@@ -38,6 +38,7 @@ export interface BuildAgentPromptBundleArgs {
     plan: GeneratedPlanArtifact
   }
   activeSpec?: FormalSpecification | null
+  previousMode?: ChatMode | null
 }
 
 export interface AgentPromptBundle {
@@ -97,6 +98,7 @@ export function buildAgentPromptBundle(args: BuildAgentPromptBundleArgs): AgentP
     planDraft: args.planDraft,
     approvedPlanExecutionContext: args.approvedPlanExecutionContext,
     activeSpec: args.activeSpec ?? undefined,
+    previousMode: args.previousMode ?? null,
   })
 
   const contextAudit: ContextAuditRecord = {

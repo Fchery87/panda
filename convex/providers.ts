@@ -8,6 +8,7 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { getCurrentUserId, requireAuth } from './lib/auth'
+import { sealProviderSecret } from './lib/providerSecrets'
 
 /**
  * Get OAuth tokens for a provider
@@ -39,8 +40,8 @@ export const getProviderTokens = query({
 
     return {
       connected: true,
-      hasAccessToken: Boolean(tokenRecord.accessToken),
-      hasRefreshToken: Boolean(tokenRecord.refreshToken),
+      hasAccessToken: Boolean(tokenRecord.accessTokenEnvelope),
+      hasRefreshToken: Boolean(tokenRecord.refreshTokenEnvelope),
       expiresAt: tokenRecord.expiresAt,
       scope: tokenRecord.scope,
       provider: tokenRecord.provider,
@@ -77,8 +78,8 @@ export const storeProviderTokens = mutation({
     if (existing) {
       // Update existing tokens
       await ctx.db.patch(existing._id, {
-        accessToken: args.accessToken,
-        refreshToken: args.refreshToken,
+        accessTokenEnvelope: sealProviderSecret(args.accessToken),
+        refreshTokenEnvelope: sealProviderSecret(args.refreshToken),
         expiresAt: args.expiresAt,
         scope: args.scope,
         updatedAt: now,
@@ -90,8 +91,8 @@ export const storeProviderTokens = mutation({
     const tokenId = await ctx.db.insert('providerTokens', {
       userId,
       provider: args.provider,
-      accessToken: args.accessToken,
-      refreshToken: args.refreshToken,
+      accessTokenEnvelope: sealProviderSecret(args.accessToken)!,
+      refreshTokenEnvelope: sealProviderSecret(args.refreshToken),
       expiresAt: args.expiresAt,
       scope: args.scope,
       createdAt: now,

@@ -46,4 +46,15 @@ describe('Convex bandwidth guards', () => {
     expect(sharedChatPage).not.toMatch(propertyAccess('api.sharing.getSharedChat'))
     expect(sharedChatContent).not.toMatch(propertyAccess('api.sharing.getSharedChat'))
   })
+
+  test('bounds the legacy shared chat compatibility query', () => {
+    const sharing = readFileSync(join(process.cwd(), 'convex/sharing.ts'), 'utf8')
+    const getSharedChatBody = sharing.slice(
+      sharing.indexOf('export const getSharedChat'),
+      sharing.indexOf('export const getSharedChatHeader')
+    )
+
+    expect(getSharedChatBody).not.toContain('.collect()')
+    expect(getSharedChatBody).toContain('.take(')
+  })
 })

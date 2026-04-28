@@ -18,12 +18,31 @@ export const log = mutation({
 })
 
 export const listBySession = query({
-  args: { sessionID: v.string() },
+  args: {
+    sessionID: v.string(),
+    limit: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
+    const limit = Math.max(1, Math.min(args.limit ?? 100, 500))
     return await ctx.db
       .query('permissionAuditLog')
       .withIndex('by_session', (q) => q.eq('sessionID', args.sessionID))
       .order('desc')
-      .collect()
+      .take(limit)
+  },
+})
+
+export const listByProject = query({
+  args: {
+    projectId: v.id('projects'),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = Math.max(1, Math.min(args.limit ?? 100, 500))
+    return await ctx.db
+      .query('permissionAuditLog')
+      .withIndex('by_project_timestamp', (q) => q.eq('projectId', args.projectId))
+      .order('desc')
+      .take(limit)
   },
 })

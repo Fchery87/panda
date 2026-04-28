@@ -1,14 +1,35 @@
-# Chat Mode Architecture — Plan / Build / Builder Hardening
+# Chat Mode Architecture — Mode And Tool-Call Hardening
 
-**Status**: Proposal **Owner**: TBD **Last updated**: 2026-04-17
+**Status**: Partially implemented architecture record **Owner**: TBD **Last
+updated**: 2026-04-28
+
+This document is no longer the canonical vocabulary source. Use
+[Architecture Contract](./ARCHITECTURE_CONTRACT.md) for current mode names,
+source-of-truth ownership, and documentation authority. This document remains
+the implementation record for mode hardening and provider-agnostic tool-call
+safety.
+
+## Implementation Status
+
+| Component                  | Status                                                | Notes                                                                                  |
+| -------------------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Mode contract              | Implemented                                           | The current product modes are `ask`, `plan`, `code`, and `build`.                      |
+| Mode context helper        | Implemented, needs full wiring audit                  | Runtime consumers should read current mode from refreshed context, not stale closures. |
+| Model capability manifest  | Implemented, needs manifest/adapter reconciliation    | Build-capable models require explicit capability entries.                              |
+| Grammar registry           | Partially implemented                                 | Some proposed grammar IDs still need adapters or manifest cleanup.                     |
+| Stream sanitizer           | Implemented, needs continued regression coverage      | Tool-call-shaped text must not reach display text.                                     |
+| Preflight                  | Implemented, needs approved-plan path refinement      | Approved-plan requirements should apply to build-from-plan paths that need them.       |
+| Typed compatibility errors | Implemented                                           | UI rendering and telemetry coverage should continue to mature.                         |
+| Typed termination reasons  | Type exists, runtime persistence/rendering incomplete | Runtime still has plain string errors in some paths.                                   |
 
 ## 1. Context
 
-Panda's chat panel exposes three user-facing modes — **Plan** (`architect`),
-**Build** (`code`), and **Builder** (`build`). In practice the mode-switching
-flow has several classes of defect that together make Build mode unreliable, and
-in some provider/model combinations unusable. The goal of this document is to
-define a target architecture that:
+Panda's chat panel exposes four canonical user-facing modes: `ask`, `plan`,
+`code`, and `build`. Older notes used labels such as `Architect` and `Builder`;
+those labels are historical or internal-role terminology and should not define
+current product vocabulary. In practice the mode-switching flow has several
+classes of defect that together can make implementation modes unreliable. The
+goal of this document is to define a target architecture that:
 
 1. Makes the Plan → Build handoff atomic and correct.
 2. Guarantees tool-call grammar safety across **any** provider and **any** model
@@ -32,7 +53,7 @@ twist", model: `kimi-k2.5` via crof.ai):
 | 2   | Assistant message contains raw XML: `</parameter>`, `</invoke>`, `</minimax:tool_call>`            | Tool-call grammar leakage                                         |
 | 3   | `[code collapsed — use Build mode to execute]` placeholder appears **inside** a Build-mode message | Mode state leaking into renderers                                 |
 | 4   | Run terminates with `Build Update · Needs attention · Interrupted: Timeout`                        | Watchdog with no actionable reason                                |
-| 5   | Approved-plan preamble ("We are switching from Architect…") is injected into the **user** turn     | Pollutes conversation history, biases model toward planning voice |
+| 5   | Approved-plan preamble is injected into the **user** turn                                          | Pollutes conversation history, biases model toward planning voice |
 | 6   | Agent narrates "Step 1: Create SPEC.md…" repeatedly without ever calling `write_files`             | No pre-flight capability check; narration loop undetected         |
 
 Each symptom is traceable to at least one of six architectural weaknesses: mode
@@ -80,7 +101,7 @@ selected model emits a parseable tool-call grammar.
 One declarative record per mode. Fields:
 
 - `id: ChatMode`
-- `surfaceLabel` — user-facing string ("Plan", "Build", "Builder")
+- `surfaceLabel` — user-facing string for the canonical mode
 - `intentTriggers` — positive and negative examples that route intent to this
   mode
 - `toolAllowlist` / `toolDenylist` — canonical tool permissions
@@ -103,8 +124,8 @@ Runtime-derived, ref-based mode context. Shape:
 ```ts
 interface ModeContext {
   mode: ChatMode
-  approvedPlanId: Id<'plans'> | null
-  activeSpecId: Id<'specifications'> | null
+  approvedPlanId: string | null
+  activeSpecId: string | null
   depth: 'quick' | 'standard' | 'deep'
 }
 ```
@@ -130,8 +151,8 @@ On plan approval:
      `write_files` before narrating
 4. Run preflight (§5.5) before the first turn.
 
-The "We are switching from Architect to Build…" preamble is **removed from the
-user turn**. That content becomes a system/developer message.
+The mode-transition preamble is **removed from the user turn**. That content
+becomes a system/developer message.
 
 ### 5.4 `ToolCallParser` with grammar adapters
 
@@ -173,11 +194,11 @@ type TerminationReason =
   | { kind: 'tool-call-leak-detected'; grammarId: string }
 ```
 
-The Build-mode watchdog is aggressive: two consecutive assistant turns of
-narration in Build/Builder mode with zero `write_files` or `run_command`
-invocations → abort with `no-tool-calls-in-build-mode`. The UI renders a
-diagnostic card with CTAs (switch model, re-run with instructions, view
-transcript).
+The implementation-mode watchdog is aggressive: consecutive assistant turns of
+narration in `code` or `build` mode with zero `write_files` or `run_command`
+invocations should abort with `no-tool-calls-in-build-mode`. The UI should
+render a diagnostic card with CTAs such as switch model, re-run with
+instructions, and view transcript.
 
 ### 5.7 `SpecInjector`
 
@@ -250,10 +271,10 @@ interface ModelCapability {
 }
 ```
 
-**Rule**: a model with no manifest entry cannot be selected for Build/Builder
-mode. Ask and Plan modes allow unverified models because they don't need tool
-calls. Adding a new model is a PR with a manifest entry — never a code change to
-the parser.
+**Rule**: a model with no manifest entry cannot be selected for `code` or
+`build` mode. Ask and Plan modes allow unverified models because they don't need
+tool calls. Adding a new model is a PR with a manifest entry — never a code
+change to the parser.
 
 #### L3 — Stream Sanitizer
 
@@ -339,8 +360,8 @@ models are added.
 
 1. The bug-report transcript replays green: kimi-k2.5 either parses (we ship the
    `minimax-xml` adapter) or fails with a typed error and a model-switch CTA.
-2. Selecting any unmanifested model and attempting Build mode produces a
-   preflight error, not a silent run.
+2. Selecting any unmanifested model and attempting `code` or `build` mode
+   produces a preflight error, not a silent run.
 3. Any new provider/model works without changing parser code — only adding a
    manifest entry (and an adapter if the grammar is novel).
 4. Fuzz suite passes: no input produces raw tool-call-shaped text in the
@@ -465,19 +486,19 @@ scripts/
   adapters; this work sits above the SDK layer.
 - Multi-agent orchestration. The current single-agent-per-chat model is assumed.
 
-## 12. Glossary
+## 12. Local Glossary
 
-- **Mode** — Plan (`architect`) / Build (`code`) / Builder (`build`).
-  User-facing labels diverge from internal enum values for historical reasons.
+Use the full [Architecture Contract](./ARCHITECTURE_CONTRACT.md) for canonical
+terms. This local glossary only defines hardening-specific terms.
+
 - **Grammar** — A syntactic convention used by an LLM to encode tool calls in
   its output.
 - **Adapter** — A module that implements the `ToolCallGrammar` interface for one
   specific grammar.
-- **Manifest entry** — A record in `model-capabilities.ts` declaring which
-  grammars a given (provider × model) emits.
+- **Manifest entry** — A record in the model capability manifest declaring which
+  grammars a given provider and model can emit.
 - **Sanitizer** — The provider-blind stream wrapper that enforces "no
   tool-call-shaped text reaches the UI."
 - **Preflight** — Synchronous pre-turn verification of mode, model, permissions,
   and required artifacts.
-- **Ritual** — A mandatory first-action sequence for a mode (e.g. Build's "read
-  plan, identify step 1, call `write_files` before narrating").
+- **Ritual** — A mandatory first-action sequence for a mode.

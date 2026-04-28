@@ -139,7 +139,7 @@ export const getSharedChat = query({
       .query('messages')
       .withIndex('by_chat', (q) => q.eq('chatId', sharedChat.chatId))
       .order('asc')
-      .collect()
+      .take(100)
 
     return {
       chat: {

@@ -1,7 +1,11 @@
 # Chat Transcript Policy
 
-This document defines what belongs in Panda's main chat transcript versus the
-proof surfaces.
+This document defines what belongs in Panda's main chat transcript versus proof,
+inspection, and public share surfaces.
+
+For the broader trust-boundary rules that govern this policy, see
+[Security And Trust Boundaries](./SECURITY_TRUST_BOUNDARIES.md). For canonical
+mode vocabulary, see [Architecture Contract](./ARCHITECTURE_CONTRACT.md).
 
 ## Main rule
 
@@ -88,3 +92,49 @@ owns detailed event inspection.
 - Skill matching diagnostics
 - Duplicate approval or status cards already represented in dedicated action
   surfaces
+
+## Reasoning And Storage Rules
+
+Reasoning content is sensitive by default. It may help trusted users understand
+a run, but it can contain private prompt context, intermediate assumptions, or
+model-specific artifacts.
+
+- Store or render reasoning only when a trusted feature explicitly needs it.
+- Keep reasoning out of public shared-chat projections.
+- Prefer bounded summaries over raw reasoning in chat timeline rows.
+- Treat raw reasoning like proof/inspection data, not transcript narrative.
+
+## Share Surface Rules
+
+Shared chats are public read-only projections. They are not the owner workspace
+and must not expose proof internals.
+
+Allowed in public shared chat:
+
+- Redacted message role, content, and creation time.
+- Chat title, mode, creation time, and shared time.
+
+Not allowed in public shared chat:
+
+- Raw tool calls, tool arguments, command output, runtime checkpoints, full
+  receipts, private memory, provider settings, provider tokens, signed
+  attachment URLs, project policy state, admin state, raw reasoning, or private
+  file contents.
+
+Shared transcript loading should be paginated or explicitly capped. Legacy
+all-message share queries are compatibility paths and should not be used by
+active public UI.
+
+## Redaction Rules
+
+Before content enters chat, proof, logs, telemetry, or public sharing, redact:
+
+- API keys, OAuth tokens, refresh tokens, bearer tokens, cookies, and Convex
+  admin keys.
+- Authorization headers, signed URLs, private base URLs, and credential-like
+  environment variable values.
+- Tool arguments or command output that include private file contents or
+  secrets.
+
+If redaction cannot be guaranteed, keep the content in owner-only inspection or
+omit it from the transcript entirely.

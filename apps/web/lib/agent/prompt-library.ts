@@ -15,7 +15,7 @@ import {
   type BudgetAllocationOptions,
   type FileBudgetInfo,
 } from './context/context-budget'
-import { CHAT_MODE_CONFIGS, type ChatMode } from './chat-modes'
+import { CHAT_MODE_CONFIGS, buildModeTransitionRitual, type ChatMode } from './chat-modes'
 import { resolveAgentSkillsForPromptContext } from './skills/resolver'
 import type { FormalSpecification } from './spec/types'
 
@@ -107,6 +107,11 @@ export interface PromptContext {
         order: number
       }>
     }
+  }
+  modeTransition?: {
+    fromMode?: ChatMode | null
+    approvedPlanId?: string | null
+    activeSpecId?: string | null
   }
 }
 
@@ -380,9 +385,15 @@ export function getPromptForMode(context: PromptContext): CompletionMessage[] {
   const messages: CompletionMessage[] = []
 
   let systemPrompt = getSystemPromptForMode(context.chatMode)
-  const ritual = CHAT_MODE_CONFIGS[context.chatMode]?.handoffRitual?.systemMessage
-  if (ritual && (context.chatMode === 'code' || context.chatMode === 'build')) {
-    systemPrompt = `${systemPrompt}\n\n## Execution Ritual\n${ritual}`
+  if (context.chatMode === 'code' || context.chatMode === 'build') {
+    const ritual = buildModeTransitionRitual({
+      fromMode: context.modeTransition?.fromMode ?? null,
+      toMode: context.chatMode,
+      approvedPlanId:
+        context.modeTransition?.approvedPlanId ?? context.approvedPlanExecution?.sessionId ?? null,
+      activeSpecId: context.modeTransition?.activeSpecId ?? context.activeSpec?.id ?? null,
+    })
+    systemPrompt = `${systemPrompt}\n\n## Mode Transition Ritual\n${ritual.systemMessage}`
   }
 
   const resolvedSkills = resolveAgentSkillsForPromptContext(context)

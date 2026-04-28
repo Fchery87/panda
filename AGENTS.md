@@ -49,6 +49,32 @@ When working on this codebase, orient before executing:
     of which model is executing. Do not assume model-specific behaviors; follow
     the discipline described here.
 
+## Canonical Architecture Docs
+
+This file is the operating contract for agents: how to plan, execute, validate,
+and repair work in this repository. It intentionally no longer acts as the sole
+architecture authority.
+
+When these docs disagree, follow this order:
+
+1. [docs/ARCHITECTURE_CONTRACT.md](./docs/ARCHITECTURE_CONTRACT.md) for
+   vocabulary, source-of-truth ownership, modes, planning, runs, receipts, and
+   docs authority.
+2. [docs/SECURITY_TRUST_BOUNDARIES.md](./docs/SECURITY_TRUST_BOUNDARIES.md) for
+   authorization, redaction, sharing, tokens, MCP, telemetry, and admin audit
+   rules.
+3. [docs/CONVEX_BACKEND_GOVERNANCE.md](./docs/CONVEX_BACKEND_GOVERNANCE.md) for
+   Convex ownership classes, hot/cold query shape, retention targets, and legacy
+   API handling.
+4. [docs/CHAT_TRANSCRIPT_POLICY.md](./docs/CHAT_TRANSCRIPT_POLICY.md) for what
+   belongs in chat versus proof or share surfaces.
+5. [docs/WEBCONTAINER_RUNTIME.md](./docs/WEBCONTAINER_RUNTIME.md) for browser
+   runtime support, fallback, mount boundaries, and runtime telemetry policy.
+
+The rest of this file is contributor guidance and reference material. Do not add
+new architecture definitions here when a canonical contract doc is the right
+home.
+
 ---
 
 ## Project Philosophy
@@ -254,6 +280,12 @@ When a validation gate fails:
 ---
 
 ## Architecture Overview
+
+This section is a quick orientation snapshot. The canonical architecture
+vocabulary and source-of-truth map live in
+[docs/ARCHITECTURE_CONTRACT.md](./docs/ARCHITECTURE_CONTRACT.md). Backend data
+ownership and query-shape rules live in
+[docs/CONVEX_BACKEND_GOVERNANCE.md](./docs/CONVEX_BACKEND_GOVERNANCE.md).
 
 ### Tech Stack
 

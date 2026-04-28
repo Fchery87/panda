@@ -60,7 +60,10 @@ export function SnapshotTimeline({ events = [] }: SnapshotTimelineProps) {
   }
 
   return (
-    <div className="surface-2 shadow-sharp-sm border border-border bg-[linear-gradient(180deg,rgba(245,158,11,0.05),transparent_48%)] p-3">
+    <div
+      className="surface-2 state-band shadow-sharp-sm border border-border p-3"
+      data-state="idle"
+    >
       <div className="mb-2 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
         <GitBranch className="h-3.5 w-3.5" />
         <span>Snapshots</span>

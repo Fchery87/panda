@@ -536,14 +536,14 @@ export function ProjectChatInspector({
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-            className="shadow-sharp-lg absolute inset-x-0 bottom-0 z-30 max-h-[85vh] border-t border-border bg-[linear-gradient(180deg,rgba(245,158,11,0.07),transparent_24%),var(--background)] sm:inset-x-3 sm:bottom-3 sm:max-h-[75vh] sm:border"
+            className="shadow-sharp-lg absolute inset-x-0 bottom-0 z-30 max-h-[85vh] border-t border-border bg-background sm:inset-x-3 sm:bottom-3 sm:max-h-[75vh] sm:border"
           >
             <div className="flex items-center justify-between border-b border-border bg-background/90 px-3 py-2">
               <div className="flex items-center gap-2">
                 <div className="h-1 w-8 bg-border sm:hidden" />
                 <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-wide">
                   <Settings2 className="h-3.5 w-3.5 text-primary" />
-                  Review
+                  Evidence
                 </div>
               </div>
               <Button
@@ -580,12 +580,12 @@ export function ProjectChatInspector({
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-            className="shadow-sharp-lg absolute inset-x-0 bottom-0 z-30 max-h-[60vh] border-t border-border bg-[linear-gradient(180deg,rgba(245,158,11,0.07),transparent_24%),var(--background)]"
+            className="shadow-sharp-lg absolute inset-x-0 bottom-0 z-30 max-h-[60vh] border-t border-border bg-background"
           >
             <div className="flex items-center justify-between border-b border-border bg-background/90 px-3 py-2">
               <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-wide">
                 <Settings2 className="h-3.5 w-3.5 text-primary" />
-                Review
+                Evidence
               </div>
               <Button
                 type="button"

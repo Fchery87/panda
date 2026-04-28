@@ -1,6 +1,7 @@
 import type { Doc, Id } from '@convex/_generated/dataModel'
 import type { MutableRefObject } from 'react'
 import type { PersistedRunEventInfo, TokenUsageInfo } from '@/components/chat/types'
+import type { TerminationReason } from '@/lib/agent/harness/errors'
 
 type RunEventInput = PersistedRunEventInfo
 type ExecutionReceiptInput = NonNullable<Doc<'agentRuns'>['receipt']>
@@ -19,8 +20,13 @@ export function createRunLifecycle(args: {
     runId: Id<'agentRuns'>
     error: string
     receipt?: ExecutionReceiptInput
+    terminationReason?: TerminationReason
   }) => Promise<unknown>
-  stopRun: (args: { runId: Id<'agentRuns'>; receipt?: ExecutionReceiptInput }) => Promise<unknown>
+  stopRun: (args: {
+    runId: Id<'agentRuns'>
+    receipt?: ExecutionReceiptInput
+    terminationReason?: TerminationReason
+  }) => Promise<unknown>
   onRunCompleted?: (args: {
     runId: Id<'agentRuns'>
     outcome: 'completed' | 'failed' | 'stopped'
@@ -73,7 +79,8 @@ export function createRunLifecycle(args: {
 
   async function finalizeRunFailed(
     message: string,
-    receipt?: ExecutionReceiptInput
+    receipt?: ExecutionReceiptInput,
+    terminationReason?: TerminationReason
   ): Promise<void> {
     await finalizeRun({
       outcome: 'failed',
@@ -83,11 +90,15 @@ export function createRunLifecycle(args: {
           runId,
           error: message,
           receipt,
+          terminationReason,
         }),
     })
   }
 
-  async function finalizeRunStopped(receipt?: ExecutionReceiptInput): Promise<void> {
+  async function finalizeRunStopped(
+    receipt?: ExecutionReceiptInput,
+    terminationReason?: TerminationReason
+  ): Promise<void> {
     await finalizeRun({
       outcome: 'stopped',
       flushReason: 'stop',
@@ -95,6 +106,7 @@ export function createRunLifecycle(args: {
         args.stopRun({
           runId,
           receipt,
+          terminationReason,
         }),
     })
   }

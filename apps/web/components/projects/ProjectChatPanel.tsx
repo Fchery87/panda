@@ -179,7 +179,6 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
             animate={{ scaleX: 1 }}
             className="absolute bottom-0 left-0 right-0 h-0.5 origin-left bg-primary"
             style={{
-              background: 'linear-gradient(90deg, transparent, hsl(var(--primary)), transparent)',
               animation: 'streaming-pulse 1.5s ease-in-out infinite',
             }}
           />

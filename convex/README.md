@@ -7,6 +7,11 @@
 Panda.ai uses 28 tables in Convex for data persistence across auth, projects,
 planning, execution, evals, admin, and sharing.
 
+Backend changes must preserve the ownership, authorization, payload-shape, and
+retention rules in
+[docs/CONVEX_BACKEND_GOVERNANCE.md](../docs/CONVEX_BACKEND_GOVERNANCE.md) and
+[docs/SECURITY_TRUST_BOUNDARIES.md](../docs/SECURITY_TRUST_BOUNDARIES.md).
+
 ### Core tables
 
 | Table              | Purpose                                       |
@@ -50,7 +55,26 @@ planning, execution, evals, admin, and sharing.
 | `evalRunResults`  | Eval outputs and scores               |
 | `specifications`  | Formal specs and spec history         |
 
+## Ownership And Lifecycle Invariants
+
+| Data area                                                                              | Owner                                              | Lifecycle rule                                                                           |
+| -------------------------------------------------------------------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Users and settings                                                                     | Current user, with selected admin-visible defaults | User settings persist until changed or account/project deletion workflows remove them.   |
+| Projects, files, chats, messages, plans, specs, jobs, artifacts, runs, and attachments | Project owner                                      | Delete and cascade paths must preserve owner checks and avoid public projections.        |
+| Provider tokens and private provider settings                                          | Current user or admin global settings              | Return metadata only; never return raw tokens or API keys to client or sharing surfaces. |
+| MCP servers and subagents                                                              | Current user, subject to admin policy              | Treat command and URL configuration as executable risk.                                  |
+| Admin settings and audit logs                                                          | Admin only                                         | Admin mutations should write redacted audit entries.                                     |
+| Shared chats                                                                           | Public only through share ID projection            | Public output is a redacted, paginated projection, not the owner workspace.              |
+| Runtime checkpoints and run events                                                     | Project owner                                      | Summaries are hot data; full payloads are lazy recovery or inspection data.              |
+| Evals and analytics                                                                    | Project owner or admin scope                       | Results may include prompts/responses and should follow retention policy.                |
+
 ## Functions
+
+Before adding or changing a function, classify the data owner, authorization
+rule, query shape, and retention expectation in
+[docs/CONVEX_BACKEND_GOVERNANCE.md](../docs/CONVEX_BACKEND_GOVERNANCE.md). For
+trust boundaries, sharing, tokens, MCP, and telemetry rules, use
+[docs/SECURITY_TRUST_BOUNDARIES.md](../docs/SECURITY_TRUST_BOUNDARIES.md).
 
 ### Projects (`projects.ts`)
 
@@ -197,6 +221,12 @@ bunx convex deploy
 - [README.md](../README.md) - Project overview
 - [AGENTS.md](../AGENTS.md) - AI agent instructions
 - [docs/README.md](../docs/README.md) - docs index and archive guidance
+- [docs/ARCHITECTURE_CONTRACT.md](../docs/ARCHITECTURE_CONTRACT.md) - canonical
+  vocabulary and source-of-truth map
+- [docs/SECURITY_TRUST_BOUNDARIES.md](../docs/SECURITY_TRUST_BOUNDARIES.md) -
+  authorization, redaction, sharing, token, and telemetry policy
+- [docs/CONVEX_BACKEND_GOVERNANCE.md](../docs/CONVEX_BACKEND_GOVERNANCE.md) -
+  Convex ownership, query-shape, retention, and legacy API rules
 - [docs/AGENTIC_HARNESS.md](../docs/AGENTIC_HARNESS.md) - Agent harness docs
 - [docs/CHAT_TRANSCRIPT_POLICY.md](../docs/CHAT_TRANSCRIPT_POLICY.md) - Chat and
   inspector boundary policy

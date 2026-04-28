@@ -412,6 +412,31 @@
   }
 
   /* ═══════════════════════════════════════════════════════════
+     STATE BANDS - Operational state indicators (left accent)
+     ═══════════════════════════════════════════════════════════ */
+  .state-band {
+    @apply border-l-4 border-border;
+  }
+  .state-band[data-state='running'] {
+    border-left-color: hsl(var(--primary));
+  }
+  .state-band[data-state='blocked'] {
+    border-left-color: hsl(var(--status-warning));
+  }
+  .state-band[data-state='approval'] {
+    border-left-color: hsl(var(--status-info));
+  }
+  .state-band[data-state='success'] {
+    border-left-color: hsl(var(--status-success));
+  }
+  .state-band[data-state='failure'] {
+    border-left-color: hsl(var(--status-error));
+  }
+  .state-band[data-state='idle'] {
+    border-left-color: hsl(var(--border));
+  }
+
+  /* ═══════════════════════════════════════════════════════════
      REVIEW CHANGES BANNER
      ═══════════════════════════════════════════════════════════ */
   .review-banner {

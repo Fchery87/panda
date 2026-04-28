@@ -33,6 +33,8 @@ import { PlanningSessionDebugCard } from '@/components/plan/PlanningSessionDebug
 import type { PersistedRunEventSummaryInfo } from './types'
 import type { ExecutionReceipt } from '@/lib/agent/receipt'
 import { RunReceiptPanel } from './RunReceiptPanel'
+import { RunTokenLedger } from './RunTokenLedger'
+import { RoutingConfirmation } from './RoutingConfirmation'
 import {
   findLatestRecoverableCheckpoint,
   type RuntimeCheckpointSummary,
@@ -176,7 +178,10 @@ export function RunProgressPanel({
   }
 
   return (
-    <div className="surface-2 border-b border-border bg-[linear-gradient(180deg,rgba(245,158,11,0.08),transparent_42%)] px-3 py-2.5">
+    <div
+      className={cn('surface-2 state-band border-b border-border px-3 py-2.5')}
+      data-state={isStreaming ? 'running' : 'idle'}
+    >
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
@@ -437,7 +442,11 @@ export function RunProgressPanel({
       )}
 
       {isOpen ? (
-        <div className="mt-2">
+        <div className="mt-2 space-y-2">
+          {latestRunReceipt && latestRunReceipt.routingDecision.confidence !== 'high' ? (
+            <RoutingConfirmation receipt={latestRunReceipt} />
+          ) : null}
+          <RunTokenLedger runEvents={runEvents} isStreaming={isStreaming} />
           <RunReceiptPanel receipt={latestRunReceipt ?? null} />
         </div>
       ) : null}

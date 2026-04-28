@@ -1,7 +1,8 @@
 # Panda.ai
 
-> Panda is a browser-only AI coding workbench for planning, approving, building,
-> resuming, and sharing software work from one workspace.
+> Panda is a browser-first AI coding workbench with server fallback for
+> planning, approving, building, resuming, and sharing software work from one
+> workspace.
 
 [![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org)
 [![Convex](https://img.shields.io/badge/Convex-Realtime-orange)](https://convex.dev)
@@ -10,10 +11,12 @@
 
 ## Overview
 
-Panda is a browser-native coding workspace built for AI-assisted development. It
+Panda is a browser-first coding workspace built for AI-assisted development. It
 combines a chat-first workspace, canonical 4-mode workflow (`ask`, `plan`,
 `code`, `build`), structured plan approval, build execution, file editing,
-runtime checkpoints, shared chat history, and admin controls in one web app.
+runtime checkpoints, shared chat history, and admin controls. Browser execution
+is preferred when WebContainer is available; server-backed execution remains the
+fallback when browser-side execution is unavailable.
 
 The current workspace is organized around one session timeline. User intent
 enters through chat, Panda routes it, work executes, proof accumulates, and the
@@ -207,6 +210,12 @@ panda/
 ## Key Docs
 
 - [docs/README.md](./docs/README.md) - docs index and archive guidance
+- [docs/ARCHITECTURE_CONTRACT.md](./docs/ARCHITECTURE_CONTRACT.md) - canonical
+  vocabulary and source-of-truth map
+- [docs/SECURITY_TRUST_BOUNDARIES.md](./docs/SECURITY_TRUST_BOUNDARIES.md) -
+  authorization, redaction, sharing, token, and telemetry policy
+- [docs/CONVEX_BACKEND_GOVERNANCE.md](./docs/CONVEX_BACKEND_GOVERNANCE.md) -
+  Convex ownership, query-shape, retention, and legacy API rules
 - [AGENTS.md](./AGENTS.md) - working rules for AI agents in this repo
 - [docs/AGENTIC_HARNESS.md](./docs/AGENTIC_HARNESS.md) - harness architecture
 - [docs/WEBCONTAINER_RUNTIME.md](./docs/WEBCONTAINER_RUNTIME.md) - browser-side

@@ -5,6 +5,7 @@ import {
   ExecutionReceipt,
   PersistedRunEvent,
   RuntimeCheckpointPayload,
+  TerminationReason,
   TokenUsage,
 } from './schema'
 import type { Doc, Id } from './_generated/dataModel'
@@ -18,6 +19,8 @@ type RuntimeCheckpointEnvelope = {
   reason: 'step' | 'complete' | 'error'
   savedAt: number
 }
+
+type AgentRunStatus = Doc<'agentRuns'>['status']
 
 function parseRuntimeCheckpointEnvelope(checkpoint: unknown): RuntimeCheckpointEnvelope {
   if (!checkpoint || typeof checkpoint !== 'object') {
@@ -66,6 +69,13 @@ function parseRuntimeCheckpointEnvelope(checkpoint: unknown): RuntimeCheckpointE
 
 function previewText(value: string | undefined): string | undefined {
   return value === undefined ? undefined : value.slice(0, 500)
+}
+
+function assertAgentRunTransition(from: AgentRunStatus, to: AgentRunStatus): void {
+  if (from === to) return
+  if (from !== 'running') {
+    throw new Error(`Cannot transition agent run from ${from} to ${to}`)
+  }
 }
 
 function toRunEventSummary(event: Doc<'agentRunEvents'>) {
@@ -218,7 +228,8 @@ export const complete = mutation({
     receipt: v.optional(ExecutionReceipt),
   },
   handler: async (ctx, args) => {
-    const { userId } = await requireAgentRunOwner(ctx, args.runId)
+    const { run, userId } = await requireAgentRunOwner(ctx, args.runId)
+    assertAgentRunTransition(run.status, 'completed')
 
     const completedAt = Date.now()
     await ctx.db.patch(args.runId, {
@@ -242,14 +253,17 @@ export const fail = mutation({
     runId: v.id('agentRuns'),
     error: v.string(),
     receipt: v.optional(ExecutionReceipt),
+    terminationReason: v.optional(TerminationReason),
   },
   handler: async (ctx, args) => {
-    await requireAgentRunOwner(ctx, args.runId)
+    const { run } = await requireAgentRunOwner(ctx, args.runId)
+    assertAgentRunTransition(run.status, 'failed')
 
     await ctx.db.patch(args.runId, {
       status: 'failed',
       error: args.error,
       receipt: args.receipt,
+      terminationReason: args.terminationReason,
       completedAt: Date.now(),
     })
 
@@ -261,14 +275,16 @@ export const stop = mutation({
   args: {
     runId: v.id('agentRuns'),
     receipt: v.optional(ExecutionReceipt),
+    terminationReason: v.optional(TerminationReason),
   },
   handler: async (ctx, args) => {
     const { run } = await requireAgentRunOwner(ctx, args.runId)
-    if (run.status !== 'running') return args.runId
+    assertAgentRunTransition(run.status, 'stopped')
 
     await ctx.db.patch(args.runId, {
       status: 'stopped',
       receipt: args.receipt,
+      terminationReason: args.terminationReason,
       completedAt: Date.now(),
     })
 

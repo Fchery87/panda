@@ -1,6 +1,6 @@
 # LLM Provider Catalog
 
-> Last updated: April 26, 2026
+> Last updated: April 28, 2026
 >
 > Audience: Panda engineers maintaining provider settings, admin model
 > selectors, and prompt enhancement model choices.
@@ -11,6 +11,10 @@ Panda uses `models.dev` as the live directory for LLM provider and model
 metadata. The app normalizes that external catalog into Panda provider configs
 so settings, chat sessions, admin defaults, and provider selectors stay current
 as providers add or retire models.
+
+For mode and provider source-of-truth ownership, see
+[Architecture Contract](./ARCHITECTURE_CONTRACT.md). For provider token
+handling, see [Security And Trust Boundaries](./SECURITY_TRUST_BOUNDARIES.md).
 
 The live source was rechecked on April 26, 2026:
 
@@ -28,6 +32,11 @@ Provider data flows through four layers:
    configs.
 4. UI selectors read the hydrated provider configs and shared fallback
    definitions.
+
+Build-capable runtime execution adds a fifth layer: the model capability
+manifest. The catalog answers "what models exist and how should they display?"
+The manifest answers "which models are allowed to run tool-capable modes, and
+which tool-call grammars can they emit?"
 
 This means newly added catalog providers can appear in settings/admin selectors
 without a source edit, while known Panda providers can still use specialized
@@ -75,6 +84,34 @@ the catalog path. Only add a static definition when Panda needs a known
 fallback, special runtime behavior, or prompt enhancement support that the
 catalog cannot express yet.
 
+## Model Capability Manifest Alignment
+
+The live catalog is not enough to authorize `code` or `build` execution. Models
+that can drive tool-capable modes need an explicit capability manifest entry.
+
+Manifest entries define:
+
+- Provider ID used by the runtime provider adapter.
+- Model ID pattern.
+- Supported tool-call grammar IDs.
+- Whether the SDK handles tool calls natively.
+- Verification status: `verified`, `experimental`, or `unverified`.
+
+Rules:
+
+- Catalog-backed model selectors may show discovered models, but `code` and
+  `build` preflight must fail closed when a selected model has no capability
+  entry.
+- `ask` and `plan` may use unmanifested models because they do not require tool
+  calls.
+- New models should add or update manifest entries before they are treated as
+  build-capable.
+- Manifest grammar IDs must correspond to registered grammar adapters or native
+  SDK handling. If a manifest references an unsupported grammar, classify that
+  as runtime-hardening debt before enabling the model broadly.
+- `experimental` models require explicit opt-in or warning treatment before
+  tool-capable execution.
+
 ## UI Invariants
 
 - Settings provider cards must not nest interactive controls inside another
@@ -82,6 +119,8 @@ catalog cannot express yet.
   errors and invalid HTML.
 - Admin model selectors should be built from hydrated provider definitions, not
   hardcoded model lists.
+- Tool-capable model selectors should visually distinguish verified,
+  experimental, and unmanifested models.
 - Prompt enhancement provider choices should include configured providers that
   are valid for enhancement, including catalog-backed providers when explicitly
   supported.

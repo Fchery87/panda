@@ -34,6 +34,7 @@ import type { Permission as HarnessPermission } from './harness/types'
 import type { FormalSpecification, SpecTier } from './spec/types'
 import { mapToolCallToProgressStep, mapToolResultToProgressStep } from './runtime-progress'
 import { shouldTriggerRewrite } from './runtime/rewrite-guardrails'
+import type { TerminationReason } from './harness/errors'
 
 const isE2ESpecApprovalModeEnabled = process.env.NEXT_PUBLIC_E2E_AGENT_MODE === 'spec-approval'
 
@@ -113,6 +114,7 @@ export interface AgentEvent {
   }
   resetReason?: 'plan_mode_rewrite' | 'build_mode_rewrite'
   error?: string
+  terminationReason?: TerminationReason
   usage?: {
     promptTokens: number
     completionTokens: number
@@ -968,7 +970,7 @@ function mapHarnessEventToAgentEvent(event: HarnessRuntimeEvent): AgentEvent | n
         snapshot: event.snapshot,
       }
     case 'error':
-      return { type: 'error', error: event.error }
+      return { type: 'error', error: event.error, terminationReason: event.terminationReason }
     case 'complete':
       return {
         type: 'complete',
