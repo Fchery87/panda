@@ -132,12 +132,20 @@ Ship the seeded structured planning workflow
       await reviewTab.click()
     }
 
-    await expect(page.getByText(/build update|updated files/i).first()).toBeVisible({
+    const chatLog = page.getByRole('log', { name: /chat messages/i })
+    await expect(chatLog).toContainText(/work/i, { timeout: 20_000 })
+    await expect(chatLog).toContainText(/tool completed: write_files/i, { timeout: 20_000 })
+    await expect(page.getByRole('button', { name: /inspect changes/i }).first()).toBeVisible({
       timeout: 20_000,
     })
-    await expect(page.getByText(/updated files/i).first()).toBeVisible({ timeout: 20_000 })
-    await expect(page.getByText(/ran verification/i).first()).toBeVisible({ timeout: 20_000 })
-    await expect(page.getByText(/completed run/i).first()).toBeVisible({ timeout: 20_000 })
+    await expect(chatLog).toContainText(/validation/i, { timeout: 20_000 })
+    await expect(chatLog).toContainText(/tool completed: run_command/i, { timeout: 20_000 })
+    await expect(chatLog).toContainText(/receipt/i, { timeout: 20_000 })
+    await expect(chatLog).toContainText(/run complete/i, { timeout: 20_000 })
+    await expect(page.getByRole('button', { name: /open run proof/i }).first()).toBeVisible({
+      timeout: 20_000,
+    })
+    await expect(chatLog).toContainText(/next action/i, { timeout: 20_000 })
     await expect(page.getByText(/^spec approved$/i)).toHaveCount(0)
   })
 })

@@ -6,12 +6,14 @@ import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { IconNewChat, IconSearch, IconList } from '@/components/ui/icons'
+import { cn } from '@/lib/utils'
 
 interface SidebarHistoryPanelProps {
   projectId: Id<'projects'>
   activeChatId?: Id<'chats'>
   onSelectChat: (chatId: Id<'chats'>) => void
   onNewChat: () => void
+  activeRunStatus?: 'running' | 'blocked' | 'review' | 'complete' | 'idle'
 }
 
 type Scope = 'project' | 'all'
@@ -34,11 +36,12 @@ export function SidebarHistoryPanel({
   activeChatId,
   onSelectChat,
   onNewChat,
+  activeRunStatus = 'idle',
 }: SidebarHistoryPanelProps) {
   const [scope, setScope] = useState<Scope>('project')
   const [search, setSearch] = useState('')
 
-  const chats = useQuery(api.chats.list, { projectId })
+  const chats = useQuery(api.chats.listRecent, { projectId, limit: 25 })
 
   const filteredChats = (chats ?? []).filter((chat) => {
     const title = chat.title ?? 'Untitled'
@@ -108,20 +111,47 @@ export function SidebarHistoryPanel({
               const isActive = chat._id === activeChatId
               const title = chat.title ?? 'Untitled'
               const relativeTime = formatRelativeTime(chat.updatedAt)
+              const showActiveRunMarker = isActive && activeRunStatus !== 'idle'
 
               return (
                 <button
                   key={chat._id}
                   onClick={() => onSelectChat(chat._id)}
-                  className={`flex w-full items-center gap-2 px-3 py-2 text-left transition-colors duration-150 ${
+                  className={cn(
+                    'flex w-full items-center gap-2 border border-transparent px-3 py-2 text-left transition-colors duration-150',
                     isActive
-                      ? 'bg-primary/10 text-foreground'
-                      : 'hover:bg-surface-2 text-muted-foreground hover:text-foreground'
-                  }`}
+                      ? 'shadow-sharp-sm border-border bg-primary/10 text-foreground'
+                      : 'hover:bg-surface-2 text-muted-foreground hover:border-border hover:text-foreground'
+                  )}
                 >
-                  <IconList className="h-3.5 w-3.5 flex-shrink-0" weight="duotone" />
+                  <span className="relative flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center">
+                    <IconList className="h-3.5 w-3.5" weight="duotone" />
+                    {showActiveRunMarker ? (
+                      <span
+                        className={cn(
+                          'absolute -right-0.5 -top-0.5 h-1.5 w-1.5 border border-background',
+                          activeRunStatus === 'running' && 'animate-pulse bg-primary',
+                          activeRunStatus === 'blocked' && 'bg-destructive',
+                          activeRunStatus === 'review' && 'bg-[hsl(var(--status-warning))]',
+                          activeRunStatus === 'complete' && 'bg-[hsl(var(--status-success))]'
+                        )}
+                        aria-hidden="true"
+                      />
+                    ) : null}
+                  </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-mono text-xs">{title}</p>
+                    {showActiveRunMarker ? (
+                      <p className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
+                        {activeRunStatus === 'running'
+                          ? 'Running'
+                          : activeRunStatus === 'blocked'
+                            ? 'Needs attention'
+                            : activeRunStatus === 'review'
+                              ? 'Review ready'
+                              : 'Run complete'}
+                      </p>
+                    ) : null}
                   </div>
                   <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
                     {relativeTime}

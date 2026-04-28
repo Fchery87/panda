@@ -108,6 +108,28 @@ function toRuntimeCheckpointSummary(checkpoint: Doc<'harnessRuntimeCheckpoints'>
   }
 }
 
+function toProjectRunSummary(run: Doc<'agentRuns'>) {
+  const changedFiles = run.receipt?.webcontainer.filesWritten.length ?? 0
+  const commandCount = run.receipt?.webcontainer.commandsRun.length ?? 0
+  const approvalCount = run.receipt?.nativeExecution.approvalsRequested.length ?? 0
+
+  return {
+    _id: run._id,
+    chatId: run.chatId,
+    mode: run.mode,
+    status: run.status,
+    userMessage: previewText(run.userMessage),
+    summary: previewText(run.summary),
+    error: previewText(run.error),
+    changedFiles,
+    commandCount,
+    approvalCount,
+    resultStatus: run.receipt?.resultStatus,
+    startedAt: run.startedAt,
+    completedAt: run.completedAt,
+  }
+}
+
 export const create = mutation({
   args: {
     projectId: v.id('projects'),
@@ -308,6 +330,24 @@ export const listRecentByProject = query({
       .withIndex('by_project_started', (q) => q.eq('projectId', args.projectId))
       .order('desc')
       .take(limit)
+  },
+})
+
+export const listRecentSummariesByProject = query({
+  args: {
+    projectId: v.id('projects'),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
+    const limit = Math.max(1, Math.min(args.limit ?? 12, 40))
+    const runs = await ctx.db
+      .query('agentRuns')
+      .withIndex('by_project_started', (q) => q.eq('projectId', args.projectId))
+      .order('desc')
+      .take(limit)
+
+    return runs.map(toProjectRunSummary)
   },
 })
 

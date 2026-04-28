@@ -21,11 +21,11 @@ describe('workspaceUiStore', () => {
     resetStore()
     const state = useWorkspaceUiStore.getState()
 
-    state.openRightPanelTab('plan')
+    state.openRightPanelTab('context')
 
     const next = useWorkspaceUiStore.getState()
     expect(next.isRightPanelOpen).toBe(true)
-    expect(next.rightPanelTab).toBe('plan')
+    expect(next.rightPanelTab).toBe('context')
   })
 
   test('bottom dock toggle is independent of right panel', () => {
@@ -51,5 +51,11 @@ describe('workspaceUiStore', () => {
     expect(resetState.isRightPanelOpen).toBe(false)
     expect(resetState.isBottomDockOpen).toBe(false)
     expect(resetState.activeCenterTab).toBe('editor')
+  })
+
+  test('defaults mobile workspace to chat-first', () => {
+    resetStore()
+
+    expect(useWorkspaceUiStore.getState().mobilePrimaryPanel).toBe('chat')
   })
 })

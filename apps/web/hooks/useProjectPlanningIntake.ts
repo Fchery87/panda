@@ -14,7 +14,7 @@ interface UseProjectPlanningIntakeParams {
     content: string
     annotations: Array<{ mode: 'plan' }>
   }) => Promise<unknown>
-  openRightPanelTab: (tab: 'chat' | 'review' | 'plan') => void
+  openRightPanelTab: (tab: 'chat' | 'changes' | 'context') => void
 }
 
 export function useProjectPlanningIntake({
@@ -37,7 +37,7 @@ export function useProjectPlanningIntake({
       })
     }
 
-    openRightPanelTab('plan')
+    openRightPanelTab('context')
 
     return sessionId
   }, [activeChatId, addMessage, openRightPanelTab, planningQuestions, startIntake])

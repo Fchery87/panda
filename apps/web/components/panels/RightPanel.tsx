@@ -6,7 +6,7 @@ import { ChevronUp } from 'lucide-react'
 import { TabBar, type TabBarTab } from '@/components/ui/tab-bar'
 import { cn } from '@/lib/utils'
 
-export type RightPanelTabId = 'chat' | 'plan' | 'review' | 'inspect' | 'run' | 'comments'
+export type RightPanelTabId = 'chat' | 'run' | 'changes' | 'context' | 'preview'
 
 export type InspectorTabDef = TabBarTab<string>
 

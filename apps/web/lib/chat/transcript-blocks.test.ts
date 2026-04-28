@@ -9,6 +9,56 @@ import {
   mapRunEventToSurface,
 } from './transcript-policy'
 import type { Message } from '@/components/chat/types'
+import type { ExecutionReceipt } from '@/lib/agent/receipt'
+
+function receipt(overrides: Partial<ExecutionReceipt> = {}): ExecutionReceipt {
+  return {
+    version: 1,
+    mode: 'code',
+    agent: 'build',
+    requestedMode: 'code',
+    resolvedMode: 'code',
+    routingDecision: {
+      requestedMode: 'code',
+      resolvedMode: 'code',
+      agent: 'build',
+      source: 'deterministic_rules',
+      confidence: 'high',
+      rationale: 'Code changes requested.',
+      requiresApproval: false,
+      webcontainerRequired: false,
+      suggestedSkills: [],
+    },
+    providerModel: 'test:model',
+    contextSources: {
+      filesConsidered: [],
+      filesLoaded: [],
+      filesExcluded: [],
+      memoryBankIncluded: false,
+      specIncluded: false,
+      planIncluded: false,
+      sessionSummaryIncluded: false,
+      compactionOccurred: false,
+      truncated: false,
+    },
+    nativeExecution: {
+      filesRead: [],
+      toolsUsed: [],
+      approvalsRequested: [],
+      truncated: false,
+    },
+    webcontainer: {
+      used: true,
+      filesWritten: ['apps/web/components/chat/MessageList.tsx'],
+      commandsRun: [{ command: 'bun test apps/web/components/chat', redacted: false }],
+      truncated: false,
+    },
+    tokens: { input: 10, output: 5, cached: 0 },
+    durationMs: 300,
+    resultStatus: 'complete',
+    ...overrides,
+  }
+}
 
 describe('transcript blocks', () => {
   test('builds assistant message blocks for reasoning and text only', () => {
@@ -110,7 +160,7 @@ describe('transcript blocks', () => {
     expect(items.map((item) => item.type)).toEqual(['message', 'message'])
   })
 
-  test('adds compact milestone summaries for Build transcript surfaces', () => {
+  test('adds compact run timeline stages for Build transcript surfaces', () => {
     const messages: Message[] = [
       {
         _id: 'assistant-1',
@@ -153,28 +203,39 @@ describe('transcript blocks', () => {
           createdAt: 340,
         },
       ],
+      latestRunReceipt: receipt(),
+      userIntent: 'Refactor the transcript.',
     })
 
-    expect(items.map((item) => item.type)).toEqual(['message', 'block', 'block', 'block'])
+    expect(items.map((item) => item.type)).toEqual(['message', 'block', 'block', 'block', 'block'])
     expect(items[1]).toEqual(
       expect.objectContaining({
         type: 'block',
         block: expect.objectContaining({
           kind: 'execution_update',
-          title: 'Updated files',
+          kicker: 'Work',
+          title: 'Tool completed: write_files',
+          action: expect.objectContaining({ target: 'changes' }),
         }),
       })
     )
     expect(items[2]).toEqual(
       expect.objectContaining({
         type: 'block',
-        block: expect.objectContaining({ title: 'Ran verification' }),
+        block: expect.objectContaining({
+          kicker: 'Validation',
+          title: 'Tool completed: run_command',
+        }),
       })
     )
     expect(items[3]).toEqual(
       expect.objectContaining({
         type: 'block',
-        block: expect.objectContaining({ title: 'Completed run' }),
+        block: expect.objectContaining({
+          kicker: 'Receipt',
+          title: 'Commands recorded',
+          action: expect.objectContaining({ target: 'run' }),
+        }),
       })
     )
   })

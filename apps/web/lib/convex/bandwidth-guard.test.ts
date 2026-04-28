@@ -29,6 +29,16 @@ describe('Convex bandwidth guards', () => {
     expect(chatPanel).not.toMatch(propertyAccess('api.agentRuns.listRuntimeCheckpoints'))
   })
 
+  test('keeps the workspace session rail on bounded summary queries', () => {
+    const sessionRailHook = source('components/sidebar/useSessionRailSummary.ts')
+    const historyPanel = source('components/sidebar/SidebarHistoryPanel.tsx')
+
+    expect(sessionRailHook).toMatch(propertyAccess('api.agentRuns.listRecentSummariesByProject'))
+    expect(sessionRailHook).not.toMatch(propertyAccess('api.agentRuns.listRecentByProject'))
+    expect(historyPanel).toMatch(propertyAccess('api.chats.listRecent'))
+    expect(historyPanel).not.toMatch(propertyAccess('api.chats.list'))
+  })
+
   test('keeps shared chat route off the full transcript query', () => {
     const sharedChatPage = source('app/s/[shareId]/page.tsx')
     const sharedChatContent = source('app/s/[shareId]/SharedChatContent.tsx')

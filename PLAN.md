@@ -1,152 +1,181 @@
-# Plan: Routing Engine and Execution Receipts
+# Plan: Chat-First Woven Coding Workspace
 
-## Milestone 1: Typed Routing Domain
+## Milestone 1: Workspace Information Architecture
 
-What: Define the routing domain types and contracts for `RoutingDecision`,
-`RoutingInput`, `ThreadState`, `requestedMode`, `resolvedMode`, WebContainer
-status, confidence, and manual override provenance.
+What: Define the target shell hierarchy and map current Panda surfaces into a
+chat-first model: conversation timeline, session rail, review/proof surface,
+changes, context, preview, and composer.
+
+Skill requirement: Use `frontend-design` before producing layout diagrams or
+making interface direction decisions for this milestone.
 
 Acceptance criteria:
 
-- Routing types distinguish requested mode from resolved mode.
-- Thread state and WebContainer status are modeled without requiring persistent
-  Zustand duplication.
-- The routing domain exposes a small stable interface that can be tested without
-  React or Convex.
+- The target layout names one primary surface: the chat/run timeline.
+- Current surfaces are mapped into fewer run-aware views rather than new panels.
+- Review tabs have a consolidation proposal that preserves existing
+  capabilities.
+- Desktop and mobile layout diagrams are documented before code changes.
+- The design keeps receipts and routing visible without making the UI feel like
+  a dashboard.
 
-Validation: `bun run typecheck && bun test apps/web/lib/agent/routing`
+Validation: documentation review plus `bun run typecheck` before moving to code.
 
 Status: [x] complete
 
-## Milestone 2: Deterministic Routing Rules
+## Milestone 2: Run Timeline Contract
 
-What: Add rules-first routing that maps common user intents to `ask`, `plan`,
-`code`, or `build` with confidence and rationale. Manual override bypasses
-classification and produces a high-confidence routing decision.
+What: Shape the interface between `useAgent`, run events, receipts, and UI so a
+run can render as one coherent timeline with progressive disclosure.
+
+Skill requirement: Use `frontend-design` before defining the user-facing run
+timeline presentation or any timeline component behavior.
 
 Acceptance criteria:
 
-- Common prompts route deterministically with high or medium confidence.
-- Ambiguous prompts produce low confidence or a clarification path without
-  calling an LLM.
-- Manual selected mode produces a high-confidence decision with override
-  provenance.
-- No LLM fallback exists in this milestone.
+- Timeline stages cover user intent, routing, planning/clarification, tool
+  activity, changes, validation, receipt, and next action.
+- Existing run events and receipts are reused wherever possible.
+- Any new derived view model is pure and testable without React or Convex.
+- The contract hides low-level event noise from default UI while preserving
+  detail for inspection.
 
-Validation: `bun run typecheck && bun test apps/web/lib/agent/routing`
+Validation:
+`bun run typecheck && bun test apps/web/components/chat apps/web/lib/agent`
 
 Status: [x] complete
 
-## Milestone 3: `useAgent` Routing Integration
+## Milestone 3: Review Surface Consolidation
 
-What: Wire the routing engine into the agent send flow and audit every existing
-`mode` usage so it is intentionally converted to either `requestedMode` or
-`resolvedMode`.
+What: Refactor the existing review/proof area into fewer high-signal views,
+targeting a model such as `Run`, `Changes`, `Context`, and `Preview` while
+folding current tabs into those destinations.
 
-Acceptance criteria:
-
-- Prompt construction, runtime config, run creation, message annotations, usage
-  metrics, and visible assistant/user messages use the correct mode concept.
-- Existing manual mode switching still works.
-- Routing decisions are available to the run lifecycle and UI before the first
-  assistant token streams.
-- WebContainer unavailable or errored states do not globally block `code` or
-  `build` mode.
-
-Validation: `bun run typecheck && bun run lint && bun test apps/web/hooks`
-
-Status: [x] complete
-
-## Milestone 4: Typed Receipt Validators
-
-What: Add versioned Convex validators for `ExecutionReceiptV1`, including nested
-validators for routing decisions, context audit records, WebContainer summaries,
-native execution summaries, token usage, approval summaries, and result status.
+Skill requirement: Use `frontend-design` before changing review surface layout,
+tab hierarchy, labels, density, or visual hierarchy.
 
 Acceptance criteria:
 
-- `agentRuns` stores an optional typed receipt field, not `v.any()`.
-- Receipt schema is versioned.
-- Receipt validators enforce bounded arrays and structured redacted records
-  where practical.
-- Existing rows remain valid.
-
-Validation: `bun run typecheck && npx convex dev --once`
-
-Status: [x] complete
-
-## Milestone 5: Atomic Run Lifecycle Persistence
-
-What: Extend terminal run mutations so `complete`, `fail`, and `stop` can write
-receipt data atomically with terminal state.
-
-Acceptance criteria:
-
-- Completed runs can persist status, summary, usage, completion time, and
-  receipt in one mutation.
-- Failed runs can persist status, error, completion time, and receipt in one
-  mutation.
-- Stopped runs can persist status, completion time, and receipt in one mutation.
-- There is no separate canonical post-terminal receipt write path.
-
-Validation: `bun run typecheck && bun test convex && npx convex dev --once`
-
-Status: [x] complete
-
-## Milestone 6: Receipt Builder and Context Audit
-
-What: Build receipt assembly from routing decision, prompt audit, run/tool
-events, token usage, approval records, and WebContainer/native execution
-summaries.
-
-Acceptance criteria:
-
-- Receipt builder emits bounded, redacted, typed `ExecutionReceiptV1` data.
-- Prompt context assembly produces context audit metadata alongside prompt
-  context.
-- WebContainer summaries distinguish container execution from native/server
-  execution.
-- Failed and stopped runs still get partial receipts when enough data exists.
-
-Validation: `bun run typecheck && bun test apps/web/lib/agent apps/web/hooks`
-
-Status: [x] complete
-
-## Milestone 7: Routing Badge and Receipt UI
-
-What: Add a routing badge before assistant streaming and upgrade the actual
-existing run content surface to render structured receipt data.
-
-Acceptance criteria:
-
-- High-confidence review mode can show a concise routing badge.
-- Medium/low confidence can show a confirmation or clarification flow without
-  introducing a new panel.
-- Autopilot high-confidence decisions do not add unnecessary blocking UI.
-- Receipt UI renders routing, context, WebContainer/native execution,
-  token/cost, approval, and result status sections.
-- Receipt UI gracefully handles missing legacy receipt data.
+- No new inspector panel is introduced.
+- Existing run progress and receipt content remain available.
+- Artifacts/diffs are reachable from the changes view.
+- Memory, state, decisions, and activity become contextual details rather than
+  equal-weight top-level tabs where possible.
+- Legacy or unavailable receipt data remains graceful.
 
 Validation: `bun run typecheck && bun run lint && bun test apps/web/components`
 
 Status: [x] complete
 
-## Milestone 8: Test Coverage and Expansion Gate
+## Milestone 4: Chat Timeline UX Integration
 
-What: Add focused tests before expanding beyond deterministic routing.
+What: Make routing, progress, tool activity, and receipts feel native to the
+chat thread instead of adjacent to it.
+
+Skill requirement: Use `frontend-design` before changing chat timeline UI,
+routing badge presentation, activity grouping, receipt entry points, or
+confirmation states.
 
 Acceptance criteria:
 
-- Tests cover deterministic routing rules.
-- Tests cover manual override and requested/resolved mode propagation.
-- Tests cover WebContainer ready, booting, unsupported, and error fallback
-  decisions.
-- Tests cover receipt validation boundaries and redaction.
-- Tests cover completed, failed, and stopped receipt persistence.
-- The full validation gate passes before considering LLM fallback or additional
-  cockpit features.
+- Routing appears inline and compact before execution when useful.
+- Tool activity defaults to summarized groups with expansion for detail.
+- Completed runs expose their receipt and changed artifacts from the relevant
+  timeline location.
+- Medium/low confidence routing can ask for confirmation without opening a modal
+  or separate workflow surface.
+- Autopilot/high-confidence paths remain low-friction.
+
+Validation:
+`bun run typecheck && bun run lint && bun test apps/web/hooks apps/web/components/chat`
+
+Status: [x] complete
+
+## Milestone 5: Session Rail and Background Work State
+
+What: Introduce or refine a quiet session rail that shows active, blocked,
+background, and completed work without turning the UI into a grid of agent
+cards.
+
+Skill requirement: Use `frontend-design` before designing or implementing the
+session rail, status markers, unread states, or background-work presentation.
+
+Acceptance criteria:
+
+- The rail prioritizes active chat/run state and unread/needs-attention markers.
+- Background work is visible but not visually dominant.
+- Session status is derived from existing chat/run data where possible.
+- The rail supports quick return to blocked or completed runs.
+- The design avoids duplicating Convex state in local stores unless required for
+  UI-only interaction state.
+
+Validation:
+`bun run typecheck && bun run lint && bun test apps/web/components apps/web/stores`
+
+Status: [x] complete
+
+## Milestone 6: Responsive Workspace Adaptation
+
+What: Adapt the chat-first workspace for smaller screens using tabs or stacked
+views while preserving access to chat, files/context, run proof, changes, and
+preview.
+
+Skill requirement: Use `frontend-design` before designing or implementing
+mobile, tablet, or responsive workspace behavior.
+
+Acceptance criteria:
+
+- Mobile keeps chat primary.
+- Run proof, changes, files/context, and preview remain reachable without hidden
+  functionality.
+- The composer remains usable with mode and oversight controls.
+- Layout changes preserve keyboard and screen-reader accessibility.
+
+Validation:
+`bun run typecheck && bun run lint && bun test apps/web/components && bun run test:e2e`
+
+Status: [x] complete
+
+## Milestone 7: Visual System Pass
+
+What: Apply the calm operational brutalist direction across the updated shell,
+including spacing rhythm, surface hierarchy, state color, typography discipline,
+and microcopy.
+
+Skill requirement: Use `frontend-design` before the visual system pass and keep
+its anti-slop guidance active throughout this milestone.
+
+Acceptance criteria:
+
+- The interface feels like a premium technical instrument, not a generic AI IDE.
+- Color is used for operational meaning: confidence, risk, approval, execution,
+  validation, and blocked state.
+- Spacing creates clear hierarchy between chat, proof, and support surfaces.
+- The updated shell avoids decorative gradients, glows, glassmorphism, nested
+  cards, and metric-dashboard repetition.
+- New copy is direct and operational.
 
 Validation:
 `bun run typecheck && bun run lint && bun run format:check && bun test`
+
+Status: [x] complete
+
+## Milestone 8: Full Verification and Regression Gate
+
+What: Run the full quality gate and repair regressions before considering the
+workspace redesign complete.
+
+Acceptance criteria:
+
+- TypeScript, lint, formatting, unit tests, and relevant e2e tests pass.
+- Existing routing, receipts, planning sessions, specs, approvals, WebContainer
+  fallback, and manual mode switching still work.
+- No Convex live query payload grows unbounded due to the new workspace
+  surfaces.
+- No new accessibility blockers are introduced for keyboard or screen-reader
+  users.
+
+Validation:
+`bun run typecheck && bun run lint && bun run format:check && bun test && bun run test:e2e`
 
 Status: [x] complete

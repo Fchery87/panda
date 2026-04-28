@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware'
 
 import type { BottomDockTab } from '@/components/layout/BottomDock'
 
-export type RightPanelTab = 'chat' | 'plan' | 'review' | 'inspect' | 'run' | 'comments'
+export type RightPanelTab = 'chat' | 'run' | 'changes' | 'context' | 'preview'
 export type CenterTab = 'editor' | 'diff' | 'logs' | 'tests'
 export type MobilePrimaryPanel = 'workspace' | 'chat' | 'review'
 
@@ -82,7 +82,7 @@ const DEFAULTS = {
   isBottomDockOpen: false,
   activeBottomDockTab: 'terminal' as BottomDockTab,
   activeCenterTab: 'editor' as CenterTab,
-  mobilePrimaryPanel: 'workspace' as MobilePrimaryPanel,
+  mobilePrimaryPanel: 'chat' as MobilePrimaryPanel,
   mobileUnreadCount: 0,
   isMobileKeyboardOpen: false,
   isChatInspectorOpen: false,

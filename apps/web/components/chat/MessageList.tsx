@@ -6,7 +6,7 @@ import { MessageBubble } from './MessageBubble'
 import { TranscriptEventRow } from './TranscriptEventRow'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import type { Message, PersistedRunEventSummaryInfo } from './types'
+import type { LatestRunReceiptInfo, Message, PersistedRunEventSummaryInfo } from './types'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import type { LiveProgressStep } from './live-run-utils'
 import type { FormalSpecification } from '@/lib/agent/spec/types'
@@ -20,6 +20,8 @@ interface MessageListProps {
   onSuggestedAction?: (prompt: string, targetMode?: ChatMode) => void
   liveSteps?: LiveProgressStep[]
   runEvents?: PersistedRunEventSummaryInfo[]
+  latestRunReceipt?: LatestRunReceiptInfo | null
+  userIntent?: string | null
   currentSpec?: FormalSpecification | null
   pendingSpec?: FormalSpecification | null
   planStatus?: PlanStatus | null
@@ -32,6 +34,8 @@ export function MessageList({
   onSuggestedAction,
   liveSteps,
   runEvents,
+  latestRunReceipt,
+  userIntent,
   currentSpec,
   pendingSpec,
   planStatus,
@@ -48,12 +52,25 @@ export function MessageList({
         chatMode,
         liveSteps,
         runEvents,
+        latestRunReceipt: latestRunReceipt?.receipt,
+        userIntent,
         currentSpec,
         pendingSpec,
         planStatus,
         isStreaming,
       }),
-    [messages, chatMode, liveSteps, runEvents, currentSpec, pendingSpec, planStatus, isStreaming]
+    [
+      messages,
+      chatMode,
+      liveSteps,
+      runEvents,
+      latestRunReceipt?.receipt,
+      userIntent,
+      currentSpec,
+      pendingSpec,
+      planStatus,
+      isStreaming,
+    ]
   )
   const lastAssistantMessageId = [...messages]
     .reverse()

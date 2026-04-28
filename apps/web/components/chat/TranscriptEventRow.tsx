@@ -12,6 +12,8 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { useWorkspaceUiStore } from '@/stores/workspaceUiStore'
 import type { TranscriptBlock } from '@/lib/chat/transcript-blocks'
 import { describeProgressCategory } from './live-run-utils'
 
@@ -40,20 +42,40 @@ function executionToneClassName(
 ): string {
   switch (tone) {
     case 'primary':
-      return 'border-primary/35 bg-background text-foreground'
+      return 'border-primary/45 bg-primary/[0.035] text-foreground'
     case 'warning':
       return 'border-warning/50 bg-warning/5 text-foreground'
     case 'danger':
       return 'border-destructive/50 bg-destructive/5 text-foreground'
     case 'success':
-      return 'border-emerald-500/45 bg-background text-foreground'
+      return 'border-emerald-500/50 bg-emerald-500/[0.035] text-foreground'
     case 'default':
     default:
-      return 'border-border bg-background text-foreground'
+      return 'border-border bg-background/70 text-foreground'
+  }
+}
+
+function executionIconClassName(
+  tone: Extract<TranscriptBlock, { kind: 'execution_update' }>['tone']
+): string {
+  switch (tone) {
+    case 'primary':
+      return 'text-primary'
+    case 'warning':
+      return 'text-warning'
+    case 'danger':
+      return 'text-destructive'
+    case 'success':
+      return 'text-emerald-500'
+    case 'default':
+    default:
+      return 'text-muted-foreground'
   }
 }
 
 export function TranscriptEventRow({ block }: TranscriptEventRowProps) {
+  const setRightPanelOpen = useWorkspaceUiStore((state) => state.setRightPanelOpen)
+  const setRightPanelTab = useWorkspaceUiStore((state) => state.setRightPanelTab)
   const icon = useMemo(() => {
     switch (block.kind) {
       case 'progress_line':
@@ -152,22 +174,42 @@ export function TranscriptEventRow({ block }: TranscriptEventRowProps) {
   }
 
   if (block.kind === 'execution_update') {
+    const openActionTarget = () => {
+      if (!block.action) return
+      setRightPanelTab(block.action.target)
+      setRightPanelOpen(true)
+    }
+
     return (
-      <div className="ml-10 mr-1 border-l border-border/80 pl-4">
+      <div className="ml-10 mr-1 pl-4">
         <div
           className={cn(
-            'shadow-sharp-sm flex items-start gap-2.5 border px-3 py-2.5 font-mono text-[11px]',
+            'shadow-sharp-sm flex items-start gap-2.5 border px-3 py-2.5 font-mono text-[11px] transition-colors',
             executionToneClassName(block.tone)
           )}
         >
-          <span className="mt-0.5 shrink-0 text-muted-foreground/90">{icon}</span>
-          <div className="min-w-0 space-y-1.5">
-            <div className="uppercase tracking-[0.18em] text-muted-foreground">Build Update</div>
+          <span className={cn('mt-0.5 shrink-0', executionIconClassName(block.tone))}>{icon}</span>
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 uppercase tracking-[0.2em] text-muted-foreground">
+              <span>{block.kicker ?? 'Run Update'}</span>
+              {block.meta ? <span className="text-muted-foreground/70">{block.meta}</span> : null}
+            </div>
             <div className="text-foreground [overflow-wrap:anywhere]">{block.title}</div>
             {block.detail ? (
               <div className="text-muted-foreground/90 [overflow-wrap:anywhere]">
                 {block.detail}
               </div>
+            ) : null}
+            {block.action ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={openActionTarget}
+                className="mt-1 h-8 rounded-none border-border bg-background px-2.5 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors hover:border-primary/60 hover:bg-primary/5 active:scale-[0.96]"
+              >
+                {block.action.label}
+              </Button>
             ) : null}
           </div>
         </div>

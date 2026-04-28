@@ -1,107 +1,146 @@
-# Status: Routing Engine and Execution Receipts
+# Status: Chat-First Woven Coding Workspace
 
 ## Current milestone: Complete
 
-## Last completed: Milestone 8: Test Coverage and Expansion Gate - 2026-04-27
+## Last completed: Milestone 8: Full Verification and Regression Gate - 2026-04-27
 
 ## Decision log
 
-- Typed receipts are required because execution receipts are the trust and audit
-  layer, and untyped `v.any()` would allow malformed canonical records.
-- Receipt persistence must be atomic with terminal run lifecycle mutations
-  because a completed, failed, or stopped run without its canonical receipt
-  would be an unreliable audit record.
-- The system must distinguish `requestedMode` from `resolvedMode` because manual
-  selection and routing decisions can diverge and both are meaningful for
-  prompts, persistence, metrics, and UI.
-- WebContainer readiness must not globally block `code` or `build` because
-  existing Panda behavior supports fallback execution when WebContainer is
-  unsupported or unavailable.
-- Thread state should be derived at the routing boundary rather than duplicated
-  in Zustand unless a specific UI-session need exists.
-- Receipt data must be bounded and redacted because command strings, tool args,
-  paths, and context metadata can expose sensitive information or create large
-  Convex payloads.
-- Phase 1 routing is deterministic only because an LLM classifier adds latency,
-  failure modes, and cost before the rules baseline is proven.
-- Milestone 1 introduced the routing domain as a small standalone module because
-  routing decisions must be testable without React, Convex, or runtime coupling.
-- Milestone 2 kept routing deterministic and rules-only because the initial
-  routing baseline should be low-latency, testable, and free of LLM fallback
-  costs or failure modes.
-- Milestone 3 routes ordinary agent sends through the deterministic resolver
-  inside `useAgent`, while composer-originated explicit sends set manual
-  override so selected mode remains authoritative.
-- Milestone 3 keeps programmatic and explicit send paths distinct because Panda
-  needs automatic routing without breaking manual mode switching or
-  approved-plan build transitions.
-- Milestone 4 added a versioned `ExecutionReceiptV1` validator because receipt
-  shape is part of Panda's trust contract and must be enforced by Convex rather
-  than stored as an untyped blob.
-- Milestone 5 extended the existing `complete`, `fail`, and `stop` terminal run
-  mutations to accept optional typed receipts because receipts must be persisted
-  atomically with terminal run state, not through a separate best-effort write.
-- Milestone 6 added a pure receipt builder and prompt context audit output so
-  receipt assembly is typed, bounded, redacted, and woven into the existing
-  `useAgent` terminal lifecycle rather than bolted on after completion.
-- Milestone 7 renders receipts inside the existing run progress surface because
-  `InspectorRunContent` owns run-tab content and `ReviewPanel` only receives the
-  run panel as a slot.
+- The workspace will be chat-first because Codex- and Claude-style operational
+  workflows treat the agent session as the command surface, with files, diffs,
+  terminal, preview, and receipts orbiting the session.
+- The implementation must be woven through existing run/chat architecture
+  because Panda already has `useAgent`, `agentRuns`, routing decisions, run
+  events, execution receipts, review slots, and WebContainer adapters.
+- The chat timeline is the primary surface because users should experience a
+  single coherent sequence from intent to proof rather than scattered panels.
+- The review surface should be consolidated instead of expanded because the
+  current many-tab model risks dashboard bloat and makes supporting artifacts
+  feel equal to the primary work.
+- Receipts remain the durable proof surface because they make agentic work
+  inspectable, reviewable, and trustworthy.
+- WebContainer state should inform routing and receipts without becoming a
+  global blocker because Panda must preserve existing fallback behavior.
+- The visual direction is calm operational brutalism because Panda should feel
+  focused, premium, technical, and trustworthy, not playful or decorative.
+- UI and design work must invoke `frontend-design` first because the workspace
+  redesign needs a distinctive, production-grade interface and must avoid
+  generic AI IDE or dashboard aesthetics.
+- Milestone 1 defines the active workspace IA in
+  `docs/plans/2026-04-26-chat-first-workspace-ia.md` because implementation
+  needs a durable reference for hierarchy, surface mapping, and anti-bolted-on
+  constraints.
+- Milestone 2 uses a small deep module, `getRunTimeline`, because callers need a
+  trivial default API while the implementation hides noisy run event, progress,
+  receipt, validation, and next-action grouping.
+- The run timeline view model stays pure and React/Convex-free because it should
+  be testable independently and reusable by chat, proof, history, and future
+  admin surfaces.
+- Milestone 3 consolidates the visible proof surface to `Run`, `Changes`,
+  `Context`, and `Preview` because plan, memory, eval, changed-work, and runtime
+  inspection are support surfaces for the active run rather than equal-weight
+  dashboard tabs.
+- Legacy plan and artifact entry points now route to `Context` and `Changes`
+  respectively because existing flows should keep working while the user-facing
+  IA moves to fewer run-aware views.
+- Milestone 4 derives chat operational rows from `getRunTimeline` instead of the
+  older ad hoc milestone summaries because the transcript should share the same
+  user-facing run contract as the proof surface.
+- Inline chat proof rows can open `Run` or `Changes` because receipt and
+  artifact review should be reachable from the timeline location where the work
+  appears, without adding a modal or standalone cockpit.
+- Milestone 5 keeps session status derived from bounded recent run summaries and
+  active chat state because the rail should reveal background/blocked/review
+  work without becoming a separate agent-state system.
+- The task/history rail now uses `chats.listRecent` and run summaries rather
+  than full chat or run documents because rail indicators are hot UI and must
+  keep Convex payloads bounded.
+- Milestone 6 keeps mobile chat-primary with explicit `Work`, `Chat`, `Proof`,
+  and `Preview` access because small screens still need reachable run proof,
+  workspace, and preview surfaces without returning to an editor-first cockpit.
+- Desktop E2E expectations now assert the current Preview access path through
+  `Deploy & Preview` because Preview is no longer a center workspace tab.
+- Execution-card E2E assertions now target the shared run timeline contract
+  (`Work`, `Validation`, `Receipt`, `Next action`) because chat rows are derived
+  from `getRunTimeline` rather than older ad hoc copy.
+- Milestone 7 refined the existing shell rather than redesigning it because the
+  workspace was functionally complete; the pass focused on mobile tab semantics,
+  touch feedback, operational transcript tone, and bounded-query guard
+  ownership.
+- Mobile `Proof` and `Preview` now expose distinct selected states because both
+  routes share the review panel while representing different user destinations.
+- Execution update cards use semantic tone, icon color, and lighter surface
+  treatment because timeline proof should feel operational without repeating
+  dashboard-style card chrome.
+- Milestone 8 ran the complete regression gate because the workspace redesign is
+  only complete when typecheck, lint, formatting, unit tests, Convex validation,
+  and E2E all pass together after the final code changes.
 
 ## Known issues
 
-- The original design plan names `ReviewPanel` as the run-tab implementation
-  point, but current code shows `ReviewPanel` receives `runContent`;
-  implementation must identify and update the actual run content owner.
-- Convex generated AI guidelines file was not present at
-  `convex/_generated/ai/guidelines.md`; Convex changes still need validation
-  through project tests and `npx convex dev --once`.
-- No active blockers.
+- Existing planning files described the completed routing and receipt milestone;
+  they have been replaced with the new chat-first workspace scope.
+- The exact session rail behavior for background/parallel work needs design in
+  Milestone 1 before implementation.
+- The existing `ReviewPanel` receives slot content, so the actual run content
+  owner must be identified before code changes.
+- Each UI/design milestone now carries an explicit `frontend-design` skill
+  requirement; future agents should treat that as part of the acceptance
+  process.
 
 ## Validation log
 
-- 2026-04-26 Milestone 1:
-  `bun run typecheck && bun test apps/web/lib/agent/routing` passed after
-  rerunning with a longer timeout. Result: 2 typecheck tasks successful; routing
-  tests 3 pass, 0 fail.
-- 2026-04-26 Milestone 2:
-  `bun run typecheck && bun test apps/web/lib/agent/routing` passed. Result: 2
-  typecheck tasks successful; routing tests 12 pass, 0 fail.
-- 2026-04-26 Milestone 3:
-  `bun run typecheck && bun run lint && bun test apps/web/hooks` passed. Result:
-  2 typecheck tasks successful; lint successful; hook tests 78 pass, 0 fail.
-- 2026-04-26 Milestone 4: `bun run typecheck && npx convex dev --once` passed.
-  Result: 2 typecheck tasks successful; Convex functions ready.
-- 2026-04-26 Milestone 5:
-  `bun run typecheck && bun test convex && npx convex dev --once` passed.
-  Result: 2 typecheck tasks successful; Convex tests 50 pass, 0 fail; Convex
-  functions ready.
-- 2026-04-26 Milestone 6:
-  `bun run typecheck && bun test apps/web/lib/agent apps/web/hooks` passed.
-  Result: 2 typecheck tasks successful; agent and hook tests 538 pass, 0 fail.
-- 2026-04-26 Milestone 7:
-  `bun run typecheck && bun run lint && bun test apps/web/components` passed.
-  Result: 2 typecheck tasks successful; lint successful; component tests 161
+- 2026-04-26 Milestone 1: `bun run typecheck` passed. Result: 2 typecheck tasks
+  successful, 2 cached.
+- 2026-04-26 Milestone 2 focused test:
+  `bun test apps/web/components/chat/run-timeline.test.ts` passed. Result: 4
   pass, 0 fail.
-- 2026-04-26 Milestone 8 focused tests:
-  `bun test apps/web/lib/agent/routing apps/web/lib/agent/receipt.test.ts apps/web/hooks/useAgent-run-lifecycle.test.ts convex/agentRuns.persistence.test.ts`
-  passed. Result: 19 pass, 0 fail.
-- 2026-04-26 Milestone 8 full gate attempt:
+- 2026-04-26 Milestone 2 validation:
+  `bun run typecheck && bun test apps/web/components/chat apps/web/lib/agent`
+  passed. Result: typecheck successful; targeted tests 514 pass, 0 fail.
+- 2026-04-26 Milestone 3 validation:
+  `bun run typecheck && bun run lint && bun test apps/web/components` passed
+  after removing one unused helper warning. Result: typecheck successful; lint
+  clean; component tests 165 pass, 0 fail.
+- 2026-04-26 Milestone 4 validation:
+  `bun run typecheck && bun run lint && bun test apps/web/hooks apps/web/components/chat`
+  passed. Result: typecheck successful; lint clean; 125 tests pass, 0 fail.
+- 2026-04-26 Milestone 5 validation:
+  `bun run typecheck && bun run lint && bun test apps/web/components apps/web/stores`
+  passed after rerunning lint separately when the first combined gate hit the
+  shell timeout. Result: typecheck successful; lint clean; 181 tests pass, 0
+  fail.
+- 2026-04-27 Milestone 6 focused validation:
+  `bun test apps/web/components/projects/project-workspace-layout.test.tsx apps/web/stores/workspaceUiStore.test.ts`
+  passed. Result: 7 pass, 0 fail.
+- 2026-04-27 Milestone 6 non-E2E gate:
+  `bun run typecheck && bun run lint && bun test apps/web/components` passed.
+  Result: typecheck successful; lint clean; component tests 169 pass, 0 fail.
+- 2026-04-27 Milestone 6 E2E validation: `bun run test:e2e` passed after
+  updating stale E2E assertions for the new Preview access path and run timeline
+  copy. Result: 23 passed, 0 failed.
+- 2026-04-27 Milestone 7 focused validation:
+  `bun test apps/web/lib/convex/bandwidth-guard.test.ts apps/web/components/projects/project-workspace-layout.test.tsx apps/web/lib/chat/transcript-blocks.test.ts apps/web/components/chat/run-timeline.test.ts`
+  passed. Result: 17 pass, 0 fail.
+- 2026-04-27 Milestone 7 full validation:
   `bun run typecheck && bun run lint && bun run format:check && bun test` passed
-  typecheck and lint, then failed at `format:check` on 39 remaining pre-existing
-  formatting warnings outside touched routing/receipt files.
-- 2026-04-27 Milestone 8 all-tests leg: `bun test` passed independently after
-  the format blocker. Result: 1021 pass, 0 fail.
-- 2026-04-27 Milestone 8 full gate after formatting reported files:
+  after formatting reported files and updating the bandwidth guard for the
+  session rail hook ownership. Result: typecheck successful; lint clean; format
+  check clean; 1035 pass, 0 fail.
+- 2026-04-27 Milestone 8 final non-E2E gate:
   `bun run typecheck && bun run lint && bun run format:check && bun test`
-  passed. Result: typecheck 2/2 tasks successful; lint 1/1 task successful;
-  format check clean; tests 1021 pass, 0 fail.
+  passed. Result: typecheck successful; lint clean; format check clean; 1035
+  pass, 0 fail.
+- 2026-04-27 Milestone 8 Convex verification: `npx convex dev --once` passed.
+  Result: Convex functions ready.
+- 2026-04-27 Milestone 8 E2E validation: `bun run test:e2e` passed after
+  stopping a stale Next server on port 3000. Result: 23 passed, 0 failed.
 
 ## Future work
 
-- Add an LLM routing classifier behind a feature flag after deterministic
-  routing telemetry shows concrete gaps.
-- Consider a dedicated receipt query that returns summaries by default and full
-  receipt details only when the user opens the run receipt surface.
-- Consider cost-estimation improvements if existing plugin cost tracking remains
-  approximate.
+- Consider LLM routing classification after the deterministic routing baseline
+  has product telemetry.
+- Consider PR monitoring, scheduled tasks, or remote sessions as future
+  milestones after the chat-first workspace is stable.
+- Consider a dedicated summary/detail query split for receipts if the redesigned
+  run proof surface needs more data than current summary queries should carry.

@@ -40,7 +40,7 @@ describe('educationSections', () => {
         'Mode, model, and file-context controls',
         'Planning, approval, and build actions',
       ],
-      ['Run and recovery', 'Plan and changed-work review', 'Memory and eval checks'],
+      ['Run proof and recovery', 'Changes, context, and preview rails'],
     ])
   })
 

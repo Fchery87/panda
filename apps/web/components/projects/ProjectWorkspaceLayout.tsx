@@ -19,6 +19,8 @@ import { ActiveAgentsPane } from '@/components/sidebar/ActiveAgentsPane'
 import { ProjectSearchPanel } from '@/components/workbench/ProjectSearchPanel'
 import { SourceControlPane } from '@/components/sidebar/SourceControlPane'
 import { SidebarHistoryPanel } from '@/components/sidebar/SidebarHistoryPanel'
+import { type SessionRailSummary } from '@/components/sidebar/session-rail'
+import { useSessionRailSummary } from '@/components/sidebar/useSessionRailSummary'
 import type { WorkspaceOpenTab } from '@/contexts/WorkspaceContext'
 import type { SidebarSection } from '@/components/sidebar/SidebarRail'
 import { cn } from '@/lib/utils'
@@ -26,6 +28,7 @@ import type { FormalSpecification } from '@/lib/agent/spec/types'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import type { WorkspaceArtifactPreview } from '@/components/workbench/artifact-preview'
 import type { WorkspaceFocusState } from '@/components/workbench/workspace-focus'
+import { useWorkspaceUiStore } from '@/stores/workspaceUiStore'
 
 type FileRecord = {
   _id: Id<'files'>
@@ -64,6 +67,7 @@ interface ProjectWorkspaceLayoutProps {
   isCompactDesktopLayout: boolean
   mobilePrimaryPanel: 'workspace' | 'chat' | 'review'
   onMobilePrimaryPanelChange: (panel: 'workspace' | 'chat' | 'review') => void
+  onMobileReviewTabChange?: (tab: 'run' | 'changes' | 'context' | 'preview') => void
   mobileUnreadCount: number
   isMobileKeyboardOpen: boolean
   chatPanel: React.ReactNode
@@ -104,9 +108,39 @@ interface ProjectWorkspaceLayoutProps {
   onFocusPrimaryAction?: () => void
   onFocusSecondaryAction?: () => void
   webcontainerStatus?: 'idle' | 'booting' | 'ready' | 'error' | 'unsupported'
+  sessionRailSummary?: SessionRailSummary
 }
 
 export function ProjectWorkspaceLayout({
+  projectId,
+  activeChatId,
+  activeTaskTitle,
+  isStreaming,
+  changedFilesCount = 0,
+  ...props
+}: ProjectWorkspaceLayoutProps) {
+  const sessionRailSummary = useSessionRailSummary({
+    projectId,
+    activeChatId,
+    activeChatTitle: activeTaskTitle,
+    isStreaming,
+    pendingChangedFilesCount: changedFilesCount,
+  })
+
+  return (
+    <ProjectWorkspaceLayoutView
+      {...props}
+      projectId={projectId}
+      activeChatId={activeChatId}
+      activeTaskTitle={activeTaskTitle}
+      isStreaming={isStreaming}
+      changedFilesCount={changedFilesCount}
+      sessionRailSummary={sessionRailSummary}
+    />
+  )
+}
+
+export function ProjectWorkspaceLayoutView({
   projectId,
   activeChatId,
   activeSection,
@@ -132,6 +166,7 @@ export function ProjectWorkspaceLayout({
   isCompactDesktopLayout,
   mobilePrimaryPanel,
   onMobilePrimaryPanelChange,
+  onMobileReviewTabChange,
   mobileUnreadCount,
   isMobileKeyboardOpen,
   chatPanel,
@@ -160,7 +195,7 @@ export function ProjectWorkspaceLayout({
   activeCenterTab = 'editor',
   onCenterTabChange,
   isRightPanelOpen,
-  activeTaskTitle,
+  activeTaskTitle: _activeTaskTitle,
   activeTaskStatus: _activeTaskStatus,
   changedFilesCount = 0,
   onReviewChanges: _onReviewChanges,
@@ -171,7 +206,28 @@ export function ProjectWorkspaceLayout({
   onFocusPrimaryAction,
   onFocusSecondaryAction,
   webcontainerStatus,
+  sessionRailSummary,
 }: ProjectWorkspaceLayoutProps) {
+  const sessionRail = sessionRailSummary ?? {
+    state: 'idle' as const,
+    label: 'Idle',
+    count: 0,
+    tasks: [],
+  }
+  const activeReviewTab = useWorkspaceUiStore((state) => state.rightPanelTab)
+  const isMobileReviewPanelActive = mobilePrimaryPanel === 'review'
+  const isMobileProofActive = isMobileReviewPanelActive && activeReviewTab !== 'preview'
+  const isMobilePreviewActive = isMobileReviewPanelActive && activeReviewTab === 'preview'
+  const openMobileProof = () => {
+    onMobileReviewTabChange?.('run')
+    onMobilePrimaryPanelChange('review')
+  }
+
+  const openMobilePreview = () => {
+    onMobileReviewTabChange?.('preview')
+    onMobilePrimaryPanelChange('review')
+  }
+
   // Dock tab definitions with badge counts
   const dockTabs = useMemo(
     () => [
@@ -260,20 +316,14 @@ export function ProjectWorkspaceLayout({
       )}
       {activeSection === 'agents' && (
         <ActiveAgentsPane
-          tasks={
-            isStreaming
-              ? [
-                  {
-                    id: 'current',
-                    title: activeTaskTitle ?? 'Active Task',
-                    workspace: 'Current project',
-                    status: 'running',
-                    lastActivity: 'now',
-                    changedFiles: changedFilesCount,
-                  },
-                ]
-              : []
-          }
+          tasks={sessionRail.tasks.map((task) => ({
+            id: task.id,
+            title: task.title,
+            workspace: task.chatId === String(activeChatId) ? 'Active chat' : 'Background session',
+            status: task.status,
+            lastActivity: task.lastActivity,
+            changedFiles: task.changedFiles,
+          }))}
           onStartAgent={onStartAgent}
         />
       )}
@@ -292,6 +342,7 @@ export function ProjectWorkspaceLayout({
           activeChatId={activeChatId}
           onSelectChat={onSelectChat}
           onNewChat={onNewChat}
+          activeRunStatus={sessionRail.state}
         />
       )}
     </SidebarFlyout>
@@ -312,15 +363,22 @@ export function ProjectWorkspaceLayout({
                     : null}
             </div>
             {!isMobileKeyboardOpen && (
-              <div className="surface-1 grid min-h-12 grid-cols-3 border-t border-border pb-[env(safe-area-inset-bottom)] font-mono text-xs uppercase tracking-widest">
+              <div
+                className="surface-1 grid min-h-14 grid-cols-4 border-t border-border pb-[env(safe-area-inset-bottom)] font-mono text-[10px] uppercase tracking-[0.18em]"
+                role="tablist"
+                aria-label="Workspace mobile panels"
+              >
                 <button
                   type="button"
                   onClick={() => onMobilePrimaryPanelChange('workspace')}
+                  role="tab"
+                  aria-selected={mobilePrimaryPanel === 'workspace'}
+                  aria-label="Show workspace files and editor"
                   className={cn(
-                    'h-full border-r border-border',
+                    'min-h-12 border-r border-border px-1 transition-colors focus-visible:-outline-offset-2 active:scale-[0.96]',
                     mobilePrimaryPanel === 'workspace'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
+                      ? 'bg-primary text-primary-foreground shadow-[inset_0_-2px_0_hsl(var(--foreground)/0.18)]'
+                      : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
                   )}
                 >
                   Work
@@ -328,11 +386,14 @@ export function ProjectWorkspaceLayout({
                 <button
                   type="button"
                   onClick={() => onMobilePrimaryPanelChange('chat')}
+                  role="tab"
+                  aria-selected={mobilePrimaryPanel === 'chat'}
+                  aria-label="Show chat timeline"
                   className={cn(
-                    'relative h-full border-r border-border',
+                    'relative min-h-12 border-r border-border px-1 transition-colors focus-visible:-outline-offset-2 active:scale-[0.96]',
                     mobilePrimaryPanel === 'chat'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
+                      ? 'bg-primary text-primary-foreground shadow-[inset_0_-2px_0_hsl(var(--foreground)/0.18)]'
+                      : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
                   )}
                 >
                   Chat
@@ -344,15 +405,33 @@ export function ProjectWorkspaceLayout({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onMobilePrimaryPanelChange('review')}
+                  onClick={openMobileProof}
+                  role="tab"
+                  aria-selected={isMobileProofActive}
+                  aria-label="Show run proof"
                   className={cn(
-                    'relative h-full',
-                    mobilePrimaryPanel === 'review'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
+                    'relative min-h-12 border-r border-border px-1 transition-colors focus-visible:-outline-offset-2 active:scale-[0.96]',
+                    isMobileProofActive
+                      ? 'bg-primary text-primary-foreground shadow-[inset_0_-2px_0_hsl(var(--foreground)/0.18)]'
+                      : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
                   )}
                 >
-                  Review
+                  Proof
+                </button>
+                <button
+                  type="button"
+                  onClick={openMobilePreview}
+                  role="tab"
+                  aria-selected={isMobilePreviewActive}
+                  aria-label="Show runtime preview"
+                  className={cn(
+                    'relative min-h-12 px-1 transition-colors focus-visible:-outline-offset-2 active:scale-[0.96]',
+                    isMobilePreviewActive
+                      ? 'bg-primary text-primary-foreground shadow-[inset_0_-2px_0_hsl(var(--foreground)/0.18)]'
+                      : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+                  )}
+                >
+                  Preview
                 </button>
               </div>
             )}
@@ -368,6 +447,7 @@ export function ProjectWorkspaceLayout({
                   onToggleFlyout={onToggleFlyout}
                   projectId={String(projectId)}
                   onHomeClick={() => onCenterTabChange?.('editor')}
+                  sessionSignal={sessionRail}
                 />
                 {leftPaneContent}
               </div>

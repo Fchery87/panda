@@ -7,7 +7,7 @@ type MobilePrimaryPanel = 'workspace' | 'chat' | 'review'
 export function useMobileLayout() {
   const [isMobileLayout, setIsMobileLayout] = useState(false)
   const [isCompactDesktopLayout, setIsCompactDesktopLayout] = useState(false)
-  const [mobilePrimaryPanel, setMobilePrimaryPanel] = useState<MobilePrimaryPanel>('workspace')
+  const [mobilePrimaryPanel, setMobilePrimaryPanel] = useState<MobilePrimaryPanel>('chat')
   const [mobileUnreadCount, setMobileUnreadCount] = useState(0)
   const [isMobileKeyboardOpen, setIsMobileKeyboardOpen] = useState(false)
 

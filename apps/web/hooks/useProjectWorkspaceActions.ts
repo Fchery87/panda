@@ -20,7 +20,7 @@ interface UseProjectWorkspaceActionsParams {
   }) => Promise<Id<'chats'>>
   setActiveChatId: (chatId: Id<'chats'>) => void
   setIsRightPanelOpen: (value: boolean | ((prev: boolean) => boolean)) => void
-  setRightPanelTab: (tab: 'chat' | 'review' | 'plan') => void
+  setRightPanelTab: (tab: 'chat' | 'run' | 'changes' | 'context' | 'preview') => void
   agent: AgentLike
   setPlanDraft: (value: string) => void
   setChatMode: (mode: ChatMode) => void

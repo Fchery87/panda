@@ -56,64 +56,85 @@ export function WorkbenchRightPanel({ projectId }: WorkbenchRightPanelProps) {
   const setActiveTab = useWorkspaceUiStore((s) => s.setRightPanelTab)
 
   const onSpecClick = () => useWorkspaceUiStore.getState().setSpecSurfaceMode('inspect')
-  const onPlanClick = () => openRightPanelTab('plan')
-  const onOpenArtifacts = () => openRightPanelTab('review')
+  const onPlanClick = () => openRightPanelTab('context')
+  const onOpenArtifacts = () => openRightPanelTab('changes')
 
   const isDrawerOpen = activeTab !== 'chat'
   const activeInspectorTab = isDrawerOpen ? activeTab : undefined
 
   const inspectorTabs: InspectorTabDef[] = [
     { id: 'run', label: 'Run' },
-    { id: 'plan', label: 'Plan' },
-    { id: 'review', label: 'Changes' },
-    { id: 'comments', label: 'Notes' },
+    { id: 'changes', label: 'Changes' },
+    { id: 'context', label: 'Context' },
+    { id: 'preview', label: 'Preview' },
   ]
 
   const inspectorTitle =
     activeTab === 'run'
-      ? 'Run and Recovery'
-      : activeTab === 'plan'
-        ? 'Plan and Approval'
-        : activeTab === 'review'
-          ? 'Changed Work'
-          : 'Memory and Evals'
+      ? 'Run Proof'
+      : activeTab === 'changes'
+        ? 'Changed Work'
+        : activeTab === 'context'
+          ? 'Context and Memory'
+          : activeTab === 'preview'
+            ? 'Preview'
+            : 'Review Surface'
 
   const inspectorSummary =
     activeTab === 'run'
-      ? 'Track execution progress, snapshots, and resumable sessions.'
-      : activeTab === 'plan'
-        ? 'Review the implementation contract and move into execution deliberately.'
-        : activeTab === 'review'
-          ? 'Inspect artifacts and changed work before continuing.'
-          : 'Keep persistent context and eval checks close to the active chat.'
+      ? 'Track execution progress, receipts, recovery, and validation evidence.'
+      : activeTab === 'changes'
+        ? 'Inspect artifacts and changed work before continuing.'
+        : activeTab === 'context'
+          ? 'Review the plan, project memory, and repeatable eval checks in one context surface.'
+          : activeTab === 'preview'
+            ? 'Preview runtime output when a browser or app surface is available.'
+            : 'Review run proof, changed work, context, and preview state.'
 
   const reviewSummary = activeChatId
     ? 'Generated artifacts and changed work from the current chat session appear here for inspection.'
     : 'Open or create a chat to review generated artifacts and changed work.'
 
-  const notesSummary = memoryBank?.trim()
-    ? 'Project memory is available. Use the rail to maintain context and run repeatable eval checks.'
-    : 'No persistent memory yet. Capture durable context and verification checks here.'
-
   const getInspectorContent = () => {
     switch (activeTab) {
-      case 'plan':
+      case 'context':
         return (
-          <InspectorPlanContent
-            planDraft={planDraft}
-            planStatus={planStatus}
-            onPlanDraftChange={onPlanDraftChange}
-            onSavePlanDraft={onSavePlanDraft}
-            onApprovePlan={onPlanApprove}
-            onBuildFromPlan={onBuildFromPlan}
-            isSavingPlanDraft={isSavingPlanDraft}
-            lastSavedAt={lastSavedAt}
-            lastGeneratedAt={lastGeneratedAt}
-            approveDisabled={planApproveDisabled}
-            buildDisabled={planBuildDisabled}
-          />
+          <div className="flex h-full flex-col overflow-hidden">
+            <div className="surface-0 border-b border-border px-3 py-3">
+              <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                Plan, memory, evals
+              </div>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                Keep the active plan, durable project memory, and repeatable checks attached to the
+                current chat instead of scattering them across separate rails.
+              </p>
+            </div>
+            <div className="min-h-0 flex-1 space-y-3 overflow-auto p-3">
+              <InspectorPlanContent
+                planDraft={planDraft}
+                planStatus={planStatus}
+                onPlanDraftChange={onPlanDraftChange}
+                onSavePlanDraft={onSavePlanDraft}
+                onApprovePlan={onPlanApprove}
+                onBuildFromPlan={onBuildFromPlan}
+                isSavingPlanDraft={isSavingPlanDraft}
+                lastSavedAt={lastSavedAt}
+                lastGeneratedAt={lastGeneratedAt}
+                approveDisabled={planApproveDisabled}
+                buildDisabled={planBuildDisabled}
+              />
+              <InspectorMemoryContent memoryBank={memoryBank} onSaveMemoryBank={onSaveMemoryBank} />
+              <InspectorEvalsContent
+                projectId={projectId}
+                chatId={activeChatId}
+                lastUserPrompt={lastUserPrompt}
+                lastAssistantReply={lastAssistantReply}
+                onRunEvalScenario={onRunEvalScenario}
+              />
+            </div>
+          </div>
         )
-      case 'review':
+      case 'changes':
         return (
           <div className="flex h-full min-h-0 flex-col overflow-hidden">
             <div className="surface-0 border-b border-border px-3 py-3">
@@ -154,24 +175,27 @@ export function WorkbenchRightPanel({ projectId }: WorkbenchRightPanelProps) {
             subagentToolCalls={subagentToolCalls}
           />
         )
-      case 'comments':
+      case 'preview':
         return (
           <div className="flex h-full flex-col overflow-hidden">
             <div className="surface-0 border-b border-border px-3 py-3">
               <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                Notes, memory, evals
+                Runtime preview
               </div>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{notesSummary}</p>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                Preview will show browser or app output for the active run when a runtime surface is
+                available.
+              </p>
             </div>
-            <div className="min-h-0 flex-1 overflow-auto">
-              <InspectorMemoryContent memoryBank={memoryBank} onSaveMemoryBank={onSaveMemoryBank} />
-              <InspectorEvalsContent
-                projectId={projectId}
-                chatId={activeChatId}
-                lastUserPrompt={lastUserPrompt}
-                lastAssistantReply={lastAssistantReply}
-                onRunEvalScenario={onRunEvalScenario}
-              />
+            <div className="flex min-h-0 flex-1 items-center justify-center p-6">
+              <div className="max-w-sm border border-dashed border-border bg-background/70 px-4 py-4 text-center">
+                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  No preview attached
+                </div>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  Start or open a run with browser output to inspect it here.
+                </p>
+              </div>
             </div>
           </div>
         )

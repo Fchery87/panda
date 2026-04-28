@@ -41,7 +41,7 @@ describe('project chat wiring', () => {
     const content = await readProjectComponent('ProjectChatPanel.tsx')
 
     expect(content).not.toContain('const inspectorPanel = (')
-    expect(content).toContain("const onPlanReview = () => openRightPanelTab('plan')")
+    expect(content).toContain("const onPlanReview = () => openRightPanelTab('context')")
     expect(content).not.toContain('ProjectChatInspector')
   })
 
@@ -58,7 +58,7 @@ describe('project chat wiring', () => {
 
     expect(providerContent).toContain("onToggleInspector: () => openRightPanelTab('run')")
     expect(providerContent).toContain("onOpenHistory: () => openRightPanelTab('run')")
-    expect(providerContent).toContain("openRightPanelTab('review')")
+    expect(providerContent).toContain("openRightPanelTab('changes')")
     expect(providerContent).not.toContain('onOpenPreviewPanel')
   })
 
@@ -69,7 +69,7 @@ describe('project chat wiring', () => {
     expect(content).toContain('const addMessageMutation = useMutation(api.messages.add)')
     expect(content).toContain('const handleStartPlanningIntake = useProjectPlanningIntake({')
     expect(content).toContain('addMessage: addMessageMutation')
-    expect(planningHookContent).toContain("openRightPanelTab('plan')")
+    expect(planningHookContent).toContain("openRightPanelTab('context')")
     expect(planningHookContent).not.toContain('setIsChatInspectorOpen')
     expect(planningHookContent).toContain('await addMessage({')
     expect(planningHookContent).toContain("role: 'user'")

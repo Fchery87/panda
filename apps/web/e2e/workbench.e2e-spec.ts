@@ -60,11 +60,11 @@ test.describe('Workbench', () => {
 
     const editorButton = page.getByRole('button', { name: /^editor$/i }).first()
     const diffButton = page.getByRole('button', { name: /^diff$/i }).first()
-    const previewButton = page.getByRole('button', { name: /^preview$/i }).first()
+    const previewAccessButton = page.getByRole('button', { name: /deploy & preview/i }).first()
 
     await expect(editorButton).toBeVisible()
     await expect(diffButton).toBeVisible()
-    await expect(previewButton).toBeVisible()
+    await expect(previewAccessButton).toBeVisible()
 
     await diffButton.click()
     await expect(diffButton).toBeVisible()

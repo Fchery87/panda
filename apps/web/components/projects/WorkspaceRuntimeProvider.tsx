@@ -192,8 +192,14 @@ export function WorkspaceRuntimeProvider({
       const prev = useWorkspaceUiStore.getState().mobilePrimaryPanel
       const next = typeof panel === 'function' ? panel(prev) : panel
       if (next !== prev) setMobilePrimaryPanel(next)
+      if (next === 'review') {
+        const state = useWorkspaceUiStore.getState()
+        if (state.rightPanelTab === 'chat') {
+          setRightPanelTab('run')
+        }
+      }
     },
-    [setMobilePrimaryPanel]
+    [setMobilePrimaryPanel, setRightPanelTab]
   )
   const handleSetMobileKeyboardOpen = useCallback(
     (open: SetStateAction<boolean>) => {
@@ -881,7 +887,7 @@ export function WorkspaceRuntimeProvider({
 
     switch (actionId) {
       case 'open_plan':
-        openRightPanelTab('plan')
+        openRightPanelTab('context')
         break
       case 'build_from_plan':
         void handleBuildFromPlan()
@@ -891,7 +897,7 @@ export function WorkspaceRuntimeProvider({
         break
       case 'review_changes':
         setActiveCenterTab('diff')
-        openRightPanelTab('review')
+        openRightPanelTab('changes')
         break
     }
   }, [handleBuildFromPlan, openRightPanelTab, setActiveCenterTab, workspaceFocusState])
@@ -902,11 +908,11 @@ export function WorkspaceRuntimeProvider({
 
     switch (actionId) {
       case 'open_plan':
-        openRightPanelTab('plan')
+        openRightPanelTab('context')
         break
       case 'review_changes':
         setActiveCenterTab('diff')
-        openRightPanelTab('review')
+        openRightPanelTab('changes')
         break
       case 'open_run':
         openRightPanelTab('run')
@@ -947,6 +953,7 @@ export function WorkspaceRuntimeProvider({
     isCompactDesktopLayout,
     mobilePrimaryPanel,
     onMobilePrimaryPanelChange: setMobilePrimaryPanel,
+    onMobileReviewTabChange: setRightPanelTab,
     mobileUnreadCount,
     isMobileKeyboardOpen,
     // Chat and right panel rendered here with zero props — they read from context
@@ -980,7 +987,7 @@ export function WorkspaceRuntimeProvider({
     changedFilesCount: pendingChangedFilesCount,
     onReviewChanges: () => {
       setActiveCenterTab('diff')
-      openRightPanelTab('review')
+      openRightPanelTab('changes')
     },
     onStopAgent: () => agent.stop?.(),
     onStartAgent: () => {

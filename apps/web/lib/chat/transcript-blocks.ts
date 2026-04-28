@@ -1,11 +1,12 @@
 import type { Message, ToolCallInfo } from '@/components/chat/types'
 import {
-  deriveChatMilestoneSummaries,
   mapLatestRunSummaryProgressSteps,
   type LiveProgressStep,
 } from '@/components/chat/live-run-utils'
 import type { PersistedRunEventSummaryInfo } from '@/components/chat/types'
+import type { ExecutionReceipt } from '@/lib/agent/receipt'
 import type { ChatMode } from '@/lib/agent/chat-modes'
+import { getRunTimeline, type RunTimelineStage } from '@/components/chat/run-timeline'
 import { getTranscriptModePolicy } from './transcript-policy'
 
 export type TranscriptBlock =
@@ -80,6 +81,12 @@ export type TranscriptBlock =
       title: string
       detail?: string
       tone: 'default' | 'primary' | 'warning' | 'danger' | 'success'
+      kicker?: string
+      meta?: string
+      action?: {
+        label: string
+        target: 'run' | 'changes'
+      }
       createdAt: number
     }
 
@@ -143,6 +150,8 @@ export function buildTranscriptFeedItems(args: {
   chatMode: ChatMode
   liveSteps?: LiveProgressStep[]
   runEvents?: PersistedRunEventSummaryInfo[]
+  latestRunReceipt?: ExecutionReceipt | null
+  userIntent?: string | null
   currentSpec?: unknown
   pendingSpec?: unknown
   planStatus?: unknown
@@ -165,24 +174,83 @@ export function buildTranscriptFeedItems(args: {
       ? args.liveSteps
       : mapLatestRunSummaryProgressSteps(args.runEvents ?? [])
 
-  const summaries = deriveChatMilestoneSummaries(steps)
-  if (summaries.length === 0) {
+  const timeline = getRunTimeline(
+    {
+      steps,
+      receipt: args.latestRunReceipt,
+      userIntent: args.userIntent,
+      isStreaming: args.isStreaming,
+    },
+    {
+      mode: 'chat',
+      detail: 'summary',
+      include: {
+        emptyStages: false,
+        diagnostics: false,
+      },
+    }
+  )
+  const surfacedStages = timeline.stages.filter((stage) => stage.kind !== 'intent')
+
+  if (surfacedStages.length === 0) {
     return items
   }
 
-  const blocks: TranscriptFeedItem[] = summaries.map((summary) => ({
-    id: `block-${summary.id}`,
+  const blocks: TranscriptFeedItem[] = surfacedStages.map((stage) => ({
+    id: `block-${stage.id}`,
     type: 'block',
-    createdAt: summary.createdAt,
-    block: {
-      id: summary.id,
-      kind: 'execution_update',
-      title: summary.title,
-      detail: summary.detail,
-      tone: summary.tone,
-      createdAt: summary.createdAt,
-    },
+    createdAt: stage.finishedAt ?? stage.startedAt ?? Date.now(),
+    block: buildExecutionUpdateBlock(stage),
   }))
 
   return [...items, ...blocks]
+}
+
+function executionToneForStage(
+  stage: RunTimelineStage
+): Extract<TranscriptBlock, { kind: 'execution_update' }>['tone'] {
+  if (stage.status === 'failed') return 'danger'
+  if (stage.status === 'blocked') return 'warning'
+  if (stage.kind === 'routing' || stage.kind === 'execution') return 'primary'
+  if (stage.kind === 'receipt' && stage.status === 'complete') return 'success'
+  if (stage.kind === 'validation' && stage.status === 'complete') return 'success'
+  return 'default'
+}
+
+function summarizeStage(stage: RunTimelineStage): string | undefined {
+  const primaryEntry = stage.entries.at(-1)
+  const summary = primaryEntry?.summary ?? primaryEntry?.detail
+  if (summary) return summary
+  return stage.message
+}
+
+function buildStageAction(
+  stage: RunTimelineStage
+): Extract<TranscriptBlock, { kind: 'execution_update' }>['action'] | undefined {
+  if (stage.kind === 'receipt') {
+    return { label: 'Open Run Proof', target: 'run' }
+  }
+  if (stage.kind === 'execution' && stage.entries.some((entry) => entry.summary)) {
+    return { label: 'Inspect Changes', target: 'changes' }
+  }
+  return undefined
+}
+
+function buildExecutionUpdateBlock(
+  stage: RunTimelineStage
+): Extract<TranscriptBlock, { kind: 'execution_update' }> {
+  const latestEntry = stage.entries.at(-1)
+  const entryCount = stage.entries.length
+
+  return {
+    id: stage.id,
+    kind: 'execution_update',
+    title: latestEntry?.label ?? stage.label,
+    detail: summarizeStage(stage),
+    tone: executionToneForStage(stage),
+    kicker: stage.label,
+    meta: entryCount > 1 ? `${entryCount} signals` : undefined,
+    action: buildStageAction(stage),
+    createdAt: stage.finishedAt ?? stage.startedAt ?? Date.now(),
+  }
 }

@@ -40,9 +40,11 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
     activeChatExists,
     chatMessages,
     runEvents,
+    latestRunReceipt,
     liveSteps,
     inlineRateLimitError,
     isStreaming,
+    lastUserPrompt,
     currentSpec,
     model,
     availableModels,
@@ -85,7 +87,7 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
     model: string
   ) => void
   const onVariantChange = useChatSessionStore((s) => s.setReasoningVariant)
-  const onPlanReview = () => openRightPanelTab('plan')
+  const onPlanReview = () => openRightPanelTab('context')
   const onCloseSpecSurface = () => useWorkspaceUiStore.getState().setSpecSurfaceMode('closed')
   const onOpenShare = () => useWorkspaceUiStore.getState().setShareDialogOpen(true)
   const onContextualPromptHandled = () => useChatSessionStore.getState().setContextualPrompt(null)
@@ -283,6 +285,8 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
           onSuggestedAction={onSuggestedAction}
           liveSteps={liveSteps}
           runEvents={runEvents}
+          latestRunReceipt={latestRunReceipt}
+          userIntent={lastUserPrompt}
           currentSpec={currentSpec}
           planStatus={planStatus}
           chatMode={chatMode}

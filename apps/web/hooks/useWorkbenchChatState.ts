@@ -67,7 +67,7 @@ interface UseWorkbenchChatStateArgs {
   _setIsRightPanelOpen: React.Dispatch<React.SetStateAction<boolean>>
   _setMobilePrimaryPanel: (panel: MobilePrimaryPanel) => void
   _setRightPanelTab: React.Dispatch<
-    React.SetStateAction<'chat' | 'plan' | 'review' | 'inspect' | 'run' | 'comments'>
+    React.SetStateAction<'chat' | 'run' | 'changes' | 'context' | 'preview'>
   >
 }
 

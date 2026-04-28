@@ -11,7 +11,7 @@ interface UseProjectInlineEditingParams {
   isMobileLayout: boolean
   setContextualPrompt: (value: string | null) => void
   setIsRightPanelOpen: (value: boolean | ((prev: boolean) => boolean)) => void
-  setRightPanelTab: (tab: 'chat' | 'review' | 'plan') => void
+  setRightPanelTab: (tab: 'chat' | 'run' | 'changes' | 'context' | 'preview') => void
   setMobilePrimaryPanel: (panel: 'workspace' | 'chat' | 'review') => void
   runEvalScenario: (args: {
     prompt: string

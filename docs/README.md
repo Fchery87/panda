@@ -16,6 +16,8 @@ This directory contains the current source-of-truth docs for the Panda web app.
   provider catalog and hydrated model selector behavior
 - [docs/PANDA_WORKBENCH_MODERNIZATION_BRIEF.md](./PANDA_WORKBENCH_MODERNIZATION_BRIEF.md) -
   post-cleanup theme and layout modernization brief
+- [docs/plans/2026-04-26-chat-first-workspace-ia.md](./plans/2026-04-26-chat-first-workspace-ia.md) -
+  active chat-first workspace information architecture for the woven redesign
 - [docs/CHAT_TRANSCRIPT_POLICY.md](./CHAT_TRANSCRIPT_POLICY.md) - transcript vs
   inspector behavior
 - [docs/CHAT_MODE_ARCHITECTURE.md](./CHAT_MODE_ARCHITECTURE.md) - active mode,

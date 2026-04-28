@@ -25,6 +25,13 @@ interface SidebarRailProps {
   onToggleFlyout: () => void
   projectId?: string
   onHomeClick?: () => void
+  sessionSignal?: SidebarSessionSignal
+}
+
+export interface SidebarSessionSignal {
+  state: 'idle' | 'running' | 'blocked' | 'review' | 'complete'
+  label: string
+  count?: number
 }
 
 interface NavItem {
@@ -50,6 +57,7 @@ export function SidebarRail({
   onToggleFlyout,
   projectId: _projectId,
   onHomeClick,
+  sessionSignal,
 }: SidebarRailProps) {
   const handleItemClick = (section: SidebarSection) => {
     if (section === activeSection && isFlyoutOpen) {
@@ -107,6 +115,8 @@ export function SidebarRail({
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon
             const isActive = item.id === activeSection
+            const showSessionSignal =
+              item.id === 'tasks' && sessionSignal && sessionSignal.state !== 'idle'
 
             return (
               <Tooltip key={item.id}>
@@ -125,10 +135,27 @@ export function SidebarRail({
                   >
                     {isActive && <div className="absolute inset-y-0.5 left-0 w-0.5 bg-primary" />}
                     <Icon className="h-[18px] w-[18px]" weight={isActive ? 'duotone' : 'regular'} />
+                    {showSessionSignal ? (
+                      <span
+                        className={cn(
+                          'absolute right-1.5 top-1.5 h-1.5 w-1.5 border border-background',
+                          sessionSignal.state === 'running' && 'animate-pulse bg-primary',
+                          sessionSignal.state === 'blocked' && 'bg-destructive',
+                          sessionSignal.state === 'review' && 'bg-[hsl(var(--status-warning))]',
+                          sessionSignal.state === 'complete' && 'bg-[hsl(var(--status-success))]'
+                        )}
+                      />
+                    ) : null}
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="right" className="font-mono text-xs">
                   {item.label}
+                  {showSessionSignal ? (
+                    <span className="ml-2 text-muted-foreground">
+                      ({sessionSignal.label}
+                      {sessionSignal.count ? ` · ${sessionSignal.count}` : ''})
+                    </span>
+                  ) : null}
                   {item.shortcut && (
                     <span className="ml-2 text-muted-foreground">({item.shortcut})</span>
                   )}

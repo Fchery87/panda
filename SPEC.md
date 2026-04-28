@@ -1,61 +1,77 @@
-# Spec: Routing Engine and Execution Receipts
+# Spec: Chat-First Woven Coding Workspace
 
 ## Deliverables
 
-- [ ] A typed routing domain that models requested mode, resolved mode, routing
-      input, routing decision, thread state, and WebContainer status.
-- [ ] Deterministic routing rules that resolve common user intents without an
-      LLM classifier in the first implementation phase.
-- [ ] `useAgent` integration that intentionally distinguishes `requestedMode`
-      from `resolvedMode` anywhere mode affects prompts, messages, run creation,
-      annotations, usage metrics, runtime config, or UI state.
-- [ ] Typed, versioned execution receipt validators in Convex, including
-      `ExecutionReceiptV1` and its nested routing, context audit, WebContainer,
-      native execution, token, and approval summary records.
-- [ ] Atomic receipt persistence through the existing run terminal lifecycle so
-      `complete`, `fail`, and `stop` write terminal status and receipt data
-      together.
-- [ ] A bounded and redacted receipt builder that assembles receipt data from
-      routing decisions, prompt audit data, run/tool events, token usage,
-      permission approvals, and WebContainer/native execution summaries.
-- [ ] UI support for routing visibility and receipt inspection, starting with a
-      routing badge and then upgrading the existing run content surface.
-- [ ] Tests covering deterministic routing, manual override behavior,
-      WebContainer fallback behavior, receipt validation, and receipt
-      persistence for completed, failed, and stopped runs.
+- [ ] A chat-first workspace information architecture that makes the
+      conversation timeline the primary work surface and treats files, diffs,
+      terminal, preview, context, and receipts as run-derived supporting
+      surfaces.
+- [ ] A simplified review surface that reduces the current many-tab inspector
+      model into fewer run-aware views without introducing a separate cockpit or
+      parallel dashboard.
+- [ ] A run timeline model that presents each agent run as one coherent
+      sequence: user intent, routing decision, plan/clarification, tool
+      activity, changes, validation, receipt, and next action.
+- [ ] A woven integration path through the existing `useAgent` run lifecycle,
+      `agentRuns` persistence, `RunProgressPanel`, `RunReceiptPanel`, and
+      `ReviewPanel` slots rather than a new standalone feature shell.
+- [ ] A session rail concept for active, background, completed, and blocked work
+      that stays quiet and does not become a grid of agent cards.
+- [ ] A composer model that preserves the canonical `ask`, `plan`, `code`, and
+      `build` modes while allowing routing to make the default path feel smarter
+      and lower-friction.
+- [ ] A visual system direction for a calm, premium, operational Panda shell:
+      brutalist structure, sharp surfaces, restrained density, meaningful state,
+      and no decorative dashboard bloat.
+- [ ] Updated tests for any changed routing, run timeline, receipt, review
+      panel, or responsive layout behavior.
+- [ ] Every UI or design-related milestone explicitly uses the `frontend-design`
+      skill before shaping or implementing interface changes.
 
 ## Constraints
 
-- Typed receipts are mandatory. Do not store the canonical receipt as `v.any()`.
-- Receipt persistence must be atomic with terminal run state. Do not add a
-  separate best-effort post-completion `storeReceipt` mutation as the canonical
-  path.
-- Manual mode and routed mode must be represented explicitly as `requestedMode`
-  and `resolvedMode`.
-- Do not globally block `code` or `build` mode on WebContainer readiness. Fall
-  back to native/server execution unless the specific action truly requires
-  WebContainer.
-- Keep derived thread state out of Zustand unless a concrete UI-session state
-  need exists. Prefer deriving it from Convex data plus WebContainer status at
-  the routing boundary.
-- Receipt data must be bounded and redacted. Store paths, counts, summaries,
-  token stats, approvals, and redacted command summaries; do not store raw file
-  content or unbounded command/tool payloads.
-- Phase 1 must be deterministic rules only. Do not add an LLM routing classifier
-  until a later feature-flagged phase.
-- Preserve existing behavior for manual mode switching, oversight level,
-  approval dialogs, planning sessions, specs, and existing WebContainer fallback
-  behavior.
-- Follow the 4 canonical modes: `ask`, `plan`, `code`, and `build`.
-- Follow the existing brutalist UI system for new UI surfaces.
+- The implementation must be woven into existing Panda architecture. Do not add
+  a separate cockpit, command center, or duplicate agent-state system.
+- The chat timeline is the primary work surface. Supporting panes must derive
+  from the active chat/run state instead of competing with chat for attention.
+- Preserve the four canonical modes: `ask`, `plan`, `code`, and `build`.
+- Preserve manual mode override, oversight level, approval dialogs, planning
+  sessions, specs, existing run lifecycle behavior, and existing receipt
+  persistence semantics.
+- Do not regress the routing and receipt work already completed. Requested mode,
+  resolved mode, routing rationale, context audit, native execution,
+  WebContainer execution, tokens, and terminal result status remain part of the
+  run proof model.
+- Do not store new persistent UI shell state in Convex unless it must survive
+  across devices or sessions. Use Zustand only for local shell/session state.
+- Keep Convex live query payloads bounded. Run timeline and receipt surfaces
+  must use summaries by default and lazy detail loading where data can grow.
+- Do not globally block coding/building on WebContainer readiness. Container
+  state should inform routing and receipts without breaking fallback behavior.
+- Follow Panda's brutalist design system: sharp corners, explicit state, precise
+  spacing, strong structure, and restrained color.
+- Use the `frontend-design` skill for all UI/design work, including layout
+  diagrams, component restructuring, responsive adaptation, visual system
+  passes, interaction hierarchy, and polish. If a milestone touches UI, load and
+  follow that skill before design or implementation decisions.
+- Avoid AI-slop visual patterns: no gradient text, no decorative glow cockpit,
+  no glassmorphism shell, no metric-card dashboard, no nested card walls.
+- Mobile must adapt into a chat-first tabbed workspace. Do not hide critical
+  run, diff, preview, or receipt functionality on smaller screens.
 
 ## Out of Scope
 
-- LLM-based intent classification for routing.
-- New review/inspector tabs or a parallel cockpit panel.
-- Replacing the existing permission system.
-- Replacing planning sessions or the specification system.
-- Storing raw file contents, raw command output, raw tool arguments, provider
-  secrets, tokens, or other sensitive payloads in receipts.
-- Reworking WebContainer boot architecture beyond the status and execution
-  summary contracts required for routing and receipts.
+- Replacing Panda with a full traditional IDE or editor-first workflow.
+- Building unrestricted drag-and-drop pane layout as the primary interaction
+  model.
+- Adding LLM routing classification unless separately scoped behind a feature
+  flag.
+- Replacing Convex persistence, the agent runtime, the permission system, or the
+  WebContainer execution adapter.
+- Creating a new top-level cockpit/dashboard route separate from the project
+  workspace.
+- Rebranding Panda away from its brutalist technical identity.
+- Adding multi-agent orchestration beyond quiet session/status surfaces required
+  for the workspace layout.
+- Adding PR automation, scheduled tasks, remote SSH sessions, or desktop
+  computer use as part of this milestone.

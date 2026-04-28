@@ -126,8 +126,8 @@ export const interfaceMap: EducationSurfaceSection[] = [
     title: 'Operational Rail',
     iconKey: 'inspector',
     summary:
-      'Review run history, plan state, changed work, memory, and eval checks without leaving the active project session.',
-    bullets: ['Run and recovery', 'Plan and changed-work review', 'Memory and eval checks'],
+      'Review run proof, changed work, context, and preview state without leaving the active project session.',
+    bullets: ['Run proof and recovery', 'Changes, context, and preview rails'],
   },
 ]
 
@@ -209,9 +209,9 @@ export const specDetails: EducationDetail[] = [
     userValue: 'Use it to inspect what happened, not just what the agent said.',
   },
   {
-    name: 'Plan Tab',
-    role: 'Editable plan surface with review, approval, and build-from-plan controls.',
-    userValue: 'This is where planning turns into an execution contract.',
+    name: 'Context Tab',
+    role: 'Plan, memory, and eval surface tied to the active chat.',
+    userValue: 'Review the execution contract and durable context from one proof surface.',
   },
   {
     name: 'Changes Tab',
@@ -219,14 +219,9 @@ export const specDetails: EducationDetail[] = [
     userValue: 'Inspect the current work before continuing or sharing results.',
   },
   {
-    name: 'Memory Tab',
-    role: 'Persistent project context the agent can reuse across future runs.',
-    userValue: 'Keep repeated instructions out of every prompt.',
-  },
-  {
-    name: 'Evals Tab',
-    role: 'Evaluation surface for checking response quality and scenario behavior.',
-    userValue: 'Use it to validate how Panda behaves on repeated workflows.',
+    name: 'Preview Tab',
+    role: 'Runtime output surface for browser or app previews when available.',
+    userValue: 'Inspect what the active run produced without switching away from the session.',
   },
 ]
 
