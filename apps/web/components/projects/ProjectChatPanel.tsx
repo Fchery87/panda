@@ -1,5 +1,6 @@
 'use client'
 
+import { useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
@@ -83,9 +84,11 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
   const onArchitectBrainstormEnabledChange = useChatSessionStore(
     (s) => s.setArchitectBrainstormEnabled
   )
-  const onModelChange = useChatSessionStore((s) => s.setUiSelectedModel) as unknown as (
-    model: string
-  ) => void
+  const setUiSelectedModel = useChatSessionStore((s) => s.setUiSelectedModel)
+  const onModelChange = useCallback(
+    (model: string) => setUiSelectedModel({ modelId: model }),
+    [setUiSelectedModel]
+  )
   const onVariantChange = useChatSessionStore((s) => s.setReasoningVariant)
   const onPlanReview = () => openRightPanelTab('context')
   const onCloseSpecSurface = () => useWorkspaceUiStore.getState().setSpecSurfaceMode('closed')

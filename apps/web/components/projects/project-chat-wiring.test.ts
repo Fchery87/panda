@@ -96,6 +96,14 @@ describe('project chat wiring', () => {
     expect(agentHookContent).toContain('hydratePersistedMessages = true')
   })
 
+  test('ProjectChatPanel adapts selected model IDs before writing chat session state', async () => {
+    const content = await readProjectComponent('ProjectChatPanel.tsx')
+
+    expect(content).toContain('const setUiSelectedModel = useChatSessionStore')
+    expect(content).toContain('(model: string) => setUiSelectedModel({ modelId: model })')
+    expect(content).not.toContain('as unknown as')
+  })
+
   test('useWorkbenchChatState no longer manages a separate inline inspector surface', async () => {
     const content = await readHook('useWorkbenchChatState.ts')
 
