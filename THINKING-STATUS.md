@@ -31,6 +31,10 @@ Milestone 3: Tests And Verification - 2026-04-29
 - Targeted Thinking tests pass with
   `bun test apps/web/lib/chat/transcript-blocks.test.ts apps/web/components/chat/MessageBubble.test.tsx`.
 - `bun run typecheck` and `bun run lint` pass after the implementation.
+- A follow-up frontend regression was fixed: `status_thinking` events now create
+  a temporary assistant draft with `Thinking...` or provider status text before
+  answer text exists, so the chat panel has a row to render during long thinking
+  phases even when no display-safe reasoning delta has arrived yet.
 - `bun run format:check` still fails on unrelated pre-existing documentation
   files: `CLAUDE.md`, `docs/agents/domain.md`, `docs/agents/issue-tracker.md`,
   and `docs/agents/triage-labels.md`.

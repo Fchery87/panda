@@ -67,6 +67,34 @@ function updateAssistantMessage(
   return updated
 }
 
+function upsertAssistantDraftMessage(args: {
+  messages: Message[]
+  assistantMessageId: string
+  mode: ChatMode
+  updater: (message: Message) => Message
+}): Message[] {
+  const existingIndex = args.messages.findIndex((message) => message.id === args.assistantMessageId)
+  if (existingIndex >= 0) {
+    const updated = [...args.messages]
+    updated[existingIndex] = args.updater(updated[existingIndex]!)
+    return updated
+  }
+
+  return [
+    ...args.messages,
+    args.updater({
+      id: args.assistantMessageId,
+      role: 'assistant',
+      content: '',
+      reasoningContent: '',
+      mode: args.mode,
+      createdAt: Date.now(),
+      toolCalls: [],
+      annotations: { mode: args.mode },
+    }),
+  ]
+}
+
 export function applyNonTerminalAgentEvent(args: {
   event: AgentEvent
   mode: ChatMode
@@ -143,6 +171,31 @@ export function applyNonTerminalAgentEvent(args: {
       const iterationMatch = event.content?.match(/Iteration (\d+)/)
       if (iterationMatch) {
         setCurrentIteration(parseInt(iterationMatch[1], 10))
+      }
+      if (
+        runtimeSettings.showReasoningPanel &&
+        !mutable.assistantContent &&
+        !mutable.assistantReasoning
+      ) {
+        mutable.assistantReasoning = event.content ?? 'Thinking...'
+        setMessages((prev) =>
+          upsertAssistantDraftMessage({
+            messages: prev,
+            assistantMessageId,
+            mode,
+            updater: (existing) => ({
+              ...existing,
+              content: existing.content || '',
+              reasoningContent: mutable.assistantReasoning,
+              mode,
+              toolCalls: existing.toolCalls ?? [],
+              annotations: {
+                ...(existing.annotations || {}),
+                mode,
+              },
+            }),
+          })
+        )
       }
       return true
     }

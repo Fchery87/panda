@@ -167,6 +167,30 @@ describe('applyNonTerminalAgentEvent', () => {
     ])
   })
 
+  it('creates a live Thinking draft before answer text exists', () => {
+    const messagesState = createState<Message[]>([])
+    const harness = createBaseArgs({
+      event: {
+        type: 'status_thinking',
+        content: 'Thinking...',
+      },
+      setMessages: messagesState.set,
+    })
+
+    const handled = applyNonTerminalAgentEvent(harness.args)
+
+    expect(handled).toBe(true)
+    expect(messagesState.get()).toEqual([
+      expect.objectContaining({
+        id: 'assistant-1',
+        role: 'assistant',
+        content: '',
+        reasoningContent: 'Thinking...',
+        mode: 'build',
+      }),
+    ])
+  })
+
   it('handles text replacement and updates mutable streaming state', () => {
     const harness = createBaseArgs({
       event: {
