@@ -37,3 +37,15 @@ or checkpoint payloads.
 surface owns user intent and rendering; the command execution Adapter owns
 runtime selection, status transitions, output shaping, and failure
 classification across WebContainer and server-backed execution paths.
+
+### Thinking
+
+`Thinking` is the owner-only chat surface label for bounded model reasoning
+visibility during a Run. It may stream provider-returned reasoning summaries or
+safe reasoning excerpts while a trusted owner is watching the workspace, but it
+is not public transcript narrative and must not be included in shared-chat
+projections.
+
+Use `reasoning content` for internal data and policy language. Avoid
+`chain of thought` in product copy because the feature exposes bounded thinking
+visibility, not a promise to reveal raw model chain-of-thought.

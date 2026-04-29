@@ -110,6 +110,17 @@ function buildReasoningPreview(content: string): string {
   return `${normalized.slice(0, 137).trimEnd()}...`
 }
 
+function buildReasoningUnavailableText(reasoningTokens?: number): string {
+  if (
+    typeof reasoningTokens === 'number' &&
+    Number.isFinite(reasoningTokens) &&
+    reasoningTokens > 0
+  ) {
+    return `Thinking used · summary unavailable · ${reasoningTokens.toLocaleString()} tokens`
+  }
+  return 'Thinking used · summary unavailable'
+}
+
 export function buildAssistantMessageTranscriptBlocks(message: Message): TranscriptBlock[] {
   if (message.role !== 'assistant') {
     return []
@@ -130,7 +141,7 @@ export function buildAssistantMessageTranscriptBlocks(message: Message): Transcr
     blocks.push({
       id: `${message._id}-thinking-redacted`,
       kind: 'thinking_redacted',
-      content: 'Thinking is available in the run trace for this step.',
+      content: buildReasoningUnavailableText(message.annotations.reasoningTokens),
       createdAt: message.createdAt,
     })
   }

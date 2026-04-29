@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Brain, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -10,6 +10,7 @@ interface ReasoningPanelProps {
   isStreaming?: boolean
   teaser?: string
   redacted?: boolean
+  defaultOpen?: boolean
 }
 
 function buildTeaser(content: string): string {
@@ -23,16 +24,29 @@ export function ReasoningPanel({
   isStreaming = false,
   teaser,
   redacted = false,
+  defaultOpen = false,
 }: ReasoningPanelProps) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(defaultOpen || isStreaming)
   const shouldReduceMotion = useReducedMotion()
   const preview = teaser ?? buildTeaser(content)
-  const label = redacted ? 'Thinking retained' : 'Thinking'
+  const label = redacted ? 'Thinking used' : 'Thinking'
+  const collapsedPreview = redacted ? 'summary unavailable' : preview
+  const panelId = `thinking-panel-${label.toLowerCase().replace(/\s+/g, '-')}`
+
+  useEffect(() => {
+    if (isStreaming) {
+      setOpen(true)
+    } else if (!defaultOpen) {
+      setOpen(false)
+    }
+  }, [defaultOpen, isStreaming])
 
   return (
     <div className="shadow-sharp-md w-full border border-border bg-muted/40">
       <button
         type="button"
+        aria-expanded={open}
+        aria-controls={panelId}
         className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left"
         onClick={() => setOpen((prev) => !prev)}
       >
@@ -43,7 +57,7 @@ export function ReasoningPanel({
         </span>
         {!open ? (
           <span className="min-w-0 flex-1 truncate pr-2 text-right font-mono text-[10px] text-muted-foreground/70">
-            {redacted ? 'available in run trace' : preview}
+            {collapsedPreview}
           </span>
         ) : null}
         <ChevronDown
@@ -54,6 +68,7 @@ export function ReasoningPanel({
       <AnimatePresence initial={false}>
         {open && (
           <motion.div
+            id={panelId}
             initial={shouldReduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
             animate={shouldReduceMotion ? { opacity: 1 } : { height: 'auto', opacity: 1 }}
             exit={shouldReduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
@@ -61,7 +76,7 @@ export function ReasoningPanel({
             className="overflow-hidden border-t border-border"
           >
             <div className="whitespace-pre-wrap break-words px-3 py-2 font-mono text-[11px] leading-5 text-muted-foreground/90">
-              {redacted ? 'Thinking is retained in the run trace for this step.' : content}
+              {redacted ? 'Thinking was used, but no display-safe summary was returned.' : content}
             </div>
           </motion.div>
         )}

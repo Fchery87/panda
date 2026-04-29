@@ -303,9 +303,9 @@ export function ProviderCard({
 
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor={`${provider.name}-show-reasoning`}>Show Reasoning Panel</Label>
+                  <Label htmlFor={`${provider.name}-show-reasoning`}>Show Thinking</Label>
                   <p className="text-sm text-muted-foreground">
-                    Display reasoning in the chat panel when available.
+                    Display model Thinking summaries in the chat panel when available.
                   </p>
                 </div>
                 <Switch

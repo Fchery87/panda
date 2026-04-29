@@ -415,6 +415,7 @@ export function MessageBubble({
   const reasoningBlock = assistantBlocks.find(
     (block) => block.kind === 'thinking_teaser' || block.kind === 'thinking_redacted'
   )
+  const hasDisplayContent = displayContent.trim().length > 0
 
   const handleCopyPlan = async () => {
     if (!canCopyValidatedPlan) return
@@ -510,7 +511,7 @@ export function MessageBubble({
           <ReasoningPanel content={reasoningBlock.content} redacted />
         ) : null}
 
-        {!attachmentsOnly ? (
+        {!attachmentsOnly && hasDisplayContent ? (
           <motion.div
             initial={shouldReduceMotion ? { opacity: 0 } : { scale: 0.95, opacity: 0 }}
             animate={shouldReduceMotion ? { opacity: 1 } : { scale: 1, opacity: 1 }}

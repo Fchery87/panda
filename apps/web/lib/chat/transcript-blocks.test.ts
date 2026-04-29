@@ -91,6 +91,27 @@ describe('transcript blocks', () => {
     ])
   })
 
+  test('builds unavailable Thinking block from reasoning tokens without summary', () => {
+    const message: Message = {
+      _id: 'assistant-1',
+      role: 'assistant',
+      content: 'The implementation is complete.',
+      annotations: {
+        mode: 'build',
+        reasoningTokens: 2400,
+      },
+      createdAt: 100,
+    }
+
+    expect(buildAssistantMessageTranscriptBlocks(message)).toEqual([
+      expect.objectContaining({
+        kind: 'thinking_redacted',
+        content: 'Thinking used · summary unavailable · 2,400 tokens',
+      }),
+      expect.objectContaining({ kind: 'assistant_text' }),
+    ])
+  })
+
   test('returns transcript messages without operational tail items', () => {
     const messages: Message[] = [
       {
