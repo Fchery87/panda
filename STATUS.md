@@ -1,103 +1,111 @@
-# Status: Panda Architecture Contract Hardening
+# Status: Architecture Deepening Program
 
-## Current milestone: Complete
+## Current Milestone
 
-## Final implementation gate: PASS — 2026-04-28
+Architecture Deepening Program complete
 
-- `bun run typecheck`: PASS, 2/2 packages successful.
-- `bun run lint`: PASS, 1/1 package successful.
-- `bun run format:check`: PASS, all matched files use Prettier code style.
-- `bun test`: PASS, 1063 pass, 0 fail, 2911 expect() calls.
-- Full `bun test` output saved to
-  `/home/nochaserz/.local/share/opencode/tool-output/tool_dd64caa67001rbJaCUYMUe7bcW`.
+## Last Completed
 
-## Last completed: Milestone 5 — Wiring And Reader Test — 2026-04-28
+Milestone 7: Convex Query Shape Interfaces - 2026-04-29
 
-## Final gate: PASS — 2026-04-28
+## Decision Log
 
-- `bun run typecheck`: PASS, 2/2 packages successful
-- `bun run lint`: PASS, 1/1 package successful
-- `bun run format:check`: PASS after formatting changed Markdown files
-- `bun test`: PASS, 1055 pass, 0 fail, 2853 expect() calls
+- Treat the work as one coordinated architecture program split into seven
+  independently shippable tracks because the Modules share Run, planning,
+  runtime, and projection vocabulary.
+- Use `Run` as the canonical term and `run orchestration` for the Module that
+  owns lifecycle ordering.
+- Run orchestration owns message creation ordering, Run record updates, event
+  application, final receipt summary, and Plan/Spec context attachment.
+- Run orchestration does not own provider stream parsing, low-level tool
+  invocation, UI rendering, Convex query policy, or WebContainer/server command
+  execution.
+- Place the Run orchestration Seam under `apps/web/lib/agent/` rather than hooks
+  or `apps/web/lib/agent/harness/`.
+- Extract Run orchestration first with behavior preserved before redesigning
+  surrounding Modules.
+- Plan owns execution intent; Spec is verification context attached to a Run,
+  not a parallel approval lifecycle unless a future product requirement creates
+  one.
+- Run Projection handles both live and persisted Run facts behind one Interface.
+- Run Projection guarantees surface separation and safe degradation, not visual
+  layout.
+- Deepen harness `Runtime` internals first through tool execution scheduling.
+- Tool execution scheduling should start as a pure planner Module; add executing
+  Adapters only if two concrete execution paths emerge.
+- Runtime Command Execution is a real Adapter-backed Seam because WebContainer
+  and server-backed execution are two concrete paths.
+- Split the Workspace Runtime Interface by product concept, not UI panel.
+- Extract runtime availability first from the Workspace Runtime Interface.
+- Active UI should be forced onto summary/detail-specific Convex Interfaces;
+  broad legacy Interfaces may remain only as compatibility paths with tests and
+  removal notes.
+- Milestone 1 introduced `apps/web/lib/agent/run-orchestration.ts` as the first
+  Run orchestration Seam. It owns behavior-preserving start-of-Run ordering for
+  user message persistence, attachment records, Run creation, run buffering,
+  creation notification, and the `run_started` event.
+- Milestone 2 kept approved Specs in `approved` status on `spec_generated`
+  persistence so Run and Plan own execution state. Drift monitoring now treats
+  approved Specs as active verification context through
+  `shouldMonitorSpecForDrift`.
+- Milestone 3 introduced `apps/web/lib/agent/run-projection.ts` as the Run
+  Projection Module. It provides explicit chat, proof, and public-share
+  projection policies, keeps chat/public outputs bounded and redacted, and is
+  now used by `getRunTimeline` for receipt summary counts while preserving the
+  existing timeline shape.
+- Milestone 4 introduced `apps/web/lib/agent/harness/tool-scheduling.ts` as a
+  pure Tool Scheduling Planner Module. It owns read-only versus sequential
+  scheduling, per-step deduplication, max-tool-call skip decisions, and skip
+  error text while `HarnessRuntime` keeps actual tool execution, permission
+  checks, and side effects.
+- Milestone 5 introduced `apps/web/lib/jobs/runtime-command-execution.ts` as the
+  Runtime Command Execution Adapter. It owns runtime path selection for browser
+  WebContainer versus server fallback, result shaping, output streaming hooks,
+  duration calculation, and execution path metadata while `executeQueuedJob`
+  keeps persisted job lifecycle updates.
+- Milestone 6 introduced `apps/web/lib/workspace/runtime-availability.ts` as the
+  Workspace Runtime Availability Interface. It normalizes provider status into a
+  small availability contract with phase, label, detail, browser-runtime
+  capability, server-fallback capability, and provider status. Routing and
+  status bar display now use the shared availability vocabulary.
+- Milestone 7 introduced `apps/web/lib/convex/query-shapes.ts` as a small Convex
+  Query Shape Interface for project boot. It centralizes the summary/detail
+  contract for project file metadata and bounded recent chat summaries, while
+  the loader still calls the existing Convex summary functions.
 
-## Decision log
+## Known Issues
 
-- Reader is Panda maintainers and future agents because this sprint hardens
-  contribution and implementation contracts.
-- Post-read action is making architecture decisions from one vocabulary and one
-  ownership map.
-- Scope is docs and small alignment fixes first; larger runtime or Convex
-  implementation work is logged as future work.
-- Added Architecture Contract as canonical vocabulary and source-of-truth map.
-- Added Security And Trust Boundaries as the authorization, redaction, sharing,
-  token, MCP, and telemetry policy.
-- Added Convex Backend Governance as the ownership, query-shape, retention, and
-  legacy API policy.
-- Replaced active browser-only/web-only positioning with browser-first plus
-  server fallback.
-- Updated mode-hardening docs from pure proposal to partially implemented
-  architecture record.
-- Reader-test confirmed the new docs are linked from entry points and active
-  docs no longer claim browser-only/web-only positioning.
-- Formatted the executive action plan because the repository-wide format gate
-  includes it.
-- Follow-up pass addressed the full doc-by-doc assessment: AGENTS now delegates
-  to canonical docs, Convex README has lifecycle invariants, harness delivery
-  tables are marked current vs target, WebContainer has support/mount/telemetry
-  policy, transcript policy includes sharing/reasoning/redaction, provider
-  catalog is aligned with the model capability manifest, and archive/root
-  artifact guidance is stronger.
-- S05 retention cleanup is implemented as an internal bounded Convex mutation
-  with scheduled cron entry because operational data must be deleted in batches,
-  not via unbounded collection scans.
-- S06 agent run lifecycle transitions are enforced before terminal writes
-  because completed, failed, and stopped runs should not be rewritten by late
-  callbacks.
-- S07 provenance summary is exposed as a bounded Convex query so proof surfaces
-  can tie latest spec, planning session, verification, and run receipt without
-  subscribing to full histories.
-- S08 permission audit reads are bounded and project-scoped because approval
-  decisions must be reviewable without unbounded session history scans.
-- S09 WebContainer boot telemetry is redacted into categorical status, execution
-  path, duration, and reason fields so fallback behavior is observable without
-  storing raw boot errors.
+- No `docs/adr/` directory exists. Active architecture docs in `docs/` are the
+  current decision record.
+- No prior `CONTEXT.md` existed; one was created during the grilling loop to
+  capture resolved domain terms.
+- Milestone 1 only moved start-of-Run ordering. Terminal Run finalization still
+  uses `createRunLifecycle` and remains a future deepening target if needed.
+- Some legacy Spec engine helpers still expose `markExecuting` because existing
+  runtime and tests use it. Milestone 2 narrowed persistence behavior without
+  removing the older in-memory lifecycle vocabulary.
+- Milestone 3 only lightly wired Run Projection into the existing timeline. More
+  mapper consolidation can happen later, especially around persisted run event
+  summary conversion in `live-run-utils` and transcript feed block generation.
+- Milestone 4 preserves existing Runtime execution shape. Parallel read-only
+  tools are still iterated serially inside the current Runtime loop despite the
+  historical "parallel" naming; deeper concurrency changes remain out of scope.
+- Milestone 5 preserves the existing `executeQueuedJob` return shape for callers
+  by stripping Adapter-only `executionPath` metadata at the compatibility
+  boundary. Future UI surfaces can use the Adapter directly if they need to show
+  browser/server execution path detail.
+- Milestone 6 preserves existing `webcontainerStatus` prop shape at layout
+  boundaries for compatibility. The deeper product Interface now exists in
+  `runtime-availability.ts`; broader context consumers can migrate to the full
+  availability object later.
+- Milestone 7 intentionally avoided schema changes or migration-heavy query
+  rewrites because the active project boot path already uses
+  `files.listMetadata` and `chats.listRecent`. The deeper Interface makes that
+  hot-path contract explicit and guarded by tests.
 
-## Implementation slice validation
+## Future Work
 
-- S05 retention focused test: PASS, `bun test convex/retention.test.ts`, 1 pass,
-  0 fail, 9 expect() calls.
-- S05 typecheck: PASS, `bun run typecheck`, 2/2 packages successful.
-- S06 agent run persistence focused test: PASS,
-  `bun test convex/agentRuns.persistence.test.ts`, 1 pass, 0 fail, 30 expect()
-  calls.
-- S06 typecheck: PASS, `bun run typecheck`, 2/2 packages successful.
-- S07 provenance focused test: PASS, `bun test convex/provenance.test.ts`, 1
-  pass, 0 fail, 8 expect() calls.
-- S07 typecheck: PASS, `bun run typecheck`, 2/2 packages successful.
-- S08 permission audit focused test: PASS,
-  `bun test convex/permissionAuditLog.test.ts`, 1 pass, 0 fail, 10 expect()
-  calls.
-- S08 typecheck: PASS, `bun run typecheck`, 2/2 packages successful.
-- S09 WebContainer boot focused test: PASS,
-  `bun test apps/web/lib/webcontainer/boot.test.ts`, 2 pass, 0 fail, 2 expect()
-  calls.
-- S09 typecheck: PASS, `bun run typecheck`, 2/2 packages successful.
-
-## Known issues
-
-- `mgrep` search is unavailable due quota, so inspection uses targeted read and
-  grep fallback.
-- Remaining browser-only/web-only hits are in this task plan/spec and the
-  executive findings document, where they describe the old issue.
-
-## Future work (out of scope)
-
-- Convert runtime string termination errors into persisted typed termination
-  reasons.
-- Enforce approved-plan preflight only for build-from-plan execution paths.
-- Add or reconcile missing grammar adapter IDs referenced by the model manifest.
-- Deprecate or remove legacy broad Convex queries after caller inventory.
-- Revisit retention duration defaults and table-specific policies once product
-  retention requirements are finalized.
-- Remove or archive root `SPEC.md`, `PLAN.md`, and `STATUS.md` after maintainer
-  approval if they should not be committed as audit evidence.
+- Consider creating ADRs only when a future decision is hard to reverse,
+  surprising without context, and the result of a real trade-off.
+- After Milestone 1, revisit whether Plan/Spec lifecycle cleanup needs a narrow
+  migration plan for existing persisted records.

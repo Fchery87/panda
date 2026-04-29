@@ -1,4 +1,8 @@
 import type { ChatMode } from '@/lib/agent/chat-modes'
+import {
+  resolveRuntimeAvailability,
+  type RuntimeProviderStatus,
+} from '@/lib/workspace/runtime-availability'
 
 export type RoutingConfidence = 'high' | 'medium' | 'low'
 
@@ -50,7 +54,7 @@ export interface RoutingDecision {
   source: RoutingDecisionSource
 }
 
-export type WebContainerProviderStatus = 'idle' | 'booting' | 'ready' | 'error' | 'unsupported'
+export type WebContainerProviderStatus = RuntimeProviderStatus
 
 export function getDefaultWebContainerStatus(): WebContainerStatus {
   return { phase: 'unavailable' }
@@ -60,18 +64,20 @@ export function normalizeWebContainerStatus(args: {
   status: WebContainerProviderStatus
   error?: string | null
 }): WebContainerStatus {
-  if (args.status === 'idle') {
+  const availability = resolveRuntimeAvailability(args)
+
+  if (availability.phase === 'idle') {
     return getDefaultWebContainerStatus()
   }
 
-  if (args.status === 'error') {
+  if (availability.phase === 'error') {
     return {
       phase: 'error',
-      ...(args.error ? { lastError: args.error } : {}),
+      ...(availability.detail ? { lastError: availability.detail } : {}),
     }
   }
 
-  return { phase: args.status }
+  return { phase: availability.phase }
 }
 
 export function getDefaultThreadState(): ThreadState {

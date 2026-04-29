@@ -13,6 +13,10 @@ import {
 import { cn } from '@/lib/utils'
 import { SpecBadge } from './SpecBadge'
 import type { SpecStatus, SpecTier } from '@/lib/agent/spec/types'
+import {
+  resolveRuntimeAvailability,
+  type RuntimeProviderStatus,
+} from '@/lib/workspace/runtime-availability'
 
 export type AgentStatus = 'idle' | 'running' | 'completed' | 'failed'
 
@@ -42,7 +46,7 @@ interface StatusBarProps {
   agentStatus?: AgentStatus
   /** Callback when agent status badge is clicked (focus chat panel) */
   onAgentStatusClick?: () => void
-  webcontainerStatus?: 'idle' | 'booting' | 'ready' | 'error' | 'unsupported'
+  webcontainerStatus?: RuntimeProviderStatus
 }
 
 function getLanguageFromPath(path: string | null | undefined): string {
@@ -100,6 +104,7 @@ export function StatusBar({
 }: StatusBarProps) {
   const displayLanguage = language || getLanguageFromPath(filePath)
   const filename = filePath?.split('/').pop() || 'No file'
+  const runtimeAvailability = resolveRuntimeAvailability({ status: webcontainerStatus })
 
   return (
     <footer
@@ -139,16 +144,7 @@ export function StatusBar({
         )}
 
         <span className="hidden text-muted-foreground/70 md:inline" aria-live="polite">
-          WC:{' '}
-          {webcontainerStatus === 'booting'
-            ? 'Booting'
-            : webcontainerStatus === 'ready'
-              ? 'Ready'
-              : webcontainerStatus === 'error'
-                ? 'Fallback'
-                : webcontainerStatus === 'unsupported'
-                  ? 'Server'
-                  : 'Idle'}
+          WC: {runtimeAvailability.label}
         </span>
 
         <button

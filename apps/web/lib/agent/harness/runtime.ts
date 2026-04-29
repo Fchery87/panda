@@ -87,6 +87,7 @@ import { runPreflight } from './preflight'
 import { getGrammarsForModel } from '../providers/model-capabilities'
 import type { ChatMode } from '../chat-modes'
 import type { TerminationReason } from './errors'
+import { createToolSkipError, planToolExecution } from './tool-scheduling'
 
 /**
  * Runtime state
@@ -1105,10 +1106,8 @@ export class Runtime {
         }
       })
 
-      let processedToolCallsThisStep = 0
       const maxToolCallsPerStep = this.config.maxToolCallsPerStep
       const dedupEnabled = this.config.enableToolDeduplication === true
-      const seenDedupKeysThisStep = new Set<string>()
 
       const executableToolKeysForLoop = [] as string[]
       {
@@ -1156,46 +1155,43 @@ export class Runtime {
         }
         this.state.isComplete = true
       } else {
-        // Partition tools into parallelizable (read-only) and sequential (side effects)
-        const parallelizableTools = [
-          'read_files',
-          'list_directory',
-          'search_code',
-          'search_code_ast',
-          'search_codebase',
-        ]
-        const partitionedTools = preparedToolCalls.reduce(
-          (acc, tool) => {
-            const toolName = tool.toolCall.function.name
-            if (parallelizableTools.includes(toolName)) {
-              acc.parallel.push(tool)
-            } else {
-              acc.sequential.push(tool)
-            }
-            return acc
-          },
-          { parallel: [] as typeof preparedToolCalls, sequential: [] as typeof preparedToolCalls }
-        )
+        const executionPlan = planToolExecution(preparedToolCalls, {
+          dedupEnabled,
+          maxToolCallsPerStep,
+        })
 
-        // Execute tools (parallel tools can run concurrently)
-        const sequentialTools = partitionedTools.sequential
-        const parallelTools = partitionedTools.parallel
-
+        const appendSkippedToolResult = (
+          tool: (typeof preparedToolCalls)[number],
+          error: string
+        ) => {
+          assistantMessage.parts.push({
+            id: ascending('part_'),
+            messageID,
+            sessionID: this.state!.sessionID,
+            type: 'tool',
+            tool: tool.toolCall.function.name,
+            state: {
+              status: 'error',
+              input: tool.parsedArgs,
+              error,
+              time: { start: Date.now(), end: Date.now() },
+            },
+          })
+        }
         // Execute parallel tools concurrently
-        if (parallelTools.length > 0) {
+        if (executionPlan.parallel.length > 0) {
           yield {
             type: 'status',
-            content: `Executing ${parallelTools.length} read-only tool(s)`,
+            content: `Executing ${executionPlan.parallel.length} read-only tool(s)`,
           }
 
-          for (const tool of parallelTools) {
-            const { toolCall, parsedArgs, dedupKey } = tool
+          for (const planItem of executionPlan.parallel) {
+            const { tool } = planItem
+            const { toolCall, parsedArgs } = tool
             const toolName = toolCall.function.name
 
-            if (dedupEnabled && seenDedupKeysThisStep.has(dedupKey)) {
-              const error =
-                `Skipped duplicate tool call within step: ${toolName} ` + '(duplicate tool call)'
-
+            if (planItem.action === 'skip') {
+              const error = createToolSkipError(planItem.reason, toolName, maxToolCallsPerStep)
               yield createToolResultEvent({
                 toolCallId: toolCall.id,
                 toolName,
@@ -1203,59 +1199,10 @@ export class Runtime {
                 output: '',
                 error,
               })
-
-              assistantMessage.parts.push({
-                id: ascending('part_'),
-                messageID,
-                sessionID: this.state.sessionID,
-                type: 'tool',
-                tool: toolName,
-                state: {
-                  status: 'error',
-                  input: parsedArgs,
-                  error,
-                  time: { start: Date.now(), end: Date.now() },
-                },
-              })
-              continue
-            }
-            if (dedupEnabled) {
-              seenDedupKeysThisStep.add(dedupKey)
-            }
-
-            if (
-              typeof maxToolCallsPerStep === 'number' &&
-              processedToolCallsThisStep >= maxToolCallsPerStep
-            ) {
-              const error =
-                `Reached maximum tool calls per step (${maxToolCallsPerStep}); ` +
-                `skipping additional tool call: ${toolName}`
-
-              yield createToolResultEvent({
-                toolCallId: toolCall.id,
-                toolName,
-                args: parsedArgs,
-                output: '',
-                error,
-              })
-
-              assistantMessage.parts.push({
-                id: ascending('part_'),
-                messageID,
-                sessionID: this.state.sessionID,
-                type: 'tool',
-                tool: toolName,
-                state: {
-                  status: 'error',
-                  input: parsedArgs,
-                  error,
-                  time: { start: Date.now(), end: Date.now() },
-                },
-              })
+              appendSkippedToolResult(tool, error)
               continue
             }
 
-            processedToolCallsThisStep++
             for await (const event of this.executeToolAndAddToMessage(
               toolCall,
               parsedArgs,
@@ -1269,14 +1216,13 @@ export class Runtime {
         }
 
         // Execute sequential tools in order
-        for (const tool of sequentialTools) {
-          const { toolCall, parsedArgs, dedupKey } = tool
+        for (const planItem of executionPlan.sequential) {
+          const { tool } = planItem
+          const { toolCall, parsedArgs } = tool
           const toolName = toolCall.function.name
 
-          if (dedupEnabled && seenDedupKeysThisStep.has(dedupKey)) {
-            const error =
-              `Skipped duplicate tool call within step: ${toolName} ` + '(duplicate tool call)'
-
+          if (planItem.action === 'skip') {
+            const error = createToolSkipError(planItem.reason, toolName, maxToolCallsPerStep)
             yield createToolResultEvent({
               toolCallId: toolCall.id,
               toolName,
@@ -1284,59 +1230,10 @@ export class Runtime {
               output: '',
               error,
             })
-
-            assistantMessage.parts.push({
-              id: ascending('part_'),
-              messageID,
-              sessionID: this.state.sessionID,
-              type: 'tool',
-              tool: toolName,
-              state: {
-                status: 'error',
-                input: parsedArgs,
-                error,
-                time: { start: Date.now(), end: Date.now() },
-              },
-            })
-            continue
-          }
-          if (dedupEnabled) {
-            seenDedupKeysThisStep.add(dedupKey)
-          }
-
-          if (
-            typeof maxToolCallsPerStep === 'number' &&
-            processedToolCallsThisStep >= maxToolCallsPerStep
-          ) {
-            const error =
-              `Reached maximum tool calls per step (${maxToolCallsPerStep}); ` +
-              `skipping additional tool call: ${toolName}`
-
-            yield createToolResultEvent({
-              toolCallId: toolCall.id,
-              toolName,
-              args: parsedArgs,
-              output: '',
-              error,
-            })
-
-            assistantMessage.parts.push({
-              id: ascending('part_'),
-              messageID,
-              sessionID: this.state.sessionID,
-              type: 'tool',
-              tool: toolName,
-              state: {
-                status: 'error',
-                input: parsedArgs,
-                error,
-                time: { start: Date.now(), end: Date.now() },
-              },
-            })
+            appendSkippedToolResult(tool, error)
             continue
           }
 
-          processedToolCallsThisStep++
           for await (const event of this.executeToolAndAddToMessage(
             toolCall,
             parsedArgs,

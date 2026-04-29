@@ -8,15 +8,17 @@ import type { Id } from '@convex/_generated/dataModel'
 import { ProjectLoadingGuard, ProjectNotFoundGuard } from '@/components/projects/ProjectPageGuards'
 import { WorkspaceRuntimeProvider } from '@/components/projects/WorkspaceRuntimeProvider'
 import { logConvexPayload } from '@/lib/convex/payload-metrics'
+import { getProjectBootQueryArgs } from '@/lib/convex/query-shapes'
 
 interface ProjectShellDataLoaderProps {
   projectId: Id<'projects'>
 }
 
 export function ProjectShellDataLoader({ projectId }: ProjectShellDataLoaderProps) {
+  const projectBootQueryArgs = getProjectBootQueryArgs(projectId)
   const project = useQuery(api.projects.get, { id: projectId })
-  const files = useQuery(api.files.listMetadata, { projectId })
-  const chats = useQuery(api.chats.listRecent, { projectId, limit: 25 })
+  const files = useQuery(api.files.listMetadata, projectBootQueryArgs.files)
+  const chats = useQuery(api.chats.listRecent, projectBootQueryArgs.chats)
 
   useEffect(() => {
     logConvexPayload('project.files.metadata', files)

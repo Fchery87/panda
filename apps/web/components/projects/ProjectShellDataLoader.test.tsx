@@ -49,14 +49,16 @@ describe('ProjectShellDataLoader structure', () => {
 
   test('loads file metadata at project boot instead of file contents', async () => {
     const content = await readLoader()
+    expect(content).toContain('getProjectBootQueryArgs(projectId)')
     expect(content).toContain('api.files.listMetadata')
+    expect(content).toContain('projectBootQueryArgs.files')
     expect(content).not.toContain('api.files.list, { projectId }')
   })
 
   test('loads bounded chat summaries at project boot', async () => {
     const content = await readLoader()
     expect(content).toContain('api.chats.listRecent')
-    expect(content).toContain('{ projectId, limit: 25 }')
+    expect(content).toContain('projectBootQueryArgs.chats')
     expect(content).not.toContain('api.chats.list, { projectId }')
   })
 

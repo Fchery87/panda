@@ -50,6 +50,7 @@ import { resolveExplorerRevealTarget } from '@/lib/workbench-navigation'
 import { buildDefaultPlanningQuestions } from '@/lib/planning/question-engine'
 import type { WorkspaceFocusState } from '@/components/workbench/workspace-focus'
 import type { Message } from '@/components/chat/types'
+import { resolveRuntimeAvailability } from '@/lib/workspace/runtime-availability'
 
 interface ProjectFileMetadata {
   _id: Id<'files'>
@@ -238,6 +239,10 @@ export function WorkspaceRuntimeProvider({
             writeFileToContainer(webcontainer.instance!, path, nextContent)
         : undefined,
     [webcontainer.instance, webcontainer.status]
+  )
+  const runtimeAvailability = useMemo(
+    () => resolveRuntimeAvailability({ status: webcontainer.status, error: webcontainer.error }),
+    [webcontainer.error, webcontainer.status]
   )
 
   useHotkeys(
@@ -997,7 +1002,7 @@ export function WorkspaceRuntimeProvider({
     focusState: workspaceFocusState,
     onFocusPrimaryAction: handleFocusPrimaryAction,
     onFocusSecondaryAction: handleFocusSecondaryAction,
-    webcontainerStatus: webcontainer.status,
+    webcontainerStatus: runtimeAvailability.providerStatus,
   }
 
   return (

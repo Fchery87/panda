@@ -1,47 +1,43 @@
-# Spec: Panda Architecture Contract Hardening
-
-## Reader And Action
-
-Reader: Panda maintainers and future agents landing cold in the codebase.
-
-Post-read action: make documentation and implementation decisions using one
-shared vocabulary, one source-of-truth map, and explicit trust-boundary rules.
+# Spec: Architecture Deepening Program
 
 ## Deliverables
 
-- [x] Publish a canonical glossary for modes, agents, runs, planning, receipts,
-      checkpoints, delivery state, and execution contracts
-- [x] Publish a source-of-truth map for mode, plan, spec, run, receipt, share,
-      runtime, provider, and delivery state
-- [x] Replace browser-only and web-only wording with browser-first with server
-      fallback
-- [x] Publish security, redaction, authorization, sharing, token, and telemetry
-      rules
-- [x] Publish backend governance rules for Convex ownership, query shape,
-      retention, and legacy API handling
-- [x] Update mode-hardening docs to reflect partial implementation and remaining
-      work
-- [x] Wire new docs into README and docs index
-- [x] Run validation and repair failures
-- [x] Complete doc-by-doc assessment follow-ups for AGENTS, Convex, harness,
-      WebContainer, transcript, provider catalog, historical docs, and root
-      artifacts
+- [ ] Deepen `Run` orchestration into a Module that owns lifecycle ordering for
+      one Run while preserving current behavior.
+- [ ] Simplify the `Plan` and `Spec` relationship so Plan owns execution intent
+      and Spec provides verification context for a Run.
+- [ ] Deepen `Run Projection` into a Module that produces policy-correct chat,
+      proof, and public-share projections from live and persisted Run facts.
+- [ ] Deepen the harness `Runtime` internals by extracting tool execution
+      scheduling decisions into a planner-first Module.
+- [ ] Deepen `Runtime Command Execution` into an Adapter-backed Seam for
+      WebContainer and server-backed execution paths.
+- [ ] Split the `Workspace Runtime Interface` by product concept, starting with
+      runtime availability.
+- [ ] Deepen Convex query Modules so active UI uses summary/detail-specific
+      Interfaces and broad legacy paths are compatibility-only.
 
 ## Constraints
 
-- Keep this pass focused on contract, docs, and small alignment fixes
-- Do not introduce schema changes or migrations in this sprint
-- Do not remove legacy APIs unless caller inventory proves they are unused
-- Keep the canonical 4-mode workflow: `ask`, `plan`, `code`, `build`
-- Preserve browser-first positioning with server-backed fallback
-- Do not document secrets, raw token values, or implementation-sensitive
-  examples
+- Preserve the canonical modes: `ask`, `plan`, `code`, and `build`.
+- Preserve browser-first with server fallback behavior.
+- Preserve current Run lifecycle behavior during the first extraction.
+- Do not move provider stream parsing, low-level tool invocation, UI rendering,
+  Convex query policy, or WebContainer command execution into Run orchestration.
+- Keep chat projections summary-shaped and proof projections bounded/redacted.
+- Public share projections must not expose owner-only execution detail, raw
+  reasoning, provider secrets, signed URLs, private files, or checkpoint
+  payloads.
+- Active Convex UI paths must prefer bounded, indexed, summary-shaped,
+  paginated, or lazy detail Interfaces.
+- Use the architecture vocabulary in `CONTEXT.md` and canonical docs in `docs/`.
 
-## Out of scope (log here during the run, do not act on)
+## Out Of Scope
 
-- Full runtime implementation beyond documentation/status alignment
-- Removing deprecated Convex functions
-- Adding retention cron jobs or archival workers
-- Adding new grammar adapters beyond documenting the current implementation
-  state
-- Reworking UI copy outside the architecture contract vocabulary
+- Replacing the high-level harness `Runtime` Interface.
+- Changing product behavior while extracting Run orchestration.
+- Introducing a separate Spec approval lifecycle without a future explicit
+  product requirement.
+- Removing compatibility Convex Interfaces before caller inventory and a safe
+  migration window.
+- Redesigning React visual layout while splitting workspace runtime concepts.

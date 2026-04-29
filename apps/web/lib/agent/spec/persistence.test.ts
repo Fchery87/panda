@@ -121,10 +121,10 @@ describe('spec persistence', () => {
       expect(status).toBe('draft')
     })
 
-    test('returns executing for spec_generated when spec is approved', () => {
+    test('keeps approved specs approved for spec_generated because Run execution owns execution state', () => {
       const approvedSpec: FormalSpecification = { ...mockSpec, status: 'approved' }
       const status = resolveSpecStatus(approvedSpec, 'spec_generated')
-      expect(status).toBe('executing')
+      expect(status).toBe('approved')
     })
 
     test('preserves spec status for spec_generated when not approved', () => {

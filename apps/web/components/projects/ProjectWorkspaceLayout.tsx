@@ -28,6 +28,7 @@ import type { FormalSpecification } from '@/lib/agent/spec/types'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import type { WorkspaceArtifactPreview } from '@/components/workbench/artifact-preview'
 import type { WorkspaceFocusState } from '@/components/workbench/workspace-focus'
+import type { RuntimeProviderStatus } from '@/lib/workspace/runtime-availability'
 import { useWorkspaceUiStore } from '@/stores/workspaceUiStore'
 
 type FileRecord = {
@@ -107,7 +108,7 @@ interface ProjectWorkspaceLayoutProps {
   focusState?: WorkspaceFocusState | null
   onFocusPrimaryAction?: () => void
   onFocusSecondaryAction?: () => void
-  webcontainerStatus?: 'idle' | 'booting' | 'ready' | 'error' | 'unsupported'
+  webcontainerStatus?: RuntimeProviderStatus
   sessionRailSummary?: SessionRailSummary
 }
 

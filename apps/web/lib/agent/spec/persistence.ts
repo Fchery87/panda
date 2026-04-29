@@ -125,7 +125,7 @@ export function resolveSpecStatus(
     case 'spec_pending_approval':
       return 'draft'
     case 'spec_generated':
-      return spec.status === 'approved' ? 'executing' : spec.status
+      return spec.status
     case 'spec_verification':
       if (verificationPassed === true) {
         return 'verified'

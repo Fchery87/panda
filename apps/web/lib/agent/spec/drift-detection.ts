@@ -98,6 +98,10 @@ export function getPendingDrifts(): DriftReport[] {
   return Array.from(state.pendingDrifts.values())
 }
 
+export function shouldMonitorSpecForDrift(spec: FormalSpecification): boolean {
+  return spec.status === 'verified' || spec.status === 'executing' || spec.status === 'approved'
+}
+
 /**
  * Clear a pending drift report
  */
@@ -339,7 +343,7 @@ export function createDriftDetectionPlugin(config: Partial<DriftDetectionConfig>
         // Check each active spec for drift
         for (const [specId, spec] of pluginState.activeSpecs) {
           // Skip specs that are not in a state where drift matters
-          if (spec.status !== 'verified' && spec.status !== 'executing') {
+          if (!shouldMonitorSpecForDrift(spec)) {
             continue
           }
 

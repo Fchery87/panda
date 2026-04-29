@@ -13,6 +13,7 @@ import { SpecReconciler, createSpecReconciler } from '../reconciler'
 import {
   createDriftDetectionPlugin,
   createDriftDetectionState,
+  shouldMonitorSpecForDrift,
   registerActiveSpec,
   unregisterActiveSpec,
   createDriftReport,
@@ -541,15 +542,14 @@ describe('SpecNative Integration', () => {
       expect(activeSpecsAfter.some((s) => s.id === spec.id)).toBe(false)
     })
 
-    test('should detect drift when watched files are modified', async () => {
+    test('should monitor approved specs for drift because they are active verification context', () => {
       setup()
-      registerDefaultPlugins()
 
       const spec: FormalSpecification = {
         id: 'spec_drift_test',
         version: 1,
-        tier: 'ambient',
-        status: 'verified',
+        tier: 'explicit',
+        status: 'approved',
         intent: {
           goal: 'Test drift detection',
           rawMessage: 'Test',
@@ -577,15 +577,7 @@ describe('SpecNative Integration', () => {
         updatedAt: Date.now(),
       }
 
-      registerActiveSpec(spec)
-
-      // Execute the drift detection plugin hook
-      const driftPlugin = plugins.getPlugin('drift-detection')
-      expect(driftPlugin).toBeDefined()
-      expect(driftPlugin?.hooks['tool.execute.after']).toBeDefined()
-
-      // Cleanup
-      unregisterActiveSpec(spec.id)
+      expect(shouldMonitorSpecForDrift(spec)).toBe(true)
     })
   })
 })

@@ -2,7 +2,7 @@
 
 import type { Id } from '@convex/_generated/dataModel'
 import type { WebContainer } from '@webcontainer/api'
-import { spawnInContainer } from '@/lib/webcontainer/process-adapter'
+import { executeRuntimeCommand } from './runtime-command-execution'
 
 type JobStatus = 'running' | 'completed' | 'failed'
 
@@ -33,6 +33,25 @@ interface ExecuteJobResult {
   timedOut: boolean
 }
 
+async function executeViaServerRoute(request: {
+  jobId: Id<'jobs'>
+  command: string
+  workingDirectory?: string
+}): Promise<ExecuteJobResult> {
+  const executeResponse = await fetch('/api/jobs/execute', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  })
+
+  if (!executeResponse.ok) {
+    const errorText = await executeResponse.text()
+    throw new Error(errorText)
+  }
+
+  return (await executeResponse.json()) as ExecuteJobResult
+}
+
 export async function executeQueuedJob({
   jobId,
   command,
@@ -44,70 +63,46 @@ export async function executeQueuedJob({
   const startedAt = Date.now()
   const startedLog = `[${new Date(startedAt).toISOString()}] Running: ${command}`
 
-  if (webcontainer) {
-    await updateJobStatus(jobId, 'running', {
-      startedAt,
-      logs: [startedLog],
-    })
-
-    try {
-      const result = await spawnInContainer(webcontainer, command, { onOutput })
-      const payload = {
-        ...result,
-        durationMs: Date.now() - startedAt,
-        timedOut: false,
-      }
-
-      await updateJobStatus(jobId, payload.exitCode === 0 ? 'completed' : 'failed', {
-        completedAt: Date.now(),
-        output: payload.stdout || undefined,
-        error: payload.stderr || undefined,
-        logs: [startedLog, `[${new Date().toISOString()}] Exit code: ${payload.exitCode}`],
-      })
-
-      return payload
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'WebContainer execution failed'
-      await updateJobStatus(jobId, 'failed', {
-        completedAt: Date.now(),
-        error: message,
-      })
-      throw error
-    }
-  }
-
   await updateJobStatus(jobId, 'running', {
     startedAt,
     logs: [startedLog],
   })
 
-  const executeResponse = await fetch('/api/jobs/execute', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      jobId,
+  try {
+    const result = await executeRuntimeCommand({
       command,
       workingDirectory,
-    }),
-  })
+      webcontainer,
+      onOutput,
+      serverExecute: async ({ command: serverCommand, workingDirectory: serverWorkingDirectory }) =>
+        await executeViaServerRoute({
+          jobId,
+          command: serverCommand,
+          workingDirectory: serverWorkingDirectory,
+        }),
+    })
+    const payload: ExecuteJobResult = {
+      stdout: result.stdout,
+      stderr: result.stderr,
+      exitCode: result.exitCode,
+      durationMs: result.durationMs,
+      timedOut: result.timedOut,
+    }
 
-  if (!executeResponse.ok) {
-    const errorText = await executeResponse.text()
+    await updateJobStatus(jobId, payload.exitCode === 0 ? 'completed' : 'failed', {
+      completedAt: Date.now(),
+      output: payload.stdout || undefined,
+      error: payload.stderr || undefined,
+      logs: [startedLog, `[${new Date().toISOString()}] Exit code: ${payload.exitCode}`],
+    })
+
+    return payload
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Command execution failed'
     await updateJobStatus(jobId, 'failed', {
       completedAt: Date.now(),
-      error: errorText,
+      error: message,
     })
-    throw new Error(errorText)
+    throw error
   }
-
-  const payload = (await executeResponse.json()) as ExecuteJobResult
-
-  await updateJobStatus(jobId, payload.exitCode === 0 ? 'completed' : 'failed', {
-    completedAt: Date.now(),
-    output: payload.stdout || undefined,
-    error: payload.stderr || undefined,
-    logs: [startedLog, `[${new Date().toISOString()}] Exit code: ${payload.exitCode}`],
-  })
-
-  return payload
 }

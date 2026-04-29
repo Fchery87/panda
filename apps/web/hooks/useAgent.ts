@@ -45,6 +45,7 @@ import { toast } from 'sonner'
 import type { GeneratedPlanArtifact } from '../lib/planning/types'
 import { spawnVariants } from '../lib/agent/parallelVariants'
 import { buildEditorContextBlock } from '../lib/agent/buildEditorContextBlock'
+import { startRunOrchestration } from '../lib/agent/run-orchestration'
 import type { WebContainer } from '@webcontainer/api'
 import type { TerminationReason } from '../lib/agent/harness/errors'
 
@@ -804,49 +805,6 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         },
       ])
 
-      // Persist user message to Convex
-      try {
-        const persistedMessageId = await addMessage({
-          chatId,
-          role: 'user',
-          content: userContent,
-          annotations: [
-            {
-              mode: requestedMode,
-              attachmentsOnly: options?.attachmentsOnly,
-              model,
-              provider: provider?.config?.provider,
-              attachments: options?.attachments?.map((attachment) => ({
-                id: String(attachment.storageId),
-                kind: attachment.kind,
-                filename: attachment.filename,
-                contentType: attachment.contentType,
-                size: attachment.size,
-                url: attachment.url ?? undefined,
-                contextFilePath: attachment.contextFilePath,
-              })),
-            },
-          ],
-        })
-
-        if (options?.attachments?.length) {
-          await createChatAttachments({
-            chatId,
-            messageId: persistedMessageId,
-            attachments: options.attachments.map((attachment) => ({
-              storageId: attachment.storageId,
-              kind: attachment.kind,
-              filename: attachment.filename,
-              contentType: attachment.contentType,
-              size: attachment.size,
-              contextFilePath: attachment.contextFilePath,
-            })),
-          })
-        }
-      } catch (err) {
-        logUseAgentError('Failed to persist user message', err)
-      }
-
       try {
         // Create prompt context
         if (!userId) {
@@ -854,23 +812,25 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         }
         setCurrentSpec(null)
 
-        const runId = await createRun({
+        const { runId } = await startRunOrchestration({
           projectId,
           chatId,
           userId,
           mode: resolvedMode,
           provider: provider?.config?.provider,
           model,
-          userMessage: userContent,
+          userContent,
+          attachments: options?.attachments,
+          attachmentsOnly: options?.attachmentsOnly,
+          approvedPlanExecution: options?.approvedPlanExecution,
+          addMessage,
+          createChatAttachments,
+          createRun,
+          beginRun,
+          onRunCreated,
+          appendRunEvent: appendObservedRunEvent,
         })
         runStartedAt = Date.now()
-        beginRun(runId)
-        if (onRunCreated) {
-          await onRunCreated({
-            runId,
-            approvedPlanExecution: Boolean(options?.approvedPlanExecution),
-          })
-        }
         let terminalAgentStatus: 'complete' | 'error' | null = null
         const runLifecycle = createRunLifecycle({
           runIdRef,
@@ -882,12 +842,6 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           onRunCompleted,
           getCompletedPlanStepIndexes: () => [...completedPlanStepIndexesRef.current],
           getPlanTotalSteps: () => planSteps.length,
-        })
-
-        await appendObservedRunEvent({
-          type: 'run_started',
-          content: userContent,
-          status: 'running',
         })
 
         const promptBundle = buildAgentPromptBundle({

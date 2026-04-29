@@ -1,4 +1,5 @@
 import type { ExecutionReceipt } from '@/lib/agent/receipt'
+import { projectRunForSurface, type RunProjectionFact } from '@/lib/agent/run-projection'
 
 import type { LiveProgressStep } from './live-run-utils'
 
@@ -226,6 +227,21 @@ function buildReceiptSummary(receipt: ExecutionReceipt): RunTimelineReceiptSumma
   }
 }
 
+function stepToProjectionFact(step: LiveProgressStep): RunProjectionFact {
+  return {
+    id: step.id,
+    type: 'progress_step',
+    content: step.content,
+    status: step.status,
+    createdAt: step.createdAt,
+    progressCategory: step.category,
+    progressToolName: step.details?.toolName,
+    toolCallId: step.details?.toolCallId,
+    targetFilePaths: step.details?.targetFilePaths,
+    error: step.details?.errorExcerpt,
+  }
+}
+
 function buildReceiptEntries(receipt: ExecutionReceipt): RunTimelineEntry[] {
   const entries: RunTimelineEntry[] = [
     {
@@ -336,6 +352,11 @@ export function getRunTimeline(
   options: RunTimelineOptions = {}
 ): RunTimeline {
   const steps = [...(source.steps ?? [])].sort((a, b) => a.createdAt - b.createdAt)
+  const projection = projectRunForSurface({
+    surface: options.mode === 'chat' ? 'chat' : 'proof',
+    facts: steps.map(stepToProjectionFact),
+    receipt: source.receipt,
+  })
   const include = { ...DEFAULT_INCLUDE, ...options.include }
   const stageOrder = options.stageOrder ?? DEFAULT_STAGE_ORDER
   const entriesByStage = new Map<RunTimelineStageKind, RunTimelineEntry[]>()
@@ -427,7 +448,19 @@ export function getRunTimeline(
     stages,
     activeStage,
     progress,
-    receipt: source.receipt && include.receipt ? buildReceiptSummary(source.receipt) : undefined,
+    receipt:
+      source.receipt && include.receipt
+        ? {
+            ...buildReceiptSummary(source.receipt),
+            changedFiles:
+              projection.receipt?.changedFiles ?? source.receipt.webcontainer.filesWritten.length,
+            commandsRun:
+              projection.receipt?.commandsRun ?? source.receipt.webcontainer.commandsRun.length,
+            approvals:
+              projection.receipt?.approvals ??
+              source.receipt.nativeExecution.approvalsRequested.length,
+          }
+        : undefined,
     diagnostics:
       include.diagnostics || options.detail === 'diagnostic'
         ? {
