@@ -51,6 +51,10 @@ import { buildDefaultPlanningQuestions } from '@/lib/planning/question-engine'
 import type { WorkspaceFocusState } from '@/components/workbench/workspace-focus'
 import type { Message } from '@/components/chat/types'
 import { resolveRuntimeAvailability } from '@/lib/workspace/runtime-availability'
+import {
+  buildExecutionSessionViewModel,
+  type ExecutionSessionNextActionId,
+} from '@/lib/workspace/execution-session-view-model'
 
 interface ProjectFileMetadata {
   _id: Id<'files'>
@@ -578,6 +582,34 @@ export function WorkspaceRuntimeProvider({
     refreshGitStatus,
   })
 
+  const executionSession = useMemo(() => {
+    const latestStep = [...liveRunSteps].reverse().find((step) => step.content?.trim())
+
+    return buildExecutionSessionViewModel({
+      chatTitle: activeChat?.title,
+      latestUserPrompt,
+      planningQuestion: planningSession.currentQuestion,
+      generatedPlan: activePlanningSession?.generatedPlan ?? null,
+      canApprovePlan: canApproveCurrentPlan,
+      canBuildPlan: canBuildCurrentPlan,
+      isExecuting: agent.isLoading,
+      latestRunStep: latestStep?.content,
+      changedFilesCount: pendingChangedFilesCount,
+      runtimeAvailability,
+    })
+  }, [
+    activeChat?.title,
+    activePlanningSession?.generatedPlan,
+    agent.isLoading,
+    canApproveCurrentPlan,
+    canBuildCurrentPlan,
+    latestUserPrompt,
+    liveRunSteps,
+    pendingChangedFilesCount,
+    planningSession.currentQuestion,
+    runtimeAvailability,
+  ])
+
   // --- Assemble context value ---
 
   const runtimeValue = useMemo(
@@ -593,6 +625,7 @@ export function WorkspaceRuntimeProvider({
       activeChatPlanStatus: normalizedPlanStatus,
       activeChatPlanUpdatedAt: activePlanningSession?.updatedAt,
       activeChatPlanLastGeneratedAt: activePlanningSession?.generatedPlan?.generatedAt,
+      executionSession,
 
       // Chat state
       chatMessages,
@@ -742,6 +775,7 @@ export function WorkspaceRuntimeProvider({
       inlineRateLimitError,
       latestUserPrompt,
       latestAssistantReply,
+      executionSession,
       agent.isLoading,
       agent.currentSpec,
       agent.memoryBank,
@@ -800,97 +834,27 @@ export function WorkspaceRuntimeProvider({
   )
 
   const workspaceFocusState = useMemo<WorkspaceFocusState | null>(() => {
-    if (agent.isLoading) {
-      const latestStep = [...liveRunSteps].reverse().find((step) => step.content?.trim())
-      return {
-        kind: 'executing',
-        kicker: 'Run',
-        objective:
-          latestUserPrompt?.trim() ||
-          activeChat?.title ||
-          activePlanningSession?.generatedPlan?.title ||
-          'Executing current task',
-        statusLabel: 'Executing',
-        tone: 'progress',
-        detail:
-          latestStep?.content?.trim() ||
-          'Panda is actively working through the current task in this project.',
-        nextStep: 'Monitor progress or open the run rail for more detail.',
-        primaryAction: { id: 'open_run', label: 'Open Run' },
-      }
-    }
+    if (!executionSession) return null
 
-    if (planningSession.currentQuestion) {
-      return {
-        kind: 'planning-intake',
-        kicker: 'Planning',
-        objective: activeChat?.title || 'Define the implementation plan',
-        statusLabel: 'Intake active',
-        tone: 'attention',
-        detail: planningSession.currentQuestion.prompt,
-        nextStep: 'Answer the next planning question so Panda can draft a grounded plan.',
-        primaryAction: { id: 'open_plan', label: 'Continue Planning' },
-      }
+    return {
+      kind: 'execution-session',
+      kicker: 'Execution Session',
+      objective: executionSession.title,
+      statusLabel: executionSession.statusLabel,
+      tone: executionSession.tone,
+      detail: executionSession.summary,
+      nextStep: executionSession.nextStep,
+      primaryAction: mapExecutionSessionAction(executionSession.primaryAction),
+      secondaryAction: mapExecutionSessionAction(executionSession.secondaryAction),
     }
-
-    if (canApproveCurrentPlan && activePlanningSession?.generatedPlan) {
-      return {
-        kind: 'plan-review',
-        kicker: 'Plan',
-        objective: activePlanningSession.generatedPlan.title,
-        statusLabel: 'Ready for review',
-        tone: 'attention',
-        detail: 'A generated implementation plan is ready to inspect before execution starts.',
-        nextStep: 'Review the plan, confirm the scope, then approve it when you are satisfied.',
-        primaryAction: { id: 'open_plan', label: 'Review Plan' },
-      }
-    }
-
-    if (canBuildCurrentPlan && activePlanningSession?.generatedPlan) {
-      return {
-        kind: 'plan-approved',
-        kicker: 'Execution',
-        objective: activePlanningSession.generatedPlan.title,
-        statusLabel: 'Ready to build',
-        tone: 'progress',
-        detail: 'The approved plan is ready to execute from the current project context.',
-        nextStep: 'Start the build from the approved plan when you are ready.',
-        primaryAction: { id: 'build_from_plan', label: 'Build from Plan' },
-        secondaryAction: { id: 'open_plan', label: 'Open Plan' },
-      }
-    }
-
-    if (pendingChangedFilesCount > 0) {
-      return {
-        kind: 'review-ready',
-        kicker: 'Review',
-        objective: activeChat?.title || 'Inspect the latest results',
-        statusLabel: 'Changes ready',
-        tone: 'success',
-        detail: `${pendingChangedFilesCount} changed file${pendingChangedFilesCount !== 1 ? 's are' : ' is'} ready for inspection in the diff view.`,
-        nextStep: 'Inspect the latest changes before continuing with the next task.',
-        primaryAction: { id: 'review_changes', label: 'Inspect Changes' },
-      }
-    }
-
-    return null
-  }, [
-    activeChat?.title,
-    activePlanningSession?.generatedPlan,
-    agent.isLoading,
-    canApproveCurrentPlan,
-    canBuildCurrentPlan,
-    latestUserPrompt,
-    liveRunSteps,
-    pendingChangedFilesCount,
-    planningSession.currentQuestion,
-  ])
+  }, [executionSession])
 
   const handleFocusPrimaryAction = useCallback(() => {
     const actionId = workspaceFocusState?.primaryAction?.id
     if (!actionId) return
 
     switch (actionId) {
+      case 'continue_planning':
       case 'open_plan':
         openRightPanelTab('context')
         break
@@ -912,6 +876,7 @@ export function WorkspaceRuntimeProvider({
     if (!actionId) return
 
     switch (actionId) {
+      case 'continue_planning':
       case 'open_plan':
         openRightPanelTab('context')
         break
@@ -1026,4 +991,28 @@ export function WorkspaceRuntimeProvider({
       </AgentRuntimeProvider>
     </WorkspaceRuntimeContextProvider>
   )
+}
+
+function mapExecutionSessionAction(action?: {
+  id: ExecutionSessionNextActionId
+  label: string
+}): WorkspaceFocusState['primaryAction'] {
+  if (!action) return undefined
+
+  switch (action.id) {
+    case 'continue_planning':
+      return { id: 'continue_planning', label: action.label }
+    case 'review_plan':
+      return { id: 'open_plan', label: action.label }
+    case 'build_from_plan':
+      return { id: 'build_from_plan', label: action.label }
+    case 'open_run':
+      return { id: 'open_run', label: action.label }
+    case 'review_changes':
+      return { id: 'review_changes', label: action.label }
+    case 'open_preview':
+      return { id: 'open_preview', label: action.label }
+    case 'start_session':
+      return { id: 'open_run', label: action.label }
+  }
 }

@@ -28,6 +28,8 @@ When active docs disagree, use the authority order in
 - [docs/plans/2026-04-26-chat-first-workspace-ia.md](./plans/2026-04-26-chat-first-workspace-ia.md) -
   current chat-first workspace information architecture, implementation
   contract, and verification notes for the woven redesign
+- [docs/plans/2026-04-29-execution-session-upgrade.md](./plans/2026-04-29-execution-session-upgrade.md) -
+  active plan for completing the session-first workspace upgrade
 - [docs/panda-executive-view-action-plan.md](./panda-executive-view-action-plan.md) -
   findings and action-plan input that seeded the current contract-hardening
   work; not a canonical contract itself

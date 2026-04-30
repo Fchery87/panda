@@ -12,6 +12,17 @@ Run: message creation, run record updates, event application, receipt summary,
 and plan/spec context attachment. Runtime execution internals, UI rendering, and
 command execution remain outside run orchestration.
 
+### Execution Session
+
+An `Execution Session` is the user-facing work thread for one goal inside a
+Project. It groups the chat narrative, planning intake, approved Plan, one or
+more Runs, changed work, proof, preview, recovery, and next action into a single
+continuable product object.
+
+Use `Run` only for one execution attempt within an Execution Session. Use `Chat`
+for the narrative/input surface attached to the Execution Session, not for the
+whole work thread.
+
 ### Plan
 
 A `Plan` is the reviewable strategy the user accepts before execution. An
@@ -49,3 +60,14 @@ projections.
 Use `reasoning content` for internal data and policy language. Avoid
 `chain of thought` in product copy because the feature exposes bounded thinking
 visibility, not a promise to reveal raw model chain-of-thought.
+
+### Chat-First Workbench
+
+A `Chat-First Workbench` is a product model where the active chat or session
+timeline is the primary work surface. Files, editor tabs, terminal output,
+diffs, preview, and proof surfaces support the active session rather than owning
+the workspace hierarchy.
+
+Use `IDE-first workspace` for the implemented shape where file navigation,
+editor tabs, center workbench panels, and terminal-style supporting surfaces are
+visually and structurally dominant over the active chat timeline.

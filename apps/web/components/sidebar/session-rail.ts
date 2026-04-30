@@ -32,6 +32,12 @@ export interface SessionRailSummary {
   tasks: SessionRailTask[]
 }
 
+export interface SessionRailGroup {
+  id: 'active' | 'needs_review' | 'recent' | 'idle'
+  label: string
+  sessions: SessionRailTask[]
+}
+
 function formatRelativeTime(timestamp: number, now: number): string {
   const diff = Math.max(0, now - timestamp)
   const minutes = Math.floor(diff / 60000)
@@ -123,4 +129,19 @@ export function buildSessionRailSummary(args: {
     ...summarizeState(tasks),
     tasks,
   }
+}
+
+export function buildSessionRailGroups(tasks: readonly SessionRailTask[]): SessionRailGroup[] {
+  const active = tasks.filter((task) => task.status === 'running')
+  const needsReview = tasks.filter(
+    (task) => task.status === 'waiting' || task.status === 'failed' || task.status === 'review'
+  )
+  const recent = tasks.filter((task) => task.status === 'complete')
+
+  return [
+    { id: 'active', label: 'Active session', sessions: active },
+    { id: 'needs_review', label: 'Needs review', sessions: needsReview },
+    { id: 'recent', label: 'Recent sessions', sessions: recent },
+    { id: 'idle', label: 'Idle sessions', sessions: [] },
+  ]
 }

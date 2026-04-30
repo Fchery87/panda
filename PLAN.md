@@ -1,132 +1,109 @@
-# Plan: Architecture Deepening Program
+# Plan: Execution Session Upgrade Completion
 
-## Milestone 1: Run Orchestration Module
+## Milestone 1: Session Inspector Consolidation
 
-What: Extract behavior-preserving Run lifecycle ordering from `useAgent` and
-related hook helpers into a Deep Module under `apps/web/lib/agent/`.
-
-Acceptance criteria:
-
-- `useAgent` delegates Run lifecycle ordering to the new Module.
-- Existing `ask`, `plan`, `code`, and `build` behavior remains unchanged.
-- Existing event persistence and receipt behavior remains unchanged.
-- Tests cover the orchestration Interface for one chat turn or approved plan
-  execution.
-
-Validation:
-`bun run typecheck && bun run lint && bun run format:check && bun test`
-
-Status: [x] complete
-
-## Milestone 2: Plan And Spec Lifecycle
-
-What: Align Plan and Spec usage so Plan owns execution intent and Spec provides
-verification context attached to a Run.
+What: Make proof, changed work, context, and preview read as one current-session
+inspector instead of unrelated right-panel tabs.
 
 Acceptance criteria:
 
-- Spec approval no longer acts as a parallel approval lifecycle unless
-  explicitly required by existing product behavior.
-- Run orchestration can attach Plan and Spec context through one lifecycle path.
-- Tests cover accepted Plan to Run execution with Spec verification context.
+- Inspector heading and tab copy refer to the current Execution Session.
+- Empty states are session-centered.
+- Proof, changed work, context, and preview summaries use the shared session
+  model where available.
+- Existing tab routing and detail panels continue to work.
 
 Validation:
-`bun run typecheck && bun run lint && bun run format:check && bun test`
+`bun test apps/web/components/projects/project-workspace-layout.test.tsx apps/web/lib/workspace/execution-session-view-model.test.ts && bun run typecheck`
 
 Status: [x] complete
 
-## Milestone 3: Run Projection Module
+## Milestone 2: Session Rail Behavior
 
-What: Create a Run Projection Module that transforms live and persisted Run
-facts into chat, proof, and public-share projections.
+What: Group rail/history presentation around session states while preserving
+chat-backed storage and bounded recent-chat queries.
 
 Acceptance criteria:
 
-- Chat projection returns bounded timeline summaries.
-- Proof projection can include inspection detail while staying bounded and
-  redacted.
-- Public share projection excludes owner-only execution detail, raw reasoning,
-  provider secrets, signed URLs, private files, and checkpoint payloads.
-- Live and persisted inputs produce stable ordering.
-- Unknown event kinds degrade to safe summaries.
+- Rail copy and grouping distinguish active, needs-review, recent, and idle
+  sessions.
+- Search and new-session affordances remain accessible.
+- Existing chat selection and creation flows continue to work.
+- Tests cover grouping and status labels.
 
 Validation:
-`bun run typecheck && bun run lint && bun run format:check && bun test`
+`bun test apps/web/components/projects/project-workspace-layout.test.tsx && bun run typecheck`
 
 Status: [x] complete
 
-## Milestone 4: Harness Tool Scheduling Planner
+## Milestone 3: Session Timeline Primary Canvas
 
-What: Extract tool execution scheduling decisions from harness `Runtime` into a
-planner-first Module.
+What: Make the center workspace default to the session timeline/next-action
+canvas while keeping editor/file/terminal/diff support surfaces reachable.
 
 Acceptance criteria:
 
-- The planner decides sequential versus parallel scheduling, retry eligibility,
-  dedupe, loop stop, and risk interruption outcomes.
-- The existing `Runtime` remains the executor.
-- Tests cover planner decisions without requiring provider streaming or React.
+- Project open state lands on session canvas language instead of IDE-empty state
+  language.
+- The center canvas shows objective, phase, next action, proof, changed work,
+  and preview/runtime summaries.
+- Editor, files, terminal, preview, and diff remain reachable.
+- Mobile remains session/chat-first with proof and preview navigation intact.
 
 Validation:
-`bun run typecheck && bun run lint && bun run format:check && bun test`
+`bun test apps/web/components/projects/project-workspace-layout.test.tsx && bun run typecheck`
 
 Status: [x] complete
 
-## Milestone 5: Runtime Command Execution Adapter
+## Milestone 4: Branch Outcomes
 
-What: Deepen Runtime Command Execution into an Adapter-backed Seam for
-WebContainer and server-backed execution paths.
+What: Present parallel agent work as branches inside the current Execution
+Session.
 
 Acceptance criteria:
 
-- Terminal owns user intent and rendering, not fallback mechanics.
-- The command execution Adapter owns runtime selection, status transitions,
-  output shaping, and failure classification.
-- WebContainer and server-backed execution are concrete paths behind the
-  Adapter.
-- Tests cover browser-ready, browser-failed, server fallback, status
-  transitions, and log shaping without rendering Terminal.
+- Branch summaries have labels, status, and outcome copy.
+- Branch detail is lazy or inspector-scoped.
+- Failed branches surface only when user action is needed.
+- View-model tests cover multiple branch states.
 
 Validation:
-`bun run typecheck && bun run lint && bun run format:check && bun test`
+`bun test apps/web/lib/workspace/execution-session-view-model.test.ts && bun run typecheck`
 
-Status: [x] complete
+Status: [ ] pending
 
-## Milestone 6: Workspace Runtime Availability Interface
+## Milestone 5: Persistence Decision And Docs
 
-What: Split the Workspace Runtime Interface by product concept, starting with
-runtime availability.
+What: Decide and document whether Execution Session remains a derived projection
+or becomes a persisted lifecycle record.
 
 Acceptance criteria:
 
-- Runtime availability exposes a small Interface for `idle`, `booting`, `ready`,
-  `unsupported`, and `error` behavior.
-- Callers needing runtime availability no longer depend on the full workspace
-  runtime object.
-- Existing workbench behavior remains unchanged.
-- Tests cover the runtime availability Interface independently.
+- Architecture Contract defines Execution Session and its owner.
+- Docs state whether it is currently derived or persisted.
+- Historical chat-first language is superseded where needed.
+- No schema change is added unless the decision requires it.
 
 Validation:
-`bun run typecheck && bun run lint && bun run format:check && bun test`
+`bunx prettier --check docs/ARCHITECTURE_CONTRACT.md docs/README.md docs/plans/2026-04-29-execution-session-upgrade.md && bun run typecheck`
 
-Status: [x] complete
+Status: [ ] pending
 
-## Milestone 7: Convex Query Shape Interfaces
+## Milestone 6: Full Gate And Cleanup
 
-What: Force active UI onto summary/detail-specific Convex Interfaces and mark
-broad legacy Interfaces as compatibility-only.
+What: Run final verification and clean up temporary runtime artifacts according
+to maintainer preference.
 
 Acceptance criteria:
 
-- Hot UI uses bounded, indexed, summary-shaped, paginated, or lazy detail
-  Interfaces.
-- Cold detail flows use explicit detail Interfaces.
-- Broad legacy Interfaces are renamed or documented as compatibility-only before
-  removal.
-- Tests guard active UI against regressing to broad hot-path queries.
-- Convex schema deploy is verified when Convex code changes.
+- TypeScript passes.
+- Lint passes.
+- Unit tests pass.
+- Formatting is either fully clean or remaining unrelated format blockers are
+  explicitly documented.
+- Browser smoke test is run if the app can start in the local environment.
+- Root task artifacts are ready for removal or explicit retention.
 
-Validation:
-`bun run typecheck && bun run lint && bun run format:check && bun test && npx convex dev --once`
+Validation: `bun run typecheck && bun run lint && bun test`
 
-Status: [x] complete
+Status: [ ] pending

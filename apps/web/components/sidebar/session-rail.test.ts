@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'bun:test'
-import { buildSessionRailSummary, type RecentRunSummary } from './session-rail'
+import {
+  buildSessionRailGroups,
+  buildSessionRailSummary,
+  type RecentRunSummary,
+} from './session-rail'
 
 const now = 1_000_000
 
@@ -70,6 +74,29 @@ describe('buildSessionRailSummary', () => {
     expect(summary.state).toBe('running')
     expect(summary.tasks).toEqual([
       expect.objectContaining({ id: 'active-run', chatId: 'chat-live', status: 'running' }),
+    ])
+  })
+
+  test('groups sessions by active, needs-review, recent, and idle states', () => {
+    const summary = buildSessionRailSummary({
+      runs: [
+        run({ _id: 'complete-run', chatId: 'chat-complete' }),
+        run({ _id: 'review-run', chatId: 'chat-review', changedFiles: 3 }),
+        run({ _id: 'blocked-run', chatId: 'chat-blocked', resultStatus: 'approval_timeout' }),
+      ],
+      activeChatId: 'chat-live',
+      activeChatTitle: 'Live session',
+      isStreaming: true,
+      now,
+    })
+
+    const groups = buildSessionRailGroups(summary.tasks)
+
+    expect(groups.map((group) => [group.id, group.label, group.sessions.length])).toEqual([
+      ['active', 'Active session', 1],
+      ['needs_review', 'Needs review', 2],
+      ['recent', 'Recent sessions', 1],
+      ['idle', 'Idle sessions', 0],
     ])
   })
 })

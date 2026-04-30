@@ -4,6 +4,7 @@ export type WorkspaceFocusTone = 'neutral' | 'progress' | 'attention' | 'success
 
 export type WorkspaceFocusActionId =
   | 'open_plan'
+  | 'continue_planning'
   | 'build_from_plan'
   | 'open_run'
   | 'review_changes'
@@ -15,7 +16,13 @@ export interface WorkspaceFocusAction {
 }
 
 export interface WorkspaceFocusState {
-  kind: 'planning-intake' | 'plan-review' | 'plan-approved' | 'executing' | 'review-ready'
+  kind:
+    | 'planning-intake'
+    | 'plan-review'
+    | 'plan-approved'
+    | 'executing'
+    | 'review-ready'
+    | 'execution-session'
   kicker: string
   objective: string
   statusLabel: string

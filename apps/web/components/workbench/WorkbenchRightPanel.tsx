@@ -13,6 +13,7 @@ import {
 import { ArtifactPanel } from '@/components/artifacts/ArtifactPanel'
 import { useWorkspaceRuntime } from '@/contexts/WorkspaceRuntimeContext'
 import { useWorkspaceUiStore } from '@/stores/workspaceUiStore'
+import { buildExecutionSessionInspectorViewModel } from '@/lib/workspace/execution-session-inspector-view-model'
 
 export interface WorkbenchRightPanelProps {
   projectId: Id<'projects'>
@@ -50,6 +51,7 @@ export function WorkbenchRightPanel({ projectId }: WorkbenchRightPanelProps) {
     planningDebug,
     openRightPanelTab,
     writeFileToRuntime,
+    executionSession,
   } = useWorkspaceRuntime()
 
   const activeTab = useWorkspaceUiStore((s) => s.rightPanelTab)
@@ -69,27 +71,7 @@ export function WorkbenchRightPanel({ projectId }: WorkbenchRightPanelProps) {
     { id: 'preview', label: 'Preview' },
   ]
 
-  const inspectorTitle =
-    activeTab === 'run'
-      ? 'Run Proof'
-      : activeTab === 'changes'
-        ? 'Changed Work'
-        : activeTab === 'context'
-          ? 'Context and Memory'
-          : activeTab === 'preview'
-            ? 'Preview'
-            : 'Evidence Surface'
-
-  const inspectorSummary =
-    activeTab === 'run'
-      ? 'Track execution progress, receipts, recovery, and validation evidence.'
-      : activeTab === 'changes'
-        ? 'Inspect artifacts and changed work before continuing.'
-        : activeTab === 'context'
-          ? 'Review the plan, project memory, and repeatable eval checks in one context surface.'
-          : activeTab === 'preview'
-            ? 'Preview runtime output when a browser or app surface is available.'
-            : 'Review run proof, changed work, context, and preview state.'
+  const inspectorView = buildExecutionSessionInspectorViewModel(activeTab, executionSession)
 
   const reviewSummary = activeChatId
     ? 'Generated artifacts and changed work from the current chat session appear here for inspection.'
@@ -139,7 +121,7 @@ export function WorkbenchRightPanel({ projectId }: WorkbenchRightPanelProps) {
           <div className="flex h-full min-h-0 flex-col overflow-hidden">
             <div className="surface-0 border-b border-border px-3 py-3">
               <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                Changed work and artifacts
+                Session changed work
               </div>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{reviewSummary}</p>
             </div>
@@ -180,7 +162,7 @@ export function WorkbenchRightPanel({ projectId }: WorkbenchRightPanelProps) {
           <div className="flex h-full flex-col overflow-hidden">
             <div className="surface-0 border-b border-border px-3 py-3">
               <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                Runtime preview
+                Session preview
               </div>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 Preview will show browser or app output for the active run when a runtime surface is
@@ -193,7 +175,7 @@ export function WorkbenchRightPanel({ projectId }: WorkbenchRightPanelProps) {
                   No preview attached
                 </div>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  Start or open a run with browser output to inspect it here.
+                  {inspectorView.emptyDetail}
                 </p>
               </div>
             </div>
@@ -213,8 +195,9 @@ export function WorkbenchRightPanel({ projectId }: WorkbenchRightPanelProps) {
       onInspectorTabChange={(tab) => setActiveTab(tab as RightPanelTabId)}
       isInspectorOpen={isDrawerOpen}
       onInspectorToggle={() => setActiveTab('chat')}
-      inspectorTitle={inspectorTitle}
-      inspectorSummary={inspectorSummary}
+      inspectorTitle={inspectorView.title}
+      inspectorSummary={inspectorView.summary}
+      inspectorEyebrow={inspectorView.eyebrow}
     />
   )
 }

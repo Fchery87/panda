@@ -47,7 +47,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'search', icon: IconSearch, label: 'Search', shortcut: 'Ctrl+Shift+F' },
   { id: 'git', icon: IconGit, label: 'Source Control', shortcut: 'Ctrl+Shift+G' },
   { id: 'deploy', icon: IconDeploy, label: 'Deploy & Preview', shortcut: '' },
-  { id: 'tasks', icon: IconHistory, label: 'Task History', shortcut: 'Ctrl+Shift+H' },
+  { id: 'tasks', icon: IconHistory, label: 'Sessions', shortcut: 'Ctrl+Shift+H' },
 ]
 
 export function SidebarRail({

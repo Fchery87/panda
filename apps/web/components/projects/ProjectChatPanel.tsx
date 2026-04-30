@@ -70,6 +70,7 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
     onToggleInspector,
     onOpenHistory,
     openRightPanelTab,
+    executionSession,
   } = useWorkspaceRuntime()
 
   // Store reads — these replace the equivalent props
@@ -109,6 +110,8 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
   const latestRecoverableCheckpoint = findLatestRecoverableCheckpoint(runtimeCheckpoints)
 
   const activeRole = getChatModeSurfacePresentation(chatMode)
+  const sessionStatusLabel = executionSession?.statusLabel ?? activeRole.label
+  const sessionSummary = executionSession?.summary
 
   return (
     <div
@@ -121,8 +124,13 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="font-mono text-[11px] font-medium uppercase tracking-[0.24em] text-foreground">
-              Panda · {activeRole.label}
+              Execution Session · {sessionStatusLabel}
             </div>
+            {sessionSummary ? (
+              <p className="mt-1 max-w-md truncate font-mono text-[10px] text-muted-foreground">
+                {sessionSummary}
+              </p>
+            ) : null}
           </div>
 
           <div className="flex items-center gap-1.5">

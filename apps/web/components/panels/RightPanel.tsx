@@ -20,6 +20,7 @@ interface RightPanelProps {
   onInspectorToggle?: () => void
   inspectorTitle?: string
   inspectorSummary?: string
+  inspectorEyebrow?: string
 }
 
 const DRAWER_VARIANTS = {
@@ -39,6 +40,7 @@ export function RightPanel({
   onInspectorToggle,
   inspectorTitle = 'Evidence Surface',
   inspectorSummary = 'Run proof, receipts, snapshots, subagents, specs, and validation.',
+  inspectorEyebrow = 'Evidence Surface',
 }: RightPanelProps) {
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col bg-background">
@@ -77,7 +79,7 @@ export function RightPanel({
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                    Evidence Surface
+                    {inspectorEyebrow}
                   </div>
                   <h2 className="text-sm font-medium text-foreground">{inspectorTitle}</h2>
                 </div>

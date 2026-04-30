@@ -62,7 +62,7 @@ export function WorkspaceHome({
   const focusTone = focusState ? FOCUS_TONE_STYLES[focusState.tone] : null
   const primarySummary = focusState
     ? focusState.detail
-    : 'Use the center of the workspace to start a task, inspect changes, and keep the next action obvious.'
+    : 'Start an execution session, inspect changed work, and keep the next action obvious.'
   const quickActions: Array<{
     label: string
     icon: typeof IconFile
@@ -79,7 +79,7 @@ export function WorkspaceHome({
 
   if (onStartAgent) {
     quickActions.push({
-      label: 'Start Chat',
+      label: 'New Session',
       icon: IconNewChat,
       onClick: onStartAgent,
     })
@@ -107,11 +107,13 @@ export function WorkspaceHome({
               <div className="flex items-center gap-3">
                 <span className="h-px w-8 bg-primary" />
                 <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-                  Workspace
+                  Execution Session
                 </span>
               </div>
               <h1 className="max-w-xl text-2xl font-semibold tracking-tight text-foreground">
-                {focusState ? focusState.objective : 'Keep work, review, and execution in view.'}
+                {focusState
+                  ? focusState.objective
+                  : 'Keep intent, proof, and changed work in view.'}
               </h1>
               <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
                 {primarySummary}
@@ -142,7 +144,7 @@ export function WorkspaceHome({
             >
               <div className="flex items-center justify-between gap-3">
                 <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                  Current State
+                  Session State
                 </span>
                 <span
                   className={cn(
@@ -157,7 +159,7 @@ export function WorkspaceHome({
               </div>
               <div className="mt-4 space-y-3 font-mono text-[11px] text-muted-foreground">
                 <div className="flex items-start justify-between gap-4">
-                  <span>Pending review</span>
+                  <span>Session changes</span>
                   <span className="text-foreground">{pendingDiffs}</span>
                 </div>
                 <div className="flex items-start justify-between gap-4">
@@ -234,7 +236,7 @@ export function WorkspaceHome({
                   onClick={onStartAgent}
                 >
                   <IconQuickAction className="h-4 w-4 text-primary" weight="fill" />
-                  Start new task
+                  Start new session
                 </Button>
               )}
               {suggestedActions.map((action, idx) => (

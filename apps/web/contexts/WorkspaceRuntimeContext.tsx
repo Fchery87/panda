@@ -18,6 +18,7 @@ import type { GeneratedPlanArtifact, PlanningAnswer, PlanningQuestion } from '@/
 import type { PlanningSessionDebugSummary } from '@/components/plan/PlanningSessionDebugCard'
 import type { SidebarSection } from '@/components/sidebar/SidebarRail'
 import type { RightPanelTabId } from '@/components/panels/RightPanel'
+import type { ExecutionSessionViewModel } from '@/lib/workspace/execution-session-view-model'
 
 export type PlanningSessionView = {
   sessionId: string
@@ -52,6 +53,7 @@ export interface WorkspaceRuntimeValue {
   activeChatPlanStatus: PlanStatus | undefined
   activeChatPlanUpdatedAt: number | undefined
   activeChatPlanLastGeneratedAt: number | undefined
+  executionSession: ExecutionSessionViewModel | null
 
   // Chat messages + run state (from useWorkbenchChatState)
   chatMessages: Message[]

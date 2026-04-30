@@ -70,7 +70,7 @@ interface WorkbenchProps {
 }
 
 const CENTER_TABS: CenterTabBarTab[] = [
-  { id: 'editor', label: 'Editor' },
+  { id: 'editor', label: 'Session' },
   { id: 'diff', label: 'Diff' },
 ]
 

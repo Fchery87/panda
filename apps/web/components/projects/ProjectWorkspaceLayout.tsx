@@ -374,7 +374,7 @@ export function ProjectWorkspaceLayoutView({
                   onClick={() => onMobilePrimaryPanelChange('workspace')}
                   role="tab"
                   aria-selected={mobilePrimaryPanel === 'workspace'}
-                  aria-label="Show workspace files and editor"
+                  aria-label="Show session workspace"
                   className={cn(
                     'min-h-12 border-r border-border px-1 transition-colors focus-visible:-outline-offset-2 active:scale-[0.96]',
                     mobilePrimaryPanel === 'workspace'
@@ -382,7 +382,7 @@ export function ProjectWorkspaceLayoutView({
                       : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
                   )}
                 >
-                  Work
+                  Session
                 </button>
                 <button
                   type="button"
