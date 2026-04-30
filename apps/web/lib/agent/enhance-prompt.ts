@@ -11,7 +11,7 @@
  * Enhancement prompt template
  * Uses PROMPT_PLACEHOLDER as the insertion point for the user's prompt
  */
-export const ENHANCE_PROMPT_TEMPLATE = `Rewrite the following user prompt to be clearer, more specific, and more actionable for an AI coding assistant. Preserve the user's intent exactly. Add relevant technical context where helpful. Do not add instructions the user didn't ask for. Return ONLY the enhanced prompt, no explanations.
+export const ENHANCE_PROMPT_TEMPLATE = `Rewrite the following user prompt to be clearer, more specific, and more actionable for an AI coding assistant. Preserve the user's intent exactly. Clarify wording that is already present. Do not add inferred implementation scope, tools, files, systems, or technical tasks the user did not provide. If missing context matters, include that missing context as an explicit question or prerequisite. Return ONLY the enhanced prompt, no explanations.
 
 User prompt:
 PROMPT_PLACEHOLDER`
@@ -23,8 +23,9 @@ export const ENHANCE_SYSTEM_PROMPT = `You are a prompt improvement assistant. Yo
 
 Guidelines:
 - Preserve the user's intent exactly
-- Add relevant technical context where helpful
-- Do not add instructions the user didn't ask for
+- Clarify wording that is already present
+- Do not add inferred implementation scope, tools, files, systems, or technical tasks the user did not provide
+- If important context is missing, expose it as an explicit question or prerequisite
 - Return ONLY the enhanced prompt, no explanations, no markdown code blocks
 - Keep the enhanced prompt concise but comprehensive`
 

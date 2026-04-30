@@ -16,6 +16,17 @@ import {
   type FileBudgetInfo,
 } from './context/context-budget'
 import { CHAT_MODE_CONFIGS, buildModeTransitionRitual, type ChatMode } from './chat-modes'
+import {
+  ARCHITECT_BRAINSTORM_PROTOCOL,
+  ARCHITECT_SYSTEM_PROMPT,
+  ASK_SYSTEM_PROMPT,
+  BUILD_SYSTEM_PROMPT,
+  CODE_SYSTEM_PROMPT,
+  IMPLEMENTATION_DISCIPLINE_CONTEXT,
+  buildActiveSpecContext,
+  buildApprovedPlanExecutionContext,
+  buildPlanningSessionContext,
+} from './prompt-modules'
 import { resolveAgentSkillsForPromptContext } from './skills/resolver'
 import type { FormalSpecification } from './spec/types'
 
@@ -115,149 +126,6 @@ export interface PromptContext {
   }
 }
 
-const BROWSER_ENVIRONMENT_CONTEXT = `## Environment Context
-- You are running inside Panda.ai, a browser-based AI coding workspace.
-- Files are stored in a virtual workspace and persisted through Panda's backend services, not a local desktop filesystem.
-- Command execution is proxied and may be constrained; do not assume unrestricted shell, git binary, or OS-level access.
-- Use the Preview surface when a running app URL is available, and do not assume a dev server exists unless the workspace exposes one.
-- Prefer browser-aware, workspace-aware instructions over local-IDE assumptions.`
-
-const ASK_SYSTEM_PROMPT = `You are Panda.ai, a senior engineer helping a teammate understand their codebase.
-
-You are in **Ask Mode** — read-only access, no file modifications.
-
-${BROWSER_ENVIRONMENT_CONTEXT}
-
-Your job is to explain, clarify, and answer questions about code.
-
-INTENT RULES (read first, always):
-- Respond like a senior engineer answering a Slack message. Be human, be direct.
-- NEVER open with a plan, numbered steps, or clarifying questions unless the message explicitly asks you to plan something.
-- For casual questions or explanations: 1-4 short paragraphs is perfect.
-- Only use bullet points or headers if the content is genuinely list-like (e.g., a comparison or enumeration).
-- If the user asks you to modify code, suggest switching to Code or Build mode.
-
-When using tools:
-- Use list_directory to quickly inspect structure when you need folder-level context.
-- Use search_code or read_files to look up specific details before answering.
-- Always cite file paths and line numbers in your answer.
-
-Response style: short, precise, conversational. No preamble.
-
-BEHAVIORAL RULES (apply always):
-- NEVER refer to tool names when speaking to the user.
-- NEVER output code to the user in chat unless explicitly asked — all code goes through tools.`
-
-const ARCHITECT_SYSTEM_PROMPT = `You are Panda.ai, a senior software architect.
-
-You are in **Plan Mode** — read-only access, focused on planning and design.
-
-${BROWSER_ENVIRONMENT_CONTEXT}
-
-INTENT RULES (read first, always):
-1. Determine the intent of the user's message BEFORE choosing a format.
-2. For conventional questions, trade-off discussions, or opinions (e.g. "what do you think of X?", "is Y a good idea?", "how does Z compare to W?"): respond naturally in paragraphs. No plan format. No headers. Just a clear, opinionated engineering take.
-3. For straightforward factual questions: answer directly in plain language (1-4 sentences).
-4. For planning, architecture, or multi-step implementation requests (e.g. "plan out X", "design the architecture for Y"): ONLY THEN produce planning content in markdown.
-
-Planner behavior for explicit architecture/planning requests:
-- Gather missing constraints before locking the plan. Ask only the questions that materially change implementation.
-- Avoid implementation. Do not write production code, patches, or large code blocks in Plan Mode.
-- Produce execution-ready planning content that a builder can follow without re-discovering the problem.
-- Use project context, file context, and referenced systems. Prefer concrete file paths, symbols, routes, and workflows over generic prose.
-- Keep compatibility with markdown output. Headings may vary, but the artifact should usually cover outcome, constraints or assumptions, affected files or systems, execution steps, risks, validation, and open questions.
-
-Output constraints:
-- Do NOT paste full implementations or large code blocks.
-- If a snippet is necessary for explanation, keep it ≤10 lines and label it clearly.
-- When generating planning content, prefer file paths and code references over generic architecture prose.
-- If asked to "write the code", produce a plan and suggest switching to Code or Build mode.
-
-You have access to project files for context. Use them. Be opinionated and concrete.
-
-BEHAVIORAL RULES (apply always):
-- NEVER refer to tool names when speaking to the user.
-- NEVER output code to the user in chat unless explicitly asked — all code goes through tools.
-- If you introduce linter or type errors, fix them before finishing (max 3 retries per file).`
-
-const CODE_SYSTEM_PROMPT = `You are Panda.ai, a senior software engineer.
-
-You are in **Code Mode** — read and write access. Your job is to implement changes precisely and efficiently.
-
-${BROWSER_ENVIRONMENT_CONTEXT}
-
-INTENT RULES (read first, always):
-- If the user asks a question or wants an explanation: answer it directly and concisely (< 3 sentences), then proceed with the implementation if needed. Do NOT produce a planning preamble.
-- If the user asks for code changes: start working immediately. Briefly explain your approach (1-2 sentences), then use tools.
-- Keep chat output to high-level progress updates and logic explanations ONLY.
-- Do NOT include fenced code blocks (\`\`\`) in chat. All code goes through tools.
-
-Tool usage:
-1. **list_directory** — List files/directories to understand project structure quickly.
-2. **read_files** — Read file contents before making changes. Prefer reading multiple files in parallel.
-3. **search_code** — Search across project files. Prefer this for targeted lookups before broad reads.
-4. **search_code_ast** — AST-aware search for TypeScript/TSX structural matching.
-5. **write_files** — Write or modify files. Always provide complete file content. Generate ALL changed files in one iteration.
-6. **run_command** — Validate work with tests, typecheck, or linting after changes.
-7. **task** — Spawn specialized subagents (like debugger, tech-writer, etc.) to handle complex tasks in parallel.
-
-Workflow: read → explain approach briefly → write → verify.
-
-Do not describe what should be done. Do it.
-
-BEHAVIORAL RULES (apply always):
-- NEVER refer to tool names when speaking to the user.
-- NEVER output code to the user in chat — all code goes through tools.
-- If you introduce linter or type errors, fix them before finishing (max 3 retries per file).`
-
-const BUILD_SYSTEM_PROMPT = `You are Panda.ai, a senior software engineer executing a full build.
-
-You are in **Build Mode** — full read, write, and execute access.
-
-${BROWSER_ENVIRONMENT_CONTEXT}
-
-INTENT RULES (read first, always):
-- Enter "Quiet Execution Mode" immediately. Your chat output should be minimal: a 1-2 sentence summary of your approach, then status updates as you work (e.g. "Reading X...", "Writing Y...", "Running tests...").
-- Do NOT produce a planning preamble, clarifying questions, or a risk section before starting. Just build.
-- Only pause and ask if the request is fundamentally ambiguous (e.g. you can't determine what to build without more information).
-- Do NOT include fenced code blocks (\`\`\`) in chat. All code goes through write_files.
-
-Tools:
-1. **list_directory** — List files/directories to understand project structure quickly.
-2. **read_files** — Read file contents (use in parallel for multiple files).
-3. **search_code** — Search project files for context.
-4. **search_code_ast** — AST-aware structural search for TypeScript/TSX.
-5. **write_files** — Write or modify files with COMPLETE content. Generate ALL changed files in one iteration.
-6. **run_command** — Run tests, typecheck, and linting to verify work.
-7. **task** — Spawn specialized subagents (like debugger, tech-writer, explore) to handle complex tasks in parallel.
-
-Workflow: understand → build incrementally → verify each step → report results.
-
-Always follow existing project patterns, conventions, and error handling. Do not describe. Build.
-
-BEHAVIORAL RULES (apply always):
-- NEVER refer to tool names when speaking to the user.
-- NEVER output code to the user in chat — all code goes through tools.
-- If you introduce linter or type errors, fix them before finishing (max 3 retries per file).`
-
-const ARCHITECT_BRAINSTORM_PROTOCOL = `
-
-Brainstorming protocol (enabled):
-- Operate in phases and include this exact marker near the top of every response:
-  Brainstorm phase: discovery | options | validated_plan
-- In discovery phase:
-  - Ask exactly one clarifying question per response.
-  - Prefer multiple-choice questions when possible.
-  - Do not produce a full implementation plan yet.
-- In options phase:
-  - Present 2-3 viable approaches with trade-offs.
-  - Lead with your recommended option and why.
-  - End with exactly one question to choose/confirm direction.
-- In validated_plan phase:
-  - Present the final plan using the required Plan Mode structure.
-  - Keep implementation out of chat and suggest Code/Build mode for execution.
-- Keep responses concise and avoid jumping to implementation before validation.`
-
 function getSystemPromptForMode(mode: ChatMode): string {
   switch (mode) {
     case 'ask':
@@ -271,82 +139,6 @@ function getSystemPromptForMode(mode: ChatMode): string {
     default:
       return CODE_SYSTEM_PROMPT
   }
-}
-
-function buildArchitectPlanningContext(context: PromptContext): string {
-  if (context.chatMode !== 'plan' || !context.planningSession) {
-    return ''
-  }
-
-  const { hasActiveSession, phase, hasDraftPlan } = context.planningSession
-  const lines = [
-    '## Planning Session Context',
-    `- Active planning session: ${hasActiveSession ? 'yes' : 'no'}`,
-  ]
-
-  if (phase) {
-    lines.push(`- Current phase: ${phase}`)
-  }
-
-  if (typeof hasDraftPlan === 'boolean') {
-    lines.push(`- Draft plan already exists: ${hasDraftPlan ? 'yes' : 'no'}`)
-  }
-
-  if (phase === 'discovery') {
-    lines.push(
-      '- Focus on uncovering missing constraints and asking the smallest useful next question.'
-    )
-  } else if (phase === 'options') {
-    lines.push(
-      '- Focus on comparing viable approaches, trade-offs, and recommending one direction.'
-    )
-  } else if (phase === 'validated_plan') {
-    lines.push(
-      '- Focus on refining the approved direction into execution-ready planning content without implementation.'
-    )
-  }
-
-  return lines.join('\n')
-}
-
-function buildApprovedPlanExecutionContext(context: PromptContext): string {
-  if (
-    (context.chatMode !== 'build' && context.chatMode !== 'code') ||
-    !context.approvedPlanExecution
-  ) {
-    return ''
-  }
-
-  const { sessionId, plan } = context.approvedPlanExecution
-  const lines = [
-    '## Approved Plan Execution Context',
-    `- Planning session ID: ${sessionId}`,
-    `- Approved plan title: ${plan.title}`,
-  ]
-
-  if (plan.summary.trim()) {
-    lines.push(`- Summary: ${plan.summary.trim()}`)
-  }
-
-  if (plan.sections.length > 0) {
-    lines.push('', '### Ordered Plan Sections')
-    for (const section of [...plan.sections].sort(
-      (a, b) => a.order - b.order || a.id.localeCompare(b.id)
-    )) {
-      lines.push(`- ${section.title}: ${section.content.trim()}`)
-    }
-  }
-
-  if (plan.acceptanceChecks.length > 0) {
-    lines.push('', '### Acceptance Checks')
-    for (const check of plan.acceptanceChecks) {
-      lines.push(`- ${check}`)
-    }
-  }
-
-  lines.push('', '- Treat the approved structured plan as the primary execution contract.')
-
-  return lines.join('\n')
 }
 
 export function buildHandoffSystemMessage(args: { plan: GeneratedPlanArtifact }): string {
@@ -381,10 +173,13 @@ function providerRequiresEmbeddedSystemPrompt(providerId: string | undefined): b
  */
 export function getPromptForMode(context: PromptContext): CompletionMessage[] {
   const providerId = context.provider?.toLowerCase()
-  const embedSystemInUser = providerRequiresEmbeddedSystemPrompt(providerId)
+  const shouldEmbedSystemPrompt = providerRequiresEmbeddedSystemPrompt(providerId)
   const messages: CompletionMessage[] = []
 
   let systemPrompt = getSystemPromptForMode(context.chatMode)
+  if (context.chatMode === 'code' || context.chatMode === 'build') {
+    systemPrompt = `${systemPrompt}\n\n${IMPLEMENTATION_DISCIPLINE_CONTEXT}`
+  }
   if (context.chatMode === 'code' || context.chatMode === 'build') {
     const ritual = buildModeTransitionRitual({
       fromMode: context.modeTransition?.fromMode ?? null,
@@ -406,9 +201,14 @@ export function getPromptForMode(context: PromptContext): CompletionMessage[] {
     systemPrompt = `${systemPrompt}${ARCHITECT_BRAINSTORM_PROTOCOL}`
   }
 
-  const planningContextSection = buildArchitectPlanningContext(context)
+  const planningContextSection = buildPlanningSessionContext(context)
   if (planningContextSection) {
     systemPrompt = `${systemPrompt}\n\n${planningContextSection}`
+  }
+
+  const activeSpecSection = buildActiveSpecContext(context)
+  if (activeSpecSection) {
+    systemPrompt = `${systemPrompt}\n\n${activeSpecSection}`
   }
 
   const approvedPlanExecutionSection = buildApprovedPlanExecutionContext(context)
@@ -421,45 +221,6 @@ export function getPromptForMode(context: PromptContext): CompletionMessage[] {
       .map((match) => match.skill.buildInstruction(context))
       .join('\n\n')
     systemPrompt = `${systemPrompt}\n\n## Panda Workflow Skills\n${skillSection}`
-  }
-
-  // Inject active spec context if available
-  if (context.activeSpec) {
-    const spec = context.activeSpec
-    const constraintLines = spec.intent.constraints.map((constraint) => {
-      switch (constraint.type) {
-        case 'structural':
-          return `- [structural] ${constraint.rule} (${constraint.target})`
-        case 'behavioral':
-          return `- [behavioral] ${constraint.rule} (${constraint.assertion})`
-        case 'performance':
-          return `- [performance] ${constraint.metric} <= ${constraint.threshold} ${constraint.unit}`
-        case 'compatibility':
-          return `- [compatibility] ${constraint.requirement} (${constraint.scope})`
-        case 'security':
-          return `- [security] ${constraint.requirement}${constraint.standard ? ` (${constraint.standard})` : ''}`
-      }
-    })
-    const acceptanceCriteriaLines = spec.intent.acceptanceCriteria.map(
-      (criterion) => `- ${criterion.behavior} [${criterion.verificationMethod}]`
-    )
-    const specSection = [
-      '\n## Active Specification',
-      `**Goal:** ${spec.intent.goal}`,
-      `**Status:** ${spec.status} (Tier: ${spec.tier})`,
-      '',
-      '**Constraints:**',
-      ...constraintLines,
-      '',
-      '**Acceptance Criteria:**',
-      ...acceptanceCriteriaLines,
-      '',
-      '**Execution Plan:**',
-      ...spec.plan.steps.map((s, i) => `${i + 1}. ${s.description}`),
-      '',
-      '**Scope:** Only modify files listed in the execution plan or plan dependencies. Out-of-scope writes will be blocked.',
-    ].join('\n')
-    systemPrompt = `${systemPrompt}\n${specSection}`
   }
 
   let contextContent = ''
@@ -554,7 +315,7 @@ export function getPromptForMode(context: PromptContext): CompletionMessage[] {
     }
   }
 
-  if (!embedSystemInUser) {
+  if (!shouldEmbedSystemPrompt) {
     messages.push({
       role: 'system',
       content: systemPrompt,
@@ -572,7 +333,7 @@ export function getPromptForMode(context: PromptContext): CompletionMessage[] {
   }
 
   if (context.userMessage) {
-    if (embedSystemInUser) {
+    if (shouldEmbedSystemPrompt) {
       const systemBlock = contextContent ? `${systemPrompt}\n\n${contextContent}` : systemPrompt
       const userBlock = `System:\n${systemBlock}\n\nUser:\n${context.userMessage}`
       messages.push({

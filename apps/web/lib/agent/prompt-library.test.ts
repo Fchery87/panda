@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { getPromptForMode, normalizeChatMode } from './prompt-library'
+import type { FormalSpecification } from './spec/types'
 
 // Helper: extract all system message text from a getPromptForMode result
 function getSystemText(
@@ -51,6 +52,113 @@ describe('prompt-library — natural flow (INTENT RULES)', () => {
     expect(text).toContain('INTENT RULES')
     expect(text).toContain('Quiet Execution Mode')
     expect(text).toContain('Do NOT produce a planning preamble')
+  })
+})
+
+describe('prompt-library — prompt system contract invariants', () => {
+  it('states Ask Mode repository answers must inspect and cite project context', () => {
+    const text = getSystemText('ask')
+
+    expect(text).toContain('Use search_code or read_files')
+    expect(text).toContain('Always cite file paths and line numbers')
+    expect(text).toContain('read-only access, no file modifications')
+  })
+
+  it('keeps Plan Mode conversational unless planning is explicit', () => {
+    const text = getSystemText('plan')
+
+    expect(text).toContain('respond naturally in paragraphs')
+    expect(text).toContain('ONLY THEN produce planning content in markdown')
+    expect(text).toContain('Ask only the questions that materially change implementation')
+  })
+
+  it('keeps implementation modes quiet and prevents chat code output', () => {
+    const codeText = getSystemText('code')
+    const buildText = getSystemText('build')
+
+    expect(codeText).toContain('Do NOT produce a planning preamble')
+    expect(codeText).toContain('NEVER output code to the user in chat')
+    expect(buildText).toContain('Quiet Execution Mode')
+    expect(buildText).toContain('Do NOT produce a planning preamble')
+    expect(buildText).toContain('NEVER output code to the user in chat')
+  })
+
+  it('includes shared implementation discipline for write-capable modes', () => {
+    const codeText = getSystemText('code')
+    const buildText = getSystemText('build')
+
+    for (const text of [codeText, buildText]) {
+      expect(text).toContain('Do not invent repository state')
+      expect(text).toContain('After meaningful code changes')
+      expect(text).toContain('strongest available validation gate')
+    }
+  })
+
+  it('keeps active Spec before approved Plan when both are present', () => {
+    const activeSpec: FormalSpecification = {
+      id: 'spec-1',
+      version: 1,
+      tier: 'explicit',
+      status: 'approved',
+      intent: {
+        goal: 'Preserve the formal prompt contract',
+        rawMessage: 'Strengthen prompts',
+        constraints: [],
+        acceptanceCriteria: [],
+      },
+      plan: { steps: [], dependencies: [], risks: [], estimatedTools: [] },
+      validation: { preConditions: [], postConditions: [], invariants: [] },
+      provenance: { model: 'test', promptHash: 'hash', timestamp: 1, chatId: 'c' },
+      createdAt: 1,
+      updatedAt: 1,
+    }
+
+    const systemText = getSystemText('build', {
+      activeSpec,
+      approvedPlanExecution: {
+        sessionId: 'plan-session-1',
+        plan: {
+          title: 'Prompt refactor plan',
+          summary: 'Refactor prompt assembly',
+          acceptanceChecks: ['Prompt tests pass'],
+          sections: [{ id: 's1', title: 'Extract modules', content: 'Split prompts', order: 1 }],
+        },
+      },
+    })
+
+    expect(systemText).toContain('## Active Specification')
+    expect(systemText).toContain('## Approved Plan Execution Context')
+    expect(systemText.indexOf('## Active Specification')).toBeLessThan(
+      systemText.indexOf('## Approved Plan Execution Context')
+    )
+    expect(systemText).toContain('Spec is the stronger execution contract')
+  })
+
+  it('preserves effective section order when provider embeds system prompt in user message', () => {
+    const messages = getPromptForMode({
+      projectId: 'p',
+      chatId: 'c',
+      userId: 'u',
+      chatMode: 'build',
+      provider: 'fireworks',
+      userMessage: 'Implement the prompt contract.',
+      projectOverview: 'Prompt System project overview',
+      memoryBank: 'Prompt System memory',
+    })
+
+    expect(messages).toHaveLength(1)
+    expect(messages[0].role).toBe('user')
+
+    const text = messages[0].content
+    expect(text).toContain('System:')
+    expect(text).toContain('User:\nImplement the prompt contract.')
+    expect(text.indexOf('## Implementation Discipline')).toBeLessThan(
+      text.indexOf('## Project Overview')
+    )
+    expect(text.indexOf('## Project Overview')).toBeLessThan(text.indexOf('## Project Memory Bank'))
+    expect(text.indexOf('## Project Memory Bank')).toBeLessThan(
+      text.indexOf('User:\nImplement the prompt contract.')
+    )
   })
 })
 

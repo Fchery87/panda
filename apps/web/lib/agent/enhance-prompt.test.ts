@@ -78,6 +78,11 @@ describe('ENHANCE_PROMPT_TEMPLATE', () => {
     expect(ENHANCE_PROMPT_TEMPLATE).toContain('Preserve the user')
     expect(ENHANCE_PROMPT_TEMPLATE).toContain('PROMPT_PLACEHOLDER')
   })
+
+  test('forbids inferred implementation scope', () => {
+    expect(ENHANCE_PROMPT_TEMPLATE).toContain('Do not add inferred implementation scope')
+    expect(ENHANCE_PROMPT_TEMPLATE).toContain('missing context')
+  })
 })
 
 describe('ENHANCE_SYSTEM_PROMPT', () => {
@@ -85,5 +90,10 @@ describe('ENHANCE_SYSTEM_PROMPT', () => {
     expect(ENHANCE_SYSTEM_PROMPT).toContain('prompt improvement assistant')
     expect(ENHANCE_SYSTEM_PROMPT).toContain('Preserve the user')
     expect(ENHANCE_SYSTEM_PROMPT).toContain('Return ONLY')
+  })
+
+  test('clarifies without expanding user intent', () => {
+    expect(ENHANCE_SYSTEM_PROMPT).toContain('Do not add inferred implementation scope')
+    expect(ENHANCE_SYSTEM_PROMPT).toContain('If important context is missing')
   })
 })

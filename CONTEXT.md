@@ -28,6 +28,104 @@ whole work thread.
 A `Plan` is the reviewable strategy the user accepts before execution. An
 approved Plan owns execution intent for build-from-plan work.
 
+### Prompt System
+
+The `Prompt System` is the product layer that turns an Execution Session, Chat
+Mode, project context, memory, specs, plans, skills, and user input into
+model-ready messages. It owns instruction hierarchy, mode behavior, context
+composition, and prompt safety boundaries, but not provider transport or model
+inference.
+
+The Prompt System should use a shared instruction hierarchy for behavior common
+to all Chat Modes, with mode-specific prompts composing from that hierarchy
+rather than redefining shared rules independently.
+
+Mode prompts should be thin mode contracts composed from smaller prompt modules
+such as identity, environment, response style, tool policy, verification policy,
+context policy, workflow skills, mode transitions, and active spec or plan
+injection.
+
+The first strengthening goal for the Prompt System is implementation discipline:
+agents should make bounded changes, preserve scope, validate work, repair from
+actual errors, and avoid unsupported assumptions. Agent reliability and answer
+quality are secondary outcomes of that discipline.
+
+Prompts state implementation discipline so agents understand how to work and how
+to recover. Runtime policies enforce hard boundaries such as tool permissions,
+mode capabilities, out-of-scope write blocks, loop limits, checkpointing, and
+approval gates.
+
+Prompt System behavior should be documented in `docs/PROMPT_SYSTEM_CONTRACT.md`
+before substantial prompt-code reorganization. The contract should define the
+instruction hierarchy, prompt modules, mode contracts, responsibility split,
+context injection order, lightweight evaluation criteria, tests, and
+anti-patterns.
+
+The canonical Prompt System context injection order is: base instruction
+hierarchy, mode contract, runtime/tool policy, workflow skills, active Spec,
+approved Plan, planning session, project overview, memory bank, previous session
+context, relevant files, previous messages, then the current user message.
+
+When an active Spec and an approved Plan both exist, the Spec is the stronger
+execution contract. A Plan explains how to work; a Spec constrains what must
+remain true. If they conflict, the agent should preserve the Spec and surface
+the conflict rather than silently following the Plan.
+
+Prompt enhancement may clarify wording already present and may ask for or expose
+missing context, but it must not add inferred implementation scope. Enhancement
+should preserve the user's intent without silently expanding what Panda will do.
+
+Code and Build modes should be quiet by default: brief approach, meaningful
+status updates, no planning preamble, and no code blocks in chat. They should
+switch to explanatory narration at decision points such as ambiguous scope,
+conflicting contracts, dangerous actions, validation repair failures, unexpected
+touched-file changes, security-sensitive changes, or dependency and architecture
+trade-offs.
+
+Plan Mode should default to conversational planning. It should produce
+structured planning artifacts only when the user explicitly requests a
+plan/design or when a validated planning session requires an execution-ready
+artifact.
+
+Ask Mode should inspect repository context and cite file paths when the user
+asks about repository-specific behavior, symbols, files, bugs, architecture, or
+how something works in the project. It should answer directly from visible
+context for general engineering questions or user-provided snippets.
+
+Prompt modules should use plain string constants for static instructions and
+typed builder functions for context-dependent sections such as mode contracts,
+tool policy, workflow skills, active specs, approved plans, planning sessions,
+project context, and provider-specific message shaping.
+
+Prompt System tests should prefer semantic invariants over full prompt
+snapshots. Tests should assert required behaviors, section inclusion, and
+contract-sensitive ordering without freezing every word of prompt prose.
+
+Prompt System implementation should proceed docs/tests first: write the prompt
+contract and semantic invariant tests before reorganizing prompt assembly code.
+
+Prompted validation should be proportionate: after meaningful code changes,
+agents should run the narrowest relevant validation first. Before claiming
+completion, they should run the strongest available validation gate for the
+changed area. If validation cannot run, they should state why and report the
+residual risk.
+
+The Prompt System should include a shared no-unsupported-assumptions rule:
+agents must not invent repository state, validation results, user intent, file
+contents, command output, or implementation scope. If a fact matters and is not
+in context, they should inspect the project, ask one blocking question, or state
+the assumption explicitly before proceeding.
+
+The canonical primary Chat Modes are `ask`, `plan`, `code`, and `build`.
+Additional behaviors should enter through workflow skills, specs, planning
+sessions, or mode context rather than new top-level modes unless there is a
+strong product reason.
+
+Workflow skills should remain prompt-injected guidance for now. Soft guidance
+skills add concise prompt guidance; strict workflow skills add mandatory prompt
+steps and tests. The Prompt System should leave room for strict skills to become
+first-class runtime workflows later if the product needs explicit gates.
+
 ### Spec
 
 A `Spec` is formal requirements, constraints, and acceptance criteria. A Spec is
