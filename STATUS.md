@@ -2,12 +2,11 @@
 
 ## Current milestone
 
-Final Gate
+Complete
 
 ## Last completed
 
-Slice 3: Prompt Assembly Cleanup — clarified prompt module ownership and renamed
-the provider embedding local variable. Targeted prompt tests passed.
+Final Gate — targeted prompt tests, typecheck, lint, and format check passed.
 
 ## Decision log
 
