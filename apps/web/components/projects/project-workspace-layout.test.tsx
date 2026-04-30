@@ -99,6 +99,11 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
     )
 
     expect(html).toContain('Execution Session')
+    expect(html).toContain('Session Timeline')
+    expect(html).toContain('Session Composer')
+    expect(html).toContain(
+      'Continue this session with mode, model, attachments, context, stop, and retry controls.'
+    )
     expect(html).toContain('Session State')
     expect(html).toContain('Keep intent, proof, and changed work in view.')
   })
@@ -146,6 +151,52 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
 
     expect(html).toContain('New Session')
     expect(html).toContain('No execution sessions yet')
+  })
+
+  test('labels IDE tools as contextual support surfaces', () => {
+    const html = renderToStaticMarkup(
+      <ProjectWorkspaceLayoutView
+        projectId={'project' as never}
+        activeSection="files"
+        isFlyoutOpen={false}
+        onSidebarSectionChange={() => {}}
+        onToggleFlyout={() => {}}
+        onSelectChat={() => {}}
+        onNewChat={() => {}}
+        files={[]}
+        selectedFilePath={null}
+        openTabs={[]}
+        onSelectFile={() => {}}
+        onCloseTab={() => {}}
+        onCreateFile={async () => {}}
+        onRenameFile={async () => {}}
+        onDeleteFile={async () => {}}
+        onSaveFile={async () => {}}
+        onEditorDirtyChange={() => {}}
+        isMobileLayout={false}
+        isCompactDesktopLayout={false}
+        mobilePrimaryPanel="workspace"
+        onMobilePrimaryPanelChange={() => {}}
+        mobileUnreadCount={0}
+        isMobileKeyboardOpen={false}
+        chatPanel={<div>chat-panel</div>}
+        rightPanelContent={<div>right-panel</div>}
+        isRightPanelOpen={false}
+        chatMode="code"
+        onModeChange={() => {}}
+        cursorPosition={null}
+        isStreaming={false}
+        currentSpec={null}
+        openSpecInspect={() => {}}
+        onApplyPendingArtifact={() => {}}
+        onRejectPendingArtifact={() => {}}
+        sessionRailSummary={{ state: 'idle', label: 'Idle', count: 0, tasks: [] }}
+      />
+    )
+
+    expect(html).toContain('aria-label="Sessions"')
+    expect(html).toContain('aria-label="Support: Files"')
+    expect(html).toContain('aria-label="Support: Source Control"')
   })
 
   test('renders chat-first mobile navigation with proof and preview access', () => {

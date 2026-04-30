@@ -846,6 +846,7 @@ export function WorkspaceRuntimeProvider({
       nextStep: executionSession.nextStep,
       primaryAction: mapExecutionSessionAction(executionSession.primaryAction),
       secondaryAction: mapExecutionSessionAction(executionSession.secondaryAction),
+      executionSession,
     }
   }, [executionSession])
 

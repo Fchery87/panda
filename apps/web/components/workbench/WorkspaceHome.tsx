@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { IconDiff, IconFile, IconNewChat, IconQuickAction, IconUpload } from '@/components/ui/icons'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { buildExecutionSessionTimelineRows } from '@/lib/workspace/execution-session-timeline'
 import type { WorkspaceFocusState } from './workspace-focus'
 
 interface WorkspaceHomeProps {
@@ -60,6 +61,7 @@ export function WorkspaceHome({
   onFocusSecondaryAction,
 }: WorkspaceHomeProps) {
   const focusTone = focusState ? FOCUS_TONE_STYLES[focusState.tone] : null
+  const timelineRows = buildExecutionSessionTimelineRows(focusState?.executionSession ?? null)
   const primarySummary = focusState
     ? focusState.detail
     : 'Start an execution session, inspect changed work, and keep the next action obvious.'
@@ -210,6 +212,63 @@ export function WorkspaceHome({
             </div>
           </motion.div>
         ) : null}
+
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.08 }}
+          className="mb-6 border border-border bg-background/85"
+        >
+          <div className="border-b border-border px-4 py-3">
+            <h2 className="font-mono text-[10px] uppercase tracking-[0.24em] text-primary">
+              Session Timeline
+            </h2>
+          </div>
+          <div className="divide-y divide-border">
+            {timelineRows.map((row) => (
+              <div key={row.id} className="grid gap-2 px-4 py-3 sm:grid-cols-[120px_1fr]">
+                <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  {row.title}
+                </div>
+                <div>
+                  <p className="text-sm leading-relaxed text-foreground">{row.summary}</p>
+                  {row.detailRef ? (
+                    <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                      Detail: {row.detailRef.kind}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+          className="mb-6 border border-primary/30 bg-primary/5 p-4"
+        >
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="min-w-0 flex-1">
+              <div className="font-mono text-[10px] uppercase tracking-[0.24em] text-primary">
+                Session Composer
+              </div>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                Continue this session with mode, model, attachments, context, stop, and retry
+                controls.
+              </p>
+            </div>
+            {onStartAgent ? (
+              <Button
+                className="h-9 shrink-0 rounded-none px-3 font-mono text-[10px] uppercase tracking-[0.2em]"
+                onClick={onStartAgent}
+              >
+                Continue Session
+              </Button>
+            ) : null}
+          </div>
+        </motion.div>
 
         {(suggestedActions.length > 0 || pendingDiffs > 0 || onStartAgent) && (
           <motion.div

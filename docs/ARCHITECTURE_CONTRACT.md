@@ -76,36 +76,39 @@ approval or execution decisions.
 
 ## Runtime Terms
 
-| Term               | Canonical meaning                                                                  |
-| ------------------ | ---------------------------------------------------------------------------------- |
-| Run                | One agent execution lifecycle tied to a chat turn or approved plan execution.      |
-| Run event          | A persisted progress, tool, status, validation, error, or receipt event for a run. |
-| Receipt            | A bounded audit record persisted when a run completes, fails, or stops.            |
-| Checkpoint         | Durable runtime state that enables recovery or resume.                             |
-| Runtime status     | Browser/server execution availability and current job state.                       |
-| Termination reason | A typed explanation for why a run ended or stopped needing attention.              |
+| Term               | Canonical meaning                                                                                                                                                     |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Execution Session  | User-facing work thread for one goal inside a project; currently a derived projection over chat, planning, run, receipt, changed-work, preview, and branch summaries. |
+| Run                | One agent execution lifecycle tied to a chat turn or approved plan execution.                                                                                         |
+| Run event          | A persisted progress, tool, status, validation, error, or receipt event for a run.                                                                                    |
+| Receipt            | A bounded audit record persisted when a run completes, fails, or stops.                                                                                               |
+| Checkpoint         | Durable runtime state that enables recovery or resume.                                                                                                                |
+| Runtime status     | Browser/server execution availability and current job state.                                                                                                          |
+| Termination reason | A typed explanation for why a run ended or stopped needing attention.                                                                                                 |
 
-Receipts summarize proof. Run events explain progress. Checkpoints support
-recovery. They must remain separate because they have different payload,
-retention, and display rules.
+Execution Session is the product projection the user navigates. It is not a
+dedicated persisted table today. Receipts summarize proof. Run events explain
+progress. Checkpoints support recovery. They must remain separate because they
+have different payload, retention, and display rules.
 
 ## Source-Of-Truth Map
 
-| Concern                     | Canonical owner                                                                                                  | Mirrors or derived views                | Rule                                                                          |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------- | --------------------------------------- | ----------------------------------------------------------------------------- |
-| Chat mode                   | Chat state in Convex plus runtime mode contract                                                                  | UI selector, receipt routing fields     | Manual mode selection is authoritative for composer sends.                    |
-| Mode labels and permissions | Mode contract                                                                                                    | Buttons, prompts, proof rendering       | Do not scatter mode conditionals across UI or runtime code.                   |
-| Planning lifecycle          | Planning session state                                                                                           | Chat badges, run progress, plan tabs    | Plan approval and execution read from planning state first.                   |
-| Approved plan content       | Generated plan artifact                                                                                          | Prompt injection, proof surface         | Build-from-plan uses the accepted artifact as primary context.                |
-| Active spec                 | Spec records                                                                                                     | Runtime prompt summary, context surface | Specs constrain execution and verification, not chat memory alone.            |
-| Run lifecycle               | Agent run state                                                                                                  | Session rail, run panel, chat summaries | UI reads summaries by default, not full event streams.                        |
-| Run proof                   | Receipt plus bounded event summaries                                                                             | Chat timeline, proof surface            | Full event details are lazy inspection data.                                  |
-| Runtime availability        | WebContainer provider and server execution path                                                                  | Preview/runtime badges                  | Browser failure falls back to server execution.                               |
-| Share state                 | Shared-chat records                                                                                              | Public share page                       | Share output is a redacted public projection, not the owner transcript.       |
-| Attachments                 | Attachment metadata and authorized storage URL lookup                                                            | Message previews                        | Signed URLs are resolved lazily and only for authorized contexts.             |
-| Provider config             | User/admin settings plus live catalog hydration                                                                  | Model selectors                         | Catalog data can hydrate UI but must not auto-enable credentials.             |
-| Provider tokens             | Token records scoped to owner                                                                                    | Provider connection badges              | Never expose raw token values to client or shared surfaces.                   |
-| Delivery state              | Current run, planning, spec, permission, and receipt records; future dedicated delivery records when implemented | Rail, reports, QA/ship views            | Do not document dedicated delivery tables as current schema until they exist. |
+| Concern                     | Canonical owner                                                                                                                    | Mirrors or derived views                | Rule                                                                                                                      |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Chat mode                   | Chat state in Convex plus runtime mode contract                                                                                    | UI selector, receipt routing fields     | Manual mode selection is authoritative for composer sends.                                                                |
+| Execution session           | Derived projection over chat, planning session, run summaries, receipts, changed work, runtime preview state, and branch summaries | Session canvas, session rail, inspector | Do not add a dedicated table until cross-chat continuity, stable session URLs, branch selection, or analytics require it. |
+| Mode labels and permissions | Mode contract                                                                                                                      | Buttons, prompts, proof rendering       | Do not scatter mode conditionals across UI or runtime code.                                                               |
+| Planning lifecycle          | Planning session state                                                                                                             | Chat badges, run progress, plan tabs    | Plan approval and execution read from planning state first.                                                               |
+| Approved plan content       | Generated plan artifact                                                                                                            | Prompt injection, proof surface         | Build-from-plan uses the accepted artifact as primary context.                                                            |
+| Active spec                 | Spec records                                                                                                                       | Runtime prompt summary, context surface | Specs constrain execution and verification, not chat memory alone.                                                        |
+| Run lifecycle               | Agent run state                                                                                                                    | Session rail, run panel, chat summaries | UI reads summaries by default, not full event streams.                                                                    |
+| Run proof                   | Receipt plus bounded event summaries                                                                                               | Chat timeline, proof surface            | Full event details are lazy inspection data.                                                                              |
+| Runtime availability        | WebContainer provider and server execution path                                                                                    | Preview/runtime badges                  | Browser failure falls back to server execution.                                                                           |
+| Share state                 | Shared-chat records                                                                                                                | Public share page                       | Share output is a redacted public projection, not the owner transcript.                                                   |
+| Attachments                 | Attachment metadata and authorized storage URL lookup                                                                              | Message previews                        | Signed URLs are resolved lazily and only for authorized contexts.                                                         |
+| Provider config             | User/admin settings plus live catalog hydration                                                                                    | Model selectors                         | Catalog data can hydrate UI but must not auto-enable credentials.                                                         |
+| Provider tokens             | Token records scoped to owner                                                                                                      | Provider connection badges              | Never expose raw token values to client or shared surfaces.                                                               |
+| Delivery state              | Current run, planning, spec, permission, and receipt records; future dedicated delivery records when implemented                   | Rail, reports, QA/ship views            | Do not document dedicated delivery tables as current schema until they exist.                                             |
 
 ## State Machine Inventory
 

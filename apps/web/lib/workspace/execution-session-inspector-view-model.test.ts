@@ -21,7 +21,21 @@ const session: ExecutionSessionViewModel = {
     available: true,
     detail: 'Preview can use the browser runtime for this session.',
   },
-  branches: { running: 0, blocked: 0, complete: 0, label: 'No parallel branches active.' },
+  branches: {
+    running: 0,
+    blocked: 0,
+    complete: 0,
+    label: 'No parallel branches active.',
+    outcomes: [],
+  },
+  resume: {
+    goal: 'Ship the transcript policy update',
+    lastState: 'Changes ready',
+    changedWork: '2 changed files ready for review.',
+    proof: 'Review run evidence, receipts, and validation before continuing.',
+    branches: 'No parallel branches active.',
+    nextAction: 'Inspect the changed work and proof before continuing.',
+  },
 }
 
 describe('buildExecutionSessionInspectorViewModel', () => {

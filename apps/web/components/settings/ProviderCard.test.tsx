@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render } from '@testing-library/react/pure'
+import { cleanup, render } from '@testing-library/react/pure'
 import { describe, expect, test } from 'bun:test'
 import { JSDOM } from 'jsdom'
 
@@ -40,7 +40,7 @@ describe('ProviderCard', () => {
 
       expect(expandButton.contains(switchControl)).toBe(false)
 
-      fireEvent.click(switchControl)
+      switchControl.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }))
 
       expect(changes).toEqual([{ enabled: true }])
       expect(expandButton.getAttribute('aria-expanded')).toBe('false')

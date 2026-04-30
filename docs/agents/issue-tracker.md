@@ -9,7 +9,8 @@ This repo tracks issues in GitHub Issues for `Fchery87/panda`.
 
 ## Consumer Rules
 
-Skills that create, read, or update issues should use GitHub Issues as the source of truth.
+Skills that create, read, or update issues should use GitHub Issues as the
+source of truth.
 
 Use GitHub issue operations for:
 
@@ -19,4 +20,5 @@ Use GitHub issue operations for:
 - follow-up implementation tickets
 - issue status and label updates
 
-Do not create local markdown issue files under `.scratch/` unless the user explicitly asks for a temporary working note.
+Do not create local markdown issue files under `.scratch/` unless the user
+explicitly asks for a temporary working note.

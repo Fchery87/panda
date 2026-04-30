@@ -25,11 +25,14 @@ When active docs disagree, use the authority order in
 - [docs/PANDA_WORKBENCH_MODERNIZATION_BRIEF.md](./PANDA_WORKBENCH_MODERNIZATION_BRIEF.md) -
   historical modernization brief; superseded for workspace IA by the chat-first
   implementation record
-- [docs/plans/2026-04-26-chat-first-workspace-ia.md](./plans/2026-04-26-chat-first-workspace-ia.md) -
-  current chat-first workspace information architecture, implementation
-  contract, and verification notes for the woven redesign
 - [docs/plans/2026-04-29-execution-session-upgrade.md](./plans/2026-04-29-execution-session-upgrade.md) -
   active plan for completing the session-first workspace upgrade
+- [docs/plans/2026-04-29-execution-session-finalization.md](./plans/2026-04-29-execution-session-finalization.md) -
+  final vertical-slice plan for timeline, composer, support-surface,
+  resumability, and browser-smoke work
+- [docs/plans/2026-04-26-chat-first-workspace-ia.md](./plans/2026-04-26-chat-first-workspace-ia.md) -
+  historical chat-first workspace implementation record superseded by the
+  session-first upgrade plan for current workspace IA
 - [docs/panda-executive-view-action-plan.md](./panda-executive-view-action-plan.md) -
   findings and action-plan input that seeded the current contract-hardening
   work; not a canonical contract itself
@@ -49,7 +52,7 @@ Panda is a browser-first AI coding workbench with server-backed fallback and:
 
 - landing and education pages
 - project list and project workbench routes
-- chat-first per-project workspace with the session timeline as the primary
+- session-first per-project workspace with the Execution Session as the primary
   surface
 - login and shared-chat routes
 - admin console pages for users, analytics, system, and security
@@ -75,25 +78,26 @@ artifacts only after maintainer approval.
 
 ### Keep Active
 
-| File                                               | Reason                                                                             |
-| -------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `README.md`                                        | Project overview, setup, workflow, and current runtime invariants.                 |
-| `AGENTS.md`                                        | Repo-wide AI agent operating contract.                                             |
-| `CLAUDE.md`                                        | Claude-compatible alias for agent instructions if still used by local tooling.     |
-| `convex/README.md`                                 | Backend schema, function map, and receipt persistence notes.                       |
-| `docs/README.md`                                   | Documentation index and cleanup guidance.                                          |
-| `docs/ARCHITECTURE_CONTRACT.md`                    | Canonical vocabulary, source-of-truth map, and docs authority.                     |
-| `docs/SECURITY_TRUST_BOUNDARIES.md`                | Authorization, redaction, sharing, token, MCP, and telemetry policy.               |
-| `docs/CONVEX_BACKEND_GOVERNANCE.md`                | Convex ownership, query-shape, retention, and legacy API rules.                    |
-| `docs/AGENTIC_HARNESS.md`                          | Harness architecture, planning workflow, runtime checkpoints, and execution state. |
-| `docs/CHAT_TRANSCRIPT_POLICY.md`                   | Defines transcript vs inspector boundaries for tool and receipt detail.            |
-| `docs/plans/2026-04-26-chat-first-workspace-ia.md` | Current workspace IA and implemented surface contract.                             |
-| `docs/CHAT_MODE_ARCHITECTURE.md`                   | Still useful as the architecture record for mode hardening and routing evolution.  |
-| `docs/WEBCONTAINER_RUNTIME.md`                     | Current browser execution setup and fallback behavior.                             |
-| `docs/LLM_PROVIDER_CATALOG.md`                     | Current provider/model catalog behavior.                                           |
-| `docs/DEPLOYMENT.md`                               | Deployment guide.                                                                  |
-| `docs/GOOGLE_OAUTH_SETUP.md`                       | Auth setup guide.                                                                  |
-| `.impeccable.md`                                   | Active design context for visual work if the design workflow is still used.        |
+| File                                                 | Reason                                                                             |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `README.md`                                          | Project overview, setup, workflow, and current runtime invariants.                 |
+| `AGENTS.md`                                          | Repo-wide AI agent operating contract.                                             |
+| `CLAUDE.md`                                          | Claude-compatible alias for agent instructions if still used by local tooling.     |
+| `convex/README.md`                                   | Backend schema, function map, and receipt persistence notes.                       |
+| `docs/README.md`                                     | Documentation index and cleanup guidance.                                          |
+| `docs/ARCHITECTURE_CONTRACT.md`                      | Canonical vocabulary, source-of-truth map, and docs authority.                     |
+| `docs/SECURITY_TRUST_BOUNDARIES.md`                  | Authorization, redaction, sharing, token, MCP, and telemetry policy.               |
+| `docs/CONVEX_BACKEND_GOVERNANCE.md`                  | Convex ownership, query-shape, retention, and legacy API rules.                    |
+| `docs/AGENTIC_HARNESS.md`                            | Harness architecture, planning workflow, runtime checkpoints, and execution state. |
+| `docs/CHAT_TRANSCRIPT_POLICY.md`                     | Defines transcript vs inspector boundaries for tool and receipt detail.            |
+| `docs/plans/2026-04-29-execution-session-upgrade.md` | Current session-first workspace upgrade plan.                                      |
+| `docs/plans/2026-04-26-chat-first-workspace-ia.md`   | Historical chat-first workspace record superseded for current IA decisions.        |
+| `docs/CHAT_MODE_ARCHITECTURE.md`                     | Still useful as the architecture record for mode hardening and routing evolution.  |
+| `docs/WEBCONTAINER_RUNTIME.md`                       | Current browser execution setup and fallback behavior.                             |
+| `docs/LLM_PROVIDER_CATALOG.md`                       | Current provider/model catalog behavior.                                           |
+| `docs/DEPLOYMENT.md`                                 | Deployment guide.                                                                  |
+| `docs/GOOGLE_OAUTH_SETUP.md`                         | Auth setup guide.                                                                  |
+| `.impeccable.md`                                     | Active design context for visual work if the design workflow is still used.        |
 
 ### Keep As Historical Plans
 

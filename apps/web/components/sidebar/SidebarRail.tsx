@@ -42,12 +42,12 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'files', icon: IconProjects, label: 'Files', shortcut: 'Ctrl+Shift+E' },
-  { id: 'agents', icon: IconAgents, label: 'Active Agents', shortcut: 'Ctrl+Shift+A' },
-  { id: 'search', icon: IconSearch, label: 'Search', shortcut: 'Ctrl+Shift+F' },
-  { id: 'git', icon: IconGit, label: 'Source Control', shortcut: 'Ctrl+Shift+G' },
-  { id: 'deploy', icon: IconDeploy, label: 'Deploy & Preview', shortcut: '' },
   { id: 'tasks', icon: IconHistory, label: 'Sessions', shortcut: 'Ctrl+Shift+H' },
+  { id: 'files', icon: IconProjects, label: 'Support: Files', shortcut: 'Ctrl+Shift+E' },
+  { id: 'agents', icon: IconAgents, label: 'Support: Branches', shortcut: 'Ctrl+Shift+A' },
+  { id: 'search', icon: IconSearch, label: 'Support: Search', shortcut: 'Ctrl+Shift+F' },
+  { id: 'git', icon: IconGit, label: 'Support: Source Control', shortcut: 'Ctrl+Shift+G' },
+  { id: 'deploy', icon: IconDeploy, label: 'Support: Preview', shortcut: '' },
 ]
 
 export function SidebarRail({

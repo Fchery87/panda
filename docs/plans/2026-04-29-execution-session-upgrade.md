@@ -18,6 +18,10 @@ Session view model and started replacing scattered chat/task/run language with
 session-centered language. It deliberately did not add a persisted
 `executionSessions` table or redesign the full shell.
 
+For the final product-behavior slices that remain after the foundation work, use
+the
+[Execution Session Finalization Plan](./2026-04-29-execution-session-finalization.md).
+
 ## Target End State
 
 The user should experience Panda as a session-first coding workbench:
@@ -46,12 +50,9 @@ Already complete:
   session-centered labels.
 - Focused tests cover view-model derivation and session rail copy.
 
-Still true:
+Still true after the current implementation loop:
 
-- The center workspace is still mostly IDE/editor-first.
 - Session history still reads from chat records.
-- The proof and changed-work surfaces are only partially session-aware.
-- Parallel execution is not yet presented as user-readable session branches.
 - A dedicated persisted Execution Session entity is intentionally deferred.
 
 ## Remaining Milestones
@@ -140,10 +141,12 @@ Validation:
 
 ### 5. Execution Session Persistence Decision
 
+Decision: keep Execution Session derived for now.
+
 Decide whether the derived model is enough or whether Panda needs a dedicated
 persisted Execution Session lifecycle record.
 
-Add a table only if there is a concrete need such as cross-chat session
+Add a table later only if there is a concrete need such as cross-chat session
 continuation, stable share URLs, durable branch selection, independent session
 renaming, long-running lifecycle state, or analytics that cannot be derived
 cheaply from existing records.

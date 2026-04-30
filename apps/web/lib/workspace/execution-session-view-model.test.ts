@@ -173,4 +173,28 @@ describe('buildExecutionSessionViewModel', () => {
       { label: 'Test branch', status: 'failed', outcome: 'Needs test harness repair' },
     ])
   })
+
+  test('produces a resumable session summary from derived state', () => {
+    const model = buildExecutionSessionViewModel({
+      chatTitle: 'Resume billing work',
+      latestUserPrompt: null,
+      planningQuestion: null,
+      generatedPlan: null,
+      canApprovePlan: false,
+      canBuildPlan: false,
+      isExecuting: false,
+      changedFilesCount: 2,
+      runtimeAvailability: serverRuntime,
+      parallelBranches: [{ status: 'complete', label: 'Tests', outcome: 'Validation passed' }],
+    })
+
+    expect(model?.resume).toEqual({
+      goal: 'Resume billing work',
+      lastState: 'Changes ready',
+      changedWork: '2 changed files ready for review.',
+      proof: 'Review run evidence, receipts, and validation before continuing.',
+      branches: '0 running, 0 blocked, 1 complete.',
+      nextAction: 'Inspect the changed work and proof before continuing or finishing this session.',
+    })
+  })
 })

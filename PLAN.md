@@ -1,109 +1,130 @@
-# Plan: Execution Session Upgrade Completion
+# Plan: Execution Session Finalization
 
-## Milestone 1: Session Inspector Consolidation
+## S01: Timeline Row Contract
 
-What: Make proof, changed work, context, and preview read as one current-session
-inspector instead of unrelated right-panel tabs.
+What: Add a pure timeline row contract over existing Execution Session state.
 
 Acceptance criteria:
 
-- Inspector heading and tab copy refer to the current Execution Session.
-- Empty states are session-centered.
-- Proof, changed work, context, and preview summaries use the shared session
-  model where available.
-- Existing tab routing and detail panels continue to work.
+- Rows cover intent, planning, grouped activity, changed work, validation,
+  proof, preview, branch outcomes, and next action.
+- Raw details are represented as expandable references, not default narrative.
+- Tests cover core session phases and branch outcomes.
 
 Validation:
-`bun test apps/web/components/projects/project-workspace-layout.test.tsx apps/web/lib/workspace/execution-session-view-model.test.ts && bun run typecheck`
+`bun test apps/web/lib/workspace/execution-session-timeline.test.ts && bun run typecheck`
 
 Status: [x] complete
 
-## Milestone 2: Session Rail Behavior
+## S02: Timeline Canvas UI
 
-What: Group rail/history presentation around session states while preserving
-chat-backed storage and bounded recent-chat queries.
+What: Render the center session canvas from timeline rows with one explicit next
+action and links to inspector/support surfaces.
 
 Acceptance criteria:
 
-- Rail copy and grouping distinguish active, needs-review, recent, and idle
-  sessions.
-- Search and new-session affordances remain accessible.
-- Existing chat selection and creation flows continue to work.
-- Tests cover grouping and status labels.
+- The canvas renders compressed timeline rows.
+- Next action is prominent.
+- Changed-work/proof rows open inspector surfaces.
+- Editor and diff remain reachable.
+
+Validation:
+`bun test apps/web/components/projects/project-workspace-layout.test.tsx apps/web/lib/workspace/execution-session-timeline.test.ts && bun run typecheck`
+
+Status: [x] complete
+
+## S03: Persistent Composer Control Plane
+
+What: Make the composer visible and session-aware in the main session
+experience.
+
+Acceptance criteria:
+
+- Composer is visible on desktop and mobile session surfaces.
+- Mode/model/context/attachment controls remain reachable.
+- Stop/retry/follow-up states are session-aware.
 
 Validation:
 `bun test apps/web/components/projects/project-workspace-layout.test.tsx && bun run typecheck`
 
 Status: [x] complete
 
-## Milestone 3: Session Timeline Primary Canvas
+## S04: Contextual Support Surfaces
 
-What: Make the center workspace default to the session timeline/next-action
-canvas while keeping editor/file/terminal/diff support surfaces reachable.
+What: Move IDE tools into contextual support affordances rather than primary
+navigation.
 
 Acceptance criteria:
 
-- Project open state lands on session canvas language instead of IDE-empty state
-  language.
-- The center canvas shows objective, phase, next action, proof, changed work,
-  and preview/runtime summaries.
-- Editor, files, terminal, preview, and diff remain reachable.
-- Mobile remains session/chat-first with proof and preview navigation intact.
+- Primary rail emphasizes sessions.
+- Files/search/git/deploy become secondary or contextual affordances.
+- File tree, diff, and terminal open from session/support actions.
 
 Validation:
 `bun test apps/web/components/projects/project-workspace-layout.test.tsx && bun run typecheck`
 
 Status: [x] complete
 
-## Milestone 4: Branch Outcomes
+## S05: Session-Attached Changed Work Review
 
-What: Present parallel agent work as branches inside the current Execution
-Session.
+What: Review changed files as work produced by the active session.
 
 Acceptance criteria:
 
-- Branch summaries have labels, status, and outcome copy.
-- Branch detail is lazy or inspector-scoped.
-- Failed branches surface only when user action is needed.
-- View-model tests cover multiple branch states.
+- Changed work groups created, modified, and deleted files.
+- Diff/detail links preserve session context.
+- Validation/proof summary appears near changed files.
 
 Validation:
-`bun test apps/web/lib/workspace/execution-session-view-model.test.ts && bun run typecheck`
+`bun test apps/web/lib/workspace/execution-session-timeline.test.ts apps/web/components/projects/project-workspace-layout.test.tsx && bun run typecheck`
 
-Status: [ ] pending
+Status: [x] complete
 
-## Milestone 5: Persistence Decision And Docs
+## S06: Resumable Session State
 
-What: Decide and document whether Execution Session remains a derived projection
-or becomes a persisted lifecycle record.
+What: Make selected/returned sessions show goal, state, changed files, run
+status, pending review, branches, and next action immediately.
 
 Acceptance criteria:
 
-- Architecture Contract defines Execution Session and its owner.
-- Docs state whether it is currently derived or persisted.
-- Historical chat-first language is superseded where needed.
-- No schema change is added unless the decision requires it.
+- Rail selection restores timeline and inspector state.
+- Derived state is sufficient, or a persistence blocker is documented.
+- Completed, blocked, review-ready, and executing sessions produce different
+  next actions.
 
 Validation:
-`bunx prettier --check docs/ARCHITECTURE_CONTRACT.md docs/README.md docs/plans/2026-04-29-execution-session-upgrade.md && bun run typecheck`
+`bun test apps/web/lib/workspace/execution-session-view-model.test.ts apps/web/lib/workspace/execution-session-timeline.test.ts && bun run typecheck`
 
-Status: [ ] pending
+Status: [x] complete
 
-## Milestone 6: Full Gate And Cleanup
+## S07: Branch Strip And Merge Review
 
-What: Run final verification and clean up temporary runtime artifacts according
-to maintainer preference.
+What: Render parallel branches inside the session timeline with lazy detail.
 
 Acceptance criteria:
 
-- TypeScript passes.
-- Lint passes.
-- Unit tests pass.
-- Formatting is either fully clean or remaining unrelated format blockers are
-  explicitly documented.
-- Browser smoke test is run if the app can start in the local environment.
-- Root task artifacts are ready for removal or explicit retention.
+- Branch strip shows status, outcome, validation, and changed-file count.
+- Blocked/failed branches produce action-oriented copy.
+- Merge/reject/continue actions only appear when metadata supports them.
 
-Validation: `bun run typecheck && bun run lint && bun test`
+Validation:
+`bun test apps/web/lib/workspace/execution-session-view-model.test.ts apps/web/lib/workspace/execution-session-timeline.test.ts && bun run typecheck`
 
-Status: [ ] pending
+Status: [x] complete
+
+## S08: Browser Smoke And Responsive Proof
+
+What: Verify final session workflow in browser on desktop and mobile sizes.
+
+Acceptance criteria:
+
+- Desktop smoke covers session timeline, composer, inspector, changed work, and
+  support surfaces.
+- Mobile smoke covers session/chat, proof, preview, and composer access.
+- Console has no new runtime errors on exercised paths.
+- Full repository gate passes.
+
+Validation:
+`bun run typecheck && bun run lint && bun run format:check && bun test`
+
+Status: [x] complete

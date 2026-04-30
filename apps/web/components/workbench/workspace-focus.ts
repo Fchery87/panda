@@ -1,5 +1,7 @@
 'use client'
 
+import type { ExecutionSessionViewModel } from '@/lib/workspace/execution-session-view-model'
+
 export type WorkspaceFocusTone = 'neutral' | 'progress' | 'attention' | 'success'
 
 export type WorkspaceFocusActionId =
@@ -31,4 +33,5 @@ export interface WorkspaceFocusState {
   nextStep: string
   primaryAction?: WorkspaceFocusAction
   secondaryAction?: WorkspaceFocusAction
+  executionSession?: ExecutionSessionViewModel | null
 }

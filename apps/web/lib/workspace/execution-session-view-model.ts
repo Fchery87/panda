@@ -30,6 +30,7 @@ export interface ExecutionSessionChangedWorkSummary {
   count: number
   label: string
   needsReview: boolean
+  groups?: { created: number; modified: number; deleted: number }
 }
 
 export interface ExecutionSessionProofSummary {
@@ -71,6 +72,16 @@ export interface ExecutionSessionViewModel {
   proof: ExecutionSessionProofSummary
   preview: ExecutionSessionPreviewSummary
   branches: ExecutionSessionBranchSummary
+  resume: ExecutionSessionResumeSummary
+}
+
+export interface ExecutionSessionResumeSummary {
+  goal: string
+  lastState: string
+  changedWork: string
+  proof: string
+  branches: string
+  nextAction: string
 }
 
 export interface ExecutionSessionViewModelInput {
@@ -84,7 +95,11 @@ export interface ExecutionSessionViewModelInput {
   latestRunStep?: string | null
   changedFilesCount: number
   runtimeAvailability: RuntimeAvailability
-  parallelBranches?: Array<{ status: 'queued' | 'running' | 'blocked' | 'complete' | 'failed' }>
+  parallelBranches?: Array<{
+    label?: string | null
+    status: 'queued' | 'running' | 'blocked' | 'complete' | 'failed'
+    outcome?: string | null
+  }>
 }
 
 export function buildExecutionSessionViewModel(
@@ -96,7 +111,7 @@ export function buildExecutionSessionViewModel(
   const branches = summarizeBranches(input.parallelBranches ?? [])
 
   if (input.isExecuting) {
-    return {
+    return withResume({
       phase: 'executing',
       title: resolveTitle(input, 'Executing current session'),
       statusLabel: 'Executing',
@@ -108,11 +123,11 @@ export function buildExecutionSessionViewModel(
       proof,
       preview,
       branches,
-    }
+    })
   }
 
   if (input.planningQuestion) {
-    return {
+    return withResume({
       phase: 'planning',
       title: resolveTitle(input, 'Define the execution session'),
       statusLabel: 'Planning intake',
@@ -124,11 +139,11 @@ export function buildExecutionSessionViewModel(
       proof,
       preview,
       branches,
-    }
+    })
   }
 
   if (input.canApprovePlan && input.generatedPlan) {
-    return {
+    return withResume({
       phase: 'approval',
       title: input.generatedPlan.title?.trim() || resolveTitle(input, 'Review generated plan'),
       statusLabel: 'Plan ready',
@@ -140,11 +155,11 @@ export function buildExecutionSessionViewModel(
       proof,
       preview,
       branches,
-    }
+    })
   }
 
   if (input.canBuildPlan && input.generatedPlan) {
-    return {
+    return withResume({
       phase: 'ready_to_build',
       title: input.generatedPlan.title?.trim() || resolveTitle(input, 'Build approved plan'),
       statusLabel: 'Ready to build',
@@ -157,11 +172,11 @@ export function buildExecutionSessionViewModel(
       proof,
       preview,
       branches,
-    }
+    })
   }
 
   if (input.changedFilesCount > 0) {
-    return {
+    return withResume({
       phase: 'review',
       title: resolveTitle(input, 'Review session changes'),
       statusLabel: 'Changes ready',
@@ -173,10 +188,24 @@ export function buildExecutionSessionViewModel(
       proof,
       preview,
       branches,
-    }
+    })
   }
 
   return null
+}
+
+function withResume(session: Omit<ExecutionSessionViewModel, 'resume'>): ExecutionSessionViewModel {
+  return {
+    ...session,
+    resume: {
+      goal: session.title,
+      lastState: session.statusLabel,
+      changedWork: session.changedWork.label,
+      proof: session.proof.detail,
+      branches: session.branches.label,
+      nextAction: session.nextStep,
+    },
+  }
 }
 
 function resolveTitle(input: ExecutionSessionViewModelInput, fallback: string) {
