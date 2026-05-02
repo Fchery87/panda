@@ -82,7 +82,7 @@ const config: Config = {
       },
       fontFamily: {
         sans: ['var(--font-sans)', 'Inter', 'system-ui', 'sans-serif'],
-        mono: ['var(--font-mono)', 'JetBrains Mono', 'SF Mono', 'Consolas', 'monospace'],
+        mono: ['var(--font-mono)', 'Geist Mono', 'SF Mono', 'Consolas', 'monospace'],
       },
       letterSpacing: {
         'wide-02': '0.02em',
