@@ -18,6 +18,10 @@ runtime checkpoints, shared chat history, and admin controls. Browser execution
 is preferred when WebContainer is available; server-backed execution remains the
 fallback when browser-side execution is unavailable.
 
+Panda also supports user-scoped Custom Skills and Custom Subagents. Skills are
+reusable workflow guidance that can auto-activate by intent; Subagents are
+delegated workers with capability presets and optional attached Skills.
+
 The current workspace is organized around one session timeline. User intent
 enters through chat, Panda routes it, work executes, proof accumulates, and the
 user reviews the result through focused `Run`, `Changes`, `Context`, and
@@ -40,6 +44,9 @@ and result status.
 - Deterministic mode routing with `requestedMode` and `resolvedMode` audit data
 - Run timeline summaries in chat with structured execution receipts in proof
   surfaces
+- Custom Skills that shape agent workflow and strict Skill preflight metadata
+- Custom Subagents with capability presets, attached Skills, and delegated task
+  Skill matching
 - Quiet session rail state for active, blocked, review-ready, running, and
   completed work
 - Shared chat links for public, read-only conversation review
@@ -173,6 +180,30 @@ Run timeline rows in chat are derived from the same bounded run model as the
 proof surfaces. The visible stages are intent, routing, planning, execution,
 validation, receipt, and next action. Low-level tool events remain available in
 inspection surfaces instead of becoming the default transcript experience.
+
+## Custom Skills And Subagents
+
+Custom Skills and Custom Subagents are separate extension points:
+
+- Custom Skills are user-scoped workflow documents stored in Convex. They define
+  trigger phrases, applicable modes, a soft or strict workflow profile,
+  instructions, optional checklists, required validation guidance, suggested
+  Subagents, and an auto-activation toggle.
+- Custom Subagents are delegated workers. They define a name, description,
+  prompt, capability preset, default attached Skills, and whether delegated task
+  prompts can auto-match additional Skills.
+- Admin settings can disable user Skills, Skill auto-activation, strict user
+  Skills, import/export policy, user Subagents, and available Subagent capability
+  presets.
+- Runs persist bounded Applied Skill summaries so proof surfaces can explain
+  which Skills shaped execution without storing full Skill bodies in compact
+  progress rows or public projections.
+
+The implemented foundation supports create/delete settings flows, deterministic
+Skill matching, prompt composition, strict Skill preflight events, delegated
+Subagent Skill composition, and compact run visibility. Edit, duplicate,
+import/export, richer proof detail, and full browser acceptance coverage remain
+planned follow-up work.
 
 ## Repository Shape
 

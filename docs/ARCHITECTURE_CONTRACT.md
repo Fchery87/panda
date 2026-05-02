@@ -1,6 +1,6 @@
 # Panda Architecture Contract
 
-> Last updated: April 28, 2026
+> Last updated: May 02, 2026
 >
 > Reader: Panda maintainers and future agents making architecture or
 > implementation decisions.
@@ -56,6 +56,7 @@ Do not use `mode`, `agent`, and `role` interchangeably.
 | Agent    | A configured runtime persona or executor selected by the harness.                                       |
 | Role     | A delivery-control responsibility such as manager, builder, executive reviewer, QA, or ship gatekeeper. |
 | Subagent | A delegated specialist invoked by the main runtime for bounded work.                                    |
+| Skill    | Reusable workflow guidance that shapes how an agent or Subagent works without owning an execution lane. |
 
 Modes define user intent and tool posture. Agents execute. Roles govern delivery
 state and review responsibility.
@@ -81,6 +82,7 @@ approval or execution decisions.
 | Execution Session  | User-facing work thread for one goal inside a project; currently a derived projection over chat, planning, run, receipt, changed-work, preview, and branch summaries. |
 | Run                | One agent execution lifecycle tied to a chat turn or approved plan execution.                                                                                         |
 | Run event          | A persisted progress, tool, status, validation, error, or receipt event for a run.                                                                                    |
+| Applied Skill      | A built-in or user Custom Skill selected for a Run or delegated Subagent task.                                                                                        |
 | Receipt            | A bounded audit record persisted when a run completes, fails, or stops.                                                                                               |
 | Checkpoint         | Durable runtime state that enables recovery or resume.                                                                                                                |
 | Runtime status     | Browser/server execution availability and current job state.                                                                                                          |
@@ -102,7 +104,9 @@ have different payload, retention, and display rules.
 | Approved plan content       | Generated plan artifact                                                                                                            | Prompt injection, proof surface         | Build-from-plan uses the accepted artifact as primary context.                                                            |
 | Active spec                 | Spec records                                                                                                                       | Runtime prompt summary, context surface | Specs constrain execution and verification, not chat memory alone.                                                        |
 | Run lifecycle               | Agent run state                                                                                                                    | Session rail, run panel, chat summaries | UI reads summaries by default, not full event streams.                                                                    |
-| Run proof                   | Receipt plus bounded event summaries                                                                                               | Chat timeline, proof surface            | Full event details are lazy inspection data.                                                                              |
+| Run proof                   | Receipt plus bounded event summaries, including Applied Skill summaries                                                            | Chat timeline, proof surface            | Full event details are lazy inspection data. Skill bodies are not copied into public or compact summaries.                |
+| Custom Skills               | User-scoped Convex `customSkills` records plus admin policy                                                                        | Prompt composition, settings UI         | Custom Skills are workflow documents, not executable plugins. Admin policy is enforced at storage and runtime matching.   |
+| Custom Subagents            | User-scoped Convex `subagents` records                                                                                             | Settings UI, task tool registry         | Subagents do delegated work. Capability presets and attached Skills shape their execution contract.                       |
 | Runtime availability        | WebContainer provider and server execution path                                                                                    | Preview/runtime badges                  | Browser failure falls back to server execution.                                                                           |
 | Share state                 | Shared-chat records                                                                                                                | Public share page                       | Share output is a redacted public projection, not the owner transcript.                                                   |
 | Attachments                 | Attachment metadata and authorized storage URL lookup                                                                              | Message previews                        | Signed URLs are resolved lazily and only for authorized contexts.                                                         |

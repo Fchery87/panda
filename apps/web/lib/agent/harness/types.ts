@@ -17,6 +17,7 @@ import type { ChatMode } from '../chat-modes'
 import type { PermissionRule, Capability, Decision } from './permission/types'
 import type { PermissionManager } from './permissions'
 import type { SpecLifecycleManager } from '../spec/lifecycle-manager'
+import type { CustomSkillForMatching, CustomSkillPolicy } from '../skills/types'
 
 export type { ToolDefinition } from '../../llm/types'
 export type { Decision } from './permission/types'
@@ -83,6 +84,8 @@ export interface AgentConfig {
   color?: string
   steps?: number
   options?: Record<string, unknown>
+  defaultSkillIds?: string[]
+  skillAutoMatchingEnabled?: boolean
   /**
    * Capability ceiling for subagent permission narrowing.
    * When set, parent permissionRules are filtered to only include
@@ -431,6 +434,10 @@ export interface RuntimeConfig {
   permissionRules?: PermissionRule[]
   /** Per-runtime permission manager instance (replaces singleton usage) */
   permissionManager?: PermissionManager
+  /** User-scoped custom skills available for primary and delegated matching */
+  customSkills?: CustomSkillForMatching[]
+  /** Admin and user policy for custom skill activation */
+  customSkillPolicy?: CustomSkillPolicy
   /** Optional lifecycle manager wrapper around the specification engine */
   specLifecycleManager?: SpecLifecycleManager
 }

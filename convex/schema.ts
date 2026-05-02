@@ -16,6 +16,15 @@ export const ChatMode = v.union(
   v.literal('build')
 )
 
+export const SkillProfile = v.union(v.literal('soft_guidance'), v.literal('strict_workflow'))
+
+export const SubagentCapabilityPreset = v.union(
+  v.literal('research'),
+  v.literal('assistant'),
+  v.literal('builder'),
+  v.literal('restricted')
+)
+
 export type ChatModeType = 'ask' | 'plan' | 'code' | 'build'
 
 /**
@@ -122,6 +131,15 @@ export const PersistedRunSnapshot = v.object({
   timestamp: v.number(),
 })
 
+export const AppliedSkillSummary = v.object({
+  id: v.string(),
+  name: v.string(),
+  source: v.union(v.literal('built_in'), v.literal('custom')),
+  profile: SkillProfile,
+  reason: v.string(),
+  requiresPreflight: v.boolean(),
+})
+
 export const PersistedRunEvent = v.object({
   sequence: v.number(),
   type: v.string(),
@@ -143,6 +161,7 @@ export const PersistedRunEvent = v.object({
   completedPlanStepIndexes: v.optional(v.array(v.number())),
   usage: v.optional(TokenUsage),
   snapshot: v.optional(PersistedRunSnapshot),
+  appliedSkills: v.optional(v.array(AppliedSkillSummary)),
 })
 
 export const TerminationReason = v.union(
@@ -827,6 +846,7 @@ export default defineSchema({
     completedPlanStepIndexes: v.optional(v.array(v.number())),
     usage: v.optional(TokenUsage),
     snapshot: v.optional(PersistedRunSnapshot),
+    appliedSkills: v.optional(v.array(AppliedSkillSummary)),
     createdAt: v.number(),
   })
     .index('by_run_sequence', ['runId', 'sequence'])
@@ -927,6 +947,9 @@ export default defineSchema({
     model: v.optional(v.string()),
     temperature: v.optional(v.number()),
     maxSteps: v.optional(v.number()),
+    capabilityPreset: v.optional(SubagentCapabilityPreset),
+    defaultSkillIds: v.optional(v.array(v.id('customSkills'))),
+    skillAutoMatchingEnabled: v.optional(v.boolean()),
     permissions: v.optional(
       v.object({
         tools: v.optional(v.record(v.string(), v.string())),
@@ -939,7 +962,26 @@ export default defineSchema({
     .index('by_user', ['userId'])
     .index('by_user_name', ['userId', 'name']),
 
-  // 18. Admin Settings table - global system configuration
+  // 18. Custom Skills table - user-defined workflow guidance
+  customSkills: defineTable({
+    userId: v.id('users'),
+    name: v.string(),
+    description: v.string(),
+    triggerPhrases: v.array(v.string()),
+    applicableModes: v.array(ChatMode),
+    profile: SkillProfile,
+    instructions: v.string(),
+    checklist: v.optional(v.array(v.string())),
+    requiredValidation: v.optional(v.array(v.string())),
+    suggestedSubagents: v.optional(v.array(v.string())),
+    autoActivationEnabled: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_user', ['userId'])
+    .index('by_user_name', ['userId', 'name']),
+
+  // 19. Admin Settings table - global system configuration
   adminSettings: defineTable({
     // Global LLM Configuration
     globalDefaultProvider: v.optional(v.string()),
@@ -954,12 +996,19 @@ export default defineSchema({
     allowUserOverrides: v.optional(v.boolean()),
     allowUserMCP: v.optional(v.boolean()),
     allowUserSubagents: v.optional(v.boolean()),
+    allowUserSkills: v.optional(v.boolean()),
+    allowSkillAutoActivation: v.optional(v.boolean()),
+    allowStrictUserSkills: v.optional(v.boolean()),
+    allowSkillImportExport: v.optional(v.boolean()),
+    allowedSubagentCapabilityPresets: v.optional(v.array(SubagentCapabilityPreset)),
 
     // System controls
     systemMaintenance: v.optional(v.boolean()),
     registrationEnabled: v.optional(v.boolean()),
     maxProjectsPerUser: v.optional(v.number()),
     maxChatsPerProject: v.optional(v.number()),
+    maxCustomSubagentsPerUser: v.optional(v.number()),
+    maxCustomSkillsPerUser: v.optional(v.number()),
 
     // Analytics tracking
     trackUsageAnalytics: v.optional(v.boolean()),

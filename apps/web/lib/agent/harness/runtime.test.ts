@@ -1297,6 +1297,55 @@ describe('harness Runtime', () => {
     }
   })
 
+  test('emits applied skill metadata and strict custom skill preflight before execution', async () => {
+    resetHarnessTestState()
+    const provider = createProvider(() => {})
+    const runtime = new Runtime(provider, new Map(), {
+      maxSteps: 2,
+      checkpointStore: new InMemoryCheckpointStore(),
+      customSkills: [
+        {
+          id: 'skill_tdd',
+          name: 'TDD Bugfix',
+          description: 'Requires a failing test first.',
+          triggerPhrases: ['tdd workflow'],
+          applicableModes: ['build'],
+          profile: 'strict_workflow',
+          instructions: 'Write a failing test before implementation.',
+          autoActivationEnabled: true,
+        },
+      ],
+      customSkillPolicy: {
+        allowUserSkills: true,
+        allowSkillAutoActivation: true,
+        allowStrictUserSkills: true,
+      },
+      chatMode: 'build',
+    })
+    const userMessage = createUserMessage({
+      id: 'msg-user-strict-skill',
+      sessionID: 'session-strict-skill',
+      text: 'Use the TDD workflow for this bug fix.',
+      agent: 'build',
+    })
+
+    const events: RuntimeEvent[] = []
+    for await (const event of runtime.run('session-strict-skill', userMessage)) {
+      events.push(event)
+    }
+
+    expect(events[0]).toMatchObject({
+      type: 'applied_skills',
+      appliedSkills: [expect.objectContaining({ id: 'skill_tdd', requiresPreflight: true })],
+    })
+    expect(events[1]).toMatchObject({
+      type: 'strict_skill_preflight',
+      strictSkillPreflight: {
+        skills: [expect.objectContaining({ id: 'skill_tdd' })],
+      },
+    })
+  })
+
   test('enforces core subagent depth guard for task tool execution', async () => {
     resetHarnessTestState()
     let streamCalls = 0

@@ -1,6 +1,7 @@
 import { query, mutation, type MutationCtx, type QueryCtx } from './_generated/server'
 import { v } from 'convex/values'
 import { requireAuth } from './lib/auth'
+import { SubagentCapabilityPreset } from './schema'
 
 async function resolveUserId(ctx: QueryCtx | MutationCtx) {
   const userId = await requireAuth(ctx)
@@ -81,6 +82,9 @@ export const add = mutation({
     model: v.optional(v.string()),
     temperature: v.optional(v.number()),
     maxSteps: v.optional(v.number()),
+    capabilityPreset: v.optional(SubagentCapabilityPreset),
+    defaultSkillIds: v.optional(v.array(v.id('customSkills'))),
+    skillAutoMatchingEnabled: v.optional(v.boolean()),
     permissions: v.optional(
       v.object({
         tools: v.optional(v.record(v.string(), v.string())),
@@ -116,6 +120,9 @@ export const add = mutation({
       model: args.model,
       temperature: args.temperature,
       maxSteps: args.maxSteps,
+      capabilityPreset: args.capabilityPreset,
+      defaultSkillIds: args.defaultSkillIds,
+      skillAutoMatchingEnabled: args.skillAutoMatchingEnabled,
       permissions: args.permissions,
       createdAt: now,
       updatedAt: now,
@@ -132,6 +139,9 @@ export const update = mutation({
     model: v.optional(v.string()),
     temperature: v.optional(v.number()),
     maxSteps: v.optional(v.number()),
+    capabilityPreset: v.optional(SubagentCapabilityPreset),
+    defaultSkillIds: v.optional(v.array(v.id('customSkills'))),
+    skillAutoMatchingEnabled: v.optional(v.boolean()),
     permissions: v.optional(
       v.object({
         tools: v.optional(v.record(v.string(), v.string())),
@@ -159,6 +169,11 @@ export const update = mutation({
     if (args.model !== undefined) updates.model = args.model
     if (args.temperature !== undefined) updates.temperature = args.temperature
     if (args.maxSteps !== undefined) updates.maxSteps = args.maxSteps
+    if (args.capabilityPreset !== undefined) updates.capabilityPreset = args.capabilityPreset
+    if (args.defaultSkillIds !== undefined) updates.defaultSkillIds = args.defaultSkillIds
+    if (args.skillAutoMatchingEnabled !== undefined) {
+      updates.skillAutoMatchingEnabled = args.skillAutoMatchingEnabled
+    }
     if (args.permissions !== undefined) updates.permissions = args.permissions
 
     await ctx.db.patch(args.id, updates)

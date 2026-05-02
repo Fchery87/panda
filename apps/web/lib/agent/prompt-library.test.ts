@@ -290,6 +290,57 @@ describe('prompt-library — Panda skill injection', () => {
     expect(systemText).toContain('Profile: strict_workflow')
     expect(systemText).toContain('Do not start cleanup edits until behavior is protected')
   })
+
+  it('injects matched custom skill guidance after core implementation discipline', () => {
+    const systemText = getSystemText('build', {
+      userMessage: 'Use the TDD workflow for this bug fix.',
+      customSkills: [
+        {
+          id: 'skill_tdd',
+          name: 'TDD Bugfix',
+          description: 'Requires a failing test first.',
+          triggerPhrases: ['tdd workflow'],
+          applicableModes: ['build'],
+          profile: 'strict_workflow',
+          instructions: 'Write a failing test before implementation.',
+          checklist: ['Confirm the test fails first', 'Implement the smallest fix'],
+          requiredValidation: ['Run the targeted regression test'],
+          autoActivationEnabled: true,
+        },
+      ],
+    })
+
+    expect(systemText).toContain('Activated Panda custom workflow skill: TDD Bugfix')
+    expect(systemText).toContain('Write a failing test before implementation.')
+    expect(systemText).toContain('Confirm the test fails first')
+
+    expect(systemText.indexOf('## Implementation Discipline')).toBeGreaterThan(-1)
+    expect(systemText.indexOf('## Panda Workflow Skills')).toBeGreaterThan(-1)
+    expect(systemText.indexOf('## Implementation Discipline')).toBeLessThan(
+      systemText.indexOf('## Panda Workflow Skills')
+    )
+  })
+
+  it('does not inject custom skills blocked by custom skill policy', () => {
+    const systemText = getSystemText('build', {
+      userMessage: 'Use the TDD workflow for this bug fix.',
+      customSkillPolicy: { allowUserSkills: false },
+      customSkills: [
+        {
+          id: 'skill_tdd',
+          name: 'TDD Bugfix',
+          description: 'Requires a failing test first.',
+          triggerPhrases: ['tdd workflow'],
+          applicableModes: ['build'],
+          profile: 'strict_workflow',
+          instructions: 'Write a failing test before implementation.',
+          autoActivationEnabled: true,
+        },
+      ],
+    })
+
+    expect(systemText).not.toContain('Activated Panda custom workflow skill: TDD Bugfix')
+  })
 })
 
 describe('prompt-library — project overview integration', () => {

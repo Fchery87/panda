@@ -88,6 +88,13 @@ import { getGrammarsForModel } from '../providers/model-capabilities'
 import type { ChatMode } from '../chat-modes'
 import type { TerminationReason } from './errors'
 import { createToolSkipError, planToolExecution } from './tool-scheduling'
+import { buildSubagentSystemPrompt } from '../skills/subagent-composition'
+import {
+  getStrictCustomSkillPreflightSummaries,
+  summarizeAppliedSkills,
+  type AppliedSkillSummary,
+} from '../skills/applied-skills'
+import { resolveAgentSkills } from '../skills/resolver'
 
 /**
  * Runtime state
@@ -209,6 +216,8 @@ export type RuntimeEventType =
   | 'interrupt_request'
   | 'interrupt_decision'
   | 'snapshot'
+  | 'applied_skills'
+  | 'strict_skill_preflight'
   | 'error'
   | 'warning'
   | 'complete'
@@ -244,6 +253,10 @@ export interface RuntimeEvent {
     reason?: string
   }
   snapshot?: RuntimeSnapshotEvent
+  appliedSkills?: AppliedSkillSummary[]
+  strictSkillPreflight?: {
+    skills: AppliedSkillSummary[]
+  }
   subagent?: {
     agent: string
     sessionID: Identifier
@@ -603,6 +616,39 @@ export class Runtime {
   ): AsyncGenerator<RuntimeEvent> {
     if (!this.state) {
       throw new Error('Runtime not initialized')
+    }
+
+    const latestUserText = [...this.state.messages]
+      .reverse()
+      .find((msg): msg is UserMessage => msg.role === 'user')
+      ?.parts.map((part) => (part.type === 'text' ? part.text : ''))
+      .filter(Boolean)
+      .join('\n')
+
+    const appliedSkills = summarizeAppliedSkills(
+      resolveAgentSkills({
+        chatMode: (this.config.chatMode as ChatMode) ?? 'code',
+        userMessage: latestUserText,
+        customSkills: this.config.customSkills,
+        customSkillPolicy: this.config.customSkillPolicy,
+      }).matches
+    )
+
+    if (appliedSkills.length > 0) {
+      yield {
+        type: 'applied_skills',
+        appliedSkills,
+      }
+    }
+
+    const strictSkillPreflight = getStrictCustomSkillPreflightSummaries(appliedSkills)
+    if (strictSkillPreflight.length > 0) {
+      yield {
+        type: 'strict_skill_preflight',
+        strictSkillPreflight: {
+          skills: strictSkillPreflight,
+        },
+      }
     }
 
     const preflightResult = runPreflight({
@@ -1987,6 +2033,13 @@ export class Runtime {
     const abortChild = () => childRuntime.abort()
     parentAbortSignal?.addEventListener('abort', abortChild, { once: true })
     const childMessageID = ascending('msg_')
+    const childSystemPrompt = buildSubagentSystemPrompt({
+      agent,
+      delegatedPrompt: prompt,
+      chatMode: this.config.chatMode ?? 'code',
+      customSkills: this.config.customSkills,
+      customSkillPolicy: this.config.customSkillPolicy,
+    })
     const childUserMessage: UserMessage = {
       id: childMessageID,
       sessionID: childSessionID,
@@ -2002,7 +2055,7 @@ export class Runtime {
         },
       ],
       agent: agent.name,
-      ...(agent.prompt ? { system: agent.prompt } : {}),
+      system: childSystemPrompt,
     }
 
     let output = ''

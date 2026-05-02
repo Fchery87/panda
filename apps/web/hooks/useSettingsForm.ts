@@ -344,6 +344,7 @@ export interface UseSettingsFormReturn {
         allowUserOverrides?: boolean
         allowUserMCP?: boolean
         allowUserSubagents?: boolean
+        allowUserSkills?: boolean
       }
     | undefined
   catalogModalOpen: boolean

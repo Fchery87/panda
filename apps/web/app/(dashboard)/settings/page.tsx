@@ -28,6 +28,7 @@ import { ThemeToggleFull } from '@/components/settings/ThemeToggle'
 import { AgentDefaultsEditor } from '@/components/settings/AgentDefaultsEditor'
 import { MCPServerEditor } from '@/components/settings/MCPServerEditor'
 import { SubagentEditor } from '@/components/settings/SubagentEditor'
+import { CustomSkillEditor } from '@/components/settings/CustomSkillEditor'
 import { UserLLMConfig } from '@/components/settings/UserLLMConfig'
 import { ProviderCatalogModal } from '@/components/settings/ProviderCatalogModal'
 import { getDefaultProviderCapabilities, type ProviderType } from '@/lib/llm/types'
@@ -79,6 +80,7 @@ export default function SettingsPage() {
 
   const allowUserMcp = adminDefaults?.allowUserMCP !== false
   const allowUserSubagents = adminDefaults?.allowUserSubagents !== false
+  const allowUserSkills = adminDefaults?.allowUserSkills !== false
 
   const handleBackToProjects = () => {
     if (isDirty) {
@@ -404,6 +406,24 @@ export default function SettingsPage() {
                   ) : (
                     <p className="text-sm text-muted-foreground">
                       MCP access is disabled by your admin.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-none">
+                <CardHeader>
+                  <CardTitle>Custom Skills</CardTitle>
+                  <CardDescription>
+                    Define reusable workflow guidance that can auto-activate during agent runs.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {allowUserSkills ? (
+                    <CustomSkillEditor />
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Custom skills are disabled by your admin.
                     </p>
                   )}
                 </CardContent>

@@ -58,8 +58,8 @@ described in terms of the canonical mode values.
 
 - Allow in chat: milestone summaries, blockers, validation summaries, approvals,
   outcomes, receipt entry points, and next action
-- Keep in proof: tool calls, snapshots, progress steps, skill matches, raw event
-  categories, and full receipt details
+- Keep in proof: tool calls, snapshots, progress steps, full Applied Skill
+  summaries, raw event categories, and full receipt details
 
 ## Internal mode note
 
@@ -90,6 +90,7 @@ owns detailed event inspection.
 - Event categories like `analysis` or `other`
 - Snapshot bookkeeping like `Step 1 snapshot created`
 - Skill matching diagnostics
+- Full Custom Skill instructions, checklists, and required-validation text
 - Duplicate approval or status cards already represented in dedicated action
   surfaces
 

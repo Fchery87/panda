@@ -1,7 +1,7 @@
 # AGENTIC_HARNESS.md - Panda Agentic Harness
 
-> **Version:** 1.3  
-> **Last Updated:** 2026-04-27  
+> **Version:** 1.4  
+> **Last Updated:** 2026-05-02  
 > **Status:** Implemented
 
 ---
@@ -81,6 +81,8 @@ interface AgentConfig {
   hidden?: boolean // Hide from subagent list
   color?: string // UI color
   steps?: number // Max steps
+  defaultSkillIds?: string[] // Custom Skills attached by default
+  skillAutoMatchingEnabled?: boolean // Allow delegated task Skill matching
 }
 ```
 
@@ -99,6 +101,31 @@ interface AgentConfig {
 The canonical user-facing modes are `ask`, `plan`, `code`, and `build`. Other
 names in this section are internal agent or delivery-role names, not separate
 product modes.
+
+### Custom Skills And Subagents
+
+Panda treats Skills and Subagents as separate concepts:
+
+- **Skills** are reusable workflow guidance. They can be built-in or
+  user-created Custom Skills. They do not execute code and are not plugins.
+- **Subagents** are delegated workers invoked through the task tool. They own a
+  bounded execution lane and produce delegated results.
+
+The harness supports Custom Skill composition in both primary Runs and delegated
+Subagent tasks:
+
+- Primary prompt composition resolves built-in Skills and user-scoped Custom
+  Skills against the current mode, user message, custom instructions, and admin
+  policy.
+- Delegated Subagent prompts inherit parent constraints, include Subagent
+  default attached Skills, then run task-specific Skill matching against the
+  delegated prompt.
+- Strict user-created Custom Skills emit a `strict_skill_preflight` runtime
+  event before execution steps. Soft guidance Skills emit only Applied Skill
+  metadata.
+- Applied Skill summaries are persisted on run events. These summaries include
+  name, source, profile, reason, and whether strict preflight was required. They
+  intentionally exclude full Skill instructions.
 
 ### Agent Role Mapping
 
@@ -127,6 +154,7 @@ adds them later.
 | --------------------------------------------- | -------------- | ------------------------------------------------------------------------ |
 | `agentRuns`                                   | Implemented    | Canonical run lifecycle and receipt persistence.                         |
 | `agentRunEvents`                              | Implemented    | Persisted run progress and event summaries.                              |
+| `customSkills`                                | Implemented    | User-scoped workflow guidance documents.                                 |
 | `planningSessions`                            | Implemented    | Canonical planning intake, approval, and execution state.                |
 | `specifications`                              | Implemented    | Formal specs and spec history.                                           |
 | `permissionAuditLog`                          | Implemented    | Permission decision audit history.                                       |

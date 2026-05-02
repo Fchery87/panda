@@ -29,5 +29,7 @@ export function resolveAgentSkillsForPromptContext(context: PromptContext): Reso
     userMessage: context.userMessage,
     customInstructions: context.customInstructions,
     skillProfile: context.skillProfile,
+    customSkills: context.customSkills,
+    customSkillPolicy: context.customSkillPolicy,
   })
 }

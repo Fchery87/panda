@@ -13,6 +13,7 @@ import { getDefaultHarnessAgent } from './chat-modes'
 import { getPromptForMode, type PromptContext } from './prompt-library'
 import { executeTool, type ToolContext, type ToolExecutionResult } from './tools'
 import { resolveAgentSkillsForPromptContext } from './skills/resolver'
+import type { AppliedSkillSummary } from './skills/applied-skills'
 import { resolveRulesForPhase } from './permission/mode-rulesets'
 import {
   Runtime as HarnessRuntime,
@@ -120,6 +121,7 @@ export interface AgentEvent {
     completionTokens: number
     totalTokens: number
   }
+  appliedSkills?: AppliedSkillSummary[]
 }
 
 export interface AgentRuntimeLike {
@@ -885,6 +887,28 @@ function mapHarnessEventToAgentEvent(event: HarnessRuntimeEvent): AgentEvent | n
             content: event.content,
           }
         : null
+    case 'applied_skills': {
+      const skills = event.appliedSkills ?? []
+      if (skills.length === 0) return null
+      return {
+        type: 'progress_step',
+        content: `Applied skills: ${skills.map((skill) => skill.name).join(', ')}`,
+        progressStatus: 'completed',
+        progressCategory: 'analysis',
+        appliedSkills: skills,
+      }
+    }
+    case 'strict_skill_preflight': {
+      const skills = event.strictSkillPreflight?.skills ?? []
+      if (skills.length === 0) return null
+      return {
+        type: 'progress_step',
+        content: `Strict skill preflight: ${skills.map((skill) => skill.name).join(', ')}`,
+        progressStatus: 'running',
+        progressCategory: 'analysis',
+        appliedSkills: skills,
+      }
+    }
     case 'warning':
       return {
         type: 'progress_step',

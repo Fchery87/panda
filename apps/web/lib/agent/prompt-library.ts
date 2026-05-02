@@ -28,6 +28,7 @@ import {
   buildPlanningSessionContext,
 } from './prompt-modules'
 import { resolveAgentSkillsForPromptContext } from './skills/resolver'
+import type { CustomSkillForMatching, CustomSkillPolicy } from './skills/types'
 import type { FormalSpecification } from './spec/types'
 
 export type { ChatMode } from './chat-modes'
@@ -98,6 +99,10 @@ export interface PromptContext {
   model?: string
   /** Optional workflow skill profile */
   skillProfile?: 'off' | 'soft_guidance' | 'strict_workflow'
+  /** User-scoped custom skills available for prompt matching */
+  customSkills?: CustomSkillForMatching[]
+  /** Admin and user policy for custom skill activation */
+  customSkillPolicy?: CustomSkillPolicy
   /** Active specification for execution awareness */
   activeSpec?: FormalSpecification
   planningSession?: {

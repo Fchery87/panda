@@ -313,6 +313,7 @@ export function applyNonTerminalAgentEvent(args: {
           args: event.progressArgs,
           durationMs: step.details?.durationMs,
           error: step.details?.errorExcerpt,
+          appliedSkills: event.appliedSkills,
           planStepIndex: step.planStepIndex,
           planStepTitle: step.planStepTitle,
           planTotalSteps: step.planTotalSteps,

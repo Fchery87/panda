@@ -16,16 +16,17 @@ Prompt assembly should follow this hierarchy:
 1. Base instruction hierarchy
 2. Mode contract
 3. Runtime and tool policy
-4. Workflow skills
-5. Active Spec
-6. Approved Plan
-7. Planning session
-8. Project overview
-9. Memory bank
-10. Previous session context
-11. Relevant files
-12. Previous messages
-13. Current user message
+4. Built-in workflow skills
+5. User-scoped Custom Skills allowed by admin policy
+6. Active Spec
+7. Approved Plan
+8. Planning session
+9. Project overview
+10. Memory bank
+11. Previous session context
+12. Relevant files
+13. Previous messages
+14. Current user message
 
 Durable behavioral rules come before task context. Hard execution contracts come
 before softer memory and chat history. The latest user message stays last so the
@@ -54,10 +55,15 @@ Use typed builder functions for context-dependent sections:
 - Project context
 - Provider-specific message shaping
 
-Workflow skills should remain prompt-injected guidance for now. Soft guidance
-skills add concise prompt guidance; strict workflow skills add mandatory prompt
-steps and tests. The Prompt System should leave room for strict skills to become
-first-class runtime workflows later if the product needs explicit gates.
+Workflow skills are prompt-injected guidance. Built-in Skills and user-scoped
+Custom Skills are resolved through the same matching path, but admin policy can
+disable user Skills, auto-activation, or strict user Skills. Soft guidance
+Skills add concise prompt guidance. Strict user-created Skills add mandatory
+workflow guidance and emit runtime preflight metadata before execution.
+
+Custom Skills are workflow documents, not executable plugins. They may add
+stricter workflow requirements but must not weaken built-in safety, security,
+permission, validation, or governance instructions.
 
 ## Mode Contracts
 
@@ -105,8 +111,10 @@ Precedence:
 2. Runtime permissions
 3. Active Spec
 4. Approved Plan
-5. Project memory
-6. Prior chat
+5. Built-in safety and governance Skills
+6. User Custom Skills that do not conflict with stronger contracts
+7. Project memory
+8. Prior chat
 
 ## Prompt Enhancement
 
@@ -160,6 +168,8 @@ Avoid freezing every word of prompt prose.
 - Duplicating shared behavioral rules independently in every mode prompt
 - Expanding user scope during prompt enhancement
 - Letting project memory override active specs or approved plans
+- Letting Custom Skills override built-in safety, permissions, active specs, or
+  approved plans
 - Treating prompt instructions as the only boundary for dangerous actions
 - Producing structured plans for ordinary Plan Mode questions
 - Making Code or Build modes verbose during routine execution

@@ -1,50 +1,108 @@
-# Plan: Prompt System Completion
+# Plan: Custom Skills Phase 1
 
-## Slice 1: Mode Prompt Contracts
+## Milestone 1: Contracts And Tests
 
-What: Move static Ask, Plan, Code, Build prompt contracts into
-`prompt-modules.ts` while preserving public prompt-library behavior.
+What: Add task state files and targeted tests that describe Custom Skill
+ownership and admin-policy behavior.
 
-Acceptance criteria: Prompt tests pass and `prompt-library.ts` delegates static
-prompt content to prompt modules.
+Acceptance criteria: Tests assert that Custom Skill functions require auth,
+validate ownership, and respect admin policy.
 
-Validation:
-`bun test apps/web/lib/agent/prompt-library.test.ts apps/web/lib/agent/enhance-prompt.test.ts`
-
-Status: [x] complete
-
-## Slice 2: Contract Invariants
-
-What: Add missing semantic invariant tests for Ask, Plan, Code, and Build
-behavior from `docs/PROMPT_SYSTEM_CONTRACT.md`.
-
-Acceptance criteria: Tests cover Ask repository citation guidance, Plan
-conversational default, implementation quiet/no-code-chat behavior, and prompt
-enhancement scope boundaries.
-
-Validation:
-`bun test apps/web/lib/agent/prompt-library.test.ts apps/web/lib/agent/enhance-prompt.test.ts`
+Validation: `bun test convex/customSkills.auth.test.ts`
 
 Status: [x] complete
 
-## Slice 3: Prompt Assembly Cleanup
+## Milestone 2: Convex Data Functions
 
-What: Tighten prompt assembly names and docs after extraction without changing
-behavior.
+What: Add Custom Skill schema and Convex functions for
+list/get/add/update/remove.
 
-Acceptance criteria: Dynamic context builder names match contract terminology
-and provider embedding order remains tested.
+Acceptance criteria: Functions use server-derived auth, user-scoped indexes,
+bounded list results, duplicate-name checks, and admin-policy gates.
 
-Validation:
-`bun test apps/web/lib/agent/prompt-library.test.ts apps/web/lib/agent/enhance-prompt.test.ts`
+Validation: `bun test convex/customSkills.auth.test.ts`
 
 Status: [x] complete
 
-## Final Gate
+## Milestone 3: Admin Policy Defaults
 
-What: Run formatting, linting, typecheck, and targeted prompt tests.
+What: Extend admin settings schema, admin update/query functions, and effective
+settings outputs for Custom Skill policy.
 
-Validation:
-`bun test apps/web/lib/agent/prompt-library.test.ts apps/web/lib/agent/enhance-prompt.test.ts && bun run typecheck && bun run lint && bun run format:check`
+Acceptance criteria: Defaults are exposed consistently and updateSettings
+accepts the new policy fields.
+
+Validation: `bun run typecheck && bun test convex/customSkills.auth.test.ts`
+
+Status: [x] complete
+
+## Milestone 4: Final Verification
+
+What: Run narrow final verification for this phase and update STATUS.md.
+
+Acceptance criteria: Targeted tests pass; any broader gate failures are reported
+with exact output.
+
+Validation: `bun run typecheck && bun test convex/customSkills.auth.test.ts`
+
+Status: [x] complete
+
+## Milestone 5: Skill Resolution
+
+What: Extend Skill resolution to include user-scoped Custom Skills with deterministic phrase matching, mode filtering, disablement, and admin-policy filtering.
+
+Acceptance criteria: Resolver tests cover Custom Skill matching, strict-skill policy filtering, and user disablement.
+
+Validation: `bun test apps/web/lib/agent/skills/resolver.test.ts apps/web/lib/agent/skills/matcher.test.ts && bun run typecheck && bun run lint`
+
+Status: [x] complete
+
+## Milestone 6: Prompt Composition
+
+What: Compose Custom Skills into primary prompts and delegated Subagent task prompts while preserving guardrail ordering and parent constraints.
+
+Acceptance criteria: Prompt tests cover Custom Skill injection and policy blocking; Subagent composition tests cover attached and auto-matched delegated-task Skills.
+
+Validation: `bun test apps/web/lib/agent/prompt-library.test.ts apps/web/lib/agent/skills/resolver.test.ts apps/web/lib/agent/skills/matcher.test.ts apps/web/lib/agent/skills/subagent-composition.test.ts apps/web/lib/agent/harness/runtime.test.ts && bun run typecheck && bun run lint`
+
+Status: [x] complete
+
+## Milestone 7: Runtime Preflight And Metadata
+
+What: Emit Applied Skill summaries and strict Custom Skill preflight metadata before execution, and preserve bounded runtime metadata for later UI/proof surfaces.
+
+Acceptance criteria: Runtime tests cover applied skill metadata and strict Custom Skill preflight events.
+
+Validation: `bun test apps/web/lib/agent/skills/applied-skills.test.ts apps/web/lib/agent/harness/runtime.test.ts && bun run typecheck && bun run lint`
+
+Status: [x] complete
+
+## Milestone 8: Settings UX
+
+What: Add Custom Skill management and upgrade Custom Subagent settings with capability presets, default attached Skills, and task-specific auto-matching controls.
+
+Acceptance criteria: Settings UI exposes Custom Skills and capability-first Subagent controls; tests cover the expected controls.
+
+Validation: `bun test apps/web/components/settings/CustomSkillEditor.test.ts apps/web/components/settings/SubagentEditor.test.ts convex/customSkills.auth.test.ts && bun run typecheck && bun run lint`
+
+Status: [x] complete
+
+## Milestone 9: Run And Proof Visibility
+
+What: Surface Applied Skills and strict Skill preflight as compact run progress and persist bounded Applied Skill summaries for proof surfaces.
+
+Acceptance criteria: Runtime mapping and persisted run event shapes include Applied Skill summaries without full prompt or instruction payloads.
+
+Validation: `bun test apps/web/lib/agent/applied-skills-events.test.ts apps/web/lib/agent/skills/applied-skills.test.ts apps/web/lib/agent/harness/runtime.test.ts && bun run typecheck && bun run lint`
+
+Status: [x] complete
+
+## Milestone 10: Final Acceptance
+
+What: Run the cross-phase acceptance suite and repository gates for the Custom Skills and Custom Subagents v1 implementation.
+
+Acceptance criteria: New backend, resolver, prompt, runtime, visibility, and settings coverage passes with typecheck and lint.
+
+Validation: `bun test convex/customSkills.auth.test.ts apps/web/lib/agent/skills/resolver.test.ts apps/web/lib/agent/skills/matcher.test.ts apps/web/lib/agent/prompt-library.test.ts apps/web/lib/agent/skills/subagent-composition.test.ts apps/web/lib/agent/skills/applied-skills.test.ts apps/web/lib/agent/applied-skills-events.test.ts apps/web/components/settings/CustomSkillEditor.test.ts apps/web/components/settings/SubagentEditor.test.ts apps/web/lib/agent/harness/runtime.test.ts && bun run typecheck && bun run lint`
 
 Status: [x] complete

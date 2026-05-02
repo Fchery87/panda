@@ -11,6 +11,7 @@ export interface ToolCallInfo {
 }
 
 import type { ChatMode } from '@/lib/agent/prompt-library'
+import type { AppliedSkillSummary } from '@/lib/agent/skills/applied-skills'
 import type { ExecutionReceipt } from '@/lib/agent/receipt'
 import type { ContextWindowSource } from '@/lib/llm/model-metadata'
 
@@ -77,6 +78,7 @@ export interface PersistedRunEventInfo {
   planTotalSteps?: number
   completedPlanStepIndexes?: number[]
   usage?: TokenUsageInfo
+  appliedSkills?: AppliedSkillSummary[]
   snapshot?: {
     hash: string
     step: number
@@ -107,6 +109,7 @@ export interface PersistedRunEventSummaryInfo {
   planTotalSteps?: number
   completedPlanStepIndexes?: number[]
   usage?: TokenUsageInfo
+  appliedSkills?: AppliedSkillSummary[]
   snapshot?: {
     hash: string
     step: number

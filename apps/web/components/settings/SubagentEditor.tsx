@@ -46,6 +46,7 @@ const PRESET_PERMISSIONS = {
 
 export function SubagentEditor({ className }: SubagentEditorProps) {
   const subagents = useQuery(api.subagents.list)
+  const customSkills = useQuery(api.customSkills.list)
   const addSubagent = useMutation(api.subagents.add)
   const removeSubagent = useMutation(api.subagents.remove)
 
@@ -54,8 +55,16 @@ export function SubagentEditor({ className }: SubagentEditorProps) {
     name: '',
     description: '',
     prompt: '',
-    permissionPreset: 'standard' as keyof typeof PRESET_PERMISSIONS,
+    capabilityPreset: 'assistant' as 'research' | 'assistant' | 'builder' | 'restricted',
+    defaultSkillIds: [] as Array<Id<'customSkills'>>,
+    skillAutoMatchingEnabled: true,
   })
+
+  const getPermissionsForCapability = (preset: typeof newAgent.capabilityPreset) => {
+    if (preset === 'research') return PRESET_PERMISSIONS.readOnly
+    if (preset === 'builder') return PRESET_PERMISSIONS.full
+    return PRESET_PERMISSIONS.standard
+  }
 
   const handleAdd = async () => {
     if (!newAgent.name.trim() || !newAgent.description.trim()) return
@@ -64,10 +73,20 @@ export function SubagentEditor({ className }: SubagentEditorProps) {
       name: newAgent.name,
       description: newAgent.description,
       prompt: newAgent.prompt || undefined,
-      permissions: PRESET_PERMISSIONS[newAgent.permissionPreset],
+      capabilityPreset: newAgent.capabilityPreset,
+      defaultSkillIds: newAgent.defaultSkillIds,
+      skillAutoMatchingEnabled: newAgent.skillAutoMatchingEnabled,
+      permissions: getPermissionsForCapability(newAgent.capabilityPreset),
     })
 
-    setNewAgent({ name: '', description: '', prompt: '', permissionPreset: 'standard' })
+    setNewAgent({
+      name: '',
+      description: '',
+      prompt: '',
+      capabilityPreset: 'assistant',
+      defaultSkillIds: [],
+      skillAutoMatchingEnabled: true,
+    })
     setShowAddForm(false)
   }
 
@@ -129,22 +148,64 @@ export function SubagentEditor({ className }: SubagentEditorProps) {
             </div>
 
             <div>
-              <label className="mb-1 block font-mono text-xs">Permission Preset</label>
+              <label className="mb-1 block font-mono text-xs">Capability Preset</label>
               <select
-                value={newAgent.permissionPreset}
+                value={newAgent.capabilityPreset}
                 onChange={(e) =>
                   setNewAgent((prev) => ({
                     ...prev,
-                    permissionPreset: e.target.value as keyof typeof PRESET_PERMISSIONS,
+                    capabilityPreset: e.target.value as typeof newAgent.capabilityPreset,
                   }))
                 }
                 className="w-full rounded-none border border-border bg-background px-3 py-2 font-mono text-xs"
               >
-                <option value="readOnly">Read Only - Can only read files</option>
-                <option value="standard">Standard - Can read, asks before write</option>
-                <option value="full">Full Access - No restrictions</option>
+                <option value="research">Research - Read and search only</option>
+                <option value="assistant">Assistant - Ask before writes and commands</option>
+                <option value="builder">Builder - Full delegated build capability</option>
+                <option value="restricted">Restricted - Admin or project constrained</option>
               </select>
             </div>
+
+            <div>
+              <label className="mb-1 block font-mono text-xs">Default attached skills</label>
+              <div className="max-h-32 space-y-1 overflow-y-auto border border-border p-2">
+                {(customSkills || []).length > 0 ? (
+                  customSkills?.map((skill) => (
+                    <label key={skill._id} className="flex items-center gap-2 font-mono text-xs">
+                      <input
+                        type="checkbox"
+                        checked={newAgent.defaultSkillIds.includes(skill._id)}
+                        onChange={(event) =>
+                          setNewAgent((prev) => ({
+                            ...prev,
+                            defaultSkillIds: event.target.checked
+                              ? [...prev.defaultSkillIds, skill._id]
+                              : prev.defaultSkillIds.filter((id) => id !== skill._id),
+                          }))
+                        }
+                      />
+                      {skill.name}
+                    </label>
+                  ))
+                ) : (
+                  <p className="font-mono text-xs text-muted-foreground">No custom skills yet</p>
+                )}
+              </div>
+            </div>
+
+            <label className="flex items-center gap-2 font-mono text-xs">
+              <input
+                type="checkbox"
+                checked={newAgent.skillAutoMatchingEnabled}
+                onChange={(event) =>
+                  setNewAgent((prev) => ({
+                    ...prev,
+                    skillAutoMatchingEnabled: event.target.checked,
+                  }))
+                }
+              />
+              Allow task-specific skill auto-matching
+            </label>
           </div>
 
           <div className="flex justify-end gap-2">
@@ -153,7 +214,14 @@ export function SubagentEditor({ className }: SubagentEditorProps) {
               size="sm"
               onClick={() => {
                 setShowAddForm(false)
-                setNewAgent({ name: '', description: '', prompt: '', permissionPreset: 'standard' })
+                setNewAgent({
+                  name: '',
+                  description: '',
+                  prompt: '',
+                  capabilityPreset: 'assistant',
+                  defaultSkillIds: [],
+                  skillAutoMatchingEnabled: true,
+                })
               }}
               className="rounded-none font-mono text-xs"
             >
@@ -185,6 +253,9 @@ export function SubagentEditor({ className }: SubagentEditorProps) {
                 </div>
                 <div className="truncate font-mono text-xs text-muted-foreground">
                   {agent.description}
+                </div>
+                <div className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                  {agent.capabilityPreset ?? 'assistant'} · {agent.defaultSkillIds?.length ?? 0} skills
                 </div>
               </div>
               <Button

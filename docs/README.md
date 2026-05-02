@@ -40,6 +40,9 @@ When active docs disagree, use the authority order in
   inspector behavior
 - [docs/CHAT_MODE_ARCHITECTURE.md](./CHAT_MODE_ARCHITECTURE.md) - active mode,
   routing, and tool-call hardening architecture notes
+- [docs/CUSTOM_SKILLS_AND_SUBAGENTS_PLAN.md](./CUSTOM_SKILLS_AND_SUBAGENTS_PLAN.md) -
+  implementation plan for Custom Skills, Custom Subagents, skill activation,
+  capability presets, and run visibility
 - [docs/plans/2026-04-23-convex-bandwidth-optimization.md](./plans/2026-04-23-convex-bandwidth-optimization.md) -
   Convex payload-shape and bandwidth remediation plan
 - [docs/DEPLOYMENT.md](./DEPLOYMENT.md) - production deployment guide
@@ -93,6 +96,7 @@ artifacts only after maintainer approval.
 | `docs/plans/2026-04-29-execution-session-upgrade.md` | Current session-first workspace upgrade plan.                                      |
 | `docs/plans/2026-04-26-chat-first-workspace-ia.md`   | Historical chat-first workspace record superseded for current IA decisions.        |
 | `docs/CHAT_MODE_ARCHITECTURE.md`                     | Still useful as the architecture record for mode hardening and routing evolution.  |
+| `docs/CUSTOM_SKILLS_AND_SUBAGENTS_PLAN.md`           | Current implementation plan for Custom Skills and Custom Subagent composition.     |
 | `docs/WEBCONTAINER_RUNTIME.md`                       | Current browser execution setup and fallback behavior.                             |
 | `docs/LLM_PROVIDER_CATALOG.md`                       | Current provider/model catalog behavior.                                           |
 | `docs/DEPLOYMENT.md`                                 | Deployment guide.                                                                  |
