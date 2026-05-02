@@ -643,103 +643,108 @@ export function ChatInput({
       </div>
 
       {/* Inline controls row */}
-      <div className="mt-2 flex flex-wrap items-center gap-2 border border-border bg-background/80 px-2 py-2">
-        {(activeFile || selection) && (
-          <button
-            type="button"
-            className="flex items-center gap-1 border border-border bg-background/70 px-2 py-1 font-mono text-[11px] text-muted-foreground hover:text-foreground"
-            onClick={() => setIncludeEditorContext((value) => !value)}
-            title={
-              includeEditorContext
-                ? 'Click to exclude editor context'
-                : 'Click to include editor context'
-            }
-          >
-            {includeEditorContext ? (
-              <IconAttach className="h-3 w-3" />
-            ) : (
-              <IconClose className="h-3 w-3" />
-            )}
-            {selection
-              ? `${selection.filePath}:${selection.startLine}-${selection.endLine}`
-              : activeFile}
-          </button>
-        )}
+      <div className="mt-2 space-y-2 border border-border bg-background/80 px-2 py-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          {(activeFile || selection) && (
+            <button
+              type="button"
+              className="flex h-7 items-center gap-1 border border-border bg-background/70 px-2 font-mono text-[11px] leading-none text-muted-foreground hover:text-foreground"
+              onClick={() => setIncludeEditorContext((value) => !value)}
+              title={
+                includeEditorContext
+                  ? 'Click to exclude editor context'
+                  : 'Click to include editor context'
+              }
+            >
+              {includeEditorContext ? (
+                <IconAttach className="h-3 w-3" />
+              ) : (
+                <IconClose className="h-3 w-3" />
+              )}
+              {selection
+                ? `${selection.filePath}:${selection.startLine}-${selection.endLine}`
+                : activeFile}
+            </button>
+          )}
 
-        {attachmentsEnabled ? (
-          <AttachmentButton
-            attachments={attachments}
-            onAttach={handleAttach}
-            onRemove={handleRemoveAttachment}
-            disabled={isStreaming || isUploadingAttachments}
-          />
-        ) : null}
+          {attachmentsEnabled ? (
+            <AttachmentButton
+              attachments={attachments}
+              onAttach={handleAttach}
+              onRemove={handleRemoveAttachment}
+              disabled={isStreaming || isUploadingAttachments}
+            />
+          ) : null}
 
-        <AgentSelector mode={mode} onModeChange={setMode} disabled={isStreaming} />
+          <AgentSelector mode={mode} onModeChange={setMode} disabled={isStreaming} />
 
-        {onModelChange && (
-          <ModelSelector
-            value={model || 'claude-sonnet-4-5'}
-            onChange={onModelChange}
-            disabled={isStreaming}
-            availableModels={availableModels}
-          />
-        )}
+          {onModelChange && (
+            <ModelSelector
+              value={model || 'claude-sonnet-4-5'}
+              onChange={onModelChange}
+              disabled={isStreaming}
+              availableModels={availableModels}
+            />
+          )}
 
-        {supportsReasoning && onVariantChange && (
-          <VariantSelector currentVariant={variant} onVariantChange={onVariantChange} />
-        )}
+          {supportsReasoning && onVariantChange && (
+            <VariantSelector currentVariant={variant} onVariantChange={onVariantChange} />
+          )}
 
-        {mode === 'plan' && onArchitectBrainstormEnabledChange && (
-          <button
-            type="button"
-            onClick={() => onArchitectBrainstormEnabledChange(!architectBrainstormEnabled)}
-            disabled={isStreaming}
-            aria-pressed={architectBrainstormEnabled}
-            aria-label={
-              architectBrainstormEnabled ? 'Disable brainstorming' : 'Enable brainstorming'
-            }
-            className={cn(
-              'transition-sharp border border-border px-2.5 py-1 font-mono text-[11px] uppercase tracking-wide',
-              'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary',
-              'disabled:pointer-events-none disabled:opacity-50',
-              architectBrainstormEnabled
-                ? 'border-primary bg-primary/10 text-foreground'
-                : 'text-muted-foreground hover:border-foreground/30 hover:text-foreground'
-            )}
-          >
-            Brainstorm
-          </button>
-        )}
-
-        <OversightToggle
-          level={oversightLevel}
-          onChange={setOversightLevel}
-          disabled={isStreaming}
-          className="ml-auto"
-        />
-
-        <div className="flex items-center gap-2">
-          <span className="hidden font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground sm:inline">
-            Enter to send
-          </span>
-
-          {!isStreaming && (
-            <Button
-              size="icon"
-              onClick={handleSendWithReset}
-              disabled={!hasSendContent}
-              aria-label="Send message"
+          {mode === 'plan' && onArchitectBrainstormEnabledChange && (
+            <button
+              type="button"
+              onClick={() => onArchitectBrainstormEnabledChange(!architectBrainstormEnabled)}
+              disabled={isStreaming}
+              aria-pressed={architectBrainstormEnabled}
+              aria-label={
+                architectBrainstormEnabled ? 'Disable brainstorming' : 'Enable brainstorming'
+              }
               className={cn(
-                'transition-sharp h-7 w-7 rounded-none',
-                hasSendContent
-                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                  : 'bg-secondary text-muted-foreground'
+                'transition-sharp flex h-7 items-center border border-border px-2.5 font-mono text-[11px] leading-none uppercase tracking-wide',
+                'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                'disabled:pointer-events-none disabled:opacity-50',
+                architectBrainstormEnabled
+                  ? 'border-primary bg-primary/10 text-foreground'
+                  : 'text-muted-foreground hover:border-foreground/30 hover:text-foreground'
               )}
             >
-              <IconSend className="h-3 w-3" />
-            </Button>
+              Brainstorm
+            </button>
           )}
+        </div>
+
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+          <div />
+
+          <OversightToggle
+            level={oversightLevel}
+            onChange={setOversightLevel}
+            disabled={isStreaming}
+          />
+
+          <div className="flex items-center justify-end gap-2">
+            <span className="hidden font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground sm:inline">
+              Enter to send
+            </span>
+
+            {!isStreaming && (
+              <Button
+                size="icon"
+                onClick={handleSendWithReset}
+                disabled={!hasSendContent}
+                aria-label="Send message"
+                className={cn(
+                  'transition-sharp h-7 w-7 rounded-none',
+                  hasSendContent
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    : 'bg-secondary text-muted-foreground'
+                )}
+              >
+                <IconSend className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>

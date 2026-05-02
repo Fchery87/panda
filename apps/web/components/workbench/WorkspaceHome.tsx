@@ -133,7 +133,7 @@ export function WorkspaceHome({
                     <Button
                       key={action.label}
                       variant="outline"
-                      className="h-10 justify-start gap-2 rounded-none font-mono text-xs"
+                      className="h-10 justify-center gap-2 rounded-none font-mono text-xs leading-none"
                       onClick={action.onClick}
                     >
                       <Icon className="h-4 w-4" />
