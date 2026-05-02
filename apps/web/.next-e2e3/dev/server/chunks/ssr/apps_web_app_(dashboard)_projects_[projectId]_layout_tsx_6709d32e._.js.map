@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///home/nochaserz/Documents/Coding%20Projects/panda/apps/web/app/%28dashboard%29/projects/%5BprojectId%5D/layout.tsx"],"sourcesContent":["export default function ProjectLayout({ children }: { children: React.ReactNode }) {\n  // Project page has its own full-screen layout with header\n  // Skip the dashboard container/padding to allow full viewport height\n  return <>{children}</>\n}\n"],"names":[],"mappings":";;;;;;AAAe,SAAS,cAAc,EAAE,QAAQ,EAAiC;IAC/E,0DAA0D;IAC1D,qEAAqE;IACrE,qBAAO;kBAAG;;AACZ"}}]
-}
