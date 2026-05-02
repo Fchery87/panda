@@ -5,7 +5,7 @@ import { useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { IconNewChat, IconSearch, IconList } from '@/components/ui/icons'
+import { MessageSquarePlus as IconNewChat, Search as IconSearch, List as IconList } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buildSessionRailGroups, type SessionRailTask } from './session-rail'
 
@@ -109,7 +109,7 @@ export function SidebarHistoryPanel({
           onClick={onNewChat}
           className="flex w-full items-center justify-center gap-2 border border-border bg-primary px-3 py-2 font-mono text-xs text-primary-foreground transition-colors hover:bg-primary/90"
         >
-          <IconNewChat className="h-3.5 w-3.5" weight="duotone" />
+          <IconNewChat className="h-3.5 w-3.5" />
           New Session
         </button>
       </div>
@@ -149,7 +149,7 @@ export function SidebarHistoryPanel({
                         )}
                       >
                         <span className="relative flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center">
-                          <IconList className="h-3.5 w-3.5" weight="duotone" />
+                          <IconList className="h-3.5 w-3.5" />
                           {showActiveRunMarker ? (
                             <span
                               className={cn(

@@ -1,6 +1,6 @@
 'use client'
 
-import { IconBell, IconQuickAction, IconNewChat } from '@/components/ui/icons'
+import { Bell as IconBell, Zap as IconQuickAction, MessageSquarePlus as IconNewChat } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   WorkspaceHealthIndicator,
@@ -97,7 +97,7 @@ export function TopBarControls({
           aria-label="Notifications"
         >
           <IconBell className="h-4 w-4" />
-          <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center bg-primary px-0.5 font-mono text-[8px] font-bold text-primary-foreground">
+          <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-4 items-center justify-center rounded-sm bg-primary px-1 font-mono text-[8px] font-bold leading-none text-primary-foreground">
             {notificationCount > 9 ? '9+' : notificationCount}
           </span>
         </button>
@@ -126,7 +126,7 @@ export function TopBarControls({
         className="h-7 gap-1.5 rounded-none bg-primary px-3 font-mono text-[10px] uppercase tracking-widest text-primary-foreground hover:bg-primary/90"
         onClick={onNewTask}
       >
-        <IconQuickAction className="h-3.5 w-3.5" weight="fill" />
+        <IconQuickAction className="h-3.5 w-3.5" />
         <span className="hidden sm:inline">New Task</span>
       </Button>
     </div>

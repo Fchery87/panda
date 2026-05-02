@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { IconCheck, IconDiff, IconBrowser, IconSpinner, IconX } from '@/components/ui/icons'
+import { Check as IconCheck, Diff as IconDiff, AppWindow as IconBrowser, Loader2 as IconSpinner, X as IconX } from 'lucide-react'
 
 export type WorkspaceBannerState = 'idle' | 'agent-running' | 'agent-complete'
 

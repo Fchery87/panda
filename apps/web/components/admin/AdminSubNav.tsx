@@ -1,12 +1,12 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import type { LucideIcon } from 'lucide-react'
+import type { LucideIcon as PandaIcon } from 'lucide-react'
 
 export interface AdminSubNavItem {
   id: string
   label: string
-  icon: LucideIcon
+  icon: PandaIcon
 }
 
 interface AdminSubNavProps {
@@ -52,7 +52,7 @@ export function AdminSubNav({ items, activeId, onSelect }: AdminSubNavProps) {
 }
 
 interface AdminPageHeaderProps {
-  icon: LucideIcon
+  icon: PandaIcon
   title: string
   description: string
   action?: React.ReactNode

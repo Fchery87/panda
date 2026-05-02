@@ -5,14 +5,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
-import {
-  IconSend,
-  IconStop,
-  IconEnhance,
-  IconRevert,
-  IconAttach,
-  IconClose,
-} from '@/components/ui/icons'
+import { Send as IconSend, Square as IconStop, Sparkles as IconEnhance, Undo2 as IconRevert, Paperclip as IconAttach, X as IconClose } from 'lucide-react'
 
 import { useAction, useMutation, useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
@@ -596,7 +589,7 @@ export function ChatInput({
                 aria-label="Stop generation"
                 className="h-7 w-7 rounded-none border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
               >
-                <IconStop className="h-3 w-3" weight="fill" />
+                <IconStop className="h-3 w-3" />
               </Button>
             </motion.div>
           ) : (
@@ -631,7 +624,7 @@ export function ChatInput({
                       {enhanceState === 'enhanced' ? (
                         <IconRevert className="h-3 w-3" />
                       ) : (
-                        <IconEnhance className="h-3 w-3" weight="duotone" />
+                        <IconEnhance className="h-3 w-3" />
                       )}
                     </Button>
                   </motion.div>
@@ -737,7 +730,7 @@ export function ChatInput({
                   : 'bg-secondary text-muted-foreground'
               )}
             >
-              <IconSend className="h-3 w-3" weight="fill" />
+              <IconSend className="h-3 w-3" />
             </Button>
           )}
         </div>

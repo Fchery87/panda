@@ -5,17 +5,7 @@ import type { Id } from '@convex/_generated/dataModel'
 
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
-import {
-  IconGit,
-  IconRefresh,
-  IconChevronDown,
-  IconChevronRight,
-  IconCheck,
-  IconArrowUp,
-  IconRevert,
-  IconCloud,
-  IconChevronUpDown,
-} from '@/components/ui/icons'
+import { GitBranch as IconGit, RefreshCw as IconRefresh, ChevronDown as IconChevronDown, ChevronRight as IconChevronRight, Check as IconCheck, ArrowUp as IconArrowUp, Undo2 as IconRevert, CloudUpload as IconCloud, ChevronsUpDown as IconChevronUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useGit } from '@/hooks/useGit'
 
@@ -68,7 +58,7 @@ export function SourceControlPane({ projectId: _projectId }: SourceControlPanePr
       <div className="border-b border-border">
         <div className="flex items-center justify-between px-3 py-2">
           <div className="flex min-w-0 items-center gap-2">
-            <IconGit className="h-3.5 w-3.5 text-primary" weight="duotone" />
+            <IconGit className="h-3.5 w-3.5 text-primary" />
             <button
               type="button"
               onClick={() => setShowBranchList((value) => !value)}

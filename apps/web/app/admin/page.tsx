@@ -14,7 +14,7 @@ type AdminRouteCard = {
   href: string
   title: string
   description: string
-  icon: React.ComponentType<{ className?: string }>
+  icon: React.ComponentType<{ size?: number; className?: string }>
 }
 
 const adminRouteCards: AdminRouteCard[] = [
@@ -52,14 +52,14 @@ export default function AdminDashboardPage() {
   const systemOverview = useQuery(api.admin.getSystemOverview)
 
   return (
-    <div className="container mx-auto max-w-7xl p-8">
+    <div className="p-8">
       <div className="mb-8">
         <div className="mb-2 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center bg-primary font-mono text-lg font-bold text-primary-foreground">
+          <div className="flex h-10 w-10 items-center justify-center border border-border bg-primary font-mono text-lg font-bold text-primary-foreground">
             A
           </div>
           <div>
-            <h1 className="text-display text-3xl">Admin Console</h1>
+            <h1 className="text-3xl font-bold -tracking-[0.025em]">Admin Console</h1>
             <p className="text-muted-foreground">
               System overview and routing hub for administrative tools
             </p>
@@ -71,34 +71,39 @@ export default function AdminDashboardPage() {
         </p>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-8">
         <SystemOverview data={systemOverview} />
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {adminRouteCards.map((card) => (
-            <Card
-              key={card.title}
-              className="group rounded-none transition-colors hover:bg-muted/20"
-            >
-              <CardHeader>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <card.icon className="h-5 w-5" />
-                    <CardTitle>{card.title}</CardTitle>
+        <div>
+          <p className="mb-4 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
+            Admin Tools
+          </p>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {adminRouteCards.map((card) => (
+              <Card
+                key={card.title}
+                className="group rounded-none transition-colors hover:bg-muted/20"
+              >
+                <CardHeader>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <card.icon size={16} />
+                      <CardTitle>{card.title}</CardTitle>
+                    </div>
+                    <CardDescription>{card.description}</CardDescription>
                   </div>
-                  <CardDescription>{card.description}</CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Button asChild variant="outline" className="w-full rounded-none font-mono">
-                  <Link href={card.href}>
-                    Open {card.title}
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+                </CardHeader>
+                <CardContent>
+                  <Button asChild variant="outline" className="w-full rounded-none font-mono">
+                    <Link href={card.href}>
+                      Open {card.title}
+                      <ArrowRight size={16} />
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </div>
     </div>

@@ -27,16 +27,7 @@ import {
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
-import {
-  Search,
-  Shield,
-  Ban,
-  Trash2,
-  UserCheck,
-  Loader2,
-  MoreHorizontal,
-  ChevronDown,
-} from 'lucide-react'
+import { Search, Shield, Ban, Trash2, UserCheck, Loader2, MoreHorizontal, ChevronDown } from 'lucide-react'
 
 const filterOptions = [
   { value: 'all', label: 'All Users' },

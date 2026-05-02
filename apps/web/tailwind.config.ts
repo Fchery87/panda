@@ -11,7 +11,7 @@ const config: Config = {
     container: {
       center: true,
       padding: {
-        DEFAULT: '1rem',
+        DEFAULT: '1.5rem',
         sm: '2rem',
         lg: '4rem',
         xl: '5rem',
@@ -79,6 +79,16 @@ const config: Config = {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
+      },
+      fontFamily: {
+        sans: ['var(--font-sans)', 'Inter', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-mono)', 'JetBrains Mono', 'SF Mono', 'Consolas', 'monospace'],
+      },
+      letterSpacing: {
+        'wide-02': '0.02em',
+        'wide-04': '0.04em',
+        'wide-06': '0.06em',
+        'wide-08': '0.08em',
       },
     },
   },

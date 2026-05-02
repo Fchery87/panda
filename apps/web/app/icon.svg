@@ -1,41 +1,40 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 500 500" fill="none">
-  <path
-    d="M110 160 L250 80 L390 160 L410 320 L250 430 L90 320 Z"
-    fill="#F2F0E6"
-    stroke="#000"
-    stroke-width="12"
-    stroke-linejoin="round"
-  />
-  <path d="M250 80 L390 160 L410 320 L250 430 V80Z" fill="#E8E4D8" />
-  <path
-    d="M110 160 L80 120 L120 70 L180 80"
-    fill="#000"
-    stroke="#000"
-    stroke-width="8"
-    stroke-linejoin="round"
-  />
-  <path
-    d="M390 160 L420 120 L380 70 L320 80"
-    fill="#000"
-    stroke="#000"
-    stroke-width="8"
-    stroke-linejoin="round"
-  />
-  <path d="M140 230 L220 215 L230 310 L160 330 Z" fill="#000" />
-  <path d="M270 215 L350 230 L330 330 L280 310 Z" fill="#000" />
-  <path d="M225 315 H275 L250 340 Z" fill="#000" />
-  <path
-    d="M250 340 V370 M250 370 L210 385 M250 370 L290 385"
-    stroke="#000"
-    stroke-width="8"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-  />
-  <g fill="none" stroke="#F9A825" stroke-width="5" stroke-linecap="round">
-    <circle cx="310" cy="180" r="5" fill="#F9A825" />
-    <path d="M310 185 V220 L340 250" />
-    <circle cx="340" cy="255" r="5" fill="#F9A825" />
-    <path d="M270 240 L300 270 L300 310" />
-    <circle cx="300" cy="315" r="5" fill="#F9A825" />
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 1024 1024" fill="none" role="img" aria-label="Panda">
+  <defs>
+    <filter id="circuitGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="7" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 1  0 0.55 0 0 0.56  0 0 0 0 0  0 0 0 0.75 0"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <clipPath id="faceClip">
+      <polygon points="512,173 258,300 185,563 263,735 409,793 454,858 570,858 615,793 761,735 839,563 766,300"/>
+    </clipPath>
+  </defs>
+  <polygon fill="#050505" points="190,282 312,210 430,338 327,419 246,398 190,337"/>
+  <polygon fill="#050505" points="834,282 712,210 594,338 697,419 778,398 834,337"/>
+  <polygon fill="#050505" points="512,146 246,280 158,563 240,765 377,823 448,896 576,896 647,823 784,765 866,563 778,280"/>
+  <g clip-path="url(#faceClip)">
+    <rect x="160" y="145" width="352" height="760" fill="#FBF8EA"/>
+    <rect x="512" y="145" width="352" height="760" fill="#F3EEDC"/>
+    <polygon fill="#F8F4E5" opacity="0.7" points="512,173 512,858 570,858 615,793 761,735 839,563 766,300"/>
+  </g>
+  <polygon fill="#050505" points="324,430 432,430 464,462 464,534 394,604 309,604 309,516"/>
+  <polygon fill="#050505" points="560,430 668,430 715,478 715,604 630,604 560,534"/>
+  <polygon fill="#050505" points="382,701 442,787 512,754 582,787 642,701 642,778 620,822 562,846 512,826 462,846 404,822 382,778"/>
+  <polygon fill="#050505" points="448,641 576,641 576,684 512,720 448,684"/>
+  <polygon fill="#F9F5E7" points="434,800 512,766 590,800 558,846 466,846"/>
+  <polygon fill="#F3EEDC" points="512,766 590,800 558,846 512,846"/>
+  <rect x="500" y="695" width="24" height="76" fill="#050505"/>
+  <g filter="url(#circuitGlow)" stroke="#F4A51C" stroke-width="18" stroke-linecap="square" stroke-linejoin="miter" opacity="0.55" fill="none">
+    <path d="M526 365 H612 V540 L700 628 V686"/>
+    <path d="M661 323 V365 L728 432 L662 503 L724 565 H798"/>
+    <path d="M702 628 V736"/>
+  </g>
+  <g stroke="#F6A817" stroke-width="12" stroke-linecap="square" stroke-linejoin="miter" fill="none">
+    <path d="M526 365 H612 V540 L700 628 V686"/>
+    <path d="M661 323 V365 L728 432 L662 503 L724 565 H798"/>
+    <path d="M702 628 V736"/>
   </g>
 </svg>

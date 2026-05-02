@@ -1,6 +1,6 @@
 'use client'
 
-import { IconAgents, IconSpinner, IconPause } from '@/components/ui/icons'
+import { Bot as IconAgents, Loader2 as IconSpinner, Pause as IconPause } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -51,7 +51,7 @@ export function ActiveAgentsPane({
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 px-4 py-8 text-center">
         <div className="flex h-10 w-10 items-center justify-center border border-border bg-muted/50">
-          <IconAgents className="h-5 w-5 text-muted-foreground" weight="duotone" />
+          <IconAgents className="h-5 w-5 text-muted-foreground" />
         </div>
         <div className="space-y-1">
           <p className="font-mono text-xs font-medium text-foreground">No active agents</p>

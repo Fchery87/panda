@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { diff_match_patch } from 'diff-match-patch'
-import { FileIcon, Check, X } from 'lucide-react'
+import { File as FileIcon, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 

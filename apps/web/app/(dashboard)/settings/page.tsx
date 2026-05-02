@@ -128,7 +128,7 @@ export default function SettingsPage() {
                       : 'border-transparent text-muted-foreground hover:border-border hover:bg-accent hover:text-foreground'
                   )}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon size={16} />
                   {item.label}
                 </button>
               )
@@ -171,7 +171,7 @@ export default function SettingsPage() {
                       : 'border-transparent text-muted-foreground hover:text-foreground'
                   )}
                 >
-                  <Icon className="h-3.5 w-3.5" />
+                  <Icon size={14} />
                   {item.label}
                 </button>
               )
@@ -193,7 +193,7 @@ export default function SettingsPage() {
               <Card className="rounded-none">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <User className="h-5 w-5" />
+                    <User size={20} />
                     General
                   </CardTitle>
                   <CardDescription>
@@ -251,7 +251,7 @@ export default function SettingsPage() {
               <Card className="rounded-none">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Palette className="h-5 w-5" />
+                    <Palette size={20} />
                     Appearance
                   </CardTitle>
                   <CardDescription>
@@ -291,7 +291,7 @@ export default function SettingsPage() {
                   className="shrink-0 rounded-none font-mono"
                   onClick={() => setCatalogModalOpen(true)}
                 >
-                  <Plus className="mr-1.5 h-4 w-4" />
+                  <Plus size={16} className="mr-1.5" />
                   Add Provider
                 </Button>
               </div>
@@ -348,7 +348,7 @@ export default function SettingsPage() {
                           className="absolute right-2 top-2"
                           onClick={() => removeProvider(key)}
                         >
-                          <X className="h-4 w-4" />
+                          <X size={16} />
                         </Button>
                       )}
                     </div>
@@ -376,7 +376,7 @@ export default function SettingsPage() {
               <Card className="rounded-none">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Cpu className="h-5 w-5" />
+                    <Cpu size={20} />
                     Automation Defaults
                   </CardTitle>
                   <CardDescription>

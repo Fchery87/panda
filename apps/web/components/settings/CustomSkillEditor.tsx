@@ -67,7 +67,8 @@ export function CustomSkillEditor({ className }: CustomSkillEditorProps) {
   }
 
   const handleAdd = async () => {
-    if (!newSkill.name.trim() || !newSkill.description.trim() || !newSkill.instructions.trim()) return
+    if (!newSkill.name.trim() || !newSkill.description.trim() || !newSkill.instructions.trim())
+      return
 
     await addCustomSkill({
       name: newSkill.name.trim(),
@@ -154,7 +155,9 @@ export function CustomSkillEditor({ className }: CustomSkillEditorProps) {
                     onClick={() => handleModeToggle(mode)}
                     className={cn(
                       'border border-border px-2 py-1 font-mono text-xs uppercase',
-                      newSkill.applicableModes.includes(mode) ? 'bg-primary text-primary-foreground' : ''
+                      newSkill.applicableModes.includes(mode)
+                        ? 'bg-primary text-primary-foreground'
+                        : ''
                     )}
                   >
                     {mode}
@@ -245,7 +248,11 @@ export function CustomSkillEditor({ className }: CustomSkillEditorProps) {
             <Button
               size="sm"
               onClick={handleAdd}
-              disabled={!newSkill.name.trim() || !newSkill.description.trim() || !newSkill.instructions.trim()}
+              disabled={
+                !newSkill.name.trim() ||
+                !newSkill.description.trim() ||
+                !newSkill.instructions.trim()
+              }
               className="rounded-none font-mono text-xs"
             >
               Create Skill

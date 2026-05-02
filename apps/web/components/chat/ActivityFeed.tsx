@@ -4,7 +4,7 @@ import { useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { motion } from 'framer-motion'
-import { IconCheck, IconSpinner, IconError } from '@/components/ui/icons'
+import { Check as IconCheck, Loader2 as IconSpinner, XCircle as IconError } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 
@@ -63,13 +63,13 @@ function getModeBadgeColor(mode: string): string {
 function StatusIcon({ status }: { status: AgentRunStatus }) {
   switch (status) {
     case 'completed':
-      return <IconCheck className="h-3.5 w-3.5 text-green-500" weight="bold" />
+      return <IconCheck className="h-3.5 w-3.5 text-green-500" />
     case 'failed':
-      return <IconError className="h-3.5 w-3.5 text-destructive" weight="bold" />
+      return <IconError className="h-3.5 w-3.5 text-destructive" />
     case 'running':
       return <IconSpinner className="h-3.5 w-3.5 animate-spin text-primary" />
     default:
-      return <IconCheck className="h-3.5 w-3.5 text-muted-foreground" weight="bold" />
+      return <IconCheck className="h-3.5 w-3.5 text-muted-foreground" />
   }
 }
 
@@ -119,7 +119,7 @@ export function ActivityFeed({ projectId, onOpenHistory, className }: ActivityFe
                 >
                   {getModeLabel(run.mode)}
                 </span>
-                <span className="w-8 text-right font-mono text-xs text-muted-foreground">
+                <span className="min-w-8 text-right font-mono text-xs text-muted-foreground">
                   {formatRelativeTime(run.startedAt)}
                 </span>
               </div>

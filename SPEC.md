@@ -1,26 +1,54 @@
-# Spec: Custom Skills Phase 1
+# SPEC: Panda.ai Design Redesign
+
+## Direction
+
+**Precision & Clarity** — Refined Swiss/editorial aesthetic. Crisp typography,
+generous whitespace, evolved amber accent. Think Linear meets Bloomberg for a
+developer workbench.
 
 ## Deliverables
 
-- [ ] Add Convex schema support for user-scoped Custom Skills.
-- [ ] Add authenticated Custom Skill list/get/create/update/delete functions.
-- [ ] Enforce ownership and admin policy for Custom Skill access.
-- [ ] Expose admin policy defaults for Custom Skills alongside existing
-      settings.
-- [ ] Add targeted tests for Custom Skill ownership and admin-policy contracts.
+- [ ] Update core design tokens (globals.css) — refined amber palette, editorial
+      typography scale
+- [ ] Update tailwind.config.ts with new typography, colors, spacing
+- [ ] Refine panda-logo SVG and palette
+- [ ] Redesign PublicNav — cleaner, more refined header
+- [ ] Redesign PublicFooter — editorial footer with better hierarchy
+- [ ] Redesign Landing Page (page.tsx) — hero, features, workflow, CTA
+- [ ] Redesign Dashboard Layout — cleaner container, refined header
+- [ ] Redesign Projects Page — refined project list, new dialog styling
+- [ ] Redesign Login Page — elevated auth entry
+- [ ] Redesign Education/Guide Page — refined interface guide layout
+- [ ] Redesign Admin Page — refined dashboard hub
+- [ ] Validation gate:
+      `bun run typecheck && bun run lint && bun run format:check && bun test`
+
+## Design Tokens
+
+### Colors
+
+- Base: Warm off-white (#F7F5F0) → evolved from #F2F0E6
+- Ink: Near-black (#1A1A18)
+- Primary: Refined amber (#E8951A) → deeper, more sophisticated than #F9A825
+- Muted / secondary: Subtle warm grays
+- Borders: Sharp, thin (#E5E0D5)
+
+### Typography
+
+- Headings: Plus Jakarta Sans (imported via next/font)
+- Body: Inter (imported via next/font)
+- Mono/Code: JetBrains Mono
+- Size scale: More refined, generous leading
+
+### Iconography
+
+- Replace generic lucide-react icons with custom minimal SVG icons
+- Clean, thin, consistent stroke weights
+- Custom mode icons (ask, plan, code, build)
 
 ## Constraints
 
-- Custom Skills are workflow documents, not executable plugins.
-- Do not implement UI, runtime preflight, prompt composition, or import/export
-  in this phase.
-- New schema fields added to existing tables must be optional unless data is
-  backfilled.
-- Preserve existing Custom Subagent behavior.
-
-## Out of scope (log here during the run, do not act on)
-
-- Project-scoped Skills.
-- Team registries or marketplaces.
-- Executable Skill matchers or tool calls.
-- Run/proof Applied Skill rendering.
+- Preserve all existing functionality (Convex queries, auth, routing)
+- Must pass TypeScript, lint, and build gates
+- Maintain dark mode support
+- Keep the brutalist sharp-corners DNA but elevate execution

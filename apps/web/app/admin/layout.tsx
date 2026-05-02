@@ -10,16 +10,7 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
-import {
-  LayoutDashboard,
-  Users,
-  Settings,
-  BarChart3,
-  Shield,
-  ArrowLeft,
-  Loader2,
-  AlertTriangle,
-} from 'lucide-react'
+import { LayoutDashboard, Users, Settings, BarChart3, Shield, ArrowLeft, Loader2, AlertTriangle } from 'lucide-react'
 
 const adminNavItems = [
   {
@@ -70,7 +61,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   if (result === undefined) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 size={32} className="animate-spin text-primary" />
       </div>
     )
   }
@@ -79,13 +70,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   if (!result.isAdmin) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 px-4">
-        <AlertTriangle className="h-16 w-16 text-destructive" />
+        <AlertTriangle size={64} className="text-destructive" />
         <h1 className="text-2xl font-bold">Access Denied</h1>
         <p className="text-muted-foreground">
           You do not have permission to access the admin dashboard.
         </p>
         <Button onClick={() => router.push('/')}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
+          <ArrowLeft size={16} className="mr-2" />
           Return to Home
         </Button>
       </div>
@@ -130,7 +121,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                         : 'text-muted-foreground hover:border-border hover:bg-muted hover:text-foreground'
                     )}
                   >
-                    <item.icon className="h-4 w-4" />
+                    <item.icon size={16} />
                     {item.title}
                   </Link>
                 ))}
@@ -144,7 +135,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   href="/"
                   className="flex items-center gap-3 rounded-none px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >
-                  <ArrowLeft className="h-4 w-4" />
+                  <ArrowLeft size={16} />
                   Back to App
                 </Link>
               </div>

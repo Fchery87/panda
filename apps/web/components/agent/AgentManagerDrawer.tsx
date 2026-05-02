@@ -6,16 +6,7 @@ import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import {
-  IconBot,
-  IconCheck,
-  IconChevronDown,
-  IconChevronRight,
-  IconError,
-  IconSpinner,
-  IconX,
-  IconStop,
-} from '@/components/ui/icons'
+import { Bot as IconBot, Check as IconCheck, ChevronDown as IconChevronDown, ChevronRight as IconChevronRight, XCircle as IconError, Loader2 as IconSpinner, X as IconX, Square as IconStop } from 'lucide-react'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import type { LiveProgressStep } from '@/components/chat/live-run-utils'
 
@@ -82,15 +73,15 @@ function getModeLabel(mode: string): string {
 function StatusIcon({ status }: { status: AgentRunStatus }) {
   switch (status) {
     case 'completed':
-      return <IconCheck className="h-4 w-4 text-green-500" weight="bold" />
+      return <IconCheck className="h-4 w-4 text-green-500" />
     case 'failed':
-      return <IconError className="h-4 w-4 text-destructive" weight="bold" />
+      return <IconError className="h-4 w-4 text-destructive" />
     case 'running':
       return <IconSpinner className="h-4 w-4 animate-spin text-primary" />
     case 'stopped':
       return <IconStop className="h-4 w-4 text-muted-foreground" />
     default:
-      return <IconCheck className="h-4 w-4 text-muted-foreground" weight="bold" />
+      return <IconCheck className="h-4 w-4 text-muted-foreground" />
   }
 }
 
@@ -138,7 +129,7 @@ export function AgentManagerDrawer({
             {/* Header */}
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <div className="flex items-center gap-2">
-                <IconBot className="h-5 w-5 text-primary" weight="duotone" />
+                <IconBot className="h-5 w-5 text-primary" />
                 <span className="font-mono text-sm font-medium">Agent Manager</span>
               </div>
               <Button
@@ -297,7 +288,7 @@ export function AgentManagerDrawer({
                               className="rounded-none border border-border bg-background p-3"
                             >
                               <div className="flex items-center gap-2">
-                                <IconBot className="h-4 w-4 text-primary" weight="duotone" />
+                                <IconBot className="h-4 w-4 text-primary" />
                                 <span className="font-mono text-xs font-medium">
                                   {profile.name}
                                 </span>

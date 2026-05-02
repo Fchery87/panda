@@ -2,17 +2,8 @@
 
 import type { ForwardRefExoticComponent } from 'react'
 import Link from 'next/link'
-import type { IconProps } from '@phosphor-icons/react'
-import {
-  IconHome,
-  IconProjects,
-  IconAgents,
-  IconSearch,
-  IconGit,
-  IconDeploy,
-  IconSettings,
-  IconHistory,
-} from '@/components/ui/icons'
+import type { LucideProps } from 'lucide-react'
+import { House as IconHome, Folder as IconProjects, Bot as IconAgents, Search as IconSearch, GitBranch as IconGit, Globe as IconDeploy, Settings as IconSettings, History as IconHistory } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -36,7 +27,7 @@ export interface SidebarSessionSignal {
 
 interface NavItem {
   id: SidebarSection
-  icon: ForwardRefExoticComponent<IconProps>
+  icon: ForwardRefExoticComponent<LucideProps>
   label: string
   shortcut: string
 }
@@ -86,7 +77,7 @@ export function SidebarRail({
                 className="hover:bg-surface-2 flex h-11 items-center justify-center text-muted-foreground transition-colors duration-150 hover:text-foreground"
                 aria-label="Home"
               >
-                <IconHome className="h-4.5 w-4.5" weight="duotone" />
+                <IconHome className="h-4.5 w-4.5" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="right" className="font-mono text-xs">
@@ -101,7 +92,7 @@ export function SidebarRail({
                 className="hover:bg-surface-2 flex h-11 items-center justify-center border-t border-border text-muted-foreground transition-colors duration-150 hover:text-foreground"
                 aria-label="Projects"
               >
-                <IconProjects className="h-4.5 w-4.5" weight="duotone" />
+                <IconProjects className="h-4.5 w-4.5" />
               </Link>
             </TooltipTrigger>
             <TooltipContent side="right" className="font-mono text-xs">
@@ -134,7 +125,7 @@ export function SidebarRail({
                     aria-pressed={isActive}
                   >
                     {isActive && <div className="absolute inset-y-0.5 left-0 w-0.5 bg-primary" />}
-                    <Icon className="h-[18px] w-[18px]" weight={isActive ? 'duotone' : 'regular'} />
+                    <Icon className="h-[18px] w-[18px]" />
                     {showSessionSignal ? (
                       <span
                         className={cn(

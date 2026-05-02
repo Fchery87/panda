@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, FileIcon } from 'lucide-react'
+import { ChevronDown, ChevronRight, File as FileIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { GitDiffFile } from '@/lib/chat/parseGitDiff'
 

@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { IconDiff, IconSpinner } from '@/components/ui/icons'
+import { Diff as IconDiff, Loader2 as IconSpinner } from 'lucide-react'
 import type { TaskStatus } from '@/components/layout/TaskHeader'
 
 interface ReviewChangesBannerProps {

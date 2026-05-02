@@ -3,16 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useRouter, useSearchParams } from 'next/navigation'
-import {
-  FileIcon,
-  Command,
-  Settings,
-  MessageSquare,
-  Search,
-  Moon,
-  Sun,
-  Monitor,
-} from 'lucide-react'
+import { File as FileIcon, Command, Settings, MessageSquare, Search, Moon, Sun, Monitor } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'

@@ -2,6 +2,7 @@
 
 import { SignInButton } from '@/components/auth/SignInButton'
 import { PandaLogo } from '@/components/ui/panda-logo'
+import { ArrowRight } from 'lucide-react'
 import { Authenticated, AuthLoading, Unauthenticated } from '@/components/auth/ConvexAuthProvider'
 import { useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
@@ -36,7 +37,7 @@ export default function LoginPage() {
   return (
     <>
       <AuthLoading>
-        <div className="flex min-h-screen items-center justify-center p-4 text-sm text-muted-foreground">
+        <div className="flex min-h-screen items-center justify-center p-8 text-sm text-muted-foreground">
           Checking authentication...
         </div>
       </AuthLoading>
@@ -48,24 +49,24 @@ export default function LoginPage() {
           id="main-content"
           className="dot-grid flex min-h-screen flex-col items-center justify-center gap-8 p-4"
         >
-          <div className="flex w-full max-w-sm flex-col items-center gap-6">
+          <div className="flex w-full max-w-sm flex-col items-center gap-8">
             <PandaLogo size="lg" />
 
-            <div className="flex flex-col items-center gap-2 text-center">
+            <div className="flex flex-col items-center gap-3 text-center">
               <h1 className="text-display text-3xl">Sign in to Panda</h1>
               <p className="text-muted-foreground">{accessState.message}</p>
             </div>
 
-            <div className="w-full border border-border bg-background p-6">
-              <div className="space-y-4">
-                <div className="border-b border-border pb-4 font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                  Continue with
+            <div className="shadow-sharp-md w-full rounded-none border border-border bg-background p-8">
+              <div className="space-y-6">
+                <div className="border-b border-border pb-4">
+                  <span className="text-label text-muted-foreground">Continue with</span>
                 </div>
                 <SignInButton disabled={accessState.signInDisabled} />
               </div>
 
               {authError && (
-                <div className="mt-4 border border-destructive/50 bg-destructive/10 p-3 text-center">
+                <div className="mt-6 rounded-none border border-destructive/50 bg-destructive/10 p-4 text-center">
                   <p className="font-mono text-sm text-destructive">
                     Sign-in failed. Please try again.
                   </p>
@@ -78,18 +79,20 @@ export default function LoginPage() {
               plans, and build with the agent.
             </p>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-6">
               <Link
                 href="/"
-                className="font-mono text-xs text-muted-foreground underline hover:text-foreground"
+                className="inline-flex items-center gap-1.5 font-mono text-xs text-muted-foreground underline hover:text-foreground"
               >
                 Back to Home
+                <ArrowRight size={12} />
               </Link>
               <Link
                 href="/education"
-                className="font-mono text-xs text-muted-foreground underline hover:text-foreground"
+                className="inline-flex items-center gap-1.5 font-mono text-xs text-muted-foreground underline hover:text-foreground"
               >
                 Learn How It Works
+                <ArrowRight size={12} />
               </Link>
             </div>
           </div>

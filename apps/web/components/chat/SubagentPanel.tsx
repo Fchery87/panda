@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Bot, ChevronDown, ChevronRight, Clock3 } from 'lucide-react'
+import { Bot, ChevronDown, ChevronRight, Clock as Clock3 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { deriveSubagentEntries } from './run-insights'
 import type { ToolCallInfo } from './types'

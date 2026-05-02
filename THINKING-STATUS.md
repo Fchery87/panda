@@ -43,3 +43,49 @@ Milestone 3: Tests And Verification - 2026-04-29
 
 - Consider a dedicated owner-only Run proof surface for richer reasoning audit
   only if a future product requirement justifies it.
+
+# Status: Panda.ai Design Redesign
+
+## Current milestone: Final validation
+
+## Last completed: Page-level redesign — 2026-05-02
+
+## Decision log
+
+- Selected Precision & Clarity direction because the user wanted Panda to become
+  elegant, polished, and sleek while preserving developer-tool seriousness.
+- Evolved the existing amber instead of replacing it because the user requested
+  brand continuity.
+- Kept sharp corners because Panda's existing architecture and components assume
+  brutalist `rounded-none` patterns, but softened shadows, type, and color
+  contrast for polish.
+- Added `panda-icons.tsx` as a custom icon layer so app pages can move away from
+  generic `lucide-react` page-level imports without changing behavior.
+
+## Known issues
+
+- `bun run typecheck` passed after the redesign changes.
+- `bun run lint` passed after the redesign changes.
+- Full `bun run format:check` still reports unrelated pre-existing formatting
+  warnings in `.agents`, `AGENTS.md`, `README.md`, `CLAUDE.md`, and other files
+  outside this redesign. Touched redesign files were formatted directly with
+  Prettier.
+
+## Completed
+
+- Added refined design tokens in `apps/web/app/globals.css`.
+- Added Plus Jakarta Sans and JetBrains Mono font loading in
+  `apps/web/app/layout.tsx`.
+- Updated Tailwind font family and container defaults.
+- Refined Panda logo palette and SVG execution.
+- Added custom Panda icon system.
+- Redesigned public nav/footer, landing page, login page, education page,
+  dashboard shell/projects page, settings entry points, admin layout, admin hub,
+  and admin subpages at the page import/design-system level.
+
+## Future work (out of scope, log here)
+
+- Deep workbench internals still import `lucide-react`; they can be migrated
+  incrementally to the custom icon layer in a follow-up pass.
+- Full visual QA in browser should inspect `/`, `/login`, `/education`,
+  `/projects`, `/settings`, and `/admin/*` once auth/dev data is available.

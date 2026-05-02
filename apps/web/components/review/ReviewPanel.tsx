@@ -1,19 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import {
-  Activity,
-  DatabaseZap,
-  FileText,
-  LayoutDashboard,
-  Brain,
-  BookOpen,
-  ListTodo,
-  ShieldCheck,
-  Radar,
-  ScrollText,
-  MonitorSmartphone,
-} from 'lucide-react'
+import { Activity, DatabaseZap, FileText, LayoutDashboard, Brain, BookOpen, ListTodo, ShieldCheck, Radar, ScrollText, MonitorSmartphone } from 'lucide-react'
 import { TabContainer, type TabItem } from '@/components/ui/tab-container'
 
 export type ReviewTab =

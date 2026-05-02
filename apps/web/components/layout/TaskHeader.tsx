@@ -1,6 +1,6 @@
 'use client'
 
-import { IconQuickAction, IconDiff, IconRefresh, IconSpinner } from '@/components/ui/icons'
+import { Zap as IconQuickAction, Diff as IconDiff, RefreshCw as IconRefresh, Loader2 as IconSpinner } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export type TaskStatus = 'draft' | 'running' | 'review' | 'approved' | 'blocked' | 'failed'
@@ -34,14 +34,14 @@ export function TaskHeader({
   return (
     <div className="surface-1 flex h-9 shrink-0 items-center justify-between border-b border-border px-4">
       <div className="flex min-w-0 items-center gap-3">
-        <IconQuickAction className="h-3.5 w-3.5 shrink-0 text-primary" weight="fill" />
+        <IconQuickAction className="h-3.5 w-3.5 shrink-0 text-primary" />
         <span className="truncate font-mono text-xs font-medium text-foreground">{title}</span>
         <span className="badge-md" data-status={status}>
           {status === 'running' && <IconSpinner className="h-2.5 w-2.5 animate-spin" />}
           {status}
         </span>
         {changedFilesCount > 0 && (
-          <span className="surface-0 flex items-center gap-1 border border-border px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+          <span className="surface-0 flex items-center gap-1.5 border border-border px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
             <IconDiff className="h-3 w-3" />
             {changedFilesCount}
           </span>

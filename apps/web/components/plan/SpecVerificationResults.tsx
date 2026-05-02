@@ -3,15 +3,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import {
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
-  ChevronDown,
-  FileCheck,
-  Shield,
-  Target,
-} from 'lucide-react'
+import { CheckCircle2, XCircle, AlertCircle, ChevronDown, FileCheck, Shield, Target } from 'lucide-react'
 import type { VerificationResult, AcceptanceCriterion, Constraint } from '@/lib/agent/spec/types'
 
 interface SpecVerificationResultsProps {

@@ -2,17 +2,7 @@
 
 import { useRef, useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  IconClose,
-  IconBot,
-  IconFileTs,
-  IconFileJs,
-  IconFileJson,
-  IconFileCss,
-  IconFileHtml,
-  IconFileMarkdown,
-  IconFileCode,
-} from '@/components/ui/icons'
+import { X as IconClose, Bot as IconBot, FileCode as IconFileTs, FileCode as IconFileJs, FileCode as IconFileJson, FileCode as IconFileCss, FileCode as IconFileHtml, FileText as IconFileMarkdown, FileCode as IconFileCode } from 'lucide-react'
 import type { WorkspaceOpenTab } from '@/contexts/WorkspaceContext'
 import { cn } from '@/lib/utils'
 
@@ -21,26 +11,26 @@ function getFileIcon(filename: string) {
   switch (ext) {
     case 'ts':
     case 'tsx':
-      return <IconFileTs className="h-3.5 w-3.5 text-primary" weight="duotone" />
+      return <IconFileTs className="h-3.5 w-3.5 text-primary" />
     case 'js':
     case 'jsx':
-      return <IconFileJs className="h-3.5 w-3.5 text-primary" weight="duotone" />
+      return <IconFileJs className="h-3.5 w-3.5 text-primary" />
     case 'json':
-      return <IconFileJson className="h-3.5 w-3.5 text-primary/70" weight="duotone" />
+      return <IconFileJson className="h-3.5 w-3.5 text-primary/70" />
     case 'css':
     case 'scss':
     case 'sass':
     case 'less':
-      return <IconFileCss className="h-3.5 w-3.5 text-primary/70" weight="duotone" />
+      return <IconFileCss className="h-3.5 w-3.5 text-primary/70" />
     case 'html':
     case 'htm':
-      return <IconFileHtml className="h-3.5 w-3.5 text-primary/70" weight="duotone" />
+      return <IconFileHtml className="h-3.5 w-3.5 text-primary/70" />
     case 'md':
     case 'txt':
     case 'markdown':
-      return <IconFileMarkdown className="h-3.5 w-3.5 text-muted-foreground" weight="duotone" />
+      return <IconFileMarkdown className="h-3.5 w-3.5 text-muted-foreground" />
     default:
-      return <IconFileCode className="h-3.5 w-3.5 text-muted-foreground" weight="duotone" />
+      return <IconFileCode className="h-3.5 w-3.5 text-muted-foreground" />
   }
 }
 
@@ -194,7 +184,7 @@ export function FileTabs({
                 )}
 
                 {isPlanTab ? (
-                  <IconBot className="h-3.5 w-3.5 text-primary" weight="duotone" />
+                  <IconBot className="h-3.5 w-3.5 text-primary" />
                 ) : (
                   getFileIcon(filename)
                 )}
@@ -243,7 +233,7 @@ export function FileTabs({
               className="hover:bg-surface-2 flex h-8 items-center gap-1.5 rounded-none border border-transparent px-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:border-border hover:text-foreground"
               title="Open Agent Manager"
             >
-              <IconBot className="h-3.5 w-3.5" weight="duotone" />
+              <IconBot className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Agents</span>
             </button>
           </div>

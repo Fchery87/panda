@@ -38,7 +38,7 @@ export default function AdminError({
             window.location.href = '/admin'
           }}
         >
-          <ArrowLeft className="mr-2 h-4 w-4" />
+          <ArrowLeft size={16} className="mr-2" />
           Admin Dashboard
         </Button>
       </div>

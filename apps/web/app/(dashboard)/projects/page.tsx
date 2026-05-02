@@ -83,7 +83,7 @@ function CreateProjectDialog({
     >
       <DialogTrigger asChild>
         <Button className="gap-2 rounded-none font-mono">
-          <Plus className="h-4 w-4" />
+          <Plus size={16} />
           New Project
         </Button>
       </DialogTrigger>
@@ -96,7 +96,7 @@ function CreateProjectDialog({
           <div className="grid gap-4 py-4">
             {submitError ? (
               <Alert variant="destructive" className="rounded-none border">
-                <AlertTitle className="font-mono text-xs uppercase tracking-[0.18em]">
+                <AlertTitle className="font-mono text-xs uppercase tracking-[0.06em]">
                   {submitError.title}
                 </AlertTitle>
                 <AlertDescription className="space-y-1 font-mono text-xs">
@@ -106,7 +106,10 @@ function CreateProjectDialog({
               </Alert>
             ) : null}
             <div className="grid gap-2">
-              <label htmlFor="name" className="font-mono text-sm text-muted-foreground">
+              <label
+                htmlFor="name"
+                className="font-mono text-xs uppercase tracking-[0.06em] text-muted-foreground"
+              >
                 Project Name
               </label>
               <Input
@@ -122,7 +125,10 @@ function CreateProjectDialog({
               />
             </div>
             <div className="grid gap-2">
-              <label htmlFor="description" className="font-mono text-sm text-muted-foreground">
+              <label
+                htmlFor="description"
+                className="font-mono text-xs uppercase tracking-[0.06em] text-muted-foreground"
+              >
                 Description (optional)
               </label>
               <Input
@@ -258,7 +264,7 @@ function ProjectRow({
     >
       <div
         className={cn(
-          'group -mx-4 flex items-center justify-between px-4 py-4',
+          'group flex items-center justify-between px-5 py-5',
           'border-b border-border',
           'transition-sharp hover:bg-secondary/50'
         )}
@@ -270,13 +276,13 @@ function ProjectRow({
           className="flex min-w-0 flex-1 items-center gap-4"
         >
           {/* Number */}
-          <span className="text-label w-8 shrink-0 text-primary">
+          <span className="w-8 shrink-0 font-mono text-xs font-medium tracking-[0.06em] text-primary">
             {String(index + 1).padStart(2, '0')}
           </span>
 
           {/* Icon */}
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center border border-border">
-            <FolderGit2 className="h-4 w-4 text-primary" />
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center border border-border">
+            <FolderGit2 size={16} className="text-primary" />
           </div>
 
           {/* Name & Description */}
@@ -290,8 +296,8 @@ function ProjectRow({
 
         {/* Meta */}
         <div className="flex shrink-0 items-center gap-6">
-          <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
-            <Clock className="h-3 w-3" />
+          <div className="flex items-center gap-2 font-mono text-xs tracking-[0.04em] text-muted-foreground">
+            <Clock size={12} />
             <span>{formatRelativeTime(project.lastOpenedAt)}</span>
           </div>
 
@@ -303,10 +309,13 @@ function ProjectRow({
             onClick={handleDeleteRequest}
             disabled={isDeleting}
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 size={14} />
           </Button>
 
-          <ArrowRight className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
+          <ArrowRight
+            size={16}
+            className="text-muted-foreground transition-colors group-hover:text-primary"
+          />
         </div>
       </div>
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
@@ -396,15 +405,15 @@ export default function ProjectsPage() {
   const isLoading = projects === undefined
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-12">
+    <div className="mx-auto max-w-4xl">
       {/* Header */}
-      <div className="mb-12 flex flex-col gap-6">
+      <div className="mb-10 flex flex-col gap-6">
         <div className="flex items-center gap-3">
           <span className="h-px w-8 bg-primary" />
           <span className="text-label text-muted-foreground">Projects</span>
         </div>
 
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-display text-4xl">Your Projects</h1>
             <p className="mt-2 text-muted-foreground">
@@ -416,15 +425,18 @@ export default function ProjectsPage() {
       </div>
 
       {/* Search */}
-      <div className="mb-8 grid gap-2">
+      <div className="mb-10 grid gap-2">
         <label
           htmlFor="project-search"
-          className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground"
+          className="font-mono text-xs uppercase tracking-[0.06em] text-muted-foreground"
         >
           Search projects
         </label>
         <div className="relative">
-          <Search className="absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search
+            size={16}
+            className="absolute left-0 top-1/2 -translate-y-1/2 text-muted-foreground"
+          />
           <Input
             id="project-search"
             placeholder="Search projects..."
@@ -439,7 +451,7 @@ export default function ProjectsPage() {
       {isLoading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-16 animate-pulse bg-muted" />
+            <div key={i} className="h-[68px] animate-pulse bg-muted" />
           ))}
         </div>
       ) : sortedProjects && sortedProjects.length > 0 ? (
@@ -464,7 +476,7 @@ export default function ProjectsPage() {
           className="flex flex-col items-center justify-center py-16 text-center"
         >
           <div className="mb-6 flex h-16 w-16 items-center justify-center border border-border">
-            <FolderGit2 className="h-8 w-8 text-muted-foreground" />
+            <FolderGit2 size={32} className="text-muted-foreground" />
           </div>
           <h3 className="mb-2 font-mono text-xl font-medium">
             {searchQuery ? 'No projects found' : 'Start your first project'}

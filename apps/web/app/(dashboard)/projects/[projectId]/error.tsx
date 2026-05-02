@@ -44,7 +44,7 @@ export default function WorkbenchError({
             window.location.href = '/projects'
           }}
         >
-          <ArrowLeft className="mr-2 h-4 w-4" />
+          <ArrowLeft size={16} className="mr-2" />
           Back to Projects
         </Button>
       </div>

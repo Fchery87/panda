@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { IconDiff, IconFile, IconNewChat, IconQuickAction, IconUpload } from '@/components/ui/icons'
+import { Diff as IconDiff, FileCode as IconFile, MessageSquarePlus as IconNewChat, Zap as IconQuickAction, Upload as IconUpload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { buildExecutionSessionTimelineRows } from '@/lib/workspace/execution-session-timeline'
@@ -130,7 +130,7 @@ export function WorkspaceHome({
                       className="h-10 justify-start gap-2 rounded-none font-mono text-xs"
                       onClick={action.onClick}
                     >
-                      <Icon className="h-4 w-4" weight="duotone" />
+                      <Icon className="h-4 w-4" />
                       {action.label}
                     </Button>
                   )
@@ -284,7 +284,7 @@ export function WorkspaceHome({
                   className="h-9 justify-start gap-2 rounded-none font-mono text-xs"
                   onClick={onOpenDiffView}
                 >
-                  <IconDiff className="h-4 w-4 text-primary" weight="duotone" />
+                  <IconDiff className="h-4 w-4 text-primary" />
                   Review {pendingDiffs} pending diff{pendingDiffs !== 1 ? 's' : ''}
                 </Button>
               )}
@@ -294,7 +294,7 @@ export function WorkspaceHome({
                   className="h-9 justify-start gap-2 rounded-none font-mono text-xs"
                   onClick={onStartAgent}
                 >
-                  <IconQuickAction className="h-4 w-4 text-primary" weight="fill" />
+                  <IconQuickAction className="h-4 w-4 text-primary" />
                   Start new session
                 </Button>
               )}
@@ -331,10 +331,7 @@ export function WorkspaceHome({
                     idx > 0 ? 'border-t border-border' : ''
                   }`}
                 >
-                  <IconFile
-                    className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-                    weight="duotone"
-                  />
+                  <IconFile className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                   <span className="min-w-0 flex-1 truncate font-mono text-xs text-foreground">
                     {file.path}
                   </span>

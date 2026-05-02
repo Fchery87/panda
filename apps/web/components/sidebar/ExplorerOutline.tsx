@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { IconBracketsCurly, IconBracketsAngle, IconText, IconHash } from '@/components/ui/icons'
+import { Brackets as IconBracketsCurly, ChevronLeft as IconBracketsAngle, Type as IconText, Hash as IconHash } from 'lucide-react'
 
 export interface OutlineSymbol {
   name: string
@@ -108,15 +108,15 @@ function getSymbolIcon(kind: OutlineSymbol['kind']) {
   switch (kind) {
     case 'function':
     case 'export':
-      return <IconBracketsCurly className="h-3 w-3" weight="duotone" />
+      return <IconBracketsCurly className="h-3 w-3" />
     case 'class':
-      return <IconBracketsAngle className="h-3 w-3" weight="duotone" />
+      return <IconBracketsAngle className="h-3 w-3" />
     case 'const':
-      return <IconHash className="h-3 w-3" weight="duotone" />
+      return <IconHash className="h-3 w-3" />
     case 'heading':
-      return <IconText className="h-3 w-3" weight="duotone" />
+      return <IconText className="h-3 w-3" />
     default:
-      return <IconBracketsCurly className="h-3 w-3" weight="duotone" />
+      return <IconBracketsCurly className="h-3 w-3" />
   }
 }
 

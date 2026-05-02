@@ -2,27 +2,7 @@
 
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import {
-  ArrowRight,
-  Bot,
-  Brain,
-  FileSearch,
-  FolderTree,
-  MessageSquare,
-  Monitor,
-  PanelLeft,
-  PanelRight,
-  Terminal,
-  Workflow,
-  Wrench,
-  Shield,
-  Target,
-  GitBranch,
-  Search,
-  CheckCircle2,
-  Eye,
-  Clock,
-} from 'lucide-react'
+import { ArrowRight, Bot, Brain, FileSearch, FolderTree, MessageSquare, Monitor, PanelLeft, PanelRight, Terminal, Workflow, Wrench, Shield, Target, GitBranch, Search, CheckCircle2, Eye, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PublicNav } from '@/components/layout/PublicNav'
 import { PublicFooter } from '@/components/layout/PublicFooter'
@@ -49,7 +29,7 @@ function DetailCard({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ delay: index * 0.04 }}
-      className="border border-border bg-background p-5"
+      className="border border-border bg-background p-6"
     >
       <div className="mb-3 flex items-center justify-between gap-3">
         <h4 className="font-mono text-xs font-semibold uppercase tracking-widest text-primary">
@@ -123,8 +103,10 @@ export default function EducationPage() {
               >
                 <div className="space-y-6">
                   <div className="inline-flex items-center gap-3">
-                    <span className="h-px w-8 bg-primary" />
-                    <span className="text-label text-muted-foreground">How Panda works</span>
+                    <span className="h-px w-10 bg-primary/60" />
+                    <span className="font-mono text-xs uppercase tracking-[0.06em] text-muted-foreground">
+                      How Panda works
+                    </span>
                   </div>
 
                   <h1 className="text-display text-4xl sm:text-5xl lg:text-6xl">
@@ -142,7 +124,7 @@ export default function EducationPage() {
                     <Link href="/projects">
                       <Button className="shadow-sharp-md rounded-none font-mono tracking-wide">
                         Open the Workbench
-                        <ArrowRight className="ml-2 h-4 w-4" />
+                        <ArrowRight size={16} className="ml-2" />
                       </Button>
                     </Link>
                     <a href="#interface-map">
@@ -166,7 +148,7 @@ export default function EducationPage() {
                   </div>
                   <div className="space-y-4 p-5">
                     <div className="flex items-start gap-3">
-                      <FolderTree className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <FolderTree size={16} className="mt-0.5 shrink-0 text-primary" />
                       <div>
                         <p className="font-mono text-xs uppercase tracking-wide">
                           Explorer selects context
@@ -177,7 +159,7 @@ export default function EducationPage() {
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
-                      <Wrench className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <Wrench size={16} className="mt-0.5 shrink-0 text-primary" />
                       <div>
                         <p className="font-mono text-xs uppercase tracking-wide">
                           Workspace holds the active work
@@ -188,7 +170,7 @@ export default function EducationPage() {
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
-                      <Bot className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <Bot size={16} className="mt-0.5 shrink-0 text-primary" />
                       <div>
                         <p className="font-mono text-xs uppercase tracking-wide">
                           Chat directs the agent
@@ -199,7 +181,7 @@ export default function EducationPage() {
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
-                      <Shield className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <Shield size={16} className="mt-0.5 shrink-0 text-primary" />
                       <div>
                         <p className="font-mono text-xs uppercase tracking-wide">
                           Operational rail reviews state
@@ -218,7 +200,7 @@ export default function EducationPage() {
         </section>
 
         {/* Three promises */}
-        <section className="border-y border-border py-16 lg:py-20">
+        <section className="border-y border-border py-20 lg:py-24">
           <div className="container">
             <div className="grid gap-px bg-border sm:grid-cols-3">
               <motion.div
@@ -227,7 +209,7 @@ export default function EducationPage() {
                 viewport={{ once: true }}
                 className="border border-transparent bg-background p-8"
               >
-                <Eye className="mb-4 h-5 w-5 text-primary" />
+                <Eye size={20} className="mb-4 text-primary" />
                 <h3 className="mb-2 text-lg font-semibold">Transparent</h3>
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   Every plan, file edit, and terminal command is visible. You see what the agent
@@ -241,7 +223,7 @@ export default function EducationPage() {
                 transition={{ delay: 0.08 }}
                 className="border border-transparent bg-background p-8"
               >
-                <Shield className="mb-4 h-5 w-5 text-primary" />
+                <Shield size={20} className="mb-4 text-primary" />
                 <h3 className="mb-2 text-lg font-semibold">Reviewable</h3>
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   Plans require explicit approval. Risky commands pause for your say-so. Nothing
@@ -255,7 +237,7 @@ export default function EducationPage() {
                 transition={{ delay: 0.16 }}
                 className="border border-transparent bg-background p-8"
               >
-                <Clock className="mb-4 h-5 w-5 text-primary" />
+                <Clock size={20} className="mb-4 text-primary" />
                 <h3 className="mb-2 text-lg font-semibold">Recoverable</h3>
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   Runs save checkpoints. If something interrupts execution, you pick up exactly
@@ -267,15 +249,17 @@ export default function EducationPage() {
         </section>
 
         {/* Interface Map */}
-        <section id="interface-map" className="py-16 lg:py-20">
+        <section id="interface-map" className="py-20 lg:py-24">
           <div className="container">
             <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
               <div>
                 <div className="mb-4 flex items-center gap-3">
-                  <span className="h-px w-8 bg-primary" />
-                  <span className="text-label text-muted-foreground">Interface Map</span>
+                  <span className="h-px w-10 bg-primary/60" />
+                  <span className="font-mono text-xs uppercase tracking-[0.06em] text-muted-foreground">
+                    Interface Map
+                  </span>
                 </div>
-                <h2 className="text-display text-3xl sm:text-4xl">
+                <h2 className="text-4xl font-bold leading-[1.1] -tracking-[0.025em]">
                   The operating surfaces of the Panda workbench
                 </h2>
               </div>
@@ -304,7 +288,10 @@ export default function EducationPage() {
                       <span className="font-mono text-xs font-semibold uppercase tracking-widest text-primary">
                         {section.label}
                       </span>
-                      <Icon className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
+                      <Icon
+                        size={16}
+                        className="text-muted-foreground transition-colors group-hover:text-foreground"
+                      />
                     </div>
                     <h3 className="mb-3 text-xl font-semibold">{section.title}</h3>
                     <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
@@ -329,14 +316,16 @@ export default function EducationPage() {
         </section>
 
         {/* Workflow */}
-        <section className="border-y border-border py-16 lg:py-20">
+        <section className="border-y border-border py-20 lg:py-24">
           <div className="container">
             <div className="mb-10">
               <div className="mb-4 flex items-center gap-3">
-                <span className="h-px w-8 bg-primary" />
-                <span className="text-label text-muted-foreground">Workflow</span>
+                <span className="h-px w-10 bg-primary/60" />
+                <span className="font-mono text-xs uppercase tracking-[0.06em] text-muted-foreground">
+                  Workflow
+                </span>
               </div>
-              <h2 className="text-display max-w-3xl text-3xl sm:text-4xl">
+              <h2 className="max-w-3xl text-4xl font-bold leading-[1.1] -tracking-[0.025em]">
                 From request to inspected result in six steps
               </h2>
               <p className="mt-4 max-w-2xl text-muted-foreground">
@@ -362,7 +351,7 @@ export default function EducationPage() {
                     <span className="font-mono text-xs uppercase tracking-widest text-primary">
                       Step {index + 1}
                     </span>
-                    <Workflow className="h-4 w-4 text-muted-foreground" />
+                    <Workflow size={16} className="text-muted-foreground" />
                   </div>
                   <h3 className="text-sm font-semibold">{step.title}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
@@ -375,17 +364,19 @@ export default function EducationPage() {
         </section>
 
         {/* Explorer */}
-        <section id="explorer" className="py-16 lg:py-20">
+        <section id="explorer" className="py-20 lg:py-24">
           <div className="container">
             <div className="mb-8 grid gap-6 lg:grid-cols-12">
               <div className="lg:col-span-4">
                 <div className="mb-4 flex items-center gap-3">
-                  <PanelLeft className="h-4 w-4 text-primary" />
-                  <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+                  <PanelLeft size={16} className="text-primary" />
+                  <span className="font-mono text-xs uppercase tracking-[0.06em] text-muted-foreground">
                     Explorer
                   </span>
                 </div>
-                <h2 className="text-display text-3xl">Select the right context, fast</h2>
+                <h2 className="text-4xl font-bold leading-[1.1] -tracking-[0.025em]">
+                  Select the right context, fast
+                </h2>
               </div>
               <div className="lg:col-span-8">
                 <p className="text-base leading-relaxed text-muted-foreground">
@@ -397,7 +388,7 @@ export default function EducationPage() {
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
                   <div className="border border-border bg-background p-3">
                     <div className="mb-2 flex items-center gap-2 font-mono text-xs uppercase tracking-wide">
-                      <FolderTree className="h-3.5 w-3.5 text-primary" /> Browse
+                      <FolderTree size={14} className="text-primary" /> Browse
                     </div>
                     <p className="text-sm text-muted-foreground">
                       Navigate folders and files in a structured tree.
@@ -405,7 +396,7 @@ export default function EducationPage() {
                   </div>
                   <div className="border border-border bg-background p-3">
                     <div className="mb-2 flex items-center gap-2 font-mono text-xs uppercase tracking-wide">
-                      <Search className="h-3.5 w-3.5 text-primary" /> Search
+                      <Search size={14} className="text-primary" /> Search
                     </div>
                     <p className="text-sm text-muted-foreground">
                       Jump to matches when the tree is too slow.
@@ -413,7 +404,7 @@ export default function EducationPage() {
                   </div>
                   <div className="border border-border bg-background p-3">
                     <div className="mb-2 flex items-center gap-2 font-mono text-xs uppercase tracking-wide">
-                      <FileSearch className="h-3.5 w-3.5 text-primary" /> Route
+                      <FileSearch size={14} className="text-primary" /> Route
                     </div>
                     <p className="text-sm text-muted-foreground">
                       Selected files open in the workspace and attach to chat context.
@@ -432,17 +423,19 @@ export default function EducationPage() {
         </section>
 
         {/* Workspace */}
-        <section id="workspace" className="border-y border-border py-16 lg:py-20">
+        <section id="workspace" className="border-y border-border py-20 lg:py-24">
           <div className="container">
             <div className="mb-8 grid gap-6 lg:grid-cols-12">
               <div className="lg:col-span-4">
                 <div className="mb-4 flex items-center gap-3">
-                  <Monitor className="h-4 w-4 text-primary" />
-                  <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+                  <Monitor size={16} className="text-primary" />
+                  <span className="font-mono text-xs uppercase tracking-[0.06em] text-muted-foreground">
                     Workspace
                   </span>
                 </div>
-                <h2 className="text-display text-3xl">Edit, inspect, and execute in one place</h2>
+                <h2 className="text-4xl font-bold leading-[1.1] -tracking-[0.025em]">
+                  Edit, inspect, and execute in one place
+                </h2>
               </div>
               <div className="lg:col-span-8">
                 <p className="text-base leading-relaxed text-muted-foreground">
@@ -471,17 +464,17 @@ export default function EducationPage() {
         </section>
 
         {/* Chat Panel */}
-        <section id="chat" className="py-16 lg:py-20">
+        <section id="chat" className="py-20 lg:py-24">
           <div className="container">
             <div className="mb-8 grid gap-6 lg:grid-cols-12">
               <div className="lg:col-span-4">
                 <div className="mb-4 flex items-center gap-3">
-                  <MessageSquare className="h-4 w-4 text-primary" />
-                  <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+                  <MessageSquare size={16} className="text-primary" />
+                  <span className="font-mono text-xs uppercase tracking-[0.06em] text-muted-foreground">
                     Chat Panel
                   </span>
                 </div>
-                <h2 className="text-display text-3xl">
+                <h2 className="text-4xl font-bold leading-[1.1] -tracking-[0.025em]">
                   Orchestrate the agent without losing context
                 </h2>
               </div>
@@ -495,7 +488,7 @@ export default function EducationPage() {
                 <div className="mt-4 grid gap-px bg-border sm:grid-cols-3">
                   <div className="border border-transparent bg-background p-4">
                     <div className="mb-2 flex items-center gap-2 font-mono text-xs uppercase tracking-wide">
-                      <Terminal className="h-3.5 w-3.5 text-primary" />
+                      <Terminal size={14} className="text-primary" />
                       Plan + Run
                     </div>
                     <p className="text-sm text-muted-foreground">
@@ -504,7 +497,7 @@ export default function EducationPage() {
                   </div>
                   <div className="border border-transparent bg-background p-4">
                     <div className="mb-2 flex items-center gap-2 font-mono text-xs uppercase tracking-wide">
-                      <Brain className="h-3.5 w-3.5 text-primary" />
+                      <Brain size={14} className="text-primary" />
                       Permissions
                     </div>
                     <p className="text-sm text-muted-foreground">
@@ -513,7 +506,7 @@ export default function EducationPage() {
                   </div>
                   <div className="border border-transparent bg-background p-4">
                     <div className="mb-2 flex items-center gap-2 font-mono text-xs uppercase tracking-wide">
-                      <Bot className="h-3.5 w-3.5 text-primary" />
+                      <Bot size={14} className="text-primary" />
                       Share + History
                     </div>
                     <p className="text-sm text-muted-foreground">
@@ -534,17 +527,17 @@ export default function EducationPage() {
         </section>
 
         {/* Inspector */}
-        <section id="inspector" className="border-y border-border py-16 lg:py-20">
+        <section id="inspector" className="border-y border-border py-20 lg:py-24">
           <div className="container">
             <div className="mb-8 grid gap-6 lg:grid-cols-12">
               <div className="lg:col-span-4">
                 <div className="mb-4 flex items-center gap-3">
-                  <Shield className="h-4 w-4 text-primary" />
-                  <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+                  <Shield size={16} className="text-primary" />
+                  <span className="font-mono text-xs uppercase tracking-[0.06em] text-muted-foreground">
                     Inspector
                   </span>
                 </div>
-                <h2 className="text-display text-3xl">
+                <h2 className="text-4xl font-bold leading-[1.1] -tracking-[0.025em]">
                   Review what happened and decide what comes next
                 </h2>
               </div>
@@ -598,8 +591,14 @@ export default function EducationPage() {
                   </p>
                   <div className="mt-6 flex items-center gap-4">
                     <div className="flex -space-x-2">
-                      <Shield className="h-8 w-8 rounded-full border border-background bg-primary/10 p-1.5 text-primary" />
-                      <GitBranch className="h-8 w-8 rounded-full border border-background bg-primary/10 p-1.5 text-primary" />
+                      <Shield
+                        size={32}
+                        className="rounded-full border border-background bg-primary/10 p-1.5 text-primary"
+                      />
+                      <GitBranch
+                        size={32}
+                        className="rounded-full border border-background bg-primary/10 p-1.5 text-primary"
+                      />
                     </div>
                     <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
                       Reviewable + Recoverable
@@ -608,7 +607,7 @@ export default function EducationPage() {
                 </div>
                 <div className="space-y-4">
                   <div className="flex items-start gap-3">
-                    <Target className="mt-1 h-4 w-4 shrink-0 text-primary" />
+                    <Target size={16} className="mt-1 shrink-0 text-primary" />
                     <div>
                       <h4 className="text-sm font-semibold">Build from plan</h4>
                       <p className="text-xs text-muted-foreground">
@@ -617,7 +616,7 @@ export default function EducationPage() {
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Shield className="mt-1 h-4 w-4 shrink-0 text-primary" />
+                    <Shield size={16} className="mt-1 shrink-0 text-primary" />
                     <div>
                       <h4 className="text-sm font-semibold">Browser approvals</h4>
                       <p className="text-xs text-muted-foreground">
@@ -626,7 +625,7 @@ export default function EducationPage() {
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-primary" />
+                    <CheckCircle2 size={16} className="mt-1 shrink-0 text-primary" />
                     <div>
                       <h4 className="text-sm font-semibold">Run history + sharing</h4>
                       <p className="text-xs text-muted-foreground">
@@ -641,7 +640,7 @@ export default function EducationPage() {
         </section>
 
         {/* Power-user tips + CTA */}
-        <section className="py-16 lg:py-20">
+        <section className="py-20 lg:py-24">
           <div className="container">
             <div className="grid gap-px bg-border lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <div className="bg-background p-5 lg:p-8">
@@ -675,7 +674,7 @@ export default function EducationPage() {
                   <Link href="/projects">
                     <Button className="rounded-none font-mono tracking-wide">
                       Open the Workbench
-                      <ArrowRight className="ml-2 h-4 w-4" />
+                      <ArrowRight size={16} className="ml-2" />
                     </Button>
                   </Link>
                 </div>
@@ -685,14 +684,18 @@ export default function EducationPage() {
         </section>
 
         {/* FAQ */}
-        <section className="border-t border-border py-16 lg:py-20">
+        <section className="border-t border-border py-20 lg:py-24">
           <div className="container">
             <div className="mb-10">
               <div className="mb-4 flex items-center gap-3">
-                <span className="h-px w-8 bg-primary" />
-                <span className="text-label text-muted-foreground">FAQ</span>
+                <span className="h-px w-10 bg-primary/60" />
+                <span className="font-mono text-xs uppercase tracking-[0.06em] text-muted-foreground">
+                  FAQ
+                </span>
               </div>
-              <h2 className="text-display text-3xl sm:text-4xl">Common questions</h2>
+              <h2 className="text-4xl font-bold leading-[1.1] -tracking-[0.025em]">
+                Common questions
+              </h2>
             </div>
 
             <div className="mx-auto max-w-3xl divide-y divide-border">
@@ -714,9 +717,11 @@ export default function EducationPage() {
         </section>
 
         {/* Final CTA */}
-        <section className="surface-1 border-t border-border py-16 lg:py-20">
+        <section className="surface-1 border-t border-border py-20 lg:py-24">
           <div className="container text-center">
-            <h2 className="text-display mb-4 text-3xl sm:text-4xl">Start building with Panda</h2>
+            <h2 className="mb-4 text-4xl font-bold leading-[1.1] -tracking-[0.025em]">
+              Start building with Panda
+            </h2>
             <p className="mx-auto mb-8 max-w-lg text-muted-foreground">
               Create a project, review the plan, approve what matters, inspect the work, and keep
               moving. No desktop install required.
@@ -724,7 +729,7 @@ export default function EducationPage() {
             <Link href="/projects">
               <Button className="shadow-sharp-md rounded-none font-mono tracking-wide">
                 Launch the Workbench
-                <ArrowRight className="ml-2 h-4 w-4" />
+                <ArrowRight size={16} className="ml-2" />
               </Button>
             </Link>
           </div>

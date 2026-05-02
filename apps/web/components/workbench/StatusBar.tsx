@@ -1,15 +1,7 @@
 'use client'
 
 import { GitBranch } from 'lucide-react'
-import {
-  IconFile,
-  IconConnected,
-  IconDisconnected,
-  IconStreaming,
-  IconCheck,
-  IconError,
-  IconSpinner,
-} from '@/components/ui/icons'
+import { FileCode as IconFile, Wifi as IconConnected, WifiOff as IconDisconnected, Loader2 as IconStreaming, Check as IconCheck, XCircle as IconError, Loader2 as IconSpinner } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SpecBadge } from './SpecBadge'
 import type { SpecStatus, SpecTier } from '@/lib/agent/spec/types'
@@ -75,9 +67,9 @@ function AgentStatusIcon({ status }: { status: AgentStatus }) {
     case 'running':
       return <IconSpinner className="h-3 w-3 animate-spin" />
     case 'completed':
-      return <IconCheck className="h-3 w-3 text-green-500" weight="bold" />
+      return <IconCheck className="h-3 w-3 text-green-500" />
     case 'failed':
-      return <IconError className="h-3 w-3 text-destructive" weight="bold" />
+      return <IconError className="h-3 w-3 text-destructive" />
     default:
       return <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
   }
@@ -122,7 +114,7 @@ export function StatusBar({
           </span>
         ) : (
           <span className="flex items-center gap-1.5">
-            <IconFile className="h-3 w-3" weight="duotone" />
+            <IconFile className="h-3 w-3" />
             <span className="max-w-[200px] truncate">{filename}</span>
           </span>
         )}

@@ -18,7 +18,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {!isProjectWorkbench && <DashboardHeader />}
         <main
           id="main-content"
-          className={cn('container', !isProjectWorkbench && 'py-6')}
+          className={cn('container', isProjectWorkbench ? 'py-6' : 'py-10')}
           tabIndex={-1}
         >
           {children}

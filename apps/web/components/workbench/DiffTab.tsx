@@ -4,15 +4,7 @@ import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
-import {
-  IconDiff,
-  IconCheck,
-  IconX,
-  IconChevronDown,
-  IconChevronRight,
-  IconFile,
-  IconRevert,
-} from '@/components/ui/icons'
+import { Diff as IconDiff, Check as IconCheck, X as IconX, ChevronDown as IconChevronDown, ChevronRight as IconChevronRight, FileCode as IconFile, Undo2 as IconRevert } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export type DiffHunkAction = 'accept' | 'reject' | 'revert'
@@ -103,7 +95,7 @@ export function DiffTab({
       <div className="dot-grid flex h-full flex-col items-center justify-center gap-4">
         <div className="surface-1 shadow-sharp-md max-w-md border border-border px-6 py-8 text-center">
           <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center border border-border bg-muted/50">
-            <IconDiff className="h-5 w-5 text-muted-foreground" weight="duotone" />
+            <IconDiff className="h-5 w-5 text-muted-foreground" />
           </div>
           <h2 className="font-mono text-sm font-medium text-foreground">Diff View</h2>
           <p className="mt-2 font-mono text-xs text-muted-foreground">
@@ -204,10 +196,7 @@ export function DiffTab({
               {/* File header */}
               <div className="surface-1 flex items-center justify-between border-b border-border px-4 py-2">
                 <div className="flex min-w-0 items-center gap-2">
-                  <IconFile
-                    className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-                    weight="duotone"
-                  />
+                  <IconFile className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                   <span className="truncate font-mono text-xs text-foreground">
                     {selectedFile.path}
                   </span>

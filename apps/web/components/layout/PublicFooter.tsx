@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { PandaLogo } from '@/components/ui/panda-logo'
-import { ArrowRight } from 'lucide-react'
+import { ArrowUpRight } from 'lucide-react'
 
 const footerLinks = {
   product: [
@@ -23,22 +23,24 @@ const footerLinks = {
 export function PublicFooter() {
   return (
     <footer className="border-t border-border bg-background">
-      <div className="container py-12 lg:py-16">
-        <div className="grid gap-10 lg:grid-cols-12">
+      <div className="container py-16 lg:py-20">
+        <div className="grid gap-12 lg:grid-cols-12">
           {/* Brand column */}
           <div className="lg:col-span-4">
-            <PandaLogo size="sm" variant="full" />
-            <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
+            <PandaLogo size="md" variant="full" />
+            <p className="mt-5 max-w-xs text-sm leading-relaxed text-muted-foreground">
               A browser-based AI coding workbench with plan review, execution approvals, and
               resumable runs. No desktop client required.
             </p>
           </div>
 
           {/* Link columns */}
-          <div className="grid grid-cols-3 gap-8 lg:col-span-5 lg:col-start-7">
+          <div className="grid grid-cols-3 gap-10 lg:col-span-5 lg:col-start-8">
             {Object.entries(footerLinks).map(([category, links]) => (
               <div key={category}>
-                <h3 className="text-label mb-4 text-muted-foreground">{category}</h3>
+                <h3 className="mb-5 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                  {category}
+                </h3>
                 <ul className="space-y-3">
                   {links.map((link) => (
                     <li key={link.label}>
@@ -47,14 +49,15 @@ export function PublicFooter() {
                           href={link.href}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="transition-sharp text-sm text-muted-foreground hover:text-foreground"
+                          className="transition-refined inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
                         >
                           {link.label}
+                          <ArrowUpRight size={12} className="opacity-50" />
                         </a>
                       ) : (
                         <Link
                           href={link.href}
-                          className="transition-sharp text-sm text-muted-foreground hover:text-foreground"
+                          className="transition-refined text-sm text-muted-foreground hover:text-foreground"
                         >
                           {link.label}
                         </Link>
@@ -68,16 +71,16 @@ export function PublicFooter() {
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 sm:flex-row">
-          <p className="font-mono text-xs text-muted-foreground">
+        <div className="mt-16 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 sm:flex-row">
+          <p className="font-mono text-xs tracking-[0.04em] text-muted-foreground">
             &copy; {new Date().getFullYear()} Panda.ai — Built by Studio Eighty7
           </p>
           <Link
             href="/projects"
-            className="transition-sharp flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-primary"
+            className="transition-refined inline-flex items-center gap-1.5 font-mono text-xs tracking-[0.04em] text-muted-foreground hover:text-primary"
           >
             Launch the workbench
-            <ArrowRight className="h-3 w-3" />
+            <ArrowUpRight size={12} />
           </Link>
         </div>
       </div>

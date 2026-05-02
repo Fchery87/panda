@@ -255,7 +255,8 @@ export function SubagentEditor({ className }: SubagentEditorProps) {
                   {agent.description}
                 </div>
                 <div className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/70">
-                  {agent.capabilityPreset ?? 'assistant'} · {agent.defaultSkillIds?.length ?? 0} skills
+                  {agent.capabilityPreset ?? 'assistant'} · {agent.defaultSkillIds?.length ?? 0}{' '}
+                  skills
                 </div>
               </div>
               <Button

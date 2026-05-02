@@ -1,6 +1,6 @@
 'use client'
 
-import { IconBreadcrumbSeparator, IconFolder, IconArrowLeft } from '@/components/ui/icons'
+import { ChevronRight as IconBreadcrumbSeparator, Folder as IconFolder, ArrowLeft as IconArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
@@ -54,7 +54,7 @@ export function Breadcrumb({
           <IconBreadcrumbSeparator className="h-3.5 w-3.5 text-muted-foreground/50" />
           {item.isSymbol ? (
             <span className="flex items-center gap-1 font-mono text-xs text-primary/70">
-              <span className="text-[10px]">#</span>
+              <span className="text-xs opacity-60">#</span>
               {item.label}
             </span>
           ) : item.folderPath && onRevealInExplorer && index < items.length - 1 ? (
@@ -64,7 +64,7 @@ export function Breadcrumb({
               className="flex items-center gap-1 font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
               title={`Reveal ${item.label} in Explorer`}
             >
-              <IconFolder className="h-3 w-3" weight="duotone" />
+              <IconFolder className="h-3 w-3" />
               {item.label}
             </button>
           ) : item.path && index < items.length - 1 ? (

@@ -2,16 +2,9 @@
 
 import * as Dialog from '@radix-ui/react-dialog'
 import { motion, AnimatePresence } from 'framer-motion'
-import { IconX } from '@/components/ui/icons'
+import { X as IconX } from 'lucide-react'
 import type { SidebarSection } from './SidebarRail'
-import {
-  IconProjects,
-  IconAgents,
-  IconSearch,
-  IconGit,
-  IconDeploy,
-  IconHistory,
-} from '@/components/ui/icons'
+import { Folder as IconProjects, Bot as IconAgents, Search as IconSearch, GitBranch as IconGit, Globe as IconDeploy, History as IconHistory } from 'lucide-react'
 
 interface MobileSidebarItem {
   id: SidebarSection
@@ -96,7 +89,7 @@ export function MobileSidebarSheet({
                               : 'hover:bg-surface-1 bg-background text-muted-foreground hover:text-foreground'
                           }`}
                         >
-                          <Icon className="h-5 w-5" weight={isActive ? 'fill' : 'regular'} />
+                          <Icon className="h-5 w-5" />
                           <span className="font-mono text-[10px] uppercase tracking-[0.12em]">
                             {item.label}
                           </span>

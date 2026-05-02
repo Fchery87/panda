@@ -53,7 +53,7 @@ export function DashboardHeader() {
                       'shadow-sharp-sm hover:shadow-sharp-md border border-primary text-primary-foreground'
                   )}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon size={16} />
                   <span className="xs:inline hidden sm:inline">{item.label}</span>
                 </Button>
               </Link>
@@ -68,7 +68,7 @@ export function DashboardHeader() {
           onClick={openCommandPalette}
           aria-label="Open command palette"
         >
-          <Search className="h-3.5 w-3.5" />
+          <Search size={14} />
           <span className="truncate max-sm:hidden">Search commands...</span>
           <span className="truncate sm:hidden">Search…</span>
           <div className="ml-auto hidden items-center gap-1 sm:flex">
@@ -85,7 +85,7 @@ export function DashboardHeader() {
               size="sm"
               className="h-8 gap-1 rounded-none px-2 font-mono text-xs sm:h-9 sm:gap-1.5 sm:px-3"
             >
-              <Plus className="h-3.5 w-3.5" />
+              <Plus size={14} />
               <span className="hidden md:inline">New Project</span>
             </Button>
           </Link>
