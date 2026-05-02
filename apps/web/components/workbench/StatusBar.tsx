@@ -1,7 +1,15 @@
 'use client'
 
 import { GitBranch } from 'lucide-react'
-import { FileCode as IconFile, Wifi as IconConnected, WifiOff as IconDisconnected, Loader2 as IconStreaming, Check as IconCheck, XCircle as IconError, Loader2 as IconSpinner } from 'lucide-react'
+import {
+  FileCode as IconFile,
+  Wifi as IconConnected,
+  WifiOff as IconDisconnected,
+  Loader2 as IconStreaming,
+  Check as IconCheck,
+  XCircle as IconError,
+  Loader2 as IconSpinner,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { SpecBadge } from './SpecBadge'
 import type { SpecStatus, SpecTier } from '@/lib/agent/spec/types'

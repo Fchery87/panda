@@ -3,7 +3,12 @@
 import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
-import { Brackets as IconBracketsCurly, ChevronLeft as IconBracketsAngle, Type as IconText, Hash as IconHash } from 'lucide-react'
+import {
+  Brackets as IconBracketsCurly,
+  ChevronLeft as IconBracketsAngle,
+  Type as IconText,
+  Hash as IconHash,
+} from 'lucide-react'
 
 export interface OutlineSymbol {
   name: string

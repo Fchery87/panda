@@ -193,8 +193,8 @@ Custom Skills and Custom Subagents are separate extension points:
   prompt, capability preset, default attached Skills, and whether delegated task
   prompts can auto-match additional Skills.
 - Admin settings can disable user Skills, Skill auto-activation, strict user
-  Skills, import/export policy, user Subagents, and available Subagent capability
-  presets.
+  Skills, import/export policy, user Subagents, and available Subagent
+  capability presets.
 - Runs persist bounded Applied Skill summaries so proof surfaces can explain
   which Skills shaped execution without storing full Skill bodies in compact
   progress rows or public projections.

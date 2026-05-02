@@ -27,7 +27,8 @@ function buildAttachedSkillInstructions(args: {
     .filter((skill) => !disabledIds.has(skill.id))
     .filter(
       (skill) =>
-        skill.profile !== 'strict_workflow' || args.customSkillPolicy?.allowStrictUserSkills !== false
+        skill.profile !== 'strict_workflow' ||
+        args.customSkillPolicy?.allowStrictUserSkills !== false
     )
     .map((skill) => {
       const sections = [
@@ -73,7 +74,9 @@ export function buildSubagentSystemPrompt(options: BuildSubagentPromptOptions): 
         customSkills,
         customSkillPolicy: options.customSkillPolicy,
       }).matches.filter(
-        (match) => !match.customSkillId || !(options.agent.defaultSkillIds ?? []).includes(match.customSkillId)
+        (match) =>
+          !match.customSkillId ||
+          !(options.agent.defaultSkillIds ?? []).includes(match.customSkillId)
       )
     : []
 
@@ -81,9 +84,10 @@ export function buildSubagentSystemPrompt(options: BuildSubagentPromptOptions): 
     sections.push(
       '',
       '## Panda Workflow Skills',
-      [...attachedInstructions, ...autoMatched.map((match) => match.skill.buildInstruction({} as never))].join(
-        '\n\n'
-      )
+      [
+        ...attachedInstructions,
+        ...autoMatched.map((match) => match.skill.buildInstruction({} as never)),
+      ].join('\n\n')
     )
   }
 

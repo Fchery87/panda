@@ -2,7 +2,17 @@
 
 import { useRef, useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X as IconClose, Bot as IconBot, FileCode as IconFileTs, FileCode as IconFileJs, FileCode as IconFileJson, FileCode as IconFileCss, FileCode as IconFileHtml, FileText as IconFileMarkdown, FileCode as IconFileCode } from 'lucide-react'
+import {
+  X as IconClose,
+  Bot as IconBot,
+  FileCode as IconFileTs,
+  FileCode as IconFileJs,
+  FileCode as IconFileJson,
+  FileCode as IconFileCss,
+  FileCode as IconFileHtml,
+  FileText as IconFileMarkdown,
+  FileCode as IconFileCode,
+} from 'lucide-react'
 import type { WorkspaceOpenTab } from '@/contexts/WorkspaceContext'
 import { cn } from '@/lib/utils'
 

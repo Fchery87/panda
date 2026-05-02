@@ -9,7 +9,10 @@ describe('applied skill runtime visibility', () => {
       path.resolve(import.meta.dir, '../../hooks/useAgent-event-applier.ts'),
       'utf-8'
     )
-    const schemaSource = fs.readFileSync(path.resolve(import.meta.dir, '../../../../convex/schema.ts'), 'utf-8')
+    const schemaSource = fs.readFileSync(
+      path.resolve(import.meta.dir, '../../../../convex/schema.ts'),
+      'utf-8'
+    )
 
     expect(runtimeSource).toContain("case 'applied_skills'")
     expect(runtimeSource).toContain('Applied skills:')

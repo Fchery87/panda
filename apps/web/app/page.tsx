@@ -2,7 +2,19 @@
 
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { ArrowRight, Terminal, FileCode, Bot, Zap, Shield, GitBranch, Clock, Eye, Layers, ChevronRight } from 'lucide-react'
+import {
+  ArrowRight,
+  Terminal,
+  FileCode,
+  Bot,
+  Zap,
+  Shield,
+  GitBranch,
+  Clock,
+  Eye,
+  Layers,
+  ChevronRight,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PandaLogo } from '@/components/ui/panda-logo'
 import { PublicNav } from '@/components/layout/PublicNav'

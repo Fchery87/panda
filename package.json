@@ -65,6 +65,8 @@
     "flatted": "^3.4.0",
     "jsondiffpatch": "^0.7.2",
     "minimatch": ">=3.1.4",
+    "postcss": ">=8.5.10",
+    "uuid": ">=14.0.0",
     "@codemirror/autocomplete": "6.20.1",
     "@codemirror/commands": "6.10.1",
     "@codemirror/language": "6.12.1",

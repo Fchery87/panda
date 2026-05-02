@@ -5,7 +5,14 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
-import { Send as IconSend, Square as IconStop, Sparkles as IconEnhance, Undo2 as IconRevert, Paperclip as IconAttach, X as IconClose } from 'lucide-react'
+import {
+  Send as IconSend,
+  Square as IconStop,
+  Sparkles as IconEnhance,
+  Undo2 as IconRevert,
+  Paperclip as IconAttach,
+  X as IconClose,
+} from 'lucide-react'
 
 import { useAction, useMutation, useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'

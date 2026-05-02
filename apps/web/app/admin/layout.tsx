@@ -10,7 +10,16 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, Users, Settings, BarChart3, Shield, ArrowLeft, Loader2, AlertTriangle } from 'lucide-react'
+import {
+  LayoutDashboard,
+  Users,
+  Settings,
+  BarChart3,
+  Shield,
+  ArrowLeft,
+  Loader2,
+  AlertTriangle,
+} from 'lucide-react'
 
 const adminNavItems = [
   {

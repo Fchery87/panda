@@ -19,7 +19,18 @@ import {
   type TerminalJob,
 } from './terminal-execution'
 import type { Id } from '../../../../convex/_generated/dataModel'
-import { TerminalSquare, Loader2, CheckCircle2, XCircle, Clock, Play, Square, Trash2, ChevronDown, ChevronRight } from 'lucide-react'
+import {
+  TerminalSquare,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Play,
+  Square,
+  Trash2,
+  ChevronDown,
+  ChevronRight,
+} from 'lucide-react'
 
 interface TerminalProps {
   projectId: string

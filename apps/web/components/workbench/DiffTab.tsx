@@ -4,7 +4,15 @@ import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
-import { Diff as IconDiff, Check as IconCheck, X as IconX, ChevronDown as IconChevronDown, ChevronRight as IconChevronRight, FileCode as IconFile, Undo2 as IconRevert } from 'lucide-react'
+import {
+  Diff as IconDiff,
+  Check as IconCheck,
+  X as IconX,
+  ChevronDown as IconChevronDown,
+  ChevronRight as IconChevronRight,
+  FileCode as IconFile,
+  Undo2 as IconRevert,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export type DiffHunkAction = 'accept' | 'reject' | 'revert'

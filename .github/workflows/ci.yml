@@ -13,6 +13,7 @@ concurrency:
 env:
   NODE_VERSION: '20'
   BUN_VERSION: '1.2.0'
+  CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_DEPLOYMENT }}
 
 jobs:
   # Job 1: Code Quality Checks
@@ -33,6 +34,8 @@ jobs:
 
       - name: Generate Convex types
         run: bunx convex codegen
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
 
       - name: Run linter
         run: bun run lint
@@ -55,6 +58,8 @@ jobs:
 
       - name: Generate Convex types
         run: bunx convex codegen
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
 
       - name: Run type check
         run: bun run typecheck
@@ -77,6 +82,8 @@ jobs:
 
       - name: Generate Convex types
         run: bunx convex codegen
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
 
       - name: Check formatting
         run: bun run format:check
@@ -99,6 +106,8 @@ jobs:
 
       - name: Generate Convex types
         run: bunx convex codegen
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
 
       - name: Run tests
         run: bun test
@@ -122,6 +131,8 @@ jobs:
 
       - name: Generate Convex types
         run: bunx convex codegen
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
 
       - name: Build application
         run: bun run build:ci
@@ -148,6 +159,8 @@ jobs:
 
       - name: Generate Convex types
         run: bunx convex codegen
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
 
       - name: Install Playwright Browsers
         run: bunx playwright install chromium

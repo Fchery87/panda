@@ -5,7 +5,17 @@ import type { Id } from '@convex/_generated/dataModel'
 
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
-import { GitBranch as IconGit, RefreshCw as IconRefresh, ChevronDown as IconChevronDown, ChevronRight as IconChevronRight, Check as IconCheck, ArrowUp as IconArrowUp, Undo2 as IconRevert, CloudUpload as IconCloud, ChevronsUpDown as IconChevronUpDown } from 'lucide-react'
+import {
+  GitBranch as IconGit,
+  RefreshCw as IconRefresh,
+  ChevronDown as IconChevronDown,
+  ChevronRight as IconChevronRight,
+  Check as IconCheck,
+  ArrowUp as IconArrowUp,
+  Undo2 as IconRevert,
+  CloudUpload as IconCloud,
+  ChevronsUpDown as IconChevronUpDown,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useGit } from '@/hooks/useGit'
 

@@ -1,7 +1,13 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Diff as IconDiff, FileCode as IconFile, MessageSquarePlus as IconNewChat, Zap as IconQuickAction, Upload as IconUpload } from 'lucide-react'
+import {
+  Diff as IconDiff,
+  FileCode as IconFile,
+  MessageSquarePlus as IconNewChat,
+  Zap as IconQuickAction,
+  Upload as IconUpload,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { buildExecutionSessionTimelineRows } from '@/lib/workspace/execution-session-timeline'

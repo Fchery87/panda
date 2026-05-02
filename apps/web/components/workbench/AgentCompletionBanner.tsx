@@ -3,7 +3,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { Check as IconCheck, Diff as IconDiff, AppWindow as IconBrowser, RefreshCw as IconRefresh, X as IconX, Zap as IconQuickAction } from 'lucide-react'
+import {
+  Check as IconCheck,
+  Diff as IconDiff,
+  AppWindow as IconBrowser,
+  RefreshCw as IconRefresh,
+  X as IconX,
+  Zap as IconQuickAction,
+} from 'lucide-react'
 
 interface AgentCompletionBannerProps {
   isVisible: boolean

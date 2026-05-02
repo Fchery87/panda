@@ -62,14 +62,8 @@ export function PandaLogo({
         </defs>
 
         {/* Ears */}
-        <polygon
-          fill={palette.ink}
-          points="190,282 312,210 430,338 327,419 246,398 190,337"
-        />
-        <polygon
-          fill={palette.ink}
-          points="834,282 712,210 594,338 697,419 778,398 834,337"
-        />
+        <polygon fill={palette.ink} points="190,282 312,210 430,338 327,419 246,398 190,337" />
+        <polygon fill={palette.ink} points="834,282 712,210 594,338 697,419 778,398 834,337" />
 
         {/* Head outer border */}
         <polygon
@@ -95,30 +89,18 @@ export function PandaLogo({
         />
 
         {/* Right eye patch */}
-        <polygon
-          fill={palette.ink}
-          points="560,430 668,430 715,478 715,604 630,604 560,534"
-        />
+        <polygon fill={palette.ink} points="560,430 668,430 715,478 715,604 630,604 560,534" />
 
         {/* Cheek / mouth black geometry */}
         <polygon
           fill={palette.ink}
           points="382,701 442,787 512,754 582,787 642,701 642,778 620,822 562,846 512,826 462,846 404,822 382,778"
         />
-        <polygon
-          fill={palette.ink}
-          points="448,641 576,641 576,684 512,720 448,684"
-        />
+        <polygon fill={palette.ink} points="448,641 576,641 576,684 512,720 448,684" />
 
         {/* Lower muzzle cutouts */}
-        <polygon
-          fill={palette.muzzleLight}
-          points="434,800 512,766 590,800 558,846 466,846"
-        />
-        <polygon
-          fill={palette.faceRight}
-          points="512,766 590,800 558,846 512,846"
-        />
+        <polygon fill={palette.muzzleLight} points="434,800 512,766 590,800 558,846 466,846" />
+        <polygon fill={palette.faceRight} points="512,766 590,800 558,846 512,846" />
 
         {/* Nose stem */}
         <rect x="500" y="695" width="24" height="76" fill={palette.ink} />

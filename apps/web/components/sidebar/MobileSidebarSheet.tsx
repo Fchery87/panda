@@ -4,7 +4,14 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X as IconX } from 'lucide-react'
 import type { SidebarSection } from './SidebarRail'
-import { Folder as IconProjects, Bot as IconAgents, Search as IconSearch, GitBranch as IconGit, Globe as IconDeploy, History as IconHistory } from 'lucide-react'
+import {
+  Folder as IconProjects,
+  Bot as IconAgents,
+  Search as IconSearch,
+  GitBranch as IconGit,
+  Globe as IconDeploy,
+  History as IconHistory,
+} from 'lucide-react'
 
 interface MobileSidebarItem {
   id: SidebarSection

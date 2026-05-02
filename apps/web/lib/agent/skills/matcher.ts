@@ -1,5 +1,10 @@
 import type { PromptContext } from '../prompt-library'
-import type { AgentSkillDefinition, AgentSkillMatch, CustomSkillForMatching, SkillMatchInput } from './types'
+import type {
+  AgentSkillDefinition,
+  AgentSkillMatch,
+  CustomSkillForMatching,
+  SkillMatchInput,
+} from './types'
 import { getBuiltInAgentSkills } from './registry'
 
 function includesPhrase(value: string | undefined, phrase: string): boolean {

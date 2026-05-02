@@ -1,6 +1,11 @@
 'use client'
 
-import { Zap as IconQuickAction, Diff as IconDiff, RefreshCw as IconRefresh, Loader2 as IconSpinner } from 'lucide-react'
+import {
+  Zap as IconQuickAction,
+  Diff as IconDiff,
+  RefreshCw as IconRefresh,
+  Loader2 as IconSpinner,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export type TaskStatus = 'draft' | 'running' | 'review' | 'approved' | 'blocked' | 'failed'

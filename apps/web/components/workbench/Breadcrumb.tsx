@@ -1,6 +1,10 @@
 'use client'
 
-import { ChevronRight as IconBreadcrumbSeparator, Folder as IconFolder, ArrowLeft as IconArrowLeft } from 'lucide-react'
+import {
+  ChevronRight as IconBreadcrumbSeparator,
+  Folder as IconFolder,
+  ArrowLeft as IconArrowLeft,
+} from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 

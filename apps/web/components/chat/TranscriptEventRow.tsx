@@ -1,7 +1,16 @@
 'use client'
 
 import { useMemo } from 'react'
-import { AlertTriangle, CheckCircle2, ChevronRight, CircleDashed, FileStack, Loader2, ShieldAlert, Sparkles } from 'lucide-react'
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronRight,
+  CircleDashed,
+  FileStack,
+  Loader2,
+  ShieldAlert,
+  Sparkles,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useWorkspaceUiStore } from '@/stores/workspaceUiStore'

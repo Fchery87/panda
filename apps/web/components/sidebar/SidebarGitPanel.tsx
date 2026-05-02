@@ -3,7 +3,15 @@
 
 import { useEffect, useState } from 'react'
 import type { Id } from '@convex/_generated/dataModel'
-import { ChevronDown, ChevronRight, GitBranch, GitCommitHorizontal, Minus, Plus, RefreshCw } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronRight,
+  GitBranch,
+  GitCommitHorizontal,
+  Minus,
+  Plus,
+  RefreshCw,
+} from 'lucide-react'
 
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'

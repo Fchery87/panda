@@ -3,7 +3,16 @@
 import type { ForwardRefExoticComponent } from 'react'
 import Link from 'next/link'
 import type { LucideProps } from 'lucide-react'
-import { House as IconHome, Folder as IconProjects, Bot as IconAgents, Search as IconSearch, GitBranch as IconGit, Globe as IconDeploy, Settings as IconSettings, History as IconHistory } from 'lucide-react'
+import {
+  House as IconHome,
+  Folder as IconProjects,
+  Bot as IconAgents,
+  Search as IconSearch,
+  GitBranch as IconGit,
+  Globe as IconDeploy,
+  Settings as IconSettings,
+  History as IconHistory,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 

@@ -12,7 +12,16 @@ import { Progress } from '@/components/ui/progress'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Users, Bot, Activity, TrendingUp, Clock, Zap, CalendarRange, BarChart3 } from 'lucide-react'
+import {
+  Users,
+  Bot,
+  Activity,
+  TrendingUp,
+  Clock,
+  Zap,
+  CalendarRange,
+  BarChart3,
+} from 'lucide-react'
 import { AdminSubNav, AdminPageHeader } from '@/components/admin/AdminSubNav'
 
 import {

@@ -2,7 +2,27 @@
 
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { ArrowRight, Bot, Brain, FileSearch, FolderTree, MessageSquare, Monitor, PanelLeft, PanelRight, Terminal, Workflow, Wrench, Shield, Target, GitBranch, Search, CheckCircle2, Eye, Clock } from 'lucide-react'
+import {
+  ArrowRight,
+  Bot,
+  Brain,
+  FileSearch,
+  FolderTree,
+  MessageSquare,
+  Monitor,
+  PanelLeft,
+  PanelRight,
+  Terminal,
+  Workflow,
+  Wrench,
+  Shield,
+  Target,
+  GitBranch,
+  Search,
+  CheckCircle2,
+  Eye,
+  Clock,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PublicNav } from '@/components/layout/PublicNav'
 import { PublicFooter } from '@/components/layout/PublicFooter'

@@ -1,7 +1,17 @@
 'use client'
 
 // SpecDrawer component - uses internal state via isOpen prop
-import { X, Zap, CheckCircle2, XCircle, AlertTriangle, Loader2, Target, ListChecks, Shield } from 'lucide-react'
+import {
+  X,
+  Zap,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  Loader2,
+  Target,
+  ListChecks,
+  Shield,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'

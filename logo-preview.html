@@ -1,353 +1,617 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>Panda mark — preview</title>
-  <style>
-    :root {
-      --bg: #f8f5ec;
-      --fg: #1a1611;
-      --muted: #6b6353;
-      --border: #e2dccd;
-      --primary: #ec9c1f;
-      --card: #ffffff;
-    }
-    [data-theme="dark"] {
-      --bg: #110f0c;
-      --fg: #f3efe5;
-      --muted: #8a8273;
-      --border: #2a251f;
-      --primary: #f5a724;
-      --card: #1a1611;
-    }
-    * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; }
-    body {
-      background: var(--bg);
-      color: var(--fg);
-      font-family: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
-      font-feature-settings: "ss01", "cv11";
-      -webkit-font-smoothing: antialiased;
-      padding: 48px 64px 96px;
-      min-height: 100vh;
-    }
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 48px;
-      padding-bottom: 24px;
-      border-bottom: 1px solid var(--border);
-    }
-    h1 { font-size: 14px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; margin: 0; color: var(--muted); }
-    .toggle {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--fg);
-      padding: 8px 16px;
-      border-radius: 8px;
-      font-size: 13px;
-      cursor: pointer;
-      font-family: inherit;
-    }
-    .toggle:hover { border-color: var(--fg); }
-    section { margin-bottom: 64px; }
-    .label {
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-bottom: 20px;
-    }
-    .row {
-      display: flex;
-      gap: 64px;
-      align-items: flex-end;
-      flex-wrap: wrap;
-    }
-    .specimen {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-    }
-    .specimen .size-tag {
-      font-family: "JetBrains Mono", ui-monospace, monospace;
-      font-size: 11px;
-      color: var(--muted);
-    }
-    .swatch {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-    }
-    .lockup {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 16px 24px;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: var(--card);
-    }
-    .wordmark {
-      font-size: 22px;
-      font-weight: 600;
-      letter-spacing: -0.02em;
-    }
-    .compare {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
-      max-width: 720px;
-    }
-    .compare-card {
-      padding: 32px;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: var(--card);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
-    }
-    .compare-card.old { opacity: 0.85; }
-    .compare-card .caption {
-      font-size: 11px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--muted);
-      font-weight: 600;
-    }
-  </style>
-</head>
-<body data-theme="light">
-  <header>
-    <h1>Panda mark — geometry preview</h1>
-    <button class="toggle" onclick="document.body.dataset.theme = document.body.dataset.theme === 'dark' ? 'light' : 'dark'">Toggle theme</button>
-  </header>
+  <head>
+    <meta charset="utf-8" />
+    <title>Panda mark — preview</title>
+    <style>
+      :root {
+        --bg: #f8f5ec;
+        --fg: #1a1611;
+        --muted: #6b6353;
+        --border: #e2dccd;
+        --primary: #ec9c1f;
+        --card: #ffffff;
+      }
+      [data-theme='dark'] {
+        --bg: #110f0c;
+        --fg: #f3efe5;
+        --muted: #8a8273;
+        --border: #2a251f;
+        --primary: #f5a724;
+        --card: #1a1611;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--bg);
+        color: var(--fg);
+        font-family: -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
+        font-feature-settings: 'ss01', 'cv11';
+        -webkit-font-smoothing: antialiased;
+        padding: 48px 64px 96px;
+        min-height: 100vh;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 48px;
+        padding-bottom: 24px;
+        border-bottom: 1px solid var(--border);
+      }
+      h1 {
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        margin: 0;
+        color: var(--muted);
+      }
+      .toggle {
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--fg);
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      .toggle:hover {
+        border-color: var(--fg);
+      }
+      section {
+        margin-bottom: 64px;
+      }
+      .label {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 20px;
+      }
+      .row {
+        display: flex;
+        gap: 64px;
+        align-items: flex-end;
+        flex-wrap: wrap;
+      }
+      .specimen {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+      }
+      .specimen .size-tag {
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .swatch {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+      }
+      .lockup {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 24px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: var(--card);
+      }
+      .wordmark {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+      .compare {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        max-width: 720px;
+      }
+      .compare-card {
+        padding: 32px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: var(--card);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+      }
+      .compare-card.old {
+        opacity: 0.85;
+      }
+      .compare-card .caption {
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body data-theme="light">
+    <header>
+      <h1>Panda mark — geometry preview</h1>
+      <button
+        class="toggle"
+        onclick="
+          document.body.dataset.theme = document.body.dataset.theme === 'dark' ? 'light' : 'dark'
+        "
+      >
+        Toggle theme
+      </button>
+    </header>
 
-  <section>
-    <div class="label">Scale ladder — 16px → 200px</div>
-    <div class="row">
-      <div class="specimen">
-        <div class="swatch">
-          <svg viewBox="0 0 24 24" width="16" height="16">
-            <rect x="2" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)"/>
-            <rect x="16.5" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)"/>
-            <rect x="1.5" y="5.5" width="21" height="16.5" rx="5" fill="var(--fg)"/>
-            <rect x="5.5" y="10" width="4" height="6" rx="2" fill="var(--bg)" transform="rotate(-15 7.5 13)"/>
-            <rect x="14.5" y="10" width="4" height="6" rx="2" fill="var(--bg)" transform="rotate(15 16.5 13)"/>
-            <circle cx="12" cy="17" r="1.1" fill="var(--primary)"/>
-          </svg>
+    <section>
+      <div class="label">Scale ladder — 16px → 200px</div>
+      <div class="row">
+        <div class="specimen">
+          <div class="swatch">
+            <svg viewBox="0 0 24 24" width="16" height="16">
+              <rect x="2" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)" />
+              <rect x="16.5" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)" />
+              <rect x="1.5" y="5.5" width="21" height="16.5" rx="5" fill="var(--fg)" />
+              <rect
+                x="5.5"
+                y="10"
+                width="4"
+                height="6"
+                rx="2"
+                fill="var(--bg)"
+                transform="rotate(-15 7.5 13)"
+              />
+              <rect
+                x="14.5"
+                y="10"
+                width="4"
+                height="6"
+                rx="2"
+                fill="var(--bg)"
+                transform="rotate(15 16.5 13)"
+              />
+              <circle cx="12" cy="17" r="1.1" fill="var(--primary)" />
+            </svg>
+          </div>
+          <span class="size-tag">16px · favicon</span>
         </div>
-        <span class="size-tag">16px · favicon</span>
-      </div>
 
-      <div class="specimen">
-        <div class="swatch">
-          <svg viewBox="0 0 24 24" width="24" height="24">
-            <rect x="2" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)"/>
-            <rect x="16.5" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)"/>
-            <rect x="1.5" y="5.5" width="21" height="16.5" rx="5" fill="var(--fg)"/>
-            <rect x="5.5" y="10" width="4" height="6" rx="2" fill="var(--bg)" transform="rotate(-15 7.5 13)"/>
-            <rect x="14.5" y="10" width="4" height="6" rx="2" fill="var(--bg)" transform="rotate(15 16.5 13)"/>
-            <circle cx="12" cy="17" r="1.1" fill="var(--primary)"/>
-          </svg>
+        <div class="specimen">
+          <div class="swatch">
+            <svg viewBox="0 0 24 24" width="24" height="24">
+              <rect x="2" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)" />
+              <rect x="16.5" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)" />
+              <rect x="1.5" y="5.5" width="21" height="16.5" rx="5" fill="var(--fg)" />
+              <rect
+                x="5.5"
+                y="10"
+                width="4"
+                height="6"
+                rx="2"
+                fill="var(--bg)"
+                transform="rotate(-15 7.5 13)"
+              />
+              <rect
+                x="14.5"
+                y="10"
+                width="4"
+                height="6"
+                rx="2"
+                fill="var(--bg)"
+                transform="rotate(15 16.5 13)"
+              />
+              <circle cx="12" cy="17" r="1.1" fill="var(--primary)" />
+            </svg>
+          </div>
+          <span class="size-tag">24px · top bar</span>
         </div>
-        <span class="size-tag">24px · top bar</span>
-      </div>
 
-      <div class="specimen">
-        <div class="swatch">
-          <svg viewBox="0 0 24 24" width="48" height="48">
-            <rect x="2" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)"/>
-            <rect x="16.5" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)"/>
-            <rect x="1.5" y="5.5" width="21" height="16.5" rx="5" fill="var(--fg)"/>
-            <rect x="5.5" y="10" width="4" height="6" rx="2" fill="var(--bg)" transform="rotate(-15 7.5 13)"/>
-            <rect x="14.5" y="10" width="4" height="6" rx="2" fill="var(--bg)" transform="rotate(15 16.5 13)"/>
-            <circle cx="12" cy="17" r="1.1" fill="var(--primary)"/>
-          </svg>
+        <div class="specimen">
+          <div class="swatch">
+            <svg viewBox="0 0 24 24" width="48" height="48">
+              <rect x="2" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)" />
+              <rect x="16.5" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)" />
+              <rect x="1.5" y="5.5" width="21" height="16.5" rx="5" fill="var(--fg)" />
+              <rect
+                x="5.5"
+                y="10"
+                width="4"
+                height="6"
+                rx="2"
+                fill="var(--bg)"
+                transform="rotate(-15 7.5 13)"
+              />
+              <rect
+                x="14.5"
+                y="10"
+                width="4"
+                height="6"
+                rx="2"
+                fill="var(--bg)"
+                transform="rotate(15 16.5 13)"
+              />
+              <circle cx="12" cy="17" r="1.1" fill="var(--primary)" />
+            </svg>
+          </div>
+          <span class="size-tag">48px · settings</span>
         </div>
-        <span class="size-tag">48px · settings</span>
-      </div>
 
-      <div class="specimen">
-        <div class="swatch">
-          <svg viewBox="0 0 24 24" width="96" height="96">
-            <rect x="2" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)"/>
-            <rect x="16.5" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)"/>
-            <rect x="1.5" y="5.5" width="21" height="16.5" rx="5" fill="var(--fg)"/>
-            <rect x="5.5" y="10" width="4" height="6" rx="2" fill="var(--bg)" transform="rotate(-15 7.5 13)"/>
-            <rect x="14.5" y="10" width="4" height="6" rx="2" fill="var(--bg)" transform="rotate(15 16.5 13)"/>
-            <circle cx="12" cy="17" r="1.1" fill="var(--primary)"/>
-          </svg>
+        <div class="specimen">
+          <div class="swatch">
+            <svg viewBox="0 0 24 24" width="96" height="96">
+              <rect x="2" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)" />
+              <rect x="16.5" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)" />
+              <rect x="1.5" y="5.5" width="21" height="16.5" rx="5" fill="var(--fg)" />
+              <rect
+                x="5.5"
+                y="10"
+                width="4"
+                height="6"
+                rx="2"
+                fill="var(--bg)"
+                transform="rotate(-15 7.5 13)"
+              />
+              <rect
+                x="14.5"
+                y="10"
+                width="4"
+                height="6"
+                rx="2"
+                fill="var(--bg)"
+                transform="rotate(15 16.5 13)"
+              />
+              <circle cx="12" cy="17" r="1.1" fill="var(--primary)" />
+            </svg>
+          </div>
+          <span class="size-tag">96px · empty state</span>
         </div>
-        <span class="size-tag">96px · empty state</span>
-      </div>
 
-      <div class="specimen">
-        <div class="swatch">
-          <svg viewBox="0 0 24 24" width="200" height="200">
-            <rect x="2" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)"/>
-            <rect x="16.5" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)"/>
-            <rect x="1.5" y="5.5" width="21" height="16.5" rx="5" fill="var(--fg)"/>
-            <rect x="5.5" y="10" width="4" height="6" rx="2" fill="var(--bg)" transform="rotate(-15 7.5 13)"/>
-            <rect x="14.5" y="10" width="4" height="6" rx="2" fill="var(--bg)" transform="rotate(15 16.5 13)"/>
-            <circle cx="12" cy="17" r="1.1" fill="var(--primary)"/>
-          </svg>
+        <div class="specimen">
+          <div class="swatch">
+            <svg viewBox="0 0 24 24" width="200" height="200">
+              <rect x="2" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)" />
+              <rect x="16.5" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)" />
+              <rect x="1.5" y="5.5" width="21" height="16.5" rx="5" fill="var(--fg)" />
+              <rect
+                x="5.5"
+                y="10"
+                width="4"
+                height="6"
+                rx="2"
+                fill="var(--bg)"
+                transform="rotate(-15 7.5 13)"
+              />
+              <rect
+                x="14.5"
+                y="10"
+                width="4"
+                height="6"
+                rx="2"
+                fill="var(--bg)"
+                transform="rotate(15 16.5 13)"
+              />
+              <circle cx="12" cy="17" r="1.1" fill="var(--primary)" />
+            </svg>
+          </div>
+          <span class="size-tag">200px · marketing</span>
         </div>
-        <span class="size-tag">200px · marketing</span>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <section>
-    <div class="label">Lockup preview (wordmark is illustrative — not final typography)</div>
-    <div class="row">
-      <div class="lockup">
-        <svg viewBox="0 0 24 24" width="32" height="32">
-          <rect x="2" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)"/>
-          <rect x="16.5" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)"/>
-          <rect x="1.5" y="5.5" width="21" height="16.5" rx="5" fill="var(--fg)"/>
-          <rect x="5.5" y="10" width="4" height="6" rx="2" fill="var(--bg)" transform="rotate(-15 7.5 13)"/>
-          <rect x="14.5" y="10" width="4" height="6" rx="2" fill="var(--bg)" transform="rotate(15 16.5 13)"/>
-          <circle cx="12" cy="17" r="1.1" fill="var(--primary)"/>
-        </svg>
-        <span class="wordmark">Panda</span>
+    <section>
+      <div class="label">Lockup preview (wordmark is illustrative — not final typography)</div>
+      <div class="row">
+        <div class="lockup">
+          <svg viewBox="0 0 24 24" width="32" height="32">
+            <rect x="2" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)" />
+            <rect x="16.5" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)" />
+            <rect x="1.5" y="5.5" width="21" height="16.5" rx="5" fill="var(--fg)" />
+            <rect
+              x="5.5"
+              y="10"
+              width="4"
+              height="6"
+              rx="2"
+              fill="var(--bg)"
+              transform="rotate(-15 7.5 13)"
+            />
+            <rect
+              x="14.5"
+              y="10"
+              width="4"
+              height="6"
+              rx="2"
+              fill="var(--bg)"
+              transform="rotate(15 16.5 13)"
+            />
+            <circle cx="12" cy="17" r="1.1" fill="var(--primary)" />
+          </svg>
+          <span class="wordmark">Panda</span>
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <section>
-    <div class="label">Tilt variants — pick a vibe</div>
-    <div class="row">
-      <div class="specimen">
-        <div class="swatch">
-          <svg viewBox="0 0 24 24" width="96" height="96">
-            <rect x="2" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)"/>
-            <rect x="16.5" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)"/>
-            <rect x="1.5" y="5.5" width="21" height="16.5" rx="5" fill="var(--fg)"/>
-            <rect x="5.5" y="10" width="4" height="6" rx="2" fill="var(--bg)" transform="rotate(-8 7.5 13)"/>
-            <rect x="14.5" y="10" width="4" height="6" rx="2" fill="var(--bg)" transform="rotate(8 16.5 13)"/>
-            <circle cx="12" cy="17" r="1.1" fill="var(--primary)"/>
-          </svg>
+    <section>
+      <div class="label">Tilt variants — pick a vibe</div>
+      <div class="row">
+        <div class="specimen">
+          <div class="swatch">
+            <svg viewBox="0 0 24 24" width="96" height="96">
+              <rect x="2" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)" />
+              <rect x="16.5" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)" />
+              <rect x="1.5" y="5.5" width="21" height="16.5" rx="5" fill="var(--fg)" />
+              <rect
+                x="5.5"
+                y="10"
+                width="4"
+                height="6"
+                rx="2"
+                fill="var(--bg)"
+                transform="rotate(-8 7.5 13)"
+              />
+              <rect
+                x="14.5"
+                y="10"
+                width="4"
+                height="6"
+                rx="2"
+                fill="var(--bg)"
+                transform="rotate(8 16.5 13)"
+              />
+              <circle cx="12" cy="17" r="1.1" fill="var(--primary)" />
+            </svg>
+          </div>
+          <span class="size-tag">8° · subtle</span>
         </div>
-        <span class="size-tag">8° · subtle</span>
-      </div>
-      <div class="specimen">
-        <div class="swatch">
-          <svg viewBox="0 0 24 24" width="96" height="96">
-            <rect x="2" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)"/>
-            <rect x="16.5" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)"/>
-            <rect x="1.5" y="5.5" width="21" height="16.5" rx="5" fill="var(--fg)"/>
-            <rect x="5.5" y="10" width="4" height="6" rx="2" fill="var(--bg)" transform="rotate(-15 7.5 13)"/>
-            <rect x="14.5" y="10" width="4" height="6" rx="2" fill="var(--bg)" transform="rotate(15 16.5 13)"/>
-            <circle cx="12" cy="17" r="1.1" fill="var(--primary)"/>
-          </svg>
+        <div class="specimen">
+          <div class="swatch">
+            <svg viewBox="0 0 24 24" width="96" height="96">
+              <rect x="2" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)" />
+              <rect x="16.5" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)" />
+              <rect x="1.5" y="5.5" width="21" height="16.5" rx="5" fill="var(--fg)" />
+              <rect
+                x="5.5"
+                y="10"
+                width="4"
+                height="6"
+                rx="2"
+                fill="var(--bg)"
+                transform="rotate(-15 7.5 13)"
+              />
+              <rect
+                x="14.5"
+                y="10"
+                width="4"
+                height="6"
+                rx="2"
+                fill="var(--bg)"
+                transform="rotate(15 16.5 13)"
+              />
+              <circle cx="12" cy="17" r="1.1" fill="var(--primary)" />
+            </svg>
+          </div>
+          <span class="size-tag">15° · default (recommended)</span>
         </div>
-        <span class="size-tag">15° · default (recommended)</span>
-      </div>
-      <div class="specimen">
-        <div class="swatch">
-          <svg viewBox="0 0 24 24" width="96" height="96">
-            <rect x="2" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)"/>
-            <rect x="16.5" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)"/>
-            <rect x="1.5" y="5.5" width="21" height="16.5" rx="5" fill="var(--fg)"/>
-            <rect x="5.5" y="10" width="4" height="6" rx="2" fill="var(--bg)" transform="rotate(-25 7.5 13)"/>
-            <rect x="14.5" y="10" width="4" height="6" rx="2" fill="var(--bg)" transform="rotate(25 16.5 13)"/>
-            <circle cx="12" cy="17" r="1.1" fill="var(--primary)"/>
-          </svg>
+        <div class="specimen">
+          <div class="swatch">
+            <svg viewBox="0 0 24 24" width="96" height="96">
+              <rect x="2" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)" />
+              <rect x="16.5" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)" />
+              <rect x="1.5" y="5.5" width="21" height="16.5" rx="5" fill="var(--fg)" />
+              <rect
+                x="5.5"
+                y="10"
+                width="4"
+                height="6"
+                rx="2"
+                fill="var(--bg)"
+                transform="rotate(-25 7.5 13)"
+              />
+              <rect
+                x="14.5"
+                y="10"
+                width="4"
+                height="6"
+                rx="2"
+                fill="var(--bg)"
+                transform="rotate(25 16.5 13)"
+              />
+              <circle cx="12" cy="17" r="1.1" fill="var(--primary)" />
+            </svg>
+          </div>
+          <span class="size-tag">25° · expressive</span>
         </div>
-        <span class="size-tag">25° · expressive</span>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <section>
-    <div class="label">Mono variant — no orange nose</div>
-    <div class="row">
-      <div class="specimen">
-        <div class="swatch">
-          <svg viewBox="0 0 24 24" width="96" height="96">
-            <rect x="2" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)"/>
-            <rect x="16.5" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)"/>
-            <rect x="1.5" y="5.5" width="21" height="16.5" rx="5" fill="var(--fg)"/>
-            <rect x="5.5" y="10" width="4" height="6" rx="2" fill="var(--bg)" transform="rotate(-15 7.5 13)"/>
-            <rect x="14.5" y="10" width="4" height="6" rx="2" fill="var(--bg)" transform="rotate(15 16.5 13)"/>
-          </svg>
+    <section>
+      <div class="label">Mono variant — no orange nose</div>
+      <div class="row">
+        <div class="specimen">
+          <div class="swatch">
+            <svg viewBox="0 0 24 24" width="96" height="96">
+              <rect x="2" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)" />
+              <rect x="16.5" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)" />
+              <rect x="1.5" y="5.5" width="21" height="16.5" rx="5" fill="var(--fg)" />
+              <rect
+                x="5.5"
+                y="10"
+                width="4"
+                height="6"
+                rx="2"
+                fill="var(--bg)"
+                transform="rotate(-15 7.5 13)"
+              />
+              <rect
+                x="14.5"
+                y="10"
+                width="4"
+                height="6"
+                rx="2"
+                fill="var(--bg)"
+                transform="rotate(15 16.5 13)"
+              />
+            </svg>
+          </div>
+          <span class="size-tag">no nose · pure mono</span>
         </div>
-        <span class="size-tag">no nose · pure mono</span>
-      </div>
-      <div class="specimen">
-        <div class="swatch">
-          <svg viewBox="0 0 24 24" width="96" height="96">
-            <rect x="2" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)"/>
-            <rect x="16.5" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)"/>
-            <rect x="1.5" y="5.5" width="21" height="16.5" rx="5" fill="var(--fg)"/>
-            <rect x="5.5" y="10" width="4" height="6" rx="2" fill="var(--bg)" transform="rotate(-15 7.5 13)"/>
-            <rect x="14.5" y="10" width="4" height="6" rx="2" fill="var(--bg)" transform="rotate(15 16.5 13)"/>
-            <circle cx="12" cy="17" r="1.1" fill="var(--fg)"/>
-          </svg>
+        <div class="specimen">
+          <div class="swatch">
+            <svg viewBox="0 0 24 24" width="96" height="96">
+              <rect x="2" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)" />
+              <rect x="16.5" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)" />
+              <rect x="1.5" y="5.5" width="21" height="16.5" rx="5" fill="var(--fg)" />
+              <rect
+                x="5.5"
+                y="10"
+                width="4"
+                height="6"
+                rx="2"
+                fill="var(--bg)"
+                transform="rotate(-15 7.5 13)"
+              />
+              <rect
+                x="14.5"
+                y="10"
+                width="4"
+                height="6"
+                rx="2"
+                fill="var(--bg)"
+                transform="rotate(15 16.5 13)"
+              />
+              <circle cx="12" cy="17" r="1.1" fill="var(--fg)" />
+            </svg>
+          </div>
+          <span class="size-tag">mono nose</span>
         </div>
-        <span class="size-tag">mono nose</span>
-      </div>
-      <div class="specimen">
-        <div class="swatch">
-          <svg viewBox="0 0 24 24" width="96" height="96">
-            <rect x="2" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)"/>
-            <rect x="16.5" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)"/>
-            <rect x="1.5" y="5.5" width="21" height="16.5" rx="5" fill="var(--fg)"/>
-            <rect x="5.5" y="10" width="4" height="6" rx="2" fill="var(--bg)" transform="rotate(-15 7.5 13)"/>
-            <rect x="14.5" y="10" width="4" height="6" rx="2" fill="var(--bg)" transform="rotate(15 16.5 13)"/>
-            <circle cx="12" cy="17" r="1.1" fill="var(--primary)"/>
-          </svg>
+        <div class="specimen">
+          <div class="swatch">
+            <svg viewBox="0 0 24 24" width="96" height="96">
+              <rect x="2" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)" />
+              <rect x="16.5" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)" />
+              <rect x="1.5" y="5.5" width="21" height="16.5" rx="5" fill="var(--fg)" />
+              <rect
+                x="5.5"
+                y="10"
+                width="4"
+                height="6"
+                rx="2"
+                fill="var(--bg)"
+                transform="rotate(-15 7.5 13)"
+              />
+              <rect
+                x="14.5"
+                y="10"
+                width="4"
+                height="6"
+                rx="2"
+                fill="var(--bg)"
+                transform="rotate(15 16.5 13)"
+              />
+              <circle cx="12" cy="17" r="1.1" fill="var(--primary)" />
+            </svg>
+          </div>
+          <span class="size-tag">orange nose · default</span>
         </div>
-        <span class="size-tag">orange nose · default</span>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <section>
-    <div class="label">Side-by-side vs current logo</div>
-    <div class="compare">
-      <div class="compare-card old">
-        <div class="caption">Current</div>
-        <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 500 500" fill="none">
-          <path d="M110 160 L250 80 L390 160 L410 320 L250 430 L90 320 Z" fill="#F2F0E6" stroke="#000" stroke-width="12" stroke-linejoin="round"/>
-          <path d="M250 80 L390 160 L410 320 L250 430 V80Z" fill="#E8E4D8"/>
-          <path d="M110 160 L80 120 L120 70 L180 80" fill="#000" stroke="#000" stroke-width="8" stroke-linejoin="round"/>
-          <path d="M390 160 L420 120 L380 70 L320 80" fill="#000" stroke="#000" stroke-width="8" stroke-linejoin="round"/>
-          <path d="M140 230 L220 215 L230 310 L160 330 Z" fill="#000"/>
-          <path d="M270 215 L350 230 L330 330 L280 310 Z" fill="#000"/>
-          <path d="M225 315 H275 L250 340 Z" fill="#000"/>
-          <path d="M250 340 V370 M250 370 L210 385 M250 370 L290 385" stroke="#000" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-          <g fill="none" stroke="#F9A825" stroke-width="5" stroke-linecap="round">
-            <circle cx="310" cy="180" r="5" fill="#F9A825"/>
-            <path d="M310 185 V220 L340 250"/>
-            <circle cx="340" cy="255" r="5" fill="#F9A825"/>
-            <path d="M270 240 L300 270 L300 310"/>
-            <circle cx="300" cy="315" r="5" fill="#F9A825"/>
-          </g>
-        </svg>
+    <section>
+      <div class="label">Side-by-side vs current logo</div>
+      <div class="compare">
+        <div class="compare-card old">
+          <div class="caption">Current</div>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="120"
+            height="120"
+            viewBox="0 0 500 500"
+            fill="none"
+          >
+            <path
+              d="M110 160 L250 80 L390 160 L410 320 L250 430 L90 320 Z"
+              fill="#F2F0E6"
+              stroke="#000"
+              stroke-width="12"
+              stroke-linejoin="round"
+            />
+            <path d="M250 80 L390 160 L410 320 L250 430 V80Z" fill="#E8E4D8" />
+            <path
+              d="M110 160 L80 120 L120 70 L180 80"
+              fill="#000"
+              stroke="#000"
+              stroke-width="8"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M390 160 L420 120 L380 70 L320 80"
+              fill="#000"
+              stroke="#000"
+              stroke-width="8"
+              stroke-linejoin="round"
+            />
+            <path d="M140 230 L220 215 L230 310 L160 330 Z" fill="#000" />
+            <path d="M270 215 L350 230 L330 330 L280 310 Z" fill="#000" />
+            <path d="M225 315 H275 L250 340 Z" fill="#000" />
+            <path
+              d="M250 340 V370 M250 370 L210 385 M250 370 L290 385"
+              stroke="#000"
+              stroke-width="8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <g fill="none" stroke="#F9A825" stroke-width="5" stroke-linecap="round">
+              <circle cx="310" cy="180" r="5" fill="#F9A825" />
+              <path d="M310 185 V220 L340 250" />
+              <circle cx="340" cy="255" r="5" fill="#F9A825" />
+              <path d="M270 240 L300 270 L300 310" />
+              <circle cx="300" cy="315" r="5" fill="#F9A825" />
+            </g>
+          </svg>
+        </div>
+        <div class="compare-card">
+          <div class="caption">Proposed</div>
+          <svg viewBox="0 0 24 24" width="120" height="120">
+            <rect x="2" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)" />
+            <rect x="16.5" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)" />
+            <rect x="1.5" y="5.5" width="21" height="16.5" rx="5" fill="var(--fg)" />
+            <rect
+              x="5.5"
+              y="10"
+              width="4"
+              height="6"
+              rx="2"
+              fill="var(--bg)"
+              transform="rotate(-15 7.5 13)"
+            />
+            <rect
+              x="14.5"
+              y="10"
+              width="4"
+              height="6"
+              rx="2"
+              fill="var(--bg)"
+              transform="rotate(15 16.5 13)"
+            />
+            <circle cx="12" cy="17" r="1.1" fill="var(--primary)" />
+          </svg>
+        </div>
       </div>
-      <div class="compare-card">
-        <div class="caption">Proposed</div>
-        <svg viewBox="0 0 24 24" width="120" height="120">
-          <rect x="2" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)"/>
-          <rect x="16.5" y="2" width="5.5" height="5.5" rx="1.4" fill="var(--fg)"/>
-          <rect x="1.5" y="5.5" width="21" height="16.5" rx="5" fill="var(--fg)"/>
-          <rect x="5.5" y="10" width="4" height="6" rx="2" fill="var(--bg)" transform="rotate(-15 7.5 13)"/>
-          <rect x="14.5" y="10" width="4" height="6" rx="2" fill="var(--bg)" transform="rotate(15 16.5 13)"/>
-          <circle cx="12" cy="17" r="1.1" fill="var(--primary)"/>
-        </svg>
-      </div>
-    </div>
-  </section>
-</body>
+    </section>
+  </body>
 </html>

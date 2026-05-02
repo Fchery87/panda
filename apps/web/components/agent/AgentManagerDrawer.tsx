@@ -6,7 +6,16 @@ import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { Bot as IconBot, Check as IconCheck, ChevronDown as IconChevronDown, ChevronRight as IconChevronRight, XCircle as IconError, Loader2 as IconSpinner, X as IconX, Square as IconStop } from 'lucide-react'
+import {
+  Bot as IconBot,
+  Check as IconCheck,
+  ChevronDown as IconChevronDown,
+  ChevronRight as IconChevronRight,
+  XCircle as IconError,
+  Loader2 as IconSpinner,
+  X as IconX,
+  Square as IconStop,
+} from 'lucide-react'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import type { LiveProgressStep } from '@/components/chat/live-run-utils'
 

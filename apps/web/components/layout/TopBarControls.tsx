@@ -1,6 +1,10 @@
 'use client'
 
-import { Bell as IconBell, Zap as IconQuickAction, MessageSquarePlus as IconNewChat } from 'lucide-react'
+import {
+  Bell as IconBell,
+  Zap as IconQuickAction,
+  MessageSquarePlus as IconNewChat,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   WorkspaceHealthIndicator,

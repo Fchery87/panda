@@ -5,7 +5,15 @@ import { useQuery } from 'convex/react'
 import type { Id } from '@convex/_generated/dataModel'
 import { api } from '@convex/_generated/api'
 import { Button } from '@/components/ui/button'
-import { CheckCircle2, ChevronDown, ChevronRight, History, Loader2, XCircle, Zap } from 'lucide-react'
+import {
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  History,
+  Loader2,
+  XCircle,
+  Zap,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   derivePlanProgress,

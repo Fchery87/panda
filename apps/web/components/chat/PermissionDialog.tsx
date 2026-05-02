@@ -16,7 +16,15 @@ import { describePermissionRequest } from '@/lib/agent/permission-presentation'
 import { permissions } from '@/lib/agent/harness/permissions'
 import type { PermissionDecision, PermissionRequest } from '@/lib/agent/harness/types'
 import type { Identifier } from '@/lib/agent/harness/types'
-import { Shield, AlertTriangle, FileEdit, Terminal, ChevronDown, ChevronUp, Clock } from 'lucide-react'
+import {
+  Shield,
+  AlertTriangle,
+  FileEdit,
+  Terminal,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+} from 'lucide-react'
 
 interface PermissionRequestWithID {
   id: Identifier

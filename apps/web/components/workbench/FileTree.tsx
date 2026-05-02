@@ -2,7 +2,19 @@
 
 import React, { useState, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Folder, FolderOpen, FileText, FileCode, FileJson, FileImage, ChevronRight, Plus, Trash2, Edit2, File as FileIcon } from 'lucide-react'
+import {
+  Folder,
+  FolderOpen,
+  FileText,
+  FileCode,
+  FileJson,
+  FileImage,
+  ChevronRight,
+  Plus,
+  Trash2,
+  Edit2,
+  File as FileIcon,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import {

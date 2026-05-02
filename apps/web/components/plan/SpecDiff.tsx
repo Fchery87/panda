@@ -16,7 +16,17 @@ import * as React from 'react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
-import { Plus, Minus, Edit3, ArrowRight, GitCommit, Target, Shield, GitBranch, FileText } from 'lucide-react'
+import {
+  Plus,
+  Minus,
+  Edit3,
+  ArrowRight,
+  GitCommit,
+  Target,
+  Shield,
+  GitBranch,
+  FileText,
+} from 'lucide-react'
 import type {
   FormalSpecification,
   Constraint,

@@ -5,7 +5,11 @@ import { useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { MessageSquarePlus as IconNewChat, Search as IconSearch, List as IconList } from 'lucide-react'
+import {
+  MessageSquarePlus as IconNewChat,
+  Search as IconSearch,
+  List as IconList,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { buildSessionRailGroups, type SessionRailTask } from './session-rail'
 
