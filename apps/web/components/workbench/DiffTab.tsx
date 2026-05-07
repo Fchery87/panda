@@ -57,10 +57,10 @@ const FILE_STATUS_LABELS: Record<DiffFileEntry['status'], string> = {
 }
 
 const FILE_STATUS_COLORS: Record<DiffFileEntry['status'], string> = {
-  added: 'text-[hsl(var(--diff-added-fg))]',
-  modified: 'text-[hsl(var(--status-warning))]',
+  added: 'text-[oklch(var(--diff-added-fg))]',
+  modified: 'text-[oklch(var(--status-warning))]',
   deleted: 'text-destructive',
-  renamed: 'text-[hsl(var(--status-info))]',
+  renamed: 'text-[oklch(var(--status-info))]',
 }
 
 export function DiffTab({
@@ -102,7 +102,7 @@ export function DiffTab({
     return (
       <div className="dot-grid flex h-full flex-col items-center justify-center gap-4">
         <div className="surface-1 shadow-sharp-md max-w-md border border-border px-6 py-8 text-center">
-          <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center border border-border bg-muted/50">
+          <div className="bg-muted/50 mx-auto mb-4 flex h-10 w-10 items-center justify-center border border-border">
             <IconDiff className="h-5 w-5 text-muted-foreground" />
           </div>
           <h2 className="font-mono text-sm font-medium text-foreground">Diff View</h2>
@@ -121,7 +121,7 @@ export function DiffTab({
       {/* Trust status header */}
       <div className="review-banner">
         <div className="flex items-center gap-2">
-          <IconDiff className="h-3.5 w-3.5 text-[hsl(var(--status-warning))]" />
+          <IconDiff className="h-3.5 w-3.5 text-[oklch(var(--status-warning))]" />
           <span className="text-foreground">
             {pendingFiles} file{pendingFiles !== 1 ? 's' : ''} changed by {agentLabel}
           </span>
@@ -141,7 +141,7 @@ export function DiffTab({
           </Button>
           <Button
             size="sm"
-            className="h-6 gap-1 rounded-none bg-primary px-3 font-mono text-[10px] uppercase tracking-widest text-primary-foreground hover:bg-primary/90"
+            className="hover:bg-primary/90 h-6 gap-1 rounded-none bg-primary px-3 font-mono text-[10px] uppercase tracking-widest text-primary-foreground"
             onClick={onAcceptAll}
           >
             <IconCheck className="h-3 w-3" />
@@ -186,7 +186,7 @@ export function DiffTab({
                       className={cn(
                         'h-2 w-2 shrink-0',
                         file.reviewStatus === 'accepted'
-                          ? 'bg-[hsl(var(--status-success))]'
+                          ? 'bg-[oklch(var(--status-success))]'
                           : 'bg-destructive'
                       )}
                     />
@@ -243,7 +243,7 @@ export function DiffTab({
                   {onAcceptFile && (
                     <Button
                       size="sm"
-                      className="h-6 gap-1 rounded-none bg-primary px-3 font-mono text-[10px] uppercase tracking-widest text-primary-foreground hover:bg-primary/90"
+                      className="hover:bg-primary/90 h-6 gap-1 rounded-none bg-primary px-3 font-mono text-[10px] uppercase tracking-widest text-primary-foreground"
                       onClick={() => onAcceptFile(selectedFileIndex)}
                     >
                       <IconCheck className="h-3 w-3" />
@@ -282,7 +282,7 @@ export function DiffTab({
                                 <IconChevronRight className="h-3 w-3" />
                               )}
                               Lines {hunk.startLine}–{hunk.endLine}
-                              <span className="text-[hsl(var(--diff-added-fg))]">
+                              <span className="text-[oklch(var(--diff-added-fg))]">
                                 +{hunk.added.length}
                               </span>
                               <span className="text-destructive">−{hunk.removed.length}</span>
@@ -302,7 +302,7 @@ export function DiffTab({
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-5 w-5 rounded-none p-0 text-[hsl(var(--status-success))] hover:text-[hsl(var(--status-success))]"
+                                    className="h-5 w-5 rounded-none p-0 text-[oklch(var(--status-success))] hover:text-[oklch(var(--status-success))]"
                                     onClick={() => onAcceptHunk?.(selectedFileIndex, hunk.id)}
                                     title="Accept hunk"
                                   >
@@ -324,7 +324,7 @@ export function DiffTab({
                           {isExpanded && (
                             <div className="overflow-x-auto font-mono text-xs">
                               {hunk.context.length > 0 && (
-                                <div className="surface-0 px-3 py-0.5 text-muted-foreground/60">
+                                <div className="surface-0 text-muted-foreground/60 px-3 py-0.5">
                                   {hunk.context.map((line, i) => (
                                     <div key={`ctx-${i}`} className="leading-5">
                                       {'  '}

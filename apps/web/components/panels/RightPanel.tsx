@@ -43,15 +43,15 @@ export function RightPanel({
   inspectorEyebrow = 'Evidence Surface',
 }: RightPanelProps) {
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-col bg-background">
+    <div className="flex h-full min-h-0 min-w-0 flex-col bg-card">
       <div className="min-h-0 min-w-0 flex-1 overflow-hidden">{chatContent}</div>
 
       <button
         type="button"
         onClick={onInspectorToggle}
         className={cn(
-          'flex h-6 shrink-0 items-center justify-center border-t border-border',
-          'hover:bg-surface-2 transition-colors',
+          'border-foreground/80 flex h-6 shrink-0 items-center justify-center border-t bg-secondary',
+          'hover:bg-primary/10 transition-colors',
           inspectorTabs.length === 0 && 'hidden'
         )}
         aria-label={isInspectorOpen ? 'Close inspector' : 'Open inspector'}
@@ -73,9 +73,9 @@ export function RightPanel({
             exit="hidden"
             variants={DRAWER_VARIANTS}
             transition={DRAWER_TRANSITION}
-            className="flex min-h-0 flex-col overflow-hidden border-t border-border"
+            className="flex min-h-0 flex-col overflow-hidden border-t border-foreground"
           >
-            <div className="surface-1 border-b border-border px-3 py-2.5">
+            <div className="border-b border-border bg-secondary px-3 py-2.5">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">

@@ -50,16 +50,16 @@ export function TaskHistoryPane({ tasks = [], onOpenTask }: TaskHistoryPaneProps
             type="button"
             onClick={() => onOpenTask?.(task.id)}
             className={cn(
-              'hover:bg-surface-2 flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors duration-100'
+              'flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors duration-100 hover:bg-surface-2'
             )}
           >
             <span
               className={cn(
                 'h-1.5 w-1.5 shrink-0',
                 task.status === 'running' && 'animate-pulse bg-primary',
-                task.status === 'complete' && 'bg-[hsl(var(--status-success))]',
+                task.status === 'complete' && 'bg-[oklch(var(--status-success))]',
                 task.status === 'failed' && 'bg-destructive',
-                task.status === 'review' && 'bg-[hsl(var(--status-warning))]'
+                task.status === 'review' && 'bg-[oklch(var(--status-warning))]'
               )}
             />
             <div className="min-w-0 flex-1">

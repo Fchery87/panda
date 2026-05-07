@@ -1,0 +1,1685 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Panda Redesign Study</title>
+    <style>
+      :root {
+        --paper: #f4efe7;
+        --paper-2: #ebe3d6;
+        --paper-3: #ded2c0;
+        --ink: #171411;
+        --muted: #766d61;
+        --line: #c9bba7;
+        --line-strong: #211d18;
+        --amber: #c66a15;
+        --amber-2: #8f4810;
+        --green: #276b45;
+        --red: #a23a2d;
+        --blue: #40506d;
+        --dark: #14110e;
+        --dark-2: #201b16;
+        --dark-line: #40362d;
+        --dark-ink: #efe7dc;
+        --mono:
+          'Berkeley Mono', 'JetBrains Mono', 'Geist Mono', ui-monospace, SFMono-Regular, Menlo,
+          Consolas, monospace;
+        --sans: 'Neue Haas Grotesk Text', 'Suisse Intl', 'Aptos', system-ui, sans-serif;
+        --display:
+          'ABC Diatype', 'Neue Haas Grotesk Display', 'Aptos Display', system-ui, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: var(--sans);
+      }
+
+      body {
+        background-image: radial-gradient(circle, rgba(23, 20, 17, 0.12) 1px, transparent 1px);
+        background-size: 28px 28px;
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      .prototype {
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      .top-strip {
+        height: 48px;
+        border-bottom: 1px solid var(--line-strong);
+        background: rgba(244, 239, 231, 0.96);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 18px;
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        backdrop-filter: blur(10px);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: var(--mono);
+        font-size: 13px;
+        letter-spacing: -0.02em;
+      }
+
+      .mark {
+        width: 22px;
+        height: 22px;
+        border: 1px solid var(--ink);
+        background:
+          linear-gradient(90deg, transparent 48%, var(--ink) 48%, var(--ink) 52%, transparent 52%),
+          linear-gradient(0deg, transparent 48%, var(--ink) 48%, var(--ink) 52%, transparent 52%),
+          var(--amber);
+      }
+
+      .global-nav {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        border: 1px solid var(--line-strong);
+        background: var(--paper);
+      }
+
+      .global-nav button {
+        border: 0;
+        border-right: 1px solid var(--line-strong);
+        background: transparent;
+        color: var(--ink);
+        padding: 8px 12px;
+        font-family: var(--mono);
+        font-size: 11px;
+      }
+
+      .global-nav button:last-child {
+        border-right: 0;
+      }
+
+      .global-nav button.active {
+        background: var(--ink);
+        color: var(--paper);
+      }
+
+      .canvas {
+        padding: 24px;
+      }
+
+      .screen {
+        display: none;
+        min-height: calc(100vh - 96px);
+      }
+
+      .screen.active {
+        display: block;
+      }
+
+      .sheet {
+        border: 1px solid var(--line-strong);
+        background: rgba(244, 239, 231, 0.96);
+        min-height: calc(100vh - 96px);
+        box-shadow: 10px 10px 0 rgba(23, 20, 17, 0.14);
+      }
+
+      .deck-header {
+        display: grid;
+        grid-template-columns: 220px 1fr 260px;
+        border-bottom: 1px solid var(--line-strong);
+      }
+
+      .deck-cell {
+        min-height: 118px;
+        border-right: 1px solid var(--line-strong);
+        padding: 18px;
+      }
+
+      .deck-cell:last-child {
+        border-right: 0;
+      }
+
+      .kicker,
+      .mono {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.02em;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .title-xl {
+        font-family: var(--display);
+        font-size: clamp(44px, 7vw, 104px);
+        line-height: 0.91;
+        letter-spacing: -0.07em;
+        margin: 0;
+      }
+
+      .title-md {
+        font-family: var(--display);
+        font-size: clamp(30px, 4vw, 58px);
+        line-height: 0.94;
+        letter-spacing: -0.055em;
+        margin: 0;
+      }
+
+      .body-lg {
+        max-width: 720px;
+        font-size: 18px;
+        line-height: 1.5;
+        color: #3a332c;
+      }
+
+      .assumption-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        border-top: 1px solid var(--line-strong);
+      }
+
+      .assumption {
+        min-height: 180px;
+        padding: 18px;
+        border-right: 1px solid var(--line-strong);
+      }
+
+      .assumption:last-child {
+        border-right: 0;
+      }
+
+      .assumption p,
+      .direction p,
+      .note p {
+        margin: 10px 0 0;
+        line-height: 1.45;
+        color: #51483e;
+      }
+
+      .direction-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0;
+        border-top: 1px solid var(--line-strong);
+      }
+
+      .direction {
+        min-height: 540px;
+        border-right: 1px solid var(--line-strong);
+        padding: 18px;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        gap: 16px;
+      }
+
+      .direction:last-child {
+        border-right: 0;
+      }
+
+      .mini-composition {
+        border: 1px solid var(--line-strong);
+        min-height: 290px;
+        background: var(--paper-2);
+        padding: 14px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .mini-composition.dark {
+        background: var(--dark);
+        color: var(--dark-ink);
+        border-color: var(--dark);
+      }
+
+      .mini-bar {
+        height: 26px;
+        border: 1px solid currentColor;
+      }
+
+      .mini-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .mini-panel {
+        border: 1px solid currentColor;
+        min-height: 72px;
+        padding: 8px;
+        font-family: var(--mono);
+        font-size: 10px;
+      }
+
+      .mini-line {
+        height: 7px;
+        background: currentColor;
+        opacity: 0.35;
+        margin-top: 8px;
+      }
+
+      .choice {
+        border: 1px solid var(--line-strong);
+        background: var(--ink);
+        color: var(--paper);
+        font-family: var(--mono);
+        font-size: 11px;
+        padding: 10px 12px;
+        text-align: left;
+      }
+
+      .landing-layout {
+        display: grid;
+        grid-template-columns: 0.82fr 1.18fr;
+        min-height: calc(100vh - 96px);
+      }
+
+      .landing-left {
+        padding: 34px;
+        border-right: 1px solid var(--line-strong);
+        display: grid;
+        align-content: space-between;
+        gap: 40px;
+      }
+
+      .landing-right {
+        padding: 20px;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        gap: 16px;
+      }
+
+      .navline {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--line-strong);
+        padding-bottom: 14px;
+      }
+
+      .cta-row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .btn {
+        border: 1px solid var(--ink);
+        background: var(--paper);
+        color: var(--ink);
+        padding: 11px 14px;
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+
+      .btn.primary {
+        background: var(--ink);
+        color: var(--paper);
+      }
+
+      .product-frame {
+        border: 1px solid var(--line-strong);
+        background: var(--dark);
+        color: var(--dark-ink);
+        min-height: 610px;
+        display: grid;
+        grid-template-rows: 42px 1fr 84px;
+      }
+
+      .frame-top,
+      .frame-bottom {
+        border-bottom: 1px solid var(--dark-line);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 14px;
+        font-family: var(--mono);
+        font-size: 11px;
+      }
+
+      .frame-bottom {
+        border-top: 1px solid var(--dark-line);
+        border-bottom: 0;
+      }
+
+      .workbench-mini {
+        display: grid;
+        grid-template-columns: 58px 210px 1fr 320px;
+        min-height: 484px;
+      }
+
+      .rail,
+      .tree,
+      .chat,
+      .editor {
+        border-right: 1px solid var(--dark-line);
+        min-height: 100%;
+      }
+
+      .chat {
+        border-right: 0;
+      }
+
+      .rail {
+        display: grid;
+        align-content: start;
+        gap: 8px;
+        padding: 10px;
+      }
+
+      .rail div {
+        height: 32px;
+        border: 1px solid var(--dark-line);
+        display: grid;
+        place-items: center;
+        font-family: var(--mono);
+        font-size: 11px;
+      }
+
+      .rail div.active {
+        background: var(--amber);
+        color: #160d05;
+        border-color: var(--amber);
+      }
+
+      .tree,
+      .chat,
+      .editor {
+        padding: 12px;
+        font-family: var(--mono);
+        font-size: 11px;
+      }
+
+      .tree-row,
+      .event-row,
+      .file-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 7px 0;
+        border-bottom: 1px solid rgba(239, 231, 220, 0.08);
+      }
+
+      .code-box {
+        margin-top: 12px;
+        border: 1px solid var(--dark-line);
+        min-height: 280px;
+        padding: 12px;
+        background: #100d0b;
+        color: #d8cdbf;
+        line-height: 1.7;
+      }
+
+      .status-chip,
+      .dark-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid var(--line-strong);
+        padding: 5px 8px;
+        font-family: var(--mono);
+        font-size: 10px;
+        white-space: nowrap;
+      }
+
+      .dark-chip {
+        border-color: var(--dark-line);
+        color: var(--dark-ink);
+      }
+
+      .status-chip.amber,
+      .dark-chip.amber {
+        background: var(--amber);
+        color: #150b04;
+        border-color: var(--amber);
+      }
+
+      .feature-table {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        border-top: 1px solid var(--line-strong);
+      }
+
+      .feature-table > div {
+        padding: 18px;
+        min-height: 180px;
+        border-right: 1px solid var(--line-strong);
+      }
+
+      .feature-table > div:last-child {
+        border-right: 0;
+      }
+
+      .workbench-shell {
+        min-height: calc(100vh - 96px);
+        background: var(--dark);
+        color: var(--dark-ink);
+        border: 1px solid var(--line-strong);
+        display: grid;
+        grid-template-rows: 46px 1fr 132px 25px;
+      }
+
+      .wb-top {
+        border-bottom: 1px solid var(--dark-line);
+        display: grid;
+        grid-template-columns: 260px 1fr 520px;
+        align-items: center;
+        font-family: var(--mono);
+        font-size: 11px;
+      }
+
+      .wb-top > div {
+        padding: 0 12px;
+        border-right: 1px solid var(--dark-line);
+        height: 100%;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .wb-top > div:last-child {
+        border-right: 0;
+        justify-content: flex-end;
+      }
+
+      .wb-main {
+        display: grid;
+        grid-template-columns: 52px 260px minmax(360px, 1fr) 390px;
+        min-height: 580px;
+      }
+
+      .wb-panel {
+        border-right: 1px solid var(--dark-line);
+        min-width: 0;
+      }
+
+      .wb-panel:last-child {
+        border-right: 0;
+      }
+
+      .wb-panel-head {
+        height: 34px;
+        border-bottom: 1px solid var(--dark-line);
+        padding: 9px 12px;
+        font-family: var(--mono);
+        font-size: 10px;
+        color: #b7aa9a;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .wb-pad {
+        padding: 12px;
+      }
+
+      .session-grid {
+        display: grid;
+        grid-template-columns: 1.05fr 0.95fr;
+        gap: 12px;
+      }
+
+      .black-card {
+        border: 1px solid var(--dark-line);
+        background: #100d0b;
+        min-height: 160px;
+        padding: 12px;
+      }
+
+      .black-card.light {
+        background: #191510;
+      }
+
+      .plan-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        font-family: var(--mono);
+        font-size: 11px;
+      }
+
+      .plan-list li {
+        padding: 8px 0;
+        border-bottom: 1px solid var(--dark-line);
+      }
+
+      .message {
+        border: 1px solid var(--dark-line);
+        padding: 10px;
+        margin-bottom: 10px;
+        background: #100d0b;
+      }
+
+      .composer {
+        border: 1px solid var(--dark-line);
+        background: #0f0c0a;
+        min-height: 98px;
+        padding: 10px;
+        display: grid;
+        align-content: space-between;
+      }
+
+      .terminal {
+        border-top: 1px solid var(--dark-line);
+        display: grid;
+        grid-template-columns: 1fr 420px;
+        min-height: 132px;
+        font-family: var(--mono);
+        font-size: 11px;
+      }
+
+      .terminal > div {
+        padding: 12px;
+        border-right: 1px solid var(--dark-line);
+      }
+
+      .terminal > div:last-child {
+        border-right: 0;
+      }
+
+      .statusbar {
+        border-top: 1px solid var(--dark-line);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 10px;
+        font-family: var(--mono);
+        font-size: 10px;
+        color: #b7aa9a;
+      }
+
+      .overlay-demo {
+        position: relative;
+      }
+
+      .permission {
+        position: absolute;
+        inset: 82px 120px auto;
+        z-index: 5;
+        border: 1px solid var(--dark-ink);
+        background: var(--paper);
+        color: var(--ink);
+        box-shadow: 8px 8px 0 rgba(198, 106, 21, 0.55);
+        padding: 18px;
+      }
+
+      .settings-layout,
+      .admin-layout,
+      .projects-layout,
+      .share-layout {
+        border: 1px solid var(--line-strong);
+        background: var(--paper);
+        min-height: calc(100vh - 96px);
+        display: grid;
+      }
+
+      .projects-layout {
+        grid-template-rows: 64px 1fr;
+      }
+
+      .app-header {
+        border-bottom: 1px solid var(--line-strong);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 18px;
+        font-family: var(--mono);
+      }
+
+      .project-list {
+        padding: 22px;
+        display: grid;
+        grid-template-columns: 1fr 360px;
+        gap: 22px;
+      }
+
+      .rows {
+        border: 1px solid var(--line-strong);
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 140px 120px 100px;
+        gap: 14px;
+        align-items: center;
+        border-bottom: 1px solid var(--line-strong);
+        padding: 14px;
+      }
+
+      .row:last-child {
+        border-bottom: 0;
+      }
+
+      .settings-layout,
+      .admin-layout {
+        grid-template-columns: 250px 1fr;
+      }
+
+      .side-nav {
+        border-right: 1px solid var(--line-strong);
+        padding: 16px;
+        font-family: var(--mono);
+      }
+
+      .side-nav button {
+        width: 100%;
+        border: 0;
+        background: transparent;
+        text-align: left;
+        padding: 10px 8px;
+        border-bottom: 1px solid var(--line);
+        font-family: var(--mono);
+      }
+
+      .side-nav button.active {
+        background: var(--ink);
+        color: var(--paper);
+      }
+
+      .settings-main,
+      .admin-main {
+        padding: 22px;
+      }
+
+      .settings-section,
+      .admin-section {
+        display: none;
+      }
+
+      .settings-section.active,
+      .admin-section.active {
+        display: block;
+      }
+
+      .two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+
+      .box {
+        border: 1px solid var(--line-strong);
+        padding: 16px;
+        background: rgba(255, 251, 245, 0.32);
+      }
+
+      .box h3,
+      .black-card h3,
+      .message h3 {
+        margin: 0 0 10px;
+        font-size: 17px;
+        letter-spacing: -0.03em;
+      }
+
+      .mobile-pair {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        padding: 22px;
+      }
+
+      .phone {
+        width: min(100%, 330px);
+        margin: 0 auto;
+        border: 12px solid var(--ink);
+        background: var(--dark);
+        color: var(--dark-ink);
+        min-height: 690px;
+        display: grid;
+        grid-template-rows: 44px 1fr 58px;
+      }
+
+      .phone-top,
+      .phone-bottom {
+        border-bottom: 1px solid var(--dark-line);
+        font-family: var(--mono);
+        font-size: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 12px;
+      }
+
+      .phone-bottom {
+        border-top: 1px solid var(--dark-line);
+        border-bottom: 0;
+      }
+
+      .phone-content {
+        padding: 12px;
+      }
+
+      .share-layout {
+        grid-template-columns: minmax(0, 1fr) 360px;
+      }
+
+      .transcript {
+        padding: 24px;
+        border-right: 1px solid var(--line-strong);
+      }
+
+      .safe-summary {
+        padding: 24px;
+      }
+
+      @media (max-width: 980px) {
+        .canvas {
+          padding: 12px;
+        }
+
+        .top-strip {
+          height: auto;
+          min-height: 48px;
+          align-items: flex-start;
+          gap: 10px;
+          flex-direction: column;
+          padding: 12px;
+        }
+
+        .global-nav {
+          overflow-x: auto;
+          max-width: 100%;
+        }
+
+        .deck-header,
+        .landing-layout,
+        .assumption-grid,
+        .direction-grid,
+        .feature-table,
+        .project-list,
+        .settings-layout,
+        .admin-layout,
+        .share-layout,
+        .mobile-pair,
+        .two-col {
+          grid-template-columns: 1fr;
+        }
+
+        .deck-cell,
+        .direction,
+        .assumption,
+        .feature-table > div,
+        .landing-left,
+        .transcript {
+          border-right: 0;
+          border-bottom: 1px solid var(--line-strong);
+        }
+
+        .workbench-mini,
+        .wb-main,
+        .wb-top,
+        .terminal {
+          grid-template-columns: 1fr;
+        }
+
+        .tree,
+        .rail,
+        .editor,
+        .wb-panel,
+        .wb-top > div,
+        .terminal > div {
+          border-right: 0;
+          border-bottom: 1px solid var(--dark-line);
+        }
+
+        .permission {
+          inset: 80px 18px auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="prototype">
+      <header class="top-strip">
+        <div class="brand">
+          <span class="mark"></span><span>Panda redesign study / Huashu pass</span>
+        </div>
+        <nav class="global-nav" aria-label="Prototype screens">
+          <button class="active" data-screen="brief">Brief</button>
+          <button data-screen="directions">Directions</button>
+          <button data-screen="landing">Landing</button>
+          <button data-screen="projects">Projects</button>
+          <button data-screen="workbench">Workbench</button>
+          <button data-screen="states">States</button>
+          <button data-screen="mobile">Mobile</button>
+          <button data-screen="settings">Settings</button>
+          <button data-screen="admin">Admin</button>
+          <button data-screen="share">Share</button>
+        </nav>
+      </header>
+
+      <main class="canvas">
+        <section id="brief" class="screen active">
+          <div class="sheet">
+            <div class="deck-header">
+              <div class="deck-cell">
+                <div class="kicker muted">ASSUMPTIONS</div>
+                <p class="mono">Generated from the product brief plus current repo tokens.</p>
+              </div>
+              <div class="deck-cell">
+                <h1 class="title-xl">Panda becomes an instrument panel, not an IDE skin.</h1>
+              </div>
+              <div class="deck-cell">
+                <div class="kicker muted">SOURCE TOKENS</div>
+                <p class="mono">
+                  Warm paper, charcoal dark mode, amber primary, sharp zero-radius panels, mono
+                  metadata, dot grid.
+                </p>
+              </div>
+            </div>
+            <div style="padding: 28px 34px">
+              <p class="body-lg">
+                The redesign keeps Panda's trust model: one active project, one active thread,
+                visible plan, visible proof, visible changed work. The upgrade is graphical
+                sophistication through stronger information architecture, denser status composition,
+                editorial typography, and a more deliberate split between public clarity and
+                owner-only operational depth.
+              </p>
+            </div>
+            <div class="assumption-grid">
+              <div class="assumption">
+                <div class="kicker">Narrative Role</div>
+                <p>
+                  Public pages explain the promise. Workbench pages prove the product can be
+                  operated under pressure.
+                </p>
+              </div>
+              <div class="assumption">
+                <div class="kicker">Viewer Distance</div>
+                <p>
+                  Desktop workbench targets 10-60 cm inspection. Public pages support scan-first
+                  reading at laptop distance.
+                </p>
+              </div>
+              <div class="assumption">
+                <div class="kicker">Visual Temperature</div>
+                <p>
+                  Calm, austere, slightly warmer than common developer tools. Amber signals action,
+                  not decoration.
+                </p>
+              </div>
+              <div class="assumption">
+                <div class="kicker">Capacity</div>
+                <p>
+                  High density is allowed only when every datum supports control, recovery, proof,
+                  or review.
+                </p>
+              </div>
+            </div>
+            <div class="feature-table">
+              <div>
+                <div class="kicker">What Changes</div>
+                <p>
+                  Mode, model, runtime, plan, proof, and diff become one readable operational
+                  language.
+                </p>
+              </div>
+              <div>
+                <div class="kicker">What Stays</div>
+                <p>
+                  Sharp corners, mono controls, warm neutral palette, explicit approval, bounded
+                  summaries.
+                </p>
+              </div>
+              <div>
+                <div class="kicker">What Is Removed</div>
+                <p>
+                  Generic AI drama, mascot behavior, dashboard filler, fake metrics, soft SaaS
+                  chrome.
+                </p>
+              </div>
+              <div>
+                <div class="kicker">Primary Risk</div>
+                <p>
+                  Too much density. The system needs strict progressive disclosure and mobile focus
+                  states.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="directions" class="screen">
+          <div class="sheet">
+            <div class="deck-header">
+              <div class="deck-cell">
+                <div class="kicker muted">THREE ROUTES</div>
+                <p class="mono">Use direction C as the recommended synthesis.</p>
+              </div>
+              <div class="deck-cell">
+                <h2 class="title-md">
+                  From brutalist utility to sophisticated operational graphics.
+                </h2>
+              </div>
+              <div class="deck-cell">
+                <p class="mono muted">
+                  Each direction keeps Panda's trust boundaries and avoids theatrical AI visuals.
+                </p>
+              </div>
+            </div>
+            <div class="direction-grid">
+              <article class="direction">
+                <div>
+                  <div class="kicker">A / Swiss Runbook</div>
+                  <h3>Max Bill discipline with terminal-era density.</h3>
+                  <p>
+                    Best when Panda wants maximum credibility and minimum visual risk. The UI is
+                    almost print-like: strict columns, typographic rules, and proof tables.
+                  </p>
+                </div>
+                <div class="mini-composition">
+                  <div class="mini-bar"></div>
+                  <div class="mini-grid">
+                    <div class="mini-panel">
+                      PLAN<br />
+                      <div class="mini-line"></div>
+                      <div class="mini-line"></div>
+                    </div>
+                    <div class="mini-panel">
+                      PROOF<br />
+                      <div class="mini-line"></div>
+                      <div class="mini-line"></div>
+                    </div>
+                  </div>
+                  <div class="mini-panel">
+                    DIFF / ACCEPTANCE / RECEIPT
+                    <div class="mini-line"></div>
+                    <div class="mini-line"></div>
+                    <div class="mini-line"></div>
+                  </div>
+                </div>
+                <button class="choice" data-screen="workbench">Use for enterprise workbench</button>
+              </article>
+              <article class="direction">
+                <div>
+                  <div class="kicker">B / Editorial Machine</div>
+                  <h3>Pentagram information architecture with magazine tension.</h3>
+                  <p>
+                    Best for public and education pages. It gives Panda a stronger voice through
+                    scale contrast, hard rules, and a confident product mockup.
+                  </p>
+                </div>
+                <div class="mini-composition">
+                  <div style="font-size: 54px; line-height: 0.85; letter-spacing: -0.08em">
+                    KEEP<br />THE<br />WORK
+                  </div>
+                  <div class="mini-grid">
+                    <div class="mini-panel">ORIENT</div>
+                    <div class="mini-panel">PLAN</div>
+                    <div class="mini-panel">EXECUTE</div>
+                    <div class="mini-panel">INSPECT</div>
+                  </div>
+                </div>
+                <button class="choice" data-screen="landing">Use for marketing system</button>
+              </article>
+              <article class="direction">
+                <div>
+                  <div class="kicker">C / Recovery Console</div>
+                  <h3>Industrial command surface with layered proof.</h3>
+                  <p>
+                    Recommended. This combines public clarity with owner-only density: left context,
+                    center work, right proof, bottom events, mobile focus modes.
+                  </p>
+                </div>
+                <div class="mini-composition dark">
+                  <div class="mini-bar"></div>
+                  <div style="display: grid; grid-template-columns: 44px 1fr 1.2fr; gap: 10px">
+                    <div class="mini-panel">F<br />S<br />G</div>
+                    <div class="mini-panel">
+                      FILES
+                      <div class="mini-line"></div>
+                      <div class="mini-line"></div>
+                    </div>
+                    <div class="mini-panel">
+                      SESSION
+                      <div class="mini-line"></div>
+                      <div class="mini-line"></div>
+                      <div class="mini-line"></div>
+                    </div>
+                  </div>
+                  <div class="mini-panel">RUN PROOF + CHAT COMPOSER</div>
+                </div>
+                <button class="choice" data-screen="workbench">Recommended direction</button>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section id="landing" class="screen">
+          <div class="sheet landing-layout">
+            <div class="landing-left">
+              <div class="navline">
+                <div class="brand"><span class="mark"></span><span>Panda</span></div>
+                <div class="mono">Education / Login</div>
+              </div>
+              <div>
+                <h2 class="title-xl">Plan, review, execute. In one browser workbench.</h2>
+                <p class="body-lg">
+                  Panda keeps context, approval, proof, diffs, terminal output, and recovery in a
+                  single operational session.
+                </p>
+                <div class="cta-row">
+                  <button class="btn primary">Open Workbench</button
+                  ><button class="btn">Read Workflow</button>
+                </div>
+              </div>
+              <div
+                class="feature-table"
+                style="grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line-strong)"
+              >
+                <div><div class="kicker">Saved Plans</div></div>
+                <div><div class="kicker">Recoverable Runs</div></div>
+                <div><div class="kicker">Shared Memory</div></div>
+              </div>
+            </div>
+            <div class="landing-right">
+              <div class="mono muted">PUBLIC PRODUCT MOCKUP / NOT DECORATIVE</div>
+              <div class="product-frame">
+                <div class="frame-top">
+                  <span>panda.ai / workbench</span
+                  ><span class="dark-chip amber">reviewable session</span>
+                </div>
+                <div class="workbench-mini">
+                  <div class="rail">
+                    <div class="active">F</div>
+                    <div>S</div>
+                    <div>G</div>
+                    <div>A</div>
+                    <div>H</div>
+                  </div>
+                  <div class="tree">
+                    <div class="kicker">FILES</div>
+                    <div class="tree-row"><span>app/page.tsx</span><span>open</span></div>
+                    <div class="tree-row"><span>convex/runs.ts</span><span>ctx</span></div>
+                    <div class="tree-row"><span>docs/spec.md</span><span>pin</span></div>
+                  </div>
+                  <div class="editor">
+                    <div class="kicker">PLAN ARTIFACT</div>
+                    <div class="code-box">
+                      01 Verify current route shell<br />02 Add bounded run receipt<br />03 Update
+                      changed-work rail<br />04 Run typecheck + tests<br /><br /><span
+                        style="color: #c66a15"
+                        >approval required before build</span
+                      >
+                    </div>
+                  </div>
+                  <div class="chat">
+                    <div class="kicker">CHAT / BUILD MODE</div>
+                    <div class="message">Panda will execute only after the plan is accepted.</div>
+                    <div class="message">Runtime ready. 2 files selected. Provider capable.</div>
+                    <div class="composer">
+                      <span>Ask, plan, code, or build with selected context...</span
+                      ><span class="dark-chip amber">Build from Plan</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="frame-bottom">
+                  <span>runtime ready / webcontainer</span
+                  ><span>2 pending diffs / receipt saved</span>
+                </div>
+              </div>
+              <div class="feature-table" style="border: 1px solid var(--line-strong)">
+                <div>
+                  <div class="kicker">Orient</div>
+                  <p>Context selected before asking.</p>
+                </div>
+                <div>
+                  <div class="kicker">Plan</div>
+                  <p>Review points stay explicit.</p>
+                </div>
+                <div>
+                  <div class="kicker">Execute</div>
+                  <p>Runs show proof, not mystery.</p>
+                </div>
+                <div>
+                  <div class="kicker">Inspect</div>
+                  <p>Changed work remains visible.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="projects" class="screen">
+          <div class="projects-layout">
+            <div class="app-header">
+              <div class="brand"><span class="mark"></span><span>Projects</span></div>
+              <div class="cta-row">
+                <button class="btn">Settings</button
+                ><button class="btn primary">New Project</button>
+              </div>
+            </div>
+            <div class="project-list">
+              <div>
+                <h2 class="title-md">Open the next work thread.</h2>
+                <p class="body-lg">
+                  The dashboard stays utilitarian: search, create, open, delete. No vanity
+                  analytics.
+                </p>
+                <div class="rows">
+                  <div class="row">
+                    <strong>agent-harness</strong><span class="mono">2h ago</span
+                    ><span class="status-chip amber">active</span><button class="btn">Open</button>
+                  </div>
+                  <div class="row">
+                    <strong>docs-rewrite</strong><span class="mono">Yesterday</span
+                    ><span class="status-chip">plan saved</span><button class="btn">Open</button>
+                  </div>
+                  <div class="row">
+                    <strong>provider-catalog</strong><span class="mono">Apr 26</span
+                    ><span class="status-chip">idle</span><button class="btn">Open</button>
+                  </div>
+                </div>
+              </div>
+              <aside class="box">
+                <div class="kicker">New Project Dialog</div>
+                <p>
+                  Name, description, import source, automation policy. Dangerous defaults are
+                  visible before creation.
+                </p>
+                <input
+                  style="
+                    width: 100%;
+                    border: 1px solid var(--ink);
+                    background: transparent;
+                    padding: 10px;
+                    margin: 14px 0;
+                  "
+                  value="panda-redesign"
+                /><button class="btn primary">Create Project</button>
+              </aside>
+            </div>
+          </div>
+        </section>
+
+        <section id="workbench" class="screen">
+          <div class="workbench-shell">
+            <div class="wb-top">
+              <div><span class="mark"></span><strong>Panda / agent-harness</strong></div>
+              <div>src/app/workbench/page.tsx</div>
+              <div>
+                <span class="dark-chip">Ask</span><span class="dark-chip">Plan</span
+                ><span class="dark-chip amber">Build</span
+                ><span class="dark-chip">Claude Sonnet</span
+                ><span class="dark-chip">runtime ready</span><span class="dark-chip">share</span>
+              </div>
+            </div>
+            <div class="wb-main">
+              <div class="wb-panel rail">
+                <div class="active">F</div>
+                <div>S</div>
+                <div>G</div>
+                <div>A</div>
+                <div>H</div>
+                <div>D</div>
+              </div>
+              <div class="wb-panel">
+                <div class="wb-panel-head"><span>FILES</span><span>+ / rename / delete</span></div>
+                <div class="wb-pad">
+                  <div class="tree-row"><span>app</span><span>12</span></div>
+                  <div class="tree-row"><span>components/chat</span><span>ctx</span></div>
+                  <div class="tree-row"><span>lib/agent</span><span>pin</span></div>
+                  <div class="tree-row"><span>convex/runs.ts</span><span>hot</span></div>
+                  <div class="tree-row"><span>docs/ARCHITECTURE</span><span>ref</span></div>
+                </div>
+              </div>
+              <div class="wb-panel">
+                <div class="wb-panel-head">
+                  <span>SESSION / PLAN ARTIFACT</span><span>Diff tab available</span>
+                </div>
+                <div class="wb-pad">
+                  <div class="session-grid">
+                    <div class="black-card">
+                      <h3>Objective</h3>
+                      <p>
+                        Implement bounded run receipt summaries without exposing raw command output.
+                      </p>
+                      <ul class="plan-list">
+                        <li>1. Confirm hot query shape</li>
+                        <li>2. Add receipt projection</li>
+                        <li>3. Update proof rail</li>
+                        <li>4. Run validation gate</li>
+                      </ul>
+                    </div>
+                    <div class="black-card light">
+                      <h3>Next Action</h3>
+                      <p class="mono">Approve build or edit acceptance checks.</p>
+                      <div class="cta-row">
+                        <span class="dark-chip amber">Approve Build</span
+                        ><span class="dark-chip">Edit Plan</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="black-card" style="margin-top: 12px">
+                    <h3>Editor Preview</h3>
+                    <div class="code-box">
+                      export const listRunReceipts = query({<br />
+                      args: { projectId: v.id('projects') },<br />
+                      handler: async (ctx, args) =&gt; {<br />
+                      return await loadBoundedReceiptSummaries(ctx, args)<br />
+                      },<br />})
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="wb-panel">
+                <div class="wb-panel-head">
+                  <span>CHAT / RUN / CHANGES / CONTEXT / PREVIEW</span><span>owner-only</span>
+                </div>
+                <div class="wb-pad">
+                  <div class="message">
+                    <div class="kicker">USER / BUILD</div>
+                    <p>Apply the approved plan and stop for risky commands.</p>
+                  </div>
+                  <div class="message">
+                    <div class="kicker">PANDA</div>
+                    <p>
+                      Plan accepted. I will update two files, run targeted tests, and persist a
+                      receipt summary.
+                    </p>
+                  </div>
+                  <div class="black-card">
+                    <h3>Run Proof</h3>
+                    <div class="event-row">
+                      <span>Skill applied</span><span>huashu-design</span>
+                    </div>
+                    <div class="event-row"><span>Step 2/4</span><span>running</span></div>
+                    <div class="event-row"><span>Checkpoint</span><span>recoverable</span></div>
+                  </div>
+                  <div class="composer">
+                    <span>Continue with selected mode and context...</span
+                    ><span class="dark-chip amber">Stop Run</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="terminal">
+              <div>
+                $ bun run typecheck<br />convex codegen complete<br />checking workspace packages...
+              </div>
+              <div>
+                Agent Events<br />run.receipt.summary.created<br />artifact.file_write.pending
+              </div>
+            </div>
+            <div class="statusbar">
+              <span>src/app/workbench/page.tsx · Ln 44 Col 12</span
+              ><span>connected · streaming · spec validated · webcontainer ready</span>
+            </div>
+          </div>
+        </section>
+
+        <section id="states" class="screen">
+          <div class="workbench-shell overlay-demo">
+            <div class="wb-top">
+              <div><span class="mark"></span><strong>Panda / permission state</strong></div>
+              <div>risky command requires review</div>
+              <div>
+                <span class="dark-chip amber">Build</span
+                ><span class="dark-chip">runtime ready</span>
+              </div>
+            </div>
+            <div class="wb-main" style="filter: brightness(0.62)">
+              <div class="wb-panel rail">
+                <div>F</div>
+                <div class="active">R</div>
+              </div>
+              <div class="wb-panel">
+                <div class="wb-panel-head">CHANGED WORK</div>
+                <div class="wb-pad">
+                  <div class="tree-row"><span>M app/page.tsx</span><span>pending</span></div>
+                  <div class="tree-row"><span>M convex/runs.ts</span><span>pending</span></div>
+                </div>
+              </div>
+              <div class="wb-panel">
+                <div class="wb-panel-head">DIFF REVIEW</div>
+                <div class="wb-pad">
+                  <div class="black-card">
+                    <h3>Recoverable checkpoint</h3>
+                    <p>
+                      Run paused before command execution. File writes are staged but not applied.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div class="wb-panel">
+                <div class="wb-panel-head">RUN INSPECTOR</div>
+                <div class="wb-pad">
+                  <div class="event-row"><span>Permission request</span><span>waiting</span></div>
+                  <div class="event-row"><span>Command</span><span>redacted summary</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="terminal">
+              <div>$ command withheld until approval</div>
+              <div>checkpoint saved / stop available</div>
+            </div>
+            <div class="statusbar">
+              <span>permission required</span><span>owner-only detail</span>
+            </div>
+            <div class="permission">
+              <div class="kicker">Risky Permission Request</div>
+              <h2 style="margin: 10px 0 8px">
+                Panda wants to run a command that can modify the workspace.
+              </h2>
+              <p>
+                Show the command class, target scope, and reason. Keep raw arguments expandable and
+                owner-only.
+              </p>
+              <div class="cta-row">
+                <button class="btn primary">Approve Once</button><button class="btn">Deny</button
+                ><button class="btn">Inspect Context</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="mobile" class="screen">
+          <div class="sheet">
+            <div class="deck-header">
+              <div class="deck-cell"><div class="kicker">MOBILE RULE</div></div>
+              <div class="deck-cell">
+                <h2 class="title-md">
+                  Do not squeeze the desktop. Focus Session, Chat, and Proof.
+                </h2>
+              </div>
+              <div class="deck-cell">
+                <p class="mono muted">
+                  Bottom nav replaces panes. Composer hides panel nav while typing.
+                </p>
+              </div>
+            </div>
+            <div class="mobile-pair">
+              <div class="phone">
+                <div class="phone-top"><span>9:41</span><span>Session</span></div>
+                <div class="phone-content">
+                  <div class="dark-chip amber">Plan awaiting review</div>
+                  <h3>Run receipt projection</h3>
+                  <div class="black-card">
+                    <p>Objective, checks, selected files, next action.</p>
+                  </div>
+                </div>
+                <div class="phone-bottom">
+                  <span>Session</span><span>Chat</span><span>Proof</span><span>Preview</span>
+                </div>
+              </div>
+              <div class="phone">
+                <div class="phone-top"><span>9:41</span><span>Chat</span></div>
+                <div class="phone-content">
+                  <div class="message">Build from the approved plan.</div>
+                  <div class="message">I will stop before risky commands.</div>
+                  <div class="composer">Message Panda...</div>
+                </div>
+                <div class="phone-bottom">
+                  <span>Session</span><span>Chat</span><span>Proof</span><span>Preview</span>
+                </div>
+              </div>
+              <div class="phone">
+                <div class="phone-top"><span>9:41</span><span>Proof</span></div>
+                <div class="phone-content">
+                  <div class="event-row"><span>Step 1</span><span>done</span></div>
+                  <div class="event-row"><span>Step 2</span><span>running</span></div>
+                  <div class="event-row"><span>Checkpoint</span><span>saved</span></div>
+                </div>
+                <div class="phone-bottom">
+                  <span>Session</span><span>Chat</span><span>Proof</span><span>Preview</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="settings" class="screen">
+          <div class="settings-layout">
+            <aside class="side-nav">
+              <div class="brand" style="margin-bottom: 18px">
+                <span class="mark"></span><span>Settings</span>
+              </div>
+              <button class="active" data-settings="general">General</button
+              ><button data-settings="providers">LLM Providers</button
+              ><button data-settings="automation">Automation</button
+              ><button data-settings="advanced">Advanced</button>
+            </aside>
+            <div class="settings-main">
+              <section id="settings-general" class="settings-section active">
+                <h2 class="title-md">Configuration, not onboarding.</h2>
+                <div class="two-col">
+                  <div class="box">
+                    <h3>General</h3>
+                    <p>Language, appearance, default model behavior.</p>
+                  </div>
+                  <div class="box">
+                    <h3>Unsaved changes</h3>
+                    <p>Dirty state is persistent and explicit before leaving.</p>
+                  </div>
+                </div>
+              </section>
+              <section id="settings-providers" class="settings-section">
+                <h2 class="title-md">Provider catalog and capability checks.</h2>
+                <div class="two-col">
+                  <div class="box">
+                    <h3>Anthropic</h3>
+                    <p>Enabled. Tool-capable models available.</p>
+                    <span class="status-chip amber">default</span>
+                  </div>
+                  <div class="box">
+                    <h3>OpenAI-compatible</h3>
+                    <p>Endpoint, key metadata, refresh models, test provider.</p>
+                  </div>
+                </div>
+              </section>
+              <section id="settings-automation" class="settings-section">
+                <h2 class="title-md">Automation policy stays inspectable.</h2>
+                <div class="two-col">
+                  <div class="box">
+                    <h3>Allowed commands</h3>
+                    <p>Prefix controls and risky action review.</p>
+                  </div>
+                  <div class="box">
+                    <h3>MCP / Subagents / Skills</h3>
+                    <p>Owner-scoped high-risk configuration.</p>
+                  </div>
+                </div>
+              </section>
+              <section id="settings-advanced" class="settings-section">
+                <h2 class="title-md">Advanced permissions.</h2>
+                <div class="box">
+                  <p>
+                    Admin defaults, override policy, custom permission gates, leave confirmation.
+                  </p>
+                </div>
+              </section>
+            </div>
+          </div>
+        </section>
+
+        <section id="admin" class="screen">
+          <div class="admin-layout">
+            <aside class="side-nav">
+              <div class="brand" style="margin-bottom: 18px">
+                <span class="mark"></span><span>Admin</span>
+              </div>
+              <button class="active" data-admin="dashboard">Dashboard</button
+              ><button data-admin="users">Users</button
+              ><button data-admin="analytics">Analytics</button
+              ><button data-admin="system">System</button
+              ><button data-admin="security">Security</button>
+            </aside>
+            <div class="admin-main">
+              <section id="admin-dashboard" class="admin-section active">
+                <h2 class="title-md">Admin is audit-first.</h2>
+                <div class="feature-table" style="border: 1px solid var(--line-strong)">
+                  <div>
+                    <div class="kicker">Users</div>
+                    <p>1,248</p>
+                  </div>
+                  <div>
+                    <div class="kicker">Projects</div>
+                    <p>4,802</p>
+                  </div>
+                  <div>
+                    <div class="kicker">Runs</div>
+                    <p>18,920</p>
+                  </div>
+                  <div>
+                    <div class="kicker">Audit Events</div>
+                    <p>642</p>
+                  </div>
+                </div>
+              </section>
+              <section id="admin-users" class="admin-section">
+                <h2 class="title-md">User management with confirmation rails.</h2>
+                <div class="rows">
+                  <div class="row">
+                    <strong>ada@example.com</strong><span>admin</span><span>active</span
+                    ><button class="btn">Inspect</button>
+                  </div>
+                  <div class="row">
+                    <strong>lin@example.com</strong><span>user</span><span>banned</span
+                    ><button class="btn">Inspect</button>
+                  </div>
+                </div>
+              </section>
+              <section id="admin-analytics" class="admin-section">
+                <h2 class="title-md">Usage by provider and model.</h2>
+                <div class="two-col">
+                  <div class="box">
+                    <h3>Provider usage</h3>
+                    <p>Bounded bars, no fake chart decoration.</p>
+                  </div>
+                  <div class="box">
+                    <h3>Top models</h3>
+                    <p>Compact rows with date filters.</p>
+                  </div>
+                </div>
+              </section>
+              <section id="admin-system" class="admin-section">
+                <h2 class="title-md">System controls require warnings.</h2>
+                <div class="box">
+                  <p>Maintenance, registration policy, limits, global provider defaults.</p>
+                </div>
+              </section>
+              <section id="admin-security" class="admin-section">
+                <h2 class="title-md">Security audit log.</h2>
+                <div class="rows">
+                  <div class="row">
+                    <strong>grant_admin</strong><span>nochaserz</span><span>today</span
+                    ><button class="btn">View</button>
+                  </div>
+                  <div class="row">
+                    <strong>settings_update</strong><span>system</span><span>today</span
+                    ><button class="btn">View</button>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </section>
+
+        <section id="share" class="screen">
+          <div class="share-layout">
+            <div class="transcript">
+              <div class="brand"><span class="mark"></span><span>Shared Panda Thread</span></div>
+              <h2 class="title-md" style="margin-top: 28px">Read-only, redacted, useful.</h2>
+              <div
+                class="message"
+                style="background: transparent; border-color: var(--line-strong)"
+              >
+                <div class="kicker">USER</div>
+                <p>How did the run change the receipt projection?</p>
+              </div>
+              <div
+                class="message"
+                style="background: transparent; border-color: var(--line-strong)"
+              >
+                <div class="kicker">PANDA</div>
+                <p>
+                  The shared view includes plan and outcome summaries only. Raw tool arguments,
+                  command output, tokens, private memory, and file contents are not exposed.
+                </p>
+              </div>
+            </div>
+            <aside class="safe-summary">
+              <div class="box">
+                <div class="kicker">Safe Summary</div>
+                <p>
+                  Plan accepted. Run completed. Two changed files summarized. Verification passed.
+                </p>
+              </div>
+              <div class="box" style="margin-top: 16px">
+                <div class="kicker">Not Found / Private</div>
+                <p>
+                  Use the same artifact shell with a plain next action: return home or request a new
+                  link.
+                </p>
+              </div>
+            </aside>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script>
+      const activate = (id) => {
+        document
+          .querySelectorAll('.screen')
+          .forEach((screen) => screen.classList.toggle('active', screen.id === id))
+        document
+          .querySelectorAll('[data-screen]')
+          .forEach((button) => button.classList.toggle('active', button.dataset.screen === id))
+        window.scrollTo({ top: 0, behavior: 'instant' })
+      }
+
+      document.querySelectorAll('[data-screen]').forEach((button) => {
+        button.addEventListener('click', () => activate(button.dataset.screen))
+      })
+
+      document.querySelectorAll('[data-settings]').forEach((button) => {
+        button.addEventListener('click', () => {
+          document
+            .querySelectorAll('[data-settings]')
+            .forEach((item) => item.classList.toggle('active', item === button))
+          document
+            .querySelectorAll('.settings-section')
+            .forEach((section) =>
+              section.classList.toggle(
+                'active',
+                section.id === `settings-${button.dataset.settings}`
+              )
+            )
+        })
+      })
+
+      document.querySelectorAll('[data-admin]').forEach((button) => {
+        button.addEventListener('click', () => {
+          document
+            .querySelectorAll('[data-admin]')
+            .forEach((item) => item.classList.toggle('active', item === button))
+          document
+            .querySelectorAll('.admin-section')
+            .forEach((section) =>
+              section.classList.toggle('active', section.id === `admin-${button.dataset.admin}`)
+            )
+        })
+      })
+    </script>
+  </body>
+</html>

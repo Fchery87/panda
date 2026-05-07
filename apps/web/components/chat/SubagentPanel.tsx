@@ -13,11 +13,11 @@ interface SubagentPanelProps {
 function statusColor(status: string): string {
   switch (status) {
     case 'completed':
-      return 'bg-[hsl(var(--status-success))]'
+      return 'bg-[oklch(var(--status-success))]'
     case 'running':
       return 'bg-primary animate-pulse'
     case 'error':
-      return 'bg-[hsl(var(--status-error))]'
+      return 'bg-[oklch(var(--status-error))]'
     default:
       return 'bg-muted-foreground/50'
   }
@@ -54,7 +54,7 @@ function SubagentLane({ entry }: { entry: ReturnType<typeof deriveSubagentEntrie
   return (
     <div
       className={cn(
-        'flex items-start gap-2 border border-border bg-background/70 px-2 py-1.5',
+        'bg-background/70 flex items-start gap-2 border border-border px-2 py-1.5',
         hasDetail && 'cursor-pointer hover:bg-background'
       )}
       onClick={hasDetail ? () => setExpanded((v) => !v) : undefined}

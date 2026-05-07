@@ -10,8 +10,8 @@ interface RoutingConfirmationProps {
 }
 
 const CONFIDENCE_STYLES: Record<string, string> = {
-  low: 'border-[hsl(var(--status-warning))]/40 bg-[hsl(var(--status-warning))]/5',
-  medium: 'border-[hsl(var(--status-info))]/40 bg-[hsl(var(--status-info))]/5',
+  low: 'border-[oklch(var(--status-warning))]/40 bg-[oklch(var(--status-warning))]/5',
+  medium: 'border-[oklch(var(--status-info))]/40 bg-[oklch(var(--status-info))]/5',
   high: '',
 }
 
@@ -44,7 +44,7 @@ export function RoutingConfirmation({ receipt, onAccept, onOverride }: RoutingCo
             <button
               type="button"
               onClick={onAccept}
-              className="hover:bg-surface-2 border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground transition-colors"
+              className="border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground transition-colors hover:bg-surface-2"
             >
               Accept
             </button>
@@ -53,7 +53,7 @@ export function RoutingConfirmation({ receipt, onAccept, onOverride }: RoutingCo
             <button
               type="button"
               onClick={() => onOverride(decision.requestedMode)}
-              className="border border-primary/40 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-primary transition-colors hover:bg-primary/5"
+              className="border-primary/40 hover:bg-primary/5 border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-primary transition-colors"
             >
               Override
             </button>

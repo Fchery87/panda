@@ -154,20 +154,20 @@ export function SourceControlPane({ projectId: _projectId }: SourceControlPanePr
         {totalChanges > 0 ? (
           <>
             {stagedCount > 0 && (
-              <span className="flex items-center gap-1 font-mono text-[10px] text-[hsl(var(--diff-added-fg))]">
-                <span className="h-1.5 w-1.5 bg-[hsl(var(--status-success))]" />
+              <span className="flex items-center gap-1 font-mono text-[10px] text-[oklch(var(--diff-added-fg))]">
+                <span className="h-1.5 w-1.5 bg-[oklch(var(--status-success))]" />
                 {stagedCount} staged
               </span>
             )}
             {unstagedCount > 0 && (
-              <span className="flex items-center gap-1 font-mono text-[10px] text-[hsl(var(--status-warning))]">
-                <span className="h-1.5 w-1.5 bg-[hsl(var(--status-warning))]" />
+              <span className="flex items-center gap-1 font-mono text-[10px] text-[oklch(var(--status-warning))]">
+                <span className="h-1.5 w-1.5 bg-[oklch(var(--status-warning))]" />
                 {unstagedCount} changed
               </span>
             )}
             {untrackedCount > 0 && (
               <span className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
-                <span className="h-1.5 w-1.5 bg-muted-foreground/30" />
+                <span className="bg-muted-foreground/30 h-1.5 w-1.5" />
                 {untrackedCount} untracked
               </span>
             )}
@@ -180,7 +180,7 @@ export function SourceControlPane({ projectId: _projectId }: SourceControlPanePr
       </div>
 
       {error && (
-        <div className="border-b border-destructive/30 bg-destructive/10 px-3 py-1.5 font-mono text-[10px] text-destructive">
+        <div className="border-destructive/30 bg-destructive/10 border-b px-3 py-1.5 font-mono text-[10px] text-destructive">
           {error}
         </div>
       )}
@@ -197,7 +197,7 @@ export function SourceControlPane({ projectId: _projectId }: SourceControlPanePr
               files={status!.staged}
               actionLabel="Unstage"
               onAction={handleUnstageFile}
-              dotColor="bg-[hsl(var(--status-success))]"
+              dotColor="bg-[oklch(var(--status-success))]"
             />
           )}
 
@@ -210,7 +210,7 @@ export function SourceControlPane({ projectId: _projectId }: SourceControlPanePr
               files={status!.unstaged}
               actionLabel="Stage"
               onAction={handleStageFile}
-              dotColor="bg-[hsl(var(--status-warning))]"
+              dotColor="bg-[oklch(var(--status-warning))]"
             />
           )}
 
@@ -302,7 +302,7 @@ export function SourceControlPane({ projectId: _projectId }: SourceControlPanePr
             <div className="px-1 pb-1">
               {log.map((entry) => (
                 <div key={entry.hash} className="flex items-start gap-2 px-2 py-1.5">
-                  <span className="mt-1 h-1.5 w-1.5 shrink-0 bg-muted-foreground/40" />
+                  <span className="bg-muted-foreground/40 mt-1 h-1.5 w-1.5 shrink-0" />
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-mono text-xs text-foreground">
                       {entry.message}
@@ -363,7 +363,7 @@ function FileSection({
       </button>
       {expanded &&
         files.map((file) => (
-          <div key={file} className="hover:bg-surface-2 group flex items-center gap-2 px-3 py-1">
+          <div key={file} className="group flex items-center gap-2 px-3 py-1 hover:bg-surface-2">
             <span className={cn('h-1.5 w-1.5 shrink-0', dotColor)} />
             <span className="min-w-0 flex-1 truncate font-mono text-xs text-foreground">
               {file}

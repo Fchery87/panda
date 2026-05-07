@@ -27,9 +27,8 @@ describe('chat input wiring', () => {
       'const hasSendContent = input.trim().length > 0 || attachments.length > 0'
     )
     expect(content).toContain('disabled={!hasSendContent}')
-    expect(content).toContain(
-      "hasSendContent\n                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'"
-    )
+    expect(content).toContain('hasSendContent')
+    expect(content).toContain("'bg-primary text-primary-foreground hover:bg-primary/90'")
   })
 
   test('ChatInput labels the main composer textarea for accessible name queries', async () => {

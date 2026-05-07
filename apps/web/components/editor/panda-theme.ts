@@ -10,24 +10,24 @@ import { tags } from '@lezer/highlight'
 export const pandaTheme = createTheme({
   theme: 'dark',
   settings: {
-    background: 'hsl(var(--surface-0))',
-    foreground: 'hsl(var(--foreground))',
-    caret: 'hsl(var(--primary))',
-    selection: 'hsl(var(--primary) / 0.2)',
-    selectionMatch: 'hsl(var(--primary) / 0.15)',
-    lineHighlight: 'hsl(var(--primary) / 0.06)',
-    gutterBackground: 'hsl(var(--surface-1))',
-    gutterForeground: 'hsl(var(--muted-foreground))',
-    gutterActiveForeground: 'hsl(var(--foreground))',
+    background: 'oklch(var(--surface-0))',
+    foreground: 'oklch(var(--foreground))',
+    caret: 'oklch(var(--primary))',
+    selection: 'oklch(var(--primary) / 0.2)',
+    selectionMatch: 'oklch(var(--primary) / 0.15)',
+    lineHighlight: 'oklch(var(--primary) / 0.06)',
+    gutterBackground: 'oklch(var(--surface-1))',
+    gutterForeground: 'oklch(var(--muted-foreground))',
+    gutterActiveForeground: 'oklch(var(--foreground))',
   },
   styles: [
     // Keywords - primary accent color
-    { tag: tags.keyword, color: 'hsl(var(--primary))' },
-    { tag: tags.operator, color: 'hsl(var(--primary))' },
+    { tag: tags.keyword, color: 'oklch(var(--primary))' },
+    { tag: tags.operator, color: 'oklch(var(--primary))' },
 
     // Variables and identifiers
-    { tag: tags.variableName, color: 'hsl(var(--foreground))' },
-    { tag: tags.propertyName, color: 'hsl(var(--foreground))' },
+    { tag: tags.variableName, color: 'oklch(var(--foreground))' },
+    { tag: tags.propertyName, color: 'oklch(var(--foreground))' },
 
     // Types and classes - slightly muted
     { tag: tags.typeName, color: 'hsl(38 60% 65%)' },
@@ -48,29 +48,29 @@ export const pandaTheme = createTheme({
     // Comments - muted
     {
       tag: tags.comment,
-      color: 'hsl(var(--muted-foreground) / 0.7)',
+      color: 'oklch(var(--muted-foreground) / 0.7)',
       fontStyle: 'italic',
     },
-    { tag: tags.lineComment, color: 'hsl(var(--muted-foreground) / 0.7)', fontStyle: 'italic' },
-    { tag: tags.blockComment, color: 'hsl(var(--muted-foreground) / 0.7)', fontStyle: 'italic' },
+    { tag: tags.lineComment, color: 'oklch(var(--muted-foreground) / 0.7)', fontStyle: 'italic' },
+    { tag: tags.blockComment, color: 'oklch(var(--muted-foreground) / 0.7)', fontStyle: 'italic' },
 
     // Punctuation and brackets
-    { tag: tags.punctuation, color: 'hsl(var(--muted-foreground))' },
-    { tag: tags.bracket, color: 'hsl(var(--muted-foreground))' },
+    { tag: tags.punctuation, color: 'oklch(var(--muted-foreground))' },
+    { tag: tags.bracket, color: 'oklch(var(--muted-foreground))' },
 
     // Meta and annotations
     { tag: tags.meta, color: 'hsl(280 40% 65%)' },
     { tag: tags.annotation, color: 'hsl(280 40% 65%)' },
 
     // Invalid/Error - status error color
-    { tag: tags.invalid, color: 'hsl(var(--status-error))' },
+    { tag: tags.invalid, color: 'oklch(var(--status-error))' },
 
     // Definition links
-    { tag: tags.definition(tags.variableName), color: 'hsl(var(--foreground))' },
-    { tag: tags.definition(tags.propertyName), color: 'hsl(var(--foreground))' },
+    { tag: tags.definition(tags.variableName), color: 'oklch(var(--foreground))' },
+    { tag: tags.definition(tags.propertyName), color: 'oklch(var(--foreground))' },
 
     // Local variables
-    { tag: tags.local(tags.variableName), color: 'hsl(var(--foreground))' },
+    { tag: tags.local(tags.variableName), color: 'oklch(var(--foreground))' },
 
     // Special tags
     { tag: tags.special(tags.string), color: 'hsl(35 50% 60%)' },
@@ -80,9 +80,9 @@ export const pandaTheme = createTheme({
     { tag: tags.emphasis, fontStyle: 'italic' },
 
     // Heading
-    { tag: tags.heading, color: 'hsl(var(--primary))', fontWeight: 'bold' },
+    { tag: tags.heading, color: 'oklch(var(--primary))', fontWeight: 'bold' },
 
     // Links
-    { tag: tags.link, color: 'hsl(var(--primary))', textDecoration: 'underline' },
+    { tag: tags.link, color: 'oklch(var(--primary))', textDecoration: 'underline' },
   ],
 })

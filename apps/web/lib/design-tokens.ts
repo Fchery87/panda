@@ -9,20 +9,20 @@
 // STATUS COLORS
 // ═══════════════════════════════════════════════════════════
 export const statusColors = {
-  success: 'hsl(var(--status-success))',
-  error: 'hsl(var(--status-error))',
-  warning: 'hsl(var(--status-warning))',
-  info: 'hsl(var(--status-info))',
-  online: 'hsl(var(--status-online))',
+  success: 'oklch(var(--status-success))',
+  error: 'oklch(var(--status-error))',
+  warning: 'oklch(var(--status-warning))',
+  info: 'oklch(var(--status-info))',
+  online: 'oklch(var(--status-online))',
 } as const
 
 // ═══════════════════════════════════════════════════════════
 // TERMINAL COLORS
 // ═══════════════════════════════════════════════════════════
 export const terminalColors = {
-  success: 'hsl(var(--terminal-success))',
-  error: 'hsl(var(--terminal-error))',
-  warning: 'hsl(var(--terminal-warning))',
+  success: 'oklch(var(--terminal-success))',
+  error: 'oklch(var(--terminal-error))',
+  warning: 'oklch(var(--terminal-warning))',
 } as const
 
 // ═══════════════════════════════════════════════════════════
@@ -30,12 +30,12 @@ export const terminalColors = {
 // ═══════════════════════════════════════════════════════════
 export const diffColors = {
   added: {
-    bg: 'hsl(var(--diff-added-bg))',
-    fg: 'hsl(var(--diff-added-fg))',
+    bg: 'oklch(var(--diff-added-bg))',
+    fg: 'oklch(var(--diff-added-fg))',
   },
   removed: {
-    bg: 'hsl(var(--diff-removed-bg))',
-    fg: 'hsl(var(--diff-removed-fg))',
+    bg: 'oklch(var(--diff-removed-bg))',
+    fg: 'oklch(var(--diff-removed-fg))',
   },
 } as const
 
@@ -43,8 +43,8 @@ export const diffColors = {
 // INTERACTIVE STATES
 // ═══════════════════════════════════════════════════════════
 export const interactiveStates = {
-  hover: 'hsl(var(--interactive-hover))',
-  selected: 'hsl(var(--interactive-selected))',
+  hover: 'oklch(var(--interactive-hover))',
+  selected: 'oklch(var(--interactive-selected))',
 } as const
 
 // ═══════════════════════════════════════════════════════════

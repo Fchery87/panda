@@ -62,9 +62,9 @@ export function WorkspaceBanner({
           className="overflow-hidden"
         >
           {state === 'agent-running' && (
-            <div className="review-banner border-[hsl(var(--status-info)/0.4)] bg-[hsl(var(--status-info)/0.06)] py-2">
+            <div className="review-banner border-[oklch(var(--status-info)/0.4)] bg-[oklch(var(--status-info)/0.06)] py-2">
               <div className="flex items-center gap-2">
-                <IconSpinner className="h-3.5 w-3.5 animate-spin text-[hsl(var(--status-info))]" />
+                <IconSpinner className="h-3.5 w-3.5 animate-spin text-[oklch(var(--status-info))]" />
                 <span className="text-foreground">Agent working</span>
                 {changedFilesCount > 0 && (
                   <span className="text-muted-foreground">
@@ -76,10 +76,10 @@ export function WorkspaceBanner({
           )}
 
           {state === 'agent-complete' && (
-            <div className="review-banner border-[hsl(var(--status-success)/0.4)] bg-[hsl(var(--status-success)/0.06)] py-3">
+            <div className="review-banner border-[oklch(var(--status-success)/0.4)] bg-[oklch(var(--status-success)/0.06)] py-3">
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-[hsl(var(--status-success)/0.15)]">
-                  <IconCheck className="h-3.5 w-3.5 text-[hsl(var(--status-success))]" />
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-[oklch(var(--status-success)/0.15)]">
+                  <IconCheck className="h-3.5 w-3.5 text-[oklch(var(--status-success))]" />
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-xs font-medium text-foreground">Task complete</p>
@@ -96,7 +96,7 @@ export function WorkspaceBanner({
                   <Button
                     data-testid="workspace-review-diff-button"
                     size="sm"
-                    className="h-7 gap-1.5 rounded-none bg-primary px-3 font-mono text-[10px] uppercase tracking-widest text-primary-foreground hover:bg-primary/90"
+                    className="hover:bg-primary/90 h-7 gap-1.5 rounded-none bg-primary px-3 font-mono text-[10px] uppercase tracking-widest text-primary-foreground"
                     onClick={onReviewDiff}
                   >
                     <IconDiff className="h-3 w-3" />

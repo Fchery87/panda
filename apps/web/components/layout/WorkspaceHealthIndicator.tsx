@@ -16,11 +16,11 @@ interface WorkspaceHealthIndicatorProps {
 const STATUS_META: Record<WorkspaceHealthStatus, { label: string; dotClassName: string }> = {
   ready: {
     label: 'Workspace ready',
-    dotClassName: 'bg-[hsl(var(--status-success))]',
+    dotClassName: 'bg-[oklch(var(--status-success))]',
   },
   issues: {
     label: 'Workspace has issues',
-    dotClassName: 'bg-[hsl(var(--status-warning))]',
+    dotClassName: 'bg-[oklch(var(--status-warning))]',
   },
   error: {
     label: 'Workspace error',

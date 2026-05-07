@@ -63,7 +63,7 @@ export function ProjectWorkspaceShell({
   return (
     <div
       data-testid="workspace-shell"
-      className="fixed inset-0 top-0 z-10 flex flex-col overflow-hidden bg-background"
+      className="dot-grid fixed inset-0 top-0 z-10 flex flex-col overflow-hidden bg-background"
     >
       <div
         className={`pointer-events-none absolute inset-x-0 z-40 px-3 py-2 ${layoutProps.focusState ? 'top-20' : 'top-11'}`}

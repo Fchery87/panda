@@ -72,8 +72,8 @@ export function AgentCompletionBanner({
         >
           <div className="review-banner py-3">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-[hsl(var(--status-success)/0.15)]">
-                <IconCheck className="h-3.5 w-3.5 text-[hsl(var(--status-success))]" />
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center bg-[oklch(var(--status-success)/0.15)]">
+                <IconCheck className="h-3.5 w-3.5 text-[oklch(var(--status-success))]" />
               </div>
               <div className="min-w-0">
                 <p className="truncate text-xs font-medium text-foreground">
@@ -92,7 +92,7 @@ export function AgentCompletionBanner({
                 <Button
                   data-testid="agent-completion-review-diff-button"
                   size="sm"
-                  className="h-7 gap-1.5 rounded-none bg-primary px-3 font-mono text-[10px] uppercase tracking-widest text-primary-foreground hover:bg-primary/90"
+                  className="hover:bg-primary/90 h-7 gap-1.5 rounded-none bg-primary px-3 font-mono text-[10px] uppercase tracking-widest text-primary-foreground"
                   onClick={onReviewDiff}
                 >
                   <IconDiff className="h-3 w-3" />

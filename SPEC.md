@@ -1,22 +1,26 @@
-# Spec: Project Font Update
+# Spec: Panda Design System Redesign
 
 ## Deliverables
 
-- [ ] Use Inter as the canonical UI font through the existing sans font
-      variable.
-- [ ] Use GeistMono as the canonical code and monospace UI font through the
-      existing mono font variable.
-- [ ] Preserve existing typography class usage and font feature settings unless
-      validation requires a change.
+- [ ] Replace the existing warm amber visual tokens with the OKLCH Panda design
+      system from `docs/DESIGN.md`.
+- [ ] Apply the new hard-grid, flat-panel, green-proof visual language to the
+      public landing page and primary workbench shell.
+- [ ] Preserve the existing session-first workbench behavior, including desktop
+      regions and mobile focused views.
+- [ ] Add regression coverage for the design-system contract and responsive
+      mobile view labels.
 
 ## Constraints
 
-- Do not rewrite component-level `font-mono` or `font-sans` usage.
-- Do not update domain glossary docs for this implementation-level styling
-  change.
-- Keep the existing CSS variable contract: `--font-sans` and `--font-mono`.
+- Follow `docs/DESIGN.md` over the older AGENTS brutalist token examples.
+- Keep the canonical workflow modes as `ask`, `plan`, `code`, and `build`.
+- Do not introduce purple gradients, glass panels, rounded shells, mascot color
+  systems, or decorative glow.
+- Keep Convex query shapes unchanged.
 
-## Out of scope (log here during the run, do not act on)
+## Out of scope
 
-- Component-by-component typography redesign.
-- ADR creation for this reversible styling choice.
+- Rebuilding every settings, admin, education, and shared-chat screen in this
+  pass.
+- Changing product data models, agent runtime behavior, or Convex backend APIs.

@@ -75,15 +75,15 @@ export function SidebarRail({
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="surface-1 flex h-full w-12 flex-shrink-0 flex-col border-r border-border">
+      <div className="flex h-full w-12 flex-shrink-0 flex-col border-r border-foreground bg-foreground text-background">
         {/* Projects link at top */}
-        <div className="flex flex-col border-b border-border">
+        <div className="border-background/20 flex flex-col border-b">
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 type="button"
                 onClick={onHomeClick}
-                className="hover:bg-surface-2 flex h-11 items-center justify-center text-muted-foreground transition-colors duration-150 hover:text-foreground"
+                className="text-background/70 flex h-11 items-center justify-center transition-colors duration-150 hover:bg-primary hover:text-foreground"
                 aria-label="Home"
               >
                 <IconHome className="h-4.5 w-4.5" />
@@ -98,7 +98,7 @@ export function SidebarRail({
             <TooltipTrigger asChild>
               <Link
                 href="/projects"
-                className="hover:bg-surface-2 flex h-11 items-center justify-center border-t border-border text-muted-foreground transition-colors duration-150 hover:text-foreground"
+                className="border-background/20 text-background/70 flex h-11 items-center justify-center border-t transition-colors duration-150 hover:bg-primary hover:text-foreground"
                 aria-label="Projects"
               >
                 <IconProjects className="h-4.5 w-4.5" />
@@ -127,13 +127,12 @@ export function SidebarRail({
                     className={cn(
                       'relative mx-0.5 flex h-10 items-center justify-center border border-transparent transition-colors duration-100',
                       isActive
-                        ? 'bg-surface-2 shadow-sharp-sm border-border text-foreground'
-                        : 'hover:bg-surface-2 text-muted-foreground hover:border-border hover:text-foreground'
+                        ? 'border-primary bg-primary text-foreground'
+                        : 'text-background/70 hover:border-background/25 hover:bg-background/10 hover:text-background'
                     )}
                     aria-label={item.label}
                     aria-pressed={isActive}
                   >
-                    {isActive && <div className="absolute inset-y-0.5 left-0 w-0.5 bg-primary" />}
                     <Icon className="h-[18px] w-[18px]" />
                     {showSessionSignal ? (
                       <span
@@ -141,8 +140,8 @@ export function SidebarRail({
                           'absolute right-1.5 top-1.5 h-1.5 w-1.5 border border-background',
                           sessionSignal.state === 'running' && 'animate-pulse bg-primary',
                           sessionSignal.state === 'blocked' && 'bg-destructive',
-                          sessionSignal.state === 'review' && 'bg-[hsl(var(--status-warning))]',
-                          sessionSignal.state === 'complete' && 'bg-[hsl(var(--status-success))]'
+                          sessionSignal.state === 'review' && 'bg-[oklch(var(--status-warning))]',
+                          sessionSignal.state === 'complete' && 'bg-[oklch(var(--status-success))]'
                         )}
                       />
                     ) : null}
@@ -169,12 +168,12 @@ export function SidebarRail({
         <div className="flex-1" />
 
         {/* Bottom section - Settings */}
-        <div className="flex flex-col border-t border-border py-1">
+        <div className="border-background/20 flex flex-col border-t py-1">
           <Tooltip>
             <TooltipTrigger asChild>
               <Link
                 href="/settings"
-                className="hover:bg-surface-2 mx-0.5 flex h-10 items-center justify-center border border-transparent text-muted-foreground transition-colors duration-100 hover:border-border hover:text-foreground"
+                className="text-background/70 hover:border-background/25 hover:bg-background/10 mx-0.5 flex h-10 items-center justify-center border border-transparent transition-colors duration-100 hover:text-background"
                 aria-label="Settings"
               >
                 <IconSettings className="h-[18px] w-[18px]" />

@@ -67,14 +67,14 @@ const FOCUS_TONE_STYLES: Record<
     text: 'text-primary',
   },
   attention: {
-    border: 'border-[hsl(var(--status-warning)/0.45)]',
-    background: 'bg-[hsl(var(--status-warning)/0.08)]',
-    text: 'text-[hsl(var(--status-warning))]',
+    border: 'border-[oklch(var(--status-warning)/0.45)]',
+    background: 'bg-[oklch(var(--status-warning)/0.08)]',
+    text: 'text-[oklch(var(--status-warning))]',
   },
   success: {
-    border: 'border-[hsl(var(--status-success)/0.45)]',
-    background: 'bg-[hsl(var(--status-success)/0.08)]',
-    text: 'text-[hsl(var(--status-success))]',
+    border: 'border-[oklch(var(--status-success)/0.45)]',
+    background: 'bg-[oklch(var(--status-success)/0.08)]',
+    text: 'text-[oklch(var(--status-success))]',
   },
 }
 
@@ -113,9 +113,9 @@ export function WorkbenchTopBar({
     <motion.div
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      className="surface-1 flex shrink-0 flex-col border-b border-border"
+      className="flex shrink-0 flex-col border-b border-foreground bg-card"
     >
-      <div className="flex h-11 items-center justify-between px-3">
+      <div className="flex h-12 items-center justify-between px-3">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <div className="flex shrink-0 items-center gap-1">
             <Button
@@ -147,11 +147,13 @@ export function WorkbenchTopBar({
             </Link>
           </div>
 
-          <div className="h-5 w-px bg-border" />
+          <div className="bg-foreground/30 h-5 w-px" />
 
-          <span className="truncate text-sm font-medium text-foreground">{projectName}</span>
+          <span className="truncate font-mono text-xs font-semibold uppercase tracking-[0.12em] text-foreground">
+            {projectName}
+          </span>
 
-          {selectedFilePath ? <div className="hidden h-5 w-px bg-border lg:block" /> : null}
+          {selectedFilePath ? <div className="bg-foreground/30 hidden h-5 w-px lg:block" /> : null}
 
           <div className="hidden min-w-0 flex-1 lg:block">
             <Breadcrumb
@@ -167,12 +169,12 @@ export function WorkbenchTopBar({
           <button
             type="button"
             onClick={onOpenCommandPalette}
-            className="surface-0 flex h-8 w-full max-w-md items-center gap-3 border border-border px-3 text-left font-mono text-[11px] text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+            className="border-foreground/70 flex h-8 w-full max-w-md items-center gap-3 border bg-background px-3 text-left font-mono text-[11px] text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
             aria-label="Open command palette"
           >
             <span className="uppercase tracking-[0.18em] text-primary">Search</span>
             <span className="min-w-0 flex-1 truncate">Files, commands, settings</span>
-            <span className="surface-1 shrink-0 border border-border px-2 py-0.5 text-[10px] uppercase tracking-[0.18em]">
+            <span className="shrink-0 border border-border bg-card px-2 py-0.5 text-[10px] uppercase tracking-[0.18em]">
               Ctrl+K
             </span>
           </button>
@@ -199,7 +201,7 @@ export function WorkbenchTopBar({
             onStopRuntime={onStopRuntime}
             isRuntimeRunning={isRuntimeRunning}
           />
-          <div className="h-5 w-px bg-border" />
+          <div className="bg-foreground/30 h-5 w-px" />
           <ThemeToggle />
           <UserMenu compact />
           <DropdownMenu>
@@ -234,7 +236,7 @@ export function WorkbenchTopBar({
       </div>
 
       {focusState && focusTone ? (
-        <div className="surface-0 flex h-9 items-center justify-between border-t border-border px-3">
+        <div className="border-foreground/80 flex h-9 items-center justify-between border-t bg-background px-3">
           <div className="flex min-w-0 items-center gap-3">
             <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
               {focusState.kicker}

@@ -102,7 +102,7 @@ export function SidebarHistoryPanel({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search history..."
-            className="w-full bg-transparent font-mono text-xs placeholder:text-muted-foreground/50 focus:outline-none"
+            className="placeholder:text-muted-foreground/50 w-full bg-transparent font-mono text-xs focus:outline-none"
           />
         </div>
       </div>
@@ -111,7 +111,7 @@ export function SidebarHistoryPanel({
       <div className="border-b border-border p-2">
         <button
           onClick={onNewChat}
-          className="flex w-full items-center justify-center gap-2 border border-border bg-primary px-3 py-2 font-mono text-xs text-primary-foreground transition-colors hover:bg-primary/90"
+          className="hover:bg-primary/90 flex w-full items-center justify-center gap-2 border border-border bg-primary px-3 py-2 font-mono text-xs text-primary-foreground transition-colors"
         >
           <IconNewChat className="h-3.5 w-3.5" />
           New Session
@@ -132,7 +132,7 @@ export function SidebarHistoryPanel({
                   {group.label}
                 </div>
                 {group.sessions.length === 0 ? (
-                  <p className="px-3 py-2 font-mono text-[10px] text-muted-foreground/70">
+                  <p className="text-muted-foreground/70 px-3 py-2 font-mono text-[10px]">
                     No {group.label.toLowerCase()}.
                   </p>
                 ) : (
@@ -148,8 +148,8 @@ export function SidebarHistoryPanel({
                         className={cn(
                           'flex w-full items-center gap-2 border border-transparent px-3 py-2 text-left transition-colors duration-150',
                           isActive
-                            ? 'shadow-sharp-sm border-border bg-primary/10 text-foreground'
-                            : 'hover:bg-surface-2 text-muted-foreground hover:border-border hover:text-foreground'
+                            ? 'shadow-sharp-sm bg-primary/10 border-border text-foreground'
+                            : 'text-muted-foreground hover:border-border hover:bg-surface-2 hover:text-foreground'
                         )}
                       >
                         <span className="relative flex h-3.5 w-3.5 flex-shrink-0 items-center justify-center">
@@ -160,8 +160,9 @@ export function SidebarHistoryPanel({
                                 'absolute -right-0.5 -top-0.5 h-1.5 w-1.5 border border-background',
                                 activeRunStatus === 'running' && 'animate-pulse bg-primary',
                                 activeRunStatus === 'blocked' && 'bg-destructive',
-                                activeRunStatus === 'review' && 'bg-[hsl(var(--status-warning))]',
-                                activeRunStatus === 'complete' && 'bg-[hsl(var(--status-success))]'
+                                activeRunStatus === 'review' && 'bg-[oklch(var(--status-warning))]',
+                                activeRunStatus === 'complete' &&
+                                  'bg-[oklch(var(--status-success))]'
                               )}
                               aria-hidden="true"
                             />

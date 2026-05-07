@@ -146,7 +146,7 @@ export function Workbench({
   if (isMobileLayout) {
     // Mobile layout - simplified stacked view
     return (
-      <div className="surface-0 h-full min-h-0 w-full min-w-0">
+      <div className="h-full min-h-0 w-full min-w-0 bg-card">
         <CenterTabBar
           tabs={centerTabs.filter((tab) => tab.id === 'editor' || tab.id === 'diff')}
           activeTab={effectiveTab}
@@ -215,7 +215,7 @@ export function Workbench({
   // Desktop layout
   return (
     <div
-      className="surface-0 h-full min-h-0 w-full min-w-0 overflow-hidden"
+      className="h-full min-h-0 w-full min-w-0 overflow-hidden bg-card"
       data-layout-persistence-key={innerLayoutPersistenceKey}
     >
       {/* Legacy layout contract markers retained for source-based integration tests:
@@ -223,7 +223,7 @@ export function Workbench({
           id="editor-panel" order={1}
           id="terminal-panel" order={2}
       */}
-      <div className="surface-0 flex h-full min-h-0 min-w-0 flex-col">
+      <div className="flex h-full min-h-0 min-w-0 flex-col bg-card">
         <CenterTabBar
           tabs={centerTabs}
           activeTab={effectiveTab}
@@ -231,10 +231,10 @@ export function Workbench({
           trailingContent={
             effectiveTab === 'editor' ? (
               <>
-                <span className="surface-0 border border-border px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
+                <span className="border border-border bg-background px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
                   {openTabs.length} tabs
                 </span>
-                <span className="surface-0 border border-border px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
+                <span className="border border-border bg-background px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
                   {files.length} files
                 </span>
               </>

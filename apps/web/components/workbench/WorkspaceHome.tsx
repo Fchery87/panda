@@ -42,13 +42,13 @@ const FOCUS_TONE_STYLES: Record<
   },
   attention: {
     badge:
-      'border-[hsl(var(--status-warning)/0.45)] bg-[hsl(var(--status-warning)/0.08)] text-[hsl(var(--status-warning))]',
-    panel: 'border-[hsl(var(--status-warning)/0.2)] bg-[hsl(var(--status-warning)/0.05)]',
+      'border-[oklch(var(--status-warning)/0.45)] bg-[oklch(var(--status-warning)/0.08)] text-[oklch(var(--status-warning))]',
+    panel: 'border-[oklch(var(--status-warning)/0.2)] bg-[oklch(var(--status-warning)/0.05)]',
   },
   success: {
     badge:
-      'border-[hsl(var(--status-success)/0.45)] bg-[hsl(var(--status-success)/0.08)] text-[hsl(var(--status-success))]',
-    panel: 'border-[hsl(var(--status-success)/0.2)] bg-[hsl(var(--status-success)/0.05)]',
+      'border-[oklch(var(--status-success)/0.45)] bg-[oklch(var(--status-success)/0.08)] text-[oklch(var(--status-success))]',
+    panel: 'border-[oklch(var(--status-success)/0.2)] bg-[oklch(var(--status-success)/0.05)]',
   },
 }
 
@@ -103,22 +103,21 @@ export function WorkspaceHome({
 
   return (
     <div className="dot-grid scrollbar-thin h-full overflow-auto">
-      <div className="mx-auto max-w-3xl px-6 py-8">
+      <div className="mx-auto max-w-5xl px-4 py-5 sm:px-6 sm:py-8">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="mb-6"
+          className="shadow-sharp-sm mb-6 border border-foreground bg-card"
         >
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.6fr)_220px]">
-            <div className="space-y-3">
+          <div className="bg-foreground/80 grid gap-px lg:grid-cols-[minmax(0,1.5fr)_260px]">
+            <div className="space-y-3 bg-card p-5 sm:p-6">
               <div className="flex items-center gap-3">
-                <span className="h-px w-8 bg-primary" />
                 <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
                   Execution Session
                 </span>
               </div>
-              <h1 className="max-w-xl text-2xl font-semibold tracking-tight text-foreground">
+              <h1 className="max-w-2xl text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
                 {focusState
                   ? focusState.objective
                   : 'Keep intent, proof, and changed work in view.'}
@@ -126,7 +125,7 @@ export function WorkspaceHome({
               <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
                 {primarySummary}
               </p>
-              <div className="grid gap-2 pt-1 sm:grid-cols-3">
+              <div className="grid gap-2 pt-2 sm:grid-cols-3">
                 {quickActions.map((action) => {
                   const Icon = action.icon
                   return (
@@ -144,12 +143,7 @@ export function WorkspaceHome({
               </div>
             </div>
 
-            <div
-              className={cn(
-                'border border-border bg-background/85 p-4',
-                focusState && focusTone?.panel
-              )}
-            >
+            <div className={cn('bg-background p-4', focusState && focusTone?.panel)}>
               <div className="flex items-center justify-between gap-3">
                 <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
                   Session State
@@ -159,7 +153,7 @@ export function WorkspaceHome({
                     'border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em]',
                     focusState && focusTone
                       ? focusTone.badge
-                      : 'border-border bg-background/70 text-muted-foreground'
+                      : 'bg-background/70 border-border text-muted-foreground'
                   )}
                 >
                   {focusState ? focusState.statusLabel : 'Idle'}
@@ -223,9 +217,9 @@ export function WorkspaceHome({
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.08 }}
-          className="mb-6 border border-border bg-background/85"
+          className="mb-6 border border-foreground bg-card"
         >
-          <div className="border-b border-border px-4 py-3">
+          <div className="border-b border-foreground bg-secondary px-4 py-3">
             <h2 className="font-mono text-[10px] uppercase tracking-[0.24em] text-primary">
               Session Timeline
             </h2>
@@ -253,7 +247,7 @@ export function WorkspaceHome({
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.1 }}
-          className="mb-6 border border-primary/30 bg-primary/5 p-4"
+          className="bg-primary/10 mb-6 border border-primary p-4"
         >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="min-w-0 flex-1">
@@ -333,7 +327,7 @@ export function WorkspaceHome({
                   key={file.path}
                   type="button"
                   onClick={() => onOpenFile?.(file.path)}
-                  className={`hover:bg-surface-2 flex w-full items-center gap-3 px-3 py-2 text-left transition-colors ${
+                  className={`flex w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-surface-2 ${
                     idx > 0 ? 'border-t border-border' : ''
                   }`}
                 >

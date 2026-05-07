@@ -31,10 +31,10 @@ function StatusDot({ status }: { status: AgentTaskStatus }) {
       className={cn(
         'h-1.5 w-1.5 shrink-0',
         status === 'running' && 'animate-pulse bg-primary',
-        status === 'waiting' && 'bg-[hsl(var(--status-info))]',
-        status === 'review' && 'bg-[hsl(var(--status-warning))]',
+        status === 'waiting' && 'bg-[oklch(var(--status-info))]',
+        status === 'review' && 'bg-[oklch(var(--status-warning))]',
         status === 'failed' && 'bg-destructive',
-        status === 'complete' && 'bg-[hsl(var(--status-success))]'
+        status === 'complete' && 'bg-[oklch(var(--status-success))]'
       )}
     />
   )
@@ -50,7 +50,7 @@ export function ActiveAgentsPane({
   if (tasks.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 px-4 py-8 text-center">
-        <div className="flex h-10 w-10 items-center justify-center border border-border bg-muted/50">
+        <div className="bg-muted/50 flex h-10 w-10 items-center justify-center border border-border">
           <IconAgents className="h-5 w-5 text-muted-foreground" />
         </div>
         <div className="space-y-1">
@@ -81,7 +81,7 @@ export function ActiveAgentsPane({
             key={task.id}
             type="button"
             onClick={() => onOpenTask?.(task.id)}
-            className="hover:bg-surface-2 group flex w-full items-start gap-2.5 px-3 py-2.5 text-left transition-colors duration-100"
+            className="group flex w-full items-start gap-2.5 px-3 py-2.5 text-left transition-colors duration-100 hover:bg-surface-2"
           >
             <StatusDot status={task.status} />
             <div className="min-w-0 flex-1">

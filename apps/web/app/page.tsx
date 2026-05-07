@@ -2,614 +2,354 @@
 
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import {
-  ArrowRight,
-  Terminal,
-  FileCode,
-  Bot,
-  Zap,
-  Shield,
-  GitBranch,
-  Clock,
-  Eye,
-  Layers,
-  ChevronRight,
-} from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { PandaLogo } from '@/components/ui/panda-logo'
-import { PublicNav } from '@/components/layout/PublicNav'
-import { PublicFooter } from '@/components/layout/PublicFooter'
+import { ArrowRight, Check, Clock, GitBranch, Shield, Terminal, Zap } from 'lucide-react'
 import { useConvexAuth } from 'convex/react'
+
+import { PublicFooter } from '@/components/layout/PublicFooter'
+import { PublicNav } from '@/components/layout/PublicNav'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { landingFeatures } from '@/lib/product/capabilities'
 
-const featureIcons = {
-  bot: Bot,
-  fileCode: FileCode,
-  terminal: Terminal,
-  zap: Zap,
-} as const
+const heroSignals = ['ASK', 'PLAN', 'CODE', 'BUILD'] as const
 
-const differentiationPoints = [
+const proofRows = [
+  ['MODE', 'plan review', 'Owner approval required'],
+  ['RUNTIME', 'ready', 'Browser workspace mounted'],
+  ['PROOF', 'checkpoint', '2 changed files inspectable'],
+]
+
+const featureRows = [
   {
     icon: Shield,
-    title: 'Review before execution',
-    description:
-      'Plans are saved and reviewable. Risky actions pause for approval. Panda keeps the operator in control instead of hiding the work behind automation.',
+    title: 'Approval is visible',
+    detail:
+      'Plans, risky actions, permission boundaries, and share state sit near the action they affect.',
   },
   {
     icon: Clock,
-    title: 'Runs that recover cleanly',
-    description:
-      'If execution pauses or disconnects, Panda surfaces a recovery checkpoint so the session stays operational instead of starting from scratch.',
-  },
-  {
-    icon: Eye,
-    title: 'State stays visible',
-    description:
-      'File edits, run progress, plan status, and changed work stay visible in one shell so you always know what happened and what comes next.',
+    title: 'Runs are recoverable',
+    detail:
+      'Checkpoint and receipt state stay attached to the session, so interrupted work has a return path.',
   },
   {
     icon: GitBranch,
-    title: 'Context that stays put',
-    description:
-      'Chat history, run logs, and project memory carry across sessions. Stop re-explaining your codebase every time you reopen the workbench.',
+    title: 'Context stays bounded',
+    detail:
+      'Project files, chat direction, changed work, and proof are visible without turning the app into an IDE clone.',
   },
 ]
 
-const workflowSteps = [
-  {
-    step: '01',
-    label: 'Orient',
-    title: 'Pick the right project context',
-    description:
-      'Browse files or search the project until the right context is on screen. Panda works best when the request and the code live in the same workspace.',
-    icon: FileCode,
-  },
-  {
-    step: '02',
-    label: 'Plan',
-    title: 'Review the plan',
-    description:
-      'Panda generates a saved implementation plan. Review it, edit it, and approve it before execution begins.',
-    icon: Layers,
-  },
-  {
-    step: '03',
-    label: 'Execute',
-    title: 'Execute with oversight',
-    description:
-      'Approved plans become the execution contract. Panda keeps progress visible and pauses when you need to review a risky action.',
-    icon: Terminal,
-  },
-  {
-    step: '04',
-    label: 'Inspect',
-    title: 'Inspect results and continue',
-    description:
-      'Inspect changed work, review artifacts, verify the preview, and keep moving without leaving the workbench.',
-    icon: Zap,
-  },
+const workflowRows = [
+  ['01', 'Orient', 'Bring file context, current objective, and mode into one shell.'],
+  ['02', 'Approve', 'Review the plan and permission boundary before execution starts.'],
+  ['03', 'Execute', 'Watch run events, terminal output, changed work, and checkpoint state.'],
+  [
+    '04',
+    'Inspect',
+    'Move through diff, proof, preview, and next action without losing the thread.',
+  ],
 ]
-
-const builtForItems = [
-  {
-    audience: 'Solo developers',
-    detail:
-      'Keep planning, execution, and changed work in one browser workspace without a local IDE setup.',
-  },
-  {
-    audience: 'Small teams',
-    detail:
-      'Share the active work thread, review plans together, and keep project context durable across sessions.',
-  },
-  {
-    audience: 'Open-source contributors',
-    detail:
-      'Work on repos in the browser with full file context, terminal access, and recoverable runs.',
-  },
-  {
-    audience: 'Power users',
-    detail:
-      'Manage multiple tasks inside one project while keeping the current objective, changed work, and next step visible.',
-  },
-]
-
-const heroSignals = ['Saved plans', 'Recoverable runs', 'Shared memory']
 
 export default function Home() {
   const { isAuthenticated } = useConvexAuth()
 
   return (
-    <main id="main-content" className="dot-grid min-h-screen bg-background">
+    <main id="main-content" className="dot-grid min-h-screen bg-background text-foreground">
       <PublicNav showEducationLink />
 
-      {/* ────── Hero ────── */}
-      <section className="pb-28 pt-36 lg:pb-36 lg:pt-44">
-        <div className="container">
-          <div className="grid items-center gap-14 lg:grid-cols-12 lg:gap-10">
-            {/* Left */}
-            <motion.div
-              initial={{ opacity: 0, x: -24 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
-              className="lg:col-span-5"
-            >
-              <div className="space-y-10">
-                <div className="inline-flex items-center gap-4">
-                  <span className="h-px w-10 bg-primary/60" />
-                  <span className="font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
-                    Browser-native AI coding workbench
-                  </span>
-                </div>
-
-                <h1 className="text-5xl font-bold leading-[1.05] -tracking-[0.03em] sm:text-6xl lg:text-7xl">
-                  <span className="block">Keep the work</span>
-                  <span className="block">in one place.</span>
-                  <span className="mt-2 block text-primary">
-                    Plan, review, and execute in the browser.
-                  </span>
-                </h1>
-
-                <p className="max-w-lg text-lg leading-relaxed text-muted-foreground">
-                  Panda is a calm, operational AI workbench for serious code work. Keep context,
-                  planning, approvals, execution, changed work, and recovery in one browser session
-                  you can return to without losing the thread.
+      <section className="px-3 pb-14 pt-20 sm:px-5 lg:px-8 lg:pb-20 lg:pt-24">
+        <div className="bg-background/92 shadow-sharp-lg mx-auto max-w-[1500px] border border-foreground">
+          <header className="bg-card/95 grid border-b border-foreground lg:grid-cols-[minmax(230px,0.34fr)_1fr_auto]">
+            <div className="flex items-center gap-3 border-b border-foreground px-5 py-5 lg:border-b-0 lg:border-r">
+              <BrandMark />
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                  Panda.ai
                 </p>
+                <h1 className="text-2xl font-bold leading-none tracking-tight">Panda</h1>
+              </div>
+            </div>
 
-                {/* Signals grid */}
-                <div className="grid max-w-xl gap-px bg-border/60 sm:grid-cols-3">
-                  {heroSignals.map((signal) => (
-                    <div key={signal} className="surface-1 border border-transparent px-4 py-3.5">
-                      <span className="font-mono text-[11px] uppercase tracking-[0.06em] text-muted-foreground">
-                        {signal}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+            <div className="grid content-center gap-1 border-b border-foreground px-5 py-5 lg:border-b-0">
+              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-primary">
+                Session-first AI coding workbench
+              </p>
+              <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+                Context, chat direction, plan review, execution proof, changed work, and recovery
+                stay visible in one browser workspace.
+              </p>
+            </div>
 
-                <div className="flex flex-col gap-4 pt-2 sm:flex-row">
+            <div className="flex items-center gap-2 px-5 py-4 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground lg:border-l lg:border-foreground">
+              <span className="h-2 w-2 border border-foreground bg-primary" />
+              Reviewable
+              <span className="border border-border bg-background px-2 py-1">Runtime ready</span>
+            </div>
+          </header>
+
+          <nav
+            className="grid border-b border-foreground bg-card sm:grid-cols-4"
+            aria-label="Panda workflow modes"
+          >
+            {heroSignals.map((mode, index) => (
+              <div
+                key={mode}
+                className={cn(
+                  'flex min-h-11 items-center justify-between border-b border-foreground px-4 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground sm:border-b-0 sm:border-r',
+                  index === 1 && 'bg-primary/10 text-foreground',
+                  index === heroSignals.length - 1 && 'sm:border-r-0'
+                )}
+              >
+                <span>{mode}</span>
+                {index === 1 ? <span className="text-primary">ACTIVE</span> : null}
+              </div>
+            ))}
+          </nav>
+
+          <div className="bg-foreground/80 grid gap-px lg:grid-cols-[minmax(0,0.92fr)_minmax(420px,1.28fr)]">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.22 }}
+              className="bg-background px-5 py-8 sm:px-7 lg:px-9 lg:py-12"
+            >
+              <div className="max-w-3xl">
+                <p className="mb-5 font-mono text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+                  Calm under load. Exact during risk.
+                </p>
+                <h2 className="text-[clamp(3rem,8vw,5.5rem)] font-extrabold leading-[0.92] tracking-tight text-foreground">
+                  Keep the work in one place.
+                </h2>
+                <p className="mt-6 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
+                  Panda is not a chatbot and not an IDE clone. It is a command surface for
+                  technically fluent users who need the objective, approval boundary, execution
+                  proof, changed files, and next action to stay visible.
+                </p>
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                   <Link href="/projects">
-                    <Button
-                      size="lg"
-                      className="shadow-sharp-md transition-refined hover:shadow-sharp-lg rounded-none font-mono tracking-[0.06em]"
-                    >
-                      {isAuthenticated ? 'Open Workbench' : 'Start in the Workbench'}
-                      <ArrowRight className="ml-2" size={16} />
+                    <Button className="h-11 rounded-none border border-foreground px-5 font-mono text-xs uppercase tracking-[0.16em] shadow-none">
+                      {isAuthenticated ? 'Open Workbench' : 'Start Workbench'}
+                      <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </Link>
                   <Link href="/education">
                     <Button
-                      size="lg"
                       variant="outline"
-                      className="rounded-none font-mono tracking-[0.06em]"
+                      className="h-11 rounded-none border-foreground bg-card px-5 font-mono text-xs uppercase tracking-[0.16em]"
                     >
-                      Read the workflow guide
+                      Read Workflow
                     </Button>
                   </Link>
                 </div>
               </div>
-            </motion.div>
 
-            {/* Right: Terminal mockup */}
-            <motion.div
-              initial={{ opacity: 0, x: 24 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.15, ease: [0.4, 0, 0.2, 1] }}
-              className="lg:col-span-7"
-            >
-              <div className="relative">
-                <div className="shadow-sharp-lg surface-0 border border-border">
-                  {/* Terminal header */}
-                  <div className="surface-2 flex items-center justify-between border-b border-border px-5 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <div className="flex gap-2">
-                        <div className="h-2.5 w-2.5 rounded-full bg-muted-foreground/20" />
-                        <div className="h-2.5 w-2.5 rounded-full bg-muted-foreground/20" />
-                        <div className="h-2.5 w-2.5 rounded-full bg-muted-foreground/20" />
-                      </div>
-                      <span className="font-mono text-xs text-muted-foreground">
-                        panda.ai — operational workbench
-                      </span>
-                    </div>
-                    <span className="border border-primary/30 bg-primary/5 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-primary">
-                      reviewable session
-                    </span>
+              <div className="mt-10 grid gap-px bg-border sm:grid-cols-3">
+                {proofRows.map(([label, value, detail]) => (
+                  <div key={label} className="bg-card p-4">
+                    <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      {label}
+                    </p>
+                    <p className="mt-2 font-mono text-xs uppercase tracking-[0.12em] text-foreground">
+                      {value}
+                    </p>
+                    <p className="mt-2 text-sm leading-5 text-muted-foreground">{detail}</p>
                   </div>
-
-                  {/* Terminal content */}
-                  <div className="space-y-4 p-7 font-mono text-sm leading-relaxed">
-                    <div className="flex items-start gap-2.5">
-                      <span className="mt-0.5 shrink-0 text-primary">➜</span>
-                      <span className="text-muted-foreground">plan</span>
-                      <span className="text-foreground">Saved plan ready for review</span>
-                    </div>
-                    <div className="space-y-1.5 pl-[2.125rem] text-muted-foreground">
-                      <div>Current objective anchored to 3 repo files</div>
-                      <div>Approval required before execution starts</div>
-                      <div className="text-primary">+ Review rail opened with plan context</div>
-                    </div>
-                    <div className="flex items-start gap-2.5">
-                      <span className="mt-0.5 shrink-0 text-primary">➜</span>
-                      <span className="text-muted-foreground">build</span>
-                      <span className="text-foreground">Executing approved work</span>
-                    </div>
-                    <div className="space-y-1.5 pl-[2.125rem] text-muted-foreground">
-                      <div>Operator review requested for a risky command</div>
-                      <div>Run progress saved with a resumable checkpoint</div>
-                      <div className="text-primary">+ 2 changed files ready for inspection</div>
-                    </div>
-                    <div className="flex items-start gap-2.5">
-                      <span className="mt-0.5 shrink-0 text-primary">➜</span>
-                      <span className="text-muted-foreground">review</span>
-                      <motion.span
-                        className="inline-block h-4 w-2 bg-primary"
-                        animate={{ opacity: [1, 0, 1] }}
-                        transition={{ duration: 1, repeat: Infinity }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Terminal footer */}
-                  <div className="grid gap-px border-t border-border bg-border lg:grid-cols-[minmax(0,1.4fr)_minmax(220px,0.8fr)]">
-                    <div className="bg-background px-5 py-3.5">
-                      <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                        Current objective
-                      </div>
-                      <p className="mt-1.5 text-sm text-foreground">
-                        Ship the next change without losing the plan, approvals, or changed work.
-                      </p>
-                    </div>
-                    <div className="surface-1 px-5 py-3.5">
-                      <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                        Next action
-                      </div>
-                      <p className="mt-1.5 text-sm text-muted-foreground">
-                        Review the plan, approve the risky step, inspect the changes.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Offset decoration */}
-                <div className="absolute -bottom-4 -right-4 -z-10 h-full w-full border border-primary/15" />
+                ))}
               </div>
             </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.24, delay: 0.06 }}
+              className="bg-card p-3 sm:p-5 lg:p-7"
+            >
+              <WorkbenchPreview />
+            </motion.div>
           </div>
         </div>
       </section>
 
-      {/* ────── Differentiation: Why Panda ────── */}
-      <section className="border-t border-border py-28 lg:py-36">
-        <div className="container">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mb-16"
-          >
-            <div className="mb-6 flex items-center gap-3">
-              <span className="h-px w-10 bg-primary/60" />
-              <span className="font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
-                Why Panda
-              </span>
-            </div>
-            <div className="grid gap-8 lg:grid-cols-12">
-              <h2 className="text-4xl font-bold leading-[1.1] -tracking-[0.025em] sm:text-5xl lg:col-span-7">
-                A coding workbench that stays reviewable under pressure.
-                <span className="text-muted-foreground">
-                  {' '}
-                  Not another autopilot wrapped around a terminal.
-                </span>
-              </h2>
-              <p className="self-end text-lg leading-relaxed text-muted-foreground lg:col-span-5">
-                Panda is built for technically fluent users who want one browser-native place to
-                keep context, review work, approve risky actions, recover paused runs, and continue
-                without losing the thread.
-              </p>
-            </div>
-          </motion.div>
-
-          <div className="grid gap-px bg-border/60 sm:grid-cols-2">
-            {differentiationPoints.map((point, index) => {
-              const Icon = point.icon
-              return (
-                <motion.div
-                  key={point.title}
-                  initial={{ opacity: 0, y: 24 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.08 }}
-                  className={cn(
-                    'hover-accent-border border border-transparent bg-background p-10',
-                    index === 0 && 'sm:col-span-2'
-                  )}
-                >
-                  <div
-                    className={cn(
-                      'space-y-5',
-                      index === 0 &&
-                        'lg:grid lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-10 lg:space-y-0'
-                    )}
-                  >
-                    <div className="space-y-5">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center border border-primary/30">
-                          <Icon size={16} className="text-primary" />
-                        </div>
-                        <h3 className="text-xl font-semibold">{point.title}</h3>
-                      </div>
-                      <p className="leading-relaxed text-muted-foreground">{point.description}</p>
-                    </div>
-                    {index === 0 ? (
-                      <div className="grid gap-px bg-border/60 lg:grid-cols-2">
-                        <div className="bg-background px-5 py-3.5">
-                          <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                            Why it matters
-                          </div>
-                          <p className="mt-1.5 text-sm text-muted-foreground">
-                            Panda keeps the operator in the loop so execution never outruns
-                            understanding.
-                          </p>
-                        </div>
-                        <div className="surface-1 px-5 py-3.5">
-                          <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                            What stays visible
-                          </div>
-                          <p className="mt-1.5 text-sm text-muted-foreground">
-                            Plan status, run progress, changed work, and approval points stay in the
-                            same shell.
-                          </p>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                </motion.div>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ────── How it works — 4 steps ────── */}
-      <section className="surface-1 border-t border-border py-28 lg:py-36">
-        <div className="container">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mb-16"
-          >
-            <div className="mb-6 flex items-center gap-3">
-              <span className="h-px w-10 bg-primary/60" />
-              <span className="font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
-                How it works
-              </span>
-            </div>
-            <h2 className="max-w-3xl text-4xl font-bold leading-[1.1] -tracking-[0.025em] sm:text-5xl">
-              Four steps from request to inspected result.
+      <section className="px-3 pb-16 sm:px-5 lg:px-8">
+        <div className="bg-foreground/80 mx-auto grid max-w-[1500px] gap-px lg:grid-cols-[0.8fr_1.2fr]">
+          <div className="bg-card p-6 sm:p-8">
+            <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-primary">
+              Operating model
+            </p>
+            <h2 className="mt-4 max-w-xl text-3xl font-bold tracking-tight sm:text-4xl">
+              Designed around recoverable software work, not chat theatrics.
             </h2>
-          </motion.div>
-
-          <div className="grid gap-px bg-border/60 lg:grid-cols-2">
-            {workflowSteps.map((step, index) => {
-              const Icon = step.icon
-              return (
-                <motion.div
-                  key={step.step}
-                  initial={{ opacity: 0, y: 24 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.08 }}
-                  className={cn(
-                    'hover-accent-border border border-transparent bg-background p-10',
-                    index % 2 === 1 && 'surface-1'
-                  )}
-                >
-                  <div className="space-y-5">
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono text-xs font-medium uppercase tracking-[0.08em] text-primary">
-                        {step.step}
-                      </span>
-                      <Icon size={20} className="text-muted-foreground/60" />
-                    </div>
-                    <div>
-                      <span className="font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
-                        {step.label}
-                      </span>
-                      <h3 className="mt-1.5 text-xl font-semibold">{step.title}</h3>
-                    </div>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      {step.description}
-                    </p>
-                  </div>
-                </motion.div>
-              )
-            })}
           </div>
-
-          <div className="mt-10 text-center">
-            <Link href="/education">
-              <Button variant="outline" className="rounded-none font-mono tracking-[0.06em]">
-                Read the full interface guide
-                <ChevronRight className="ml-1.5" size={14} />
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ────── Features ────── */}
-      <section className="border-t border-border py-28 lg:py-36">
-        <div className="container">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mb-16"
-          >
-            <div className="mb-6 flex items-center gap-3">
-              <span className="h-px w-10 bg-primary/60" />
-              <span className="font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
-                Features
-              </span>
-            </div>
-            <h2 className="max-w-2xl text-4xl font-bold leading-[1.1] -tracking-[0.025em] sm:text-5xl">
-              One browser workspace for planning, review, execution, and recovery.
-            </h2>
-          </motion.div>
-
-          <div className="grid gap-px bg-border/60 sm:grid-cols-2 lg:grid-cols-6">
-            {landingFeatures.map((feature, index) => {
-              const Icon = featureIcons[feature.iconKey]
-              const isLarge = feature.size === 'large'
-
-              return (
-                <motion.div
-                  key={feature.number}
-                  initial={{ opacity: 0, y: 24 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.06 }}
-                  className={cn(
-                    'transition-refined hover-accent-border border border-transparent bg-background p-10',
-                    isLarge ? 'lg:col-span-4' : 'lg:col-span-2'
-                  )}
-                >
-                  <div className="space-y-5">
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono text-xs font-medium uppercase tracking-[0.08em] text-primary">
-                        {feature.number}
-                      </span>
-                      <Icon size={20} className="text-muted-foreground/60" />
-                    </div>
-                    <h3 className="text-xl font-semibold">{feature.title}</h3>
-                    <p className="leading-relaxed text-muted-foreground">{feature.description}</p>
-                  </div>
-                </motion.div>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ────── Built for ────── */}
-      <section className="surface-1 border-t border-border py-28 lg:py-36">
-        <div className="container">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mb-14"
-          >
-            <div className="mb-6 flex items-center gap-3">
-              <span className="h-px w-10 bg-primary/60" />
-              <span className="font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
-                Built for
-              </span>
-            </div>
-            <h2 className="text-4xl font-bold leading-[1.1] -tracking-[0.025em] sm:text-5xl">
-              For builders who need the workbench to stay legible.
-            </h2>
-          </motion.div>
-
-          <div className="grid gap-px bg-border/60 lg:grid-cols-2">
-            {builtForItems.map((item, index) => (
-              <motion.div
-                key={item.audience}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.06 }}
-                className={cn(
-                  'border border-transparent bg-background p-10',
-                  index % 2 === 1 && 'surface-1'
-                )}
+          <div className="grid gap-px bg-border">
+            {workflowRows.map(([step, label, detail]) => (
+              <div
+                key={step}
+                className="grid gap-3 bg-background p-5 sm:grid-cols-[72px_140px_1fr]"
               >
-                <div className="mb-4 flex items-center justify-between gap-4">
-                  <h3 className="font-mono text-sm font-semibold uppercase tracking-[0.08em] text-primary">
-                    {item.audience}
-                  </h3>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/50">
-                    {String(index + 1).padStart(2, '0')}
-                  </span>
-                </div>
-                <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
-                  {item.detail}
-                </p>
-              </motion.div>
+                <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-primary">
+                  {step}
+                </span>
+                <span className="font-mono text-xs uppercase tracking-[0.16em] text-foreground">
+                  {label}
+                </span>
+                <p className="text-sm leading-6 text-muted-foreground">{detail}</p>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ────── CTA Section ────── */}
-      <section className="border-t border-border py-28 lg:py-36">
-        <div className="container">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mx-auto max-w-5xl"
-          >
-            <div className="grid gap-px bg-border/60 lg:grid-cols-[minmax(0,1.25fr)_minmax(260px,0.75fr)]">
-              <div className="bg-background p-10 text-left lg:p-14">
-                <div className="mb-10 flex justify-start">
-                  <PandaLogo size="xl" variant="icon" />
-                </div>
-
-                <h2 className="mb-6 max-w-3xl text-4xl font-bold leading-[1.1] -tracking-[0.025em] sm:text-5xl">
-                  Stop rebuilding context every time you reopen the work.
-                </h2>
-
-                <p className="max-w-2xl text-lg text-muted-foreground">
-                  Create a project, review the plan, approve what matters, inspect the changes, and
-                  keep moving. Panda remembers where the work stopped and what happened next.
-                </p>
-              </div>
-
-              <div className="surface-1 flex flex-col justify-between p-10 lg:p-12">
-                <div>
-                  <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                    Start from one workbench
-                  </div>
-                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                    Plans, approvals, changed work, and recoverable runs stay in one browser-native
-                    shell.
-                  </p>
-                </div>
-
-                <div className="mt-10 flex flex-col gap-4">
-                  <Link href="/projects">
-                    <Button
-                      size="lg"
-                      className="shadow-sharp-md w-full rounded-none font-mono tracking-[0.06em]"
-                    >
-                      {isAuthenticated ? 'Open Workbench' : 'Launch the Workbench'}
-                      <ArrowRight className="ml-2" size={16} />
-                    </Button>
-                  </Link>
-                  <a
-                    href="https://github.com/Fchery87/panda"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Button
-                      size="lg"
-                      variant="outline"
-                      className="w-full rounded-none font-mono tracking-[0.06em]"
-                    >
-                      View Source
-                    </Button>
-                  </a>
-                </div>
-              </div>
-            </div>
-          </motion.div>
+      <section className="px-3 pb-20 sm:px-5 lg:px-8">
+        <div className="mx-auto grid max-w-[1500px] gap-px bg-border md:grid-cols-3">
+          {featureRows.map((item) => {
+            const Icon = item.icon
+            return (
+              <article key={item.title} className="bg-card p-6">
+                <Icon className="h-5 w-5 text-primary" aria-hidden="true" />
+                <h3 className="mt-5 font-mono text-xs uppercase tracking-[0.18em] text-foreground">
+                  {item.title}
+                </h3>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">{item.detail}</p>
+              </article>
+            )
+          })}
         </div>
       </section>
 
       <PublicFooter />
     </main>
+  )
+}
+
+function BrandMark() {
+  return (
+    <div className="relative grid h-9 w-9 place-items-center bg-foreground font-mono text-sm font-bold text-background">
+      P
+      <span className="absolute right-[-5px] top-2 h-2.5 w-2.5 border border-foreground bg-primary" />
+    </div>
+  )
+}
+
+function WorkbenchPreview() {
+  return (
+    <div className="shadow-sharp-md min-h-[560px] overflow-hidden border border-foreground bg-background">
+      <div className="grid min-h-12 items-center border-b border-foreground bg-secondary px-3 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground sm:grid-cols-[180px_1fr_auto]">
+        <div className="flex items-center gap-2 border-b border-border py-3 sm:border-b-0 sm:border-r">
+          <span className="h-2 w-2 border border-foreground bg-primary" />
+          Project / panda
+        </div>
+        <div className="hidden px-3 sm:block">Search files, commands, settings</div>
+        <div className="flex gap-2 py-3 sm:py-0">
+          <span className="border border-border bg-card px-2 py-1">plan</span>
+          <span className="bg-primary/10 border border-primary px-2 py-1 text-foreground">
+            live proof
+          </span>
+        </div>
+      </div>
+
+      <div className="grid min-h-[390px] grid-cols-[46px_1fr] md:grid-cols-[52px_180px_minmax(0,1fr)_230px]">
+        <div className="bg-foreground text-background">
+          {['SE', 'FI', 'GI', 'AG', 'PR'].map((code, index) => (
+            <div
+              key={code}
+              className={cn(
+                'border-background/15 grid h-12 place-items-center border-b font-mono text-[10px] font-bold',
+                index === 0 && 'bg-primary text-foreground'
+              )}
+            >
+              {code}
+            </div>
+          ))}
+        </div>
+
+        <div className="bg-secondary/70 hidden border-r border-foreground md:block">
+          <PanelHeader label="Files" />
+          {['app/page.tsx', 'components/workbench', 'convex/runs.ts', 'docs/DESIGN.md'].map(
+            (file, index) => (
+              <div
+                key={file}
+                className={cn(
+                  'border-b border-border px-3 py-3 font-mono text-[11px]',
+                  index === 1 ? 'bg-primary/10 text-foreground' : 'text-muted-foreground'
+                )}
+              >
+                {file}
+              </div>
+            )
+          )}
+        </div>
+
+        <div className="min-w-0 bg-card">
+          <PanelHeader label="Plan artifact" />
+          <div className="p-4 sm:p-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-primary">
+              Awaiting owner approval
+            </p>
+            <h3 className="mt-3 max-w-xl text-2xl font-bold tracking-tight">
+              Redesign Panda around a session-first command surface.
+            </h3>
+            <div className="mt-5 grid gap-px bg-border">
+              {[
+                ['01', 'Replace tokens with OKLCH source of truth'],
+                ['02', 'Reframe shell around Session, Chat, Proof, Preview'],
+                ['03', 'Verify mobile focus views and changed-work proof'],
+              ].map(([step, text]) => (
+                <div key={step} className="grid grid-cols-[42px_1fr] bg-background">
+                  <span className="border-r border-border p-3 font-mono text-[10px] text-primary">
+                    {step}
+                  </span>
+                  <span className="p-3 text-sm text-muted-foreground">{text}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="hidden border-l border-foreground bg-background md:block">
+          <PanelHeader label="Inspector" />
+          <div className="grid gap-px bg-border">
+            {[
+              ['RUN', '3 steps ready'],
+              ['CHANGES', '2 files'],
+              ['CONTEXT', 'bounded'],
+              ['PREVIEW', 'attached'],
+            ].map(([label, value]) => (
+              <div key={label} className="flex items-center justify-between bg-card px-3 py-3">
+                <span className="font-mono text-[10px] text-muted-foreground">{label}</span>
+                <span className="font-mono text-[10px] uppercase text-foreground">{value}</span>
+              </div>
+            ))}
+          </div>
+          <div className="bg-primary/10 m-3 border border-primary p-3">
+            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em]">
+              <Check className="h-3.5 w-3.5 text-primary" />
+              Proof saved
+            </div>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">
+              Raw logs stay behind inspection. The default surface shows bounded proof.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid border-t border-foreground bg-[oklch(16%_0.018_240)] text-[oklch(86%_0.018_145)] sm:grid-cols-[1fr_220px]">
+        <div className="p-3 font-mono text-[11px]">
+          <Terminal className="mr-2 inline h-3.5 w-3.5" aria-hidden="true" />
+          bun run typecheck && bun run lint
+        </div>
+        <div className="border-background/20 border-t p-3 font-mono text-[10px] uppercase tracking-[0.16em] sm:border-l sm:border-t-0">
+          <Zap className="mr-2 inline h-3 w-3" aria-hidden="true" />
+          runtime active
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PanelHeader({ label }: { label: string }) {
+  return (
+    <div className="border-b border-border bg-secondary px-3 py-3 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+      {label}
+    </div>
   )
 }

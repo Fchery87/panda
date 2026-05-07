@@ -4,9 +4,14 @@ import React from 'react'
 
 mock.module('next/font/google', () => ({
   Geist: () => ({ variable: '--font-geist-sans' }),
+  Inter: () => ({ variable: '--font-sans' }),
   Fira_Code: () => ({ variable: '--font-fira-code' }),
   Plus_Jakarta_Sans: () => ({ variable: '--font-sans' }),
   JetBrains_Mono: () => ({ variable: '--font-mono' }),
+}))
+
+mock.module('geist/font/mono', () => ({
+  GeistMono: { variable: '--font-mono' },
 }))
 
 mock.module('server-only', () => ({}))

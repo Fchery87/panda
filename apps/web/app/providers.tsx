@@ -10,7 +10,7 @@ const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
 function MissingConvexConfig() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-6 text-foreground">
-      <div className="w-full max-w-xl border border-border bg-muted/30 p-6">
+      <div className="bg-muted/30 w-full max-w-xl border border-border p-6">
         <h1 className="mb-3 font-mono text-lg">Convex not configured</h1>
         <p className="mb-4 text-sm text-muted-foreground">
           The app needs <code className="font-mono">NEXT_PUBLIC_CONVEX_URL</code> to connect to your
@@ -53,9 +53,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
           position="bottom-right"
           toastOptions={{
             style: {
-              background: 'hsl(var(--background))',
-              border: '1px solid hsl(var(--border))',
-              color: 'hsl(var(--foreground))',
+              background: 'oklch(var(--background))',
+              border: '1px solid oklch(var(--border))',
+              color: 'oklch(var(--foreground))',
             },
           }}
         />

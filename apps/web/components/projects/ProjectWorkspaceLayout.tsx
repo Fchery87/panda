@@ -350,7 +350,7 @@ export function ProjectWorkspaceLayoutView({
   )
 
   return (
-    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+    <div className="border-foreground/80 bg-background/95 relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t">
       <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
         {isMobileLayout ? (
           <div className="relative flex h-full min-h-0 min-w-0 flex-col">
@@ -365,7 +365,7 @@ export function ProjectWorkspaceLayoutView({
             </div>
             {!isMobileKeyboardOpen && (
               <div
-                className="surface-1 grid min-h-14 grid-cols-4 border-t border-border pb-[env(safe-area-inset-bottom)] font-mono text-[10px] uppercase tracking-[0.18em]"
+                className="grid min-h-14 grid-cols-4 border-t border-foreground bg-card pb-[env(safe-area-inset-bottom)] font-mono text-[10px] uppercase tracking-[0.18em]"
                 role="tablist"
                 aria-label="Workspace mobile panels"
               >
@@ -376,10 +376,10 @@ export function ProjectWorkspaceLayoutView({
                   aria-selected={mobilePrimaryPanel === 'workspace'}
                   aria-label="Show session workspace"
                   className={cn(
-                    'min-h-12 border-r border-border px-1 transition-colors focus-visible:-outline-offset-2 active:scale-[0.96]',
+                    'min-h-12 border-r border-foreground px-1 transition-colors focus-visible:-outline-offset-2 active:scale-[0.96]',
                     mobilePrimaryPanel === 'workspace'
-                      ? 'bg-primary text-primary-foreground shadow-[inset_0_-2px_0_hsl(var(--foreground)/0.18)]'
-                      : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+                      ? 'bg-primary text-primary-foreground shadow-[inset_0_-2px_0_oklch(var(--foreground)/0.18)]'
+                      : 'hover:bg-primary/10 bg-card text-muted-foreground hover:text-foreground'
                   )}
                 >
                   Session
@@ -391,10 +391,10 @@ export function ProjectWorkspaceLayoutView({
                   aria-selected={mobilePrimaryPanel === 'chat'}
                   aria-label="Show chat timeline"
                   className={cn(
-                    'relative min-h-12 border-r border-border px-1 transition-colors focus-visible:-outline-offset-2 active:scale-[0.96]',
+                    'relative min-h-12 border-r border-foreground px-1 transition-colors focus-visible:-outline-offset-2 active:scale-[0.96]',
                     mobilePrimaryPanel === 'chat'
-                      ? 'bg-primary text-primary-foreground shadow-[inset_0_-2px_0_hsl(var(--foreground)/0.18)]'
-                      : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+                      ? 'bg-primary text-primary-foreground shadow-[inset_0_-2px_0_oklch(var(--foreground)/0.18)]'
+                      : 'hover:bg-primary/10 bg-card text-muted-foreground hover:text-foreground'
                   )}
                 >
                   Chat
@@ -411,10 +411,10 @@ export function ProjectWorkspaceLayoutView({
                   aria-selected={isMobileProofActive}
                   aria-label="Show run proof"
                   className={cn(
-                    'relative min-h-12 border-r border-border px-1 transition-colors focus-visible:-outline-offset-2 active:scale-[0.96]',
+                    'relative min-h-12 border-r border-foreground px-1 transition-colors focus-visible:-outline-offset-2 active:scale-[0.96]',
                     isMobileProofActive
-                      ? 'bg-primary text-primary-foreground shadow-[inset_0_-2px_0_hsl(var(--foreground)/0.18)]'
-                      : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+                      ? 'bg-primary text-primary-foreground shadow-[inset_0_-2px_0_oklch(var(--foreground)/0.18)]'
+                      : 'hover:bg-primary/10 bg-card text-muted-foreground hover:text-foreground'
                   )}
                 >
                   Proof
@@ -426,10 +426,10 @@ export function ProjectWorkspaceLayoutView({
                   aria-selected={isMobilePreviewActive}
                   aria-label="Show runtime preview"
                   className={cn(
-                    'relative min-h-12 px-1 transition-colors focus-visible:-outline-offset-2 active:scale-[0.96]',
+                    'relative min-h-12 bg-card px-1 transition-colors focus-visible:-outline-offset-2 active:scale-[0.96]',
                     isMobilePreviewActive
-                      ? 'bg-primary text-primary-foreground shadow-[inset_0_-2px_0_hsl(var(--foreground)/0.18)]'
-                      : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground'
+                      ? 'bg-primary text-primary-foreground shadow-[inset_0_-2px_0_oklch(var(--foreground)/0.18)]'
+                      : 'hover:bg-primary/10 text-muted-foreground hover:text-foreground'
                   )}
                 >
                   Preview
@@ -439,7 +439,7 @@ export function ProjectWorkspaceLayoutView({
           </div>
         ) : (
           <>
-            <div className="flex h-full min-h-0 min-w-0">
+            <div className="border-foreground/80 flex h-full min-h-0 min-w-0 border-l border-r bg-card">
               <div className="flex h-full min-h-0 shrink-0">
                 <SidebarRail
                   activeSection={activeSection}
@@ -491,7 +491,7 @@ export function ProjectWorkspaceLayoutView({
                         <>
                           <PanelResizeHandle
                             data-testid="workspace-right-resize-handle"
-                            className="h-full w-px bg-border transition-colors hover:bg-primary"
+                            className="h-full w-px bg-foreground transition-colors hover:bg-primary"
                           />
                           <Panel
                             id="chat-panel"
@@ -515,7 +515,7 @@ export function ProjectWorkspaceLayoutView({
                     <>
                       <PanelResizeHandle
                         data-testid="workspace-bottom-resize-handle"
-                        className="h-px w-full bg-border transition-colors hover:bg-primary"
+                        className="h-px w-full bg-foreground transition-colors hover:bg-primary"
                       />
                       <Panel
                         id="bottom-dock-panel"

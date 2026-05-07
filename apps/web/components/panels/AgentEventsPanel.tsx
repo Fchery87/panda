@@ -43,12 +43,12 @@ const TYPE_LABELS: Record<AgentEventType, string> = {
 
 const TYPE_COLORS: Record<AgentEventType, string> = {
   file_read: 'text-muted-foreground',
-  file_write: 'text-[hsl(var(--diff-added-fg))]',
+  file_write: 'text-[oklch(var(--diff-added-fg))]',
   command_run: 'text-primary',
-  test_run: 'text-[hsl(var(--status-info))]',
+  test_run: 'text-[oklch(var(--status-info))]',
   error: 'text-destructive',
-  waiting: 'text-[hsl(var(--status-warning))]',
-  complete: 'text-[hsl(var(--status-success))]',
+  waiting: 'text-[oklch(var(--status-warning))]',
+  complete: 'text-[oklch(var(--status-success))]',
   tool_call: 'text-muted-foreground',
 }
 
@@ -66,7 +66,7 @@ export function AgentEventsPanel({ events = [] }: AgentEventsPanelProps) {
       <div className="p-2 font-mono text-xs">
         {events.map((event) => (
           <div key={event.id} className="flex items-start gap-2 py-1">
-            <span className="w-16 shrink-0 text-[10px] tabular-nums text-muted-foreground/70">
+            <span className="text-muted-foreground/70 w-16 shrink-0 text-[10px] tabular-nums">
               {formatTime(event.timestamp)}
             </span>
             <span

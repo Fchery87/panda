@@ -25,6 +25,9 @@ When active docs disagree, use the authority order in
 - [docs/PANDA_WORKBENCH_MODERNIZATION_BRIEF.md](./PANDA_WORKBENCH_MODERNIZATION_BRIEF.md) -
   historical modernization brief; superseded for workspace IA by the chat-first
   implementation record
+- [docs/PANDA_PRODUCT_SYSTEM_DESIGN_BRIEF.md](./PANDA_PRODUCT_SYSTEM_DESIGN_BRIEF.md) -
+  shareable product, page, feature, and design-system brief for generating a
+  complete Panda design project
 - [docs/plans/2026-04-29-execution-session-upgrade.md](./plans/2026-04-29-execution-session-upgrade.md) -
   active plan for completing the session-first workspace upgrade
 - [docs/plans/2026-04-29-execution-session-finalization.md](./plans/2026-04-29-execution-session-finalization.md) -

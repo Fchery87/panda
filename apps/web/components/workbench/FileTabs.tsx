@@ -26,15 +26,15 @@ function getFileIcon(filename: string) {
     case 'jsx':
       return <IconFileJs className="h-3.5 w-3.5 text-primary" />
     case 'json':
-      return <IconFileJson className="h-3.5 w-3.5 text-primary/70" />
+      return <IconFileJson className="text-primary/70 h-3.5 w-3.5" />
     case 'css':
     case 'scss':
     case 'sass':
     case 'less':
-      return <IconFileCss className="h-3.5 w-3.5 text-primary/70" />
+      return <IconFileCss className="text-primary/70 h-3.5 w-3.5" />
     case 'html':
     case 'htm':
-      return <IconFileHtml className="h-3.5 w-3.5 text-primary/70" />
+      return <IconFileHtml className="text-primary/70 h-3.5 w-3.5" />
     case 'md':
     case 'txt':
     case 'markdown':
@@ -179,7 +179,7 @@ export function FileTabs({
                   isPlanTab && 'bg-background/95',
                   isActive
                     ? 'bg-background text-foreground'
-                    : 'bg-surface-2 hover:bg-surface-1 text-muted-foreground hover:text-foreground'
+                    : 'bg-surface-2 text-muted-foreground hover:bg-surface-1 hover:text-foreground'
                 )}
               >
                 {isActive && (
@@ -187,7 +187,7 @@ export function FileTabs({
                     layoutId="active-tab-indicator"
                     className="absolute bottom-0 left-0 right-0 h-0.5"
                     style={{
-                      backgroundColor: getLanguageColor(filename) || 'hsl(var(--primary))',
+                      backgroundColor: getLanguageColor(filename) || 'oklch(var(--primary))',
                     }}
                     transition={{ duration: 0.15 }}
                   />
@@ -204,7 +204,7 @@ export function FileTabs({
                     {isPlanTab ? `Plan: ${filename}` : filename}
                   </span>
                   {!isPlanTab && (
-                    <span className="max-w-[140px] truncate pt-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground/60">
+                    <span className="text-muted-foreground/60 max-w-[140px] truncate pt-1 text-[10px] uppercase tracking-[0.18em]">
                       {tab.path.includes('/') ? tab.path.split('/').slice(0, -1).join('/') : 'root'}
                     </span>
                   )}
@@ -240,7 +240,7 @@ export function FileTabs({
             <button
               type="button"
               onClick={onOpenAgentManager}
-              className="hover:bg-surface-2 flex h-8 items-center gap-1.5 rounded-none border border-transparent px-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:border-border hover:text-foreground"
+              className="flex h-8 items-center gap-1.5 rounded-none border border-transparent px-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:border-border hover:bg-surface-2 hover:text-foreground"
               title="Open Agent Manager"
             >
               <IconBot className="h-3.5 w-3.5" />

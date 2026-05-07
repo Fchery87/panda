@@ -33,7 +33,7 @@ export function BottomDock({
   if (!isOpen) {
     return (
       <div
-        className="dock-collapsed-bar px-3"
+        className="dock-collapsed-bar border-foreground bg-card px-3"
         onClick={onToggle}
         role="button"
         tabIndex={0}
@@ -61,7 +61,7 @@ export function BottomDock({
             </span>
           ))}
         </div>
-        <span className="ml-auto font-mono text-[10px] text-muted-foreground/50">
+        <span className="text-muted-foreground/50 ml-auto font-mono text-[10px]">
           <kbd className="bg-muted px-1">Ctrl</kbd>+<kbd className="bg-muted px-1">J</kbd>
         </span>
       </div>
@@ -69,7 +69,7 @@ export function BottomDock({
   }
 
   return (
-    <div className="surface-1 flex min-h-0 flex-col border-t border-border">
+    <div className="flex min-h-0 flex-col border-t border-foreground bg-card">
       {/* Tab bar */}
       <TabBar
         tabs={tabs}

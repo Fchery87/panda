@@ -40,7 +40,7 @@ export function ReviewChangesBanner({
       >
         <div className="review-banner">
           <div className="flex items-center gap-2">
-            <IconDiff className="h-3.5 w-3.5 text-[hsl(var(--status-warning))]" />
+            <IconDiff className="h-3.5 w-3.5 text-[oklch(var(--status-warning))]" />
             <span className="text-foreground">
               {changedFilesCount} file{changedFilesCount !== 1 ? 's' : ''} with pending changes
             </span>
@@ -51,7 +51,7 @@ export function ReviewChangesBanner({
           </div>
           <Button
             size="sm"
-            className="h-7 gap-1.5 rounded-none bg-primary px-4 font-mono text-[10px] uppercase tracking-widest text-primary-foreground hover:bg-primary/90"
+            className="hover:bg-primary/90 h-7 gap-1.5 rounded-none bg-primary px-4 font-mono text-[10px] uppercase tracking-widest text-primary-foreground"
             onClick={onReviewChanges}
           >
             <IconDiff className="h-3 w-3" />
