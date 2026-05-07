@@ -1,53 +1,51 @@
-# Plan: Panda Design System Redesign
+# Plan: Authenticated Page Cohesion Pass
 
-## Milestone 1: Design Contract And Global Tokens
+## Milestone 1: Surface Audit And Shared Layout Strategy
 
-What: Add regression coverage for the design-system contract, then replace the
-global theme primitives with OKLCH channel tokens, hard grid utilities, flat
-directional shadows, and non-side-stripe state indicators.
+What: Inspect landing page structure plus `/projects`, `/settings`, and `/admin`
+implementations. Identify shared page shell, hero/header, action band, and panel
+patterns that can be reused without changing behavior.
 
-Acceptance criteria: `apps/web/app/design-system-css.test.ts` verifies the new
-token and texture contract. Tailwind semantic colors resolve against OKLCH
-channels.
+Acceptance criteria: Files to change are identified and the implementation path
+avoids route/data/auth changes.
 
-Validation: `bun test apps/web/app/design-system-css.test.ts`
-
-Status: [x] complete
-
-## Milestone 2: Public Landing Surface
-
-What: Rework the landing page composition to match the reference concept:
-operational masthead, hard frame, mode strip, responsive workbench preview, and
-bounded trust/proof messaging.
-
-Acceptance criteria: Landing page remains keyboard navigable, responsive, and
-uses the new design tokens without soft-card or amber remnants.
-
-Validation: `bun run typecheck && bun run lint`
+Validation: Source inspection only.
 
 Status: [x] complete
 
-## Milestone 3: Workbench Shell And Mobile Focus Views
+## Milestone 2: Shared Cohesive Page Primitives
 
-What: Apply the design system to the project shell, rail, center workspace home,
-right inspector, bottom dock, and mobile Session/Chat/Proof/Preview navigation.
+What: Add or update shared authenticated page layout primitives that express the
+landing flow: cream grid canvas, editorial header band, hard frame, dark
+operational strip, and rectangular content panels.
 
-Acceptance criteria: Desktop keeps the required regions; mobile remains focused
-by view; source tests cover primary layout language and mobile labels.
+Acceptance criteria: Primitives are typed, reusable, sharp-cornered, and
+token-based.
 
-Validation:
-`bun test apps/web/components/projects/project-workspace-layout.test.tsx`
+Validation: `bun run typecheck`
+
+Status: [x] complete
+
+## Milestone 3: Apply To Projects, Settings, And Admin
+
+What: Update target pages to use the shared flow while preserving their existing
+actions and content hierarchy.
+
+Acceptance criteria: `/projects`, `/settings`, and `/admin` feel visually
+cohesive with landing while retaining current functionality.
+
+Validation: focused tests or `bun run typecheck && bun run lint`
 
 Status: [x] complete
 
 ## Milestone 4: Verification
 
-What: Run the repo validation gate and repair failures before completion.
+What: Run focused validation and repair failures introduced by this pass.
 
-Acceptance criteria: Typecheck, lint, format check, and tests pass or any
-blocker is recorded with exact output.
+Acceptance criteria: Changed files format cleanly; typecheck/lint pass or
+blockers are recorded exactly.
 
 Validation:
-`bun run typecheck && bun run lint && bun run format:check && bun test`
+`bun run typecheck && bun run lint && bunx prettier --check <changed files>`
 
-Status: [x] complete with recorded formatter blocker
+Status: [x] complete

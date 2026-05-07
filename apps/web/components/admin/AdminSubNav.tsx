@@ -18,10 +18,10 @@ interface AdminSubNavProps {
 export function AdminSubNav({ items, activeId, onSelect }: AdminSubNavProps) {
   return (
     <nav
-      className="surface-1 w-52 shrink-0 border border-border p-3"
+      className="w-52 shrink-0 border border-foreground bg-card p-3"
       aria-label="Section navigation"
     >
-      <div className="mb-4 border-b border-border pb-3">
+      <div className="mb-4 border-b border-foreground pb-3">
         <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
           Admin navigation
         </div>
@@ -60,10 +60,10 @@ interface AdminPageHeaderProps {
 
 export function AdminPageHeader({ icon: Icon, title, description, action }: AdminPageHeaderProps) {
   return (
-    <div className="mb-8">
-      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-6">
+    <div className="mb-8 border-b border-foreground bg-card p-5 sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-3">
-          <div className="surface-1 flex h-11 w-11 items-center justify-center border border-border">
+          <div className="flex h-11 w-11 items-center justify-center border border-foreground bg-background">
             <Icon className="h-5 w-5" />
           </div>
           <div>

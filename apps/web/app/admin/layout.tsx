@@ -96,19 +96,19 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <>
-      <div className="flex min-h-screen">
+      <div className="dot-grid flex min-h-screen bg-background text-foreground">
         {/* Sidebar */}
-        <aside className="fixed left-0 top-0 z-30 h-screen w-64 border-r border-border bg-background">
+        <aside className="fixed left-0 top-0 z-30 h-screen w-64 border-r border-foreground bg-foreground p-3 text-background">
           <div className="flex h-full flex-col">
             {/* Header */}
-            <div className="flex h-16 items-center border-b border-border px-6">
-              <Link href="/admin" className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center bg-primary font-mono text-sm font-bold text-primary-foreground">
+            <div className="border-background/20 bg-background/5 border">
+              <Link href="/admin" className="flex h-14 items-center gap-2 px-3">
+                <div className="flex h-8 w-8 items-center justify-center border border-background bg-primary font-mono text-sm font-bold text-primary-foreground">
                   A
                 </div>
                 <div className="flex flex-col">
                   <span className="font-mono text-sm font-bold">ADMIN</span>
-                  <span className="text-xs uppercase tracking-wider text-muted-foreground">
+                  <span className="text-background/60 text-xs uppercase tracking-wider">
                     {adminRole || 'admin'}
                   </span>
                 </div>
@@ -116,18 +116,18 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </div>
 
             {/* Navigation */}
-            <ScrollArea className="flex-1 py-4">
-              <nav className="space-y-1 px-3">
+            <ScrollArea className="border-background/20 bg-background/5 mt-3 flex-1 border py-3">
+              <nav className="space-y-px px-2">
                 {adminNavItems.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
                     aria-current={isActiveAdminRoute(pathname, item.href) ? 'page' : undefined}
                     className={cn(
-                      'flex items-center gap-3 rounded-none border border-transparent px-3 py-2 text-sm font-medium transition-colors',
+                      'flex min-h-10 items-center gap-3 rounded-none border px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] transition-colors',
                       isActiveAdminRoute(pathname, item.href)
-                        ? 'border-primary/40 bg-muted text-foreground'
-                        : 'text-muted-foreground hover:border-border hover:bg-muted hover:text-foreground'
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'text-background/65 hover:border-background/25 hover:bg-background/10 border-transparent hover:text-background'
                     )}
                   >
                     <item.icon size={16} />
@@ -136,13 +136,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 ))}
               </nav>
 
-              <Separator className="my-4" />
+              <Separator className="bg-background/20 my-3" />
 
               {/* Back to app */}
               <div className="px-3">
                 <Link
                   href="/"
-                  className="flex items-center gap-3 rounded-none px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  className="text-background/65 hover:border-background/25 hover:bg-background/10 flex min-h-10 items-center gap-3 rounded-none border border-transparent px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] transition-colors hover:text-background"
                 >
                   <ArrowLeft size={16} />
                   Back to App
@@ -151,15 +151,19 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </ScrollArea>
 
             {/* Footer */}
-            <div className="border-t border-border p-4">
-              <p className="font-mono text-xs text-muted-foreground">Panda.ai Admin Console</p>
+            <div className="border-background/20 bg-background/5 mt-3 border p-3">
+              <p className="text-background/60 font-mono text-xs">Panda.ai Admin Console</p>
             </div>
           </div>
         </aside>
 
         {/* Main content */}
         <main id="main-content" className="flex-1 pl-64">
-          <div className="h-full">{children}</div>
+          <div className="min-h-screen p-3 sm:p-5 lg:p-8">
+            <div className="bg-background/92 shadow-sharp-lg min-h-[calc(100vh-4rem)] border border-foreground">
+              {children}
+            </div>
+          </div>
         </main>
       </div>
     </>

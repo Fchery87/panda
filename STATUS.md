@@ -1,60 +1,64 @@
-# Status: Panda Design System Redesign
+# Status: Authenticated Page Cohesion Pass
 
 ## Current milestone: Complete
 
 ## Last completed
 
-- Milestone 1 - Design Contract And Global Tokens - 2026-05-06
-- Milestone 2 - Public Landing Surface - 2026-05-06
-- Milestone 3 - Workbench Shell And Mobile Focus Views - 2026-05-06
-- Milestone 4 - Verification - 2026-05-06
-- Color system refresh - 2026-05-07
+- Milestone 1 - Surface Audit And Shared Layout Strategy - 2026-05-07
+- Milestone 2 - Shared Cohesive Page Primitives - 2026-05-07
+- Milestone 3 - Apply To Projects, Settings, And Admin - 2026-05-07
+- Milestone 4 - Verification - 2026-05-07
+- Header And Navigation Cohesion - 2026-05-07
 
 ## Decision log
 
-- `docs/DESIGN.md` overrides the older warm amber design language in AGENTS.md.
-- Scope is centered on shared tokens, public landing, and the primary workbench
-  shell because those surfaces define the product redesign and are feasible to
-  verify in one pass.
-- Existing Convex data/query behavior stays unchanged.
-- Tailwind semantic colors now use OKLCH channel variables so `docs/DESIGN.md`
-  tokens are the source of truth.
-- The public landing page now uses a hard-framed operational preview rather than
-  the previous warm terminal hero.
-- The live workbench shell now uses a high-contrast rail, hard divisions, and
-  mobile Session/Chat/Proof/Preview focused views.
-- Dev visual smoke now passes on desktop, tablet, and mobile screenshots after
-  replacing Tailwind opacity-modifier `@apply` rules with explicit OKLCH CSS.
-- The shared light and dark theme tokens now use a warm cream, orange, and dark
-  navy colorway while preserving the existing layout and brutalist component
-  structure.
+- Scope targets authenticated hub pages (`/projects`, `/settings`, `/admin`)
+  because the user identified them as visually disconnected from landing.
+- Preserve behavior and data/auth boundaries; this pass changes layout and
+  presentation only.
+- Use shared primitives where possible so future authenticated pages inherit the
+  landing page rhythm.
+- Landing uses a hard-framed `dot-grid` composition; `/projects` and `/settings`
+  should move into a matching authenticated frame instead of remaining narrow
+  standalone pages.
+- Admin already has shared navigation/header components, so the cohesive update
+  should happen in `app/admin/layout.tsx` and `components/admin/AdminSubNav.tsx`
+  rather than rewriting every admin tool page.
+- Added `AuthenticatedPageShell` and `AuthenticatedModeStrip` to carry the
+  landing page frame, header band, mode strip, and dark separator gutters into
+  authenticated pages.
+- `/projects` now uses the shared frame with a registry panel and session-signal
+  rail while preserving existing project create/open/delete behavior.
+- `/settings` now uses the shared frame with settings mode strips and the
+  existing section navigation/content preserved.
+- Admin uses the same grid canvas and hard framed content area, with the sidebar
+  shifted to dark product chrome and admin subheaders converted to framed bands.
+- Header/nav follow-up: public, dashboard, and admin navigation should use the
+  same hard-framed grammar as the landing hero rather than separate soft toolbar
+  treatments.
+- Public and dashboard headers now use a max-width hard frame, segmented nav
+  cells, explicit CTA/action zones, and the same foreground border language as
+  the landing hero frame.
+- Admin navigation is now a framed dark console rail with rectangular active
+  cells instead of a plain fixed sidebar.
 
 ## Known issues
 
-- Local `mgrep` is quota-blocked, so repo inspection is using direct file reads
-  and `rg`.
-- `bun run format:check` fails on 80 pre-existing unformatted files outside this
-  patch set. Files touched for this redesign pass `prettier --check`.
+- `mgrep` failed locally, so source inspection is using direct reads and
+  targeted file search.
+- `apps/web/next-env.d.ts` has an unrelated pre-existing generated diff and must
+  not be treated as part of this pass.
 
 ## Verification
 
-- `bun test apps/web/app/design-system-css.test.ts` passes.
-- `bun run lint` passes.
 - `bun run typecheck` passes.
-- Full `bun test` passes.
-- Playwright screenshots pass for landing page desktop, tablet, and mobile:
-  `/tmp/panda-home-desktop.png`, `/tmp/panda-home-tablet.png`, and
-  `/tmp/panda-home-mobile.png`.
-- Focused Prettier check for files touched in this redesign passes.
-- 2026-05-07 color refresh: `bun test apps/web/app/design-system-css.test.ts`
-  passes.
-- 2026-05-07 color refresh: `bun run lint` passes.
-- 2026-05-07 color refresh: `bun run typecheck` passes.
-- 2026-05-07 color refresh: focused Prettier check for touched files passes.
-- Repo-wide `bun run format:check` remains blocked by unrelated pre-existing
-  formatting drift.
+- `bun run lint` passes.
+- Focused Prettier check for changed files passes.
+- Header/nav follow-up: `bun run typecheck` passes.
+- Header/nav follow-up: `bun run lint` passes.
+- Header/nav follow-up: focused Prettier check for changed files passes.
 
 ## Future work
 
-- Extend the same design language to education, settings, admin, login,
-  maintenance, error, not-found, and shared-chat surfaces after the shell pass.
+- Extend the same page flow to login, education, maintenance, error, not-found,
+  and shared-chat after this pass if needed.

@@ -9,6 +9,10 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { FolderGit2, Plus, Trash2, Clock, Search, ArrowRight } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import {
+  AuthenticatedModeStrip,
+  AuthenticatedPageShell,
+} from '@/components/layout/AuthenticatedPageShell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -304,7 +308,7 @@ function ProjectRow({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 rounded-none text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+            className="hover:bg-destructive/10 h-7 w-7 rounded-none text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
             aria-label={`Delete ${project.name}`}
             onClick={handleDeleteRequest}
             disabled={isDeleting}
@@ -405,100 +409,141 @@ export default function ProjectsPage() {
   const isLoading = projects === undefined
 
   return (
-    <div className="mx-auto max-w-4xl">
-      {/* Header */}
-      <div className="mb-10 flex flex-col gap-6">
-        <div className="flex items-center gap-3">
-          <span className="h-px w-8 bg-primary" />
-          <span className="text-label text-muted-foreground">Projects</span>
-        </div>
-
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-display text-4xl">Your Projects</h1>
-            <p className="mt-2 text-muted-foreground">
-              Each project is a workspace with its own files, chat history, plans, and runs.
+    <AuthenticatedPageShell
+      eyebrow="Project command center"
+      title="Projects"
+      description="Each project is a recoverable workspace with files, chat direction, plan review, runs, and changed work kept in one browser shell."
+      action={<CreateProjectDialog onCreate={handleCreateProject} />}
+      status={
+        <span className="flex items-center gap-2">
+          <span className="h-2 w-2 border border-foreground bg-primary" />
+          {isLoading ? 'Loading' : `${projects?.length ?? 0} workspaces`}
+        </span>
+      }
+      subHeader={
+        <AuthenticatedModeStrip
+          items={[
+            { label: 'Ask', value: 'orient' },
+            { label: 'Plan', value: 'review' },
+            { label: 'Code', value: 'change' },
+            { label: 'Build', value: 'proof', active: true },
+          ]}
+        />
+      }
+      contentClassName="lg:p-0"
+    >
+      <div className="grid gap-px bg-border lg:grid-cols-[minmax(0,0.74fr)_minmax(360px,0.26fr)]">
+        <div className="bg-background p-5 sm:p-7 lg:p-9">
+          <div className="mb-8 max-w-3xl">
+            <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-primary">
+              Workspace registry
+            </p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+              Open the right command surface.
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+              Search recent workspaces, resume active runs, or create a new project before entering
+              the full workbench.
             </p>
           </div>
-          <CreateProjectDialog onCreate={handleCreateProject} />
-        </div>
-      </div>
 
-      {/* Search */}
-      <div className="mb-10 grid gap-2">
-        <label
-          htmlFor="project-search"
-          className="font-mono text-xs uppercase tracking-[0.06em] text-muted-foreground"
-        >
-          Search projects
-        </label>
-        <div className="relative">
-          <Search
-            size={16}
-            className="absolute left-0 top-1/2 -translate-y-1/2 text-muted-foreground"
-          />
-          <Input
-            id="project-search"
-            placeholder="Search projects..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="rounded-none border-0 border-b border-border bg-transparent pl-7 font-mono focus-visible:border-primary focus-visible:ring-0"
-          />
-        </div>
-      </div>
-
-      {/* Projects List */}
-      {isLoading ? (
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-[68px] animate-pulse bg-muted" />
-          ))}
-        </div>
-      ) : sortedProjects && sortedProjects.length > 0 ? (
-        <div>
-          <AnimatePresence mode="popLayout">
-            {sortedProjects.map((project, index) => (
-              <ProjectRow
-                key={project._id}
-                project={project}
-                index={index}
-                onDelete={handleDeleteProject}
-                onRecordOpen={handleOpenProject}
-                onNavigate={handleProjectNavigate}
+          <div className="mb-8 grid gap-2 border border-border bg-card p-4">
+            <label
+              htmlFor="project-search"
+              className="font-mono text-xs uppercase tracking-[0.06em] text-muted-foreground"
+            >
+              Search projects
+            </label>
+            <div className="relative">
+              <Search
+                size={16}
+                className="absolute left-0 top-1/2 -translate-y-1/2 text-muted-foreground"
               />
-            ))}
-          </AnimatePresence>
-        </div>
-      ) : (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col items-center justify-center py-16 text-center"
-        >
-          <div className="mb-6 flex h-16 w-16 items-center justify-center border border-border">
-            <FolderGit2 size={32} className="text-muted-foreground" />
-          </div>
-          <h3 className="mb-2 font-mono text-xl font-medium">
-            {searchQuery ? 'No projects found' : 'Start your first project'}
-          </h3>
-          <p className="mb-8 max-w-sm text-muted-foreground">
-            {searchQuery
-              ? `No projects matching "${searchQuery}".`
-              : 'A project gives you a workspace with file editing, AI chat, plan review, and terminal access — all in one browser tab.'}
-          </p>
-          {!searchQuery && (
-            <div className="flex flex-col items-center gap-3">
-              <CreateProjectDialog onCreate={handleCreateProject} />
-              <Link
-                href="/education"
-                className="font-mono text-xs text-muted-foreground underline hover:text-foreground"
-              >
-                Learn how Panda works
-              </Link>
+              <Input
+                id="project-search"
+                placeholder="Search projects..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="rounded-none border-0 border-b border-border bg-transparent pl-7 font-mono focus-visible:border-primary focus-visible:ring-0"
+              />
             </div>
+          </div>
+
+          {isLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-[68px] animate-pulse bg-muted" />
+              ))}
+            </div>
+          ) : sortedProjects && sortedProjects.length > 0 ? (
+            <div className="border border-border bg-card">
+              <AnimatePresence mode="popLayout">
+                {sortedProjects.map((project, index) => (
+                  <ProjectRow
+                    key={project._id}
+                    project={project}
+                    index={index}
+                    onDelete={handleDeleteProject}
+                    onRecordOpen={handleOpenProject}
+                    onNavigate={handleProjectNavigate}
+                  />
+                ))}
+              </AnimatePresence>
+            </div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex flex-col items-center justify-center border border-border bg-card py-16 text-center"
+            >
+              <div className="mb-6 flex h-16 w-16 items-center justify-center border border-border bg-background">
+                <FolderGit2 size={32} className="text-muted-foreground" />
+              </div>
+              <h3 className="mb-2 font-mono text-xl font-medium">
+                {searchQuery ? 'No projects found' : 'Start your first project'}
+              </h3>
+              <p className="mb-8 max-w-sm text-muted-foreground">
+                {searchQuery
+                  ? `No projects matching "${searchQuery}".`
+                  : 'A project gives you a workspace with file editing, AI chat, plan review, and terminal access — all in one browser tab.'}
+              </p>
+              {!searchQuery && (
+                <div className="flex flex-col items-center gap-3">
+                  <CreateProjectDialog onCreate={handleCreateProject} />
+                  <Link
+                    href="/education"
+                    className="font-mono text-xs text-muted-foreground underline hover:text-foreground"
+                  >
+                    Learn how Panda works
+                  </Link>
+                </div>
+              )}
+            </motion.div>
           )}
-        </motion.div>
-      )}
-    </div>
+        </div>
+
+        <aside className="bg-card p-5 sm:p-7 lg:p-9">
+          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+            Session signals
+          </p>
+          <div className="mt-5 grid gap-px bg-border">
+            {[
+              ['TOTAL', isLoading ? '...' : String(projects?.length ?? 0)],
+              ['VISIBLE', isLoading ? '...' : String(sortedProjects?.length ?? 0)],
+              ['NEXT', searchQuery ? 'filter results' : 'open workspace'],
+            ].map(([label, value]) => (
+              <div key={label} className="bg-background p-4">
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                  {label}
+                </p>
+                <p className="mt-2 font-mono text-xs uppercase tracking-[0.12em] text-foreground">
+                  {value}
+                </p>
+              </div>
+            ))}
+          </div>
+        </aside>
+      </div>
+    </AuthenticatedPageShell>
   )
 }

@@ -14,11 +14,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-background">
+      <div className="dot-grid min-h-screen bg-background">
         {!isProjectWorkbench && <DashboardHeader />}
         <main
           id="main-content"
-          className={cn('container', isProjectWorkbench ? 'py-6' : 'py-10')}
+          className={cn(isProjectWorkbench ? 'container py-6' : '')}
           tabIndex={-1}
         >
           {children}

@@ -3,6 +3,10 @@
 import * as React from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import {
+  AuthenticatedModeStrip,
+  AuthenticatedPageShell,
+} from '@/components/layout/AuthenticatedPageShell'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
@@ -92,10 +96,90 @@ export default function SettingsPage() {
 
   return (
     <>
-      <div className="mx-auto flex max-w-6xl gap-0 px-4 py-6 lg:gap-8">
-        {/* Sidebar Navigation */}
-        <nav className="hidden w-52 shrink-0 lg:block" aria-label="Settings sections">
-          <div className="surface-1 sticky top-24 space-y-1 border border-border p-4">
+      <AuthenticatedPageShell
+        eyebrow="Configuration surface"
+        title="Settings"
+        description="Tune providers, automation defaults, appearance, and advanced agent capabilities without leaving Panda's operational frame."
+        status={
+          <span className="flex items-center gap-2">
+            <span className="h-2 w-2 border border-foreground bg-primary" />
+            {isDirty ? 'Unsaved review' : 'Saved state'}
+          </span>
+        }
+        subHeader={
+          <AuthenticatedModeStrip
+            items={[
+              {
+                label: 'General',
+                value: activeTab === 'general' ? 'active' : 'ready',
+                active: activeTab === 'general',
+              },
+              {
+                label: 'Providers',
+                value: activeTab === 'providers' ? 'active' : 'ready',
+                active: activeTab === 'providers',
+              },
+              {
+                label: 'Automation',
+                value: activeTab === 'automation' ? 'active' : 'ready',
+                active: activeTab === 'automation',
+              },
+              {
+                label: 'Advanced',
+                value: activeTab === 'advanced' ? 'active' : 'ready',
+                active: activeTab === 'advanced',
+              },
+            ]}
+          />
+        }
+        contentClassName="lg:p-0"
+      >
+        <div className="grid gap-px bg-border lg:grid-cols-[260px_minmax(0,1fr)]">
+          {/* Sidebar Navigation */}
+          <nav className="hidden bg-card p-5 lg:block" aria-label="Settings sections">
+            <div className="sticky top-24 space-y-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="-ml-2 mb-4 text-muted-foreground hover:text-foreground"
+                onClick={handleBackToProjects}
+              >
+                <ArrowLeft className="mr-1 h-4 w-4" />
+                Back to Projects
+              </Button>
+
+              <div className="mb-4 flex items-center gap-3 border-b border-border pb-4">
+                <span className="h-px w-6 bg-primary" />
+                <span className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  Configuration
+                </span>
+              </div>
+              <h1 className="mb-6 text-2xl font-bold tracking-tight">Settings</h1>
+
+              {sidebarItems.map((item) => {
+                const Icon = item.icon
+                const isActive = activeTab === item.id
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveTab(item.id)}
+                    className={cn(
+                      'flex w-full items-center gap-2.5 rounded-none border px-3 py-2 text-left font-mono text-sm transition-colors',
+                      isActive
+                        ? 'border-primary/40 bg-primary/10 text-primary'
+                        : 'border-transparent text-muted-foreground hover:border-border hover:bg-accent hover:text-foreground'
+                    )}
+                  >
+                    <Icon size={16} />
+                    {item.label}
+                  </button>
+                )
+              })}
+            </div>
+          </nav>
+
+          {/* Mobile Navigation */}
+          <div className="w-full bg-background p-5 sm:p-7 lg:hidden">
             <Button
               variant="ghost"
               size="sm"
@@ -106,354 +190,313 @@ export default function SettingsPage() {
               Back to Projects
             </Button>
 
-            <div className="mb-4 flex items-center gap-3 border-b border-border pb-4">
+            <div className="mb-4 flex items-center gap-3">
               <span className="h-px w-6 bg-primary" />
               <span className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">
                 Configuration
               </span>
             </div>
-            <h1 className="mb-6 text-2xl font-bold tracking-tight">Settings</h1>
+            <h1 className="mb-4 text-2xl font-bold tracking-tight">Settings</h1>
 
-            {sidebarItems.map((item) => {
-              const Icon = item.icon
-              const isActive = activeTab === item.id
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id)}
-                  className={cn(
-                    'flex w-full items-center gap-2.5 rounded-none border px-3 py-2 text-left font-mono text-sm transition-colors',
-                    isActive
-                      ? 'border-primary/40 bg-primary/10 text-primary'
-                      : 'border-transparent text-muted-foreground hover:border-border hover:bg-accent hover:text-foreground'
-                  )}
-                >
-                  <Icon size={16} />
-                  {item.label}
-                </button>
-              )
-            })}
-          </div>
-        </nav>
-
-        {/* Mobile Navigation */}
-        <div className="mb-6 w-full lg:hidden">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="-ml-2 mb-4 text-muted-foreground hover:text-foreground"
-            onClick={handleBackToProjects}
-          >
-            <ArrowLeft className="mr-1 h-4 w-4" />
-            Back to Projects
-          </Button>
-
-          <div className="mb-4 flex items-center gap-3">
-            <span className="h-px w-6 bg-primary" />
-            <span className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              Configuration
-            </span>
-          </div>
-          <h1 className="mb-4 text-2xl font-bold tracking-tight">Settings</h1>
-
-          <div className="flex gap-1 overflow-x-auto border-b border-border pb-px">
-            {sidebarItems.map((item) => {
-              const Icon = item.icon
-              const isActive = activeTab === item.id
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id)}
-                  className={cn(
-                    'flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2 font-mono text-sm transition-colors',
-                    isActive
-                      ? 'border-primary text-primary'
-                      : 'border-transparent text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  <Icon size={14} />
-                  {item.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Content Area */}
-        <div className="min-w-0 flex-1">
-          {isDirty && (
-            <div className="mb-4 border border-primary/30 bg-primary/5 px-3 py-2 font-mono text-xs uppercase tracking-[0.18em] text-primary">
-              Unsaved changes ready to review
-            </div>
-          )}
-
-          {/* General Section */}
-          {activeTab === 'general' && (
-            <div className="space-y-6">
-              <Card className="rounded-none">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <User size={20} />
-                    General
-                  </CardTitle>
-                  <CardDescription>
-                    Language, default model, and workspace preferences.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="language">Language</Label>
-                    <Select
-                      value={formState.language}
-                      onValueChange={(value) => updateFormState({ language: value })}
-                    >
-                      <SelectTrigger id="language" className="w-full max-w-sm rounded-none">
-                        <SelectValue placeholder="Select language" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {languages.map((lang) => (
-                          <SelectItem key={lang.value} value={lang.value}>
-                            {lang.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <Separator />
-
-                  <UserLLMConfig
-                    adminDefaults={adminDefaults}
-                    userSettings={{
-                      defaultProvider: formState.defaultProvider,
-                      defaultModel: formState.defaultModel,
-                      overrideGlobalProvider: formState.overrideGlobalProvider,
-                      overrideGlobalModel: formState.overrideGlobalModel,
-                      providers: formState.providers,
-                    }}
-                    onUpdate={(config) => {
-                      updateFormState(config)
-                    }}
-                    availableProviders={Object.fromEntries(
-                      Object.entries(freshProviders).map(([key, p]) => [
-                        key,
-                        {
-                          name: p.name || key,
-                          availableModels: p.availableModels || [],
-                          enabled: p.enabled === true,
-                        },
-                      ])
+            <div className="flex gap-1 overflow-x-auto border-b border-border pb-px">
+              {sidebarItems.map((item) => {
+                const Icon = item.icon
+                const isActive = activeTab === item.id
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveTab(item.id)}
+                    className={cn(
+                      'flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2 font-mono text-sm transition-colors',
+                      isActive
+                        ? 'border-primary text-primary'
+                        : 'border-transparent text-muted-foreground hover:text-foreground'
                     )}
-                  />
-                </CardContent>
-              </Card>
+                  >
+                    <Icon size={14} />
+                    {item.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
 
-              <Card className="rounded-none">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Palette size={20} />
-                    Appearance
-                  </CardTitle>
-                  <CardDescription>
-                    Switch between light, dark, and system-matched themes.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    <Label>Theme</Label>
-                    <ThemeToggleFull
-                      value={formState.theme}
-                      onChange={(theme) => updateFormState({ theme })}
+          {/* Content Area */}
+          <div className="min-w-0 bg-background p-5 sm:p-7 lg:p-9">
+            {isDirty && (
+              <div className="border-primary/30 bg-primary/5 mb-4 border px-3 py-2 font-mono text-xs uppercase tracking-[0.18em] text-primary">
+                Unsaved changes ready to review
+              </div>
+            )}
+
+            {/* General Section */}
+            {activeTab === 'general' && (
+              <div className="space-y-6">
+                <Card className="rounded-none">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <User size={20} />
+                      General
+                    </CardTitle>
+                    <CardDescription>
+                      Language, default model, and workspace preferences.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="language">Language</Label>
+                      <Select
+                        value={formState.language}
+                        onValueChange={(value) => updateFormState({ language: value })}
+                      >
+                        <SelectTrigger id="language" className="w-full max-w-sm rounded-none">
+                          <SelectValue placeholder="Select language" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {languages.map((lang) => (
+                            <SelectItem key={lang.value} value={lang.value}>
+                              {lang.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <Separator />
+
+                    <UserLLMConfig
+                      adminDefaults={adminDefaults}
+                      userSettings={{
+                        defaultProvider: formState.defaultProvider,
+                        defaultModel: formState.defaultModel,
+                        overrideGlobalProvider: formState.overrideGlobalProvider,
+                        overrideGlobalModel: formState.overrideGlobalModel,
+                        providers: formState.providers,
+                      }}
+                      onUpdate={(config) => {
+                        updateFormState(config)
+                      }}
+                      availableProviders={Object.fromEntries(
+                        Object.entries(freshProviders).map(([key, p]) => [
+                          key,
+                          {
+                            name: p.name || key,
+                            availableModels: p.availableModels || [],
+                            enabled: p.enabled === true,
+                          },
+                        ])
+                      )}
                     />
-                    <p className="text-sm text-muted-foreground">
-                      Choose your preferred color scheme. System will follow your OS preference.
+                  </CardContent>
+                </Card>
+
+                <Card className="rounded-none">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Palette size={20} />
+                      Appearance
+                    </CardTitle>
+                    <CardDescription>
+                      Switch between light, dark, and system-matched themes.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-3">
+                      <Label>Theme</Label>
+                      <ThemeToggleFull
+                        value={formState.theme}
+                        onChange={(theme) => updateFormState({ theme })}
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        Choose your preferred color scheme. System will follow your OS preference.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* LLM Providers Section */}
+            {activeTab === 'providers' && (
+              <div className="space-y-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-lg font-medium">LLM Providers</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Add API keys for the providers you want to use. Panda supports any
+                      OpenAI-compatible endpoint.
                     </p>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* LLM Providers Section */}
-          {activeTab === 'providers' && (
-            <div className="space-y-6">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-medium">LLM Providers</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Add API keys for the providers you want to use. Panda supports any
-                    OpenAI-compatible endpoint.
-                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 rounded-none font-mono"
+                    onClick={() => setCatalogModalOpen(true)}
+                  >
+                    <Plus size={16} className="mr-1.5" />
+                    Add Provider
+                  </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="shrink-0 rounded-none font-mono"
-                  onClick={() => setCatalogModalOpen(true)}
-                >
-                  <Plus size={16} className="mr-1.5" />
-                  Add Provider
-                </Button>
+
+                <ProviderCatalogModal
+                  open={catalogModalOpen}
+                  onOpenChange={setCatalogModalOpen}
+                  configuredProviderIds={Object.keys(formState.providers)}
+                  onSelectProvider={addProviderFromCatalog}
+                />
+
+                <div className="space-y-3">
+                  {Object.entries(freshProviders).map(([key, provider]) => {
+                    const resolvedProvider: ProviderConfig = {
+                      ...defaultProviders[key],
+                      ...provider,
+                      name: provider.name || defaultProviders[key]?.name || key,
+                      description:
+                        provider.description ||
+                        defaultProviders[key]?.description ||
+                        provider.name ||
+                        key,
+                      enabled: provider.enabled === true,
+                      availableModels: provider.availableModels || [],
+                      apiKey: provider.apiKey || '',
+                      defaultModel:
+                        provider.defaultModel ||
+                        provider.availableModels?.[0] ||
+                        defaultProviders[key]?.defaultModel ||
+                        '',
+                    }
+                    const providerType = (provider.provider || key) as ProviderType
+                    const supportsReasoning =
+                      getDefaultProviderCapabilities(providerType).supportsReasoning
+                    return (
+                      <div key={key} className="relative">
+                        <ProviderCard
+                          provider={resolvedProvider}
+                          supportsReasoning={supportsReasoning}
+                          onChange={(updates) => updateProvider(key, updates)}
+                          onTest={() => testProvider(key)}
+                          onTestCompletion={
+                            key === 'chutes' ? () => testProviderCompletion(key) : undefined
+                          }
+                          onRefreshModels={
+                            provider.baseUrl ? () => refreshModelsFromApi(key) : undefined
+                          }
+                          refreshingModels={refreshingModels === key}
+                        />
+                        {!defaultProviders[key] && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-2 top-2"
+                            onClick={() => removeProvider(key)}
+                          >
+                            <X size={16} />
+                          </Button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                <Card className="rounded-none">
+                  <CardHeader>
+                    <CardTitle>OAuth Connections</CardTitle>
+                    <CardDescription>
+                      Authenticate with providers using OAuth instead of manual API keys.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <ConnectProvider provider="chutes" />
+                  </CardContent>
+                </Card>
               </div>
+            )}
 
-              <ProviderCatalogModal
-                open={catalogModalOpen}
-                onOpenChange={setCatalogModalOpen}
-                configuredProviderIds={Object.keys(formState.providers)}
-                onSelectProvider={addProviderFromCatalog}
-              />
-
-              <div className="space-y-3">
-                {Object.entries(freshProviders).map(([key, provider]) => {
-                  const resolvedProvider: ProviderConfig = {
-                    ...defaultProviders[key],
-                    ...provider,
-                    name: provider.name || defaultProviders[key]?.name || key,
-                    description:
-                      provider.description ||
-                      defaultProviders[key]?.description ||
-                      provider.name ||
-                      key,
-                    enabled: provider.enabled === true,
-                    availableModels: provider.availableModels || [],
-                    apiKey: provider.apiKey || '',
-                    defaultModel:
-                      provider.defaultModel ||
-                      provider.availableModels?.[0] ||
-                      defaultProviders[key]?.defaultModel ||
-                      '',
-                  }
-                  const providerType = (provider.provider || key) as ProviderType
-                  const supportsReasoning =
-                    getDefaultProviderCapabilities(providerType).supportsReasoning
-                  return (
-                    <div key={key} className="relative">
-                      <ProviderCard
-                        provider={resolvedProvider}
-                        supportsReasoning={supportsReasoning}
-                        onChange={(updates) => updateProvider(key, updates)}
-                        onTest={() => testProvider(key)}
-                        onTestCompletion={
-                          key === 'chutes' ? () => testProviderCompletion(key) : undefined
-                        }
-                        onRefreshModels={
-                          provider.baseUrl ? () => refreshModelsFromApi(key) : undefined
-                        }
-                        refreshingModels={refreshingModels === key}
-                      />
-                      {!defaultProviders[key] && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="absolute right-2 top-2"
-                          onClick={() => removeProvider(key)}
-                        >
-                          <X size={16} />
-                        </Button>
-                      )}
-                    </div>
-                  )
-                })}
+            {/* Automation Section */}
+            {activeTab === 'automation' && (
+              <div className="space-y-6">
+                <Card className="rounded-none">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Cpu size={20} />
+                      Automation Defaults
+                    </CardTitle>
+                    <CardDescription>
+                      Default agent behavior for new projects. These can be overridden per-project.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <AgentDefaultsEditor value={agentDefaults} onChange={setAgentDefaults} />
+                  </CardContent>
+                </Card>
               </div>
+            )}
 
-              <Card className="rounded-none">
-                <CardHeader>
-                  <CardTitle>OAuth Connections</CardTitle>
-                  <CardDescription>
-                    Authenticate with providers using OAuth instead of manual API keys.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <ConnectProvider provider="chutes" />
-                </CardContent>
-              </Card>
-            </div>
-          )}
+            {/* Advanced Section */}
+            {activeTab === 'advanced' && (
+              <div className="space-y-6">
+                <Card className="rounded-none">
+                  <CardHeader>
+                    <CardTitle>MCP Servers</CardTitle>
+                    <CardDescription>
+                      Connect external tools and data sources via the Model Context Protocol.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {allowUserMcp ? (
+                      <MCPServerEditor />
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        MCP access is disabled by your admin.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
 
-          {/* Automation Section */}
-          {activeTab === 'automation' && (
-            <div className="space-y-6">
-              <Card className="rounded-none">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Cpu size={20} />
-                    Automation Defaults
-                  </CardTitle>
-                  <CardDescription>
-                    Default agent behavior for new projects. These can be overridden per-project.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <AgentDefaultsEditor value={agentDefaults} onChange={setAgentDefaults} />
-                </CardContent>
-              </Card>
-            </div>
-          )}
+                <Card className="rounded-none">
+                  <CardHeader>
+                    <CardTitle>Custom Skills</CardTitle>
+                    <CardDescription>
+                      Define reusable workflow guidance that can auto-activate during agent runs.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {allowUserSkills ? (
+                      <CustomSkillEditor />
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Custom skills are disabled by your admin.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
 
-          {/* Advanced Section */}
-          {activeTab === 'advanced' && (
-            <div className="space-y-6">
-              <Card className="rounded-none">
-                <CardHeader>
-                  <CardTitle>MCP Servers</CardTitle>
-                  <CardDescription>
-                    Connect external tools and data sources via the Model Context Protocol.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {allowUserMcp ? (
-                    <MCPServerEditor />
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      MCP access is disabled by your admin.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card className="rounded-none">
-                <CardHeader>
-                  <CardTitle>Custom Skills</CardTitle>
-                  <CardDescription>
-                    Define reusable workflow guidance that can auto-activate during agent runs.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {allowUserSkills ? (
-                    <CustomSkillEditor />
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      Custom skills are disabled by your admin.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card className="rounded-none">
-                <CardHeader>
-                  <CardTitle>Custom Subagents</CardTitle>
-                  <CardDescription>
-                    Define specialized agents for repetitive or domain-specific tasks.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {allowUserSubagents ? (
-                    <SubagentEditor />
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      Custom subagents are disabled by your admin.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          )}
+                <Card className="rounded-none">
+                  <CardHeader>
+                    <CardTitle>Custom Subagents</CardTitle>
+                    <CardDescription>
+                      Define specialized agents for repetitive or domain-specific tasks.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {allowUserSubagents ? (
+                      <SubagentEditor />
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Custom subagents are disabled by your admin.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      </AuthenticatedPageShell>
 
       {/* Sticky Save Bar */}
       {isDirty && (
-        <div className="sticky bottom-0 z-10 border-t border-border bg-background/95 px-6 py-3 backdrop-blur">
+        <div className="bg-background/95 sticky bottom-0 z-10 border-t border-border px-6 py-3 backdrop-blur">
           <div className="mx-auto flex max-w-6xl items-center justify-between">
             <p className="font-mono text-sm text-muted-foreground">You have unsaved changes</p>
             <div className="flex gap-3">

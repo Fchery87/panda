@@ -1,26 +1,28 @@
-# Spec: Panda Design System Redesign
+# Spec: Authenticated Page Cohesion Pass
 
 ## Deliverables
 
-- [ ] Replace the existing warm amber visual tokens with the OKLCH Panda design
-      system from `docs/DESIGN.md`.
-- [ ] Apply the new hard-grid, flat-panel, green-proof visual language to the
-      public landing page and primary workbench shell.
-- [ ] Preserve the existing session-first workbench behavior, including desktop
-      regions and mobile focused views.
-- [ ] Add regression coverage for the design-system contract and responsive
-      mobile view labels.
+- [ ] Align `/projects`, `/settings`, and `/admin` page shells with the landing
+      page's warm editorial utility flow.
+- [ ] Preserve existing page functionality, routes, data access, and
+      authorization behavior.
+- [ ] Keep Panda's sharp brutalist structure, orange accent, cream canvas, dark
+      product chrome, and hard-grid rhythm.
+- [ ] Prefer shared layout primitives over one-off page rewrites where it
+      reduces drift.
 
 ## Constraints
 
-- Follow `docs/DESIGN.md` over the older AGENTS brutalist token examples.
-- Keep the canonical workflow modes as `ask`, `plan`, `code`, and `build`.
-- Do not introduce purple gradients, glass panels, rounded shells, mascot color
-  systems, or decorative glow.
-- Keep Convex query shapes unchanged.
+- Do not change Convex query shapes, authentication rules, or admin permission
+  logic.
+- Do not change the workbench shell layout or mobile focused views unless
+  required by shared primitives.
+- Do not introduce rounded shells, glass effects, purple/blue AI gradients,
+  decorative glows, or colored side stripes.
+- Keep existing navigation destinations and primary actions intact.
 
 ## Out of scope
 
-- Rebuilding every settings, admin, education, and shared-chat screen in this
-  pass.
-- Changing product data models, agent runtime behavior, or Convex backend APIs.
+- Rewriting product copy beyond small labels needed for cohesion.
+- Redesigning the workbench/editor runtime itself.
+- Adding new persistent data models or backend APIs.
