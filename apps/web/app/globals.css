@@ -4,127 +4,127 @@
 
 @layer base {
   :root {
-    --background: 98% 0.005 250;
-    --foreground: 22% 0.02 240;
-    --card: 100% 0 0;
-    --card-foreground: 22% 0.02 240;
-    --popover: 100% 0 0;
-    --popover-foreground: 22% 0.02 240;
-    --primary: 58% 0.16 145;
-    --primary-foreground: 98% 0.005 250;
-    --secondary: 95% 0.008 240;
-    --secondary-foreground: 22% 0.02 240;
-    --muted: 95% 0.008 240;
-    --muted-foreground: 50% 0.018 240;
-    --accent: 94% 0.035 145;
-    --accent-foreground: 22% 0.02 240;
-    --destructive: 52% 0.17 25;
-    --destructive-foreground: 98% 0.005 250;
-    --border: 90% 0.008 240;
-    --input: 90% 0.008 240;
-    --ring: 58% 0.16 145;
+    --background: 98.18% 0.0054 95.1;
+    --foreground: 19.08% 0.002 106.59;
+    --card: 93.57% 0.0161 82.79;
+    --card-foreground: 19.08% 0.002 106.59;
+    --popover: 95.68% 0.0119 79.78;
+    --popover-foreground: 19.08% 0.002 106.59;
+    --primary: 55.53% 0.1455 49;
+    --primary-foreground: 98.18% 0.0054 95.1;
+    --secondary: 95.68% 0.0119 79.78;
+    --secondary-foreground: 19.08% 0.002 106.59;
+    --muted: 95.68% 0.0119 79.78;
+    --muted-foreground: 52.42% 0.0096 91.56;
+    --accent: 90.92% 0.0207 81.78;
+    --accent-foreground: 19.08% 0.002 106.59;
+    --destructive: 57.04% 0.1649 23.96;
+    --destructive-foreground: 98.18% 0.0054 95.1;
+    --border: 90.72% 0.0122 67.67;
+    --input: 90.72% 0.0122 67.67;
+    --ring: 55.53% 0.1455 49;
     --radius: 0px;
-    --surface-0: 98% 0.005 250;
-    --surface-1: 100% 0 0;
-    --surface-2: 95% 0.008 240;
-    --surface-3: 90% 0.008 240;
-    --chart-1: 58% 0.16 145;
-    --chart-2: 22% 0.02 240;
-    --chart-3: 95% 0.008 240;
-    --chart-4: 50% 0.018 240;
-    --chart-5: 52% 0.17 25;
-    --sidebar-background: 22% 0.02 240;
-    --sidebar-foreground: 98% 0.005 250;
-    --sidebar-primary: 58% 0.16 145;
-    --sidebar-primary-foreground: 22% 0.02 240;
-    --sidebar-accent: 30% 0.018 240;
-    --sidebar-accent-foreground: 98% 0.005 250;
-    --sidebar-border: 36% 0.018 240;
-    --sidebar-ring: 58% 0.16 145;
+    --surface-0: 98.18% 0.0054 95.1;
+    --surface-1: 93.57% 0.0161 82.79;
+    --surface-2: 95.68% 0.0119 79.78;
+    --surface-3: 90.92% 0.0207 81.78;
+    --chart-1: 55.53% 0.1455 49;
+    --chart-2: 72.13% 0.0918 179;
+    --chart-3: 77.16% 0.1212 67.39;
+    --chart-4: 52.42% 0.0096 91.56;
+    --chart-5: 57.04% 0.1649 23.96;
+    --sidebar-background: 20.5% 0.0042 84.59;
+    --sidebar-foreground: 98.18% 0.0054 95.1;
+    --sidebar-primary: 55.53% 0.1455 49;
+    --sidebar-primary-foreground: 98.18% 0.0054 95.1;
+    --sidebar-accent: 25.72% 0.0063 78.21;
+    --sidebar-accent-foreground: 98.18% 0.0054 95.1;
+    --sidebar-border: 33.75% 0.0126 87.56;
+    --sidebar-ring: 55.53% 0.1455 49;
 
     /* Status colors */
-    --status-success: 58% 0.16 145;
-    --status-error: 52% 0.17 25;
-    --status-warning: 72% 0.15 75;
-    --status-info: 56% 0.1 240;
-    --status-online: 58% 0.16 145;
+    --status-success: 70.85% 0.1343 149.41;
+    --status-error: 57.04% 0.1649 23.96;
+    --status-warning: 73.5% 0.1462 84.27;
+    --status-info: 72.13% 0.0918 179;
+    --status-online: 70.85% 0.1343 149.41;
 
     /* Terminal semantic colors */
-    --terminal-success: 86% 0.018 145;
+    --terminal-success: 85.84% 0.0192 75.3;
     --terminal-error: 76% 0.12 25;
-    --terminal-warning: 82% 0.12 75;
+    --terminal-warning: 77.16% 0.1212 67.39;
 
     /* Diff semantic colors */
-    --diff-added-fg: 42% 0.11 145;
-    --diff-added-bg: 95% 0.04 145 / 0.7;
-    --diff-removed-fg: 42% 0.09 25;
-    --diff-removed-bg: 96% 0.035 25 / 0.72;
+    --diff-added-fg: 42% 0.11 149.41;
+    --diff-added-bg: 95% 0.035 149.41 / 0.68;
+    --diff-removed-fg: 42% 0.09 23.96;
+    --diff-removed-bg: 96% 0.035 23.96 / 0.72;
 
     /* Interactive states */
-    --interactive-hover: 58% 0.16 145;
-    --interactive-selected: 58% 0.16 145;
+    --interactive-hover: 55.53% 0.1455 49;
+    --interactive-selected: 55.53% 0.1455 49;
   }
 
   .dark {
-    --background: 16% 0.018 240;
-    --foreground: 92% 0.008 240;
-    --card: 20% 0.018 240;
-    --card-foreground: 92% 0.008 240;
-    --popover: 20% 0.018 240;
-    --popover-foreground: 92% 0.008 240;
-    --primary: 70% 0.15 145;
-    --primary-foreground: 16% 0.018 240;
-    --secondary: 26% 0.018 240;
-    --secondary-foreground: 92% 0.008 240;
-    --muted: 26% 0.018 240;
-    --muted-foreground: 68% 0.018 240;
-    --accent: 30% 0.06 145;
-    --accent-foreground: 92% 0.008 240;
-    --destructive: 66% 0.14 25;
-    --destructive-foreground: 16% 0.018 240;
-    --border: 34% 0.018 240;
-    --input: 34% 0.018 240;
-    --ring: 70% 0.15 145;
+    --background: 20.5% 0.0042 84.59;
+    --foreground: 98.18% 0.0054 95.1;
+    --card: 25.72% 0.0063 78.21;
+    --card-foreground: 98.18% 0.0054 95.1;
+    --popover: 25.72% 0.0063 78.21;
+    --popover-foreground: 98.18% 0.0054 95.1;
+    --primary: 71.02% 0.1464 62.29;
+    --primary-foreground: 19.08% 0.002 106.59;
+    --secondary: 23.5% 0.0058 91.61;
+    --secondary-foreground: 98.18% 0.0054 95.1;
+    --muted: 23.5% 0.0058 91.61;
+    --muted-foreground: 69.65% 0.0106 87.49;
+    --accent: 33.75% 0.0126 87.56;
+    --accent-foreground: 98.18% 0.0054 95.1;
+    --destructive: 57.04% 0.1649 23.96;
+    --destructive-foreground: 98.18% 0.0054 95.1;
+    --border: 33.75% 0.0126 87.56;
+    --input: 33.75% 0.0126 87.56;
+    --ring: 71.02% 0.1464 62.29;
     --radius: 0px;
-    --surface-0: 16% 0.018 240;
-    --surface-1: 20% 0.018 240;
-    --surface-2: 26% 0.018 240;
-    --surface-3: 34% 0.018 240;
-    --chart-1: 70% 0.15 145;
-    --chart-2: 92% 0.008 240;
-    --chart-3: 26% 0.018 240;
-    --chart-4: 68% 0.018 240;
-    --chart-5: 66% 0.14 25;
-    --sidebar-background: 12% 0.018 240;
-    --sidebar-foreground: 92% 0.008 240;
-    --sidebar-primary: 70% 0.15 145;
-    --sidebar-primary-foreground: 16% 0.018 240;
-    --sidebar-accent: 26% 0.018 240;
-    --sidebar-accent-foreground: 92% 0.008 240;
-    --sidebar-border: 34% 0.018 240;
-    --sidebar-ring: 70% 0.15 145;
+    --surface-0: 20.5% 0.0042 84.59;
+    --surface-1: 25.72% 0.0063 78.21;
+    --surface-2: 23.5% 0.0058 91.61;
+    --surface-3: 33.75% 0.0126 87.56;
+    --chart-1: 71.02% 0.1464 62.29;
+    --chart-2: 72.13% 0.0918 179;
+    --chart-3: 77.16% 0.1212 67.39;
+    --chart-4: 69.65% 0.0106 87.49;
+    --chart-5: 57.04% 0.1649 23.96;
+    --sidebar-background: 19.08% 0.002 106.59;
+    --sidebar-foreground: 98.18% 0.0054 95.1;
+    --sidebar-primary: 71.02% 0.1464 62.29;
+    --sidebar-primary-foreground: 19.08% 0.002 106.59;
+    --sidebar-accent: 23.5% 0.0058 91.61;
+    --sidebar-accent-foreground: 98.18% 0.0054 95.1;
+    --sidebar-border: 33.75% 0.0126 87.56;
+    --sidebar-ring: 71.02% 0.1464 62.29;
 
     /* Status colors */
-    --status-success: 70% 0.15 145;
-    --status-error: 66% 0.14 25;
-    --status-warning: 78% 0.13 75;
-    --status-info: 74% 0.07 240;
-    --status-online: 70% 0.15 145;
+    --status-success: 70.85% 0.1343 149.41;
+    --status-error: 57.04% 0.1649 23.96;
+    --status-warning: 77.16% 0.1212 67.39;
+    --status-info: 72.13% 0.0918 179;
+    --status-online: 70.85% 0.1343 149.41;
 
     /* Terminal semantic colors */
-    --terminal-success: 86% 0.018 145;
-    --terminal-error: 78% 0.12 25;
-    --terminal-warning: 84% 0.12 75;
+    --terminal-success: 85.84% 0.0192 75.3;
+    --terminal-error: 78% 0.12 23.96;
+    --terminal-warning: 77.16% 0.1212 67.39;
 
     /* Diff semantic colors */
-    --diff-added-fg: 86% 0.018 145;
-    --diff-added-bg: 32% 0.08 145 / 0.4;
-    --diff-removed-fg: 84% 0.07 25;
-    --diff-removed-bg: 42% 0.09 25 / 0.35;
+    --diff-added-fg: 85.84% 0.0192 75.3;
+    --diff-added-bg: 32% 0.08 149.41 / 0.36;
+    --diff-removed-fg: 84% 0.07 23.96;
+    --diff-removed-bg: 42% 0.09 23.96 / 0.35;
 
     /* Interactive states */
-    --interactive-hover: 70% 0.15 145;
-    --interactive-selected: 70% 0.15 145;
+    --interactive-hover: 71.02% 0.1464 62.29;
+    --interactive-selected: 71.02% 0.1464 62.29;
   }
 }
 
@@ -163,7 +163,7 @@
     outline-offset: 2px;
   }
 
-  /* Selection - restrained proof-green highlight */
+  /* Selection - restrained orange highlight */
   ::selection {
     background: oklch(var(--primary) / 0.25);
     color: inherit;

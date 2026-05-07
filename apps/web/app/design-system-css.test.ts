@@ -13,9 +13,12 @@ const compactGlobalsCss = globalsCss.replace(/\s+/g, ' ')
 
 describe('Panda design system CSS contract', () => {
   test('uses OKLCH channel tokens from docs/DESIGN.md as the theme source', () => {
-    expect(globalsCss).toContain('--background: 98% 0.005 250;')
-    expect(globalsCss).toContain('--foreground: 22% 0.02 240;')
-    expect(globalsCss).toContain('--primary: 58% 0.16 145;')
+    expect(globalsCss).toContain('--background: 98.18% 0.0054 95.1;')
+    expect(globalsCss).toContain('--foreground: 19.08% 0.002 106.59;')
+    expect(globalsCss).toContain('--primary: 55.53% 0.1455 49;')
+    expect(globalsCss).toContain('--primary: 71.02% 0.1464 62.29;')
+    expect(globalsCss).toContain('--surface-1: 93.57% 0.0161 82.79;')
+    expect(globalsCss).toContain('--surface-0: 20.5% 0.0042 84.59;')
     expect(tailwindConfig).toContain("background: 'oklch(var(--background))'")
     expect(tailwindConfig).toContain('primary: {')
     expect(tailwindConfig).toContain("DEFAULT: 'oklch(var(--primary))'")

@@ -8,6 +8,7 @@
 - Milestone 2 - Public Landing Surface - 2026-05-06
 - Milestone 3 - Workbench Shell And Mobile Focus Views - 2026-05-06
 - Milestone 4 - Verification - 2026-05-06
+- Color system refresh - 2026-05-07
 
 ## Decision log
 
@@ -24,6 +25,9 @@
   mobile Session/Chat/Proof/Preview focused views.
 - Dev visual smoke now passes on desktop, tablet, and mobile screenshots after
   replacing Tailwind opacity-modifier `@apply` rules with explicit OKLCH CSS.
+- The shared light and dark theme tokens now use a warm cream, orange, and dark
+  navy colorway while preserving the existing layout and brutalist component
+  structure.
 
 ## Known issues
 
@@ -42,6 +46,11 @@
   `/tmp/panda-home-desktop.png`, `/tmp/panda-home-tablet.png`, and
   `/tmp/panda-home-mobile.png`.
 - Focused Prettier check for files touched in this redesign passes.
+- 2026-05-07 color refresh: `bun test apps/web/app/design-system-css.test.ts`
+  passes.
+- 2026-05-07 color refresh: `bun run lint` passes.
+- 2026-05-07 color refresh: `bun run typecheck` passes.
+- 2026-05-07 color refresh: focused Prettier check for touched files passes.
 - Repo-wide `bun run format:check` remains blocked by unrelated pre-existing
   formatting drift.
 
