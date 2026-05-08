@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { Menu, MoreHorizontal, PanelLeftClose, PanelLeftOpen, RotateCcw } from 'lucide-react'
+import { ChevronLeft, Menu, MoreHorizontal, PanelLeftClose, PanelLeftOpen, RotateCcw } from 'lucide-react'
 import type { Id } from '@convex/_generated/dataModel'
 import type { GitStatusResult } from '@/hooks/useGit'
 import type { SidebarSection } from '@/components/sidebar/SidebarRail'
@@ -18,7 +18,6 @@ import { PandaLogo } from '@/components/ui/panda-logo'
 import { TopBarControls } from '@/components/layout/TopBarControls'
 import { ThemeToggle } from '@/components/settings/ThemeToggle'
 import { UserMenu } from '@/components/auth/UserMenu'
-import { Breadcrumb, buildBreadcrumbItems } from '@/components/workbench/Breadcrumb'
 import { MobileSidebarSheet } from '@/components/sidebar/MobileSidebarSheet'
 import { cn } from '@/lib/utils'
 import type { WorkspaceFocusState } from './workspace-focus'
@@ -147,19 +146,16 @@ export function WorkbenchTopBar({
             </Link>
           </div>
 
-          <div className="min-w-0">
-            <div className="hidden min-w-0 lg:block">
-              <Breadcrumb
-                projectName={projectName}
-                projectId={projectId}
-                items={buildBreadcrumbItems(selectedFilePath)}
-                onRevealInExplorer={onRevealInExplorer}
-              />
-            </div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground lg:hidden">
-              Project / active
-            </p>
-            <h1 className="truncate text-lg font-bold leading-none tracking-tight text-foreground">
+          <div className="flex min-w-0 items-center gap-1">
+            <Link
+              href="/projects"
+              className="hidden shrink-0 p-1 text-muted-foreground transition-colors hover:text-foreground lg:flex"
+              title="Back to Projects"
+              aria-label="Back to Projects"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </Link>
+            <h1 className="min-w-0 truncate text-base font-bold leading-none tracking-tight text-foreground">
               {projectName}
             </h1>
           </div>
