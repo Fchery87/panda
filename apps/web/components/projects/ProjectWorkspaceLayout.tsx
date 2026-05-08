@@ -68,7 +68,7 @@ interface ProjectWorkspaceLayoutProps {
   isCompactDesktopLayout: boolean
   mobilePrimaryPanel: 'workspace' | 'chat' | 'review'
   onMobilePrimaryPanelChange: (panel: 'workspace' | 'chat' | 'review') => void
-  onMobileReviewTabChange?: (tab: 'run' | 'changes' | 'context' | 'preview') => void
+  onMobileReviewTabChange?: (tab: 'run' | 'changes' | 'context') => void
   mobileUnreadCount: number
   isMobileKeyboardOpen: boolean
   chatPanel: React.ReactNode
@@ -218,15 +218,9 @@ export function ProjectWorkspaceLayoutView({
   const activeReviewTab = useWorkspaceUiStore((state) => state.rightPanelTab)
   const openRightPanelTab = useWorkspaceUiStore((state) => state.openRightPanelTab)
   const isMobileReviewPanelActive = mobilePrimaryPanel === 'review'
-  const isMobileProofActive = isMobileReviewPanelActive && activeReviewTab !== 'preview'
-  const isMobilePreviewActive = isMobileReviewPanelActive && activeReviewTab === 'preview'
+  const isMobileProofActive = isMobileReviewPanelActive
   const openMobileProof = () => {
     onMobileReviewTabChange?.('run')
-    onMobilePrimaryPanelChange('review')
-  }
-
-  const openMobilePreview = () => {
-    onMobileReviewTabChange?.('preview')
     onMobilePrimaryPanelChange('review')
   }
 
@@ -320,13 +314,6 @@ export function ProjectWorkspaceLayoutView({
       )}
       {activeSection === 'search' && <ProjectSearchPanel onSelectFile={onSelectFile} />}
       {activeSection === 'git' && <SourceControlPane projectId={projectId} />}
-      {activeSection === 'deploy' && (
-        <div className="flex flex-col gap-3 p-3">
-          <p className="font-mono text-xs text-muted-foreground">
-            Deploy and preview settings will appear here.
-          </p>
-        </div>
-      )}
       {activeSection === 'tasks' && (
         <SidebarHistoryPanel
           projectId={projectId}
@@ -409,21 +396,6 @@ export function ProjectWorkspaceLayoutView({
                 >
                   Proof
                 </button>
-                <button
-                  type="button"
-                  onClick={openMobilePreview}
-                  role="tab"
-                  aria-selected={isMobilePreviewActive}
-                  aria-label="Show runtime preview"
-                  className={cn(
-                    'relative min-h-12 bg-card px-1 transition-colors focus-visible:-outline-offset-2 active:scale-[0.96]',
-                    isMobilePreviewActive
-                      ? 'bg-primary text-primary-foreground shadow-[inset_0_-2px_0_oklch(var(--foreground)/0.18)]'
-                      : 'hover:bg-primary/10 text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  Preview
-                </button>
               </div>
             )}
           </div>
@@ -441,23 +413,21 @@ export function ProjectWorkspaceLayoutView({
                     if (!isFlyoutOpen) onToggleFlyout()
                   }}
                   className={cn(
-                    'flex min-h-11 items-center justify-between border-b border-foreground px-4 text-left transition-colors hover:bg-background hover:text-foreground sm:border-b-0 sm:border-r',
+                    'flex h-9 items-center border-b border-foreground px-4 text-left transition-colors hover:bg-background hover:text-foreground sm:border-b-0 sm:border-r',
                     isFlyoutOpen && activeSection === 'tasks' && 'bg-primary/10 text-foreground'
                   )}
                 >
-                  <span>Sessions</span>
-                  <span className="text-primary">01</span>
+                  Sessions
                 </button>
                 <button
                   type="button"
                   onClick={() => onCenterTabChange?.('editor')}
                   className={cn(
-                    'flex min-h-11 items-center justify-between border-b border-foreground px-4 text-left transition-colors hover:bg-background hover:text-foreground sm:border-b-0 sm:border-r',
+                    'flex h-9 items-center border-b border-foreground px-4 text-left transition-colors hover:bg-background hover:text-foreground sm:border-b-0 sm:border-r',
                     activeCenterTab === 'editor' && 'bg-primary/10 text-foreground'
                   )}
                 >
-                  <span>Session Thread</span>
-                  <span className="text-primary">02</span>
+                  Session Thread
                 </button>
                 <button
                   type="button"
@@ -465,27 +435,25 @@ export function ProjectWorkspaceLayoutView({
                     openRightPanelTab(activeReviewTab === 'work' ? 'run' : activeReviewTab)
                   }
                   className={cn(
-                    'flex min-h-11 items-center justify-between border-b border-foreground px-4 text-left transition-colors hover:bg-background hover:text-foreground sm:border-b-0 sm:border-r',
+                    'flex h-9 items-center border-b border-foreground px-4 text-left transition-colors hover:bg-background hover:text-foreground sm:border-b-0 sm:border-r',
                     isRightPanelOpen &&
                       activeReviewTab !== 'work' &&
                       'bg-primary/10 text-foreground'
                   )}
                 >
-                  <span>Review Proof</span>
-                  <span className="text-primary">03</span>
+                  Review Proof
                 </button>
                 <button
                   type="button"
                   onClick={() => openRightPanelTab('work')}
                   className={cn(
-                    'flex min-h-11 items-center justify-between px-4 text-left transition-colors hover:bg-background hover:text-foreground',
+                    'flex h-9 items-center px-4 text-left transition-colors hover:bg-background hover:text-foreground',
                     isRightPanelOpen &&
                       activeReviewTab === 'work' &&
                       'bg-primary/10 text-foreground'
                   )}
                 >
-                  <span>Work Tray</span>
-                  <span className="text-primary">04</span>
+                  Work Tray
                 </button>
               </div>
               <div className="bg-foreground/80 flex min-h-0 min-w-0 flex-1">

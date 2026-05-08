@@ -69,7 +69,6 @@ export function WorkbenchRightPanel({ projectId, workContent }: WorkbenchRightPa
     { id: 'run', label: 'Run' },
     { id: 'changes', label: 'Changes' },
     { id: 'context', label: 'Context' },
-    { id: 'preview', label: 'Preview' },
   ]
 
   const inspectorView = buildExecutionSessionInspectorViewModel(activeTab, executionSession)
@@ -157,30 +156,6 @@ export function WorkbenchRightPanel({ projectId, workContent }: WorkbenchRightPa
             snapshotEvents={snapshotEvents}
             subagentToolCalls={subagentToolCalls}
           />
-        )
-      case 'preview':
-        return (
-          <div className="flex h-full flex-col overflow-hidden">
-            <div className="surface-0 border-b border-border px-3 py-3">
-              <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                Session preview
-              </div>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Preview will show browser or app output for the active run when a runtime surface is
-                available.
-              </p>
-            </div>
-            <div className="flex min-h-0 flex-1 items-center justify-center p-6">
-              <div className="bg-background/70 max-w-sm border border-dashed border-border px-4 py-4 text-center">
-                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                  No preview attached
-                </div>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  {inspectorView.emptyDetail}
-                </p>
-              </div>
-            </div>
-          </div>
         )
       default:
         return null

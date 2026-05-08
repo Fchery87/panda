@@ -84,7 +84,7 @@ describe('Workbench integration wiring', () => {
     expect(source).toContain('order={1}')
     expect(source).toContain('id="workspace-panel"')
     expect(source).toContain('order={2}')
-    expect(source).toContain('id="chat-panel"')
+    expect(source).toContain('id="work-tray-panel"')
     expect(source).toContain('order={3}')
   })
 

@@ -148,7 +148,15 @@ export function WorkbenchTopBar({
           </div>
 
           <div className="min-w-0">
-            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            <div className="hidden min-w-0 lg:block">
+              <Breadcrumb
+                projectName={projectName}
+                projectId={projectId}
+                items={buildBreadcrumbItems(selectedFilePath)}
+                onRevealInExplorer={onRevealInExplorer}
+              />
+            </div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground lg:hidden">
               Project / active
             </p>
             <h1 className="truncate text-lg font-bold leading-none tracking-tight text-foreground">
@@ -157,7 +165,7 @@ export function WorkbenchTopBar({
           </div>
         </div>
 
-        <div className="grid min-w-0 content-center gap-2 border-b border-foreground px-3 py-3 lg:border-b-0 lg:px-4">
+        <div className="flex min-w-0 items-center border-b border-foreground px-3 py-2 lg:border-b-0 lg:px-4">
           <button
             type="button"
             onClick={onOpenCommandPalette}
@@ -170,14 +178,6 @@ export function WorkbenchTopBar({
               Ctrl+K
             </span>
           </button>
-          <div className="hidden min-w-0 lg:block">
-            <Breadcrumb
-              projectName={projectName}
-              projectId={projectId}
-              items={buildBreadcrumbItems(selectedFilePath)}
-              onRevealInExplorer={onRevealInExplorer}
-            />
-          </div>
         </div>
 
         <div className="flex items-center gap-2 px-3 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground lg:border-l lg:border-foreground lg:px-4">

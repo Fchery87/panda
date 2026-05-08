@@ -1,6 +1,6 @@
 # Status: Execution Session Shell Restructure
 
-## Current phase: Phase 5 - Docs And Final Verification
+## Current phase: Phase 5 - Docs And Final Verification (blocked on E2E fixture infrastructure)
 
 ## Last completed: Phase 4 - Consolidate Terminal And Proof - 2026-05-07
 
@@ -42,11 +42,26 @@
   Convex/codegen and TypeScript.
 - Phase 4 gate passed: `bun run typecheck`, `bun run lint`, and focused shell
   tests covering terminal-only dock and proof agent events.
+- Phase 5 docs updated: `CONTEXT.md`, `docs/ARCHITECTURE_CONTRACT.md`, and
+  `docs/plans/2026-04-26-chat-first-workspace-ia.md` now describe the Execution
+  Session Shell mapping.
+- Final code gates passed after docs/test updates: `bun run typecheck`,
+  `bun run lint`, touched-file Prettier check, and full `bun test`.
+- Full Bun test result: 1120 pass, 0 fail, 3111 expect() calls.
+- Full-repo `bun run format:check` is blocked by pre-existing formatting drift
+  in unrelated files; touched files pass Prettier.
+- `bun run test:e2e` could not complete because the E2E fixture endpoint fails
+  before loading the workspace. Direct probe:
+  `/api/e2e/project?name=Workbench%20Smoke%20Direct%20Probe` returns 500 with
+  Convex `SystemTimeoutError` / `Your request timed out`.
 
 ## Known issues
 
 - The worktree already had modified workspace layout files before this execution
   session started.
+- E2E fixture creation is currently timing out in Convex before any workspace UI
+  assertion can run. This blocks final E2E validation for all fixture-dependent
+  specs, including baseline workbench smoke tests.
 
 ## Future work (out of scope, log here)
 

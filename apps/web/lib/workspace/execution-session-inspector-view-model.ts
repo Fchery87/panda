@@ -43,16 +43,6 @@ export function buildExecutionSessionInspectorViewModel(
         emptyTitle: 'No session context yet',
         emptyDetail: 'Plans, specs, memory, and eval checks appear here as they are attached.',
       }
-    case 'preview':
-      return {
-        eyebrow,
-        title: 'Session Preview',
-        summary:
-          session?.preview.detail ||
-          'Preview runtime output when a browser or app surface is available.',
-        emptyTitle: 'No preview attached',
-        emptyDetail: 'Start or open a session with browser output to inspect it here.',
-      }
     case 'work':
     default:
       return {

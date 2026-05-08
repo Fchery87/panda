@@ -50,12 +50,9 @@ describe('buildExecutionSessionInspectorViewModel', () => {
     })
   })
 
-  test('uses changed-work and preview summaries from the current session', () => {
+  test('uses changed-work summary from the current session', () => {
     expect(buildExecutionSessionInspectorViewModel('changes', session).summary).toBe(
       '2 changed files ready for review.'
-    )
-    expect(buildExecutionSessionInspectorViewModel('preview', session).summary).toBe(
-      'Preview can use the browser runtime for this session.'
     )
   })
 })

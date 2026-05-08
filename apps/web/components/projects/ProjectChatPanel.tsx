@@ -120,68 +120,66 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
         isMobileLayout ? 'border-t border-foreground' : ''
       )}
     >
-      <div className="relative border-b border-foreground bg-secondary px-3 py-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="font-mono text-[11px] font-medium uppercase tracking-[0.24em] text-foreground">
-              Agent Thread · {sessionStatusLabel}
-            </div>
-            {sessionSummary ? (
-              <p className="mt-1 max-w-md truncate font-mono text-[10px] text-muted-foreground">
-                {sessionSummary}
-              </p>
-            ) : null}
-          </div>
+      <div className="relative flex h-9 shrink-0 items-center justify-between border-b border-foreground bg-secondary px-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="shrink-0 font-mono text-[11px] font-medium uppercase tracking-[0.24em] text-foreground">
+            Agent Thread · {sessionStatusLabel}
+          </span>
+          {sessionSummary ? (
+            <span className="min-w-0 truncate font-mono text-[10px] text-muted-foreground">
+              {sessionSummary}
+            </span>
+          ) : null}
+        </div>
 
-          <div className="flex items-center gap-1.5">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 rounded-none p-0"
-                  aria-label="Chat actions"
-                >
-                  <IconOverflow className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="rounded-none border-border font-mono">
+        <div className="flex shrink-0 items-center gap-1.5">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 rounded-none p-0"
+                aria-label="Chat actions"
+              >
+                <IconOverflow className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="rounded-none border-border font-mono">
+              <DropdownMenuItem
+                onClick={onNewChat}
+                className="rounded-none text-xs uppercase tracking-wide"
+              >
+                <IconNewChat className="mr-2 h-3.5 w-3.5" />
+                New Chat
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={onToggleInspector}
+                className="rounded-none text-xs uppercase tracking-wide"
+              >
+                Review
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={onOpenShare}
+                className="rounded-none text-xs uppercase tracking-wide"
+              >
+                Share
+              </DropdownMenuItem>
+              {activeChatExists && (
                 <DropdownMenuItem
-                  onClick={onNewChat}
+                  onClick={onOpenHistory}
                   className="rounded-none text-xs uppercase tracking-wide"
                 >
-                  <IconNewChat className="mr-2 h-3.5 w-3.5" />
-                  New Chat
+                  Run History ({runHistoryCount})
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={onToggleInspector}
-                  className="rounded-none text-xs uppercase tracking-wide"
-                >
-                  Review
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={onOpenShare}
-                  className="rounded-none text-xs uppercase tracking-wide"
-                >
-                  Share
-                </DropdownMenuItem>
-                {activeChatExists && (
-                  <DropdownMenuItem
-                    onClick={onOpenHistory}
-                    className="rounded-none text-xs uppercase tracking-wide"
-                  >
-                    Run History ({runHistoryCount})
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem
-                  onClick={onResetWorkspace}
-                  className="rounded-none text-xs uppercase tracking-wide"
-                >
-                  Clear Local Workspace
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+              )}
+              <DropdownMenuItem
+                onClick={onResetWorkspace}
+                className="rounded-none text-xs uppercase tracking-wide"
+              >
+                Clear Local Workspace
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {isStreaming && (

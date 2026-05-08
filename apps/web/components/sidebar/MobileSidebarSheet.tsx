@@ -9,7 +9,6 @@ import {
   Bot as IconAgents,
   Search as IconSearch,
   GitBranch as IconGit,
-  Globe as IconDeploy,
   History as IconHistory,
 } from 'lucide-react'
 
@@ -23,7 +22,6 @@ const NAV_ITEMS: MobileSidebarItem[] = [
   { id: 'agents', label: 'Active Agents' },
   { id: 'search', label: 'Search' },
   { id: 'git', label: 'Source Control' },
-  { id: 'deploy', label: 'Deploy & Preview' },
   { id: 'tasks', label: 'Task History' },
 ]
 
@@ -32,7 +30,6 @@ const ICON_MAP: Record<SidebarSection, typeof IconProjects> = {
   agents: IconAgents,
   search: IconSearch,
   git: IconGit,
-  deploy: IconDeploy,
   tasks: IconHistory,
 }
 

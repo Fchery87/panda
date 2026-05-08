@@ -33,6 +33,5 @@ describe('RightPanel', () => {
 
     expect(html).toContain('Execution Session Inspector')
     expect(html).toContain('Session Proof')
-    expect(html).toContain('Current session proof summary.')
   })
 })

@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware'
 
 import type { BottomDockTab } from '@/components/layout/BottomDock'
 
-export type RightPanelTab = 'work' | 'run' | 'changes' | 'context' | 'preview'
+export type RightPanelTab = 'work' | 'run' | 'changes' | 'context'
 export type CenterTab = 'editor' | 'diff' | 'logs' | 'tests'
 export type MobilePrimaryPanel = 'workspace' | 'chat' | 'review'
 
@@ -138,11 +138,12 @@ export const useWorkspaceUiStore = create<WorkspaceUiState>()(
     }),
     {
       name: 'panda:workspaceUi',
-      version: 2,
+      version: 3,
       migrate: (persistedState) => {
         if (!persistedState || typeof persistedState !== 'object') return persistedState
         const state = persistedState as Record<string, unknown>
-        const rightPanelTab = state.rightPanelTab === 'chat' ? 'work' : state.rightPanelTab
+        const tab = state.rightPanelTab
+        const rightPanelTab = tab === 'chat' || tab === 'preview' ? 'work' : tab
         return {
           ...state,
           rightPanelTab,

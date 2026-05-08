@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import { TabBar, type TabBarTab } from '@/components/ui/tab-bar'
 
-export type RightPanelTabId = 'work' | 'run' | 'changes' | 'context' | 'preview'
+export type RightPanelTabId = 'work' | 'run' | 'changes' | 'context'
 
 export type InspectorTabDef = TabBarTab<string>
 
@@ -29,7 +29,7 @@ export function RightPanel({
   isInspectorOpen = false,
   onInspectorToggle,
   inspectorTitle = 'Evidence Surface',
-  inspectorSummary = 'Run proof, receipts, snapshots, subagents, specs, and validation.',
+  inspectorSummary: _inspectorSummary = 'Run proof, receipts, snapshots, subagents, specs, and validation.',
   inspectorEyebrow = 'Evidence Surface',
 }: RightPanelProps) {
   const activeTab = isInspectorOpen && activeInspectorTab ? activeInspectorTab : 'work'
@@ -52,18 +52,13 @@ export function RightPanel({
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col bg-background">
-      <div className="border-b border-foreground bg-secondary px-3 py-3">
+      <div className="border-b border-foreground bg-secondary px-3 py-2">
         <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
           {activeTab === 'work' ? 'Work Tray' : inspectorEyebrow}
         </div>
         <h2 className="text-sm font-medium text-foreground">
           {activeTab === 'work' ? 'Inspect and edit work' : inspectorTitle}
         </h2>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          {activeTab === 'work'
-            ? 'Open files, review diffs, and inspect implementation detail without leaving the session thread.'
-            : inspectorSummary}
-        </p>
       </div>
 
       <TabBar

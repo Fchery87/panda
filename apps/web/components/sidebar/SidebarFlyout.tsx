@@ -9,7 +9,6 @@ const SECTION_LABELS: Record<SidebarSection, string> = {
   agents: 'Agent Runs',
   search: 'Find Context',
   git: 'Source Review',
-  deploy: 'App Preview',
   tasks: 'Sessions',
 }
 
@@ -18,7 +17,6 @@ const SECTION_DESCRIPTIONS: Record<SidebarSection, string> = {
   agents: 'Monitor active and background execution sessions.',
   search: 'Find files, symbols, and project context quickly.',
   git: 'Review repository state before accepting work.',
-  deploy: 'Attach runtime preview and deployment signals.',
   tasks: 'Switch between current and past agent sessions.',
 }
 

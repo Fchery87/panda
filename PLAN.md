@@ -43,4 +43,4 @@ reachability. Acceptance criteria: docs reflect the new shell mapping and all
 phase tests pass. Validation:
 `bun run typecheck && bun run lint && bun run format:check && bun test`; before
 final completion attempt `bun run test:e2e` if the local environment can run it.
-Status: [ ] pending
+Status: [ ] blocked on E2E fixture infrastructure

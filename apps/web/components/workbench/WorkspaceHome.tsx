@@ -110,7 +110,7 @@ export function WorkspaceHome({
           transition={{ duration: 0.4 }}
           className="shadow-sharp-md mb-6 border border-foreground bg-background"
         >
-          <div className="bg-foreground/80 grid gap-px lg:grid-cols-[minmax(0,1.5fr)_260px]">
+          <div className="bg-foreground/80 grid gap-px">
             <div className="space-y-3 bg-background p-5 sm:p-6">
               <div className="flex items-center gap-3">
                 <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">

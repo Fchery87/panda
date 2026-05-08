@@ -9,14 +9,13 @@ import {
   Bot as IconAgents,
   Search as IconSearch,
   GitBranch as IconGit,
-  Globe as IconDeploy,
   Settings as IconSettings,
   History as IconHistory,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
-export type SidebarSection = 'files' | 'agents' | 'search' | 'git' | 'deploy' | 'tasks'
+export type SidebarSection = 'files' | 'agents' | 'search' | 'git' | 'tasks'
 
 interface SidebarRailProps {
   activeSection: SidebarSection
@@ -47,7 +46,6 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'agents', icon: IconAgents, label: 'Agent Runs', shortcut: 'Ctrl+Shift+A' },
   { id: 'search', icon: IconSearch, label: 'Find Context', shortcut: 'Ctrl+Shift+F' },
   { id: 'git', icon: IconGit, label: 'Source Review', shortcut: 'Ctrl+Shift+G' },
-  { id: 'deploy', icon: IconDeploy, label: 'App Preview', shortcut: '' },
 ]
 
 export function SidebarRail({
