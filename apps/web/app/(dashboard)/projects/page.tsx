@@ -410,6 +410,7 @@ export default function ProjectsPage() {
 
   return (
     <AuthenticatedPageShell
+      hideHeader
       eyebrow="Project command center"
       title="Projects"
       description="Each project is a recoverable workspace with files, chat direction, plan review, runs, and changed work kept in one browser shell."

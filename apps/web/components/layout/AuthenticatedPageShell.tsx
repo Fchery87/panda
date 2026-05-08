@@ -13,6 +13,7 @@ interface AuthenticatedPageShellProps {
   children: ReactNode
   className?: string
   contentClassName?: string
+  hideHeader?: boolean
 }
 
 export function AuthenticatedPageShell({
@@ -26,42 +27,36 @@ export function AuthenticatedPageShell({
   children,
   className,
   contentClassName,
+  hideHeader = false,
 }: AuthenticatedPageShellProps) {
   return (
     <section className={cn('px-3 pb-12 pt-5 sm:px-5 lg:px-8', className)}>
       <div className="bg-background/92 shadow-sharp-lg mx-auto max-w-[1500px] border border-foreground">
-        <header className="bg-card/95 grid border-b border-foreground lg:grid-cols-[minmax(240px,0.34fr)_1fr_auto]">
-          <div className="flex items-center gap-3 border-b border-foreground px-5 py-5 lg:border-b-0 lg:border-r">
-            <div className="relative grid h-9 w-9 shrink-0 place-items-center bg-foreground font-mono text-sm font-bold text-background">
-              P
-              <span className="absolute right-[-5px] top-2 h-2.5 w-2.5 border border-foreground bg-primary" />
-            </div>
+        {!hideHeader && (
+          <header className="bg-card/95 flex items-start justify-between gap-4 border-b border-foreground px-5 py-4">
             <div className="min-w-0">
-              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                Panda.ai
+              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-primary">
+                {eyebrow}
               </p>
-              <h1 className="truncate text-2xl font-bold leading-none tracking-tight">{title}</h1>
+              <h1 className="mt-0.5 truncate text-xl font-bold leading-tight tracking-tight text-foreground">
+                {title}
+              </h1>
+              <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+                {description}
+              </p>
             </div>
-          </div>
-
-          <div className="grid content-center gap-1 border-b border-foreground px-5 py-5 lg:border-b-0">
-            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-primary">
-              {eyebrow}
-            </p>
-            <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-              {description}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3 px-5 py-4 lg:border-l lg:border-foreground">
-            {status ? (
-              <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                {status}
+            {(status || action) ? (
+              <div className="flex shrink-0 items-center gap-3 pt-1">
+                {status ? (
+                  <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                    {status}
+                  </div>
+                ) : null}
+                {action}
               </div>
             ) : null}
-            {action}
-          </div>
-        </header>
+          </header>
+        )}
 
         {subHeader}
 

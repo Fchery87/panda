@@ -59,35 +59,7 @@ export default function Home() {
 
       <section className="px-3 pb-14 pt-20 sm:px-5 lg:px-8 lg:pb-20 lg:pt-24">
         <div className="bg-background/92 shadow-sharp-lg mx-auto max-w-[1500px] border border-foreground">
-          <header className="bg-card/95 grid border-b border-foreground lg:grid-cols-[minmax(230px,0.34fr)_1fr_auto]">
-            <div className="flex items-center gap-3 border-b border-foreground px-5 py-5 lg:border-b-0 lg:border-r">
-              <BrandMark />
-              <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                  Panda.ai
-                </p>
-                <h1 className="text-2xl font-bold leading-none tracking-tight">Panda</h1>
-              </div>
-            </div>
-
-            <div className="grid content-center gap-1 border-b border-foreground px-5 py-5 lg:border-b-0">
-              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-primary">
-                Session-first AI coding workbench
-              </p>
-              <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-                Context, chat direction, plan review, execution proof, changed work, and recovery
-                stay visible in one browser workspace.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 px-5 py-4 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground lg:border-l lg:border-foreground">
-              <span className="h-2 w-2 border border-foreground bg-primary" />
-              Reviewable
-              <span className="border border-border bg-background px-2 py-1">Runtime ready</span>
-            </div>
-          </header>
-
-          <nav
+            <nav
             className="grid border-b border-foreground bg-card sm:grid-cols-4"
             aria-label="Panda workflow modes"
           >
@@ -221,14 +193,6 @@ export default function Home() {
   )
 }
 
-function BrandMark() {
-  return (
-    <div className="relative grid h-9 w-9 place-items-center bg-foreground font-mono text-sm font-bold text-background">
-      P
-      <span className="absolute right-[-5px] top-2 h-2.5 w-2.5 border border-foreground bg-primary" />
-    </div>
-  )
-}
 
 function WorkbenchPreview() {
   return (
