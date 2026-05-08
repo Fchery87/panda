@@ -1,9 +1,9 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import type { Id } from '@convex/_generated/dataModel'
 import type { RightPanelTabId, InspectorTabDef } from '@/components/panels/RightPanel'
 import { RightPanel } from '@/components/panels/RightPanel'
-import { ProjectChatPanel } from '@/components/projects/ProjectChatPanel'
 import {
   InspectorPlanContent,
   InspectorRunContent,
@@ -17,9 +17,10 @@ import { buildExecutionSessionInspectorViewModel } from '@/lib/workspace/executi
 
 export interface WorkbenchRightPanelProps {
   projectId: Id<'projects'>
+  workContent: ReactNode
 }
 
-export function WorkbenchRightPanel({ projectId }: WorkbenchRightPanelProps) {
+export function WorkbenchRightPanel({ projectId, workContent }: WorkbenchRightPanelProps) {
   const {
     activeChatId,
     runEvents,
@@ -61,7 +62,7 @@ export function WorkbenchRightPanel({ projectId }: WorkbenchRightPanelProps) {
   const onPlanClick = () => openRightPanelTab('context')
   const onOpenArtifacts = () => openRightPanelTab('changes')
 
-  const isDrawerOpen = activeTab !== 'chat'
+  const isDrawerOpen = activeTab !== 'work'
   const activeInspectorTab = isDrawerOpen ? activeTab : undefined
 
   const inspectorTabs: InspectorTabDef[] = [
@@ -170,7 +171,7 @@ export function WorkbenchRightPanel({ projectId }: WorkbenchRightPanelProps) {
               </p>
             </div>
             <div className="flex min-h-0 flex-1 items-center justify-center p-6">
-              <div className="max-w-sm border border-dashed border-border bg-background/70 px-4 py-4 text-center">
+              <div className="bg-background/70 max-w-sm border border-dashed border-border px-4 py-4 text-center">
                 <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                   No preview attached
                 </div>
@@ -188,13 +189,13 @@ export function WorkbenchRightPanel({ projectId }: WorkbenchRightPanelProps) {
 
   return (
     <RightPanel
-      chatContent={<ProjectChatPanel projectId={projectId} />}
+      workContent={workContent}
       inspectorContent={getInspectorContent()}
       inspectorTabs={inspectorTabs}
       activeInspectorTab={activeInspectorTab}
       onInspectorTabChange={(tab) => setActiveTab(tab as RightPanelTabId)}
       isInspectorOpen={isDrawerOpen}
-      onInspectorToggle={() => setActiveTab('chat')}
+      onInspectorToggle={() => setActiveTab('work')}
       inspectorTitle={inspectorView.title}
       inspectorSummary={inspectorView.summary}
       inspectorEyebrow={inspectorView.eyebrow}

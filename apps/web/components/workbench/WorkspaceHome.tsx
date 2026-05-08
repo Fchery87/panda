@@ -70,7 +70,7 @@ export function WorkspaceHome({
   const timelineRows = buildExecutionSessionTimelineRows(focusState?.executionSession ?? null)
   const primarySummary = focusState
     ? focusState.detail
-    : 'Start an execution session, inspect changed work, and keep the next action obvious.'
+    : 'Direct the agent from the desk, inspect proof before accepting work, and open files only when implementation detail matters.'
   const quickActions: Array<{
     label: string
     icon: typeof IconFile
@@ -79,7 +79,7 @@ export function WorkspaceHome({
 
   if (onOpenFile) {
     quickActions.push({
-      label: 'Create File',
+      label: 'Open Files',
       icon: IconFile,
       onClick: () => onOpenFile(''),
     })
@@ -87,7 +87,7 @@ export function WorkspaceHome({
 
   if (onStartAgent) {
     quickActions.push({
-      label: 'New Session',
+      label: 'New Agent Task',
       icon: IconNewChat,
       onClick: onStartAgent,
     })
@@ -95,23 +95,23 @@ export function WorkspaceHome({
 
   if (onOpenTerminal) {
     quickActions.push({
-      label: 'Import Project',
+      label: 'Open Runtime Dock',
       icon: IconUpload,
       onClick: onOpenTerminal,
     })
   }
 
   return (
-    <div className="dot-grid scrollbar-thin h-full overflow-auto">
-      <div className="mx-auto max-w-5xl px-4 py-5 sm:px-6 sm:py-8">
+    <div className="dot-grid scrollbar-thin h-full overflow-auto bg-background">
+      <div className="mx-auto max-w-5xl px-4 py-5 sm:px-6 sm:py-7">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="shadow-sharp-sm mb-6 border border-foreground bg-card"
+          className="shadow-sharp-md mb-6 border border-foreground bg-background"
         >
           <div className="bg-foreground/80 grid gap-px lg:grid-cols-[minmax(0,1.5fr)_260px]">
-            <div className="space-y-3 bg-card p-5 sm:p-6">
+            <div className="space-y-3 bg-background p-5 sm:p-6">
               <div className="flex items-center gap-3">
                 <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
                   Execution Session
@@ -120,7 +120,7 @@ export function WorkspaceHome({
               <h1 className="max-w-2xl text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
                 {focusState
                   ? focusState.objective
-                  : 'Keep intent, proof, and changed work in view.'}
+                  : 'Run the workspace from intent, proof, and context.'}
               </h1>
               <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
                 {primarySummary}

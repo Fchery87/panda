@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { TabBar } from '@/components/ui/tab-bar'
 import { cn } from '@/lib/utils'
 
-export type BottomDockTab = 'terminal' | 'agent-events'
+export type BottomDockTab = 'terminal'
 
 interface DockTabDef {
   id: BottomDockTab
@@ -33,7 +33,7 @@ export function BottomDock({
   if (!isOpen) {
     return (
       <div
-        className="dock-collapsed-bar border-foreground bg-card px-3"
+        className="dock-collapsed-bar border-foreground bg-[oklch(16%_0.018_240)] px-3 text-[oklch(86%_0.018_145)]"
         onClick={onToggle}
         role="button"
         tabIndex={0}
@@ -49,7 +49,9 @@ export function BottomDock({
           {tabs.map((tab) => (
             <span key={tab.id} className="flex items-center gap-1">
               <span
-                className={cn(tab.id === activeTab ? 'text-foreground' : 'text-muted-foreground')}
+                className={cn(
+                  tab.id === activeTab ? 'text-primary' : 'text-[oklch(86%_0.018_145/0.65)]'
+                )}
               >
                 {tab.label}
               </span>
@@ -61,7 +63,7 @@ export function BottomDock({
             </span>
           ))}
         </div>
-        <span className="text-muted-foreground/50 ml-auto font-mono text-[10px]">
+        <span className="ml-auto font-mono text-[10px] text-[oklch(86%_0.018_145/0.55)]">
           <kbd className="bg-muted px-1">Ctrl</kbd>+<kbd className="bg-muted px-1">J</kbd>
         </span>
       </div>
@@ -69,13 +71,13 @@ export function BottomDock({
   }
 
   return (
-    <div className="flex min-h-0 flex-col border-t border-foreground bg-card">
+    <div className="flex min-h-0 flex-col border-t border-foreground bg-[oklch(16%_0.018_240)] text-[oklch(86%_0.018_145)]">
       {/* Tab bar */}
       <TabBar
         tabs={tabs}
         activeTab={activeTab}
         onTabChange={onTabChange}
-        className="h-8"
+        className="border-b-background/20 h-9 bg-[oklch(16%_0.018_240)]"
         trailingContent={
           <button
             type="button"

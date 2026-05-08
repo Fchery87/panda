@@ -43,11 +43,11 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { id: 'tasks', icon: IconHistory, label: 'Sessions', shortcut: 'Ctrl+Shift+H' },
-  { id: 'files', icon: IconProjects, label: 'Support: Files', shortcut: 'Ctrl+Shift+E' },
-  { id: 'agents', icon: IconAgents, label: 'Support: Branches', shortcut: 'Ctrl+Shift+A' },
-  { id: 'search', icon: IconSearch, label: 'Support: Search', shortcut: 'Ctrl+Shift+F' },
-  { id: 'git', icon: IconGit, label: 'Support: Source Control', shortcut: 'Ctrl+Shift+G' },
-  { id: 'deploy', icon: IconDeploy, label: 'Support: Preview', shortcut: '' },
+  { id: 'files', icon: IconProjects, label: 'Project Files', shortcut: 'Ctrl+Shift+E' },
+  { id: 'agents', icon: IconAgents, label: 'Agent Runs', shortcut: 'Ctrl+Shift+A' },
+  { id: 'search', icon: IconSearch, label: 'Find Context', shortcut: 'Ctrl+Shift+F' },
+  { id: 'git', icon: IconGit, label: 'Source Review', shortcut: 'Ctrl+Shift+G' },
+  { id: 'deploy', icon: IconDeploy, label: 'App Preview', shortcut: '' },
 ]
 
 export function SidebarRail({
@@ -75,7 +75,7 @@ export function SidebarRail({
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="flex h-full w-12 flex-shrink-0 flex-col border-r border-foreground bg-foreground text-background">
+      <div className="flex h-full w-[52px] flex-shrink-0 flex-col bg-foreground text-background">
         {/* Projects link at top */}
         <div className="border-background/20 flex flex-col border-b">
           <Tooltip>
@@ -83,7 +83,7 @@ export function SidebarRail({
               <button
                 type="button"
                 onClick={onHomeClick}
-                className="text-background/70 flex h-11 items-center justify-center transition-colors duration-150 hover:bg-primary hover:text-foreground"
+                className="text-background/70 flex h-12 items-center justify-center transition-colors duration-150 hover:bg-primary hover:text-foreground"
                 aria-label="Home"
               >
                 <IconHome className="h-4.5 w-4.5" />
@@ -98,7 +98,7 @@ export function SidebarRail({
             <TooltipTrigger asChild>
               <Link
                 href="/projects"
-                className="border-background/20 text-background/70 flex h-11 items-center justify-center border-t transition-colors duration-150 hover:bg-primary hover:text-foreground"
+                className="border-background/20 text-background/70 flex h-12 items-center justify-center border-t transition-colors duration-150 hover:bg-primary hover:text-foreground"
                 aria-label="Projects"
               >
                 <IconProjects className="h-4.5 w-4.5" />
@@ -125,10 +125,10 @@ export function SidebarRail({
                     type="button"
                     onClick={() => handleItemClick(item.id)}
                     className={cn(
-                      'relative mx-0.5 flex h-10 items-center justify-center border border-transparent transition-colors duration-100',
+                      'border-background/15 relative grid h-12 place-items-center border-b transition-colors duration-100',
                       isActive
-                        ? 'border-primary bg-primary text-foreground'
-                        : 'text-background/70 hover:border-background/25 hover:bg-background/10 hover:text-background'
+                        ? 'bg-primary text-foreground'
+                        : 'text-background/70 hover:bg-background/10 hover:text-background'
                     )}
                     aria-label={item.label}
                     aria-pressed={isActive}
@@ -173,7 +173,7 @@ export function SidebarRail({
             <TooltipTrigger asChild>
               <Link
                 href="/settings"
-                className="text-background/70 hover:border-background/25 hover:bg-background/10 mx-0.5 flex h-10 items-center justify-center border border-transparent transition-colors duration-100 hover:text-background"
+                className="text-background/70 border-background/15 hover:bg-background/10 flex h-12 items-center justify-center border-b transition-colors duration-100 hover:text-background"
                 aria-label="Settings"
               >
                 <IconSettings className="h-[18px] w-[18px]" />

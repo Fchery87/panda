@@ -1,64 +1,53 @@
-# Status: Authenticated Page Cohesion Pass
+# Status: Execution Session Shell Restructure
 
-## Current milestone: Complete
+## Current phase: Phase 5 - Docs And Final Verification
 
-## Last completed
+## Last completed: Phase 4 - Consolidate Terminal And Proof - 2026-05-07
 
-- Milestone 1 - Surface Audit And Shared Layout Strategy - 2026-05-07
-- Milestone 2 - Shared Cohesive Page Primitives - 2026-05-07
-- Milestone 3 - Apply To Projects, Settings, And Admin - 2026-05-07
-- Milestone 4 - Verification - 2026-05-07
-- Header And Navigation Cohesion - 2026-05-07
+## Completed phases
+
+- Phase 1 - Extract Shell Regions - 2026-05-07
+- Phase 2 - Move Chat To Center - 2026-05-07
+- Phase 3 - Move Workbench Into Tray - 2026-05-07
+- Phase 4 - Consolidate Terminal And Proof - 2026-05-07
 
 ## Decision log
 
-- Scope targets authenticated hub pages (`/projects`, `/settings`, `/admin`)
-  because the user identified them as visually disconnected from landing.
-- Preserve behavior and data/auth boundaries; this pass changes layout and
-  presentation only.
-- Use shared primitives where possible so future authenticated pages inherit the
-  landing page rhythm.
-- Landing uses a hard-framed `dot-grid` composition; `/projects` and `/settings`
-  should move into a matching authenticated frame instead of remaining narrow
-  standalone pages.
-- Admin already has shared navigation/header components, so the cohesive update
-  should happen in `app/admin/layout.tsx` and `components/admin/AdminSubNav.tsx`
-  rather than rewriting every admin tool page.
-- Added `AuthenticatedPageShell` and `AuthenticatedModeStrip` to carry the
-  landing page frame, header band, mode strip, and dark separator gutters into
-  authenticated pages.
-- `/projects` now uses the shared frame with a registry panel and session-signal
-  rail while preserving existing project create/open/delete behavior.
-- `/settings` now uses the shared frame with settings mode strips and the
-  existing section navigation/content preserved.
-- Admin uses the same grid canvas and hard framed content area, with the sidebar
-  shifted to dark product chrome and admin subheaders converted to framed bands.
-- Header/nav follow-up: public, dashboard, and admin navigation should use the
-  same hard-framed grammar as the landing hero rather than separate soft toolbar
-  treatments.
-- Public and dashboard headers now use a max-width hard frame, segmented nav
-  cells, explicit CTA/action zones, and the same foreground border language as
-  the landing hero frame.
-- Admin navigation is now a framed dark console rail with rectangular active
-  cells instead of a plain fixed sidebar.
+- Use the referenced
+  `docs/plans/2026-05-07-execution-session-shell-restructure.md` as frozen scope
+  because it already defines the phase sequence, parity target, and structural
+  reference.
+- Treat existing dirty workspace layout files as pre-existing work and preserve
+  them unless they directly need changes for this restructure.
+- Phase 1 keeps existing surfaces mounted while adding named shell region
+  wrappers for the execution session rail, timeline/composer region, work tray,
+  and terminal drawer.
+- Chat now renders in the central execution session timeline region.
+- The right tray defaults to Work and hosts the existing workbench/editor
+  surface so files, diffs, and implementation detail remain reachable after
+  moving chat.
+- Persisted `rightPanelTab: chat` values migrate to `work` because chat is no
+  longer a right-tray tab.
+- The bottom dock now contains terminal only; agent events moved into the Proof
+  run surface.
+
+## Validation log
+
+- Phase 1 gate passed: `bun run typecheck`, `bun run lint`, and
+  `bun test apps/web/components/projects/project-workspace-layout.test.tsx`.
+- Phase 2/3 focused tests passed:
+  `bun test apps/web/components/projects/project-workspace-layout.test.tsx apps/web/components/panels/RightPanel.test.tsx apps/web/stores/workspaceUiStore.test.ts apps/web/components/projects/project-chat-wiring.test.ts`.
+- Phase 2/3 gate passed: `bun run lint` and `bun run typecheck` after rerunning
+  typecheck with a 240s timeout because the first 120s run timed out during
+  Convex/codegen and TypeScript.
+- Phase 4 gate passed: `bun run typecheck`, `bun run lint`, and focused shell
+  tests covering terminal-only dock and proof agent events.
 
 ## Known issues
 
-- `mgrep` failed locally, so source inspection is using direct reads and
-  targeted file search.
-- `apps/web/next-env.d.ts` has an unrelated pre-existing generated diff and must
-  not be treated as part of this pass.
+- The worktree already had modified workspace layout files before this execution
+  session started.
 
-## Verification
+## Future work (out of scope, log here)
 
-- `bun run typecheck` passes.
-- `bun run lint` passes.
-- Focused Prettier check for changed files passes.
-- Header/nav follow-up: `bun run typecheck` passes.
-- Header/nav follow-up: `bun run lint` passes.
-- Header/nav follow-up: focused Prettier check for changed files passes.
-
-## Future work
-
-- Extend the same page flow to login, education, maintenance, error, not-found,
-  and shared-chat after this pass if needed.
+- None yet.

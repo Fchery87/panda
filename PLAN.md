@@ -1,51 +1,46 @@
-# Plan: Authenticated Page Cohesion Pass
+# Plan: Execution Session Shell Restructure
 
-## Milestone 1: Surface Audit And Shared Layout Strategy
+## Phase 1: Extract Shell Regions
 
-What: Inspect landing page structure plus `/projects`, `/settings`, and `/admin`
-implementations. Identify shared page shell, hero/header, action band, and panel
-patterns that can be reused without changing behavior.
-
-Acceptance criteria: Files to change are identified and the implementation path
-avoids route/data/auth changes.
-
-Validation: Source inspection only.
-
+What: Introduce/adapt shell region components for session rail, timeline canvas,
+composer region, work tray, and terminal drawer while keeping existing surfaces
+mounted through adapters. Acceptance criteria: no behavior moves yet, but the
+desktop hierarchy has named regions that later phases can target. Validation:
+`bun run typecheck && bun run lint && bun test apps/web/components/projects/project-workspace-layout.test.tsx`.
 Status: [x] complete
 
-## Milestone 2: Shared Cohesive Page Primitives
+## Phase 2: Move Chat To Center
 
-What: Add or update shared authenticated page layout primitives that express the
-landing flow: cream grid canvas, editorial header band, hard frame, dark
-operational strip, and rectangular content panels.
+What: Make `ProjectChatPanel` the central timeline/composer surface and remove
+chat from the right-tray mental model. Acceptance criteria: mode controls,
+model, attachments, approval, stop/resume, share, history, and contextual chat
+entry points remain reachable. Validation:
+`bun run typecheck && bun run lint && bun test apps/web/components/projects/project-workspace-layout.test.tsx`
+plus any focused chat wiring tests present. Status: [x] complete
 
-Acceptance criteria: Primitives are typed, reusable, sharp-cornered, and
-token-based.
+## Phase 3: Move Workbench Into Tray
 
-Validation: `bun run typecheck`
+What: Host `Workbench` as the Work tray view, keep editor-heavy focus/expand
+affordances, and keep Changes wired to artifact/diff review. Acceptance
+criteria: files/editor, preview access, changes/diff review, and context
+surfaces remain reachable from the tray. Validation:
+`bun run typecheck && bun run lint && bun test apps/web/components/projects/project-workspace-layout.test.tsx`
+plus focused workbench tests if present. Status: [x] complete
 
-Status: [x] complete
+## Phase 4: Consolidate Terminal And Proof
 
-## Milestone 3: Apply To Projects, Settings, And Admin
+What: Keep terminal as a bottom drawer and render agent events/proof as the
+Proof tray view instead of a peer dock tab. Acceptance criteria: terminal opens
+from the bottom drawer, proof/run events are available in the tray, and mobile
+access is preserved. Validation:
+`bun run typecheck && bun run lint && bun test apps/web/components/projects/project-workspace-layout.test.tsx`
+plus focused panel/dock tests if present. Status: [x] complete
 
-What: Update target pages to use the shared flow while preserving their existing
-actions and content hierarchy.
+## Phase 5: Docs And Final Verification
 
-Acceptance criteria: `/projects`, `/settings`, and `/admin` feel visually
-cohesive with landing while retaining current functionality.
-
-Validation: focused tests or `bun run typecheck && bun run lint`
-
-Status: [x] complete
-
-## Milestone 4: Verification
-
-What: Run focused validation and repair failures introduced by this pass.
-
-Acceptance criteria: Changed files format cleanly; typecheck/lint pass or
-blockers are recorded exactly.
-
-Validation:
-`bun run typecheck && bun run lint && bunx prettier --check <changed files>`
-
-Status: [x] complete
+What: Update docs and tests for Execution Session Shell terminology and feature
+reachability. Acceptance criteria: docs reflect the new shell mapping and all
+phase tests pass. Validation:
+`bun run typecheck && bun run lint && bun run format:check && bun test`; before
+final completion attempt `bun run test:e2e` if the local environment can run it.
+Status: [ ] pending

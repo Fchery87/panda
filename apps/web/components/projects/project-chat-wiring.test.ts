@@ -28,16 +28,17 @@ describe('project chat wiring', () => {
     expect(content).toContain('projectId={projectId}')
   })
 
-  test('ProjectWorkspaceLayout renders the provided right panel content directly', async () => {
+  test('ProjectWorkspaceLayout renders chat in the central execution session region', async () => {
     const content = await readProjectComponent('ProjectWorkspaceLayout.tsx')
 
-    expect(content).toContain('{rightPanelContent}')
+    expect(content).toContain('{chatPanel}')
+    expect(content).toContain('data-testid="execution-session-timeline-region"')
     expect(content).not.toContain(
       '<RightPanel\n                              chatContent={chatPanel}'
     )
   })
 
-  test('ProjectChatPanel routes planning and review actions into the right rail instead of mounting an inline inspector', async () => {
+  test('ProjectChatPanel routes planning and review actions into the work tray instead of mounting an inline inspector', async () => {
     const content = await readProjectComponent('ProjectChatPanel.tsx')
 
     expect(content).not.toContain('const inspectorPanel = (')
@@ -53,7 +54,17 @@ describe('project chat wiring', () => {
     expect(content).toContain('generatedPlanArtifact={planningSession?.generatedPlan ?? null}')
   })
 
-  test('project page routes review/open actions directly into the shared right rail', async () => {
+  test('ProjectChatInspector keeps agent events in the proof surface', async () => {
+    const content = await readProjectComponent('ProjectChatInspector.tsx')
+
+    expect(content).toContain(
+      "import { AgentEventsPanel } from '@/components/panels/AgentEventsPanel'"
+    )
+    expect(content).toContain('Agent events')
+    expect(content).toContain('<AgentEventsPanel />')
+  })
+
+  test('project page routes review/open actions directly into the shared work tray', async () => {
     const providerContent = await readProvider()
 
     expect(providerContent).toContain("onToggleInspector: () => openRightPanelTab('run')")

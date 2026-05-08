@@ -12,8 +12,12 @@ mock.module('convex/react', () => ({
   useQuery: () => [],
 }))
 
+mock.module('@/components/workbench/Terminal', () => ({
+  Terminal: () => <div>terminal-panel</div>,
+}))
+
 describe('ProjectWorkspaceLayout desktop shell', () => {
-  test('renders the desktop right rail chat panel', () => {
+  test('renders chat as the desktop center timeline', () => {
     const html = renderToStaticMarkup(
       <ProjectWorkspaceLayoutView
         projectId={'project' as never}
@@ -54,10 +58,62 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
       />
     )
 
+    expect(html).toContain('chat-panel')
     expect(html).toContain('right-panel')
   })
 
-  test('renders session canvas as the primary center workspace', () => {
+  test('renders named execution session shell regions without moving surfaces', () => {
+    const html = renderToStaticMarkup(
+      <ProjectWorkspaceLayoutView
+        projectId={'project' as never}
+        activeSection="files"
+        isFlyoutOpen={false}
+        onSidebarSectionChange={() => {}}
+        onToggleFlyout={() => {}}
+        onSelectChat={() => {}}
+        onNewChat={() => {}}
+        files={[]}
+        selectedFilePath={null}
+        openTabs={[]}
+        onSelectFile={() => {}}
+        onCloseTab={() => {}}
+        onCreateFile={async () => {}}
+        onRenameFile={async () => {}}
+        onDeleteFile={async () => {}}
+        onSaveFile={async () => {}}
+        onEditorDirtyChange={() => {}}
+        isMobileLayout={false}
+        isCompactDesktopLayout={false}
+        mobilePrimaryPanel="workspace"
+        onMobilePrimaryPanelChange={() => {}}
+        mobileUnreadCount={0}
+        isMobileKeyboardOpen={false}
+        chatPanel={<div>chat-panel</div>}
+        rightPanelContent={<div>right-panel</div>}
+        isRightPanelOpen={true}
+        isBottomDockOpen={true}
+        chatMode="code"
+        onModeChange={() => {}}
+        cursorPosition={null}
+        isStreaming={false}
+        currentSpec={null}
+        openSpecInspect={() => {}}
+        onApplyPendingArtifact={() => {}}
+        onRejectPendingArtifact={() => {}}
+        sessionRailSummary={{ state: 'idle', label: 'Idle', count: 0, tasks: [] }}
+      />
+    )
+
+    expect(html).toContain('data-testid="execution-session-rail-region"')
+    expect(html).toContain('data-testid="execution-session-timeline-region"')
+    expect(html).toContain('data-testid="execution-session-work-tray-region"')
+    expect(html).toContain('data-testid="execution-session-terminal-drawer-region"')
+    expect(html).toContain('right-panel')
+    expect(html).toContain('Terminal')
+    expect(html).not.toContain('Agent Events')
+  })
+
+  test('renders chat panel as the primary session canvas', () => {
     const html = renderToStaticMarkup(
       <ProjectWorkspaceLayoutView
         projectId={'project' as never}
@@ -98,14 +154,8 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
       />
     )
 
-    expect(html).toContain('Execution Session')
-    expect(html).toContain('Session Timeline')
-    expect(html).toContain('Session Composer')
-    expect(html).toContain(
-      'Continue this session with mode, model, attachments, context, stop, and retry controls.'
-    )
-    expect(html).toContain('Session State')
-    expect(html).toContain('Keep intent, proof, and changed work in view.')
+    expect(html).toContain('data-testid="execution-session-timeline-region"')
+    expect(html).toContain('chat-panel')
   })
 
   test('renders session-centered rail language', () => {
@@ -153,7 +203,7 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
     expect(html).toContain('No execution sessions yet')
   })
 
-  test('labels IDE tools as contextual support surfaces', () => {
+  test('labels workspace areas and support surfaces by job', () => {
     const html = renderToStaticMarkup(
       <ProjectWorkspaceLayoutView
         projectId={'project' as never}
@@ -195,8 +245,11 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
     )
 
     expect(html).toContain('aria-label="Sessions"')
-    expect(html).toContain('aria-label="Support: Files"')
-    expect(html).toContain('aria-label="Support: Source Control"')
+    expect(html).toContain('Session Thread')
+    expect(html).toContain('Review Proof')
+    expect(html).toContain('Work Tray')
+    expect(html).toContain('aria-label="Project Files"')
+    expect(html).toContain('aria-label="Source Review"')
   })
 
   test('renders chat-first mobile navigation with proof and preview access', () => {

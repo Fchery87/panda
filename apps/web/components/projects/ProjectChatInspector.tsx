@@ -16,6 +16,7 @@ import type {
 import { PlanningIntakeSurface } from '@/components/plan/PlanningIntakePopup'
 import { PlanPanel } from '@/components/plan/PlanPanel'
 import { ArtifactPanel } from '@/components/artifacts/ArtifactPanel'
+import { AgentEventsPanel } from '@/components/panels/AgentEventsPanel'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { LiveProgressStep } from '@/components/chat/live-run-utils'
@@ -95,7 +96,7 @@ export function InspectorRunContent({
   return (
     <div className="m-0 space-y-3">
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="border border-border bg-background/70 px-3 py-2">
+        <div className="bg-background/70 border border-border px-3 py-2">
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
             Execution
           </div>
@@ -103,7 +104,7 @@ export function InspectorRunContent({
             {isStreaming ? 'Running' : 'Idle'}
           </div>
         </div>
-        <div className="border border-border bg-background/70 px-3 py-2">
+        <div className="bg-background/70 border border-border px-3 py-2">
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
             Plan context
           </div>
@@ -111,7 +112,7 @@ export function InspectorRunContent({
             {hasActivePlan ? planStatus?.replace('_', ' ') : 'None'}
           </div>
         </div>
-        <div className="border border-border bg-background/70 px-3 py-2">
+        <div className="bg-background/70 border border-border px-3 py-2">
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
             Snapshots
           </div>
@@ -119,7 +120,7 @@ export function InspectorRunContent({
             {hasSnapshots ? `${snapshotEvents.length} captured` : 'No snapshots'}
           </div>
         </div>
-        <div className="border border-border bg-background/70 px-3 py-2">
+        <div className="bg-background/70 border border-border px-3 py-2">
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
             Constraints
           </div>
@@ -129,7 +130,7 @@ export function InspectorRunContent({
         </div>
       </div>
 
-      <div className="border border-border bg-background/80">
+      <div className="bg-background/80 border border-border">
         <div className="surface-1 border-b border-border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
           Run timeline
         </div>
@@ -154,7 +155,16 @@ export function InspectorRunContent({
         </div>
       </div>
 
-      <div className="border border-border bg-background/80">
+      <div className="bg-background/80 border border-border">
+        <div className="surface-1 border-b border-border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          Agent events
+        </div>
+        <div className="h-40 min-h-0 p-3">
+          <AgentEventsPanel />
+        </div>
+      </div>
+
+      <div className="bg-background/80 border border-border">
         <div className="surface-1 border-b border-border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
           Recovery and delegation
         </div>
@@ -208,7 +218,7 @@ export function InspectorPlanContent({
   return (
     <div className="m-0 space-y-3">
       <div className="grid gap-2 sm:grid-cols-3">
-        <div className="border border-border bg-background/70 px-3 py-2">
+        <div className="bg-background/70 border border-border px-3 py-2">
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
             Plan status
           </div>
@@ -216,7 +226,7 @@ export function InspectorPlanContent({
             {(planStatus ?? 'idle').replace('_', ' ')}
           </div>
         </div>
-        <div className="border border-border bg-background/70 px-3 py-2">
+        <div className="bg-background/70 border border-border px-3 py-2">
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
             Acceptance checks
           </div>
@@ -224,7 +234,7 @@ export function InspectorPlanContent({
             {acceptanceCheckCount || 'None yet'}
           </div>
         </div>
-        <div className="border border-border bg-background/70 px-3 py-2">
+        <div className="bg-background/70 border border-border px-3 py-2">
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
             Draft state
           </div>
@@ -235,7 +245,7 @@ export function InspectorPlanContent({
       </div>
 
       {generatedSummary ? (
-        <div className="border border-border bg-background/80 px-3 py-3">
+        <div className="bg-background/80 border border-border px-3 py-3">
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
             Plan summary
           </div>
@@ -274,7 +284,7 @@ export function InspectorMemoryContent({
 }: InspectorMemoryContentProps) {
   return (
     <div className="m-0 space-y-3">
-      <div className="border border-border bg-background/80 px-3 py-3">
+      <div className="bg-background/80 border border-border px-3 py-3">
         <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
           Project memory
         </div>
@@ -317,7 +327,7 @@ export function InspectorEvalsContent({
 }: InspectorEvalsContentProps) {
   return (
     <div className="m-0 space-y-3">
-      <div className="border border-border bg-background/80 px-3 py-3">
+      <div className="bg-background/80 border border-border px-3 py-3">
         <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
           Eval checks
         </div>
@@ -422,7 +432,7 @@ export function ProjectChatInspector({
         className="gap-2"
       >
         <div className="overflow-x-auto pb-1">
-          <TabsList className="shadow-sharp-sm h-9 min-w-max justify-start rounded-none border border-border bg-background/90 p-0 font-mono text-xs">
+          <TabsList className="shadow-sharp-sm bg-background/90 h-9 min-w-max justify-start rounded-none border border-border p-0 font-mono text-xs">
             <TabsTrigger
               value="run"
               className="h-full rounded-none border-r border-border px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
@@ -529,7 +539,7 @@ export function ProjectChatInspector({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => onOpenChange(false)}
-            className="absolute inset-0 z-20 bg-background/55 backdrop-blur-[1px]"
+            className="bg-background/55 absolute inset-0 z-20 backdrop-blur-[1px]"
           />
           <motion.div
             initial={{ y: '100%' }}
@@ -538,7 +548,7 @@ export function ProjectChatInspector({
             transition={{ type: 'spring', stiffness: 320, damping: 32 }}
             className="shadow-sharp-lg absolute inset-x-0 bottom-0 z-30 max-h-[85vh] border-t border-border bg-background sm:inset-x-3 sm:bottom-3 sm:max-h-[75vh] sm:border"
           >
-            <div className="flex items-center justify-between border-b border-border bg-background/90 px-3 py-2">
+            <div className="bg-background/90 flex items-center justify-between border-b border-border px-3 py-2">
               <div className="flex items-center gap-2">
                 <div className="h-1 w-8 bg-border sm:hidden" />
                 <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-wide">
@@ -573,7 +583,7 @@ export function ProjectChatInspector({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => onOpenChange(false)}
-            className="absolute inset-0 z-20 bg-background/30"
+            className="bg-background/30 absolute inset-0 z-20"
           />
           <motion.div
             initial={{ y: '100%' }}
@@ -582,7 +592,7 @@ export function ProjectChatInspector({
             transition={{ type: 'spring', stiffness: 320, damping: 32 }}
             className="shadow-sharp-lg absolute inset-x-0 bottom-0 z-30 max-h-[60vh] border-t border-border bg-background"
           >
-            <div className="flex items-center justify-between border-b border-border bg-background/90 px-3 py-2">
+            <div className="bg-background/90 flex items-center justify-between border-b border-border px-3 py-2">
               <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-wide">
                 <Settings2 className="h-3.5 w-3.5 text-primary" />
                 Evidence

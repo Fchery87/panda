@@ -1,7 +1,7 @@
 # Chat-First Workspace Information Architecture
 
 > Status: implemented and verified  
-> Last updated: 2026-04-27
+> Last updated: 2026-05-07
 
 ## Reader And Action
 
@@ -15,7 +15,9 @@ without adding a parallel cockpit, duplicate state model, or editor-first shell.
 The workspace redesign is implemented. Current user-facing contracts:
 
 - Desktop primary surface: chat/session timeline.
-- Proof surface tabs: `Run`, `Changes`, `Context`, and `Preview`.
+- Desktop shell: persistent session rail, central session thread/composer,
+  right-side work tray, and terminal-only bottom drawer.
+- Work tray tabs: `Work`, `Proof`, `Changes`, `Context`, and `Preview`.
 - Mobile destinations: `Work`, `Chat`, `Proof`, and `Preview`.
 - Chat timeline stages: intent, routing, planning, execution, validation,
   receipt, and next action.
@@ -100,7 +102,8 @@ record of the session.
 ### Desktop Hierarchy
 
 1. Center: chat/session timeline. This is the primary work surface.
-2. Right: proof surface. It renders run-derived inspection views.
+2. Right: work tray. It renders work, proof, changed-work, context, and preview
+   views.
 3. Left: quiet session/project rail. It helps return to work without dominating.
 4. Bottom: composer. It owns intent entry, mode, oversight, attachments, and
    send.
@@ -143,7 +146,7 @@ Implemented mobile destinations:
 
 | Current surface     | Target destination            | Notes                                                                    |
 | ------------------- | ----------------------------- | ------------------------------------------------------------------------ |
-| Chat panel          | Chat / Session Timeline       | Becomes the dominant shell surface.                                      |
+| Chat panel          | Chat / Session Timeline       | Owns the central shell surface.                                          |
 | Chat action bar     | Composer                      | Preserve canonical modes and oversight controls.                         |
 | Routing badge       | Chat / Session Timeline       | Inline before execution, compact by default.                             |
 | Run progress panel  | Run view + timeline summaries | Summaries belong near the chat run; details belong in proof.             |
@@ -154,7 +157,7 @@ Implemented mobile destinations:
 | Evals and QA        | Run view                      | Treat as validation evidence attached to the active run.                 |
 | State and decisions | Context or Run detail         | Keep inspectable, but not top-level unless active.                       |
 | Browser preview     | Preview view                  | Preserve as a first-class support surface.                               |
-| Workbench editor    | Work view                     | Editor supports inspection and spot edits, not the primary mental model. |
+| Workbench editor    | Work view in the work tray    | Editor supports inspection and spot edits, not the primary mental model. |
 | Diff tab            | Changes view                  | Changed work should be reachable from both timeline and proof surface.   |
 
 ## Review Surface Consolidation
@@ -163,10 +166,21 @@ The proof surface should consolidate existing equal-weight tabs into fewer
 views. Preferred direction:
 
 ```text
-Run | Changes | Context | Preview
+Work | Proof | Changes | Context | Preview
 ```
 
-### Run
+### Work
+
+Purpose: answer “what code or file detail do I need to inspect or edit?”
+
+Contains:
+
+- Files and editor tabs.
+- Plan artifact tabs.
+- Inline/contextual chat entry points.
+- Diff tab entry points for implementation-heavy review.
+
+### Proof
 
 Purpose: answer “what happened, what is happening, and can I trust it?”
 
@@ -174,6 +188,7 @@ Contains:
 
 - Active run state.
 - Timeline detail.
+- Agent events.
 - Recovery checkpoints.
 - Delegated subagent activity.
 - Receipt summary.

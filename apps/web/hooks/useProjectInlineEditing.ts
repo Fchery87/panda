@@ -7,11 +7,8 @@ import { buildInlineChatFailureDisplay } from '@/lib/workbench-navigation'
 
 interface UseProjectInlineEditingParams {
   projectId: string
-  isRightPanelOpen: boolean
   isMobileLayout: boolean
   setContextualPrompt: (value: string | null) => void
-  setIsRightPanelOpen: (value: boolean | ((prev: boolean) => boolean)) => void
-  setRightPanelTab: (tab: 'chat' | 'run' | 'changes' | 'context' | 'preview') => void
   setMobilePrimaryPanel: (panel: 'workspace' | 'chat' | 'review') => void
   runEvalScenario: (args: {
     prompt: string
@@ -21,11 +18,8 @@ interface UseProjectInlineEditingParams {
 
 export function useProjectInlineEditing({
   projectId,
-  isRightPanelOpen,
   isMobileLayout,
   setContextualPrompt,
-  setIsRightPanelOpen,
-  setRightPanelTab,
   setMobilePrimaryPanel,
   runEvalScenario,
 }: UseProjectInlineEditingParams) {
@@ -34,22 +28,11 @@ export function useProjectInlineEditing({
       const ext = filePath.split('.').pop() || 'text'
       const prompt = `\`\`\`${ext}\n// ${filePath}\n${selection}\n\`\`\``
       setContextualPrompt(prompt)
-      if (!isRightPanelOpen) {
-        setIsRightPanelOpen(true)
-      }
-      setRightPanelTab('chat')
       if (isMobileLayout) {
         setMobilePrimaryPanel('chat')
       }
     },
-    [
-      isMobileLayout,
-      isRightPanelOpen,
-      setContextualPrompt,
-      setIsRightPanelOpen,
-      setMobilePrimaryPanel,
-      setRightPanelTab,
-    ]
+    [isMobileLayout, setContextualPrompt, setMobilePrimaryPanel]
   )
 
   const handleInlineChat = useCallback(

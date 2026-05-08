@@ -113,11 +113,11 @@ export function WorkbenchTopBar({
     <motion.div
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      className="flex shrink-0 flex-col border-b border-foreground bg-card"
+      className="bg-card/95 grid shrink-0 border-b border-foreground"
     >
-      <div className="flex h-12 items-center justify-between px-3">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <div className="flex shrink-0 items-center gap-1">
+      <div className="grid min-h-14 lg:grid-cols-[minmax(230px,0.34fr)_1fr_auto]">
+        <div className="flex min-w-0 items-center gap-3 border-b border-foreground px-3 py-3 lg:border-b-0 lg:border-r lg:px-4">
+          <div className="flex shrink-0 items-center gap-1.5">
             <Button
               variant="ghost"
               size="sm"
@@ -147,15 +147,30 @@ export function WorkbenchTopBar({
             </Link>
           </div>
 
-          <div className="bg-foreground/30 h-5 w-px" />
+          <div className="min-w-0">
+            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              Project / active
+            </p>
+            <h1 className="truncate text-lg font-bold leading-none tracking-tight text-foreground">
+              {projectName}
+            </h1>
+          </div>
+        </div>
 
-          <span className="truncate font-mono text-xs font-semibold uppercase tracking-[0.12em] text-foreground">
-            {projectName}
-          </span>
-
-          {selectedFilePath ? <div className="bg-foreground/30 hidden h-5 w-px lg:block" /> : null}
-
-          <div className="hidden min-w-0 flex-1 lg:block">
+        <div className="grid min-w-0 content-center gap-2 border-b border-foreground px-3 py-3 lg:border-b-0 lg:px-4">
+          <button
+            type="button"
+            onClick={onOpenCommandPalette}
+            className="flex h-9 w-full items-center gap-3 border border-foreground bg-background px-3 text-left font-mono text-[11px] text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
+            aria-label="Open command palette"
+          >
+            <span className="uppercase tracking-[0.18em] text-primary">Search</span>
+            <span className="min-w-0 flex-1 truncate">Files, commands, proof, runtime</span>
+            <span className="shrink-0 border border-border bg-card px-2 py-0.5 text-[10px] uppercase tracking-[0.18em]">
+              Ctrl+K
+            </span>
+          </button>
+          <div className="hidden min-w-0 lg:block">
             <Breadcrumb
               projectName={projectName}
               projectId={projectId}
@@ -165,22 +180,8 @@ export function WorkbenchTopBar({
           </div>
         </div>
 
-        <div className="mx-4 hidden min-w-0 flex-1 justify-center xl:flex">
-          <button
-            type="button"
-            onClick={onOpenCommandPalette}
-            className="border-foreground/70 flex h-8 w-full max-w-md items-center gap-3 border bg-background px-3 text-left font-mono text-[11px] text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
-            aria-label="Open command palette"
-          >
-            <span className="uppercase tracking-[0.18em] text-primary">Search</span>
-            <span className="min-w-0 flex-1 truncate">Files, commands, settings</span>
-            <span className="shrink-0 border border-border bg-card px-2 py-0.5 text-[10px] uppercase tracking-[0.18em]">
-              Ctrl+K
-            </span>
-          </button>
-        </div>
-
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2 px-3 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground lg:border-l lg:border-foreground lg:px-4">
+          <span className="h-2 w-2 border border-foreground bg-primary" />
           <TopBarControls
             branch={gitStatus?.branch}
             model={selectedModel}
@@ -201,7 +202,7 @@ export function WorkbenchTopBar({
             onStopRuntime={onStopRuntime}
             isRuntimeRunning={isRuntimeRunning}
           />
-          <div className="bg-foreground/30 h-5 w-px" />
+          <div className="bg-foreground/30 hidden h-5 w-px sm:block" />
           <ThemeToggle />
           <UserMenu compact />
           <DropdownMenu>

@@ -53,14 +53,14 @@ export function buildExecutionSessionInspectorViewModel(
         emptyTitle: 'No preview attached',
         emptyDetail: 'Start or open a session with browser output to inspect it here.',
       }
-    case 'chat':
+    case 'work':
     default:
       return {
         eyebrow,
-        title: 'Execution Session',
-        summary: 'Review session proof, changed work, context, and preview state.',
-        emptyTitle: 'Open a session inspector tab',
-        emptyDetail: 'Choose proof, changes, context, or preview to inspect this session.',
+        title: 'Session Work',
+        summary: 'Open files, inspect diffs, and review implementation detail for this session.',
+        emptyTitle: 'No work selected',
+        emptyDetail: 'Open a file, diff, or generated artifact to inspect implementation detail.',
       }
   }
 }

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect } from 'react'
 
-type RightPanelTab = 'chat' | 'run' | 'changes' | 'context' | 'preview'
+type RightPanelTab = 'work' | 'run' | 'changes' | 'context' | 'preview'
 type MobilePrimaryPanel = 'workspace' | 'chat' | 'review'
 
 interface UseWorkbenchPanelStateArgs {

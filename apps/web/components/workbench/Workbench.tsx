@@ -70,8 +70,8 @@ interface WorkbenchProps {
 }
 
 const CENTER_TABS: CenterTabBarTab[] = [
-  { id: 'editor', label: 'Session' },
-  { id: 'diff', label: 'Diff' },
+  { id: 'editor', label: 'Work Surface' },
+  { id: 'diff', label: 'Review Diff' },
 ]
 
 const innerLayoutPersistenceKey = 'panda-workbench-inner'

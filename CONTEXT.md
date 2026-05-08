@@ -23,6 +23,23 @@ Use `Run` only for one execution attempt within an Execution Session. Use `Chat`
 for the narrative/input surface attached to the Execution Session, not for the
 whole work thread.
 
+### Execution Session Shell
+
+The `Execution Session Shell` is the desktop workspace IA where the active
+Execution Session owns the canvas. It is organized as a persistent session rail,
+central session thread and composer, right-side work tray, and terminal-only
+bottom drawer.
+
+The central session thread is the primary surface for chat narrative, mode
+selection, model choice, attachments, approvals, stop/recover actions, and next
+steps. The work tray contains implementation detail and inspection surfaces:
+`Work`, `Proof`, `Changes`, `Context`, and `Preview`. The bottom drawer is only
+for terminal command execution; agent events belong in `Proof`.
+
+Use `Execution Session Shell` for the implemented workspace structure. Use
+`Chat-First Workbench` only for the broader product principle that chat/session
+timeline is dominant over editor-first chrome.
+
 ### Plan
 
 A `Plan` is the reviewable strategy the user accepts before execution. An
@@ -292,6 +309,10 @@ timeline is the primary work surface. Files, editor tabs, terminal output,
 diffs, preview, and proof surfaces support the active session rather than owning
 the workspace hierarchy.
 
-Use `IDE-first workspace` for the implemented shape where file navigation,
-editor tabs, center workbench panels, and terminal-style supporting surfaces are
-visually and structurally dominant over the active chat timeline.
+The implemented desktop expression is the `Execution Session Shell`: session
+rail on the left, session thread and composer in the center, contextual work
+tray on the right, and terminal-only bottom drawer.
+
+Use `IDE-first workspace` for a legacy or anti-pattern shape where file
+navigation, editor tabs, center workbench panels, and terminal-style supporting
+surfaces are visually and structurally dominant over the active chat timeline.

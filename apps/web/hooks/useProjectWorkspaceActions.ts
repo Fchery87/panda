@@ -19,8 +19,6 @@ interface UseProjectWorkspaceActionsParams {
     mode: ChatMode
   }) => Promise<Id<'chats'>>
   setActiveChatId: (chatId: Id<'chats'>) => void
-  setIsRightPanelOpen: (value: boolean | ((prev: boolean) => boolean)) => void
-  setRightPanelTab: (tab: 'chat' | 'run' | 'changes' | 'context' | 'preview') => void
   agent: AgentLike
   setPlanDraft: (value: string) => void
   setChatMode: (mode: ChatMode) => void
@@ -32,8 +30,6 @@ export function useProjectWorkspaceActions({
   chatMode,
   createChat,
   setActiveChatId,
-  setIsRightPanelOpen,
-  setRightPanelTab,
   agent,
   setPlanDraft,
   setChatMode,
@@ -49,9 +45,7 @@ export function useProjectWorkspaceActions({
   const handleNewChat = useCallback(async () => {
     const id = await createChat({ projectId, title: 'New Chat', mode: chatMode })
     setActiveChatId(id)
-    setIsRightPanelOpen(true)
-    setRightPanelTab('chat')
-  }, [chatMode, createChat, projectId, setActiveChatId, setIsRightPanelOpen, setRightPanelTab])
+  }, [chatMode, createChat, projectId, setActiveChatId])
 
   const handleResetWorkspace = useCallback(() => {
     agent.stop()

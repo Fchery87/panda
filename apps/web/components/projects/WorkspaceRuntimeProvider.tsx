@@ -11,7 +11,6 @@ import type { Id } from '@convex/_generated/dataModel'
 
 import { ProjectWorkspaceShell } from '@/components/projects/ProjectWorkspaceShell'
 import { ProjectChatPanel } from '@/components/projects/ProjectChatPanel'
-import { WorkbenchRightPanel } from '@/components/workbench/WorkbenchRightPanel'
 import { derivePlanningSessionDebugSummary } from '@/components/plan/PlanningSessionDebugCard'
 import { AgentRuntimeProvider } from '@/contexts/AgentRuntimeContext'
 import { WorkspaceRuntimeProvider as WorkspaceRuntimeContextProvider } from '@/contexts/WorkspaceRuntimeContext'
@@ -197,14 +196,8 @@ export function WorkspaceRuntimeProvider({
       const prev = useWorkspaceUiStore.getState().mobilePrimaryPanel
       const next = typeof panel === 'function' ? panel(prev) : panel
       if (next !== prev) setMobilePrimaryPanel(next)
-      if (next === 'review') {
-        const state = useWorkspaceUiStore.getState()
-        if (state.rightPanelTab === 'chat') {
-          setRightPanelTab('run')
-        }
-      }
     },
-    [setMobilePrimaryPanel, setRightPanelTab]
+    [setMobilePrimaryPanel]
   )
   const handleSetMobileKeyboardOpen = useCallback(
     (open: SetStateAction<boolean>) => {
@@ -460,8 +453,6 @@ export function WorkspaceRuntimeProvider({
     chatMode,
     createChat: createChatMutation,
     setActiveChatId,
-    setIsRightPanelOpen: handleSetRightPanelOpen,
-    setRightPanelTab: handleSetRightPanelTab,
     agent,
     setPlanDraft,
     setChatMode,
@@ -559,11 +550,8 @@ export function WorkspaceRuntimeProvider({
 
   const { handleContextualChat, handleInlineChat } = useProjectInlineEditing({
     projectId: String(projectId),
-    isRightPanelOpen,
     isMobileLayout,
     setContextualPrompt,
-    setIsRightPanelOpen: handleSetRightPanelOpen,
-    setRightPanelTab: handleSetRightPanelTab,
     setMobilePrimaryPanel: handleSetMobilePrimaryPanel,
     runEvalScenario: agent.runEvalScenario,
   })
@@ -728,10 +716,8 @@ export function WorkspaceRuntimeProvider({
       onToggleRightPanel: () => {
         const s = useWorkspaceUiStore.getState()
         if (!s.isRightPanelOpen) {
-          s.setRightPanelTab('chat')
-          if (isMobileLayout) {
-            s.setMobilePrimaryPanel('chat')
-          }
+          s.setRightPanelTab('work')
+          if (isMobileLayout) s.setMobilePrimaryPanel('review')
         } else if (isMobileLayout && s.mobilePrimaryPanel === 'chat') {
           s.setMobilePrimaryPanel('workspace')
         }
@@ -927,9 +913,8 @@ export function WorkspaceRuntimeProvider({
     onMobileReviewTabChange: setRightPanelTab,
     mobileUnreadCount,
     isMobileKeyboardOpen,
-    // Chat and right panel rendered here with zero props — they read from context
+    // Chat renders in the central shell; the work tray is assembled by the layout.
     chatPanel: <ProjectChatPanel projectId={projectId} />,
-    rightPanelContent: <WorkbenchRightPanel projectId={projectId} />,
     pendingArtifactPreview,
     pendingDiffEntries,
     onApplyPendingArtifact: handleApplyPendingArtifact,

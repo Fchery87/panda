@@ -5,21 +5,21 @@ import type { ReactNode } from 'react'
 import type { SidebarSection } from './SidebarRail'
 
 const SECTION_LABELS: Record<SidebarSection, string> = {
-  files: 'Files',
-  agents: 'Active Agents',
-  search: 'Search',
-  git: 'Source Control',
-  deploy: 'Deploy & Preview',
-  tasks: 'Task History',
+  files: 'Project Files',
+  agents: 'Agent Runs',
+  search: 'Find Context',
+  git: 'Source Review',
+  deploy: 'App Preview',
+  tasks: 'Sessions',
 }
 
 const SECTION_DESCRIPTIONS: Record<SidebarSection, string> = {
-  files: 'Navigate project files and symbols',
-  agents: 'Monitor and control running agents',
-  search: 'Jump into code by meaning or text',
-  git: 'Review repository state and diffs',
-  deploy: 'Preview builds and deployments',
-  tasks: 'Browse completed and active tasks',
+  files: 'Open files only when you need implementation detail.',
+  agents: 'Monitor active and background execution sessions.',
+  search: 'Find files, symbols, and project context quickly.',
+  git: 'Review repository state before accepting work.',
+  deploy: 'Attach runtime preview and deployment signals.',
+  tasks: 'Switch between current and past agent sessions.',
 }
 
 interface SidebarFlyoutProps {
@@ -37,17 +37,17 @@ export function SidebarFlyout({ isOpen, activeSection, children }: SidebarFlyout
           animate={{ width: 260, opacity: 1 }}
           exit={{ width: 0, opacity: 0 }}
           transition={{ duration: 0.18, ease: 'easeOut' }}
-          className="surface-1 h-full flex-shrink-0 overflow-hidden border-r border-border"
+          className="bg-secondary/70 h-full flex-shrink-0 overflow-hidden border-r border-foreground"
         >
           <div className="flex h-full flex-col" style={{ width: 260 }}>
-            <div className="surface-0 shrink-0 border-b border-border px-3 py-2.5">
+            <div className="shrink-0 border-b border-foreground bg-card px-3 py-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h2 className="font-mono text-xs font-medium text-foreground">
+                  <h2 className="font-mono text-xs font-medium uppercase tracking-[0.16em] text-foreground">
                     {SECTION_LABELS[activeSection]}
                   </h2>
                 </div>
-                <div className="surface-1 flex h-6 min-w-6 items-center justify-center border border-border px-1.5 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                <div className="flex h-6 min-w-6 items-center justify-center border border-border bg-background px-1.5 font-mono text-[9px] uppercase tracking-widest text-primary">
                   {SECTION_LABELS[activeSection].slice(0, 3)}
                 </div>
               </div>

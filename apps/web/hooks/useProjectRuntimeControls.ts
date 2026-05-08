@@ -21,7 +21,7 @@ interface UseProjectRuntimeControlsParams {
   }) => Promise<{ jobId: Id<'jobs'>; command: string; workingDirectory?: string } | undefined>
   cancelJob: (jobId: Id<'jobs'>) => Promise<Id<'jobs'>>
   setIsBottomDockOpen: (value: boolean | ((prev: boolean) => boolean)) => void
-  setActiveBottomDockTab: (tab: 'terminal' | 'agent-events') => void
+  setActiveBottomDockTab: (tab: 'terminal') => void
   toast: {
     error: (title: string, options?: { description?: string }) => void
   }

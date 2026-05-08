@@ -116,15 +116,15 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
   return (
     <div
       className={cn(
-        'surface-1 relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden border-border',
-        isMobileLayout ? 'border-t' : 'border-l'
+        'relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-card',
+        isMobileLayout ? 'border-t border-foreground' : ''
       )}
     >
-      <div className="relative border-b border-border bg-muted/30 px-3 py-2.5">
+      <div className="relative border-b border-foreground bg-secondary px-3 py-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="font-mono text-[11px] font-medium uppercase tracking-[0.24em] text-foreground">
-              Execution Session · {sessionStatusLabel}
+              Agent Thread · {sessionStatusLabel}
             </div>
             {sessionSummary ? (
               <p className="mt-1 max-w-md truncate font-mono text-[10px] text-muted-foreground">
@@ -209,7 +209,7 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
       `}</style>
 
       {activeChatExists && latestRecoverableCheckpoint?.sessionID && !isStreaming ? (
-        <div className="border-b border-border bg-primary/5 px-3 py-2">
+        <div className="bg-primary/5 border-b border-border px-3 py-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="min-w-0 space-y-0.5 font-mono text-[11px]">
               <div className="flex items-center gap-1.5 uppercase tracking-wide text-primary">
@@ -229,7 +229,7 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
               variant="outline"
               size="sm"
               onClick={() => onResumeRuntimeSession(latestRecoverableCheckpoint.sessionID!)}
-              className="h-7 rounded-none border-primary/40 px-2 font-mono text-[10px] uppercase tracking-wide"
+              className="border-primary/40 h-7 rounded-none px-2 font-mono text-[10px] uppercase tracking-wide"
             >
               <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
               Recover Run
@@ -240,7 +240,7 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
 
       {!hasProvider && chatMessages.length === 0 ? (
         <div className="px-3 pb-2">
-          <Alert className="rounded-none border-primary/40 bg-primary/5">
+          <Alert className="border-primary/40 bg-primary/5 rounded-none">
             <AlertTitle className="font-mono text-xs uppercase tracking-wide">
               No LLM Provider Configured
             </AlertTitle>
@@ -265,7 +265,7 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
         <div className="px-3 pb-2">
           <Alert
             variant="destructive"
-            className="rounded-none border-destructive/70 bg-destructive/5"
+            className="border-destructive/70 bg-destructive/5 rounded-none"
           >
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle className="font-mono text-xs uppercase tracking-wide">

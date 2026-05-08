@@ -63,7 +63,7 @@ export function ProjectWorkspaceShell({
   return (
     <div
       data-testid="workspace-shell"
-      className="dot-grid fixed inset-0 top-0 z-10 flex flex-col overflow-hidden bg-background"
+      className="dot-grid fixed inset-0 top-0 z-10 overflow-hidden bg-background p-3 text-foreground sm:p-5 lg:p-6"
     >
       <div
         className={`pointer-events-none absolute inset-x-0 z-40 px-3 py-2 ${layoutProps.focusState ? 'top-20' : 'top-11'}`}
@@ -76,36 +76,38 @@ export function ProjectWorkspaceShell({
         chatId={activeChatId}
         chatTitle={activeChatTitle}
       />
-      <WorkbenchTopBar
-        projectName={projectName}
-        projectId={projectId}
-        selectedFilePath={selectedFilePath}
-        gitStatus={gitStatus as Parameters<typeof WorkbenchTopBar>[0]['gitStatus']}
-        selectedModel={selectedModel}
-        isAgentRunning={isAgentRunning}
-        isAnyJobRunning={isAnyJobRunning}
-        healthStatus={healthStatus}
-        healthDetail={healthDetail}
-        isRightPanelOpen={isRightPanelOpen}
-        isFlyoutOpen={isFlyoutOpen}
-        isRuntimeRunning={isRuntimeRunning}
-        onToggleFlyout={onToggleFlyout}
-        onToggleRightPanel={onToggleRightPanel}
-        onNewTask={onNewTask}
-        onStartRuntime={onStartRuntime}
-        onStopRuntime={onStopRuntime}
-        onResetWorkspace={onResetWorkspace}
-        onOpenShareDialog={() => onShareDialogOpenChange(true)}
-        onRevealInExplorer={onRevealInExplorer}
-        onOpenCommandPalette={onOpenCommandPalette}
-        activeSidebarSection={activeSection}
-        onSidebarSectionChange={onSidebarSectionChange}
-        focusState={layoutProps.focusState}
-        onFocusPrimaryAction={layoutProps.onFocusPrimaryAction}
-        onFocusSecondaryAction={layoutProps.onFocusSecondaryAction}
-      />
+      <div className="bg-background/92 shadow-sharp-lg mx-auto flex h-full min-h-0 max-w-[1500px] flex-col overflow-hidden border border-foreground">
+        <WorkbenchTopBar
+          projectName={projectName}
+          projectId={projectId}
+          selectedFilePath={selectedFilePath}
+          gitStatus={gitStatus as Parameters<typeof WorkbenchTopBar>[0]['gitStatus']}
+          selectedModel={selectedModel}
+          isAgentRunning={isAgentRunning}
+          isAnyJobRunning={isAnyJobRunning}
+          healthStatus={healthStatus}
+          healthDetail={healthDetail}
+          isRightPanelOpen={isRightPanelOpen}
+          isFlyoutOpen={isFlyoutOpen}
+          isRuntimeRunning={isRuntimeRunning}
+          onToggleFlyout={onToggleFlyout}
+          onToggleRightPanel={onToggleRightPanel}
+          onNewTask={onNewTask}
+          onStartRuntime={onStartRuntime}
+          onStopRuntime={onStopRuntime}
+          onResetWorkspace={onResetWorkspace}
+          onOpenShareDialog={() => onShareDialogOpenChange(true)}
+          onRevealInExplorer={onRevealInExplorer}
+          onOpenCommandPalette={onOpenCommandPalette}
+          activeSidebarSection={activeSection}
+          onSidebarSectionChange={onSidebarSectionChange}
+          focusState={layoutProps.focusState}
+          onFocusPrimaryAction={layoutProps.onFocusPrimaryAction}
+          onFocusSecondaryAction={layoutProps.onFocusSecondaryAction}
+        />
 
-      <ProjectWorkspaceLayout {...layoutProps} />
+        <ProjectWorkspaceLayout {...layoutProps} />
+      </div>
       <ComposerOverlay
         isOpen={composerOpen}
         onClose={() => onComposerOpenChange(false)}
