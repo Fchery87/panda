@@ -643,12 +643,13 @@ export function ChatInput({
       </div>
 
       {/* Inline controls row */}
-      <div className="mt-2 space-y-2 border border-border bg-background/80 px-2 py-2">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
+      <div className="mt-2 border border-border bg-background/80">
+        {/* Row 1: context / attachment / model / mode selectors */}
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5 border-b border-border px-2 py-1.5">
           {(activeFile || selection) && (
             <button
               type="button"
-              className="flex h-7 items-center gap-1 border border-border bg-background/70 px-2 font-mono text-[11px] leading-none text-muted-foreground hover:text-foreground"
+              className="flex h-6 max-w-[140px] items-center gap-1 border border-border bg-background/70 px-2 font-mono text-[10px] leading-none text-muted-foreground hover:text-foreground"
               onClick={() => setIncludeEditorContext((value) => !value)}
               title={
                 includeEditorContext
@@ -657,13 +658,15 @@ export function ChatInput({
               }
             >
               {includeEditorContext ? (
-                <IconAttach className="h-3 w-3" />
+                <IconAttach className="h-3 w-3 shrink-0" />
               ) : (
-                <IconClose className="h-3 w-3" />
+                <IconClose className="h-3 w-3 shrink-0" />
               )}
-              {selection
-                ? `${selection.filePath}:${selection.startLine}-${selection.endLine}`
-                : activeFile}
+              <span className="truncate">
+                {selection
+                  ? `${selection.filePath}:${selection.startLine}-${selection.endLine}`
+                  : activeFile}
+              </span>
             </button>
           )}
 
@@ -701,7 +704,7 @@ export function ChatInput({
                 architectBrainstormEnabled ? 'Disable brainstorming' : 'Enable brainstorming'
               }
               className={cn(
-                'transition-sharp flex h-7 items-center border border-border px-2.5 font-mono text-[11px] leading-none uppercase tracking-wide',
+                'transition-sharp flex h-6 items-center border border-border px-2 font-mono text-[10px] leading-none uppercase tracking-wide',
                 'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary',
                 'disabled:pointer-events-none disabled:opacity-50',
                 architectBrainstormEnabled
@@ -714,17 +717,16 @@ export function ChatInput({
           )}
         </div>
 
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-          <div />
-
+        {/* Row 2: oversight toggle (left) + send controls (right) */}
+        <div className="flex items-center justify-between gap-2 px-2 py-1.5">
           <OversightToggle
             level={oversightLevel}
             onChange={setOversightLevel}
             disabled={isStreaming}
           />
 
-          <div className="flex items-center justify-end gap-2">
-            <span className="hidden font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground sm:inline">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
               Enter to send
             </span>
 
@@ -735,7 +737,7 @@ export function ChatInput({
                 disabled={!hasSendContent}
                 aria-label="Send message"
                 className={cn(
-                  'transition-sharp h-7 w-7 rounded-none',
+                  'transition-sharp h-6 w-6 rounded-none',
                   hasSendContent
                     ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                     : 'bg-secondary text-muted-foreground'
