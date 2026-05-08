@@ -73,23 +73,15 @@ export function WorkbenchRightPanel({ projectId, workContent }: WorkbenchRightPa
 
   const inspectorView = buildExecutionSessionInspectorViewModel(activeTab, executionSession)
 
-  const reviewSummary = activeChatId
-    ? 'Generated artifacts and changed work from the current chat session appear here for inspection.'
-    : 'Open or create a chat to review generated artifacts and changed work.'
-
   const getInspectorContent = () => {
     switch (activeTab) {
       case 'context':
         return (
           <div className="flex h-full flex-col overflow-hidden">
-            <div className="surface-0 border-b border-border px-3 py-3">
+            <div className="surface-0 border-b border-border px-3 py-2">
               <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                 Plan, memory, evals
               </div>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Keep the active plan, durable project memory, and repeatable checks attached to the
-                current chat instead of scattering them across separate rails.
-              </p>
             </div>
             <div className="min-h-0 flex-1 space-y-3 overflow-auto p-3">
               <InspectorPlanContent
@@ -119,11 +111,10 @@ export function WorkbenchRightPanel({ projectId, workContent }: WorkbenchRightPa
       case 'changes':
         return (
           <div className="flex h-full min-h-0 flex-col overflow-hidden">
-            <div className="surface-0 border-b border-border px-3 py-3">
+            <div className="surface-0 border-b border-border px-3 py-2">
               <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                 Session changed work
               </div>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{reviewSummary}</p>
             </div>
             <div className="min-h-0 flex-1 overflow-auto">
               <ArtifactPanel
@@ -137,25 +128,27 @@ export function WorkbenchRightPanel({ projectId, workContent }: WorkbenchRightPa
         )
       case 'run':
         return (
-          <InspectorRunContent
-            chatId={activeChatId}
-            liveSteps={liveSteps}
-            runEvents={runEvents}
-            latestRunReceipt={latestRunReceipt}
-            isStreaming={isStreaming}
-            tracePersistenceStatus={tracePersistenceStatus}
-            onOpenFile={onOpenFile}
-            onOpenArtifacts={onOpenArtifacts}
-            currentSpec={currentSpec}
-            planStatus={planStatus}
-            planDraft={planDraft}
-            onSpecClick={onSpecClick}
-            onPlanClick={onPlanClick}
-            onResumeRuntimeSession={onResumeRuntimeSession}
-            planningDebug={planningDebug}
-            snapshotEvents={snapshotEvents}
-            subagentToolCalls={subagentToolCalls}
-          />
+          <div className="h-full min-h-0 overflow-auto p-3">
+            <InspectorRunContent
+              chatId={activeChatId}
+              liveSteps={liveSteps}
+              runEvents={runEvents}
+              latestRunReceipt={latestRunReceipt}
+              isStreaming={isStreaming}
+              tracePersistenceStatus={tracePersistenceStatus}
+              onOpenFile={onOpenFile}
+              onOpenArtifacts={onOpenArtifacts}
+              currentSpec={currentSpec}
+              planStatus={planStatus}
+              planDraft={planDraft}
+              onSpecClick={onSpecClick}
+              onPlanClick={onPlanClick}
+              onResumeRuntimeSession={onResumeRuntimeSession}
+              planningDebug={planningDebug}
+              snapshotEvents={snapshotEvents}
+              subagentToolCalls={subagentToolCalls}
+            />
+          </div>
         )
       default:
         return null

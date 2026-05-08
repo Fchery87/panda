@@ -95,12 +95,12 @@ export function InspectorRunContent({
 
   return (
     <div className="m-0 space-y-3">
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-1.5">
         <div className="bg-background/70 border border-border px-3 py-2">
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
             Execution
           </div>
-          <div className="mt-1 text-sm font-medium text-foreground">
+          <div className="mt-1 text-xs font-medium text-foreground">
             {isStreaming ? 'Running' : 'Idle'}
           </div>
         </div>
@@ -108,7 +108,7 @@ export function InspectorRunContent({
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
             Plan context
           </div>
-          <div className="mt-1 text-sm font-medium text-foreground">
+          <div className="mt-1 text-xs font-medium text-foreground">
             {hasActivePlan ? planStatus?.replace('_', ' ') : 'None'}
           </div>
         </div>
@@ -116,16 +116,16 @@ export function InspectorRunContent({
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
             Snapshots
           </div>
-          <div className="mt-1 text-sm font-medium text-foreground">
-            {hasSnapshots ? `${snapshotEvents.length} captured` : 'No snapshots'}
+          <div className="mt-1 text-xs font-medium text-foreground">
+            {hasSnapshots ? `${snapshotEvents.length} captured` : 'None'}
           </div>
         </div>
         <div className="bg-background/70 border border-border px-3 py-2">
           <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
             Constraints
           </div>
-          <div className="mt-1 text-sm font-medium text-foreground">
-            {hasSpec ? (currentSpec?.status ?? 'Spec attached') : 'No active spec'}
+          <div className="mt-1 text-xs font-medium text-foreground">
+            {hasSpec ? (currentSpec?.status ?? 'Attached') : 'None'}
           </div>
         </div>
       </div>
@@ -217,28 +217,28 @@ export function InspectorPlanContent({
 
   return (
     <div className="m-0 space-y-3">
-      <div className="grid gap-2 sm:grid-cols-3">
-        <div className="bg-background/70 border border-border px-3 py-2">
-          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            Plan status
+      <div className="grid grid-cols-3 gap-1.5">
+        <div className="bg-background/70 border border-border px-2 py-2">
+          <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
+            Status
           </div>
-          <div className="mt-1 text-sm font-medium text-foreground">
+          <div className="mt-1 text-xs font-medium text-foreground">
             {(planStatus ?? 'idle').replace('_', ' ')}
           </div>
         </div>
-        <div className="bg-background/70 border border-border px-3 py-2">
-          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            Acceptance checks
+        <div className="bg-background/70 border border-border px-2 py-2">
+          <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
+            Checks
           </div>
-          <div className="mt-1 text-sm font-medium text-foreground">
-            {acceptanceCheckCount || 'None yet'}
+          <div className="mt-1 text-xs font-medium text-foreground">
+            {acceptanceCheckCount || 'None'}
           </div>
         </div>
-        <div className="bg-background/70 border border-border px-3 py-2">
-          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-            Draft state
+        <div className="bg-background/70 border border-border px-2 py-2">
+          <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
+            Draft
           </div>
-          <div className="mt-1 text-sm font-medium text-foreground">
+          <div className="mt-1 text-xs font-medium text-foreground">
             {isSavingPlanDraft ? 'Saving' : lastSavedAt ? 'Saved' : 'Unsaved'}
           </div>
         </div>

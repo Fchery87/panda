@@ -252,7 +252,7 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
     expect(html).toContain('aria-label="Source Review"')
   })
 
-  test('renders chat-first mobile navigation with proof and preview access', () => {
+  test('renders chat-first mobile navigation with proof access', () => {
     const html = renderToStaticMarkup(
       <ProjectWorkspaceLayoutView
         projectId={'project' as never}
@@ -297,11 +297,9 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
     expect(html).toContain('aria-label="Show session workspace"')
     expect(html).toContain('aria-label="Show chat timeline"')
     expect(html).toContain('aria-label="Show run proof"')
-    expect(html).toContain('aria-label="Show runtime preview"')
     expect(html).toContain('Session')
     expect(html).toContain('Chat')
     expect(html).toContain('Proof')
-    expect(html).toContain('Preview')
     expect(html).toContain('chat-panel')
   })
 })

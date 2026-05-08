@@ -87,7 +87,7 @@ export function WorkspaceHome({
 
   if (onStartAgent) {
     quickActions.push({
-      label: 'New Agent Task',
+      label: 'New Task',
       icon: IconNewChat,
       onClick: onStartAgent,
     })
@@ -95,7 +95,7 @@ export function WorkspaceHome({
 
   if (onOpenTerminal) {
     quickActions.push({
-      label: 'Open Runtime Dock',
+      label: 'Runtime Dock',
       icon: IconUpload,
       onClick: onOpenTerminal,
     })
@@ -103,54 +103,54 @@ export function WorkspaceHome({
 
   return (
     <div className="dot-grid scrollbar-thin h-full overflow-auto bg-background">
-      <div className="mx-auto max-w-5xl px-4 py-5 sm:px-6 sm:py-7">
+      <div className="px-3 py-3">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="shadow-sharp-md mb-6 border border-foreground bg-background"
+          className="shadow-sharp-md mb-4 border border-foreground bg-background"
         >
           <div className="bg-foreground/80 grid gap-px">
-            <div className="space-y-3 bg-background p-5 sm:p-6">
+            <div className="space-y-2 bg-background p-3">
               <div className="flex items-center gap-3">
                 <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
                   Execution Session
                 </span>
               </div>
-              <h1 className="max-w-2xl text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+              <h1 className="text-base font-bold tracking-tight text-foreground">
                 {focusState
                   ? focusState.objective
                   : 'Run the workspace from intent, proof, and context.'}
               </h1>
-              <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
-                {primarySummary}
-              </p>
-              <div className="grid gap-2 pt-2 sm:grid-cols-3">
-                {quickActions.map((action) => {
-                  const Icon = action.icon
-                  return (
-                    <Button
-                      key={action.label}
-                      variant="outline"
-                      className="h-10 justify-center gap-2 rounded-none font-mono text-xs leading-none"
-                      onClick={action.onClick}
-                    >
-                      <Icon className="h-4 w-4" />
-                      {action.label}
-                    </Button>
-                  )
-                })}
-              </div>
+              <p className="text-xs leading-relaxed text-muted-foreground">{primarySummary}</p>
+              {quickActions.length > 0 && (
+                <div className="grid grid-cols-2 gap-1.5 pt-1">
+                  {quickActions.map((action) => {
+                    const Icon = action.icon
+                    return (
+                      <Button
+                        key={action.label}
+                        variant="outline"
+                        className="h-8 justify-center gap-1.5 rounded-none font-mono text-[10px] leading-none"
+                        onClick={action.onClick}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        {action.label}
+                      </Button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
 
-            <div className={cn('bg-background p-4', focusState && focusTone?.panel)}>
+            <div className={cn('bg-background p-3', focusState && focusTone?.panel)}>
               <div className="flex items-center justify-between gap-3">
                 <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
                   Session State
                 </span>
                 <span
                   className={cn(
-                    'border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em]',
+                    'border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em]',
                     focusState && focusTone
                       ? focusTone.badge
                       : 'bg-background/70 border-border text-muted-foreground'
@@ -159,17 +159,17 @@ export function WorkspaceHome({
                   {focusState ? focusState.statusLabel : 'Idle'}
                 </span>
               </div>
-              <div className="mt-4 space-y-3 font-mono text-[11px] text-muted-foreground">
-                <div className="flex items-start justify-between gap-4">
+              <div className="mt-3 space-y-2 font-mono text-[11px] text-muted-foreground">
+                <div className="flex items-center justify-between gap-4">
                   <span>Session changes</span>
                   <span className="text-foreground">{pendingDiffs}</span>
                 </div>
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center justify-between gap-4">
                   <span>Active runs</span>
                   <span className="text-foreground">{activeAgents}</span>
                 </div>
                 {focusState ? (
-                  <div className="border-t border-border pt-3 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  <div className="border-t border-border pt-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                     Next: <span className="text-foreground">{focusState.nextStep}</span>
                   </div>
                 ) : null}
@@ -183,18 +183,18 @@ export function WorkspaceHome({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.04 }}
-            className={cn('mb-6 border p-4', focusTone.panel)}
+            className={cn('mb-4 border p-3', focusTone.panel)}
           >
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
                 Next move
               </span>
               <span className="font-mono text-xs text-foreground">{focusState.nextStep}</span>
-              <div className="ml-auto flex flex-wrap gap-2">
+              <div className="ml-auto flex flex-wrap gap-1.5">
                 {focusState.secondaryAction && onFocusSecondaryAction ? (
                   <Button
                     variant="outline"
-                    className="h-8 rounded-none px-3 font-mono text-[10px] uppercase tracking-[0.2em]"
+                    className="h-7 rounded-none px-2.5 font-mono text-[10px] uppercase tracking-[0.2em]"
                     onClick={onFocusSecondaryAction}
                   >
                     {focusState.secondaryAction.label}
@@ -202,7 +202,7 @@ export function WorkspaceHome({
                 ) : null}
                 {focusState.primaryAction && onFocusPrimaryAction ? (
                   <Button
-                    className="h-8 rounded-none px-3 font-mono text-[10px] uppercase tracking-[0.2em]"
+                    className="h-7 rounded-none px-2.5 font-mono text-[10px] uppercase tracking-[0.2em]"
                     onClick={onFocusPrimaryAction}
                   >
                     {focusState.primaryAction.label}
@@ -217,27 +217,25 @@ export function WorkspaceHome({
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.08 }}
-          className="mb-6 border border-foreground bg-card"
+          className="mb-4 border border-foreground bg-card"
         >
-          <div className="border-b border-foreground bg-secondary px-4 py-3">
+          <div className="border-b border-foreground bg-secondary px-3 py-2">
             <h2 className="font-mono text-[10px] uppercase tracking-[0.24em] text-primary">
               Session Timeline
             </h2>
           </div>
           <div className="divide-y divide-border">
             {timelineRows.map((row) => (
-              <div key={row.id} className="grid gap-2 px-4 py-3 sm:grid-cols-[120px_1fr]">
-                <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              <div key={row.id} className="px-3 py-2">
+                <div className="mb-0.5 font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
                   {row.title}
                 </div>
-                <div>
-                  <p className="text-sm leading-relaxed text-foreground">{row.summary}</p>
-                  {row.detailRef ? (
-                    <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                      Detail: {row.detailRef.kind}
-                    </p>
-                  ) : null}
-                </div>
+                <p className="text-xs leading-relaxed text-foreground">{row.summary}</p>
+                {row.detailRef ? (
+                  <p className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
+                    Detail: {row.detailRef.kind}
+                  </p>
+                ) : null}
               </div>
             ))}
           </div>
@@ -247,21 +245,17 @@ export function WorkspaceHome({
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.1 }}
-          className="bg-primary/10 mb-6 border border-primary p-4"
+          className="bg-primary/10 mb-4 border border-primary p-3"
         >
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-3">
             <div className="min-w-0 flex-1">
               <div className="font-mono text-[10px] uppercase tracking-[0.24em] text-primary">
                 Session Composer
               </div>
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                Continue this session with mode, model, attachments, context, stop, and retry
-                controls.
-              </p>
             </div>
             {onStartAgent ? (
               <Button
-                className="h-9 shrink-0 rounded-none px-3 font-mono text-[10px] uppercase tracking-[0.2em]"
+                className="h-8 shrink-0 rounded-none px-3 font-mono text-[10px] uppercase tracking-[0.2em]"
                 onClick={onStartAgent}
               >
                 Continue Session
@@ -275,37 +269,39 @@ export function WorkspaceHome({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.1 }}
-            className="mb-6"
+            className="mb-4"
           >
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-2 gap-1.5">
               {pendingDiffs > 0 && (
                 <Button
                   variant="outline"
-                  className="h-9 justify-start gap-2 rounded-none font-mono text-xs"
+                  className="h-8 justify-start gap-1.5 rounded-none font-mono text-[10px]"
                   onClick={onOpenDiffView}
                 >
-                  <IconDiff className="h-4 w-4 text-primary" />
-                  Review {pendingDiffs} pending diff{pendingDiffs !== 1 ? 's' : ''}
+                  <IconDiff className="h-3.5 w-3.5 shrink-0 text-primary" />
+                  <span className="truncate">
+                    {pendingDiffs} diff{pendingDiffs !== 1 ? 's' : ''}
+                  </span>
                 </Button>
               )}
               {onStartAgent && (
                 <Button
                   variant="outline"
-                  className="h-9 justify-start gap-2 rounded-none font-mono text-xs"
+                  className="h-8 justify-start gap-1.5 rounded-none font-mono text-[10px]"
                   onClick={onStartAgent}
                 >
-                  <IconQuickAction className="h-4 w-4 text-primary" />
-                  Start new session
+                  <IconQuickAction className="h-3.5 w-3.5 shrink-0 text-primary" />
+                  <span className="truncate">New session</span>
                 </Button>
               )}
               {suggestedActions.map((action, idx) => (
                 <Button
                   key={idx}
                   variant="outline"
-                  className="h-9 justify-start gap-2 rounded-none font-mono text-xs"
+                  className="h-8 justify-start gap-1.5 rounded-none font-mono text-[10px]"
                   onClick={action.action}
                 >
-                  {action.label}
+                  <span className="truncate">{action.label}</span>
                 </Button>
               ))}
             </div>
@@ -318,7 +314,7 @@ export function WorkspaceHome({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.15 }}
           >
-            <h2 className="mb-3 font-mono text-[10px] uppercase tracking-[0.24em] text-primary">
+            <h2 className="mb-2 font-mono text-[10px] uppercase tracking-[0.24em] text-primary">
               Recent Files
             </h2>
             <div className="surface-1 border border-border">
@@ -327,15 +323,15 @@ export function WorkspaceHome({
                   key={file.path}
                   type="button"
                   onClick={() => onOpenFile?.(file.path)}
-                  className={`flex w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-surface-2 ${
+                  className={`flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-surface-2 ${
                     idx > 0 ? 'border-t border-border' : ''
                   }`}
                 >
                   <IconFile className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                  <span className="min-w-0 flex-1 truncate font-mono text-xs text-foreground">
+                  <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-foreground">
                     {file.path}
                   </span>
-                  <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
+                  <span className="shrink-0 font-mono text-[9px] text-muted-foreground">
                     {file.timeAgo}
                   </span>
                 </button>
