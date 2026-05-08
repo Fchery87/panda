@@ -99,19 +99,20 @@ export function PlanPanel({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
-        <div className="flex items-center gap-2">
-          <GitGraph className="h-4 w-4 text-primary" />
-          <span className="font-mono text-sm uppercase tracking-wider">Plan Draft</span>
-        </div>
-
-        <div className="flex items-center gap-2">
+      <div className="border-b border-border bg-muted/30 px-3 py-2">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <GitGraph className="h-3.5 w-3.5 text-primary" />
+            <span className="font-mono text-[10px] uppercase tracking-wider">Plan Draft</span>
+          </div>
           <span className="border border-border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
             {STATUS_LABELS[planStatus]}
           </span>
+        </div>
+        <div className="mt-1.5 flex items-center gap-1">
           {lastGeneratedAt && (
-            <span className="font-mono text-xs text-muted-foreground">
-              Generated{' '}
+            <span className="font-mono text-[9px] text-muted-foreground">
+              Gen{' '}
               {new Date(lastGeneratedAt).toLocaleTimeString([], {
                 hour: '2-digit',
                 minute: '2-digit',
@@ -119,47 +120,49 @@ export function PlanPanel({
             </span>
           )}
           {lastSavedAt && (
-            <span className="font-mono text-xs text-muted-foreground">
-              Saved{' '}
+            <span className="font-mono text-[9px] text-muted-foreground">
+              · Saved{' '}
               {new Date(lastSavedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
           )}
-          {onApprove && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={onApprove}
-              disabled={approveDisabled}
-              className="h-7 rounded-none px-3 font-mono text-xs"
-            >
-              Approve Plan
-            </Button>
-          )}
-          {onBuildFromPlan && (
-            <Button
-              size="sm"
-              onClick={onBuildFromPlan}
-              disabled={buildDisabled}
-              className="h-7 rounded-none px-3 font-mono text-xs"
-            >
-              Build from Plan
-            </Button>
-          )}
-          <Button
-            size="sm"
-            onClick={onSave}
-            disabled={isSaving}
-            className="h-7 rounded-none px-3 font-mono text-xs"
-          >
-            {isSaving ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <>
-                <Check className="mr-1.5 h-3 w-3" />
-                Save
-              </>
+          <div className="ml-auto flex items-center gap-1">
+            {onApprove && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onApprove}
+                disabled={approveDisabled}
+                className="h-6 rounded-none px-2 font-mono text-[9px] uppercase tracking-wide"
+              >
+                Approve
+              </Button>
             )}
-          </Button>
+            {onBuildFromPlan && (
+              <Button
+                size="sm"
+                onClick={onBuildFromPlan}
+                disabled={buildDisabled}
+                className="h-6 rounded-none px-2 font-mono text-[9px] uppercase tracking-wide"
+              >
+                Build
+              </Button>
+            )}
+            <Button
+              size="sm"
+              onClick={onSave}
+              disabled={isSaving}
+              className="h-6 rounded-none px-2 font-mono text-[9px] uppercase tracking-wide"
+            >
+              {isSaving ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <>
+                  <Check className="mr-1 h-3 w-3" />
+                  Save
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -168,7 +171,7 @@ export function PlanPanel({
         onValueChange={(v) => setActiveTab(v as PlanPanelTab)}
         className="flex-1 overflow-hidden"
       >
-        <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent px-4">
+        <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent px-3">
           {hasStructuredPlan ? (
             <TabsTrigger
               value="review"
@@ -195,9 +198,9 @@ export function PlanPanel({
         </TabsList>
 
         {generatedPlanArtifact ? (
-          <TabsContent value="review" className="m-0 h-[calc(100%-48px)] overflow-auto p-4">
-            <div className="space-y-6">
-              <section className="space-y-2 border border-border bg-muted/20 p-4">
+          <TabsContent value="review" className="m-0 h-[calc(100%-40px)] overflow-auto p-3">
+            <div className="space-y-4">
+              <section className="space-y-2 border border-border bg-muted/20 p-3">
                 <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">
                   Structured Review
                 </p>
@@ -211,53 +214,53 @@ export function PlanPanel({
                 ) : null}
               </section>
 
-              <section className="space-y-3">
-                <h3 className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">
+              <section className="space-y-2">
+                <h3 className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
                   Plan Sections
                 </h3>
                 {orderedSections.length > 0 ? (
-                  <ol className="space-y-3">
+                  <ol className="space-y-2">
                     {orderedSections.map((section) => (
-                      <li key={section.id} className="border border-border bg-background p-4">
-                        <div className="flex items-baseline gap-3">
-                          <span className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      <li key={section.id} className="border border-border bg-background p-3">
+                        <div className="flex items-baseline gap-2">
+                          <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
                             {section.order}
                           </span>
-                          <h4 className="font-mono text-sm uppercase tracking-[0.08em] text-foreground">
+                          <h4 className="font-mono text-xs uppercase tracking-[0.08em] text-foreground">
                             {section.title}
                           </h4>
                         </div>
-                        <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-foreground">
+                        <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-foreground">
                           {section.content}
                         </p>
                       </li>
                     ))}
                   </ol>
                 ) : (
-                  <p className="border border-dashed border-border p-4 text-sm text-muted-foreground">
+                  <p className="border border-dashed border-border p-3 text-xs text-muted-foreground">
                     No structured sections available.
                   </p>
                 )}
               </section>
 
-              <section className="space-y-3">
-                <h3 className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">
+              <section className="space-y-2">
+                <h3 className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
                   Acceptance Checks
                 </h3>
                 {generatedPlanArtifact.acceptanceChecks.length > 0 ? (
-                  <ul className="space-y-2">
+                  <ul className="space-y-1.5">
                     {generatedPlanArtifact.acceptanceChecks.map((checkItem) => (
                       <li
                         key={checkItem}
-                        className="flex gap-3 border border-border bg-background p-3 text-sm"
+                        className="flex gap-2 border border-border bg-background p-2.5 text-xs"
                       >
-                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
                         <span>{checkItem}</span>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="border border-dashed border-border p-4 text-sm text-muted-foreground">
+                  <p className="border border-dashed border-border p-3 text-xs text-muted-foreground">
                     No acceptance checks provided.
                   </p>
                 )}
@@ -266,7 +269,7 @@ export function PlanPanel({
           </TabsContent>
         ) : null}
 
-        <TabsContent value="edit" className="m-0 h-[calc(100%-48px)] overflow-auto">
+        <TabsContent value="edit" className="m-0 h-[calc(100%-40px)] overflow-auto">
           <Textarea
             value={planDraft}
             onChange={(e) => onChange(e.target.value)}
@@ -291,7 +294,7 @@ flowchart TD
           />
         </TabsContent>
 
-        <TabsContent value="preview" className="m-0 h-[calc(100%-48px)] overflow-auto p-4">
+        <TabsContent value="preview" className="m-0 h-[calc(100%-40px)] overflow-auto p-3">
           <div className="prose prose-sm dark:prose-invert prose-headings:font-mono prose-headings:uppercase prose-headings:tracking-wider max-w-none">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdownContent}</ReactMarkdown>
           </div>
