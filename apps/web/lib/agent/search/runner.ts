@@ -12,11 +12,24 @@ export async function runSearchCommand(
   const maxOutputBytes = options.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES
 
   return new Promise<RunnerResult>((resolve) => {
-    const child = spawn(command, args, {
-      cwd: options.cwd,
-      shell: false,
-      env: process.env,
-    })
+    let child: ReturnType<typeof spawn>
+    try {
+      child = spawn(command, args, {
+        cwd: options.cwd,
+        shell: false,
+        env: process.env,
+      })
+    } catch (error) {
+      resolve({
+        stdout: '',
+        stderr: error instanceof Error ? error.message : 'Failed to start search command',
+        exitCode: 1,
+        durationMs: Date.now() - startedAt,
+        timedOut: false,
+        truncated: false,
+      })
+      return
+    }
 
     let stdout = ''
     let stderr = ''
