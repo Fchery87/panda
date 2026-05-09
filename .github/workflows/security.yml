@@ -32,7 +32,7 @@ jobs:
           CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
 
       - name: Run Bun audit
-        run: bun audit --audit-level=moderate
+        run: bun run security:audit
 
   semgrep:
     name: Semgrep SAST

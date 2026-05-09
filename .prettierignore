@@ -58,3 +58,4 @@ playwright-report/
 # Generated files
 convex/_generated/**
 next-env.d.ts
+docs/WORKBENCH_UX_PLAN.md

@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "cd ../.. && bun run convex:codegen",
-    "pretypecheck": "cd ../.. && bun run convex:codegen",
-    "pretest": "cd ../.. && bun run convex:codegen",
+    "prebuild": "cd ../.. && bun run convex:codegen:ci",
+    "pretypecheck": "cd ../.. && bun run convex:codegen:ci",
+    "pretest": "cd ../.. && bun run convex:codegen:ci",
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --ext .ts,.tsx",
