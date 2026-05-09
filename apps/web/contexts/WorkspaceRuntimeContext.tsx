@@ -105,6 +105,7 @@ export interface WorkspaceRuntimeValue {
   isRuntimeRunning: boolean
   isAgentRunning: boolean
   gitStatus: unknown
+  githubShellSummary: unknown
   healthStatus: 'ready' | 'issues' | 'error'
   healthDetail: string
 

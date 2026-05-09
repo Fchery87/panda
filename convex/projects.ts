@@ -5,6 +5,8 @@ import type { MutationCtx } from './_generated/server'
 import { requireAuth, getCurrentUserId } from './lib/auth'
 import { trackUserAnalytics } from './lib/userAnalytics'
 
+const MAX_INITIAL_GITHUB_FILES = 100
+
 type IndexQueryBuilder = {
   eq: (fieldName: string, value: unknown) => IndexQueryBuilder
 }
@@ -30,6 +32,22 @@ async function deleteByIndex<TableName extends Parameters<MutationCtx['db']['que
 async function deleteFileWithSnapshots(ctx: MutationCtx, fileId: Id<'files'>): Promise<void> {
   await deleteByIndex(ctx, 'fileSnapshots', 'by_file', (q) => q.eq('fileId', fileId))
   await ctx.db.delete(fileId)
+}
+
+async function assertProjectLimitAvailable(ctx: MutationCtx, userId: Id<'users'>): Promise<void> {
+  const adminSettings = await ctx.db.query('adminSettings').order('desc').first()
+  const maxProjects = adminSettings?.maxProjectsPerUser ?? DEFAULT_MAX_PROJECTS_PER_USER
+
+  const existingProjects = await ctx.db
+    .query('projects')
+    .withIndex('by_creator', (q) => q.eq('createdBy', userId))
+    .collect()
+
+  if (existingProjects.length >= maxProjects) {
+    throw new Error(
+      `Project limit reached. You have ${existingProjects.length} projects (maximum: ${maxProjects}). Please delete an existing project before creating a new one.`
+    )
+  }
 }
 
 async function deleteChatChildren(ctx: MutationCtx, chatId: Id<'chats'>): Promise<number> {
@@ -98,24 +116,24 @@ export const create = mutation({
     name: v.string(),
     description: v.optional(v.string()),
     repoUrl: v.optional(v.string()),
+    githubRepository: v.optional(
+      v.object({
+        connectionId: v.id('githubConnections'),
+        repositoryId: v.string(),
+        owner: v.string(),
+        name: v.string(),
+        fullName: v.string(),
+        private: v.boolean(),
+        defaultBranch: v.string(),
+        htmlUrl: v.string(),
+        linkedAt: v.number(),
+      })
+    ),
   },
   handler: async (ctx, args) => {
     const userId = await requireAuth(ctx)
 
-    // Check resource limits
-    const adminSettings = await ctx.db.query('adminSettings').order('desc').first()
-    const maxProjects = adminSettings?.maxProjectsPerUser ?? DEFAULT_MAX_PROJECTS_PER_USER
-
-    const existingProjects = await ctx.db
-      .query('projects')
-      .withIndex('by_creator', (q) => q.eq('createdBy', userId))
-      .collect()
-
-    if (existingProjects.length >= maxProjects) {
-      throw new Error(
-        `Project limit reached. You have ${existingProjects.length} projects (maximum: ${maxProjects}). Please delete an existing project before creating a new one.`
-      )
-    }
+    await assertProjectLimitAvailable(ctx, userId)
 
     const now = Date.now()
 
@@ -126,8 +144,105 @@ export const create = mutation({
       createdAt: now,
       lastOpenedAt: now,
       repoUrl: args.repoUrl,
+      githubRepository: args.githubRepository,
+      githubSyncState: args.githubRepository
+        ? {
+            baseBranch: args.githubRepository.defaultBranch,
+            baseCommitSha: 'unknown',
+            lastSyncedCommitSha: 'unknown',
+            changedFiles: [],
+            status: 'clean',
+            updatedAt: now,
+          }
+        : undefined,
       agentPolicy: null,
     })
+
+    await trackUserAnalytics(ctx, userId, {
+      totalProjects: 1,
+    })
+
+    return projectId
+  },
+})
+
+export const createFromGitHubRepository = mutation({
+  args: {
+    name: v.string(),
+    description: v.optional(v.string()),
+    repository: v.object({
+      connectionId: v.id('githubConnections'),
+      repositoryId: v.string(),
+      owner: v.string(),
+      name: v.string(),
+      fullName: v.string(),
+      private: v.boolean(),
+      defaultBranch: v.string(),
+      htmlUrl: v.string(),
+    }),
+    initialFiles: v.optional(
+      v.array(
+        v.object({
+          path: v.string(),
+          content: v.optional(v.string()),
+          isBinary: v.optional(v.boolean()),
+        })
+      )
+    ),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireAuth(ctx)
+    await assertProjectLimitAvailable(ctx, userId)
+
+    const connection = await ctx.db.get(args.repository.connectionId)
+    if (!connection || connection.userId !== userId) {
+      throw new Error('GitHub connection not found or access denied')
+    }
+
+    const initialFiles = args.initialFiles ?? []
+    if (initialFiles.length > MAX_INITIAL_GITHUB_FILES) {
+      throw new Error(`Initial GitHub import is limited to ${MAX_INITIAL_GITHUB_FILES} files`)
+    }
+
+    const now = Date.now()
+    const projectId = await ctx.db.insert('projects', {
+      name: args.name,
+      description: args.description,
+      createdBy: userId,
+      createdAt: now,
+      lastOpenedAt: now,
+      repoUrl: args.repository.htmlUrl,
+      githubRepository: {
+        connectionId: args.repository.connectionId,
+        repositoryId: args.repository.repositoryId,
+        owner: args.repository.owner,
+        name: args.repository.name,
+        fullName: args.repository.fullName,
+        private: args.repository.private,
+        defaultBranch: args.repository.defaultBranch,
+        htmlUrl: args.repository.htmlUrl,
+        linkedAt: now,
+      },
+      githubSyncState: {
+        baseBranch: args.repository.defaultBranch,
+        baseCommitSha: 'unknown',
+        lastSyncedCommitSha: 'unknown',
+        changedFiles: initialFiles.map((file) => file.path),
+        status: initialFiles.length > 0 ? 'dirty' : 'clean',
+        updatedAt: now,
+      },
+      agentPolicy: null,
+    })
+
+    for (const file of initialFiles) {
+      await ctx.db.insert('files', {
+        projectId,
+        path: file.path,
+        content: file.content,
+        isBinary: file.isBinary ?? false,
+        updatedAt: now,
+      })
+    }
 
     await trackUserAnalytics(ctx, userId, {
       totalProjects: 1,
@@ -144,6 +259,19 @@ export const update = mutation({
     name: v.optional(v.string()),
     description: v.optional(v.string()),
     repoUrl: v.optional(v.string()),
+    githubRepository: v.optional(
+      v.object({
+        connectionId: v.id('githubConnections'),
+        repositoryId: v.string(),
+        owner: v.string(),
+        name: v.string(),
+        fullName: v.string(),
+        private: v.boolean(),
+        defaultBranch: v.string(),
+        htmlUrl: v.string(),
+        linkedAt: v.number(),
+      })
+    ),
     lastOpenedAt: v.optional(v.number()),
     agentPolicy: v.optional(
       v.union(
@@ -170,6 +298,7 @@ export const update = mutation({
     if (args.name !== undefined) updates.name = args.name
     if (args.description !== undefined) updates.description = args.description
     if (args.repoUrl !== undefined) updates.repoUrl = args.repoUrl
+    if (args.githubRepository !== undefined) updates.githubRepository = args.githubRepository
     if (args.lastOpenedAt !== undefined) updates.lastOpenedAt = args.lastOpenedAt
     if (args.agentPolicy !== undefined) updates.agentPolicy = args.agentPolicy
 

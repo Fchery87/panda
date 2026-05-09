@@ -33,6 +33,7 @@ export function ProjectWorkspaceShell({
     gitStatus,
     selectedModel,
     isAgentRunning,
+    githubShellSummary,
     isAnyJobRunning,
     healthStatus,
     healthDetail,
@@ -82,6 +83,9 @@ export function ProjectWorkspaceShell({
           projectId={projectId}
           selectedFilePath={selectedFilePath}
           gitStatus={gitStatus as Parameters<typeof WorkbenchTopBar>[0]['gitStatus']}
+          githubShellSummary={
+            githubShellSummary as Parameters<typeof WorkbenchTopBar>[0]['githubShellSummary']
+          }
           selectedModel={selectedModel}
           isAgentRunning={isAgentRunning}
           isAnyJobRunning={isAnyJobRunning}

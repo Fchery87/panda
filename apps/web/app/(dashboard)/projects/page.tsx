@@ -16,6 +16,10 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
+  GitHubRepositoryPicker,
+  type GitHubRepositorySelection,
+} from '@/components/github/GitHubRepositoryPicker'
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -43,11 +47,16 @@ interface Project {
 function CreateProjectDialog({
   onCreate,
 }: {
-  onCreate: (name: string, description?: string) => Promise<void>
+  onCreate: (
+    name: string,
+    description?: string,
+    repository?: GitHubRepositorySelection | null
+  ) => Promise<void>
 }) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [repository, setRepository] = useState<GitHubRepositorySelection | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [submitError, setSubmitError] = useState<CreateProjectErrorDisplay | null>(null)
 
@@ -58,10 +67,11 @@ function CreateProjectDialog({
     setIsCreating(true)
     setSubmitError(null)
     try {
-      await onCreate(name.trim(), description.trim() || undefined)
+      await onCreate(name.trim(), description.trim() || undefined, repository)
       setOpen(false)
       setName('')
       setDescription('')
+      setRepository(null)
       setSubmitError(null)
       toast.success('Project created successfully')
     } catch (error) {
@@ -146,6 +156,11 @@ function CreateProjectDialog({
                 className="rounded-none"
               />
             </div>
+            <GitHubRepositoryPicker
+              value={repository}
+              onChange={setRepository}
+              disabled={isCreating}
+            />
           </div>
           <DialogFooter>
             <Button
@@ -366,10 +381,30 @@ export default function ProjectsPage() {
 
   // Mutations
   const createProjectMutation = useMutation(api.projects.create)
+  const createGitHubProjectMutation = useMutation(api.projects.createFromGitHubRepository)
   const deleteProjectMutation = useMutation(api.projects.remove)
   const updateProjectMutation = useMutation(api.projects.update)
 
-  const handleCreateProject = async (name: string, description?: string) => {
+  const handleCreateProject = async (
+    name: string,
+    description?: string,
+    repository?: GitHubRepositorySelection | null
+  ) => {
+    if (repository) {
+      await createGitHubProjectMutation({
+        name,
+        description,
+        repository,
+        initialFiles: [
+          {
+            path: '.panda/github-repository.md',
+            content: `# ${repository.fullName}\n\nOpened from ${repository.htmlUrl}.\n\nInitial GitHub file sync will replace this metadata note when repository content import is configured.\n`,
+          },
+        ],
+      })
+      return
+    }
+
     await createProjectMutation({ name, description })
   }
 

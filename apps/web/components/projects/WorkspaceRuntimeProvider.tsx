@@ -126,6 +126,7 @@ export function WorkspaceRuntimeProvider({
 
   const openCommandPalette = useCommandPaletteStore((state) => state.open)
   const { status: gitStatus, refreshStatus: refreshGitStatus } = useGit()
+  const githubShellSummary = useQuery(api.githubConnections.getProjectShellSummary, { projectId })
 
   const {
     isMobileLayout,
@@ -665,6 +666,7 @@ export function WorkspaceRuntimeProvider({
       isRuntimeRunning,
       isAgentRunning: agent.isLoading,
       gitStatus,
+      githubShellSummary,
       healthStatus,
       healthDetail,
 

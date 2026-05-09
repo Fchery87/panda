@@ -1,68 +1,58 @@
-# Status: Execution Session Shell Restructure
+# Status: M001 GitHub-Backed Panda Projects Implementation
 
-## Current phase: Phase 5 - Docs And Final Verification (blocked on E2E fixture infrastructure)
+## Current milestone: S12 Final Live GitHub Smoke Path (blocked)
 
-## Last completed: Phase 4 - Consolidate Terminal And Proof - 2026-05-07
-
-## Completed phases
-
-- Phase 1 - Extract Shell Regions - 2026-05-07
-- Phase 2 - Move Chat To Center - 2026-05-07
-- Phase 3 - Move Workbench Into Tray - 2026-05-07
-- Phase 4 - Consolidate Terminal And Proof - 2026-05-07
+## Last completed: S11 Explicit Sync From GitHub - 2026-05-08
 
 ## Decision log
 
-- Use the referenced
-  `docs/plans/2026-05-07-execution-session-shell-restructure.md` as frozen scope
-  because it already defines the phase sequence, parity target, and structural
-  reference.
-- Treat existing dirty workspace layout files as pre-existing work and preserve
-  them unless they directly need changes for this restructure.
-- Phase 1 keeps existing surfaces mounted while adding named shell region
-  wrappers for the execution session rail, timeline/composer region, work tray,
-  and terminal drawer.
-- Chat now renders in the central execution session timeline region.
-- The right tray defaults to Work and hosts the existing workbench/editor
-  surface so files, diffs, and implementation detail remain reachable after
-  moving chat.
-- Persisted `rightPanelTab: chat` values migrate to `work` because chat is no
-  longer a right-tray tab.
-- The bottom dock now contains terminal only; agent events moved into the Proof
-  run surface.
-
-## Validation log
-
-- Phase 1 gate passed: `bun run typecheck`, `bun run lint`, and
-  `bun test apps/web/components/projects/project-workspace-layout.test.tsx`.
-- Phase 2/3 focused tests passed:
-  `bun test apps/web/components/projects/project-workspace-layout.test.tsx apps/web/components/panels/RightPanel.test.tsx apps/web/stores/workspaceUiStore.test.ts apps/web/components/projects/project-chat-wiring.test.ts`.
-- Phase 2/3 gate passed: `bun run lint` and `bun run typecheck` after rerunning
-  typecheck with a 240s timeout because the first 120s run timed out during
-  Convex/codegen and TypeScript.
-- Phase 4 gate passed: `bun run typecheck`, `bun run lint`, and focused shell
-  tests covering terminal-only dock and proof agent events.
-- Phase 5 docs updated: `CONTEXT.md`, `docs/ARCHITECTURE_CONTRACT.md`, and
-  `docs/plans/2026-04-26-chat-first-workspace-ia.md` now describe the Execution
-  Session Shell mapping.
-- Final code gates passed after docs/test updates: `bun run typecheck`,
-  `bun run lint`, touched-file Prettier check, and full `bun test`.
-- Full Bun test result: 1120 pass, 0 fail, 3111 expect() calls.
-- Full-repo `bun run format:check` is blocked by pre-existing formatting drift
-  in unrelated files; touched files pass Prettier.
-- `bun run test:e2e` could not complete because the E2E fixture endpoint fails
-  before loading the workspace. Direct probe:
-  `/api/e2e/project?name=Workbench%20Smoke%20Direct%20Probe` returns 500 with
-  Convex `SystemTimeoutError` / `Your request timed out`.
+- Implement slices in `.gsd/milestones/M001/M001-ROADMAP.md` dependency order
+  because the user requested an automatic implementation loop.
+- Use verification before marking any slice complete because GitHub integration
+  is security-sensitive and external-write capable.
+- S01 stores user-scoped GitHub App installation metadata in `githubConnections`
+  and exposes redacted connection status only.
+- S02 stores exactly one linked GitHub repository on a Panda project and exposes
+  a bounded authorized repository picker backed by the GitHub connection.
+- S03 creates GitHub-backed Panda projects from selected repositories and writes
+  an initial bounded Convex working-copy payload.
+- S04 adds durable GitHub sync state with base branch, base commit, last synced
+  commit, changed files, and remote-changed/conflict detection that does not
+  overwrite files.
+- S05 makes the source-control panel read GitHub-backed project sync state
+  before falling back to local workspace Git state for non-GitHub projects.
+- S06 creates a namespaced `panda/...` working branch in project sync state
+  without changing the base branch.
+- S07 records Panda-authored working-copy commits with bot identity and
+  requesting-user attribution, then clears committed changed-file state.
+- S08 requires explicit confirmation before marking a Panda branch commit as
+  pushed to GitHub.
+- S09 creates user-reviewable PR drafts from pushed Panda commits and requires
+  confirmation before marking the PR created.
+- S10 exposes a bounded GitHub shell summary in the workspace top bar so branch,
+  sync, pending-change, and PR state are visible outside the source-control
+  pane.
+- S11 adds explicit Sync from GitHub and refuses to overwrite dirty Panda
+  working copies, setting conflict state instead.
 
 ## Known issues
 
-- The worktree already had modified workspace layout files before this execution
-  session started.
-- E2E fixture creation is currently timing out in Convex before any workspace UI
-  assertion can run. This blocks final E2E validation for all fixture-dependent
-  specs, including baseline workbench smoke tests.
+- No GitHub App credentials are known in the environment yet, so final live
+  smoke verification may require a documented blocker if credentials are
+  unavailable.
+- The repo has pre-existing task state files and may have unrelated worktree
+  changes; do not revert unrelated user changes.
+- Full-repo `bun run format:check` is blocked by pre-existing formatting drift
+  across many unrelated files. Touched-file formatting checks pass after each
+  completed slice.
+- S12 live smoke is blocked in this environment because no `GITHUB_APP_*`,
+  `GITHUB_TOKEN`, `GH_TOKEN`, or `GITHUB_REPOSITORY_FIXTURES` credentials are
+  present.
+- Local verification passed for S01-S11: targeted GitHub slice tests, typecheck,
+  lint, and touched-file formatting. Full-repo `format:check` remains blocked by
+  unrelated pre-existing formatting drift.
 
 ## Future work (out of scope, log here)
 
-- None yet.
+- Full GitHub issue management.
+- Multi-repository Panda projects.

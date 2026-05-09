@@ -629,6 +629,35 @@ export default defineSchema({
     createdAt: v.number(),
     lastOpenedAt: v.optional(v.number()),
     repoUrl: v.optional(v.string()),
+    githubRepository: v.optional(
+      v.object({
+        connectionId: v.id('githubConnections'),
+        repositoryId: v.string(),
+        owner: v.string(),
+        name: v.string(),
+        fullName: v.string(),
+        private: v.boolean(),
+        defaultBranch: v.string(),
+        htmlUrl: v.string(),
+        linkedAt: v.number(),
+      })
+    ),
+    githubSyncState: v.optional(
+      v.object({
+        baseBranch: v.string(),
+        baseCommitSha: v.string(),
+        lastSyncedCommitSha: v.string(),
+        workingBranch: v.optional(v.string()),
+        changedFiles: v.array(v.string()),
+        status: v.union(
+          v.literal('clean'),
+          v.literal('dirty'),
+          v.literal('remote_changed'),
+          v.literal('conflict')
+        ),
+        updatedAt: v.number(),
+      })
+    ),
     agentPolicy: v.optional(
       v.union(
         v.null(),
@@ -911,7 +940,54 @@ export default defineSchema({
     .index('by_user', ['userId'])
     .index('by_user_provider', ['userId', 'provider']),
 
-  // 15. Shared chats table - public sharing links for chat sessions
+  // 15. GitHub connections table - user-scoped GitHub App installation metadata
+  githubConnections: defineTable({
+    userId: v.id('users'),
+    installationId: v.string(),
+    accountLogin: v.string(),
+    accountType: v.union(v.literal('User'), v.literal('Organization')),
+    accountAvatarUrl: v.optional(v.string()),
+    repositorySelection: v.union(v.literal('all'), v.literal('selected')),
+    permissions: v.record(v.string(), v.string()),
+    connectedAt: v.number(),
+    updatedAt: v.number(),
+    suspendedAt: v.optional(v.number()),
+  })
+    .index('by_user', ['userId'])
+    .index('by_user_installation', ['userId', 'installationId']),
+
+  // 16. GitHub commits table - Panda-authored working-copy commits before push
+  githubCommits: defineTable({
+    projectId: v.id('projects'),
+    userId: v.id('users'),
+    branch: v.string(),
+    message: v.string(),
+    filesChanged: v.array(v.string()),
+    authorName: v.string(),
+    requestedBy: v.id('users'),
+    createdAt: v.number(),
+    pushedAt: v.optional(v.number()),
+  })
+    .index('by_project_created', ['projectId', 'createdAt'])
+    .index('by_project_branch', ['projectId', 'branch']),
+
+  // 17. GitHub pull requests table - user-reviewed PR drafts and created PRs
+  githubPullRequests: defineTable({
+    projectId: v.id('projects'),
+    commitId: v.id('githubCommits'),
+    branch: v.string(),
+    title: v.string(),
+    body: v.string(),
+    status: v.union(v.literal('draft'), v.literal('created')),
+    url: v.optional(v.string()),
+    createdBy: v.id('users'),
+    createdAt: v.number(),
+    confirmedAt: v.optional(v.number()),
+  })
+    .index('by_project_created', ['projectId', 'createdAt'])
+    .index('by_commit', ['commitId']),
+
+  // 18. Shared chats table - public sharing links for chat sessions
   sharedChats: defineTable({
     chatId: v.id('chats'),
     shareId: v.string(),
@@ -923,7 +999,7 @@ export default defineSchema({
     .index('by_shareId', ['shareId'])
     .index('by_creator', ['createdBy']),
 
-  // 16. MCP Servers table - user-configured MCP servers
+  // 19. MCP Servers table - user-configured MCP servers
   mcpServers: defineTable({
     userId: v.id('users'),
     name: v.string(),
@@ -938,7 +1014,7 @@ export default defineSchema({
     .index('by_user', ['userId'])
     .index('by_user_name', ['userId', 'name']),
 
-  // 17. Custom Subagents table - user-defined subagents
+  // 20. Custom Subagents table - user-defined subagents
   subagents: defineTable({
     userId: v.id('users'),
     name: v.string(),
@@ -962,7 +1038,7 @@ export default defineSchema({
     .index('by_user', ['userId'])
     .index('by_user_name', ['userId', 'name']),
 
-  // 18. Custom Skills table - user-defined workflow guidance
+  // 21. Custom Skills table - user-defined workflow guidance
   customSkills: defineTable({
     userId: v.id('users'),
     name: v.string(),

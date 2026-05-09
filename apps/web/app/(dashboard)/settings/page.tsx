@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/dialog'
 import { ProviderCard } from '@/components/settings/ProviderCard'
 import { ConnectProvider } from '@/components/settings/ConnectProvider'
+import { GitHubConnectionCard } from '@/components/settings/GitHubConnectionCard'
 import { ThemeToggleFull } from '@/components/settings/ThemeToggle'
 import { AgentDefaultsEditor } from '@/components/settings/AgentDefaultsEditor'
 import { MCPServerEditor } from '@/components/settings/MCPServerEditor'
@@ -402,10 +403,11 @@ export default function SettingsPage() {
                   <CardHeader>
                     <CardTitle>OAuth Connections</CardTitle>
                     <CardDescription>
-                      Authenticate with providers using OAuth instead of manual API keys.
+                      Authenticate with external services using OAuth or app installation flows.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    <GitHubConnectionCard />
                     <ConnectProvider provider="chutes" />
                   </CardContent>
                 </Card>

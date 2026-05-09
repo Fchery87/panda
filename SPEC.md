@@ -1,33 +1,28 @@
-# Spec: Execution Session Shell Restructure
+# Spec: M001 GitHub-Backed Panda Projects Implementation
 
 ## Deliverables
 
-- [ ] Rebuild the desktop workspace around an Execution Session first shell.
-- [ ] Keep the left side as persistent session/navigation rail.
-- [ ] Promote chat/session timeline and composer to the center canvas.
-- [ ] Convert the right side into a contextual work tray with Work, Proof,
-      Changes, Context, and Preview views.
-- [ ] Keep terminal in a bottom drawer and move agent-event review into Proof.
-- [ ] Preserve feature reachability for files/editor, diff review, terminal,
-      preview, run proof, receipts, plan review, memory, evals, share, history,
-      command palette, permissions, runtime status, contextual chat, inline
-      chat, and mobile navigation.
-- [ ] Update tests and docs for the Execution Session Shell terminology and IA.
+- [ ] Implement all approved slices in `.gsd/milestones/M001/M001-ROADMAP.md` in
+      dependency order.
+- [ ] Preserve the milestone decisions in `.gsd/milestones/M001/M001-CONTEXT.md`
+      and `.gsd/DECISIONS.md`.
+- [ ] Verify each completed slice before advancing to the next slice.
+- [ ] Keep raw GitHub tokens and installation credentials out of client-visible
+      responses, logs, public shares, and telemetry.
 
 ## Constraints
 
-- Preserve existing runtime behavior and data flow unless a phase explicitly
-  moves a surface.
-- Keep Panda's brutalist visual system: sharp corners, monospace controls,
-  explicit borders, operational labels, and no T3 visual clone.
-- Implement in vertical phases; do not advance past a phase until its validation
-  gate passes or a blocker is documented.
-- Do not add Convex schema or persisted layout preference changes in this pass.
-- Do not remove existing mobile navigation or panel switching behavior.
+- Must keep Convex as Panda's editable project working-copy source of truth.
+- Must derive user identity server-side for GitHub connection and project
+  ownership decisions.
+- Must not use local workspace-root Git APIs as the production GitHub project
+  integration boundary.
+- Must not silently auto-sync GitHub remote changes.
+- Must require explicit confirmation for external GitHub writes.
 
 ## Out of scope (log here during the run, do not act on)
 
-- Rebuilding the chat engine, editor, terminal emulator, diff viewer, or preview
-  runtime.
-- Creating a new persisted session object model.
-- Adding new AI provider or model-selection behavior.
+- Full GitHub issue management beyond read-only linked context.
+- Multi-repository Panda projects.
+- Releases, deployments, repository settings, and GitHub organization
+  administration.

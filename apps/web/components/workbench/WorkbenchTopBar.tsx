@@ -3,7 +3,14 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { ChevronLeft, Menu, MoreHorizontal, PanelLeftClose, PanelLeftOpen, RotateCcw } from 'lucide-react'
+import {
+  ChevronLeft,
+  Menu,
+  MoreHorizontal,
+  PanelLeftClose,
+  PanelLeftOpen,
+  RotateCcw,
+} from 'lucide-react'
 import type { Id } from '@convex/_generated/dataModel'
 import type { GitStatusResult } from '@/hooks/useGit'
 import type { SidebarSection } from '@/components/sidebar/SidebarRail'
@@ -27,6 +34,14 @@ interface WorkbenchTopBarProps {
   projectId: Id<'projects'>
   selectedFilePath: string | null
   gitStatus: GitStatusResult | null
+  githubShellSummary?: {
+    repositoryFullName: string
+    branch: string
+    syncStatus: string
+    pendingChanges: number
+    pullRequestStatus: string | null
+    pullRequestUrl: string | null
+  } | null
   selectedModel: string
   isAgentRunning: boolean
   isAnyJobRunning: boolean
@@ -79,9 +94,10 @@ const FOCUS_TONE_STYLES: Record<
 
 export function WorkbenchTopBar({
   projectName,
-  projectId,
-  selectedFilePath,
+  projectId: _projectId,
+  selectedFilePath: _selectedFilePath,
   gitStatus,
+  githubShellSummary,
   selectedModel,
   isAgentRunning,
   isAnyJobRunning: _isAnyJobRunning,
@@ -97,7 +113,7 @@ export function WorkbenchTopBar({
   onStopRuntime,
   onResetWorkspace,
   onOpenShareDialog,
-  onRevealInExplorer,
+  onRevealInExplorer: _onRevealInExplorer,
   onOpenCommandPalette,
   activeSidebarSection,
   onSidebarSectionChange,
@@ -188,9 +204,11 @@ export function WorkbenchTopBar({
             devServerLabel={isRuntimeRunning ? 'Dev server active' : 'Dev server idle'}
             agentLabel={isAgentRunning ? 'Agent running' : 'Agent idle'}
             repoLabel={
-              gitStatus
-                ? `${gitStatus.staged.length + gitStatus.unstaged.length + gitStatus.untracked.length} repo changes`
-                : 'Repo status loading'
+              githubShellSummary
+                ? `${githubShellSummary.repositoryFullName} · ${githubShellSummary.branch} · ${githubShellSummary.syncStatus}${githubShellSummary.pullRequestStatus ? ` · PR ${githubShellSummary.pullRequestStatus}` : ''}`
+                : gitStatus
+                  ? `${gitStatus.staged.length + gitStatus.unstaged.length + gitStatus.untracked.length} repo changes`
+                  : 'Repo status loading'
             }
             onToggleRightPanel={onToggleRightPanel}
             isRightPanelOpen={isRightPanelOpen}

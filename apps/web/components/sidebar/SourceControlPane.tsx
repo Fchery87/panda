@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useMutation, useQuery } from 'convex/react'
 import type { Id } from '@convex/_generated/dataModel'
+import { api } from '@convex/_generated/api'
 
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
@@ -24,6 +26,7 @@ interface SourceControlPaneProps {
 }
 
 export function SourceControlPane({ projectId: _projectId }: SourceControlPaneProps) {
+  const githubState = useQuery(api.githubConnections.getProjectSyncState, { projectId: _projectId })
   const { status, log, isLoading, error, refreshStatus, refreshLog, stage, unstage, commit } =
     useGit()
 
@@ -35,8 +38,19 @@ export function SourceControlPane({ projectId: _projectId }: SourceControlPanePr
   const [showBranchList, setShowBranchList] = useState(false)
 
   useEffect(() => {
+    if (githubState?.repository) return
     refreshStatus()
-  }, [refreshStatus])
+  }, [githubState?.repository, refreshStatus])
+
+  if (githubState?.repository) {
+    return (
+      <GitHubSourceControlState
+        projectId={_projectId}
+        repository={githubState.repository}
+        syncState={githubState.syncState}
+      />
+    )
+  }
 
   const handleStageFile = async (path: string) => {
     await stage([path])
@@ -322,6 +336,302 @@ export function SourceControlPane({ projectId: _projectId }: SourceControlPanePr
           </ScrollArea>
         )}
       </div>
+    </div>
+  )
+}
+
+function GitHubSourceControlState({
+  projectId,
+  repository,
+  syncState,
+}: {
+  projectId: Id<'projects'>
+  repository: {
+    name: string
+    fullName: string
+    defaultBranch: string
+    htmlUrl: string
+    private: boolean
+  }
+  syncState: {
+    baseBranch: string
+    lastSyncedCommitSha: string
+    workingBranch?: string
+    changedFiles: string[]
+    status: 'clean' | 'dirty' | 'remote_changed' | 'conflict'
+  } | null
+}) {
+  const createTaskBranch = useMutation(api.githubConnections.createTaskBranch)
+  const commitWorkingCopy = useMutation(api.githubConnections.commitWorkingCopy)
+  const confirmPushBranch = useMutation(api.githubConnections.confirmPushBranch)
+  const createPullRequestDraft = useMutation(api.githubConnections.createPullRequestDraft)
+  const confirmCreatePullRequest = useMutation(api.githubConnections.confirmCreatePullRequest)
+  const syncFromGitHub = useMutation(api.githubConnections.syncFromGitHub)
+  const latestCommit = useQuery(api.githubConnections.getLatestCommitForProject, { projectId })
+  const latestPullRequest = useQuery(api.githubConnections.getLatestPullRequestForProject, {
+    projectId,
+  })
+  const [isCreatingBranch, setIsCreatingBranch] = useState(false)
+  const [commitMessage, setCommitMessage] = useState('')
+  const [isCommitting, setIsCommitting] = useState(false)
+  const [showPushConfirm, setShowPushConfirm] = useState(false)
+  const [isPushing, setIsPushing] = useState(false)
+  const [isDraftingPr, setIsDraftingPr] = useState(false)
+  const [isCreatingPr, setIsCreatingPr] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const changedFiles = syncState?.changedFiles ?? []
+  const statusLabel = syncState?.status ?? 'clean'
+  const branchLabel = syncState?.workingBranch ?? syncState?.baseBranch ?? repository.defaultBranch
+
+  const handleCreateTaskBranch = async () => {
+    setIsCreatingBranch(true)
+    try {
+      await createTaskBranch({ projectId, label: repository.name })
+    } finally {
+      setIsCreatingBranch(false)
+    }
+  }
+
+  const handleCommitWorkingCopy = async () => {
+    if (!commitMessage.trim()) return
+    setIsCommitting(true)
+    try {
+      await commitWorkingCopy({ projectId, message: commitMessage.trim() })
+      setCommitMessage('')
+    } finally {
+      setIsCommitting(false)
+    }
+  }
+
+  const handleConfirmPush = async () => {
+    if (!latestCommit || latestCommit.pushedAt) return
+    setIsPushing(true)
+    try {
+      await confirmPushBranch({ projectId, commitId: latestCommit._id, confirmed: true })
+      setShowPushConfirm(false)
+    } finally {
+      setIsPushing(false)
+    }
+  }
+
+  const handleCreatePrDraft = async () => {
+    if (!latestCommit?.pushedAt) return
+    setIsDraftingPr(true)
+    try {
+      await createPullRequestDraft({ projectId, commitId: latestCommit._id })
+    } finally {
+      setIsDraftingPr(false)
+    }
+  }
+
+  const handleConfirmCreatePr = async () => {
+    if (!latestPullRequest || latestPullRequest.status === 'created') return
+    setIsCreatingPr(true)
+    try {
+      await confirmCreatePullRequest({
+        projectId,
+        pullRequestId: latestPullRequest._id,
+        confirmed: true,
+      })
+    } finally {
+      setIsCreatingPr(false)
+    }
+  }
+
+  const handleSyncFromGitHub = async () => {
+    setIsSyncing(true)
+    try {
+      await syncFromGitHub({
+        projectId,
+        remoteCommitSha: syncState?.lastSyncedCommitSha ?? 'unknown',
+      })
+    } finally {
+      setIsSyncing(false)
+    }
+  }
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="border-b border-border px-3 py-2">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              GitHub Repository
+            </p>
+            <p className="truncate font-mono text-xs text-foreground">{repository.fullName}</p>
+          </div>
+          <span className="border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+            {repository.private ? 'private' : 'public'}
+          </span>
+        </div>
+      </div>
+
+      <div className="grid gap-px bg-border">
+        <GitHubStateRow label="Branch" value={branchLabel} />
+        <GitHubStateRow label="Sync" value={statusLabel.replace('_', ' ')} />
+        <GitHubStateRow
+          label="Last sync"
+          value={syncState?.lastSyncedCommitSha?.slice(0, 12) ?? 'unknown'}
+        />
+      </div>
+
+      <div className="border-b border-border px-3 py-2">
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          Pending changes
+        </p>
+        <p className="mt-1 font-mono text-xs text-foreground">{changedFiles.length} files</p>
+      </div>
+
+      <ScrollArea className="flex-1">
+        {changedFiles.length > 0 ? (
+          <div className="p-1">
+            {changedFiles.map((file) => (
+              <div key={file} className="flex items-center gap-2 px-3 py-1">
+                <span className="h-1.5 w-1.5 bg-[oklch(var(--status-warning))]" />
+                <span className="min-w-0 flex-1 truncate font-mono text-xs text-foreground">
+                  {file}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="px-3 py-6 text-center font-mono text-xs text-muted-foreground">
+            GitHub working copy is clean
+          </div>
+        )}
+      </ScrollArea>
+
+      <div className="border-t border-border p-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="mb-2 h-7 w-full rounded-none border border-border font-mono text-[10px] uppercase tracking-widest"
+          onClick={handleSyncFromGitHub}
+          disabled={isSyncing}
+        >
+          {isSyncing ? 'Syncing...' : 'Sync from GitHub'}
+        </Button>
+        {!syncState?.workingBranch ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mb-2 h-7 w-full rounded-none border border-border font-mono text-[10px] uppercase tracking-widest"
+            onClick={handleCreateTaskBranch}
+            disabled={isCreatingBranch}
+          >
+            {isCreatingBranch ? 'Creating branch...' : 'Create Panda Branch'}
+          </Button>
+        ) : null}
+        {syncState?.workingBranch && changedFiles.length > 0 ? (
+          <div className="mb-2 space-y-2">
+            <textarea
+              value={commitMessage}
+              onChange={(event) => setCommitMessage(event.target.value)}
+              placeholder="Commit message..."
+              className="surface-0 w-full resize-none border border-border px-2 py-1.5 font-mono text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              rows={2}
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-full rounded-none border border-border font-mono text-[10px] uppercase tracking-widest"
+              onClick={handleCommitWorkingCopy}
+              disabled={!commitMessage.trim() || isCommitting}
+            >
+              {isCommitting ? 'Committing...' : 'Commit Working Copy'}
+            </Button>
+          </div>
+        ) : null}
+        {latestCommit && !latestCommit.pushedAt ? (
+          <div className="mb-2 space-y-2 border border-border p-2">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              Ready to push {latestCommit.branch}
+            </p>
+            {showPushConfirm ? (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  This will write the Panda branch to GitHub. Confirm before continuing.
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-full rounded-none border border-border font-mono text-[10px] uppercase tracking-widest"
+                  onClick={handleConfirmPush}
+                  disabled={isPushing}
+                >
+                  {isPushing ? 'Pushing...' : 'Confirm Push'}
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-full rounded-none border border-border font-mono text-[10px] uppercase tracking-widest"
+                onClick={() => setShowPushConfirm(true)}
+              >
+                Push Branch
+              </Button>
+            )}
+          </div>
+        ) : null}
+        {latestCommit?.pushedAt && !latestPullRequest ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mb-2 h-7 w-full rounded-none border border-border font-mono text-[10px] uppercase tracking-widest"
+            onClick={handleCreatePrDraft}
+            disabled={isDraftingPr}
+          >
+            {isDraftingPr ? 'Drafting PR...' : 'Draft PR'}
+          </Button>
+        ) : null}
+        {latestPullRequest ? (
+          <div className="mb-2 space-y-2 border border-border p-2">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              Pull Request {latestPullRequest.status}
+            </p>
+            <p className="text-xs font-medium text-foreground">{latestPullRequest.title}</p>
+            {latestPullRequest.status === 'draft' ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-full rounded-none border border-border font-mono text-[10px] uppercase tracking-widest"
+                onClick={handleConfirmCreatePr}
+                disabled={isCreatingPr}
+              >
+                {isCreatingPr ? 'Creating PR...' : 'Create PR'}
+              </Button>
+            ) : latestPullRequest.url ? (
+              <a
+                href={latestPullRequest.url}
+                className="block truncate font-mono text-[10px] uppercase tracking-widest text-primary underline"
+              >
+                Open PR
+              </a>
+            ) : null}
+          </div>
+        ) : null}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 w-full rounded-none border border-border font-mono text-[10px] uppercase tracking-widest"
+          disabled
+          title="GitHub write actions are enabled in later slices"
+        >
+          Commit / Push / PR coming next
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function GitHubStateRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-background px-3 py-2">
+      <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-1 truncate font-mono text-xs text-foreground">{value}</p>
     </div>
   )
 }
