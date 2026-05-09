@@ -86,12 +86,11 @@ export const interfaceMap: EducationSurfaceSection[] = [
     label: '01',
     title: 'Explorer',
     iconKey: 'explorer',
-    summary:
-      'Browse files, search the project, and choose the exact code context you want to work on.',
+    summary: 'Find the files, symbols, and project context that should shape the next agent turn.',
     bullets: [
-      'File tree navigation',
-      'Project search panel',
-      'Fast file selection for editor + chat',
+      'Project-aware file tree navigation',
+      'Search when structure is not enough',
+      'Selected files route into editor and chat context',
     ],
   },
   {
@@ -100,11 +99,11 @@ export const interfaceMap: EducationSurfaceSection[] = [
     title: 'Workspace',
     iconKey: 'workspace',
     summary:
-      'Edit files, inspect changed work, and keep the current objective visible in one operational canvas.',
+      'Keep editing, diffs, terminal output, preview state, and the current objective in one canvas.',
     bullets: [
-      'Tabbed editor + diff review',
-      'Integrated terminal + preview',
-      'Responsive workbench shell',
+      'Tabbed editor and changed-work review',
+      'Browser runtime with server fallback',
+      'Terminal and preview beside the task thread',
     ],
   },
   {
@@ -113,11 +112,11 @@ export const interfaceMap: EducationSurfaceSection[] = [
     title: 'Chat Panel',
     iconKey: 'chat',
     summary:
-      'Direct the agent, move between planning and execution, and keep the active thread close to the work itself.',
+      'Direct Panda through ask, plan, code, and build without separating the conversation from the work.',
     bullets: [
-      'Message history + streaming input',
-      'Mode, model, and file-context controls',
-      'Planning, approval, and build actions',
+      'Canonical mode, model, and context controls',
+      'Plan review and build handoff in-thread',
+      'Permission gates before risky actions',
     ],
   },
   {
@@ -126,73 +125,78 @@ export const interfaceMap: EducationSurfaceSection[] = [
     title: 'Operational Rail',
     iconKey: 'inspector',
     summary:
-      'Review run proof, changed work, context, and preview state without leaving the active project session.',
-    bullets: ['Run proof and recovery', 'Changes, context, and preview rails'],
+      'Inspect proof, plans, changed work, memory, and recovery state without leaving the session.',
+    bullets: [
+      'Run events, receipts, and checkpoints',
+      'Plans, changes, memory, evals, and preview',
+    ],
   },
 ]
 
 export const explorerDetails: EducationDetail[] = [
   {
     name: 'FileTree',
-    role: 'Primary explorer for browsing folders and files.',
-    userValue: 'Select, create, rename, or delete files and send them into the editor quickly.',
+    role: 'Primary map for project folders and files.',
+    userValue: 'Open the exact code the agent should understand before you ask for work.',
   },
   {
     name: 'ProjectSearchPanel',
-    role: 'Project-wide search panel living beside the explorer tab.',
-    userValue: 'Jump to the right file faster when you know what you need but not where it lives.',
+    role: 'Project-wide search beside the file tree.',
+    userValue: 'Jump to the right file when you know the concept but not the path.',
   },
   {
     name: 'Selection wiring',
-    role: 'File selection flows into `selectedFilePath` and can include line/column targets.',
-    userValue: 'Clicking from search or AI results can open the right file at the right location.',
+    role: 'Selected files flow into editor state and chat context.',
+    userValue: 'Keep the next answer grounded in the files that matter.',
   },
 ]
 
 export const workspaceDetails: EducationDetail[] = [
   {
     name: 'FileTabs',
-    role: 'Tracks open files and tab state, including dirty status.',
-    userValue: 'Work across multiple files without losing place.',
+    role: 'Tracks open files, active file state, and unsaved work.',
+    userValue: 'Move across a change set without losing your place.',
   },
   {
     name: 'EditorContainer',
-    role: 'Main code editing surface for the selected file.',
-    userValue: 'Write and save code directly in the workbench instead of switching tools.',
+    role: 'Main code editing surface for selected project files.',
+    userValue: 'Read, edit, and save code where the agent context already lives.',
   },
   {
     name: 'Timeline',
-    role: 'Change and run context tied to the active work thread.',
-    userValue: 'Understand what changed and when without switching into a different tool.',
+    role: 'Change, run, and proof context tied to the active work thread.',
+    userValue: 'Understand what changed, why it changed, and what still needs review.',
   },
   {
     name: 'Terminal',
-    role: 'Integrated command execution panel tied to the current project.',
-    userValue: 'Run installs, tests, and scripts without leaving Panda.',
+    role: 'Integrated command panel for the current project runtime.',
+    userValue:
+      'Run installs, tests, and scripts in browser when possible, with fallback when needed.',
   },
 ]
 
 export const chatDetails: EducationDetail[] = [
   {
     name: 'MessageList',
-    role: 'Shows the conversation history and streaming assistant output.',
-    userValue: 'Keeps the full reasoning and action context visible while you work.',
+    role: 'Shows the active transcript and streaming assistant output.',
+    userValue: 'Keep direction, decisions, and results attached to the same work thread.',
   },
   {
     name: 'ChatInput',
-    role: 'Prompt composer with mode selection, model controls, reasoning variant, and `@` file mentions.',
-    userValue: 'You can direct the agent precisely and attach project context inline.',
+    role: 'Prompt composer with mode, model, depth, and `@` file controls.',
+    userValue: 'Choose ask, plan, code, or build and attach the project context inline.',
   },
   {
     name: 'Plan Review Card',
-    role: 'Inline plan state entry point tied to the rail and execution actions.',
+    role: 'Inline plan state tied to approval and build execution.',
     userValue:
-      'Move from planning to execution without losing the active thread or project context.',
+      'Review the execution contract before Panda starts changing files or running commands.',
   },
   {
     name: 'Permission Requests',
     role: 'Browser-native approval UI for risky command execution and other gated actions.',
-    userValue: 'Teach Panda how your project works so future runs stay aligned.',
+    userValue:
+      'Approve sensitive actions at the moment they matter instead of trusting a hidden run.',
   },
   {
     name: 'Share + History Actions',
@@ -205,13 +209,13 @@ export const chatDetails: EducationDetail[] = [
 export const specDetails: EducationDetail[] = [
   {
     name: 'Run Tab',
-    role: 'Shows persisted run history, execution progress, and recovery signals.',
-    userValue: 'Use it to inspect what happened, not just what the agent said.',
+    role: 'Shows persisted run progress, event summaries, receipts, and recovery signals.',
+    userValue: 'Inspect what happened, what passed, and where a paused run can resume.',
   },
   {
     name: 'Context Tab',
-    role: 'Plan, memory, and eval surface tied to the active chat.',
-    userValue: 'Review the execution contract and durable context from one proof surface.',
+    role: 'Plan, project memory, spec, and eval surface tied to the active chat.',
+    userValue: 'Review the durable context Panda will use before it continues work.',
   },
   {
     name: 'Changes Tab',
@@ -220,47 +224,47 @@ export const specDetails: EducationDetail[] = [
   },
   {
     name: 'Preview Tab',
-    role: 'Runtime output surface for browser or app previews when available.',
-    userValue: 'Inspect what the active run produced without switching away from the session.',
+    role: 'Runtime output surface for browser or app previews.',
+    userValue: 'Check the result next to the plan, diff, and conversation that produced it.',
   },
 ]
 
 export const workflowSteps: EducationWorkflowStep[] = [
   {
     id: 'pick-context',
-    title: 'Pick context in Explorer',
+    title: 'Orient the project context',
     description:
-      'Use the file tree or search panel to choose the files you want to inspect. This sets up the workspace and gives you precise context to mention in chat.',
+      'Use the file tree, search, and file mentions to put the relevant code in front of Panda before the request starts.',
   },
   {
     id: 'edit-and-inspect',
-    title: 'Edit and inspect in Workspace',
+    title: 'Choose the right mode',
     description:
-      'Open multiple files as tabs, edit code, inspect the timeline, and run terminal commands while staying in the same project session.',
+      'Use ask for explanation, plan for reviewable strategy, code for focused edits, and build for larger approved execution.',
   },
   {
     id: 'ask-panda',
-    title: 'Ask Panda to plan, ask, or build',
+    title: 'Review the execution contract',
     description:
-      'Use the chat input mode selector and send a request with file mentions, model controls, and the right browser context.',
+      'For structured work, Panda saves a plan artifact so you can inspect scope, constraints, and acceptance checks before build starts.',
   },
   {
     id: 'review-and-approve',
-    title: 'Review and approve the plan',
+    title: 'Approve gated work',
     description:
-      'For structured work, review the saved plan in the operational rail and approve it before build execution starts.',
+      'Plans, risky commands, and sensitive actions pause for review. You decide when Panda can write, install, delete, or execute.',
   },
   {
     id: 'inspect-or-resume',
-    title: 'Inspect or resume the run',
+    title: 'Watch proof as it runs',
     description:
-      'Use the operational rail to inspect Run, Plan, Changes, Memory, and Evals. Recover a paused run when Panda surfaces a resumable checkpoint.',
+      'Run events, changed work, command output, receipts, and checkpoints stay attached to the active session for inspection.',
   },
   {
     id: 'share-verify-repeat',
-    title: 'Share, verify, repeat',
+    title: 'Verify, share, or resume',
     description:
-      'Review changes in the workspace, verify the results, and share the active chat or revisit run history when needed.',
+      'Review the diff and preview, run checks, share the redacted work thread, or resume from a checkpoint after interruption.',
   },
 ]
 

@@ -76,22 +76,22 @@ const faqItems = [
   {
     question: 'Do I need to install anything?',
     answer:
-      'No. Panda runs entirely in the browser. Open a project, start chatting with the agent, review plans, and approve changes without leaving your browser tab.',
+      'No desktop setup is required. Panda is browser-first and uses a server-backed fallback when browser execution is unavailable.',
   },
   {
     question: 'What happens when a build run gets interrupted?',
     answer:
-      'Panda saves execution checkpoints. If a run pauses or disconnects, you can resume from where it stopped instead of starting over.',
+      'Panda saves run events, receipts, and checkpoints. If a run pauses or disconnects, the recovery path stays attached to the same work thread.',
   },
   {
     question: 'Can I review code changes before they are applied?',
     answer:
-      'Yes. Plans are saved and require explicit approval. During execution, risky commands (like installs or file deletions) pause for your review.',
+      'Yes. Plan mode produces a reviewable execution contract, and risky commands or sensitive actions pause for explicit approval.',
   },
   {
     question: 'Does Panda remember context between sessions?',
     answer:
-      'Yes. Project memory persists across sessions. The agent can reuse saved context so you stop re-explaining your codebase with every new chat.',
+      'Yes. Convex persists projects, chats, plans, memory, runs, and changed-work records so context can survive across sessions and devices.',
   },
   {
     question: 'Which AI providers does Panda support?',
@@ -101,7 +101,7 @@ const faqItems = [
   {
     question: 'Can I share my workbench session with someone else?',
     answer:
-      'Yes. You can share the active chat session with a link. The recipient sees the full conversation, plan, and run history.',
+      'Yes. Panda creates a public projection of the active chat so collaborators can inspect the thread without exposing private workspace data.',
   },
 ]
 
@@ -123,21 +123,21 @@ export default function EducationPage() {
               >
                 <div className="space-y-6">
                   <div className="inline-flex items-center gap-3">
-                    <span className="h-px w-10 bg-primary/60" />
+                    <span className="bg-primary/60 h-px w-10" />
                     <span className="font-mono text-xs uppercase tracking-[0.06em] text-muted-foreground">
                       How Panda works
                     </span>
                   </div>
 
                   <h1 className="text-display text-4xl sm:text-5xl lg:text-6xl">
-                    One workbench. One active thread of work. Clear review points throughout.
+                    Learn the workbench built for reviewable AI coding.
                   </h1>
 
                   <p className="max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-                    Panda keeps the current objective, active work, review state, and changed work
-                    inside one browser-native coding workbench. You move between context, planning,
-                    execution, and inspection without leaving the project or rebuilding the mental
-                    model.
+                    Panda is a browser-first AI coding workbench with server fallback. It keeps the
+                    objective, selected files, chat mode, plan, run proof, changed work, and
+                    recovery state in one project session so you can steer the agent without
+                    rebuilding context every turn.
                   </p>
 
                   <div className="flex flex-wrap gap-3">
@@ -149,7 +149,7 @@ export default function EducationPage() {
                     </Link>
                     <a href="#interface-map">
                       <Button variant="outline" className="rounded-none font-mono tracking-wide">
-                        See the operating model
+                        Read the operating model
                       </Button>
                     </a>
                   </div>
@@ -174,7 +174,7 @@ export default function EducationPage() {
                           Explorer selects context
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Browse files and search until the right code is on screen.
+                          Find the files, symbols, and context that should shape the next turn.
                         </p>
                       </div>
                     </div>
@@ -185,7 +185,7 @@ export default function EducationPage() {
                           Workspace holds the active work
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Edit code, inspect changes, and keep the current objective visible.
+                          Edit, diff, preview, and run commands beside the current objective.
                         </p>
                       </div>
                     </div>
@@ -196,7 +196,7 @@ export default function EducationPage() {
                           Chat directs the agent
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Prompt, review plans, and manage execution in one thread.
+                          Choose ask, plan, code, or build and keep the handoff in one thread.
                         </p>
                       </div>
                     </div>
@@ -207,12 +207,12 @@ export default function EducationPage() {
                           Operational rail reviews state
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Inspect runs, plans, changed work, memory, and eval checks.
+                          Inspect run events, receipts, plans, changes, memory, and checkpoints.
                         </p>
                       </div>
                     </div>
                   </div>
-                  <div className="absolute -bottom-3 -right-3 -z-10 h-full w-full border border-primary/20" />
+                  <div className="border-primary/20 absolute -bottom-3 -right-3 -z-10 h-full w-full border" />
                 </div>
               </motion.div>
             </div>
@@ -232,8 +232,8 @@ export default function EducationPage() {
                 <Eye size={20} className="mb-4 text-primary" />
                 <h3 className="mb-2 text-lg font-semibold">Transparent</h3>
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  Every plan, file edit, and terminal command is visible. You see what the agent
-                  will do before it does it.
+                  Plans, run events, file edits, and terminal commands stay visible beside the work
+                  they affect.
                 </p>
               </motion.div>
               <motion.div
@@ -246,8 +246,8 @@ export default function EducationPage() {
                 <Shield size={20} className="mb-4 text-primary" />
                 <h3 className="mb-2 text-lg font-semibold">Reviewable</h3>
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  Plans require explicit approval. Risky commands pause for your say-so. Nothing
-                  ships without your consent.
+                  Plan artifacts, build handoffs, and risky commands create deliberate approval
+                  points before execution continues.
                 </p>
               </motion.div>
               <motion.div
@@ -260,8 +260,8 @@ export default function EducationPage() {
                 <Clock size={20} className="mb-4 text-primary" />
                 <h3 className="mb-2 text-lg font-semibold">Recoverable</h3>
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  Runs save checkpoints. If something interrupts execution, you pick up exactly
-                  where you left off.
+                  Receipts and checkpoints make interrupted work inspectable and resumable instead
+                  of disposable.
                 </p>
               </motion.div>
             </div>
@@ -274,7 +274,7 @@ export default function EducationPage() {
             <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
               <div>
                 <div className="mb-4 flex items-center gap-3">
-                  <span className="h-px w-10 bg-primary/60" />
+                  <span className="bg-primary/60 h-px w-10" />
                   <span className="font-mono text-xs uppercase tracking-[0.06em] text-muted-foreground">
                     Interface Map
                   </span>
@@ -300,7 +300,7 @@ export default function EducationPage() {
                     viewport={{ once: true }}
                     transition={{ delay: index * 0.08 }}
                     className={cn(
-                      'hover:bg-surface-1 group block border border-transparent bg-background p-6 transition-colors',
+                      'group block border border-transparent bg-background p-6 transition-colors hover:bg-surface-1',
                       section.id === 'workspace' && 'md:col-span-2'
                     )}
                   >
@@ -340,17 +340,18 @@ export default function EducationPage() {
           <div className="container">
             <div className="mb-10">
               <div className="mb-4 flex items-center gap-3">
-                <span className="h-px w-10 bg-primary/60" />
+                <span className="bg-primary/60 h-px w-10" />
                 <span className="font-mono text-xs uppercase tracking-[0.06em] text-muted-foreground">
                   Workflow
                 </span>
               </div>
               <h2 className="max-w-3xl text-4xl font-bold leading-[1.1] -tracking-[0.025em]">
-                From request to inspected result in six steps
+                From context to verified result in six steps
               </h2>
               <p className="mt-4 max-w-2xl text-muted-foreground">
-                This is Panda&apos;s default workflow: pick context, review the plan, execute with
-                oversight, inspect the work, and keep moving without losing the current thread.
+                Panda&apos;s default workflow is simple: orient the project, choose the right mode,
+                review the execution contract, approve gated work, inspect proof, then verify or
+                resume without losing the active thread.
               </p>
             </div>
 
@@ -400,10 +401,11 @@ export default function EducationPage() {
               </div>
               <div className="lg:col-span-8">
                 <p className="text-base leading-relaxed text-muted-foreground">
-                  The Explorer is your entry point into project context. Switch between an{' '}
-                  <span className="font-mono text-foreground">Explorer</span> tab for browsing and a{' '}
-                  <span className="font-mono text-foreground">Search</span> tab for jumping to
-                  matches. Select a file and it routes directly into the editor and chat context.
+                  The Explorer is the entry point for bounded project context. Use the{' '}
+                  <span className="font-mono text-foreground">Explorer</span> tab when structure is
+                  useful and the <span className="font-mono text-foreground">Search</span> tab when
+                  you need to jump by concept. Selected files route into the editor and chat
+                  context.
                 </p>
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
                   <div className="border border-border bg-background p-3">
@@ -411,7 +413,7 @@ export default function EducationPage() {
                       <FolderTree size={14} className="text-primary" /> Browse
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Navigate folders and files in a structured tree.
+                      Navigate project folders without loading unnecessary file content.
                     </p>
                   </div>
                   <div className="border border-border bg-background p-3">
@@ -419,7 +421,7 @@ export default function EducationPage() {
                       <Search size={14} className="text-primary" /> Search
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Jump to matches when the tree is too slow.
+                      Find symbols, filenames, or concepts when the path is not obvious.
                     </p>
                   </div>
                   <div className="border border-border bg-background p-3">
@@ -427,7 +429,7 @@ export default function EducationPage() {
                       <FileSearch size={14} className="text-primary" /> Route
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Selected files open in the workspace and attach to chat context.
+                      Route selected files into the workspace and the next agent turn.
                     </p>
                   </div>
                 </div>
@@ -459,17 +461,18 @@ export default function EducationPage() {
               </div>
               <div className="lg:col-span-8">
                 <p className="text-base leading-relaxed text-muted-foreground">
-                  The Workspace combines file tabs, a code editor, timeline context, and terminal
-                  execution into a single responsive layout. Edit code, review what changed, and run
-                  commands without switching tools.
+                  The Workspace combines file tabs, editor state, changed-work review, terminal
+                  execution, preview output, and timeline context. Browser execution is preferred
+                  when available, and server fallback keeps command work unblocked.
                 </p>
                 <div className="mt-4 border border-border bg-background p-4">
                   <div className="mb-2 font-mono text-xs uppercase tracking-widest text-primary">
                     Responsive layout
                   </div>
                   <p className="text-sm leading-relaxed text-muted-foreground">
-                    Desktop uses resizable panels. Smaller screens keep the same workbench surfaces
-                    available without forcing you out of the project session.
+                    Desktop uses resizable panels. Smaller screens preserve the same Explorer,
+                    Workspace, Chat, and Operational Rail model without forcing you out of the
+                    project session.
                   </p>
                 </div>
               </div>
@@ -500,9 +503,10 @@ export default function EducationPage() {
               </div>
               <div className="lg:col-span-8">
                 <p className="text-base leading-relaxed text-muted-foreground">
-                  The Chat Panel is Panda&apos;s orchestration surface. It handles planning, asking,
-                  building, permission review, and message history in one thread. Plans and run
-                  status surface inline so you never lose track of what&apos;s happening.
+                  The Chat Panel is Panda&apos;s orchestration surface. It carries the canonical
+                  ask, plan, code, and build modes, plus model controls, file mentions, permission
+                  review, and message history. Plans and run status surface inline so the handoff
+                  from strategy to execution stays visible.
                 </p>
 
                 <div className="mt-4 grid gap-px bg-border sm:grid-cols-3">
@@ -512,7 +516,8 @@ export default function EducationPage() {
                       Plan + Run
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Inline plan review cards and run status surfaces keep execution visible.
+                      Saved plans and run status cards keep execution visible before and during
+                      work.
                     </p>
                   </div>
                   <div className="border border-transparent bg-background p-4">
@@ -521,7 +526,7 @@ export default function EducationPage() {
                       Permissions
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Risky commands pause for browser-native approval before they proceed.
+                      Risky commands and sensitive actions pause for browser-native approval.
                     </p>
                   </div>
                   <div className="border border-transparent bg-background p-4">
@@ -530,8 +535,7 @@ export default function EducationPage() {
                       Share + History
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Share the active chat with a link, or reopen past run history from the same
-                      panel.
+                      Share a redacted work thread or reopen past run history from the same panel.
                     </p>
                   </div>
                 </div>
@@ -564,21 +568,21 @@ export default function EducationPage() {
               <div className="lg:col-span-8">
                 <p className="text-base leading-relaxed text-muted-foreground">
                   Panda&apos;s operational rail keeps the current run, saved plan, changed work,
-                  project memory, and eval tooling close to the active chat. Instead of scattering
-                  review state across separate pages, everything you need to inspect lives in one
-                  surface.
+                  project memory, eval tooling, preview state, and recovery signals close to the
+                  active chat. Instead of scattering review state across separate pages, the rail
+                  gives you one proof surface.
                 </p>
                 <div className="mt-6 grid gap-4 sm:grid-cols-3">
                   <div className="border border-border bg-background p-4">
                     <div className="mb-2 font-mono text-xs font-bold text-primary">RUN</div>
                     <p className="text-sm text-muted-foreground">
-                      Inspect persisted run events, progress, and recovery state.
+                      Inspect bounded run summaries, progress, receipts, and recovery state.
                     </p>
                   </div>
                   <div className="border border-border bg-background p-4">
                     <div className="mb-2 font-mono text-xs font-bold text-primary">PLAN</div>
                     <p className="text-sm text-muted-foreground">
-                      Review, approve, and build from the current execution contract.
+                      Review, approve, and build from the saved execution contract.
                     </p>
                   </div>
                   <div className="border border-border bg-background p-4">
@@ -586,7 +590,7 @@ export default function EducationPage() {
                       CHANGES / NOTES
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Inspect changed work, preserve project context, and validate repeatable
+                      Inspect changed work, preserve project memory, and validate repeatable
                       behavior.
                     </p>
                   </div>
@@ -600,24 +604,25 @@ export default function EducationPage() {
               ))}
             </div>
 
-            <div className="bg-surface-1 mt-12 border border-border p-6 lg:p-8">
+            <div className="mt-12 border border-border bg-surface-1 p-6 lg:p-8">
               <div className="grid gap-8 lg:grid-cols-2">
                 <div>
                   <h3 className="mb-4 text-xl font-semibold">Plan review and run recovery</h3>
                   <p className="text-sm leading-relaxed text-muted-foreground">
                     Panda&apos;s workflow centers on explicit plan review for structured work and
-                    resumable runs for interrupted execution. When a run pauses, Panda surfaces a
-                    recovery path instead of forcing a restart from scratch.
+                    resumable runs for interrupted execution. When a run pauses, Panda keeps the
+                    plan, receipt, changed work, and checkpoint connected so you can inspect before
+                    continuing.
                   </p>
                   <div className="mt-6 flex items-center gap-4">
                     <div className="flex -space-x-2">
                       <Shield
                         size={32}
-                        className="rounded-full border border-background bg-primary/10 p-1.5 text-primary"
+                        className="bg-primary/10 rounded-full border border-background p-1.5 text-primary"
                       />
                       <GitBranch
                         size={32}
-                        className="rounded-full border border-background bg-primary/10 p-1.5 text-primary"
+                        className="bg-primary/10 rounded-full border border-background p-1.5 text-primary"
                       />
                     </div>
                     <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
@@ -631,7 +636,8 @@ export default function EducationPage() {
                     <div>
                       <h4 className="text-sm font-semibold">Build from plan</h4>
                       <p className="text-xs text-muted-foreground">
-                        Approve the saved plan, then use it as the execution contract for build.
+                        Approve the saved plan artifact, then use it as the execution contract for
+                        build.
                       </p>
                     </div>
                   </div>
@@ -649,7 +655,7 @@ export default function EducationPage() {
                     <div>
                       <h4 className="text-sm font-semibold">Run history + sharing</h4>
                       <p className="text-xs text-muted-foreground">
-                        Reopen past execution and share the active chat with a single link.
+                        Reopen past execution and share a redacted public projection with a link.
                       </p>
                     </div>
                   </div>
@@ -673,7 +679,13 @@ export default function EducationPage() {
                       Use <span className="font-mono text-foreground">@file-path</span> mentions in
                       chat to pull exact files into the request context.
                     </li>
-                    <li>Use the chat actions menu to open run history or share the active chat.</li>
+                    <li>
+                      Use ask for explanation, plan for scope, code for focused edits, and build for
+                      approved execution.
+                    </li>
+                    <li>
+                      Use the chat actions menu to open run history or share the active thread.
+                    </li>
                     <li>
                       Open the operational rail when you need Run, Plan, Changes, Memory, or Evals
                       without leaving the project page.
@@ -687,8 +699,8 @@ export default function EducationPage() {
                 <div className="shadow-sharp-md surface-1 border border-border p-5">
                   <h2 className="mb-3 text-xl font-semibold">Ready to try it?</h2>
                   <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
-                    Panda keeps navigation, editing, execution, approval, and changed-work review in
-                    one synchronized browser workbench. The current objective stays visible while
+                    Panda keeps navigation, editing, execution, approval, proof, and changed-work
+                    review in one synchronized browser workbench. The objective stays visible while
                     the work moves.
                   </p>
                   <Link href="/projects">
@@ -708,7 +720,7 @@ export default function EducationPage() {
           <div className="container">
             <div className="mb-10">
               <div className="mb-4 flex items-center gap-3">
-                <span className="h-px w-10 bg-primary/60" />
+                <span className="bg-primary/60 h-px w-10" />
                 <span className="font-mono text-xs uppercase tracking-[0.06em] text-muted-foreground">
                   FAQ
                 </span>
@@ -743,8 +755,8 @@ export default function EducationPage() {
               Start building with Panda
             </h2>
             <p className="mx-auto mb-8 max-w-lg text-muted-foreground">
-              Create a project, review the plan, approve what matters, inspect the work, and keep
-              moving. No desktop install required.
+              Create a project, choose the right mode, review the plan, approve what matters,
+              inspect proof, and keep moving. No desktop install required.
             </p>
             <Link href="/projects">
               <Button className="shadow-sharp-md rounded-none font-mono tracking-wide">
