@@ -534,18 +534,18 @@ export function ChatInput({
           Direct Panda
         </div>
         <div className="flex items-center gap-2">
-          <span className="border border-border bg-background/70 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          <span className="bg-background/70 border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
             @{filePaths.length} files
           </span>
           {attachments.length > 0 ? (
-            <span className="border border-border bg-background/70 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            <span className="bg-background/70 border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
               {attachments.length} attachments
             </span>
           ) : null}
         </div>
       </div>
 
-      <div className="relative border border-border bg-background/90">
+      <div className="bg-background/90 relative border border-border">
         {/* @-mention picker */}
         {mentionQuery !== null && (
           <MentionPicker
@@ -574,7 +574,7 @@ export function ChatInput({
             'max-h-[200px] min-h-[72px] resize-none border-0 pr-10 shadow-none sm:min-h-[88px]',
             'rounded-none bg-background',
             'focus-visible:ring-0',
-            'font-mono text-sm placeholder:text-muted-foreground/50'
+            'placeholder:text-muted-foreground/50 font-mono text-sm'
           )}
           rows={1}
         />
@@ -623,8 +623,8 @@ export function ChatInput({
                       className={cn(
                         'transition-sharp h-7 w-7 rounded-none',
                         enhanceState === 'enhanced'
-                          ? 'border-primary bg-primary/10 text-primary hover:bg-primary/20'
-                          : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground',
+                          ? 'bg-primary/10 hover:bg-primary/20 border-primary text-primary'
+                          : 'hover:border-foreground/30 border-border text-muted-foreground hover:text-foreground',
                         enhanceState === 'enhancing' && 'animate-spin'
                       )}
                     >
@@ -643,13 +643,13 @@ export function ChatInput({
       </div>
 
       {/* Inline controls row */}
-      <div className="mt-2 border border-border bg-background/80">
+      <div className="bg-background/80 mt-2 border border-border">
         {/* Row 1: context / attachment / model / mode selectors */}
         <div className="flex min-w-0 flex-wrap items-center gap-1.5 border-b border-border px-2 py-1.5">
           {(activeFile || selection) && (
             <button
               type="button"
-              className="flex h-6 max-w-[140px] items-center gap-1 border border-border bg-background/70 px-2 font-mono text-[10px] leading-none text-muted-foreground hover:text-foreground"
+              className="bg-background/70 flex h-6 max-w-[140px] items-center gap-1 border border-border px-2 font-mono text-[10px] leading-none text-muted-foreground hover:text-foreground"
               onClick={() => setIncludeEditorContext((value) => !value)}
               title={
                 includeEditorContext
@@ -704,12 +704,12 @@ export function ChatInput({
                 architectBrainstormEnabled ? 'Disable brainstorming' : 'Enable brainstorming'
               }
               className={cn(
-                'transition-sharp flex h-6 items-center border border-border px-2 font-mono text-[10px] leading-none uppercase tracking-wide',
+                'transition-sharp flex h-6 items-center border border-border px-2 font-mono text-[10px] uppercase leading-none tracking-wide',
                 'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary',
                 'disabled:pointer-events-none disabled:opacity-50',
                 architectBrainstormEnabled
-                  ? 'border-primary bg-primary/10 text-foreground'
-                  : 'text-muted-foreground hover:border-foreground/30 hover:text-foreground'
+                  ? 'bg-primary/10 border-primary text-foreground'
+                  : 'hover:border-foreground/30 text-muted-foreground hover:text-foreground'
               )}
             >
               Brainstorm
@@ -739,7 +739,7 @@ export function ChatInput({
                 className={cn(
                   'transition-sharp h-6 w-6 rounded-none',
                   hasSendContent
-                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    ? 'hover:bg-primary/90 bg-primary text-primary-foreground'
                     : 'bg-secondary text-muted-foreground'
                 )}
               >

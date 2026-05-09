@@ -27,8 +27,8 @@ files populate Convex. Validation: import tests plus gate. Status: [x] complete
 
 What: Track base branch, commit SHAs, changed-file state, and remote-change
 detection. Acceptance criteria: Panda can detect remote changed since sync
-without overwriting files. Validation: conflict-state tests plus gate. Status: [
-] complete
+without overwriting files. Validation: conflict-state tests plus gate. Status:
+[x] complete
 
 ## Milestone 5: S05 Project-Aware Source Control Read Model
 
@@ -60,7 +60,7 @@ tests plus gate. Status: [x] complete
 
 What: Generate PR draft from execution context and create PR after user
 confirmation. Acceptance criteria: PR title/body are reviewable and confirmed
-before GitHub creation. Validation: PR draft/create tests plus gate. Status: [ ]
+before GitHub creation. Validation: PR draft/create tests plus gate. Status: [x]
 complete
 
 ## Milestone 10: S10 Project Shell GitHub Status

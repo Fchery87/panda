@@ -11,7 +11,7 @@ function modeLabel(receipt: ExecutionReceipt): string {
 
 function ReceiptMetric({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="border border-border bg-background/80 px-2 py-1.5">
+    <div className="bg-background/80 border border-border px-2 py-1.5">
       <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
         {label}
       </div>
@@ -32,7 +32,7 @@ function ReceiptSection({
   return (
     <section
       className={cn(
-        'shadow-sharp-sm border bg-background/85 px-3 py-2',
+        'shadow-sharp-sm bg-background/85 border px-3 py-2',
         tone === 'primary' ? 'border-primary/45' : 'border-border'
       )}
     >
@@ -47,7 +47,7 @@ function ReceiptSection({
 export function RunReceiptPanel({ receipt }: RunReceiptPanelProps) {
   if (!receipt) {
     return (
-      <div className="border border-border bg-background/80 px-3 py-3">
+      <div className="bg-background/80 border border-border px-3 py-3">
         <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
           Execution receipt
         </div>
@@ -64,14 +64,14 @@ export function RunReceiptPanel({ receipt }: RunReceiptPanelProps) {
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-start justify-between gap-2 border border-border bg-background/80 px-3 py-2">
+      <div className="bg-background/80 flex flex-wrap items-start justify-between gap-2 border border-border px-3 py-2">
         <div>
           <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
             Execution receipt
           </div>
           <div className="mt-1 font-mono text-sm text-foreground">{modeLabel(receipt)}</div>
         </div>
-        <div className="shadow-sharp-sm border border-primary/45 bg-primary/5 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-primary">
+        <div className="shadow-sharp-sm border-primary/45 bg-primary/5 border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-primary">
           {receipt.routingDecision.confidence} confidence
         </div>
       </div>
@@ -110,7 +110,7 @@ export function RunReceiptPanel({ receipt }: RunReceiptPanelProps) {
             {webcontainer.commandsRun.slice(0, 3).map((command, index) => (
               <div
                 key={`${command.command}-${index}`}
-                className="border border-border bg-muted/20 px-2 py-1 font-mono text-xs text-muted-foreground [overflow-wrap:anywhere]"
+                className="bg-muted/20 border border-border px-2 py-1 font-mono text-xs text-muted-foreground [overflow-wrap:anywhere]"
               >
                 {command.command}
               </div>

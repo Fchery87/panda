@@ -289,12 +289,12 @@ export function MCPServerEditor({ className }: MCPServerEditorProps) {
         </div>
       ) : (
         <div className="border border-border p-6 text-center">
-          <Server className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
+          <Server className="text-muted-foreground/50 mx-auto mb-2 h-8 w-8" />
           <p className="font-mono text-xs text-muted-foreground">No MCP servers configured</p>
         </div>
       )}
 
-      <div className="bg-surface-2 rounded-none border border-border p-3">
+      <div className="rounded-none border border-border bg-surface-2 p-3">
         <p className="font-mono text-xs text-muted-foreground">
           MCP servers provide additional tools for the agent. Common servers include:
         </p>

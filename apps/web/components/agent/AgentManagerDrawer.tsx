@@ -124,7 +124,7 @@ export function AgentManagerDrawer({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm"
+            className="bg-background/80 fixed inset-0 z-40 backdrop-blur-sm"
           />
 
           {/* Drawer */}
@@ -178,7 +178,7 @@ export function AgentManagerDrawer({
                     </p>
 
                     <div className="flex items-center gap-3 font-mono text-xs text-muted-foreground">
-                      <span className="bg-surface-2 rounded-none px-1.5 py-0.5">
+                      <span className="rounded-none bg-surface-2 px-1.5 py-0.5">
                         {getModeLabel(activeRun.mode)}
                       </span>
                       {activeRun.model && <span>{activeRun.model}</span>}
@@ -230,7 +230,7 @@ export function AgentManagerDrawer({
                         transition={{ delay: index * 0.05 }}
                         type="button"
                         onClick={() => onNavigateToChat?.(run.chatId)}
-                        className="hover:bg-surface-2 flex w-full items-start gap-3 rounded-none border border-border bg-background p-3 text-left transition-colors"
+                        className="flex w-full items-start gap-3 rounded-none border border-border bg-background p-3 text-left transition-colors hover:bg-surface-2"
                       >
                         <StatusIcon status={run.status} />
 
@@ -238,7 +238,7 @@ export function AgentManagerDrawer({
                           <p className="truncate font-mono text-xs">{truncatedSummary}</p>
 
                           <div className="mt-1 flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
-                            <span className="bg-surface-2 rounded-none px-1">
+                            <span className="rounded-none bg-surface-2 px-1">
                               {getModeLabel(run.mode)}
                             </span>
                             {run.model && <span>{run.model}</span>}

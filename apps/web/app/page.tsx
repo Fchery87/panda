@@ -59,7 +59,7 @@ export default function Home() {
 
       <section className="px-3 pb-14 pt-20 sm:px-5 lg:px-8 lg:pb-20 lg:pt-24">
         <div className="bg-background/92 shadow-sharp-lg mx-auto max-w-[1500px] border border-foreground">
-            <nav
+          <nav
             className="grid border-b border-foreground bg-card sm:grid-cols-4"
             aria-label="Panda workflow modes"
           >
@@ -192,7 +192,6 @@ export default function Home() {
     </main>
   )
 }
-
 
 function WorkbenchPreview() {
   return (

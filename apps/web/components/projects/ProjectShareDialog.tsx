@@ -39,7 +39,7 @@ export function ProjectShareDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3 border border-border bg-muted/20 p-3">
+        <div className="bg-muted/20 space-y-3 border border-border p-3">
           <div className="flex items-start gap-2">
             <Link2 className="mt-0.5 h-4 w-4 text-muted-foreground" />
             <div className="space-y-1 font-mono text-xs">

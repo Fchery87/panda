@@ -60,7 +60,7 @@ export function MermaidRenderer({ content, className }: MermaidRendererProps) {
   return (
     <div
       ref={containerRef}
-      className={cn('mermaid-diagram overflow-auto rounded-none bg-muted/30 p-4', className)}
+      className={cn('mermaid-diagram bg-muted/30 overflow-auto rounded-none p-4', className)}
       dangerouslySetInnerHTML={svg ? { __html: svg } : undefined}
     >
       {!svg && (

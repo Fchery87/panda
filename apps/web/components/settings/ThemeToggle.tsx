@@ -68,7 +68,7 @@ export function ThemeToggleFull({ className, value, onChange }: ThemeToggleFullP
             className={cn(
               'flex items-center gap-2 rounded-lg border px-4 py-2 transition-all duration-200',
               isActive
-                ? 'border-primary bg-primary/10 text-primary'
+                ? 'bg-primary/10 border-primary text-primary'
                 : 'border-border bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground'
             )}
           >

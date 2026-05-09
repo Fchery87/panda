@@ -83,7 +83,7 @@ export function MemoryBankEditor({ memoryBank, onSave, className }: MemoryBankEd
         >
           Memory Bank
         </span>
-        {hasContent && <span className="font-mono text-xs text-primary/70">active</span>}
+        {hasContent && <span className="text-primary/70 font-mono text-xs">active</span>}
         {isOpen ? (
           <ChevronUp className="h-3 w-3 text-muted-foreground" />
         ) : (
@@ -103,7 +103,7 @@ export function MemoryBankEditor({ memoryBank, onSave, className }: MemoryBankEd
           >
             <div className="flex flex-col gap-0">
               {/* Hint */}
-              <p className="px-3 py-2 font-mono text-xs text-muted-foreground/60">
+              <p className="text-muted-foreground/60 px-3 py-2 font-mono text-xs">
                 Persistent memory injected at the start of every conversation. Write tech stack,
                 conventions, or project-specific context.
               </p>
@@ -124,7 +124,7 @@ export function MemoryBankEditor({ memoryBank, onSave, className }: MemoryBankEd
 
               {/* Footer actions */}
               <div className="flex items-center justify-between border-t border-border px-3 py-1.5">
-                <span className="font-mono text-xs text-muted-foreground/50">
+                <span className="text-muted-foreground/50 font-mono text-xs">
                   {draft.length} chars
                 </span>
                 <div className="flex gap-1.5">
@@ -145,7 +145,7 @@ export function MemoryBankEditor({ memoryBank, onSave, className }: MemoryBankEd
                     className={cn(
                       'h-6 gap-1 rounded-none px-2 font-mono text-xs',
                       isDirty
-                        ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                        ? 'hover:bg-primary/90 bg-primary text-primary-foreground'
                         : 'bg-secondary text-muted-foreground'
                     )}
                   >

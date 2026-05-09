@@ -151,7 +151,7 @@ export function MessageList({
             'px-6 text-center sm:px-8'
           )}
         >
-          <div className="max-w-sm border border-border bg-background/80 px-6 py-6 text-sm text-muted-foreground">
+          <div className="bg-background/80 max-w-sm border border-border px-6 py-6 text-sm text-muted-foreground">
             <p className="mb-2 font-medium text-foreground">No messages yet</p>
             <p className="max-w-[32ch] text-xs leading-relaxed">
               Start a conversation to define the next task, review a plan, or continue the active
@@ -205,7 +205,7 @@ export function MessageList({
             size="sm"
             variant="outline"
             onClick={handleJumpToLatest}
-            className="shadow-sharp-sm pointer-events-auto rounded-none border-primary/40 bg-background/95 font-mono text-[10px] uppercase tracking-[0.18em]"
+            className="shadow-sharp-sm border-primary/40 bg-background/95 pointer-events-auto rounded-none font-mono text-[10px] uppercase tracking-[0.18em]"
           >
             Jump To Latest
           </Button>

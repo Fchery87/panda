@@ -410,7 +410,7 @@ export default function AdminSystemPage() {
                   )}
 
                   {globalLLMConfig.globalDefaultProvider && globalLLMConfig.globalDefaultModel && (
-                    <div className="rounded-none border border-border bg-muted/30 p-4">
+                    <div className="bg-muted/30 rounded-none border border-border p-4">
                       <p className="mb-3 font-mono text-xs uppercase tracking-wider text-muted-foreground">
                         Active Configuration
                       </p>
@@ -462,7 +462,7 @@ export default function AdminSystemPage() {
                   <CardDescription>Restrict access to administrators only</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between rounded-none border border-destructive/20 bg-destructive/5 p-4">
+                  <div className="border-destructive/20 bg-destructive/5 flex items-center justify-between rounded-none border p-4">
                     <div className="space-y-0.5">
                       <Label className="font-mono text-sm text-destructive">
                         Enable Maintenance Mode

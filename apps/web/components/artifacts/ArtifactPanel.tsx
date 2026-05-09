@@ -258,7 +258,7 @@ export function ArtifactPanel({
                 <h3 className="mb-1 text-sm font-semibold text-muted-foreground">
                   No artifacts in queue
                 </h3>
-                <p className="max-w-[200px] text-xs text-muted-foreground/70">
+                <p className="text-muted-foreground/70 max-w-[200px] text-xs">
                   AI-generated changes will appear here for your review
                 </p>
               </motion.div>
@@ -369,7 +369,7 @@ export function ArtifactPanel({
             onClick={handleClearAll}
             variant="ghost"
             size="sm"
-            className="w-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+            className="hover:bg-destructive/10 w-full text-muted-foreground hover:text-destructive"
           >
             <Trash2 className="mr-2 h-4 w-4" />
             Clear Pending Artifacts

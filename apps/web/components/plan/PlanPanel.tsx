@@ -99,7 +99,7 @@ export function PlanPanel({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-border bg-muted/30 px-3 py-2">
+      <div className="bg-muted/30 border-b border-border px-3 py-2">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
             <GitGraph className="h-3.5 w-3.5 text-primary" />
@@ -200,7 +200,7 @@ export function PlanPanel({
         {generatedPlanArtifact ? (
           <TabsContent value="review" className="m-0 h-[calc(100%-40px)] overflow-auto p-3">
             <div className="space-y-4">
-              <section className="space-y-2 border border-border bg-muted/20 p-3">
+              <section className="bg-muted/20 space-y-2 border border-border p-3">
                 <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">
                   Structured Review
                 </p>

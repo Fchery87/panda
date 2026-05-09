@@ -201,7 +201,7 @@ export function RunProgressPanel({
             </>
           )}
         </span>
-        <span className="ml-auto max-w-full font-mono text-[11px] text-muted-foreground/70 [overflow-wrap:anywhere] max-sm:ml-0 max-sm:w-full">
+        <span className="text-muted-foreground/70 ml-auto max-w-full font-mono text-[11px] [overflow-wrap:anywhere] max-sm:ml-0 max-sm:w-full">
           {startedAt ? formatElapsed(elapsedMs) : '0s'}
           {isStreaming ? ' • live' : ` • ${steps.length} events`}
           {toolCount > 0 && ` • ${toolCount} tools`}
@@ -211,7 +211,7 @@ export function RunProgressPanel({
 
       <div className="mt-2.5 flex flex-wrap items-center gap-2">
         {latestRunReceipt ? (
-          <span className="shadow-sharp-sm border border-primary/50 bg-primary/5 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.22em] text-primary">
+          <span className="shadow-sharp-sm border-primary/50 bg-primary/5 border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.22em] text-primary">
             Routed {latestRunReceipt.requestedMode} -&gt; {latestRunReceipt.resolvedMode}
           </span>
         ) : null}
@@ -220,7 +220,7 @@ export function RunProgressPanel({
             'shadow-sharp-sm border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.22em]',
             tracePersistenceStatus === 'degraded'
               ? 'border-destructive/60 bg-destructive/5 text-destructive'
-              : 'border-border bg-background/70 text-muted-foreground'
+              : 'bg-background/70 border-border text-muted-foreground'
           )}
         >
           Trace {tracePersistenceStatus}
@@ -236,7 +236,7 @@ export function RunProgressPanel({
               'shadow-sharp-sm border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.22em]',
               hasRecoverableCheckpoint
                 ? 'border-primary/50 bg-primary/5 text-primary'
-                : 'border-border bg-background/70 text-muted-foreground'
+                : 'bg-background/70 border-border text-muted-foreground'
             )}
             title={
               latestRuntimeCheckpoint?.savedAt
@@ -255,7 +255,7 @@ export function RunProgressPanel({
               'shadow-sharp-sm border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.22em]',
               planProgress.completedSteps === planProgress.totalSteps && planProgress.totalSteps > 0
                 ? 'border-primary/50 bg-primary/5 text-primary'
-                : 'border-border bg-background/70 text-muted-foreground'
+                : 'bg-background/70 border-border text-muted-foreground'
             )}
           >
             Plan {planProgress.completedSteps}/{planProgress.totalSteps}
@@ -271,7 +271,7 @@ export function RunProgressPanel({
             variant="outline"
             disabled={isStreaming}
             onClick={() => onResumeRuntimeSession(latestRuntimeCheckpoint.sessionID!)}
-            className="h-7 rounded-none border-primary/40 bg-background/80 px-2.5 font-mono text-[10px] uppercase tracking-[0.2em]"
+            className="border-primary/40 bg-background/80 h-7 rounded-none px-2.5 font-mono text-[10px] uppercase tracking-[0.2em]"
           >
             Resume Run
           </Button>
@@ -281,7 +281,7 @@ export function RunProgressPanel({
             type="button"
             onClick={onSpecClick}
             className={cn(
-              'shadow-sharp-sm flex flex-wrap items-center gap-1.5 border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.2em] transition-colors hover:bg-muted/50',
+              'shadow-sharp-sm hover:bg-muted/50 flex flex-wrap items-center gap-1.5 border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.2em] transition-colors',
               currentSpec.status === 'verified' && 'border-success/50 bg-success/5 text-success',
               currentSpec.status === 'failed' &&
                 'border-destructive/50 bg-destructive/5 text-destructive',
@@ -289,7 +289,7 @@ export function RunProgressPanel({
               (currentSpec.status === 'executing' || currentSpec.status === 'approved') &&
                 'border-primary/50 bg-primary/5 text-primary',
               (currentSpec.status === 'draft' || currentSpec.status === 'validated') &&
-                'border-border bg-muted/50 text-muted-foreground'
+                'bg-muted/50 border-border text-muted-foreground'
             )}
           >
             <SpecBadgeMini status={currentSpec.status} />
@@ -306,16 +306,16 @@ export function RunProgressPanel({
             type="button"
             onClick={onPlanClick}
             className={cn(
-              'shadow-sharp-sm flex flex-wrap items-center gap-1.5 border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.2em] transition-colors hover:bg-muted/50',
+              'shadow-sharp-sm hover:bg-muted/50 flex flex-wrap items-center gap-1.5 border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.2em] transition-colors',
               planStatus === 'approved' && 'border-primary/50 bg-primary/5 text-primary',
               planStatus === 'executing' && 'border-primary/50 bg-primary/5 text-primary',
               planStatus === 'partial' && 'border-warning/50 bg-warning/5 text-warning',
               planStatus === 'completed' &&
                 'border-emerald-500/50 bg-emerald-500/5 text-emerald-500',
               planStatus === 'failed' && 'border-destructive/50 bg-destructive/5 text-destructive',
-              planStatus === 'awaiting_review' && 'border-border bg-muted/50 text-muted-foreground',
+              planStatus === 'awaiting_review' && 'bg-muted/50 border-border text-muted-foreground',
               planStatus === 'stale' && 'border-warning/50 bg-warning/5 text-warning',
-              planStatus === 'drafting' && 'border-border bg-muted/50 text-muted-foreground'
+              planStatus === 'drafting' && 'bg-muted/50 border-border text-muted-foreground'
             )}
           >
             <CheckCircle2 className="h-3 w-3" />
@@ -339,7 +339,7 @@ export function RunProgressPanel({
             return (
               <div
                 key={group.key}
-                className="shadow-sharp-sm overflow-hidden border border-border bg-background/80"
+                className="shadow-sharp-sm bg-background/80 overflow-hidden border border-border"
               >
                 <button
                   type="button"
@@ -357,17 +357,17 @@ export function RunProgressPanel({
                     <ChevronRight className="h-3 w-3" />
                   )}
                   <span>{group.label}</span>
-                  <span className="ml-1 text-muted-foreground/80">({group.steps.length})</span>
+                  <span className="text-muted-foreground/80 ml-1">({group.steps.length})</span>
                   <span className="ml-auto uppercase text-muted-foreground">{latestStatus}</span>
                 </button>
 
                 {expanded && (
-                  <div className="space-y-1.5 border-t border-border/80 bg-muted/20 px-2.5 py-2">
+                  <div className="border-border/80 bg-muted/20 space-y-1.5 border-t px-2.5 py-2">
                     {group.steps.slice(-maxStepsPerGroup).map((step) => (
                       <div
                         key={step.id}
                         className={cn(
-                          'shadow-sharp-sm flex items-start gap-2 border border-border/70 bg-background/85 px-2 py-1.5 font-mono text-xs',
+                          'shadow-sharp-sm border-border/70 bg-background/85 flex items-start gap-2 border px-2 py-1.5 font-mono text-xs',
                           step.status === 'error' && 'text-destructive'
                         )}
                       >
@@ -409,7 +409,7 @@ export function RunProgressPanel({
                                         key={`${step.id}-${path}`}
                                         type="button"
                                         onClick={() => onOpenFile?.(path)}
-                                        className="border border-border px-1.5 py-0.5 text-xs hover:bg-muted/40"
+                                        className="hover:bg-muted/40 border border-border px-1.5 py-0.5 text-xs"
                                       >
                                         open {path}
                                       </button>
@@ -421,7 +421,7 @@ export function RunProgressPanel({
                                     <button
                                       type="button"
                                       onClick={() => onOpenArtifacts?.()}
-                                      className="border border-border px-1.5 py-0.5 text-xs hover:bg-muted/40"
+                                      className="hover:bg-muted/40 border border-border px-1.5 py-0.5 text-xs"
                                     >
                                       open artifacts
                                     </button>

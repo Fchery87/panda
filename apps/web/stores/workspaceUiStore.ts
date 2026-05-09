@@ -5,7 +5,7 @@ import type { BottomDockTab } from '@/components/layout/BottomDock'
 
 export type RightPanelTab = 'work' | 'run' | 'changes' | 'context'
 export type CenterTab = 'editor' | 'diff' | 'logs' | 'tests'
-export type MobilePrimaryPanel = 'workspace' | 'chat' | 'review'
+export type MobilePrimaryPanel = 'workspace' | 'chat' | 'review' | 'preview'
 
 export type ChatInspectorTab =
   | 'run'

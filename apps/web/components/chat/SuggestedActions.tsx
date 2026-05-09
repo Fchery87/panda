@@ -60,7 +60,7 @@ export function SuggestedActions({
               'disabled:cursor-not-allowed disabled:opacity-40',
               // Highlight actions that switch mode
               action.targetMode &&
-                'border-primary/20 text-primary/80 hover:border-primary hover:bg-primary/10 hover:text-primary'
+                'border-primary/20 text-primary/80 hover:bg-primary/10 hover:border-primary hover:text-primary'
             )}
           >
             <span className="max-w-[26ch] truncate">{action.label}</span>

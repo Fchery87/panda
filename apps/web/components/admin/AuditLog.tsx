@@ -59,7 +59,7 @@ export function AuditLog({ logs }: AuditLogProps) {
               logs.map((log) => (
                 <div
                   key={log._id}
-                  className="flex items-start gap-4 rounded-none border border-border p-4 transition-colors hover:bg-muted/50"
+                  className="hover:bg-muted/50 flex items-start gap-4 rounded-none border border-border p-4 transition-colors"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">

@@ -456,7 +456,7 @@ export function ConstraintEditor({
                   <div
                     className={cn(
                       'flex items-start gap-3 p-3',
-                      !readOnly && 'cursor-pointer hover:bg-muted/30'
+                      !readOnly && 'hover:bg-muted/30 cursor-pointer'
                     )}
                     onClick={() => !readOnly && setEditingIndex(index)}
                   >

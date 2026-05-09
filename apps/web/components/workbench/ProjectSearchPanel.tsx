@@ -109,7 +109,7 @@ export function ProjectSearchPanel({ onSelectFile }: ProjectSearchPanelProps) {
             className={cn(
               'h-7 border px-2 font-mono text-xs uppercase tracking-widest transition-colors',
               mode === 'literal'
-                ? 'border-primary bg-primary/10 text-primary'
+                ? 'bg-primary/10 border-primary text-primary'
                 : 'border-border text-muted-foreground hover:text-foreground'
             )}
           >
@@ -126,7 +126,7 @@ export function ProjectSearchPanel({ onSelectFile }: ProjectSearchPanelProps) {
             className={cn(
               'h-7 border px-2 font-mono text-xs uppercase tracking-widest transition-colors',
               mode === 'regex'
-                ? 'border-primary bg-primary/10 text-primary'
+                ? 'bg-primary/10 border-primary text-primary'
                 : 'border-border text-muted-foreground hover:text-foreground'
             )}
           >
@@ -144,7 +144,7 @@ export function ProjectSearchPanel({ onSelectFile }: ProjectSearchPanelProps) {
             className={cn(
               'h-7 border px-2 font-mono text-xs uppercase tracking-widest transition-colors',
               caseSensitive
-                ? 'border-primary bg-primary/10 text-primary'
+                ? 'bg-primary/10 border-primary text-primary'
                 : 'border-border text-muted-foreground hover:text-foreground'
             )}
           >
@@ -174,7 +174,7 @@ export function ProjectSearchPanel({ onSelectFile }: ProjectSearchPanelProps) {
               value={replaceText}
               onChange={(e) => setReplaceText(e.target.value)}
               placeholder="Replace with..."
-              className="bg-surface-0 flex-1 border border-border px-2 py-1 font-mono text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              className="flex-1 border border-border bg-surface-0 px-2 py-1 font-mono text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             />
             <button
               type="button"
@@ -224,11 +224,11 @@ export function ProjectSearchPanel({ onSelectFile }: ProjectSearchPanelProps) {
 
             {groupedMatches.map(([file, matches]) => (
               <div key={file} className="border border-border">
-                <div className="bg-surface-2 flex items-center border-b border-border">
+                <div className="flex items-center border-b border-border bg-surface-2">
                   <button
                     type="button"
                     onClick={() => onSelectFile(file)}
-                    className="hover:bg-surface-1 flex-1 px-2 py-1 text-left font-mono text-xs text-foreground"
+                    className="flex-1 px-2 py-1 text-left font-mono text-xs text-foreground hover:bg-surface-1"
                   >
                     {file}
                   </button>
@@ -249,7 +249,7 @@ export function ProjectSearchPanel({ onSelectFile }: ProjectSearchPanelProps) {
                       key={`${file}:${match.line}:${match.column}:${match.snippet}`}
                       type="button"
                       onClick={() => onSelectFile(file, { line: match.line, column: match.column })}
-                      className="hover:bg-surface-1 block w-full border-b border-border/60 px-2 py-1 text-left font-mono text-xs text-muted-foreground hover:text-foreground"
+                      className="border-border/60 block w-full border-b px-2 py-1 text-left font-mono text-xs text-muted-foreground hover:bg-surface-1 hover:text-foreground"
                     >
                       <span className="mr-2 text-primary">{match.line}</span>
                       {match.snippet}

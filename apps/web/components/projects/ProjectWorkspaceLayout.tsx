@@ -66,8 +66,8 @@ interface ProjectWorkspaceLayoutProps {
   onEditorDirtyChange: (filePath: string, isDirty: boolean) => void
   isMobileLayout: boolean
   isCompactDesktopLayout: boolean
-  mobilePrimaryPanel: 'workspace' | 'chat' | 'review'
-  onMobilePrimaryPanelChange: (panel: 'workspace' | 'chat' | 'review') => void
+  mobilePrimaryPanel: 'workspace' | 'chat' | 'review' | 'preview'
+  onMobilePrimaryPanelChange: (panel: 'workspace' | 'chat' | 'review' | 'preview') => void
   onMobileReviewTabChange?: (tab: 'run' | 'changes' | 'context') => void
   mobileUnreadCount: number
   isMobileKeyboardOpen: boolean
@@ -338,7 +338,9 @@ export function ProjectWorkspaceLayoutView({
                   ? chatPanel
                   : mobilePrimaryPanel === 'review'
                     ? rightPanelContent
-                    : null}
+                    : mobilePrimaryPanel === 'preview'
+                      ? workbench
+                      : null}
             </div>
             {!isMobileKeyboardOpen && (
               <div
@@ -395,6 +397,21 @@ export function ProjectWorkspaceLayoutView({
                   )}
                 >
                   Proof
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onMobilePrimaryPanelChange('preview')}
+                  role="tab"
+                  aria-selected={mobilePrimaryPanel === 'preview'}
+                  aria-label="Show runtime preview"
+                  className={cn(
+                    'relative min-h-12 px-1 transition-colors focus-visible:-outline-offset-2 active:scale-[0.96]',
+                    mobilePrimaryPanel === 'preview'
+                      ? 'bg-primary text-primary-foreground shadow-[inset_0_-2px_0_oklch(var(--foreground)/0.18)]'
+                      : 'hover:bg-primary/10 bg-card text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  Preview
                 </button>
               </div>
             )}

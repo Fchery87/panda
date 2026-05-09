@@ -3,7 +3,7 @@
 import { useCallback, useEffect } from 'react'
 
 type RightPanelTab = 'work' | 'run' | 'changes' | 'context'
-type MobilePrimaryPanel = 'workspace' | 'chat' | 'review'
+type MobilePrimaryPanel = 'workspace' | 'chat' | 'review' | 'preview'
 
 interface UseWorkbenchPanelStateArgs {
   isMobileLayout: boolean

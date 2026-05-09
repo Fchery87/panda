@@ -165,7 +165,7 @@ function AcceptanceCriterionItem({ criterion }: { criterion: AcceptanceCriterion
     pending: <div className="h-2 w-2 rounded-full border border-muted-foreground" />,
     passed: <CheckCircle2 className="h-3 w-3 text-success" />,
     failed: <XCircle className="h-3 w-3 text-destructive" />,
-    skipped: <div className="h-2 w-2 rounded-full bg-muted-foreground/50" />,
+    skipped: <div className="bg-muted-foreground/50 h-2 w-2 rounded-full" />,
   }
 
   return (
@@ -258,8 +258,8 @@ export function SpecDrawer({ spec, isOpen, onClose }: SpecDrawerProps) {
                 className={cn(
                   'border px-2 py-0.5 font-mono text-[10px] uppercase',
                   spec.tier === 'explicit' && 'border-primary/50 bg-primary/10 text-primary',
-                  spec.tier === 'ambient' && 'border-border bg-muted/50 text-muted-foreground',
-                  spec.tier === 'instant' && 'border-border bg-muted/50 text-muted-foreground'
+                  spec.tier === 'ambient' && 'bg-muted/50 border-border text-muted-foreground',
+                  spec.tier === 'instant' && 'bg-muted/50 border-border text-muted-foreground'
                 )}
               >
                 {spec.tier}
@@ -433,7 +433,7 @@ export function SpecDrawerButton({ spec, onOpen }: SpecDrawerButtonProps) {
       onClick={onOpen}
       className={cn(
         'flex items-center gap-2 border px-2 py-1 font-mono text-xs',
-        'transition-colors hover:bg-muted/50',
+        'hover:bg-muted/50 transition-colors',
         status.borderClass,
         status.bgClass
       )}

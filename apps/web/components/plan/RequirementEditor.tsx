@@ -236,7 +236,7 @@ export function RequirementEditor({
                 <div
                   className={cn(
                     'flex items-start gap-3 p-3',
-                    !readOnly && 'cursor-pointer hover:bg-muted/30'
+                    !readOnly && 'hover:bg-muted/30 cursor-pointer'
                   )}
                   onClick={() => !readOnly && setEditingId(req.id)}
                 >
@@ -263,7 +263,7 @@ export function RequirementEditor({
                           req.verificationMethod === 'llm-judge' &&
                             'border-primary/50 bg-primary/5 text-primary',
                           req.verificationMethod === 'manual' &&
-                            'border-border bg-muted/50 text-muted-foreground'
+                            'bg-muted/50 border-border text-muted-foreground'
                         )}
                       >
                         {req.verificationMethod}

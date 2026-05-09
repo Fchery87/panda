@@ -432,14 +432,14 @@ export function EvalPanel({
           <FlaskConical className="h-3 w-3" />
           <span>Eval Suites</span>
         </span>
-        <span className="ml-auto font-mono text-xs text-muted-foreground/70">
+        <span className="text-muted-foreground/70 ml-auto font-mono text-xs">
           {suites ? `${suites.length} suites` : 'loading'}
         </span>
       </button>
 
       {!isOpen ? null : (
         <div className="mt-2 grid gap-2">
-          <div className="grid gap-2 border border-border bg-background/70 p-2">
+          <div className="bg-background/70 grid gap-2 border border-border p-2">
             <div className="flex items-center justify-between">
               <div className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
                 Create Suite
@@ -556,7 +556,7 @@ export function EvalPanel({
             </Button>
           </div>
 
-          <div className="grid gap-2 border border-border bg-background/70 p-2">
+          <div className="bg-background/70 grid gap-2 border border-border p-2">
             <div className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
               Suites
             </div>
@@ -579,8 +579,8 @@ export function EvalPanel({
                         className={cn(
                           'w-full border px-2 py-1 text-left font-mono text-xs transition-colors',
                           isSelected
-                            ? 'border-primary bg-primary/5'
-                            : 'border-border bg-background hover:bg-muted/30'
+                            ? 'bg-primary/5 border-primary'
+                            : 'hover:bg-muted/30 border-border bg-background'
                         )}
                       >
                         <div className="flex items-center gap-2">
@@ -603,7 +603,7 @@ export function EvalPanel({
             )}
           </div>
 
-          <div className="grid gap-2 border border-border bg-background/70 p-2">
+          <div className="bg-background/70 grid gap-2 border border-border p-2">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <div className="truncate font-mono text-xs uppercase tracking-wide text-muted-foreground">

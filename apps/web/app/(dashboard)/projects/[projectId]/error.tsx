@@ -25,7 +25,7 @@ export default function WorkbenchError({
           a display error.
         </p>
         {process.env.NODE_ENV !== 'production' && error.message ? (
-          <pre className="max-w-2xl overflow-auto border border-border bg-muted/40 p-3 text-left font-mono text-xs text-muted-foreground">
+          <pre className="bg-muted/40 max-w-2xl overflow-auto border border-border p-3 text-left font-mono text-xs text-muted-foreground">
             {error.message}
           </pre>
         ) : null}

@@ -72,7 +72,7 @@ export function SnapshotTimeline({ events = [] }: SnapshotTimelineProps) {
         {entries.map((entry) => (
           <div
             key={entry.id}
-            className="shadow-sharp-sm border border-border bg-background/85 p-2.5"
+            className="shadow-sharp-sm bg-background/85 border border-border p-2.5"
           >
             <div className="flex items-center gap-2 font-mono text-xs">
               <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{entry.label}</span>
@@ -92,7 +92,7 @@ export function SnapshotTimeline({ events = [] }: SnapshotTimelineProps) {
                 variant="outline"
                 disabled={isBusy}
                 onClick={() => void handleViewDiff(entry.hash)}
-                className="h-6 rounded-none bg-background/80 px-2 font-mono text-[10px] uppercase tracking-[0.16em]"
+                className="bg-background/80 h-6 rounded-none px-2 font-mono text-[10px] uppercase tracking-[0.16em]"
               >
                 View Diff
               </Button>
@@ -102,7 +102,7 @@ export function SnapshotTimeline({ events = [] }: SnapshotTimelineProps) {
                 variant="outline"
                 disabled={isBusy}
                 onClick={() => void handleRestore(entry.hash)}
-                className="h-6 rounded-none bg-background/80 px-2 font-mono text-[10px] uppercase tracking-[0.16em]"
+                className="bg-background/80 h-6 rounded-none px-2 font-mono text-[10px] uppercase tracking-[0.16em]"
               >
                 <RotateCcw className="mr-1 h-3 w-3" />
                 Restore

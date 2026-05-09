@@ -12,7 +12,7 @@ interface GitDiffViewerProps {
 export function GitDiffViewer({ files }: GitDiffViewerProps) {
   if (files.length === 0) {
     return (
-      <div className="border border-border bg-muted/20 p-3 font-mono text-[11px] text-muted-foreground">
+      <div className="bg-muted/20 border border-border p-3 font-mono text-[11px] text-muted-foreground">
         No changes
       </div>
     )
@@ -39,7 +39,7 @@ function FileDiff({ file }: { file: GitDiffFile }) {
       <button
         type="button"
         onClick={() => setCollapsed((c) => !c)}
-        className="flex w-full items-center gap-2 border-b border-border bg-muted/50 px-3 py-1.5 text-left hover:bg-muted/80"
+        className="bg-muted/50 hover:bg-muted/80 flex w-full items-center gap-2 border-b border-border px-3 py-1.5 text-left"
       >
         {collapsed ? (
           <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
@@ -57,7 +57,7 @@ function FileDiff({ file }: { file: GitDiffFile }) {
           {file.hunks.map((hunk, hi) => (
             <div key={hi}>
               {/* Hunk header */}
-              <div className="bg-blue-500/5 px-3 py-0.5 text-[10px] text-muted-foreground/70">
+              <div className="text-muted-foreground/70 bg-blue-500/5 px-3 py-0.5 text-[10px]">
                 @@ -{hunk.oldStart},{hunk.oldCount} +{hunk.newStart},{hunk.newCount} @@
               </div>
 

@@ -50,6 +50,8 @@ When active docs disagree, use the authority order in
   Convex payload-shape and bandwidth remediation plan
 - [docs/DEPLOYMENT.md](./DEPLOYMENT.md) - production deployment guide
 - [docs/GOOGLE_OAUTH_SETUP.md](./GOOGLE_OAUTH_SETUP.md) - Google OAuth setup
+- [docs/GITHUB_APP_SETUP.md](./GITHUB_APP_SETUP.md) - GitHub App setup for
+  GitHub-backed Panda projects
 - [convex/README.md](../convex/README.md) - backend schema and function map
 
 ## Current Product Surface
@@ -104,6 +106,7 @@ artifacts only after maintainer approval.
 | `docs/LLM_PROVIDER_CATALOG.md`                       | Current provider/model catalog behavior.                                           |
 | `docs/DEPLOYMENT.md`                                 | Deployment guide.                                                                  |
 | `docs/GOOGLE_OAUTH_SETUP.md`                         | Auth setup guide.                                                                  |
+| `docs/GITHUB_APP_SETUP.md`                           | GitHub App setup guide for repository-backed projects.                             |
 | `.impeccable.md`                                     | Active design context for visual work if the design workflow is still used.        |
 
 ### Keep As Historical Plans

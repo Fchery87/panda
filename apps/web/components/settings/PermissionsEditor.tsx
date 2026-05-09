@@ -189,7 +189,7 @@ export function PermissionsEditor({ value, onChange, className }: PermissionsEdi
       <div className="space-y-3">
         <Label className="font-mono text-xs">Tool Permissions</Label>
         <div className="rounded-none border border-border">
-          <div className="bg-surface-2 grid grid-cols-[1fr_auto] gap-2 border-b border-border p-2">
+          <div className="grid grid-cols-[1fr_auto] gap-2 border-b border-border bg-surface-2 p-2">
             <span className="font-mono text-xs font-medium">Tool</span>
             <span className="font-mono text-xs font-medium">Permission</span>
           </div>
@@ -221,7 +221,7 @@ export function PermissionsEditor({ value, onChange, className }: PermissionsEdi
       <div className="space-y-3">
         <Label className="font-mono text-xs">Bash Command Permissions</Label>
         <div className="rounded-none border border-border">
-          <div className="bg-surface-2 grid grid-cols-[1fr_auto] gap-2 border-b border-border p-2">
+          <div className="grid grid-cols-[1fr_auto] gap-2 border-b border-border bg-surface-2 p-2">
             <span className="font-mono text-xs font-medium">Pattern</span>
             <span className="font-mono text-xs font-medium">Permission</span>
           </div>
@@ -255,7 +255,7 @@ export function PermissionsEditor({ value, onChange, className }: PermissionsEdi
         </div>
       </div>
 
-      <div className="bg-surface-2 rounded-none border border-border p-3">
+      <div className="rounded-none border border-border bg-surface-2 p-3">
         <div className="flex items-start gap-2">
           <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
           <div className="space-y-1 text-xs text-muted-foreground">

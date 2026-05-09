@@ -179,7 +179,7 @@ export function ExplorerOutline({
             transition={{ delay: index * 0.02 }}
             type="button"
             onClick={() => onSelectSymbol(symbol.line)}
-            className="hover:bg-surface-2 flex w-full items-center gap-2 px-3 py-1 text-left transition-colors"
+            className="flex w-full items-center gap-2 px-3 py-1 text-left transition-colors hover:bg-surface-2"
             style={{
               paddingLeft: symbol.kind === 'heading' ? `${12 + (symbol.level || 1) * 8}px` : '12px',
             }}
@@ -190,7 +190,7 @@ export function ExplorerOutline({
             <span className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground hover:text-foreground">
               {symbol.name}
             </span>
-            <span className="shrink-0 font-mono text-[10px] text-muted-foreground/50">
+            <span className="text-muted-foreground/50 shrink-0 font-mono text-[10px]">
               {symbol.line}
             </span>
           </motion.button>

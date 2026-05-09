@@ -426,7 +426,7 @@ export function CodeMirrorEditor({
             variant="ghost"
             size="sm"
             onClick={handleRejectDiff}
-            className="h-7 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+            className="hover:bg-destructive/10 h-7 text-xs text-destructive hover:text-destructive"
           >
             <X className="mr-1.5 h-3.5 w-3.5" />
             Reject
@@ -435,7 +435,7 @@ export function CodeMirrorEditor({
             variant="default"
             size="sm"
             onClick={handleAcceptDiff}
-            className="h-7 bg-primary text-xs text-primary-foreground hover:bg-primary/90"
+            className="hover:bg-primary/90 h-7 bg-primary text-xs text-primary-foreground"
           >
             <Check className="mr-1.5 h-3.5 w-3.5" />
             Accept

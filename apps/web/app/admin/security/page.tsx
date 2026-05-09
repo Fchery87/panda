@@ -280,7 +280,7 @@ export default function AdminSecurityPage() {
                       auditLog?.map((log) => (
                         <div
                           key={log._id}
-                          className="flex items-start gap-4 rounded-none border border-border p-4 transition-colors hover:bg-muted/50"
+                          className="hover:bg-muted/50 flex items-start gap-4 rounded-none border border-border p-4 transition-colors"
                         >
                           <div className="flex-shrink-0">
                             <Badge

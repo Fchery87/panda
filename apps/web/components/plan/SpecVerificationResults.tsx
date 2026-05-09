@@ -153,7 +153,7 @@ export function SpecVerificationResults({
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              <div className="border-t border-border/50 px-3 py-2">
+              <div className="border-border/50 border-t px-3 py-2">
                 <p className="font-mono text-xs text-muted-foreground">{result.message}</p>
                 {result.details && Object.keys(result.details).length > 0 && (
                   <div className="mt-2 space-y-1">
@@ -202,21 +202,21 @@ export function SpecVerificationResults({
 
       {/* Stats Bar */}
       <div className="grid grid-cols-3 gap-2">
-        <div className="border border-success/30 bg-success/5 p-2 text-center">
+        <div className="border-success/30 bg-success/5 border p-2 text-center">
           <div className="flex items-center justify-center gap-1.5">
             <CheckCircle2 className="h-3.5 w-3.5 text-success" />
             <span className="font-mono text-lg font-semibold text-success">{passedCount}</span>
           </div>
           <span className="font-mono text-[10px] uppercase text-muted-foreground">Passed</span>
         </div>
-        <div className="border border-destructive/30 bg-destructive/5 p-2 text-center">
+        <div className="border-destructive/30 bg-destructive/5 border p-2 text-center">
           <div className="flex items-center justify-center gap-1.5">
             <XCircle className="h-3.5 w-3.5 text-destructive" />
             <span className="font-mono text-lg font-semibold text-destructive">{failedCount}</span>
           </div>
           <span className="font-mono text-[10px] uppercase text-muted-foreground">Failed</span>
         </div>
-        <div className="border border-border bg-muted/30 p-2 text-center">
+        <div className="bg-muted/30 border border-border p-2 text-center">
           <div className="flex items-center justify-center gap-1.5">
             <FileCheck className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="font-mono text-lg font-semibold">{totalCount}</span>
@@ -278,11 +278,11 @@ export function SpecVerificationResults({
 
         {results.length === 0 && (
           <div className="flex h-32 flex-col items-center justify-center border border-dashed border-border">
-            <AlertCircle className="h-8 w-8 text-muted-foreground/50" />
+            <AlertCircle className="text-muted-foreground/50 h-8 w-8" />
             <p className="mt-2 font-mono text-xs text-muted-foreground">
               No verification results yet
             </p>
-            <p className="font-mono text-[10px] text-muted-foreground/70">
+            <p className="text-muted-foreground/70 font-mono text-[10px]">
               Results will appear after execution completes
             </p>
           </div>

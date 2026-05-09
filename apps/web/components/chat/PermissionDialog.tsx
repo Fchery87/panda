@@ -170,7 +170,7 @@ function PermissionCard({ request, onRespond, timeoutMs, onTimeout }: Permission
 
           <div className="mb-1 font-mono text-xs text-muted-foreground">{presentation.summary}</div>
           {presentation.detail ? (
-            <div className="mb-2 font-mono text-[11px] text-muted-foreground/80">
+            <div className="text-muted-foreground/80 mb-2 font-mono text-[11px]">
               {presentation.detail}
             </div>
           ) : null}
@@ -205,7 +205,7 @@ function PermissionCard({ request, onRespond, timeoutMs, onTimeout }: Permission
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="mt-2 overflow-x-auto rounded-none bg-secondary/50 p-2 font-mono text-[10px]"
+                    className="bg-secondary/50 mt-2 overflow-x-auto rounded-none p-2 font-mono text-[10px]"
                   >
                     {JSON.stringify(detailArgs, null, 2)}
                   </motion.pre>
@@ -230,7 +230,7 @@ function PermissionCard({ request, onRespond, timeoutMs, onTimeout }: Permission
               variant="outline"
               onClick={() => handleDecision('allow', 'always')}
               disabled={decisionMade}
-              className="h-7 rounded-none border-primary/50 px-2 font-mono text-xs hover:bg-primary/10"
+              className="border-primary/50 hover:bg-primary/10 h-7 rounded-none px-2 font-mono text-xs"
             >
               Always
             </Button>

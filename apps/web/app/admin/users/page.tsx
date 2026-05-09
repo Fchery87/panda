@@ -302,8 +302,8 @@ export default function AdminUsersPage() {
                     onClick={() => selectUser(user._id)}
                     className={`flex w-full items-center justify-between rounded-none border p-4 text-left transition-colors ${
                       selectedUserId === user._id
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:bg-muted/50'
+                        ? 'bg-primary/5 border-primary'
+                        : 'hover:bg-muted/50 border-border'
                     }`}
                   >
                     <div className="flex items-center gap-4">

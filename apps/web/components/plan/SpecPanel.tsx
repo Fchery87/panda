@@ -216,7 +216,7 @@ export function SpecPanel({
   if (!editedSpec) {
     return (
       <div className={cn('flex h-full flex-col items-center justify-center', className)}>
-        <FileText className="h-12 w-12 text-muted-foreground/50" />
+        <FileText className="text-muted-foreground/50 h-12 w-12" />
         <p className="mt-4 font-mono text-sm text-muted-foreground">No specification loaded</p>
       </div>
     )
@@ -238,7 +238,7 @@ export function SpecPanel({
   return (
     <div className={cn('flex h-full flex-col', className)}>
       {/* Header */}
-      <div className="flex items-start justify-between border-b border-border bg-muted/30 px-4 py-3">
+      <div className="bg-muted/30 flex items-start justify-between border-b border-border px-4 py-3">
         <div className="flex items-start gap-3">
           <span
             className={cn(
@@ -268,7 +268,7 @@ export function SpecPanel({
                   'border px-1.5 py-0.5 font-mono text-[10px] uppercase',
                   editedSpec.tier === 'explicit'
                     ? 'border-primary/50 bg-primary/10 text-primary'
-                    : 'border-border bg-muted/50 text-muted-foreground'
+                    : 'bg-muted/50 border-border text-muted-foreground'
                 )}
               >
                 {tier.label}
@@ -286,7 +286,7 @@ export function SpecPanel({
               size="sm"
               variant="outline"
               onClick={handleSaveEdits}
-              className="h-7 rounded-none border-primary/50 font-mono text-xs"
+              className="border-primary/50 h-7 rounded-none font-mono text-xs"
             >
               <Edit3 className="mr-1 h-3 w-3" />
               Save Changes
@@ -531,7 +531,7 @@ function ExecutionPlanView({
                   <span
                     className={cn(
                       'border px-1.5 py-0.5 font-mono text-[10px] uppercase',
-                      dep.access === 'read' && 'border-border bg-muted/50',
+                      dep.access === 'read' && 'bg-muted/50 border-border',
                       dep.access === 'write' && 'border-warning/50 bg-warning/5 text-warning',
                       dep.access === 'create' && 'border-success/50 bg-success/5 text-success',
                       dep.access === 'delete' &&
@@ -579,7 +579,7 @@ function ExecutionPlanView({
                       risk.severity === 'high' &&
                         'border-destructive/50 bg-destructive/10 text-destructive',
                       risk.severity === 'medium' && 'border-warning/50 bg-warning/10 text-warning',
-                      risk.severity === 'low' && 'border-border bg-muted/50 text-muted-foreground'
+                      risk.severity === 'low' && 'bg-muted/50 border-border text-muted-foreground'
                     )}
                   >
                     {risk.severity}

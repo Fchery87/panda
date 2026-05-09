@@ -65,8 +65,8 @@ export function RunTokenLedger({ runEvents, isStreaming = false }: RunTokenLedge
         type="button"
         onClick={() => setExpanded((v) => !v)}
         className={cn(
-          'flex w-full items-center gap-2 border border-border bg-background/70 px-2 py-1.5',
-          'font-mono text-[11px] text-muted-foreground transition-colors hover:bg-background/90'
+          'bg-background/70 flex w-full items-center gap-2 border border-border px-2 py-1.5',
+          'hover:bg-background/90 font-mono text-[11px] text-muted-foreground transition-colors'
         )}
       >
         {expanded ? (

@@ -90,7 +90,7 @@ export function AgentSelector({ mode, onModeChange, disabled, className }: Agent
 
       <DropdownMenuContent
         align="start"
-        className="rounded-none border-border bg-background/95 backdrop-blur-sm"
+        className="bg-background/95 rounded-none border-border backdrop-blur-sm"
       >
         <DropdownMenuLabel className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
           Modes

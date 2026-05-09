@@ -35,7 +35,7 @@ function getFileIcon(filename: string) {
     case 'jsx':
       return <FileCode className="h-4 w-4 text-primary" />
     case 'json':
-      return <FileJson className="h-4 w-4 text-primary/70" />
+      return <FileJson className="text-primary/70 h-4 w-4" />
     case 'md':
     case 'txt':
       return <FileText className="h-4 w-4 text-muted-foreground" />
@@ -226,7 +226,7 @@ function TreeItem({
               'mx-1 rounded-none transition-all duration-150',
               isSelected
                 ? 'bg-primary/10 text-foreground'
-                : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground'
+                : 'hover:bg-secondary/60 text-muted-foreground hover:text-foreground'
             )}
             style={{ paddingLeft: `${depth * 14 + 6}px` }}
             onClick={handleSelect}
@@ -243,7 +243,7 @@ function TreeItem({
             {isDirectory && (
               <button
                 onClick={handleToggle}
-                className="flex h-4 w-4 items-center justify-center rounded transition-colors hover:bg-primary/10"
+                className="hover:bg-primary/10 flex h-4 w-4 items-center justify-center rounded transition-colors"
               >
                 <motion.div
                   animate={{ rotate: isExpanded ? 90 : 0 }}
@@ -260,7 +260,7 @@ function TreeItem({
               isExpanded ? (
                 <FolderOpen className="h-4 w-4 text-primary" />
               ) : (
-                <Folder className="h-4 w-4 text-primary/70" />
+                <Folder className="text-primary/70 h-4 w-4" />
               )
             ) : (
               getFileIcon(node.name)
@@ -464,7 +464,7 @@ export function FileTree({
   if (tree.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center px-4 py-8 text-center">
-        <Folder className="mb-3 h-10 w-10 text-muted-foreground/30" />
+        <Folder className="text-muted-foreground/30 mb-3 h-10 w-10" />
         <p className="text-sm text-muted-foreground">No files yet</p>
         <button
           type="button"

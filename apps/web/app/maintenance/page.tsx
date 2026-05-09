@@ -45,7 +45,7 @@ export default async function MaintenancePage({ searchParams }: MaintenancePageP
       </div>
       <Link
         href="/admin"
-        className="font-mono text-xs text-muted-foreground/50 hover:text-muted-foreground"
+        className="text-muted-foreground/50 font-mono text-xs hover:text-muted-foreground"
       >
         Admin Console
       </Link>

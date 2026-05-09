@@ -140,7 +140,7 @@ export function EnhancementLLMConfig({
         </div>
 
         {/* Current Configuration Summary */}
-        <div className="rounded-none border border-border bg-muted/30 p-4">
+        <div className="bg-muted/30 rounded-none border border-border p-4">
           <p className="mb-3 font-mono text-xs uppercase tracking-wider text-muted-foreground">
             Current Configuration
           </p>

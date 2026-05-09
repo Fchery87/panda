@@ -121,7 +121,7 @@ const LogEntry: React.FC<{
       )}
     >
       {timestamp && (
-        <span className="shrink-0 pt-0.5 text-xs tabular-nums text-muted-foreground/60">
+        <span className="text-muted-foreground/60 shrink-0 pt-0.5 text-xs tabular-nums">
           {timestamp.split('T')[1]?.replace('Z', '') || timestamp}
         </span>
       )}
@@ -146,11 +146,11 @@ const JobCard: React.FC<{
       layout
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="surface-2 shadow-sharp-sm overflow-hidden rounded-none border border-border/60"
+      className="surface-2 shadow-sharp-sm border-border/60 overflow-hidden rounded-none border"
     >
       {/* Job Header */}
       <div
-        className="flex cursor-pointer items-center justify-between px-4 py-3 transition-colors hover:bg-primary/5"
+        className="hover:bg-primary/5 flex cursor-pointer items-center justify-between px-4 py-3 transition-colors"
         onClick={onToggle}
         role="button"
         aria-expanded={isExpanded}
@@ -182,7 +182,7 @@ const JobCard: React.FC<{
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-muted-foreground hover:bg-primary/10 hover:text-primary"
+              className="hover:bg-primary/10 h-7 w-7 text-muted-foreground hover:text-primary"
               onClick={(e) => {
                 e.stopPropagation()
                 onCancel()
@@ -196,7 +196,7 @@ const JobCard: React.FC<{
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+              className="hover:bg-destructive/10 h-7 w-7 text-muted-foreground hover:text-destructive"
               onClick={(e) => {
                 e.stopPropagation()
                 onDelete()
@@ -402,7 +402,7 @@ export function Terminal({ projectId }: TerminalProps) {
   return (
     <div className="surface-0 dot-grid flex h-full flex-col">
       {/* Terminal Header */}
-      <div className="surface-2 flex items-center justify-between border-b border-border/50 px-3 py-2.5">
+      <div className="surface-2 border-border/50 flex items-center justify-between border-b px-3 py-2.5">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <TerminalSquare className="h-3.5 w-3.5 text-primary" />
@@ -439,7 +439,7 @@ export function Terminal({ projectId }: TerminalProps) {
               Loading jobs...
             </div>
           ) : terminalJobs.length === 0 ? (
-            <div className="surface-1 shadow-sharp-md flex h-40 flex-col items-center justify-center border border-border text-muted-foreground/60">
+            <div className="surface-1 shadow-sharp-md text-muted-foreground/60 flex h-40 flex-col items-center justify-center border border-border">
               <TerminalSquare className="mb-2 h-8 w-8 opacity-50" />
               <span className="font-mono text-sm uppercase tracking-[0.18em]">No jobs yet</span>
               <span className="mt-1 text-xs">Type a command below to get started</span>
@@ -468,7 +468,7 @@ export function Terminal({ projectId }: TerminalProps) {
       {/* Command Input */}
       <form
         onSubmit={handleSubmit}
-        className="surface-2 flex items-center gap-3 border-t border-border/50 px-4 py-3"
+        className="surface-2 border-border/50 flex items-center gap-3 border-t px-4 py-3"
       >
         <div className="flex shrink-0 items-center gap-2">
           <span className="font-mono text-sm text-primary">➜</span>
@@ -482,7 +482,7 @@ export function Terminal({ projectId }: TerminalProps) {
           onChange={(e) => setCommand(e.target.value)}
           placeholder="Type a command (e.g., npm install, git status)..."
           disabled={isExecuting}
-          className="bg-surface-0 flex-1 rounded-none border border-border/50 px-3 py-1.5 font-mono text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-50"
+          className="border-border/50 placeholder:text-muted-foreground/50 flex-1 rounded-none border bg-surface-0 px-3 py-1.5 font-mono text-sm text-foreground outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-50"
         />
 
         <Button

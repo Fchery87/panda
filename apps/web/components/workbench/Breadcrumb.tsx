@@ -37,14 +37,14 @@ export function Breadcrumb({
     <nav aria-label="Breadcrumb" className={cn('flex items-center gap-1 text-sm', className)}>
       <Link
         href="/projects"
-        className="hover:bg-surface-2 flex items-center gap-1.5 rounded-none px-1.5 py-0.5 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground"
+        className="flex items-center gap-1.5 rounded-none px-1.5 py-0.5 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
         title="Back to Projects"
       >
         <IconArrowLeft className="h-3 w-3" />
         <span className="hidden sm:inline">Projects</span>
       </Link>
 
-      <IconBreadcrumbSeparator className="h-3.5 w-3.5 text-muted-foreground/50" />
+      <IconBreadcrumbSeparator className="text-muted-foreground/50 h-3.5 w-3.5" />
 
       <Link
         href={`/projects/${projectId}`}
@@ -55,9 +55,9 @@ export function Breadcrumb({
 
       {items.map((item, index) => (
         <div key={`${item.label}-${index}`} className="flex items-center gap-1">
-          <IconBreadcrumbSeparator className="h-3.5 w-3.5 text-muted-foreground/50" />
+          <IconBreadcrumbSeparator className="text-muted-foreground/50 h-3.5 w-3.5" />
           {item.isSymbol ? (
-            <span className="flex items-center gap-1 font-mono text-xs text-primary/70">
+            <span className="text-primary/70 flex items-center gap-1 font-mono text-xs">
               <span className="text-xs opacity-60">#</span>
               {item.label}
             </span>

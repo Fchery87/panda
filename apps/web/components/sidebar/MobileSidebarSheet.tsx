@@ -56,7 +56,7 @@ export function MobileSidebarSheet({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="fixed inset-0 z-50 bg-background/80"
+                className="bg-background/80 fixed inset-0 z-50"
               />
             </Dialog.Overlay>
             <Dialog.Content asChild>
@@ -90,7 +90,7 @@ export function MobileSidebarSheet({
                           className={`flex flex-col items-center gap-2 p-4 transition-colors ${
                             isActive
                               ? 'bg-surface-2 text-primary'
-                              : 'hover:bg-surface-1 bg-background text-muted-foreground hover:text-foreground'
+                              : 'bg-background text-muted-foreground hover:bg-surface-1 hover:text-foreground'
                           }`}
                         >
                           <Icon className="h-5 w-5" />

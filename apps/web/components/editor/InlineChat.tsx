@@ -73,7 +73,7 @@ export function InlineChat({ selectedText, position, onClose, onSubmit }: Inline
           left: Math.min(position.left, window.innerWidth - 440),
         }}
       >
-        <div className="flex items-center justify-between border-b border-border bg-muted/50 px-4 py-2">
+        <div className="bg-muted/50 flex items-center justify-between border-b border-border px-4 py-2">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
             <span className="font-mono text-xs uppercase tracking-wider">Edit with AI</span>

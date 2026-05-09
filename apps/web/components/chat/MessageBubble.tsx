@@ -95,7 +95,7 @@ function MessageAttachmentItem({
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="surface-1 flex w-full max-w-md items-center gap-3 border border-border px-3 py-2 text-left hover:bg-muted/50"
+        className="surface-1 hover:bg-muted/50 flex w-full max-w-md items-center gap-3 border border-border px-3 py-2 text-left"
       >
         <div className="flex h-9 w-9 items-center justify-center border border-border bg-muted text-muted-foreground">
           <FileText className="h-4 w-4" />
@@ -197,7 +197,7 @@ function renderInlineFormatting(text: string) {
           href={linkMatch[2]}
           target="_blank"
           rel="noopener noreferrer"
-          className="font-medium text-primary underline underline-offset-2 hover:text-primary/80"
+          className="hover:text-primary/80 font-medium text-primary underline underline-offset-2"
         >
           {linkMatch[1]}
         </a>
@@ -317,7 +317,7 @@ function renderArchitectBody(lines: string[]) {
               className="space-y-1 pl-4 text-[13px] leading-6 xl:text-sm"
             >
               {block.lines.map((line, i) => (
-                <li key={i} className="list-disc marker:text-primary/70">
+                <li key={i} className="marker:text-primary/70 list-disc">
                   {renderInlineFormatting(line)}
                 </li>
               ))}
@@ -459,14 +459,14 @@ export function MessageBubble({
       >
         {brainstormPhaseLabel && (
           <div className="flex w-full items-center gap-2">
-            <span className="border border-primary/30 bg-primary/5 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-primary">
+            <span className="border-primary/30 bg-primary/5 border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-primary">
               Brainstorm · {brainstormPhaseLabel}
             </span>
             {canCopyValidatedPlan && (
               <button
                 type="button"
                 onClick={handleCopyPlan}
-                className="inline-flex items-center gap-1 border border-border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
+                className="hover:border-primary/40 hover:bg-primary/5 inline-flex items-center gap-1 border border-border px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
                 title="Copy validated plan"
               >
                 <Copy className="h-3 w-3" />
@@ -495,7 +495,7 @@ export function MessageBubble({
               {message.annotations.model}
             </Badge>
           )}
-          <span className="font-mono text-[10px] tabular-nums text-muted-foreground/60 xl:text-[11px]">
+          <span className="text-muted-foreground/60 font-mono text-[10px] tabular-nums xl:text-[11px]">
             {formatTimestamp(message.createdAt)}
           </span>
         </div>
@@ -542,11 +542,11 @@ export function MessageBubble({
                         <div
                           key={section.key}
                           className={cn(
-                            'border border-border/70 bg-background/40 px-2.5 py-2',
+                            'border-border/70 bg-background/40 border px-2.5 py-2',
                             sectionIndex === 0 && 'border-primary/25'
                           )}
                         >
-                          <div className="mb-1.5 font-mono text-[11px] uppercase tracking-wide text-foreground/90">
+                          <div className="text-foreground/90 mb-1.5 font-mono text-[11px] uppercase tracking-wide">
                             {section.title}
                           </div>
                           {renderArchitectBody(section.bodyLines)}
@@ -596,8 +596,8 @@ export function MessageBubble({
 
         {isAssistant && isBuild && shouldRedactBuildCode && (
           <div className="flex items-center gap-2 px-1">
-            <span className="font-mono text-xs text-muted-foreground/70">Build mode</span>
-            <span className="font-mono text-xs text-primary/90">
+            <span className="text-muted-foreground/70 font-mono text-xs">Build mode</span>
+            <span className="text-primary/90 font-mono text-xs">
               (code hidden; use artifacts/editor)
             </span>
           </div>

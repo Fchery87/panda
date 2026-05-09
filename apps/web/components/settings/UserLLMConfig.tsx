@@ -189,7 +189,7 @@ export function UserLLMConfig({
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Provider Override Toggle */}
-            <div className="flex items-center justify-between rounded-none border border-border bg-muted/30 p-4">
+            <div className="bg-muted/30 flex items-center justify-between rounded-none border border-border p-4">
               <div className="space-y-0.5">
                 <Label className="font-mono text-sm">Override Provider</Label>
                 <p className="text-sm text-muted-foreground">
@@ -232,7 +232,7 @@ export function UserLLMConfig({
             <Separator />
 
             {/* Model Override Toggle */}
-            <div className="flex items-center justify-between rounded-none border border-border bg-muted/30 p-4">
+            <div className="bg-muted/30 flex items-center justify-between rounded-none border border-border p-4">
               <div className="space-y-0.5">
                 <Label className="font-mono text-sm">Override Model</Label>
                 <p className="text-sm text-muted-foreground">

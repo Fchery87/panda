@@ -56,7 +56,7 @@ function SpecSyncToastContent({ driftReport, onUpdate, onIgnore, className }: Sp
       </div>
 
       {/* Description */}
-      <p className="text-sm leading-relaxed text-foreground/90">
+      <p className="text-foreground/90 text-sm leading-relaxed">
         {primaryFinding?.description || 'Code changes may affect spec constraints.'}
         {additionalCount > 0 && (
           <span className="text-muted-foreground"> (+{additionalCount} more)</span>

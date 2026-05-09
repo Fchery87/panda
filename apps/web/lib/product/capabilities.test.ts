@@ -29,18 +29,22 @@ describe('educationSections', () => {
     ])
 
     expect(interfaceMap.map((section) => section.bullets)).toEqual([
-      ['File tree navigation', 'Project search panel', 'Fast file selection for editor + chat'],
       [
-        'Tabbed editor + diff review',
-        'Integrated terminal + preview',
-        'Responsive workbench shell',
+        'Project-aware file tree navigation',
+        'Search when structure is not enough',
+        'Selected files route into editor and chat context',
       ],
       [
-        'Message history + streaming input',
-        'Mode, model, and file-context controls',
-        'Planning, approval, and build actions',
+        'Tabbed editor and changed-work review',
+        'Browser runtime with server fallback',
+        'Terminal and preview beside the task thread',
       ],
-      ['Run proof and recovery', 'Changes, context, and preview rails'],
+      [
+        'Canonical mode, model, and context controls',
+        'Plan review and build handoff in-thread',
+        'Permission gates before risky actions',
+      ],
+      ['Run events, receipts, and checkpoints', 'Plans, changes, memory, evals, and preview'],
     ])
   })
 

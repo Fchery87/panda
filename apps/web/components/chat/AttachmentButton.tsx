@@ -87,7 +87,7 @@ export function AttachmentButton({
           <button
             type="button"
             disabled={disabled}
-            className="flex h-7 w-7 items-center justify-center border border-border text-muted-foreground transition-colors duration-150 hover:border-foreground/30 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+            className="hover:border-foreground/30 flex h-7 w-7 items-center justify-center border border-border text-muted-foreground transition-colors duration-150 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
             aria-label="Attach file or image"
           >
             <Paperclip className="h-3.5 w-3.5" />
@@ -102,7 +102,7 @@ export function AttachmentButton({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="hover:bg-surface-2 flex w-full items-center gap-2 px-3 py-2 font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
+            className="flex w-full items-center gap-2 px-3 py-2 font-mono text-xs text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
           >
             <FilePlus2 className="h-3.5 w-3.5" />
             Upload File
@@ -110,7 +110,7 @@ export function AttachmentButton({
           <button
             type="button"
             onClick={() => imageInputRef.current?.click()}
-            className="hover:bg-surface-2 flex w-full items-center gap-2 px-3 py-2 font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
+            className="flex w-full items-center gap-2 px-3 py-2 font-mono text-xs text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
           >
             <ImagePlus className="h-3.5 w-3.5" />
             Upload Image

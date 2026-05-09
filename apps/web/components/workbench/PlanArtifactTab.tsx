@@ -84,7 +84,7 @@ export function PlanArtifactTab({
       className={cn('flex h-full min-h-0 flex-col border border-border bg-background', className)}
       aria-label={`Plan artifact ${artifact.title}`}
     >
-      <header className="border-b border-border bg-muted/20 px-4 py-3">
+      <header className="bg-muted/20 border-b border-border px-4 py-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 space-y-1">
             <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">

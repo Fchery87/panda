@@ -215,22 +215,22 @@ export const MentionPicker = forwardRef<MentionPickerHandle, MentionPickerProps>
                   'transition-colors duration-75',
                   idx === activeIdx
                     ? 'bg-primary/10 text-foreground'
-                    : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                    : 'hover:bg-muted/50 text-muted-foreground hover:text-foreground'
                 )}
               >
                 {item.type === 'agent' ? (
                   <Bot className="h-3.5 w-3.5 shrink-0 text-primary" />
                 ) : item.type === 'folder' ? (
-                  <Folder className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+                  <Folder className="text-primary/70 h-3.5 w-3.5 shrink-0" />
                 ) : item.type === 'url' ? (
-                  <Globe className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+                  <Globe className="text-primary/70 h-3.5 w-3.5 shrink-0" />
                 ) : (
-                  <FileIcon className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+                  <FileIcon className="text-primary/70 h-3.5 w-3.5 shrink-0" />
                 )}
                 <div className="min-w-0">
                   <div className="truncate font-mono text-[12px] font-medium">{item.name}</div>
                   {item.description && (
-                    <div className="truncate font-mono text-xs text-muted-foreground/60">
+                    <div className="text-muted-foreground/60 truncate font-mono text-xs">
                       {item.description}
                     </div>
                   )}
@@ -240,7 +240,7 @@ export const MentionPicker = forwardRef<MentionPickerHandle, MentionPickerProps>
           </div>
 
           <div className="border-t border-border px-3 py-1">
-            <span className="font-mono text-xs text-muted-foreground/50">
+            <span className="text-muted-foreground/50 font-mono text-xs">
               ↑↓ navigate · Enter select · Esc dismiss
             </span>
           </div>

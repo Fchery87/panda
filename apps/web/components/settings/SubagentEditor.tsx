@@ -254,7 +254,7 @@ export function SubagentEditor({ className }: SubagentEditorProps) {
                 <div className="truncate font-mono text-xs text-muted-foreground">
                   {agent.description}
                 </div>
-                <div className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                <div className="text-muted-foreground/70 font-mono text-[10px] uppercase tracking-wider">
                   {agent.capabilityPreset ?? 'assistant'} · {agent.defaultSkillIds?.length ?? 0}{' '}
                   skills
                 </div>
@@ -272,15 +272,15 @@ export function SubagentEditor({ className }: SubagentEditorProps) {
         </div>
       ) : (
         <div className="border border-border p-6 text-center">
-          <Bot className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
+          <Bot className="text-muted-foreground/50 mx-auto mb-2 h-8 w-8" />
           <p className="font-mono text-xs text-muted-foreground">No custom subagents yet</p>
-          <p className="mt-1 font-mono text-xs text-muted-foreground/60">
+          <p className="text-muted-foreground/60 mt-1 font-mono text-xs">
             Built-in agents: @explore, @general, @review
           </p>
         </div>
       )}
 
-      <div className="bg-surface-2 rounded-none border border-border p-3">
+      <div className="rounded-none border border-border bg-surface-2 p-3">
         <p className="font-mono text-xs text-muted-foreground">
           Subagents are specialized AI assistants you can invoke during chat. Use @agent-name to
           delegate tasks.

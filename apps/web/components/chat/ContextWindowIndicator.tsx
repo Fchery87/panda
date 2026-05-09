@@ -124,7 +124,7 @@ export function ContextWindowIndicator({
             size="sm"
             className={cn(
               'h-7 px-2 text-xs',
-              isCritical && 'text-destructive hover:bg-destructive/10 hover:text-destructive'
+              isCritical && 'hover:bg-destructive/10 text-destructive hover:text-destructive'
             )}
             onClick={() => setShowResetDialog(true)}
           >

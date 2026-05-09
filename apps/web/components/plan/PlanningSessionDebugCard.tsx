@@ -67,7 +67,7 @@ function formatPlanStatus(status: GeneratedPlanArtifact['status'] | null): strin
 export function PlanningSessionDebugCard({ summary, className }: PlanningSessionDebugCardProps) {
   return (
     <section
-      className={cn('border border-dashed border-border bg-background/80 px-3 py-2', className)}
+      className={cn('bg-background/80 border border-dashed border-border px-3 py-2', className)}
       aria-label="Planning session debug"
     >
       <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">

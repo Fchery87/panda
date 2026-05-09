@@ -66,7 +66,7 @@ export default function LoginPage() {
               </div>
 
               {authError && (
-                <div className="mt-6 rounded-none border border-destructive/50 bg-destructive/10 p-4 text-center">
+                <div className="border-destructive/50 bg-destructive/10 mt-6 rounded-none border p-4 text-center">
                   <p className="font-mono text-sm text-destructive">
                     Sign-in failed. Please try again.
                   </p>

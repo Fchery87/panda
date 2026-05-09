@@ -100,8 +100,8 @@ export function TranscriptEventRow({ block }: TranscriptEventRowProps) {
       .filter(Boolean)
       .join(' • ')
     return (
-      <div className="ml-10 mr-1 border-l border-border/80 pl-4">
-        <div className="shadow-sharp-sm flex items-start gap-2 border border-border bg-background/80 px-3 py-2 font-mono text-[11px]">
+      <div className="border-border/80 ml-10 mr-1 border-l pl-4">
+        <div className="shadow-sharp-sm bg-background/80 flex items-start gap-2 border border-border px-3 py-2 font-mono text-[11px]">
           <span
             className={cn(
               'mt-0.5 shrink-0',
@@ -126,8 +126,8 @@ export function TranscriptEventRow({ block }: TranscriptEventRowProps) {
 
   if (block.kind === 'approval_request') {
     return (
-      <div className="ml-10 mr-1 border-l border-primary/40 pl-4">
-        <div className="shadow-sharp-sm flex items-start gap-2 border border-primary/40 bg-primary/5 px-3 py-2 font-mono text-[11px] text-primary">
+      <div className="border-primary/40 ml-10 mr-1 border-l pl-4">
+        <div className="shadow-sharp-sm border-primary/40 bg-primary/5 flex items-start gap-2 border px-3 py-2 font-mono text-[11px] text-primary">
           <span className="mt-0.5 shrink-0">{icon}</span>
           <div className="min-w-0 space-y-1">
             <div className="uppercase tracking-[0.18em]">{block.title}</div>
@@ -142,8 +142,8 @@ export function TranscriptEventRow({ block }: TranscriptEventRowProps) {
 
   if (block.kind === 'snapshot_marker') {
     return (
-      <div className="ml-10 mr-1 border-l border-border/80 pl-4">
-        <div className="shadow-sharp-sm flex items-start gap-2 border border-border bg-muted/25 px-3 py-2 font-mono text-[11px] text-muted-foreground">
+      <div className="border-border/80 ml-10 mr-1 border-l pl-4">
+        <div className="shadow-sharp-sm bg-muted/25 flex items-start gap-2 border border-border px-3 py-2 font-mono text-[11px] text-muted-foreground">
           <span className="mt-0.5 shrink-0">{icon}</span>
           <div className="min-w-0 space-y-1">
             <div className="uppercase tracking-[0.18em]">{block.title}</div>
@@ -156,7 +156,7 @@ export function TranscriptEventRow({ block }: TranscriptEventRowProps) {
 
   if (block.kind === 'spec_status') {
     return (
-      <div className="ml-10 mr-1 border-l border-border/80 pl-4">
+      <div className="border-border/80 ml-10 mr-1 border-l pl-4">
         <div
           className={cn(
             'shadow-sharp-sm flex items-start gap-2 border px-3 py-2 font-mono text-[11px]',
@@ -206,7 +206,7 @@ export function TranscriptEventRow({ block }: TranscriptEventRowProps) {
                 variant="outline"
                 size="sm"
                 onClick={openActionTarget}
-                className="mt-1 h-8 rounded-none border-border bg-background px-2.5 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors hover:border-primary/60 hover:bg-primary/5 active:scale-[0.96]"
+                className="hover:border-primary/60 hover:bg-primary/5 mt-1 h-8 rounded-none border-border bg-background px-2.5 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors active:scale-[0.96]"
               >
                 {block.action.label}
               </Button>

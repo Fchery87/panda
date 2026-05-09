@@ -92,7 +92,7 @@ export function TaskHeader({
         {changedFilesCount > 0 && status !== 'running' && onReviewChanges && (
           <Button
             size="sm"
-            className="h-6 gap-1.5 rounded-none bg-primary px-3 font-mono text-[10px] uppercase tracking-widest text-primary-foreground hover:bg-primary/90"
+            className="hover:bg-primary/90 h-6 gap-1.5 rounded-none bg-primary px-3 font-mono text-[10px] uppercase tracking-widest text-primary-foreground"
             onClick={onReviewChanges}
           >
             <IconDiff className="h-3 w-3" />

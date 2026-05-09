@@ -92,7 +92,7 @@ export function SpecDiff({
   return (
     <div className={cn('flex h-full flex-col', className)}>
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
+      <div className="bg-muted/30 flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <span className="font-mono text-xs text-muted-foreground">v{specA.version}</span>
@@ -141,7 +141,7 @@ export function SpecDiff({
             <Target className="h-3.5 w-3.5" />
             Requirements
             {groupedDiffs.criteria.length > 0 && (
-              <span className="ml-1 flex h-4 w-4 items-center justify-center bg-primary/10 text-[10px] text-primary">
+              <span className="bg-primary/10 ml-1 flex h-4 w-4 items-center justify-center text-[10px] text-primary">
                 {groupedDiffs.criteria.length}
               </span>
             )}
@@ -153,7 +153,7 @@ export function SpecDiff({
             <Shield className="h-3.5 w-3.5" />
             Constraints
             {groupedDiffs.constraints.length > 0 && (
-              <span className="ml-1 flex h-4 w-4 items-center justify-center bg-primary/10 text-[10px] text-primary">
+              <span className="bg-primary/10 ml-1 flex h-4 w-4 items-center justify-center text-[10px] text-primary">
                 {groupedDiffs.constraints.length}
               </span>
             )}
@@ -165,7 +165,7 @@ export function SpecDiff({
             <GitBranch className="h-3.5 w-3.5" />
             Plan
             {groupedDiffs.steps.length + groupedDiffs.dependencies.length > 0 && (
-              <span className="ml-1 flex h-4 w-4 items-center justify-center bg-primary/10 text-[10px] text-primary">
+              <span className="bg-primary/10 ml-1 flex h-4 w-4 items-center justify-center text-[10px] text-primary">
                 {groupedDiffs.steps.length + groupedDiffs.dependencies.length}
               </span>
             )}
@@ -234,21 +234,21 @@ function OverviewTab({
     <div className="space-y-6">
       {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="border border-success/30 bg-success/5 p-3">
+        <div className="border-success/30 bg-success/5 border p-3">
           <div className="flex items-center gap-2">
             <Plus className="h-4 w-4 text-success" />
             <span className="font-mono text-xs uppercase text-success">Added</span>
           </div>
           <p className="mt-2 font-mono text-2xl font-semibold text-success">{added.length}</p>
         </div>
-        <div className="border border-destructive/30 bg-destructive/5 p-3">
+        <div className="border-destructive/30 bg-destructive/5 border p-3">
           <div className="flex items-center gap-2">
             <Minus className="h-4 w-4 text-destructive" />
             <span className="font-mono text-xs uppercase text-destructive">Removed</span>
           </div>
           <p className="mt-2 font-mono text-2xl font-semibold text-destructive">{removed.length}</p>
         </div>
-        <div className="border border-warning/30 bg-warning/5 p-3">
+        <div className="border-warning/30 bg-warning/5 border p-3">
           <div className="flex items-center gap-2">
             <Edit3 className="h-4 w-4 text-warning" />
             <span className="font-mono text-xs uppercase text-warning">Changed</span>
@@ -766,7 +766,7 @@ function DependencyDiffRow({ diff }: { diff: SpecDifference }) {
         <span
           className={cn(
             'border px-1.5 py-0.5 font-mono text-[10px] uppercase',
-            dep?.access === 'read' && 'border-border bg-muted/50',
+            dep?.access === 'read' && 'bg-muted/50 border-border',
             dep?.access === 'write' && 'border-warning/50 bg-warning/5 text-warning',
             dep?.access === 'create' && 'border-success/50 bg-success/5 text-success',
             dep?.access === 'delete' && 'border-destructive/50 bg-destructive/5 text-destructive'

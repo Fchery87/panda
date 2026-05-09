@@ -22,7 +22,7 @@ type CursorPosition = {
   column: number
 } | null
 
-type MobilePrimaryPanel = 'workspace' | 'chat' | 'review'
+type MobilePrimaryPanel = 'workspace' | 'chat' | 'review' | 'preview'
 
 interface UsePlanArtifactSyncArgs {
   activePlanArtifact: GeneratedPlanArtifact | null | undefined

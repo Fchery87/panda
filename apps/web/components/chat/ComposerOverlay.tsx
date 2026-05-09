@@ -39,7 +39,7 @@ export function ComposerOverlay({ isOpen, onClose, onSubmit, isStreaming }: Comp
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="top-[26%] max-w-3xl translate-y-0 rounded-none border-border p-0 shadow-2xl">
-        <DialogHeader className="border-b border-border bg-muted/30 px-4 py-3">
+        <DialogHeader className="bg-muted/30 border-b border-border px-4 py-3">
           <DialogTitle className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider">
             <Blocks className="h-4 w-4 text-primary" aria-hidden="true" />
             Multi-File Composer

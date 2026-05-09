@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const webRoot = process.cwd().endsWith('apps/web') ? process.cwd() : join(process.cwd(), 'apps/web')
+const repoRoot = process.cwd().endsWith('apps/web') ? join(process.cwd(), '../..') : process.cwd()
 const source = (path: string) => readFileSync(join(webRoot, path), 'utf8')
 
 const propertyAccess = (path: string) => new RegExp(`${path.replaceAll('.', String.raw`\.`)}\\b`)
@@ -48,7 +49,7 @@ describe('Convex bandwidth guards', () => {
   })
 
   test('bounds the legacy shared chat compatibility query', () => {
-    const sharing = readFileSync(join(process.cwd(), 'convex/sharing.ts'), 'utf8')
+    const sharing = readFileSync(join(repoRoot, 'convex/sharing.ts'), 'utf8')
     const getSharedChatBody = sharing.slice(
       sharing.indexOf('export const getSharedChat'),
       sharing.indexOf('export const getSharedChatHeader')

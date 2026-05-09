@@ -178,7 +178,7 @@ export function UserManagementTable() {
             {loadedUsers.map((user) => (
               <div
                 key={user._id}
-                className="flex items-center justify-between rounded-none border border-border p-4 transition-colors hover:bg-muted/50"
+                className="hover:bg-muted/50 flex items-center justify-between rounded-none border border-border p-4 transition-colors"
               >
                 <div className="flex items-center gap-4">
                   <div className="flex h-10 w-10 items-center justify-center bg-muted font-mono text-sm">

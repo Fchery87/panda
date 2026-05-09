@@ -82,7 +82,7 @@ export function SidebarGitPanel({ projectId: _projectId }: SidebarGitPanelProps)
       </div>
 
       {error && (
-        <div className="border-b border-destructive/30 bg-destructive/10 px-3 py-1.5 font-mono text-[10px] text-destructive">
+        <div className="border-destructive/30 bg-destructive/10 border-b px-3 py-1.5 font-mono text-[10px] text-destructive">
           {error}
         </div>
       )}
@@ -145,7 +145,7 @@ export function SidebarGitPanel({ projectId: _projectId }: SidebarGitPanelProps)
             value={commitMessage}
             onChange={(e) => setCommitMessage(e.target.value)}
             placeholder="Commit message..."
-            className="bg-surface-0 mb-1.5 w-full resize-none border border-border px-2 py-1.5 font-mono text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            className="mb-1.5 w-full resize-none border border-border bg-surface-0 px-2 py-1.5 font-mono text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             rows={2}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
@@ -259,7 +259,7 @@ function FileSection({
       </button>
       {expanded &&
         files.map((file) => (
-          <div key={file} className="hover:bg-surface-2 group flex items-center gap-2 px-3 py-1">
+          <div key={file} className="group flex items-center gap-2 px-3 py-1 hover:bg-surface-2">
             <span
               className={cn(
                 'h-1.5 w-1.5 shrink-0 rounded-full',

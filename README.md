@@ -110,7 +110,13 @@ AUTH_GOOGLE_ID=your-client-id.apps.googleusercontent.com
 AUTH_GOOGLE_SECRET=your-client-secret
 CONVEX_AUTH_SECRET=your-random-secret
 CONVEX_SITE_URL=https://<your-convex-site>.convex.site
+
+# Optional GitHub-backed projects
+GITHUB_APP_SLUG=your-github-app-slug
 ```
+
+For repository-backed projects, create and install a GitHub App using
+[docs/GITHUB_APP_SETUP.md](./docs/GITHUB_APP_SETUP.md).
 
 ## Development Commands
 

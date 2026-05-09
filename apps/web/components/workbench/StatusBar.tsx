@@ -140,10 +140,10 @@ export function StatusBar({
 
       <div className="flex items-center gap-3">
         {activeModel && (
-          <span className="hidden text-muted-foreground/70 sm:inline">{activeModel}</span>
+          <span className="text-muted-foreground/70 hidden sm:inline">{activeModel}</span>
         )}
 
-        <span className="hidden text-muted-foreground/70 md:inline" aria-live="polite">
+        <span className="text-muted-foreground/70 hidden md:inline" aria-live="polite">
           WC: {runtimeAvailability.label}
         </span>
 

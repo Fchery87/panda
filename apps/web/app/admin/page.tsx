@@ -82,7 +82,7 @@ export default function AdminDashboardPage() {
             {adminRouteCards.map((card) => (
               <Card
                 key={card.title}
-                className="group rounded-none transition-colors hover:bg-muted/20"
+                className="hover:bg-muted/20 group rounded-none transition-colors"
               >
                 <CardHeader>
                   <div className="space-y-3">

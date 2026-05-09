@@ -41,7 +41,7 @@ export function DiffViewer({
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-none border border-border bg-background">
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border bg-muted/50 px-4 py-2">
+      <div className="bg-muted/50 flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <FileIcon className="h-4 w-4 text-muted-foreground" />
           <span className="truncate font-mono text-sm">{fileName}</span>
@@ -101,7 +101,7 @@ function SideBySideView({ diff }: { diff: DiffLine[] }) {
     <div className="grid min-w-[44rem] grid-cols-[minmax(22rem,1fr)_minmax(22rem,1fr)]">
       {/* Original */}
       <div className="min-w-0 border-r border-border">
-        <div className="sticky top-0 border-b border-border bg-muted/80 px-3 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur">
+        <div className="bg-muted/80 sticky top-0 border-b border-border px-3 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur">
           Original
         </div>
         <div className="py-1">
@@ -114,7 +114,7 @@ function SideBySideView({ diff }: { diff: DiffLine[] }) {
                 line.type === 'unchanged' && 'text-muted-foreground'
               )}
             >
-              <span className="w-10 shrink-0 select-none text-right text-muted-foreground/50">
+              <span className="text-muted-foreground/50 w-10 shrink-0 select-none text-right">
                 {line.oldLineNumber || ' '}
               </span>
               <span className="ml-4 min-w-0 overflow-x-auto whitespace-pre">
@@ -127,7 +127,7 @@ function SideBySideView({ diff }: { diff: DiffLine[] }) {
 
       {/* Modified */}
       <div className="min-w-0">
-        <div className="sticky top-0 border-b border-border bg-muted/80 px-3 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur">
+        <div className="bg-muted/80 sticky top-0 border-b border-border px-3 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur">
           Modified
         </div>
         <div className="py-1">
@@ -140,7 +140,7 @@ function SideBySideView({ diff }: { diff: DiffLine[] }) {
                 line.type === 'unchanged' && 'text-muted-foreground'
               )}
             >
-              <span className="w-10 shrink-0 select-none text-right text-muted-foreground/50">
+              <span className="text-muted-foreground/50 w-10 shrink-0 select-none text-right">
                 {line.newLineNumber || ' '}
               </span>
               <span className="ml-4 min-w-0 overflow-x-auto whitespace-pre">
@@ -157,7 +157,7 @@ function SideBySideView({ diff }: { diff: DiffLine[] }) {
 function UnifiedView({ diff }: { diff: DiffLine[] }) {
   return (
     <div className="min-w-[38rem]">
-      <div className="sticky top-0 flex border-b border-border bg-muted/80 px-3 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur">
+      <div className="bg-muted/80 sticky top-0 flex border-b border-border px-3 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur">
         <span className="w-10">Old</span>
         <span className="w-10">New</span>
         <span className="ml-2">Content</span>
@@ -173,10 +173,10 @@ function UnifiedView({ diff }: { diff: DiffLine[] }) {
               line.type === 'removed' && 'bg-red-500/10 dark:bg-red-500/20'
             )}
           >
-            <span className="w-10 select-none text-right text-muted-foreground/50">
+            <span className="text-muted-foreground/50 w-10 select-none text-right">
               {line.oldLineNumber || ' '}
             </span>
-            <span className="w-10 select-none text-right text-muted-foreground/50">
+            <span className="text-muted-foreground/50 w-10 select-none text-right">
               {line.newLineNumber || ' '}
             </span>
             <span

@@ -110,7 +110,7 @@ export function CheckpointIndicator({
               {checkpoints.map((checkpoint: Checkpoint) => (
                 <div
                   key={checkpoint._id}
-                  className="flex items-center justify-between border-b border-border/50 py-2 last:border-0"
+                  className="border-border/50 flex items-center justify-between border-b py-2 last:border-0"
                 >
                   <div className="flex-1">
                     <div className="font-mono text-xs">{checkpoint.name}</div>

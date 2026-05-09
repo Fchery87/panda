@@ -42,7 +42,7 @@ export function ReasoningPanel({
   }, [defaultOpen, isStreaming])
 
   return (
-    <div className="shadow-sharp-md w-full border border-border bg-muted/40">
+    <div className="shadow-sharp-md bg-muted/40 w-full border border-border">
       <button
         type="button"
         aria-expanded={open}
@@ -53,10 +53,10 @@ export function ReasoningPanel({
         <span className="flex min-w-0 items-center gap-2 font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
           <Brain className="h-3.5 w-3.5" />
           {label}
-          {isStreaming && <span className="text-[10px] text-muted-foreground/80">streaming…</span>}
+          {isStreaming && <span className="text-muted-foreground/80 text-[10px]">streaming…</span>}
         </span>
         {!open ? (
-          <span className="min-w-0 flex-1 truncate pr-2 text-right font-mono text-[10px] text-muted-foreground/70">
+          <span className="text-muted-foreground/70 min-w-0 flex-1 truncate pr-2 text-right font-mono text-[10px]">
             {collapsedPreview}
           </span>
         ) : null}
@@ -75,7 +75,7 @@ export function ReasoningPanel({
             transition={{ duration: shouldReduceMotion ? 0.01 : 0.2 }}
             className="overflow-hidden border-t border-border"
           >
-            <div className="whitespace-pre-wrap break-words px-3 py-2 font-mono text-[11px] leading-5 text-muted-foreground/90">
+            <div className="text-muted-foreground/90 whitespace-pre-wrap break-words px-3 py-2 font-mono text-[11px] leading-5">
               {redacted ? 'Thinking was used, but no display-safe summary was returned.' : content}
             </div>
           </motion.div>

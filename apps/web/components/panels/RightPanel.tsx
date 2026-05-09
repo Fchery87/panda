@@ -29,7 +29,8 @@ export function RightPanel({
   isInspectorOpen = false,
   onInspectorToggle,
   inspectorTitle = 'Evidence Surface',
-  inspectorSummary: _inspectorSummary = 'Run proof, receipts, snapshots, subagents, specs, and validation.',
+  inspectorSummary:
+    _inspectorSummary = 'Run proof, receipts, snapshots, subagents, specs, and validation.',
   inspectorEyebrow = 'Evidence Surface',
 }: RightPanelProps) {
   const activeTab = isInspectorOpen && activeInspectorTab ? activeInspectorTab : 'work'

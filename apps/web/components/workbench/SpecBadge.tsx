@@ -140,7 +140,7 @@ export function SpecBadgeMini({ status, className }: SpecBadgeMiniProps) {
           status === 'validated' ||
           status === 'approved' ||
           status === 'archived') &&
-          'border-border bg-muted/50 text-muted-foreground',
+          'bg-muted/50 border-border text-muted-foreground',
         className
       )}
       title={`Spec ${status}`}

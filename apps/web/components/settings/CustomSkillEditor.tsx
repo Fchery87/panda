@@ -288,7 +288,7 @@ export function CustomSkillEditor({ className }: CustomSkillEditorProps) {
         </div>
       ) : (
         <div className="border border-border p-6 text-center">
-          <Sparkles className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
+          <Sparkles className="text-muted-foreground/50 mx-auto mb-2 h-8 w-8" />
           <p className="font-mono text-xs text-muted-foreground">No custom skills yet</p>
         </div>
       )}

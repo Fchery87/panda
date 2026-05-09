@@ -89,11 +89,11 @@ export function ChatActionBar({
             planStatus !== 'partial' &&
               planStatus !== 'completed' &&
               planStatus !== 'failed' &&
-              'border-border bg-muted/30',
+              'bg-muted/30 border-border',
             className
           )}
         >
-          <div className="mb-2 flex items-center justify-between gap-3 border-b border-border/60 pb-2">
+          <div className="border-border/60 mb-2 flex items-center justify-between gap-3 border-b pb-2">
             <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
               Plan controls
             </span>
@@ -148,7 +148,7 @@ export function ChatActionBar({
                   size="sm"
                   onClick={onPlanApprove}
                   disabled={planApproveDisabled}
-                  className="h-7 rounded-none border-primary/50 px-2 font-mono text-[11px] uppercase tracking-wide"
+                  className="border-primary/50 h-7 rounded-none px-2 font-mono text-[11px] uppercase tracking-wide"
                 >
                   Approve
                 </Button>
@@ -179,9 +179,9 @@ export function ChatActionBar({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 8 }}
           transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
-          className={cn('border-y border-primary/30 bg-primary/5 px-3 py-2', className)}
+          className={cn('border-primary/30 bg-primary/5 border-y px-3 py-2', className)}
         >
-          <div className="mb-2 flex items-center justify-between gap-3 border-b border-border/60 pb-2">
+          <div className="border-border/60 mb-2 flex items-center justify-between gap-3 border-b pb-2">
             <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
               Spec controls
             </span>
@@ -218,7 +218,7 @@ export function ChatActionBar({
                   variant="outline"
                   size="sm"
                   onClick={() => onSpecEdit(pendingSpec)}
-                  className="h-7 rounded-none border-primary/50 px-2 font-mono text-[11px] uppercase tracking-wide"
+                  className="border-primary/50 h-7 rounded-none px-2 font-mono text-[11px] uppercase tracking-wide"
                 >
                   Edit
                 </Button>
@@ -234,7 +234,7 @@ export function ChatActionBar({
               )}
             </div>
           </div>
-          <div className="mt-1.5 flex items-center gap-2 border-t border-border/50 pt-1.5 text-[10px]">
+          <div className="border-border/50 mt-1.5 flex items-center gap-2 border-t pt-1.5 text-[10px]">
             <span className="font-mono uppercase text-muted-foreground">
               {pendingSpec.intent.acceptanceCriteria.length} requirements
             </span>

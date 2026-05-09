@@ -171,7 +171,7 @@ function SpecGroup({
 
   return (
     <div>
-      <div className="bg-surface-1 sticky top-0 z-10 border-b border-border px-3 py-2">
+      <div className="sticky top-0 z-10 border-b border-border bg-surface-1 px-3 py-2">
         <h3 className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
           {title}
         </h3>

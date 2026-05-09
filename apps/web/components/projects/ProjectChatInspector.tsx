@@ -220,7 +220,7 @@ export function InspectorPlanContent({
       <div className="grid grid-cols-3 gap-1.5">
         <div className="bg-background/70 border border-border px-2 py-2">
           <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
-            Status
+            Plan status
           </div>
           <div className="mt-1 text-xs font-medium text-foreground">
             {(planStatus ?? 'idle').replace('_', ' ')}
@@ -228,7 +228,7 @@ export function InspectorPlanContent({
         </div>
         <div className="bg-background/70 border border-border px-2 py-2">
           <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
-            Checks
+            Acceptance checks
           </div>
           <div className="mt-1 text-xs font-medium text-foreground">
             {acceptanceCheckCount || 'None'}

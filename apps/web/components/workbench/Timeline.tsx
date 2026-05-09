@@ -56,7 +56,7 @@ export function Timeline({ chatId }: TimelineProps) {
         </h3>
       </div>
       <div className="scrollbar-thin flex-1 overflow-auto p-4">
-        <div className="relative space-y-4 before:absolute before:inset-0 before:ml-[11px] before:-translate-x-px before:border-l before:border-border/50 md:before:mx-auto md:before:translate-x-0">
+        <div className="before:border-border/50 relative space-y-4 before:absolute before:inset-0 before:ml-[11px] before:-translate-x-px before:border-l md:before:mx-auto md:before:translate-x-0">
           {timeline.items.map((item, index) => {
             const { event, isError, isSnapshot, isSpec, specStatus, label, fileCount } = item
             const isLatest = index === timeline.items.length - 1
@@ -81,7 +81,7 @@ export function Timeline({ chatId }: TimelineProps) {
                         : isSnapshot
                           ? 'border-primary/50 text-primary'
                           : 'border-border text-muted-foreground',
-                    isLatest && !isError && 'ring-2 ring-primary/20'
+                    isLatest && !isError && 'ring-primary/20 ring-2'
                   )}
                 >
                   {isError ? (
@@ -103,7 +103,7 @@ export function Timeline({ chatId }: TimelineProps) {
 
                 {/* Event Card */}
                 <div className="w-[calc(100%-2rem)] md:w-[calc(50%-2rem)]">
-                  <div className="bg-surface-1 hover:bg-surface-2 flex flex-col gap-1 rounded-none border border-border p-3 transition-colors">
+                  <div className="flex flex-col gap-1 rounded-none border border-border bg-surface-1 p-3 transition-colors hover:bg-surface-2">
                     <div className="flex items-center justify-between gap-4">
                       <span className="font-mono text-xs font-medium">{label}</span>
                       <span className="font-mono text-[10px] text-muted-foreground">

@@ -54,7 +54,7 @@ function CodeBlock({ lang, code, resolvedTheme }: CodeBlockProps) {
 
   // Fallback while Shiki loads
   return (
-    <pre className="my-3 overflow-x-auto rounded-none border border-border bg-muted/40 p-3 font-mono text-[12px] leading-5">
+    <pre className="bg-muted/40 my-3 overflow-x-auto rounded-none border border-border p-3 font-mono text-[12px] leading-5">
       <code>{code}</code>
     </pre>
   )
@@ -98,7 +98,7 @@ function renderMarkdownTable(rows: string[][], components: Components): React.Re
           {rows.map((row, rowIndex) => (
             <tr
               key={`streaming-row-${rowIndex}`}
-              className="border-b border-border/70 last:border-b-0"
+              className="border-border/70 border-b last:border-b-0"
             >
               {row.map((cell, cellIndex) => (
                 <td key={`streaming-cell-${rowIndex}-${cellIndex}`} className="px-3 py-2 align-top">
@@ -278,7 +278,7 @@ function useMarkdownComponents(resolvedTheme: string | undefined): Components {
       },
 
       li({ children }) {
-        return <li className="list-disc marker:text-primary/70">{children}</li>
+        return <li className="marker:text-primary/70 list-disc">{children}</li>
       },
 
       strong({ children }) {
@@ -295,7 +295,7 @@ function useMarkdownComponents(resolvedTheme: string | undefined): Components {
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-medium text-primary underline underline-offset-2 hover:text-primary/80"
+            className="hover:text-primary/80 font-medium text-primary underline underline-offset-2"
           >
             {children}
           </a>
