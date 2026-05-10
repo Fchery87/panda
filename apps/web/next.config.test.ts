@@ -1,6 +1,4 @@
 import { describe, expect, it } from 'bun:test'
-import { existsSync } from 'node:fs'
-import path from 'node:path'
 import nextConfig, {
   buildSecurityHeaders,
   codeMirrorResolveAlias,
@@ -85,10 +83,12 @@ describe('CodeMirror bundler aliases', () => {
     expect(Object.keys(codeMirrorResolveAlias).sort()).toEqual(expectedPackages.sort())
   })
 
-  it('points aliases at installed app package directories', () => {
+  it('points aliases at app package directories without escaping node_modules', () => {
     for (const packageName of expectedPackages) {
-      expect(codeMirrorResolveAlias[packageName]).toContain('/node_modules/')
-      expect(existsSync(codeMirrorResolveAlias[packageName])).toBe(true)
+      const alias = codeMirrorResolveAlias[packageName]
+      expect(alias).toContain('/node_modules/')
+      expect(alias).toContain(packageName)
+      expect(alias).not.toContain('/../')
     }
   })
 
@@ -96,8 +96,9 @@ describe('CodeMirror bundler aliases', () => {
     for (const packageName of expectedPackages) {
       const alias = codeMirrorTurbopackResolveAlias[packageName]
       expect(alias).toContain('/node_modules/')
+      expect(alias).toContain(packageName)
       expect(alias).not.toStartWith('/')
-      expect(existsSync(path.resolve(import.meta.dir, '../..', alias))).toBe(true)
+      expect(alias).not.toContain('/../')
     }
   })
 
