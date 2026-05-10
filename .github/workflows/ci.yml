@@ -166,7 +166,12 @@ jobs:
         run: bunx playwright install chromium
 
       - name: Run E2E tests
-        run: bun run test:e2e
+        run: |
+          if [ -z "$NEXT_PUBLIC_CONVEX_URL" ]; then
+            echo "Skipping E2E tests because CONVEX_TEST_URL is not configured."
+            exit 0
+          fi
+          bun run test:e2e
         env:
           # Use test Convex project for E2E
           NEXT_PUBLIC_CONVEX_URL: ${{ secrets.CONVEX_TEST_URL }}
