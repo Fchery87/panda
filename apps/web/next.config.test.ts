@@ -87,7 +87,7 @@ describe('CodeMirror bundler aliases', () => {
 
   it('points aliases at installed app package directories', () => {
     for (const packageName of expectedPackages) {
-      expect(codeMirrorResolveAlias[packageName]).toContain('/node_modules/.bun/')
+      expect(codeMirrorResolveAlias[packageName]).toContain('/node_modules/')
       expect(existsSync(codeMirrorResolveAlias[packageName])).toBe(true)
     }
   })
@@ -95,7 +95,7 @@ describe('CodeMirror bundler aliases', () => {
   it('uses root-relative aliases for Turbopack', () => {
     for (const packageName of expectedPackages) {
       const alias = codeMirrorTurbopackResolveAlias[packageName]
-      expect(alias).toContain('/node_modules/.bun/')
+      expect(alias).toContain('/node_modules/')
       expect(alias).not.toStartWith('/')
       expect(existsSync(path.resolve(import.meta.dir, '../..', alias))).toBe(true)
     }

@@ -29,6 +29,9 @@ function resolveBunPackageRoot(packageName: string, version: string): string {
     }
   }
 
+  const hoistedPackageDir = path.join(configDir, 'node_modules', packageName)
+  if (existsSync(hoistedPackageDir)) return hoistedPackageDir
+
   return path.join(
     bunPackageStoreDirs[0]!,
     `${encodedPackageName}@${version}`,
