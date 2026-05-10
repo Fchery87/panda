@@ -5,21 +5,36 @@ import { fileURLToPath } from 'node:url'
 
 const configDir = path.dirname(fileURLToPath(import.meta.url))
 const workspaceRoot = path.resolve(configDir, '../..')
-const bunPackageStoreDir = path.join(workspaceRoot, 'node_modules/.bun')
+const bunPackageStoreDirs = [
+  path.join(workspaceRoot, 'node_modules/.bun'),
+  path.join(configDir, 'node_modules/.bun'),
+]
 
 function resolveBunPackageRoot(packageName: string, version: string): string {
   const encodedPackageName = packageName.replace('/', '+')
-  const exactPackageDir = path.join(bunPackageStoreDir, `${encodedPackageName}@${version}`)
-  const packageDir = existsSync(exactPackageDir)
-    ? exactPackageDir
-    : path.join(
-        bunPackageStoreDir,
-        readdirSync(bunPackageStoreDir).find((entry) =>
-          entry.startsWith(`${encodedPackageName}@${version}`)
-        ) ?? `${encodedPackageName}@${version}`
-      )
+  const exactPackageDir = bunPackageStoreDirs
+    .map((storeDir) => path.join(storeDir, `${encodedPackageName}@${version}`))
+    .find(existsSync)
+  if (exactPackageDir) {
+    return path.join(exactPackageDir, 'node_modules', packageName)
+  }
 
-  return path.join(packageDir, 'node_modules', packageName)
+  for (const storeDir of bunPackageStoreDirs) {
+    if (!existsSync(storeDir)) continue
+    const packageDirName = readdirSync(storeDir).find((entry) =>
+      entry.startsWith(`${encodedPackageName}@${version}`)
+    )
+    if (packageDirName) {
+      return path.join(storeDir, packageDirName, 'node_modules', packageName)
+    }
+  }
+
+  return path.join(
+    bunPackageStoreDirs[0]!,
+    `${encodedPackageName}@${version}`,
+    'node_modules',
+    packageName
+  )
 }
 
 const codeMirrorPackageVersions = {
