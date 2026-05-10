@@ -37,4 +37,14 @@ describe('RootLayout', () => {
     expect(html).toContain('href="#main-content"')
     expect(html).toContain('Skip to main content')
   })
+
+  test('publishes project icons from the current Panda logo mark', async () => {
+    const { metadata } = await import('./layout')
+
+    expect(metadata.icons).toEqual({
+      icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
+      shortcut: ['/icon.svg'],
+      apple: [{ url: '/icon.svg', type: 'image/svg+xml' }],
+    })
+  })
 })
