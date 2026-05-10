@@ -1,11 +1,26 @@
 import type { NextConfig } from 'next'
+import { existsSync, readdirSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const configDir = path.dirname(fileURLToPath(import.meta.url))
 const workspaceRoot = path.resolve(configDir, '../..')
-
 const bunPackageStoreDir = path.join(workspaceRoot, 'node_modules/.bun')
+
+function resolveBunPackageRoot(packageName: string, version: string): string {
+  const encodedPackageName = packageName.replace('/', '+')
+  const exactPackageDir = path.join(bunPackageStoreDir, `${encodedPackageName}@${version}`)
+  const packageDir = existsSync(exactPackageDir)
+    ? exactPackageDir
+    : path.join(
+        bunPackageStoreDir,
+        readdirSync(bunPackageStoreDir).find((entry) =>
+          entry.startsWith(`${encodedPackageName}@${version}`)
+        ) ?? `${encodedPackageName}@${version}`
+      )
+
+  return path.join(packageDir, 'node_modules', packageName)
+}
 
 const codeMirrorPackageVersions = {
   '@codemirror/autocomplete': '6.20.1',
@@ -22,19 +37,14 @@ const codeMirrorPackageVersions = {
 export const codeMirrorResolveAlias = Object.fromEntries(
   Object.entries(codeMirrorPackageVersions).map(([packageName, version]) => [
     packageName,
-    path.join(
-      bunPackageStoreDir,
-      `${packageName.replace('/', '+')}@${version}`,
-      'node_modules',
-      packageName
-    ),
+    resolveBunPackageRoot(packageName, version),
   ])
 ) as Record<keyof typeof codeMirrorPackageVersions, string>
 
 export const codeMirrorTurbopackResolveAlias = Object.fromEntries(
-  Object.entries(codeMirrorPackageVersions).map(([packageName, version]) => [
+  Object.entries(codeMirrorResolveAlias).map(([packageName, packageRoot]) => [
     packageName,
-    `./node_modules/.bun/${packageName.replace('/', '+')}@${version}/node_modules/${packageName}`,
+    `./${path.relative(workspaceRoot, packageRoot).replace(/\\/g, '/')}`,
   ])
 ) as Record<keyof typeof codeMirrorPackageVersions, string>
 

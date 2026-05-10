@@ -38,10 +38,6 @@ mock.module('@/components/chat/SubagentPanel', () => ({
   SubagentPanel: () => <div>subagent-panel</div>,
 }))
 
-mock.module('@/components/plan/PlanningIntakePopup', () => ({
-  PlanningIntakeSurface: () => <div>planning-intake-surface</div>,
-}))
-
 mock.module('@/components/artifacts/ArtifactPanel', () => ({
   ArtifactPanel: () => <div>artifact-panel</div>,
 }))

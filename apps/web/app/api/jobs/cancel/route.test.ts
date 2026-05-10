@@ -13,6 +13,8 @@ mock.module('@/lib/jobs/processRegistry', () => ({
     cancelJobProcessCalls.push(jobId)
     return true
   },
+  cleanupJobProcess: () => true,
+  registerJobProcess: () => {},
 }))
 
 let POST: typeof import('./route').POST
