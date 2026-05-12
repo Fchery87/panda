@@ -207,6 +207,69 @@ describe('buildExecutionReceipt', () => {
     expect(receipt.webcontainer.filesWritten).toEqual([])
   })
 
+  test('summarizes validation evidence by changed file category', () => {
+    const receipt = buildExecutionReceipt({
+      routingDecision,
+      contextSources: {
+        filesConsidered: [],
+        filesLoaded: [],
+        filesExcluded: [],
+        memoryBankIncluded: false,
+        specIncluded: false,
+        planIncluded: false,
+        sessionSummaryIncluded: false,
+        compactionOccurred: false,
+        truncated: false,
+      },
+      runEvents: [
+        {
+          type: 'tool_call',
+          toolName: 'run_command',
+          args: { command: 'bun run format:check' },
+        },
+        {
+          type: 'tool_call',
+          toolName: 'run_command',
+          args: { command: 'bun test apps/web/components/chat/RunReceiptPanel.test.tsx' },
+        },
+        {
+          type: 'tool_call',
+          toolName: 'run_command',
+          args: { command: 'npx convex dev --once' },
+        },
+      ],
+      startedAt: 100,
+      completedAt: 150,
+      resultStatus: 'complete',
+      webcontainer: {
+        used: true,
+        filesWritten: [
+          'docs/ARCHITECTURE_CONTRACT.md',
+          'apps/web/components/chat/RunReceiptPanel.tsx',
+          'convex/schema.ts',
+        ],
+      },
+    })
+
+    expect(receipt.validationEvidence).toEqual([
+      {
+        changeType: 'docs',
+        changedFiles: ['docs/ARCHITECTURE_CONTRACT.md'],
+        validationCommands: ['bun run format:check'],
+      },
+      {
+        changeType: 'ui',
+        changedFiles: ['apps/web/components/chat/RunReceiptPanel.tsx'],
+        validationCommands: ['bun test apps/web/components/chat/RunReceiptPanel.test.tsx'],
+      },
+      {
+        changeType: 'convex',
+        changedFiles: ['convex/schema.ts'],
+        validationCommands: ['npx convex dev --once'],
+      },
+    ])
+  })
+
   test('maps permission approval events into native execution approval audit records', () => {
     const receipt = buildExecutionReceipt({
       routingDecision,

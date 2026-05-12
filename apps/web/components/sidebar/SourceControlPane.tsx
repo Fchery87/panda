@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useGit } from '@/hooks/useGit'
+import { buildSourceControlReviewLoop } from './source-control-review-loop'
 
 interface SourceControlPaneProps {
   projectId: Id<'projects'>
@@ -382,6 +383,13 @@ function GitHubSourceControlState({
   const changedFiles = syncState?.changedFiles ?? []
   const statusLabel = syncState?.status ?? 'clean'
   const branchLabel = syncState?.workingBranch ?? syncState?.baseBranch ?? repository.defaultBranch
+  const reviewLoop = buildSourceControlReviewLoop({
+    branchLabel,
+    status: statusLabel,
+    changedFiles,
+    latestCommit: latestCommit ?? null,
+    latestPullRequest: latestPullRequest ?? null,
+  })
 
   const handleCreateTaskBranch = async () => {
     setIsCreatingBranch(true)
@@ -466,9 +474,33 @@ function GitHubSourceControlState({
         </div>
       </div>
 
+      <div className="border-b border-border px-3 py-2">
+        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          Review loop
+        </p>
+        <p className="mt-1 font-mono text-xs text-foreground">{reviewLoop.headline}</p>
+        <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
+          {reviewLoop.detail}
+        </p>
+        <div className="mt-2 grid gap-1.5">
+          {reviewLoop.steps.map((step) => (
+            <div
+              key={step.label}
+              className="flex items-center justify-between gap-3 border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground"
+            >
+              <span>{step.label}</span>
+              <span className="truncate text-foreground">{step.value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="grid gap-px bg-border">
         <GitHubStateRow label="Branch" value={branchLabel} />
-        <GitHubStateRow label="Sync" value={statusLabel.replace('_', ' ')} />
+        <GitHubStateRow
+          label="Sync"
+          value={reviewLoop.steps[1]?.value ?? statusLabel.replace('_', ' ')}
+        />
         <GitHubStateRow
           label="Last sync"
           value={syncState?.lastSyncedCommitSha?.slice(0, 12) ?? 'unknown'}
@@ -538,7 +570,7 @@ function GitHubSourceControlState({
               onClick={handleCommitWorkingCopy}
               disabled={!commitMessage.trim() || isCommitting}
             >
-              {isCommitting ? 'Committing...' : 'Commit Working Copy'}
+              {isCommitting ? 'Committing...' : 'Commit Branch'}
             </Button>
           </div>
         ) : null}
@@ -569,7 +601,7 @@ function GitHubSourceControlState({
                 className="h-7 w-full rounded-none border border-border font-mono text-[10px] uppercase tracking-widest"
                 onClick={() => setShowPushConfirm(true)}
               >
-                Push Branch
+                Confirm Push to GitHub
               </Button>
             )}
           </div>
@@ -582,7 +614,7 @@ function GitHubSourceControlState({
             onClick={handleCreatePrDraft}
             disabled={isDraftingPr}
           >
-            {isDraftingPr ? 'Drafting PR...' : 'Draft PR'}
+            {isDraftingPr ? 'Drafting PR...' : 'Create PR Draft'}
           </Button>
         ) : null}
         {latestPullRequest ? (
@@ -599,7 +631,7 @@ function GitHubSourceControlState({
                 onClick={handleConfirmCreatePr}
                 disabled={isCreatingPr}
               >
-                {isCreatingPr ? 'Creating PR...' : 'Create PR'}
+                {isCreatingPr ? 'Creating PR...' : 'Open PR'}
               </Button>
             ) : latestPullRequest.url ? (
               <a
@@ -616,9 +648,9 @@ function GitHubSourceControlState({
           size="sm"
           className="h-7 w-full rounded-none border border-border font-mono text-[10px] uppercase tracking-widest"
           disabled
-          title="GitHub write actions are enabled in later slices"
+          title="GitHub review loop actions stay in this pane"
         >
-          Commit / Push / PR coming next
+          Branch / Sync / Commit / Push / PR
         </Button>
       </div>
     </div>

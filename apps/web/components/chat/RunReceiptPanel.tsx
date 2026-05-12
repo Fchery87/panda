@@ -20,6 +20,27 @@ function ReceiptMetric({ label, value }: { label: string; value: string | number
   )
 }
 
+function pluralize(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? '' : 's'}`
+}
+
+function validationSummary(receipt: ExecutionReceipt): string {
+  const commandCount = receipt.webcontainer.commandsRun.length
+  if (commandCount > 0) return pluralize(commandCount, 'command')
+  return 'No validation command recorded'
+}
+
+function recoverySummary(receipt: ExecutionReceipt): string {
+  if (receipt.resultStatus === 'complete') return 'No recovery needed'
+  if (receipt.resultStatus === 'approval_timeout') return 'Approval timed out'
+  if (receipt.resultStatus === 'aborted') return 'Run stopped before completion'
+  return 'Review failure detail'
+}
+
+function changeTypeLabel(changeType: string): string {
+  return changeType.replace('_', ' ')
+}
+
 function ReceiptSection({
   title,
   children,
@@ -64,6 +85,20 @@ export function RunReceiptPanel({ receipt }: RunReceiptPanelProps) {
 
   return (
     <div className="space-y-2">
+      <ReceiptSection title="Owner proof summary" tone="primary">
+        <div className="grid gap-2 sm:grid-cols-3">
+          <ReceiptMetric label="Outcome" value={receipt.resultStatus} />
+          <ReceiptMetric label="Validation" value={validationSummary(receipt)} />
+          <ReceiptMetric label="Changed files" value={receipt.webcontainer.filesWritten.length} />
+          <ReceiptMetric
+            label="Approvals"
+            value={receipt.nativeExecution.approvalsRequested.length}
+          />
+          <ReceiptMetric label="Receipt" value={`v${receipt.version}`} />
+          <ReceiptMetric label="Recovery" value={recoverySummary(receipt)} />
+        </div>
+      </ReceiptSection>
+
       <div className="bg-background/80 flex flex-wrap items-start justify-between gap-2 border border-border px-3 py-2">
         <div>
           <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
@@ -118,6 +153,42 @@ export function RunReceiptPanel({ receipt }: RunReceiptPanelProps) {
           </div>
         ) : null}
       </ReceiptSection>
+
+      {receipt.validationEvidence && receipt.validationEvidence.length > 0 ? (
+        <ReceiptSection title="Validation evidence">
+          <div className="space-y-2">
+            {receipt.validationEvidence.map((evidence) => (
+              <div
+                key={evidence.changeType}
+                className="bg-background/80 border border-border px-2 py-1.5"
+              >
+                <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
+                  {changeTypeLabel(evidence.changeType)}
+                </div>
+                <div className="mt-1 font-mono text-xs text-foreground [overflow-wrap:anywhere]">
+                  {evidence.changedFiles.slice(0, 2).join(', ') || 'No changed files recorded'}
+                </div>
+                <div className="mt-1 space-y-1">
+                  {evidence.validationCommands.length > 0 ? (
+                    evidence.validationCommands.slice(0, 2).map((command) => (
+                      <div
+                        key={`${evidence.changeType}-${command}`}
+                        className="bg-muted/20 border border-border px-2 py-1 font-mono text-xs text-muted-foreground [overflow-wrap:anywhere]"
+                      >
+                        {command}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="font-mono text-xs text-muted-foreground">
+                      No validation command recorded
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </ReceiptSection>
+      ) : null}
 
       <ReceiptSection title="Native tools">
         <div className="grid gap-2 sm:grid-cols-3">

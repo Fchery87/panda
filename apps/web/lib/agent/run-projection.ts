@@ -41,6 +41,12 @@ export interface RunProjection {
   surface: RunProjectionSurface
   status: 'idle' | 'running' | 'complete' | 'failed' | 'blocked' | 'cancelled'
   items: RunProjectionItem[]
+  publicSummary?: {
+    outcome: string
+    validation: string
+    changedFiles: number
+    reviewNote: string
+  }
   receipt?: {
     resultStatus: ExecutionReceipt['resultStatus']
     changedFiles: number
@@ -131,6 +137,24 @@ function receiptSummary(receipt: ExecutionReceipt): NonNullable<RunProjection['r
   }
 }
 
+function publicSummary(
+  receipt?: ExecutionReceipt | null
+): RunProjection['publicSummary'] | undefined {
+  if (!receipt) return undefined
+
+  const commandCount = receipt.webcontainer.commandsRun.length
+  return {
+    outcome: receipt.resultStatus,
+    validation:
+      commandCount === 1
+        ? '1 validation command recorded'
+        : `${commandCount} validation commands recorded`,
+    changedFiles: receipt.webcontainer.filesWritten.length,
+    reviewNote:
+      'Public share hides raw tool arguments, command output, and owner-only proof detail.',
+  }
+}
+
 function statusFromReceipt(receipt?: ExecutionReceipt | null): RunProjection['status'] | undefined {
   switch (receipt?.resultStatus) {
     case 'complete':
@@ -175,6 +199,7 @@ export function projectRunForSurface(args: ProjectRunForSurfaceArgs): RunProject
     surface: args.surface,
     status: projectionStatus(facts, args.receipt),
     items,
+    publicSummary: args.surface === 'public_share' ? publicSummary(args.receipt) : undefined,
     receipt:
       args.receipt && args.surface !== 'public_share' ? receiptSummary(args.receipt) : undefined,
   }

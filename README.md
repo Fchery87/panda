@@ -91,10 +91,15 @@ bun run dev
 
 ### Environment
 
-Create `apps/web/.env.local` with the required Convex and provider values:
+Create `apps/web/.env.local` with the required Convex, provider, and local-dev
+values:
 
 ```env
 NEXT_PUBLIC_CONVEX_URL=https://<your-project>.convex.cloud
+CONVEX_SITE_URL=https://<your-convex-site>.convex.site
+
+# Local E2E auth bypass. Production stays fail-closed.
+E2E_AUTH_BYPASS_SECRET=
 
 # At least one model provider
 OPENAI_API_KEY=sk-...
@@ -109,11 +114,13 @@ NEXT_PUBLIC_WEBCONTAINER_API_KEY=
 AUTH_GOOGLE_ID=your-client-id.apps.googleusercontent.com
 AUTH_GOOGLE_SECRET=your-client-secret
 CONVEX_AUTH_SECRET=your-random-secret
-CONVEX_SITE_URL=https://<your-convex-site>.convex.site
 
 # Optional GitHub-backed projects
 GITHUB_APP_SLUG=your-github-app-slug
 ```
+
+The local E2E bypass is secret-gated via `E2E_AUTH_BYPASS_SECRET` and is not a
+production-capable mechanism.
 
 For repository-backed projects, create and install a GitHub App using
 [docs/GITHUB_APP_SETUP.md](./docs/GITHUB_APP_SETUP.md).

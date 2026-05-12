@@ -52,6 +52,42 @@ const FOCUS_TONE_STYLES: Record<
   },
 }
 
+const SIGNAL_TONE_STYLES: Record<NonNullable<WorkspaceHomeProps['focusState']>['tone'], string> = {
+  neutral: 'border-border bg-background text-muted-foreground',
+  progress: 'border-primary/40 bg-primary/5 text-primary',
+  attention:
+    'border-[oklch(var(--status-warning)/0.45)] bg-[oklch(var(--status-warning)/0.08)] text-[oklch(var(--status-warning))]',
+  success:
+    'border-[oklch(var(--status-success)/0.45)] bg-[oklch(var(--status-success)/0.08)] text-[oklch(var(--status-success))]',
+}
+
+const FIRST_RUN_STEPS = [
+  {
+    label: '1. Project',
+    detail: 'Open or create a project so files, memory, and runs stay together.',
+  },
+  {
+    label: '2. Mode',
+    detail: 'Choose ask / plan / code / build from the canonical workflow.',
+  },
+  {
+    label: '3. Plan',
+    detail: 'Review scope before execution when work needs structure.',
+  },
+  {
+    label: '4. Proof',
+    detail: 'Watch run evidence, validation, receipts, and recovery state.',
+  },
+  {
+    label: '5. Changes',
+    detail: 'Inspect diffs and generated work before continuing.',
+  },
+  {
+    label: '6. Next Action',
+    detail: 'Resume, review, build, or start another session from one surface.',
+  },
+]
+
 export function WorkspaceHome({
   focusState = null,
   recentFiles = [],
@@ -68,6 +104,7 @@ export function WorkspaceHome({
 }: WorkspaceHomeProps) {
   const focusTone = focusState ? FOCUS_TONE_STYLES[focusState.tone] : null
   const timelineRows = buildExecutionSessionTimelineRows(focusState?.executionSession ?? null)
+  const scanSignals = focusState?.executionSession?.scanSignals ?? []
   const primarySummary = focusState
     ? focusState.detail
     : 'Direct the agent from the desk, inspect proof before accepting work, and open files only when implementation detail matters.'
@@ -123,6 +160,26 @@ export function WorkspaceHome({
                   : 'Run the workspace from intent, proof, and context.'}
               </h1>
               <p className="text-xs leading-relaxed text-muted-foreground">{primarySummary}</p>
+              {scanSignals.length > 0 ? (
+                <div
+                  aria-label="Execution session at a glance"
+                  className="grid grid-cols-2 gap-1.5 pt-1 md:grid-cols-4"
+                >
+                  {scanSignals.map((signal) => (
+                    <div
+                      key={signal.label}
+                      className={cn('border px-2 py-1 font-mono', SIGNAL_TONE_STYLES[signal.tone])}
+                    >
+                      <div className="text-[9px] uppercase tracking-[0.18em] opacity-70">
+                        {signal.label}
+                      </div>
+                      <div className="truncate text-[11px] font-semibold uppercase tracking-[0.12em]">
+                        {signal.value}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               {quickActions.length > 0 && (
                 <div className="grid grid-cols-2 gap-1.5 pt-1">
                   {quickActions.map((action) => {
@@ -211,6 +268,83 @@ export function WorkspaceHome({
               </div>
             </div>
           </motion.div>
+        ) : null}
+
+        {focusState?.executionSession ? (
+          <motion.section
+            aria-labelledby="resume-recovery-title"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.06 }}
+            className="mb-4 border border-foreground bg-card"
+          >
+            <div className="border-b border-foreground bg-secondary px-3 py-2">
+              <h2
+                id="resume-recovery-title"
+                className="font-mono text-[10px] uppercase tracking-[0.24em] text-primary"
+              >
+                Resume And Recovery
+              </h2>
+            </div>
+            <div className="grid gap-px bg-border md:grid-cols-2">
+              {[
+                ['Summary', focusState.executionSession.resume.summary],
+                ['Checkpoint', focusState.executionSession.resume.checkpoint],
+                ['Trace', focusState.executionSession.resume.trace],
+                ['Proof', focusState.executionSession.resume.proof],
+                ['Branches', focusState.executionSession.resume.branches],
+                ['Next', focusState.executionSession.resume.nextAction],
+              ].map(([label, value]) => (
+                <div key={label} className="bg-background p-3">
+                  <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
+                    {label}
+                  </div>
+                  <p className="mt-1 text-xs leading-relaxed text-foreground">{value}</p>
+                </div>
+              ))}
+            </div>
+          </motion.section>
+        ) : null}
+
+        {!focusState ? (
+          <motion.section
+            aria-labelledby="first-run-path-title"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.04 }}
+            className="mb-4 border border-foreground bg-card"
+          >
+            <div className="border-b border-foreground bg-secondary px-3 py-2">
+              <h2
+                id="first-run-path-title"
+                className="font-mono text-[10px] uppercase tracking-[0.24em] text-primary"
+              >
+                First Run Path
+              </h2>
+            </div>
+            <div className="grid gap-px bg-border md:grid-cols-2 xl:grid-cols-3">
+              {FIRST_RUN_STEPS.map((step) => (
+                <div key={step.label} className="bg-background p-3">
+                  <h3 className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground">
+                    {step.label}
+                  </h3>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    {step.detail}
+                  </p>
+                </div>
+              ))}
+            </div>
+            {onStartAgent ? (
+              <div className="border-t border-border bg-background p-3">
+                <Button
+                  className="h-8 rounded-none px-3 font-mono text-[10px] uppercase tracking-[0.2em]"
+                  onClick={onStartAgent}
+                >
+                  Start first session
+                </Button>
+              </div>
+            ) : null}
+          </motion.section>
         ) : null}
 
         <motion.div

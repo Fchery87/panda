@@ -11,15 +11,57 @@ export type SharedTranscriptMessage = {
   content: string
 }
 
-interface SharedTranscriptProps {
-  messages: SharedTranscriptMessage[]
+export type PublicReviewSummary = {
+  outcome: string
+  validation: string
+  changedFiles: number
+  reviewNote: string
 }
 
-export function SharedTranscript({ messages }: SharedTranscriptProps) {
+interface SharedTranscriptProps {
+  messages: SharedTranscriptMessage[]
+  publicReviewSummary?: PublicReviewSummary | null
+}
+
+function PublicReviewSummaryCard({ summary }: { summary: PublicReviewSummary }) {
+  return (
+    <section className="shadow-sharp-sm surface-1 border border-border p-4">
+      <h2 className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">
+        Public review summary
+      </h2>
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        <div className="bg-background/80 border border-border px-2 py-1.5">
+          <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
+            Outcome
+          </div>
+          <div className="mt-1 font-mono text-xs text-foreground">{summary.outcome}</div>
+        </div>
+        <div className="bg-background/80 border border-border px-2 py-1.5">
+          <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
+            Validation
+          </div>
+          <div className="mt-1 font-mono text-xs text-foreground">{summary.validation}</div>
+        </div>
+        <div className="bg-background/80 border border-border px-2 py-1.5">
+          <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
+            Changed files
+          </div>
+          <div className="mt-1 font-mono text-xs text-foreground">{summary.changedFiles}</div>
+        </div>
+      </div>
+      <p className="mt-3 font-mono text-xs leading-relaxed text-muted-foreground">
+        {summary.reviewNote}
+      </p>
+    </section>
+  )
+}
+
+export function SharedTranscript({ messages, publicReviewSummary }: SharedTranscriptProps) {
   const shouldReduceMotion = useReducedMotion()
 
   return (
     <div className="space-y-4">
+      {publicReviewSummary ? <PublicReviewSummaryCard summary={publicReviewSummary} /> : null}
       {messages.map((message, index) => (
         <motion.div
           key={`${message.role}-${index}`}

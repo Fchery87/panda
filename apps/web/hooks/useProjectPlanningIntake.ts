@@ -2,6 +2,11 @@
 
 import { useCallback } from 'react'
 import type { Id } from '@convex/_generated/dataModel'
+import {
+  buildPlanningIntakeMessage,
+  buildPlanningIntakeQuestions,
+  type PlanningIntakeSeed,
+} from '@/lib/planning/intake-bridge'
 import type { PlanningQuestion } from '@/lib/planning/types'
 
 interface UseProjectPlanningIntakeParams {
@@ -24,21 +29,27 @@ export function useProjectPlanningIntake({
   addMessage,
   openRightPanelTab,
 }: UseProjectPlanningIntakeParams) {
-  return useCallback(async () => {
-    const sessionId = await startIntake(planningQuestions)
-
-    if (activeChatId) {
-      const taskSummary = 'Start planning intake'
-      await addMessage({
-        chatId: activeChatId,
-        role: 'user',
-        content: taskSummary,
-        annotations: [{ mode: 'plan' }],
+  return useCallback(
+    async (seed?: PlanningIntakeSeed | null) => {
+      const intakeQuestions = buildPlanningIntakeQuestions({
+        seed: seed ?? null,
+        fallbackQuestions: planningQuestions,
       })
-    }
+      const sessionId = await startIntake(intakeQuestions)
 
-    openRightPanelTab('context')
+      if (activeChatId) {
+        await addMessage({
+          chatId: activeChatId,
+          role: 'user',
+          content: buildPlanningIntakeMessage(seed ?? null),
+          annotations: [{ mode: 'plan' }],
+        })
+      }
 
-    return sessionId
-  }, [activeChatId, addMessage, openRightPanelTab, planningQuestions, startIntake])
+      openRightPanelTab('context')
+
+      return sessionId
+    },
+    [activeChatId, addMessage, openRightPanelTab, planningQuestions, startIntake]
+  )
 }

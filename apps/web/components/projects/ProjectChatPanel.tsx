@@ -2,8 +2,6 @@
 
 import { useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { useQuery } from 'convex/react'
-import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { AlertTriangle, History, RotateCcw } from 'lucide-react'
 import { MoreHorizontal as IconOverflow, MessageSquarePlus as IconNewChat } from 'lucide-react'
@@ -26,10 +24,7 @@ import { useWorkspaceUiStore } from '@/stores/workspaceUiStore'
 import { useWorkspaceRuntime } from '@/contexts/WorkspaceRuntimeContext'
 import { derivePlanApprovalState } from '@/hooks/usePlanApproval'
 import { getChatModeSurfacePresentation } from '@/lib/chat/chat-mode-surface'
-import {
-  findLatestRecoverableCheckpoint,
-  type RuntimeCheckpointSummary,
-} from '@/components/chat/runtime-checkpoints'
+import { findLatestRecoverableCheckpoint } from '@/components/chat/runtime-checkpoints'
 
 interface ProjectChatPanelProps {
   projectId: Id<'projects'>
@@ -71,6 +66,7 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
     onOpenHistory,
     openRightPanelTab,
     executionSession,
+    runtimeCheckpoints,
   } = useWorkspaceRuntime()
 
   // Store reads — these replace the equivalent props
@@ -101,11 +97,6 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
   const planApproval = derivePlanApprovalState({
     planningSession: planningSession as never,
   })
-
-  const runtimeCheckpoints = useQuery(
-    api.agentRuns.listRuntimeCheckpointSummaries,
-    activeChatId ? { chatId: activeChatId, limit: 6 } : 'skip'
-  ) as RuntimeCheckpointSummary[] | undefined
 
   const latestRecoverableCheckpoint = findLatestRecoverableCheckpoint(runtimeCheckpoints)
 

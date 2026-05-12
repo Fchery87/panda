@@ -1,4 +1,6 @@
 import { describe, expect, test } from 'bun:test'
+import fs from 'node:fs'
+import path from 'node:path'
 
 import { getMaintenanceRedirectReason } from '@/lib/auth/access-state'
 import { shouldRedirectToLogin } from '@/lib/auth/routeGuards'
@@ -24,5 +26,16 @@ describe('auth proxy guard', () => {
   test('maps redirect reasons from maintenance state', () => {
     expect(getMaintenanceRedirectReason(true)).toBe('maintenance')
     expect(getMaintenanceRedirectReason(false)).toBe('registration-closed')
+  })
+
+  test('keeps local E2E bypass secret-gated and disabled in production', () => {
+    const source = fs.readFileSync(path.resolve(import.meta.dir, '..', 'proxy.ts'), 'utf8')
+
+    expect(source).toContain("process.env.NODE_ENV === 'production'")
+    expect(source).toContain('return false')
+    expect(source).toContain('process.env.E2E_AUTH_BYPASS_SECRET')
+    expect(source).toContain("request.nextUrl.searchParams.get('e2eBypassSecret') === secret")
+    expect(source).not.toContain('process.env.NEXT_PUBLIC_E2E_AUTH_BYPASS')
+    expect(source).not.toContain('process.env.E2E_AUTH_BYPASS ===')
   })
 })

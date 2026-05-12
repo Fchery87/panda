@@ -10,6 +10,7 @@ import type {
 } from '@/components/chat/types'
 import type { LiveProgressStep } from '@/components/chat/live-run-utils'
 import type { AvailableModel } from '@/components/chat/ModelSelector'
+import type { RuntimeCheckpointSummary } from '@/components/chat/runtime-checkpoints'
 import type { FormalSpecification } from '@/lib/agent/spec/types'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import type { PlanStatus } from '@/lib/chat/planDraft'
@@ -71,6 +72,7 @@ export interface WorkspaceRuntimeValue {
   currentSpec: FormalSpecification | null
   memoryBank: string | null | undefined
   tracePersistenceStatus: TracePersistenceStatus
+  runtimeCheckpoints: RuntimeCheckpointSummary[] | undefined
 
   // Model / provider (from useProjectChatSession)
   model: string | undefined

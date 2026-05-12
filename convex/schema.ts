@@ -233,6 +233,21 @@ export const ExecutionReceiptApprovalRecord = v.object({
   timestamp: v.number(),
 })
 
+export const ExecutionReceiptValidationEvidence = v.object({
+  changeType: v.union(
+    v.literal('docs'),
+    v.literal('ui'),
+    v.literal('convex'),
+    v.literal('runtime'),
+    v.literal('security'),
+    v.literal('github'),
+    v.literal('e2e'),
+    v.literal('general')
+  ),
+  changedFiles: v.array(v.string()),
+  validationCommands: v.array(v.string()),
+})
+
 export const ExecutionReceiptV1 = v.object({
   version: v.literal(1),
   mode: ChatMode,
@@ -262,6 +277,7 @@ export const ExecutionReceiptV1 = v.object({
     cached: v.number(),
   }),
   estimatedCost: v.optional(v.number()),
+  validationEvidence: v.optional(v.array(ExecutionReceiptValidationEvidence)),
   durationMs: v.number(),
   resultStatus: v.union(
     v.literal('complete'),
@@ -692,7 +708,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index('by_file', ['fileId'])
-    .index('by_snapshot', ['fileId', 'snapshotNumber']),
+    .index('by_snapshot', ['fileId', 'snapshotNumber'])
+    .index('by_created', ['createdAt']),
 
   // 5. Chats table - conversation threads per project
   chats: defineTable({
@@ -879,7 +896,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index('by_run_sequence', ['runId', 'sequence'])
-    .index('by_chat_created', ['chatId', 'createdAt']),
+    .index('by_chat_created', ['chatId', 'createdAt'])
+    .index('by_created', ['createdAt']),
 
   // 11a. SessionSummaries table - structured session handoff summaries
   sessionSummaries: defineTable({
@@ -910,7 +928,8 @@ export default defineSchema({
     .index('by_project_session_saved', ['projectId', 'sessionID', 'savedAt'])
     .index('by_run_session_saved', ['runId', 'sessionID', 'savedAt'])
     .index('by_chat_saved', ['chatId', 'savedAt'])
-    .index('by_run_saved', ['runId', 'savedAt']),
+    .index('by_run_saved', ['runId', 'savedAt'])
+    .index('by_saved', ['savedAt']),
 
   // 13. Checkpoints table - versioned snapshots for rollback
   checkpoints: defineTable({
@@ -1190,7 +1209,8 @@ export default defineSchema({
   })
     .index('by_run_sequence', ['runId', 'sequence'])
     .index('by_suite_created', ['suiteId', 'createdAt'])
-    .index('by_project_created', ['projectId', 'createdAt']),
+    .index('by_project_created', ['projectId', 'createdAt'])
+    .index('by_created', ['createdAt']),
 
   // 27. Permission Audit Log table - persistent permission decision log
   permissionAuditLog: defineTable({

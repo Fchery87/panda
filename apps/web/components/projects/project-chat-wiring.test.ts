@@ -73,7 +73,7 @@ describe('project chat wiring', () => {
     expect(providerContent).not.toContain('onOpenPreviewPanel')
   })
 
-  test('project page persists architect intake messages and opens the plan rail', async () => {
+  test('project page persists seeded planning intake messages and opens the plan rail', async () => {
     const content = await readProvider()
     const planningHookContent = await readHook('useProjectPlanningIntake.ts')
 
@@ -84,7 +84,7 @@ describe('project chat wiring', () => {
     expect(planningHookContent).not.toContain('setIsChatInspectorOpen')
     expect(planningHookContent).toContain('await addMessage({')
     expect(planningHookContent).toContain("role: 'user'")
-    expect(planningHookContent).toContain('content: taskSummary')
+    expect(planningHookContent).toContain('buildPlanningIntakeMessage(seed ?? null)')
     expect(planningHookContent).toContain("annotations: [{ mode: 'plan' }]")
   })
 

@@ -448,9 +448,16 @@ export default function SettingsPage() {
                     {allowUserMcp ? (
                       <MCPServerEditor />
                     ) : (
-                      <p className="text-sm text-muted-foreground">
-                        MCP access is disabled by your admin.
-                      </p>
+                      <div className="rounded-none border border-border bg-surface-2 p-3">
+                        <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                          Admin policy blocks user-managed MCP servers
+                        </p>
+                        <p className="mt-2 text-sm text-muted-foreground">
+                          MCP access is disabled by your admin. Existing server configs are hidden,
+                          and create, update, test, and remove actions are unavailable while this
+                          policy is active.
+                        </p>
+                      </div>
                     )}
                   </CardContent>
                 </Card>

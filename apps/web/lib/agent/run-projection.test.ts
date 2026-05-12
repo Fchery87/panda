@@ -122,4 +122,54 @@ describe('projectRunForSurface', () => {
     expect(JSON.stringify(publicShare)).not.toContain('stack trace excerpt')
     expect(publicShare.items.every((item) => item.source !== 'tool_call')).toBe(true)
   })
+
+  test('curates public share summaries without owner-only proof internals', () => {
+    const projection = projectRunForSurface({
+      surface: 'public_share',
+      facts: [
+        fact({
+          id: 'started',
+          type: 'run_started',
+          content: 'Started implementation run',
+        }),
+        fact({
+          id: 'tool-call',
+          type: 'tool_call',
+          content: 'Running private command',
+          args: { command: 'SECRET_TOKEN=abc bun test' },
+          createdAt: 2,
+        }),
+        fact({
+          id: 'tool-result',
+          type: 'tool_result',
+          content: 'Private command output',
+          output: 'stack trace with private path',
+          error: 'owner-only failure detail',
+          targetFilePaths: ['apps/web/private.tsx'],
+          createdAt: 3,
+        }),
+      ],
+      receipt: receipt({
+        webcontainer: {
+          used: true,
+          filesWritten: ['apps/web/private.tsx'],
+          commandsRun: [{ command: 'SECRET_TOKEN=[REDACTED] bun test', redacted: true }],
+          truncated: false,
+        },
+      }),
+    })
+
+    expect(projection.publicSummary).toEqual({
+      outcome: 'complete',
+      validation: '1 validation command recorded',
+      changedFiles: 1,
+      reviewNote:
+        'Public share hides raw tool arguments, command output, and owner-only proof detail.',
+    })
+    expect(JSON.stringify(projection)).not.toContain('SECRET_TOKEN')
+    expect(JSON.stringify(projection)).not.toContain('stack trace')
+    expect(JSON.stringify(projection)).not.toContain('failure detail')
+    expect(JSON.stringify(projection)).not.toContain('apps/web/private.tsx')
+    expect(projection.receipt).toBeUndefined()
+  })
 })

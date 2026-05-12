@@ -40,6 +40,12 @@ import { useFreshProviderConfigs } from '@/hooks/useFreshProviderConfigs'
 
 const NO_PROVIDER_SELECTED = '__no-provider-selected__'
 const NO_MODEL_SELECTED = '__no-model-selected__'
+const SUBAGENT_CAPABILITY_PRESETS = ['research', 'assistant', 'builder', 'restricted'] as const
+type SubagentCapabilityPreset = (typeof SUBAGENT_CAPABILITY_PRESETS)[number]
+
+function isSubagentCapabilityPreset(value: string): value is SubagentCapabilityPreset {
+  return SUBAGENT_CAPABILITY_PRESETS.includes(value as SubagentCapabilityPreset)
+}
 
 const systemTabs = ['features', 'llm', 'access', 'limits'] as const
 
@@ -70,10 +76,17 @@ export default function AdminSystemPage() {
     allowUserOverrides: true,
     allowUserMCP: true,
     allowUserSubagents: true,
+    allowUserSkills: true,
+    allowSkillAutoActivation: true,
+    allowStrictUserSkills: true,
+    allowSkillImportExport: true,
+    allowedSubagentCapabilityPresets: [...SUBAGENT_CAPABILITY_PRESETS],
     systemMaintenance: false,
     registrationEnabled: true,
     maxProjectsPerUser: 100,
     maxChatsPerProject: 50,
+    maxCustomSubagentsPerUser: 50,
+    maxCustomSkillsPerUser: 50,
   })
 
   const [globalLLMConfig, setGlobalLLMConfig] = React.useState({
@@ -100,10 +113,19 @@ export default function AdminSystemPage() {
         allowUserOverrides: settings.allowUserOverrides !== false,
         allowUserMCP: settings.allowUserMCP !== false,
         allowUserSubagents: settings.allowUserSubagents !== false,
+        allowUserSkills: settings.allowUserSkills !== false,
+        allowSkillAutoActivation: settings.allowSkillAutoActivation !== false,
+        allowStrictUserSkills: settings.allowStrictUserSkills !== false,
+        allowSkillImportExport: settings.allowSkillImportExport !== false,
+        allowedSubagentCapabilityPresets: (
+          settings.allowedSubagentCapabilityPresets ?? [...SUBAGENT_CAPABILITY_PRESETS]
+        ).filter(isSubagentCapabilityPreset),
         systemMaintenance: settings.systemMaintenance === true,
         registrationEnabled: settings.registrationEnabled !== false,
         maxProjectsPerUser: settings.maxProjectsPerUser || 100,
         maxChatsPerProject: settings.maxChatsPerProject || 50,
+        maxCustomSubagentsPerUser: settings.maxCustomSubagentsPerUser || 50,
+        maxCustomSkillsPerUser: settings.maxCustomSkillsPerUser || 50,
       }
       const newEnhancementConfig = {
         enhancementProvider: settings.enhancementProvider || 'openai',
@@ -152,10 +174,17 @@ export default function AdminSystemPage() {
         allowUserOverrides: controls.allowUserOverrides,
         allowUserMCP: controls.allowUserMCP,
         allowUserSubagents: controls.allowUserSubagents,
+        allowUserSkills: controls.allowUserSkills,
+        allowSkillAutoActivation: controls.allowSkillAutoActivation,
+        allowStrictUserSkills: controls.allowStrictUserSkills,
+        allowSkillImportExport: controls.allowSkillImportExport,
+        allowedSubagentCapabilityPresets: controls.allowedSubagentCapabilityPresets,
         systemMaintenance: controls.systemMaintenance,
         registrationEnabled: controls.registrationEnabled,
         maxProjectsPerUser: controls.maxProjectsPerUser,
         maxChatsPerProject: controls.maxChatsPerProject,
+        maxCustomSubagentsPerUser: controls.maxCustomSubagentsPerUser,
+        maxCustomSkillsPerUser: controls.maxCustomSkillsPerUser,
         globalDefaultProvider: globalLLMConfig.globalDefaultProvider || undefined,
         globalDefaultModel: globalLLMConfig.globalDefaultModel || undefined,
         enhancementProvider: enhancementConfig.enhancementProvider,
@@ -273,6 +302,105 @@ export default function AdminSystemPage() {
                       setControls((prev) => ({ ...prev, allowUserSubagents: checked }))
                     }
                   />
+                </div>
+
+                <Separator />
+
+                <div className="rounded-none border border-border p-4">
+                  <div className="mb-4 flex items-center justify-between gap-4">
+                    <div className="space-y-0.5">
+                      <Label className="font-mono text-sm">Skills</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Allow users to create and activate custom Skills
+                      </p>
+                    </div>
+                    <Switch
+                      checked={controls.allowUserSkills}
+                      onCheckedChange={(checked) =>
+                        setControls((prev) => ({ ...prev, allowUserSkills: checked }))
+                      }
+                    />
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <div className="flex items-center justify-between gap-3 border border-border p-3">
+                      <div>
+                        <Label className="font-mono text-xs">Skill Auto Activation</Label>
+                        <p className="text-xs text-muted-foreground">Let Skills auto-match tasks</p>
+                      </div>
+                      <Switch
+                        checked={controls.allowSkillAutoActivation}
+                        onCheckedChange={(checked) =>
+                          setControls((prev) => ({ ...prev, allowSkillAutoActivation: checked }))
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-3 border border-border p-3">
+                      <div>
+                        <Label className="font-mono text-xs">Strict Skill Workflows</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Permit rigid workflow Skills
+                        </p>
+                      </div>
+                      <Switch
+                        checked={controls.allowStrictUserSkills}
+                        onCheckedChange={(checked) =>
+                          setControls((prev) => ({ ...prev, allowStrictUserSkills: checked }))
+                        }
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-3 border border-border p-3">
+                      <div>
+                        <Label className="font-mono text-xs">Skill Import / Export</Label>
+                        <p className="text-xs text-muted-foreground">
+                          Allow portable Skill packages
+                        </p>
+                      </div>
+                      <Switch
+                        checked={controls.allowSkillImportExport}
+                        onCheckedChange={(checked) =>
+                          setControls((prev) => ({ ...prev, allowSkillImportExport: checked }))
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="rounded-none border border-border p-4">
+                  <div className="space-y-0.5">
+                    <Label className="font-mono text-sm">Allowed Subagent Presets</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Restrict which custom subagent capability presets users can choose
+                    </p>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {SUBAGENT_CAPABILITY_PRESETS.map((preset) => {
+                      const checked = controls.allowedSubagentCapabilityPresets.includes(preset)
+
+                      return (
+                        <Button
+                          key={preset}
+                          type="button"
+                          variant={checked ? 'default' : 'outline'}
+                          className="h-7 rounded-none px-2.5 font-mono text-[10px] uppercase tracking-[0.18em]"
+                          onClick={() =>
+                            setControls((prev) => ({
+                              ...prev,
+                              allowedSubagentCapabilityPresets: checked
+                                ? prev.allowedSubagentCapabilityPresets.filter(
+                                    (value) => value !== preset
+                                  )
+                                : [...prev.allowedSubagentCapabilityPresets, preset],
+                            }))
+                          }
+                        >
+                          {preset}
+                        </Button>
+                      )
+                    })}
+                  </div>
                 </div>
 
                 <Separator />
@@ -591,6 +719,52 @@ export default function AdminSystemPage() {
                     />
                     <p className="text-xs text-muted-foreground">
                       Maximum number of chats per project
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="max-custom-subagents" className="font-mono text-sm">
+                      Max Custom Subagents Per User
+                    </Label>
+                    <Input
+                      id="max-custom-subagents"
+                      type="number"
+                      min={0}
+                      max={500}
+                      value={controls.maxCustomSubagentsPerUser}
+                      onChange={(e) =>
+                        setControls((prev) => ({
+                          ...prev,
+                          maxCustomSubagentsPerUser: parseInt(e.target.value) || 0,
+                        }))
+                      }
+                      className="rounded-none"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Maximum number of custom subagents a user can create
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="max-custom-skills" className="font-mono text-sm">
+                      Max Custom Skills Per User
+                    </Label>
+                    <Input
+                      id="max-custom-skills"
+                      type="number"
+                      min={0}
+                      max={500}
+                      value={controls.maxCustomSkillsPerUser}
+                      onChange={(e) =>
+                        setControls((prev) => ({
+                          ...prev,
+                          maxCustomSkillsPerUser: parseInt(e.target.value) || 0,
+                        }))
+                      }
+                      className="rounded-none"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Maximum number of custom Skills a user can create
                     </p>
                   </div>
                 </div>

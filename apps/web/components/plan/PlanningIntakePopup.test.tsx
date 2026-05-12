@@ -355,6 +355,9 @@ describe('PlanningIntakePopup', () => {
     )
     expect(closedHtml).toContain('Planning intake')
     expect(closedHtml).toContain('Start intake')
+    expect(closedHtml).toContain('Issue or task seed')
+    expect(closedHtml).toContain('Paste a GitHub issue URL or describe a task')
+    expect(closedHtml).toContain('GitHub issue or manual task feeds the canonical planning intake')
   })
 
   test('closed surface with an existing session resumes without invoking new-session creation', async () => {

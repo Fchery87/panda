@@ -7,6 +7,9 @@ export type ContextAuditRecord = ExecutionReceipt['contextSources']
 
 const MAX_RECEIPT_ITEMS = 50
 
+type ValidationEvidence = NonNullable<ExecutionReceipt['validationEvidence']>[number]
+type ChangeType = ValidationEvidence['changeType']
+
 export interface BuildExecutionReceiptArgs {
   routingDecision: RoutingDecision
   providerModel?: string
@@ -61,6 +64,98 @@ function getStringArg(args: Record<string, unknown> | undefined, key: string): s
   return typeof value === 'string' ? value : null
 }
 
+function changeTypeForFile(path: string): ChangeType {
+  if (path.startsWith('docs/') || path.endsWith('.md') || path.endsWith('.mdx')) return 'docs'
+  if (path.startsWith('convex/')) return 'convex'
+  if (path.includes('/e2e/') || path.endsWith('.e2e-spec.ts') || path.endsWith('.spec.ts')) {
+    return 'e2e'
+  }
+  if (path.includes('/github') || path.includes('GitHub')) return 'github'
+  if (path.includes('security') || path.includes('auth') || path.includes('proxy'))
+    return 'security'
+  if (path.includes('/agent/') || path.includes('/webcontainer/') || path.includes('/workspace/')) {
+    return 'runtime'
+  }
+  if (
+    path.startsWith('apps/web/app/') ||
+    path.startsWith('apps/web/components/') ||
+    path.endsWith('.tsx') ||
+    path.endsWith('.css')
+  ) {
+    return 'ui'
+  }
+  return 'general'
+}
+
+function commandMatchesChangeType(command: string, changeType: ChangeType): boolean {
+  const normalized = command.toLowerCase()
+  switch (changeType) {
+    case 'docs':
+      return (
+        normalized.includes('format') ||
+        normalized.includes('markdown') ||
+        normalized.includes('docs')
+      )
+    case 'ui':
+      return (
+        normalized.includes('test') ||
+        normalized.includes('lint') ||
+        normalized.includes('typecheck')
+      )
+    case 'convex':
+      return normalized.includes('convex') || normalized.includes('typecheck')
+    case 'runtime':
+      return normalized.includes('test') || normalized.includes('typecheck')
+    case 'security':
+      return (
+        normalized.includes('test') ||
+        normalized.includes('lint') ||
+        normalized.includes('security')
+      )
+    case 'github':
+      return normalized.includes('test') || normalized.includes('github')
+    case 'e2e':
+      return (
+        normalized.includes('playwright') ||
+        normalized.includes('e2e') ||
+        normalized.includes('test:e2e')
+      )
+    case 'general':
+      return (
+        normalized.includes('test') ||
+        normalized.includes('lint') ||
+        normalized.includes('typecheck')
+      )
+  }
+}
+
+function buildValidationEvidence(filesWritten: string[], commandsRun: { command: string }[]) {
+  const evidenceByType = new Map<
+    ChangeType,
+    { changedFiles: string[]; validationCommands: string[] }
+  >()
+
+  for (const file of filesWritten) {
+    const changeType = changeTypeForFile(file)
+    const evidence = evidenceByType.get(changeType) ?? { changedFiles: [], validationCommands: [] }
+    evidence.changedFiles.push(file)
+    evidenceByType.set(changeType, evidence)
+  }
+
+  for (const [changeType, evidence] of evidenceByType) {
+    evidence.validationCommands = commandsRun
+      .map((command) => command.command)
+      .filter((command) => commandMatchesChangeType(command, changeType))
+      .slice(0, MAX_RECEIPT_ITEMS)
+  }
+
+  return Array.from(evidenceByType, ([changeType, evidence]) => ({
+    changeType,
+    changedFiles: evidence.changedFiles.slice(0, MAX_RECEIPT_ITEMS),
+    validationCommands: evidence.validationCommands,
+  }))
+}
+
 export function buildExecutionReceipt(args: BuildExecutionReceiptArgs): ExecutionReceipt {
   const filesConsidered = boundArray(args.contextSources.filesConsidered)
   const filesLoaded = boundArray(args.contextSources.filesLoaded)
@@ -109,6 +204,7 @@ export function buildExecutionReceipt(args: BuildExecutionReceiptArgs): Executio
     }
   })
   const approvalsRequested = boundArray(approvalEvents)
+  const validationEvidence = buildValidationEvidence(filesWritten.values, commandsRun)
 
   return {
     version: 1,
@@ -142,6 +238,7 @@ export function buildExecutionReceipt(args: BuildExecutionReceiptArgs): Executio
       output: args.usage?.completionTokens ?? 0,
       cached: args.usage?.cacheRead ?? 0,
     },
+    validationEvidence,
     durationMs: Math.max(0, args.completedAt - args.startedAt),
     resultStatus: args.resultStatus,
   }

@@ -46,6 +46,10 @@ Legacy labels such as `Architect`, `Builder`, or role names must not replace
 these mode values in current user-facing docs. They may appear only when
 documenting historical plans or internal agent roles.
 
+Compatibility references to legacy stored values or internal agent names must be
+explicitly described as compatibility-only. Do not present `architect`,
+`discuss`, `debug`, or `review` as current top-level user-facing modes.
+
 ## Agents, Roles, And Modes
 
 Do not use `mode`, `agent`, and `role` interchangeably.
@@ -159,3 +163,7 @@ Use this precedence order when docs disagree:
 
 Historical plans can explain why a decision was made, but they are not active
 authority unless they are updated to point back to this contract.
+
+The docs index labels documents as active authority, current guides, historical
+records, proposed plans, or completed milestones. Future agents should check
+that status label before using a document as implementation guidance.

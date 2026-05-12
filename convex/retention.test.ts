@@ -12,8 +12,13 @@ describe('retention enforcement', () => {
     expect(retentionSource).toContain('harnessRuntimeCheckpoints')
     expect(retentionSource).toContain('evalRunResults')
     expect(retentionSource).toContain('fileSnapshots')
-    expect(retentionSource).toContain('.take(limit)')
+    expect(retentionSource).toContain("withIndex('by_created'")
+    expect(retentionSource).toContain("withIndex('by_saved'")
+    expect(retentionSource).toContain('.lt(')
+    expect(retentionSource).toContain('.take(remaining)')
     expect(retentionSource).not.toContain('.collect()')
+
+    expect(retentionSource).toContain('source-of-truth data')
 
     expect(cronsSource).toContain('crons.interval(')
     expect(cronsSource).toContain('internal.retention.cleanupOperationalData')

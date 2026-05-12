@@ -146,6 +146,12 @@ describe('buildExecutionSessionViewModel', () => {
       needsReview: true,
     })
     expect(model?.primaryAction).toEqual({ id: 'review_changes', label: 'Inspect Changes' })
+    expect(model?.scanSignals).toEqual([
+      { label: 'Run', value: 'Proof ready', tone: 'success' },
+      { label: 'Approval', value: 'Clear', tone: 'neutral' },
+      { label: 'Changes', value: '3', tone: 'success' },
+      { label: 'Branches', value: 'No parallel branches active.', tone: 'neutral' },
+    ])
   })
 
   test('summarizes parallel agent branches as session outcomes', () => {
@@ -185,15 +191,21 @@ describe('buildExecutionSessionViewModel', () => {
       isExecuting: false,
       changedFilesCount: 2,
       runtimeAvailability: serverRuntime,
+      tracePersistenceStatus: 'degraded',
+      latestRuntimeCheckpoint: { sessionID: 'session_123', savedAt: 1770000000000 },
       parallelBranches: [{ status: 'complete', label: 'Tests', outcome: 'Validation passed' }],
     })
 
     expect(model?.resume).toEqual({
       goal: 'Resume billing work',
       lastState: 'Changes ready',
+      summary: 'Changes ready: 2 changed files ready for review.',
       changedWork: '2 changed files ready for review.',
       proof: 'Review run evidence, receipts, and validation before continuing.',
       branches: '0 running, 0 blocked, 1 complete.',
+      trace:
+        'Trace degraded: persisted run events may be partial; use receipt and checkpoint proof.',
+      checkpoint: 'Checkpoint ready: recover session session_123 from 2026-02-02T02:40:00.000Z.',
       nextAction: 'Inspect the changed work and proof before continuing or finishing this session.',
     })
   })

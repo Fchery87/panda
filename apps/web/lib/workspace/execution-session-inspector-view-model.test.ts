@@ -28,12 +28,21 @@ const session: ExecutionSessionViewModel = {
     label: 'No parallel branches active.',
     outcomes: [],
   },
+  scanSignals: [
+    { label: 'Run', value: 'Proof ready', tone: 'success' },
+    { label: 'Approval', value: 'Clear', tone: 'neutral' },
+    { label: 'Changes', value: '2', tone: 'success' },
+    { label: 'Branches', value: 'No parallel branches active.', tone: 'neutral' },
+  ],
   resume: {
     goal: 'Ship the transcript policy update',
     lastState: 'Changes ready',
+    summary: 'Changes ready: 2 changed files ready for review.',
     changedWork: '2 changed files ready for review.',
     proof: 'Review run evidence, receipts, and validation before continuing.',
     branches: 'No parallel branches active.',
+    trace: 'Trace live: run events are available for review.',
+    checkpoint: 'Checkpoint: no recoverable runtime checkpoint attached.',
     nextAction: 'Inspect the changed work and proof before continuing.',
   },
 }

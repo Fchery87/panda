@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -20,10 +20,12 @@ import type { Id } from '@convex/_generated/dataModel'
 import { toast } from 'sonner'
 import { AgentSelector } from './AgentSelector'
 import { AttachmentButton, type Attachment } from './AttachmentButton'
+import { ModelPreflightBadge } from './ModelPreflightBadge'
 import { MentionPicker } from './MentionPicker'
 import { ModelSelector, type AvailableModel } from './ModelSelector'
 import { VariantSelector } from './VariantSelector'
 import type { ChatMode } from '@/lib/agent/prompt-library'
+import { buildModelPreflight } from '@/lib/agent/providers/model-preflight'
 import { useEditorContextStore } from '@/stores/editorContextStore'
 import { useChatSessionStore } from '@/stores/chatSessionStore'
 import { OversightToggle } from './OversightToggle'
@@ -61,6 +63,29 @@ function formatAttachmentMessage(args: { message: string; attachmentCount: numbe
   const trimmedMessage = args.message.trim()
   if (trimmedMessage) return trimmedMessage
   return ''
+}
+
+function inferProviderId(modelId: string): string {
+  if (modelId.startsWith('claude-')) return 'anthropic'
+  if (modelId.startsWith('gpt-')) return 'openai'
+  if (modelId.startsWith('glm-')) return 'zai'
+  if (modelId.startsWith('deepseek-')) return 'openai-compatible'
+  if (modelId.includes('/')) return 'openai-compatible'
+  return 'custom'
+}
+
+function getCapabilityProviderId(providerKey: string | undefined, modelId: string): string {
+  if (!providerKey) return inferProviderId(modelId)
+  if (
+    providerKey === 'openrouter' ||
+    providerKey === 'together' ||
+    providerKey === 'groq' ||
+    providerKey === 'fireworks' ||
+    providerKey === 'chutes'
+  ) {
+    return 'openai-compatible'
+  }
+  return providerKey
 }
 
 type UploadedAttachmentPayload = {
@@ -202,6 +227,18 @@ export function ChatInput({
 
   const mode = controlledMode ?? uncontrolledMode
   const hasSendContent = input.trim().length > 0 || attachments.length > 0
+  const selectedModelId = model || 'claude-sonnet-4-5'
+  const selectedModelMetadata = availableModels?.find((entry) => entry.id === selectedModelId)
+  const modelPreflight = useMemo(
+    () =>
+      buildModelPreflight({
+        mode,
+        providerId: getCapabilityProviderId(selectedModelMetadata?.providerKey, selectedModelId),
+        modelId: selectedModelId,
+        providerModels: [],
+      }),
+    [mode, selectedModelId, selectedModelMetadata?.providerKey]
+  )
   const activeFile = useEditorContextStore((state) => state.selectedFilePath)
   const selection = useEditorContextStore((state) => state.selection)
   const oversightLevel = useChatSessionStore((state) => state.oversightLevel)
@@ -716,6 +753,8 @@ export function ChatInput({
             </button>
           )}
         </div>
+
+        <ModelPreflightBadge preflight={modelPreflight} />
 
         {/* Row 2: oversight toggle (left) + send controls (right) */}
         <div className="flex items-center justify-between gap-2 px-2 py-1.5">

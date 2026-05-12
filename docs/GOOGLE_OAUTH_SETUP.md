@@ -91,8 +91,11 @@ development/testing).
    AUTH_GOOGLE_ID=123456789-abcdefghijklmnopqrstuvwxyz123456.apps.googleusercontent.com
    AUTH_GOOGLE_SECRET=GOCSPX-youractualsecretstringhere
 
-   # Convex Auth Secret (generate with OpenSSL)
-   CONVEX_AUTH_SECRET=your-32-character-random-secret-here
+    # Convex Auth Secret (generate with OpenSSL)
+    CONVEX_AUTH_SECRET=your-32-character-random-secret-here
+
+    # Optional local E2E auth bypass. Production ignores this path.
+    E2E_AUTH_BYPASS_SECRET=your-local-test-secret
    ```
 
 3. **Generate CONVEX_AUTH_SECRET:**
@@ -104,6 +107,10 @@ development/testing).
    Copy the output and paste it as your `CONVEX_AUTH_SECRET`
 
 4. **Save the file** (Ctrl+S or Cmd+S)
+
+   `E2E_AUTH_BYPASS_SECRET` is only for local browser acceptance tests. The
+   Next.js proxy disables E2E bypass behavior when `NODE_ENV=production`, so do
+   not use it as a production access mechanism.
 
 5. **Important: Convex Auth reads credentials from Convex deployment env, not
    just frontend env.**

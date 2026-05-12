@@ -12,6 +12,10 @@ import type { Id } from '@convex/_generated/dataModel'
 import { ProjectWorkspaceShell } from '@/components/projects/ProjectWorkspaceShell'
 import { ProjectChatPanel } from '@/components/projects/ProjectChatPanel'
 import { derivePlanningSessionDebugSummary } from '@/components/plan/PlanningSessionDebugCard'
+import {
+  findLatestRecoverableCheckpoint,
+  type RuntimeCheckpointSummary,
+} from '@/components/chat/runtime-checkpoints'
 import { AgentRuntimeProvider } from '@/contexts/AgentRuntimeContext'
 import { WorkspaceRuntimeProvider as WorkspaceRuntimeContextProvider } from '@/contexts/WorkspaceRuntimeContext'
 import { useCommandPaletteStore } from '@/stores/commandPaletteStore'
@@ -571,6 +575,13 @@ export function WorkspaceRuntimeProvider({
     refreshGitStatus,
   })
 
+  const runtimeCheckpoints = useQuery(
+    api.agentRuns.listRuntimeCheckpointSummaries,
+    activeChat?._id ? { chatId: activeChat._id, limit: 6 } : 'skip'
+  ) as RuntimeCheckpointSummary[] | undefined
+
+  const latestRecoverableCheckpoint = findLatestRecoverableCheckpoint(runtimeCheckpoints)
+
   const executionSession = useMemo(() => {
     const latestStep = [...liveRunSteps].reverse().find((step) => step.content?.trim())
 
@@ -585,6 +596,8 @@ export function WorkspaceRuntimeProvider({
       latestRunStep: latestStep?.content,
       changedFilesCount: pendingChangedFilesCount,
       runtimeAvailability,
+      tracePersistenceStatus: agent.tracePersistenceStatus,
+      latestRuntimeCheckpoint: latestRecoverableCheckpoint,
     })
   }, [
     activeChat?.title,
@@ -593,10 +606,12 @@ export function WorkspaceRuntimeProvider({
     canApproveCurrentPlan,
     canBuildCurrentPlan,
     latestUserPrompt,
+    latestRecoverableCheckpoint,
     liveRunSteps,
     pendingChangedFilesCount,
     planningSession.currentQuestion,
     runtimeAvailability,
+    agent.tracePersistenceStatus,
   ])
 
   // --- Assemble context value ---
@@ -632,6 +647,7 @@ export function WorkspaceRuntimeProvider({
       currentSpec: agent.currentSpec,
       memoryBank: agent.memoryBank,
       tracePersistenceStatus: agent.tracePersistenceStatus,
+      runtimeCheckpoints,
 
       // Model / provider
       model: selectedChatModel,
@@ -772,6 +788,7 @@ export function WorkspaceRuntimeProvider({
       agent.resumeRuntimeSession,
       agent.runEvalScenario,
       agent.updateMemoryBank,
+      runtimeCheckpoints,
       selectedChatModel,
       selectedModel,
       availableModels,

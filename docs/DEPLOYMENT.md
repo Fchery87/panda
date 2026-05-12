@@ -70,6 +70,10 @@ security policy allowances required by WebContainer. Non-project routes keep the
 default stricter headers. See [WebContainer Runtime](./WEBCONTAINER_RUNTIME.md)
 for the runtime states and debugging checklist.
 
+Local browser acceptance tests may set `E2E_AUTH_BYPASS_SECRET` and pass that
+secret as the `e2eBypassSecret` query parameter. The proxy ignores this bypass
+in production, so do not configure it as a production access mechanism.
+
 ## 3.2 Convex production env vars (set in Convex dashboard/CLI)
 
 For Google auth and Convex Auth production:

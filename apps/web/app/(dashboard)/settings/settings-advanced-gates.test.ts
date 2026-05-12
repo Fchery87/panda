@@ -9,6 +9,7 @@ describe('settings advanced policy gates', () => {
     expect(source).toContain('adminDefaults?.allowUserMCP !== false')
     expect(source).toContain('adminDefaults?.allowUserSubagents !== false')
     expect(source).toContain('MCP access is disabled by your admin')
+    expect(source).toContain('Admin policy blocks user-managed MCP servers')
     expect(source).toContain('Custom subagents are disabled by your admin')
   })
 })

@@ -27,12 +27,21 @@ const baseSession: ExecutionSessionViewModel = {
       { label: 'Docs branch', status: 'complete', outcome: 'Branch completed.' },
     ],
   },
+  scanSignals: [
+    { label: 'Run', value: 'Active', tone: 'progress' },
+    { label: 'Approval', value: 'Clear', tone: 'neutral' },
+    { label: 'Changes', value: '2', tone: 'success' },
+    { label: 'Branches', value: '1 running, 0 blocked, 1 complete.', tone: 'progress' },
+  ],
   resume: {
     goal: 'Add billing settings',
     lastState: 'Executing',
+    summary: 'Executing: Editing workspace shell',
     changedWork: '2 changed files ready for review.',
     proof: 'Editing workspace shell',
     branches: '1 running, 0 blocked, 1 complete.',
+    trace: 'Trace live: run events are available for review.',
+    checkpoint: 'Checkpoint: no recoverable runtime checkpoint attached.',
     nextAction: 'Monitor progress and inspect proof.',
   },
 }

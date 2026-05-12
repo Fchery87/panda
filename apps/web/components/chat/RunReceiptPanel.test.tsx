@@ -53,6 +53,14 @@ describe('RunReceiptPanel', () => {
   test('renders routing, context, execution, token, and result receipt sections', () => {
     const html = renderToStaticMarkup(<RunReceiptPanel receipt={receipt} />)
 
+    expect(html).toContain('Owner proof summary')
+    expect(html).toContain('Outcome')
+    expect(html).toContain('Validation')
+    expect(html).toContain('Changed files')
+    expect(html).toContain('Approvals')
+    expect(html).toContain('Receipt')
+    expect(html).toContain('Recovery')
+    expect(html.indexOf('Owner proof summary')).toBeLessThan(html.indexOf('Routing'))
     expect(html).toContain('Execution receipt')
     expect(html).toContain('ask -&gt; code')
     expect(html).toContain('high confidence')
@@ -70,5 +78,34 @@ describe('RunReceiptPanel', () => {
 
     expect(html).toContain('No execution receipt yet')
     expect(html).toContain('Legacy runs and in-flight runs may not have canonical receipts.')
+  })
+
+  test('renders categorized validation evidence for changed work', () => {
+    const html = renderToStaticMarkup(
+      <RunReceiptPanel
+        receipt={{
+          ...receipt,
+          validationEvidence: [
+            {
+              changeType: 'ui',
+              changedFiles: ['apps/web/components/chat/RunReceiptPanel.tsx'],
+              validationCommands: ['bun test apps/web/components/chat/RunReceiptPanel.test.tsx'],
+            },
+            {
+              changeType: 'convex',
+              changedFiles: ['convex/schema.ts'],
+              validationCommands: ['npx convex dev --once'],
+            },
+          ],
+        }}
+      />
+    )
+
+    expect(html).toContain('Validation evidence')
+    expect(html).toContain('ui')
+    expect(html).toContain('convex')
+    expect(html).toContain('apps/web/components/chat/RunReceiptPanel.tsx')
+    expect(html).toContain('bun test apps/web/components/chat/RunReceiptPanel.test.tsx')
+    expect(html).toContain('npx convex dev --once')
   })
 })

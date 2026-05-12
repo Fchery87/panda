@@ -121,6 +121,27 @@ export function MCPServerEditor({ className }: MCPServerEditorProps) {
         </Button>
       </div>
 
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="rounded-none border border-border bg-surface-2 p-3">
+          <p className="font-mono text-xs uppercase tracking-[0.18em] text-foreground">
+            Transport Risk
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            stdio starts a local process with the command and args you configure. SSE connects to a
+            remote HTTP endpoint and depends on that server's authentication boundary.
+          </p>
+        </div>
+        <div className="rounded-none border border-border bg-surface-2 p-3">
+          <p className="font-mono text-xs uppercase tracking-[0.18em] text-foreground">
+            Permission Boundary
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            MCP servers can expose tools to agent runs. Do not add secrets here; configure secrets
+            in the server runtime. Test before enabling any new server.
+          </p>
+        </div>
+      </div>
+
       {showAddForm && (
         <div className="space-y-3 border border-border p-4">
           <div className="grid gap-3">

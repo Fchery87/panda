@@ -72,16 +72,33 @@ export interface ExecutionSessionViewModel {
   proof: ExecutionSessionProofSummary
   preview: ExecutionSessionPreviewSummary
   branches: ExecutionSessionBranchSummary
+  scanSignals: ExecutionSessionScanSignal[]
   resume: ExecutionSessionResumeSummary
+  tracePersistenceStatus?: 'live' | 'degraded'
+  latestRuntimeCheckpoint?: ExecutionSessionRuntimeCheckpointSummary | null
+}
+
+export interface ExecutionSessionScanSignal {
+  label: string
+  value: string
+  tone: ExecutionSessionTone
 }
 
 export interface ExecutionSessionResumeSummary {
   goal: string
   lastState: string
+  summary: string
   changedWork: string
   proof: string
   branches: string
+  trace: string
+  checkpoint: string
   nextAction: string
+}
+
+export interface ExecutionSessionRuntimeCheckpointSummary {
+  sessionID?: string | null
+  savedAt?: number | null
 }
 
 export interface ExecutionSessionViewModelInput {
@@ -95,6 +112,8 @@ export interface ExecutionSessionViewModelInput {
   latestRunStep?: string | null
   changedFilesCount: number
   runtimeAvailability: RuntimeAvailability
+  tracePersistenceStatus?: 'live' | 'degraded'
+  latestRuntimeCheckpoint?: ExecutionSessionRuntimeCheckpointSummary | null
   parallelBranches?: Array<{
     label?: string | null
     status: 'queued' | 'running' | 'blocked' | 'complete' | 'failed'
@@ -109,6 +128,10 @@ export function buildExecutionSessionViewModel(
   const proof = summarizeProof(input)
   const preview = summarizePreview(input.runtimeAvailability)
   const branches = summarizeBranches(input.parallelBranches ?? [])
+  const recovery = {
+    tracePersistenceStatus: input.tracePersistenceStatus,
+    latestRuntimeCheckpoint: input.latestRuntimeCheckpoint,
+  }
 
   if (input.isExecuting) {
     return withResume({
@@ -123,6 +146,7 @@ export function buildExecutionSessionViewModel(
       proof,
       preview,
       branches,
+      ...recovery,
     })
   }
 
@@ -139,6 +163,7 @@ export function buildExecutionSessionViewModel(
       proof,
       preview,
       branches,
+      ...recovery,
     })
   }
 
@@ -155,6 +180,7 @@ export function buildExecutionSessionViewModel(
       proof,
       preview,
       branches,
+      ...recovery,
     })
   }
 
@@ -172,6 +198,7 @@ export function buildExecutionSessionViewModel(
       proof,
       preview,
       branches,
+      ...recovery,
     })
   }
 
@@ -188,24 +215,93 @@ export function buildExecutionSessionViewModel(
       proof,
       preview,
       branches,
+      ...recovery,
     })
   }
 
   return null
 }
 
-function withResume(session: Omit<ExecutionSessionViewModel, 'resume'>): ExecutionSessionViewModel {
+function withResume(
+  session: Omit<ExecutionSessionViewModel, 'resume' | 'scanSignals'>
+): ExecutionSessionViewModel {
   return {
     ...session,
-    resume: {
-      goal: session.title,
-      lastState: session.statusLabel,
-      changedWork: session.changedWork.label,
-      proof: session.proof.detail,
-      branches: session.branches.label,
-      nextAction: session.nextStep,
-    },
+    scanSignals: summarizeScanSignals(session),
+    resume: summarizeResume(session),
   }
+}
+
+function summarizeResume(
+  session: Omit<ExecutionSessionViewModel, 'resume' | 'scanSignals'>
+): ExecutionSessionResumeSummary {
+  const checkpoint = session.latestRuntimeCheckpoint
+  const checkpointLabel = checkpoint?.sessionID
+    ? `Checkpoint ready: recover session ${checkpoint.sessionID}${
+        checkpoint.savedAt ? ` from ${new Date(checkpoint.savedAt).toISOString()}` : ''
+      }.`
+    : 'Checkpoint: no recoverable runtime checkpoint attached.'
+
+  return {
+    goal: session.title,
+    lastState: session.statusLabel,
+    summary: `${session.statusLabel}: ${session.summary}`,
+    changedWork: session.changedWork.label,
+    proof: session.proof.detail,
+    branches: session.branches.label,
+    trace:
+      session.tracePersistenceStatus === 'degraded'
+        ? 'Trace degraded: persisted run events may be partial; use receipt and checkpoint proof.'
+        : 'Trace live: run events are available for review.',
+    checkpoint: checkpointLabel,
+    nextAction: session.nextStep,
+  }
+}
+
+function summarizeScanSignals(
+  session: Omit<ExecutionSessionViewModel, 'resume' | 'scanSignals'>
+): ExecutionSessionScanSignal[] {
+  const approvalValue =
+    session.phase === 'approval'
+      ? 'Needs review'
+      : session.phase === 'ready_to_build'
+        ? 'Approved'
+        : session.phase === 'planning'
+          ? 'Intake'
+          : 'Clear'
+
+  return [
+    {
+      label: 'Run',
+      value: session.proof.hasActiveRun ? 'Active' : session.proof.label,
+      tone: session.proof.hasActiveRun ? 'progress' : session.tone,
+    },
+    {
+      label: 'Approval',
+      value: approvalValue,
+      tone:
+        session.phase === 'approval' || session.phase === 'planning'
+          ? 'attention'
+          : session.phase === 'ready_to_build'
+            ? 'progress'
+            : 'neutral',
+    },
+    {
+      label: 'Changes',
+      value: session.changedWork.needsReview ? String(session.changedWork.count) : 'None',
+      tone: session.changedWork.needsReview ? 'success' : 'neutral',
+    },
+    {
+      label: 'Branches',
+      value: session.branches.blocked > 0 ? 'Blocked' : session.branches.label,
+      tone:
+        session.branches.blocked > 0
+          ? 'attention'
+          : session.branches.running > 0
+            ? 'progress'
+            : 'neutral',
+    },
+  ]
 }
 
 function resolveTitle(input: ExecutionSessionViewModelInput, fallback: string) {

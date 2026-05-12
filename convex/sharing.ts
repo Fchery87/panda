@@ -8,7 +8,7 @@
 import { mutation, query, type QueryCtx } from './_generated/server'
 import { paginationOptsValidator } from 'convex/server'
 import { v } from 'convex/values'
-import type { Id } from './_generated/dataModel'
+import type { Doc } from './_generated/dataModel'
 import { requireChatOwner } from './lib/authz'
 import { getCurrentUserId, requireAuth } from './lib/auth'
 
@@ -36,6 +36,36 @@ async function getPublicSharedChat(ctx: QueryCtx, shareId: string) {
   }
 
   return sharedChat
+}
+
+function pluralize(count: number, noun: string): string {
+  return `${count} ${noun}${count === 1 ? '' : 's'}`
+}
+
+function publicReviewSummary(run: Doc<'agentRuns'> | null) {
+  const receipt = run?.receipt
+
+  if (!receipt) {
+    return {
+      outcome: run?.status ?? 'No run receipt shared',
+      validation: 'No validation command recorded',
+      changedFiles: 0,
+      reviewNote:
+        'Public share hides raw tool arguments, command output, and owner-only proof detail.',
+    }
+  }
+
+  const commandCount = receipt.webcontainer.commandsRun.length
+  return {
+    outcome: receipt.resultStatus,
+    validation:
+      commandCount > 0
+        ? `${pluralize(commandCount, 'validation command')} recorded`
+        : 'No validation command recorded',
+    changedFiles: receipt.webcontainer.filesWritten.length,
+    reviewNote:
+      'Public share hides raw tool arguments, command output, and owner-only proof detail.',
+  }
 }
 
 export const shareChat = mutation({
@@ -171,6 +201,11 @@ export const getSharedChatHeader = query({
     if (!chat) {
       return null
     }
+    const latestRuns = await ctx.db
+      .query('agentRuns')
+      .withIndex('by_chat_started', (q) => q.eq('chatId', sharedChat.chatId))
+      .order('desc')
+      .take(1)
 
     return {
       chat: {
@@ -178,6 +213,7 @@ export const getSharedChatHeader = query({
         mode: chat.mode,
         createdAt: chat.createdAt,
       },
+      publicReviewSummary: publicReviewSummary(latestRuns[0] ?? null),
       sharedAt: sharedChat.createdAt,
     }
   },

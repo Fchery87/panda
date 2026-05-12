@@ -5,6 +5,7 @@ import { ArrowLeft, Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
+import { createPlanningIntakeSeed, type PlanningIntakeSeed } from '@/lib/planning/intake-bridge'
 import { formatQuestionChoices } from '@/lib/planning/question-engine'
 import type { PlanningQuestion, GeneratedPlanArtifact, PlanningAnswer } from '@/lib/planning/types'
 import { useWorkspaceUiStore } from '@/stores/workspaceUiStore'
@@ -37,7 +38,7 @@ export interface PlanningIntakePopupProps {
 export interface PlanningIntakeSurfaceProps {
   session: PlanningSessionView
   currentQuestion: PlanningQuestion | null
-  onStartIntake: () => Promise<unknown> | unknown
+  onStartIntake: (seed?: PlanningIntakeSeed | null) => Promise<unknown> | unknown
   onAnswerQuestion: (input: AnswerQuestionInput) => Promise<unknown> | unknown
   onClearIntake: () => Promise<unknown> | unknown
   className?: string
@@ -150,6 +151,7 @@ export function PlanningIntakeSurface({
   className,
 }: PlanningIntakeSurfaceProps) {
   const { isPlanningPopupOpen, openPlanningPopup, closePlanningPopup } = useWorkspaceUiStore()
+  const [seedText, setSeedText] = useState('')
 
   function handleClose() {
     closePlanningPopup()
@@ -161,7 +163,7 @@ export function PlanningIntakeSurface({
       return
     }
 
-    const result = await onStartIntake()
+    const result = await onStartIntake(createPlanningIntakeSeed(seedText))
     openPlanningPopup(typeof result === 'string' ? result : (session?.sessionId ?? undefined))
   }
 
@@ -186,6 +188,24 @@ export function PlanningIntakeSurface({
               <div className="mt-1 text-sm text-muted-foreground">
                 Optional guided intake for refining or pressure-testing the plan.
               </div>
+              <div className="mt-3 space-y-2">
+                <label
+                  htmlFor="planning-intake-seed"
+                  className="block font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground"
+                >
+                  Issue or task seed
+                </label>
+                <Textarea
+                  id="planning-intake-seed"
+                  value={seedText}
+                  onChange={(event) => setSeedText(event.target.value)}
+                  placeholder="Paste a GitHub issue URL or describe a task"
+                  className="min-h-16 rounded-none font-mono text-xs"
+                />
+                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  GitHub issue or manual task feeds the canonical planning intake.
+                </div>
+              </div>
             </div>
             <Button
               type="button"
@@ -196,7 +216,7 @@ export function PlanningIntakeSurface({
               }}
               className="rounded-none border-border px-3 font-mono text-[11px] uppercase tracking-[0.2em]"
             >
-              Start intake
+              {seedText.trim() ? 'Seed intake' : 'Start intake'}
             </Button>
           </div>
         </div>

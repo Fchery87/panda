@@ -50,7 +50,10 @@ export function SharedChatContent({ shareId }: { shareId: string }) {
           </div>
         </header>
 
-        <SharedTranscript messages={messages} />
+        <SharedTranscript
+          messages={messages}
+          publicReviewSummary={sharedChat.publicReviewSummary ?? null}
+        />
 
         {status === 'CanLoadMore' && (
           <div className="mt-6 flex justify-center">

@@ -19,4 +19,33 @@ describe('SharedTranscript', () => {
     expect(html).toContain('User')
     expect(html).toContain('Assistant')
   })
+
+  test('renders a public review summary before the transcript without owner proof details', () => {
+    const html = renderToString(
+      <SharedTranscript
+        publicReviewSummary={{
+          outcome: 'complete',
+          validation: '1 validation command recorded',
+          changedFiles: 2,
+          reviewNote:
+            'Public share hides raw tool arguments, command output, and owner-only proof detail.',
+        }}
+        messages={[{ role: 'assistant', content: 'Public transcript starts here' }]}
+      />
+    )
+
+    expect(html).toContain('Public review summary')
+    expect(html).toContain('Outcome')
+    expect(html).toContain('complete')
+    expect(html).toContain('Validation')
+    expect(html).toContain('1 validation command recorded')
+    expect(html).toContain('Changed files')
+    expect(html).toContain('2')
+    expect(html).toContain('Public transcript starts here')
+    expect(html.indexOf('Public review summary')).toBeLessThan(
+      html.indexOf('Public transcript starts here')
+    )
+    expect(html).not.toContain('SECRET_TOKEN')
+    expect(html).not.toContain('stack trace')
+  })
 })
