@@ -64,6 +64,7 @@ models/
 checkpoints/
 .bg-shell/
 .gsd/
+.harness/
 
 # Temporary files
 *.tmp
