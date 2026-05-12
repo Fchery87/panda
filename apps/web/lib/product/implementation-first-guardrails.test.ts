@@ -44,22 +44,28 @@ describe('implementation-first guardrails', () => {
     )
   })
 
-  test('M002 compatibility inventory records preserve-before-delete decisions', () => {
-    const inventory = readRepoFile('.gsd/milestones/M002/M002-S02-COMPATIBILITY-DRIFT.md')
+  test('tracked compatibility guardrails preserve-before-delete decisions', () => {
+    const contract = readRepoFile('docs/ARCHITECTURE_CONTRACT.md')
+    const schema = readRepoFile('convex/schema.ts')
+    const compactContract = compactMarkdown(contract)
 
-    expect(inventory).toContain('Stored Legacy Chat Modes')
-    expect(inventory).toContain('Architect Brainstorm Naming')
-    expect(inventory).toContain('Chat-Level Plan Mirror Fields')
-    expect(inventory).toContain('Review Terminology Is Overloaded But Not Always Legacy')
-    expect(inventory).toContain('Shell Contract References')
-    expect(inventory).toContain('Do not remove legacy stored validators without migration evidence')
-    expect(inventory).toContain('Do not make `chats.plan*` the planning source of truth again')
+    expect(schema).toContain('export const StoredChatMode')
+    expect(schema).toContain("v.literal('architect')")
+    expect(schema).toContain("v.literal('discuss')")
+    expect(schema).toContain("v.literal('debug')")
+    expect(schema).toContain("v.literal('review')")
+    expect(compactContract).toContain('legacy stored values or internal agent names')
+    expect(compactContract).toContain(
+      'Do not present `architect`, `discuss`, `debug`, or `review` as current top-level user-facing modes'
+    )
+    expect(compactContract).toContain('Chat-level plan fields are compatibility mirrors only')
+    expect(compactContract).toContain('must not become the primary source')
+    expect(compactContract).toContain('Execution Session Shell')
   })
 
   test('delivery handoff policy keeps deployment external and GitHub review explicit', () => {
     const policy = readRepoFile('docs/DELIVERY_HANDOFF_POLICY.md')
     const docsIndex = readRepoFile('docs/README.md')
-    const decisions = readRepoFile('.gsd/DECISIONS.md')
     const compactPolicy = compactMarkdown(policy)
 
     expect(policy).toContain('Panda keeps hosted deployment external for now')
@@ -68,7 +74,9 @@ describe('implementation-first guardrails', () => {
     expect(compactPolicy).toContain('Export must not become a parallel deployment system')
     expect(compactPolicy).toContain('Do not add a separate deployment wizard')
     expect(docsIndex).toContain('docs/DELIVERY_HANDOFF_POLICY.md')
-    expect(decisions).toContain('docs/DELIVERY_HANDOFF_POLICY.md')
+    expect(docsIndex).toContain(
+      'Current boundary for deployment, export, and review handoff decisions'
+    )
   })
 
   test('docs index labels authority, historical, proposed, and completed records', () => {
