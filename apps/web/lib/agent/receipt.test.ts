@@ -270,6 +270,78 @@ describe('buildExecutionReceipt', () => {
     ])
   })
 
+  test('rolls completed subagent summaries into receipts without raw output', () => {
+    const receipt = buildExecutionReceipt({
+      routingDecision,
+      contextSources: {
+        filesConsidered: [],
+        filesLoaded: [],
+        filesExcluded: [],
+        memoryBankIncluded: false,
+        specIncluded: false,
+        planIncluded: false,
+        sessionSummaryIncluded: false,
+        compactionOccurred: false,
+        truncated: false,
+      },
+      runEvents: [
+        {
+          type: 'subagent_summary',
+          status: 'running',
+          subagentSummary: {
+            version: 1,
+            subagentId: 'subagent-1',
+            parentRunId: 'run-1',
+            name: 'debugger',
+            status: 'running',
+            startedAt: 100,
+            capabilityPreset: 'research',
+            effectiveCapabilities: ['read', 'search'],
+            delegatedTaskSummary: 'Inspect failing test',
+            subagentChain: ['debugger'],
+          },
+        },
+        {
+          type: 'subagent_summary',
+          status: 'completed',
+          subagentSummary: {
+            version: 1,
+            subagentId: 'subagent-1',
+            parentRunId: 'run-1',
+            name: 'debugger',
+            status: 'completed',
+            startedAt: 100,
+            completedAt: 150,
+            durationMs: 50,
+            capabilityPreset: 'research',
+            effectiveCapabilities: ['read', 'search'],
+            delegatedTaskSummary: 'Inspect failing test',
+            outputSummary: 'Found mismatch in apps/web/foo.test.ts',
+            filesTouched: ['apps/web/foo.test.ts'],
+            testsRun: ['bun test apps/web/foo.test.ts'],
+            risks: ['No blocking risk'],
+            subagentChain: ['debugger'],
+          },
+          output: 'RAW SUBAGENT OUTPUT SHOULD NOT BE USED',
+        },
+      ],
+      startedAt: 100,
+      completedAt: 160,
+      resultStatus: 'complete',
+      webcontainer: { used: false },
+    })
+
+    expect(receipt.subagents).toEqual([
+      expect.objectContaining({
+        subagentId: 'subagent-1',
+        status: 'completed',
+        outputSummary: 'Found mismatch in apps/web/foo.test.ts',
+        testsRun: ['bun test apps/web/foo.test.ts'],
+      }),
+    ])
+    expect(JSON.stringify(receipt.subagents)).not.toContain('RAW SUBAGENT OUTPUT')
+  })
+
   test('maps permission approval events into native execution approval audit records', () => {
     const receipt = buildExecutionReceipt({
       routingDecision,

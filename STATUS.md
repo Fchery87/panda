@@ -1,58 +1,49 @@
-# Status: M001 GitHub-Backed Panda Projects Implementation
+# Status: Admin/User Policy Settings UI and Docs
 
-## Current milestone: S12 Final Live GitHub Smoke Path (blocked)
+## Current milestone: Complete
 
-## Last completed: S11 Explicit Sync From GitHub - 2026-05-08
+## Last completed: Final validation — 2026-05-12
 
 ## Decision log
 
-- Implement slices in `.gsd/milestones/M001/M001-ROADMAP.md` dependency order
-  because the user requested an automatic implementation loop.
-- Use verification before marking any slice complete because GitHub integration
-  is security-sensitive and external-write capable.
-- S01 stores user-scoped GitHub App installation metadata in `githubConnections`
-  and exposes redacted connection status only.
-- S02 stores exactly one linked GitHub repository on a Panda project and exposes
-  a bounded authorized repository picker backed by the GitHub connection.
-- S03 creates GitHub-backed Panda projects from selected repositories and writes
-  an initial bounded Convex working-copy payload.
-- S04 adds durable GitHub sync state with base branch, base commit, last synced
-  commit, changed files, and remote-changed/conflict detection that does not
-  overwrite files.
-- S05 makes the source-control panel read GitHub-backed project sync state
-  before falling back to local workspace Git state for non-GitHub projects.
-- S06 creates a namespaced `panda/...` working branch in project sync state
-  without changing the base branch.
-- S07 records Panda-authored working-copy commits with bot identity and
-  requesting-user attribution, then clears committed changed-file state.
-- S08 requires explicit confirmation before marking a Panda branch commit as
-  pushed to GitHub.
-- S09 creates user-reviewable PR drafts from pushed Panda commits and requires
-  confirmation before marking the PR created.
-- S10 exposes a bounded GitHub shell summary in the workspace top bar so branch,
-  sync, pending-change, and PR state are visible outside the source-control
-  pane.
-- S11 adds explicit Sync from GitHub and refuses to overwrite dirty Panda
-  working copies, setting conflict state instead.
+- This slice implements Milestone 8 from
+  `docs/plans/layered-harness-policy-implementation.md`.
+- Convex changes use widen-first optional fields for admin and user policy
+  preferences.
+- User command-family preferences are allowed only when they are equal to or
+  stricter than the admin ceiling (`allow < ask < deny`).
+- Settings and audit surfaces identify policy keys and summaries only; they do
+  not include raw commands, tool arguments, MCP headers, or secrets.
+- Project MCP remains recommendation-only.
+- Admin default command-family policy starts with `allow` for package-manager
+  and git commands, and `ask` for network, destructive, remote-exec,
+  filesystem-write, and unknown commands.
 
 ## Known issues
 
-- No GitHub App credentials are known in the environment yet, so final live
-  smoke verification may require a documented blocker if credentials are
-  unavailable.
-- The repo has pre-existing task state files and may have unrelated worktree
-  changes; do not revert unrelated user changes.
-- Full-repo `bun run format:check` is blocked by pre-existing formatting drift
-  across many unrelated files. Touched-file formatting checks pass after each
-  completed slice.
-- S12 live smoke is blocked in this environment because no `GITHUB_APP_*`,
-  `GITHUB_TOKEN`, `GH_TOKEN`, or `GITHUB_REPOSITORY_FIXTURES` credentials are
-  present.
-- Local verification passed for S01-S11: targeted GitHub slice tests, typecheck,
-  lint, and touched-file formatting. Full-repo `format:check` remains blocked by
-  unrelated pre-existing formatting drift.
+- Command-family settings are a settings/governance surface in this slice;
+  additional production runtime wiring is explicitly out of scope unless already
+  supported by the resolved Harness Policy path.
+
+## Validation evidence
+
+- Focused settings/policy tests passed:
+  `bun test convex/admin.policy-coverage.test.ts convex/settings.browser-defaults.test.ts convex/settings.public-admin-defaults.test.ts apps/web/lib/agent/command-family-policy.test.ts apps/web/lib/settings-navigation.test.ts apps/web/app/admin/system/page.policy-controls.test.ts apps/web/app/(dashboard)/settings/settings-advanced-gates.test.ts`
+  with 14 passing tests.
+- MCP policy UX regression test passed:
+  `bun test apps/web/components/settings/MCPServerEditor.policy-ux.test.ts`.
+- Typecheck passed: `bun run typecheck`.
+- Lint passed: `bun run lint`.
+- Final full gate passed:
+  `bun run typecheck && bun run lint && bun run format:check && bun test && npx convex dev --once`.
+- Full unit suite passed: `bun test` with 1191 passing tests.
+- Convex deploy check passed: `npx convex dev --once` with
+  `Convex functions ready!`.
 
 ## Future work (out of scope, log here)
 
-- Full GitHub issue management.
-- Multi-repository Panda projects.
+- Production runtime wiring from persisted command-family settings into all run
+  policy snapshots.
+- Project/team governance for activating project-scoped MCP.
+- Secret storage or encrypted MCP env management.
+- Full MCP marketplace/discovery UX.

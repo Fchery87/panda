@@ -25,6 +25,87 @@ export const SubagentCapabilityPreset = v.union(
   v.literal('restricted')
 )
 
+export const HarnessPermissionDecision = v.union(
+  v.literal('allow'),
+  v.literal('ask'),
+  v.literal('deny')
+)
+
+export const HarnessCapability = v.union(
+  v.literal('read'),
+  v.literal('search'),
+  v.literal('edit'),
+  v.literal('exec'),
+  v.literal('plan_exit'),
+  v.literal('memory'),
+  v.literal('mcp'),
+  v.literal('task')
+)
+
+export const HarnessCommandFamily = v.union(
+  v.literal('package-manager'),
+  v.literal('network'),
+  v.literal('git'),
+  v.literal('destructive'),
+  v.literal('remote-exec'),
+  v.literal('filesystem-write'),
+  v.literal('unknown')
+)
+
+export const HarnessPolicyRuleSource = v.union(
+  v.literal('mode'),
+  v.literal('admin'),
+  v.literal('user'),
+  v.literal('project'),
+  v.literal('spec'),
+  v.literal('execution_contract'),
+  v.literal('session')
+)
+
+export const HarnessCommandFamilyPolicyEntry = v.object({
+  family: HarnessCommandFamily,
+  decision: HarnessPermissionDecision,
+})
+
+export const PermissionAuditTarget = v.object({
+  kind: v.union(
+    v.literal('literal'),
+    v.literal('pattern'),
+    v.literal('command_hash'),
+    v.literal('summary')
+  ),
+  value: v.string(),
+})
+
+export const MCPTransport = v.union(v.literal('stdio'), v.literal('sse'), v.literal('http'))
+
+export const HarnessSubagentStatus = v.union(
+  v.literal('running'),
+  v.literal('completed'),
+  v.literal('failed'),
+  v.literal('stopped')
+)
+
+export const HarnessSubagentSummary = v.object({
+  version: v.literal(1),
+  subagentId: v.string(),
+  parentRunId: v.string(),
+  parentSubagentId: v.optional(v.string()),
+  name: v.string(),
+  status: HarnessSubagentStatus,
+  startedAt: v.number(),
+  completedAt: v.optional(v.number()),
+  durationMs: v.optional(v.number()),
+  capabilityPreset: v.optional(SubagentCapabilityPreset),
+  effectiveCapabilities: v.array(HarnessCapability),
+  delegatedTaskSummary: v.string(),
+  outputSummary: v.optional(v.string()),
+  filesTouched: v.optional(v.array(v.string())),
+  testsRun: v.optional(v.array(v.string())),
+  risks: v.optional(v.array(v.string())),
+  subagentChain: v.array(v.string()),
+})
+
 export type ChatModeType = 'ask' | 'plan' | 'code' | 'build'
 
 /**
@@ -162,6 +243,7 @@ export const PersistedRunEvent = v.object({
   usage: v.optional(TokenUsage),
   snapshot: v.optional(PersistedRunSnapshot),
   appliedSkills: v.optional(v.array(AppliedSkillSummary)),
+  subagentSummary: v.optional(HarnessSubagentSummary),
 })
 
 export const TerminationReason = v.union(
@@ -278,6 +360,7 @@ export const ExecutionReceiptV1 = v.object({
   }),
   estimatedCost: v.optional(v.number()),
   validationEvidence: v.optional(v.array(ExecutionReceiptValidationEvidence)),
+  subagents: v.optional(v.array(HarnessSubagentSummary)),
   durationMs: v.number(),
   resultStatus: v.union(
     v.literal('complete'),
@@ -797,6 +880,7 @@ export default defineSchema({
         })
       )
     ),
+    commandFamilyPreferences: v.optional(v.array(HarnessCommandFamilyPolicyEntry)),
     permissions: v.optional(
       v.object({
         tools: v.optional(v.record(v.string(), v.string())),
@@ -893,6 +977,7 @@ export default defineSchema({
     usage: v.optional(TokenUsage),
     snapshot: v.optional(PersistedRunSnapshot),
     appliedSkills: v.optional(v.array(AppliedSkillSummary)),
+    subagentSummary: v.optional(HarnessSubagentSummary),
     createdAt: v.number(),
   })
     .index('by_run_sequence', ['runId', 'sequence'])
@@ -1022,7 +1107,10 @@ export default defineSchema({
   mcpServers: defineTable({
     userId: v.id('users'),
     name: v.string(),
-    transport: v.union(v.literal('stdio'), v.literal('sse')),
+    transport: MCPTransport,
+    source: v.optional(
+      v.union(v.literal('user'), v.literal('project_recommendation'), v.literal('admin'))
+    ),
     command: v.optional(v.string()),
     args: v.optional(v.array(v.string())),
     url: v.optional(v.string()),
@@ -1090,6 +1178,8 @@ export default defineSchema({
     // Feature flags
     allowUserOverrides: v.optional(v.boolean()),
     allowUserMCP: v.optional(v.boolean()),
+    allowedMCPTransports: v.optional(v.array(MCPTransport)),
+    commandFamilyPolicy: v.optional(v.array(HarnessCommandFamilyPolicyEntry)),
     allowUserSubagents: v.optional(v.boolean()),
     allowUserSkills: v.optional(v.boolean()),
     allowSkillAutoActivation: v.optional(v.boolean()),
@@ -1214,6 +1304,7 @@ export default defineSchema({
 
   // 27. Permission Audit Log table - persistent permission decision log
   permissionAuditLog: defineTable({
+    // Legacy audit fields retained for compatibility with existing rows/writers.
     sessionID: v.string(),
     tool: v.string(),
     pattern: v.string(),
@@ -1222,10 +1313,29 @@ export default defineSchema({
     metadata: v.optional(v.any()),
     timestamp: v.number(),
     projectId: v.optional(v.id('projects')),
+
+    // Versioned Harness Policy audit fields. Optional for widen-first migration.
+    version: v.optional(v.number()),
+    runId: v.optional(v.id('agentRuns')),
+    chatId: v.optional(v.id('chats')),
+    userId: v.optional(v.id('users')),
+    agentId: v.optional(v.string()),
+    subagentChain: v.optional(v.array(v.string())),
+    capability: v.optional(HarnessCapability),
+    commandFamily: v.optional(HarnessCommandFamily),
+    ruleId: v.optional(v.string()),
+    ruleSource: v.optional(HarnessPolicyRuleSource),
+    target: v.optional(PermissionAuditTarget),
+    unattended: v.optional(v.boolean()),
+    createdAt: v.optional(v.number()),
   })
     .index('by_session', ['sessionID'])
     .index('by_session_tool', ['sessionID', 'tool'])
-    .index('by_project_timestamp', ['projectId', 'timestamp']),
+    .index('by_project_timestamp', ['projectId', 'timestamp'])
+    .index('by_run_created', ['runId', 'createdAt'])
+    .index('by_chat_created', ['chatId', 'createdAt'])
+    .index('by_project_created', ['projectId', 'createdAt'])
+    .index('by_user_created', ['userId', 'createdAt']),
 
   // 28. Specifications table - SpecNative formal specifications
   specifications: defineTable({

@@ -104,11 +104,33 @@ or expiration metadata instead of raw token values.
 Live provider catalog data can hydrate selectors, but catalog discovery must not
 auto-enable a provider or credentials.
 
+## Harness Policy And Command Governance
+
+Harness Policy is layered. Admin settings are the global ceiling; user settings
+may only make behavior stricter. Execution contracts, Specs, and session
+approvals compose underneath that ceiling for a single Run.
+
+Command-family policy classifies commands into bounded categories such as
+`package-manager`, `network`, `git`, `destructive`, `remote-exec`,
+`filesystem-write`, and `unknown`. Store and display the family, decision, rule
+source, and hashed or summarized target only. Do not store raw command strings,
+raw command output, or full tool arguments in audit/proof surfaces by default.
+
+Unattended Execution is the state where no active owner approval channel exists.
+If policy resolves to `ask` during Unattended Execution, the action must be
+denied unless the exact operation was explicitly preapproved by policy or an
+execution contract. Server fallback alone is not Unattended Execution.
+
 ## MCP Policy
 
 MCP servers are user-controlled execution configuration.
 
 - Admin policy may disable user MCP configuration globally.
+- Admin policy may restrict user MCP transports to any subset of `stdio`, `sse`,
+  and `http`.
+- User MCP settings must show the effective admin ceiling and prevent selecting
+  blocked transports, while backend mutations still enforce the ceiling.
+- Project MCP remains recommendation-only until project/team governance exists.
 - Stdio commands and remote URLs must be owner-scoped.
 - Runtime execution must still apply command/tool permission checks.
 - MCP tool outputs follow the same redaction and transcript rules as native

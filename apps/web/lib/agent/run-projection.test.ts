@@ -17,6 +17,7 @@ function fact(overrides: Partial<RunProjectionFact>): RunProjectionFact {
     args: overrides.args,
     output: overrides.output,
     error: overrides.error,
+    subagentSummary: overrides.subagentSummary,
   }
 }
 
@@ -121,6 +122,47 @@ describe('projectRunForSurface', () => {
     expect(JSON.stringify(publicShare)).not.toContain('full command output')
     expect(JSON.stringify(publicShare)).not.toContain('stack trace excerpt')
     expect(publicShare.items.every((item) => item.source !== 'tool_call')).toBe(true)
+  })
+
+  test('shows bounded subagent summaries in proof but excludes them from public shares', () => {
+    const facts = [
+      fact({
+        id: 'subagent-summary',
+        type: 'subagent_summary',
+        content: 'Subagent completed: debugger',
+        subagentSummary: {
+          version: 1,
+          subagentId: 'subagent-1',
+          parentRunId: 'run-1',
+          name: 'debugger',
+          status: 'completed',
+          startedAt: 1,
+          completedAt: 2,
+          durationMs: 1,
+          capabilityPreset: 'research',
+          effectiveCapabilities: ['read', 'search'],
+          delegatedTaskSummary: 'Inspect failure',
+          outputSummary: 'Found failing test in safe summary',
+          risks: ['owner-only risk summary'],
+          subagentChain: ['debugger'],
+        },
+      }),
+    ]
+
+    const proof = projectRunForSurface({ surface: 'proof', facts, receipt: receipt() })
+    const publicShare = projectRunForSurface({ surface: 'public_share', facts, receipt: receipt() })
+
+    expect(proof.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: 'Subagent completed: debugger',
+          summary: 'Inspect failure',
+          detail: 'Found failing test in safe summary',
+        }),
+      ])
+    )
+    expect(JSON.stringify(publicShare)).not.toContain('debugger')
+    expect(JSON.stringify(publicShare)).not.toContain('owner-only risk summary')
   })
 
   test('curates public share summaries without owner-only proof internals', () => {

@@ -2,11 +2,34 @@ import { query, mutation, type MutationCtx, type QueryCtx } from './_generated/s
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
 import { getCurrentUserId } from './lib/auth'
+import { HarnessCommandFamilyPolicyEntry } from './schema'
 
 /**
  * Check if the current user is an admin
  */
 type AdminCtx = QueryCtx | MutationCtx
+
+type CommandFamilyPolicyEntry = {
+  family:
+    | 'package-manager'
+    | 'network'
+    | 'git'
+    | 'destructive'
+    | 'remote-exec'
+    | 'filesystem-write'
+    | 'unknown'
+  decision: 'allow' | 'ask' | 'deny'
+}
+
+const DEFAULT_COMMAND_FAMILY_POLICY: CommandFamilyPolicyEntry[] = [
+  { family: 'package-manager', decision: 'allow' },
+  { family: 'network', decision: 'ask' },
+  { family: 'git', decision: 'allow' },
+  { family: 'destructive', decision: 'ask' },
+  { family: 'remote-exec', decision: 'ask' },
+  { family: 'filesystem-write', decision: 'ask' },
+  { family: 'unknown', decision: 'ask' },
+]
 
 async function requireAdmin(ctx: AdminCtx) {
   const userId = await getCurrentUserId(ctx)
@@ -103,6 +126,8 @@ export const getSettings = query({
         enhancementModel: null,
         allowUserOverrides: true,
         allowUserMCP: true,
+        allowedMCPTransports: ['stdio', 'sse', 'http'],
+        commandFamilyPolicy: DEFAULT_COMMAND_FAMILY_POLICY,
         allowUserSubagents: true,
         allowUserSkills: true,
         allowSkillAutoActivation: true,
@@ -137,6 +162,10 @@ export const updateSettings = mutation({
     enhancementModel: v.optional(v.string()),
     allowUserOverrides: v.optional(v.boolean()),
     allowUserMCP: v.optional(v.boolean()),
+    allowedMCPTransports: v.optional(
+      v.array(v.union(v.literal('stdio'), v.literal('sse'), v.literal('http')))
+    ),
+    commandFamilyPolicy: v.optional(v.array(HarnessCommandFamilyPolicyEntry)),
     allowUserSubagents: v.optional(v.boolean()),
     allowUserSkills: v.optional(v.boolean()),
     allowSkillAutoActivation: v.optional(v.boolean()),
@@ -173,6 +202,8 @@ export const updateSettings = mutation({
           enhancementModel: existing.enhancementModel ?? null,
           allowUserOverrides: existing.allowUserOverrides ?? true,
           allowUserMCP: existing.allowUserMCP ?? true,
+          allowedMCPTransports: existing.allowedMCPTransports ?? ['stdio', 'sse', 'http'],
+          commandFamilyPolicy: existing.commandFamilyPolicy ?? DEFAULT_COMMAND_FAMILY_POLICY,
           allowUserSubagents: existing.allowUserSubagents ?? true,
           allowUserSkills: existing.allowUserSkills ?? true,
           allowSkillAutoActivation: existing.allowSkillAutoActivation ?? true,

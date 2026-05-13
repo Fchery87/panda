@@ -11,6 +11,8 @@ describe('admin policy coverage', () => {
 
     for (const field of [
       'allowUserMCP',
+      'allowedMCPTransports',
+      'commandFamilyPolicy',
       'allowUserSubagents',
       'allowUserSkills',
       'allowSkillAutoActivation',

@@ -14,7 +14,13 @@ import type { ToolDefinition } from '../../llm/types'
 import type { CheckpointStore } from './checkpoint-store'
 import type { FormalSpecification, SpecEngineConfig, SpecTier } from '../spec/types'
 import type { ChatMode } from '../chat-modes'
-import type { PermissionRule, Capability, Decision } from './permission/types'
+import type {
+  PermissionRule,
+  Capability,
+  CommandFamily,
+  Decision,
+  PermissionRuleSource,
+} from './permission/types'
 import type { PermissionManager } from './permissions'
 import type { SpecLifecycleManager } from '../spec/lifecycle-manager'
 import type { CustomSkillForMatching, CustomSkillPolicy } from '../skills/types'
@@ -379,6 +385,63 @@ export interface SessionState {
 /**
  * Runtime configuration
  */
+export interface PermissionAuditTarget {
+  kind: 'literal' | 'pattern' | 'command_hash' | 'summary'
+  value: string
+}
+
+export interface HarnessPermissionAuditEntry {
+  sessionID: Identifier
+  runId?: string
+  chatId?: string
+  projectId?: string
+  agentId: string
+  subagentChain?: string[]
+  toolName: string
+  capability: Capability
+  commandFamily?: CommandFamily
+  decision: PermissionDecision
+  ruleId?: string
+  ruleSource?: PermissionRuleSource
+  reason?: string
+  target: PermissionAuditTarget
+  unattended: boolean
+  createdAt: number
+  metadata?: Record<string, unknown>
+}
+
+export type HarnessSubagentStatus = 'running' | 'completed' | 'failed' | 'stopped'
+export type HarnessSubagentCapabilityPreset = 'research' | 'assistant' | 'builder' | 'restricted'
+
+export interface HarnessSubagentSummary {
+  version: 1
+  subagentId: string
+  parentRunId: string
+  parentSubagentId?: string
+  name: string
+  status: HarnessSubagentStatus
+  startedAt: number
+  completedAt?: number
+  durationMs?: number
+  capabilityPreset?: HarnessSubagentCapabilityPreset
+  effectiveCapabilities: Capability[]
+  delegatedTaskSummary: string
+  outputSummary?: string
+  filesTouched?: string[]
+  testsRun?: string[]
+  risks?: string[]
+  subagentChain: string[]
+}
+
+export interface RuntimeHarnessPolicySnapshot {
+  version: 1
+  mode: ChatMode
+  runId?: string
+  rules: PermissionRule[]
+  unattendedDefaultDecision: Extract<Decision, 'allow' | 'deny'>
+  createdAt: number
+}
+
 export interface RuntimeConfig {
   maxIterations?: number
   maxSteps?: number
@@ -432,6 +495,18 @@ export interface RuntimeConfig {
   allowExperimentalModels?: boolean
   /** Ordered permission rules evaluated with last-rule-wins semantics to filter tools */
   permissionRules?: PermissionRule[]
+  /** Run-scoped resolved Harness Policy snapshot. Supersedes permissionRules for enforcement when present. */
+  resolvedHarnessPolicy?: RuntimeHarnessPolicySnapshot
+  /** Optional canonical permission audit sink. Harness core stays persistence-agnostic. */
+  onPermissionAudit?: (entry: HarnessPermissionAuditEntry) => void | Promise<void>
+  /** Whether an active owner approval channel is available for interactive asks. */
+  approvalChannelAvailable?: boolean | (() => boolean)
+  /** Bounded delegation chain for nested subagent summaries. */
+  subagentChain?: string[]
+  /** Convex run scope for audit records when available. */
+  runId?: string
+  chatId?: string
+  projectId?: string
   /** Per-runtime permission manager instance (replaces singleton usage) */
   permissionManager?: PermissionManager
   /** User-scoped custom skills available for primary and delegated matching */
@@ -598,6 +673,7 @@ export interface SubagentResult {
   }
   cost?: number
   error?: string
+  subagentSummaries?: HarnessSubagentSummary[]
 }
 
 /**

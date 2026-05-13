@@ -122,6 +122,7 @@ export function buildAgentRuntimeConfig(args: {
     enableToolDeduplication: true,
     toolLoopThreshold: 3,
     harnessSessionID: args.harnessSessionID ?? `harness_run_${args.runId}`,
+    harnessRunId: args.runId,
     harnessAutoResume: true,
     harnessSpecApprovalMode: args.specApprovalMode ?? 'interactive',
   }

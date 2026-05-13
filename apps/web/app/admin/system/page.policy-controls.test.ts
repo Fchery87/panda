@@ -12,6 +12,8 @@ describe('admin system policy controls', () => {
       'allowStrictUserSkills',
       'allowSkillImportExport',
       'allowedSubagentCapabilityPresets',
+      'allowedMCPTransports',
+      'commandFamilyPolicy',
       'maxCustomSubagentsPerUser',
       'maxCustomSkillsPerUser',
     ]) {
@@ -22,6 +24,9 @@ describe('admin system policy controls', () => {
     expect(source).toContain('Strict Skill Workflows')
     expect(source).toContain('Skill Import / Export')
     expect(source).toContain('Allowed Subagent Presets')
+    expect(source).toContain('Allowed MCP Transports')
+    expect(source).toContain('Command-Family Defaults')
+    expect(source).toContain('Project MCP remains')
     expect(source).toContain('Max Custom Subagents Per User')
     expect(source).toContain('Max Custom Skills Per User')
   })

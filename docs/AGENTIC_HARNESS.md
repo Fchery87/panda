@@ -311,17 +311,43 @@ falls back to heuristic matching only when explicit metadata is unavailable.
 
 ### Permission System
 
+Panda resolves governed runtime actions through a layered Harness Policy:
+
+1. Mode defaults from `ask`, `plan`, `code`, or `build`.
+2. Admin ceiling for global capability, command-family, MCP, Skills, and
+   Subagent policy.
+3. User preferences that can only make behavior stricter inside that ceiling.
+4. Execution-contract or Spec rules for the current Run.
+5. Session approvals for the current interactive Run.
+
 Uses pattern-based permissions with three decisions:
 
 - `allow` - Always permit
 - `deny` - Always deny
-- `ask` - Prompt user for decision
+- `ask` - Prompt user for decision when an owner approval channel exists
 
 Patterns support glob matching:
 
 - `read_files` - All read operations
 - `write_files:src/*` - Write to src directory
 - `run_command:npm*` - npm commands only
+
+Command-family policy governs command classes without storing raw command
+strings. Current families are `package-manager`, `network`, `git`,
+`destructive`, `remote-exec`, `filesystem-write`, and `unknown`. Admin settings
+own the default ceiling; user settings may keep that decision or choose a
+stricter decision. Effective settings display the admin ceiling, user
+preference, and resulting decision without exposing command text or tool args.
+
+MCP policy is also ceiling-based. Admins can disable user-managed MCP and can
+restrict `stdio`, `sse`, or `http` transports. User MCP configuration remains
+owner-scoped, and project MCP remains recommendation-only until project/team
+governance exists.
+
+Unattended Execution means a Run has no active owner approval channel. In that
+state, an `ask` decision is denied unless the exact operation was explicitly
+preapproved by policy or execution contract. Server fallback is not
+automatically unattended; the approval-channel state is the deciding signal.
 
 ### Context Compaction
 

@@ -18,7 +18,7 @@ function resolveCapability(toolName: string): Capability {
     case 'update_memory_bank':
       return 'memory'
     case 'task':
-      return 'plan_exit'
+      return 'task'
     case 'question':
       return 'read'
     default:

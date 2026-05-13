@@ -7,6 +7,7 @@ import { compaction } from './compaction'
 import { SUMMARIZATION_PROMPT } from './compaction'
 import { Runtime } from './runtime'
 import type { RuntimeEvent } from './runtime'
+import { resolveHarnessPolicy } from './permission/policy'
 import { snapshots } from './snapshots'
 import type { Message, UserMessage } from './types'
 import { agents } from './agents'
@@ -1239,6 +1240,27 @@ describe('harness Runtime', () => {
     expect(sawTaskResultInFollowupStep).toBe(true)
     expect(events.some((event) => event.type === 'subagent_start')).toBe(true)
     expect(events.some((event) => event.type === 'subagent_complete')).toBe(true)
+    const summaries = events.filter((event) => event.type === 'subagent_summary')
+    expect(summaries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          subagentSummary: expect.objectContaining({
+            name: 'explore',
+            status: 'running',
+            delegatedTaskSummary: 'inspect runtime',
+            effectiveCapabilities: ['read', 'search'],
+          }),
+        }),
+        expect.objectContaining({
+          subagentSummary: expect.objectContaining({
+            name: 'explore',
+            status: 'completed',
+            outputSummary: 'child-result',
+            subagentChain: ['explore'],
+          }),
+        }),
+      ])
+    )
     expect(
       events.some(
         (event) =>
@@ -2188,6 +2210,696 @@ describe('harness Runtime', () => {
     expect(
       toolResults.some((e) => e.toolResult?.error && e.toolResult.error.includes('timed out'))
     ).toBe(true)
+  })
+
+  test('audits command-family policy denials with redacted command targets', async () => {
+    resetHarnessTestState()
+    let executorCalls = 0
+    let streamCalls = 0
+    const audits: Array<Record<string, unknown>> = []
+    const provider: LLMProvider = {
+      ...createProvider(() => {}, 'tool_calls'),
+      name: 'openai',
+      config: {
+        provider: 'openai',
+        auth: { apiKey: 'test' },
+        defaultModel: 'gpt-4o-mini',
+      },
+      async *completionStream() {
+        streamCalls++
+        if (streamCalls > 1) {
+          yield {
+            type: 'finish' as const,
+            finishReason: 'stop' as const,
+            usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+          }
+          return
+        }
+
+        yield {
+          type: 'tool_call' as const,
+          toolCall: {
+            id: 'tc-command-family-deny',
+            type: 'function',
+            function: {
+              name: 'run_command',
+              arguments: JSON.stringify({ command: 'rm -rf node_modules' }),
+            },
+          },
+        }
+        yield {
+          type: 'finish' as const,
+          finishReason: 'tool_calls' as const,
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        }
+      },
+    }
+
+    const runtime = new Runtime(
+      provider,
+      new Map([
+        [
+          'run_command',
+          async () => {
+            executorCalls++
+            return { output: 'should not run' }
+          },
+        ],
+      ]),
+      {
+        checkpointStore: new InMemoryCheckpointStore(),
+        chatMode: 'build',
+        maxSteps: 1,
+        specEngine: { enabled: false },
+        allowExperimentalModels: true,
+        resolvedHarnessPolicy: resolveHarnessPolicy({
+          mode: 'build',
+          adminRules: [
+            {
+              id: 'admin-deny-destructive',
+              capability: 'exec',
+              commandFamily: 'destructive',
+              decision: 'deny',
+              source: 'admin',
+              reason: 'Destructive commands require explicit governance.',
+            },
+          ],
+        }),
+        onPermissionAudit: async (entry) => {
+          audits.push(entry as unknown as Record<string, unknown>)
+        },
+      }
+    )
+
+    const events: RuntimeEvent[] = []
+    for await (const event of runtime.run(
+      'session-command-family-deny',
+      createUserMessage({
+        id: 'msg-command-family-deny',
+        sessionID: 'session-command-family-deny',
+        text: 'delete dependencies',
+        agent: 'build',
+      })
+    )) {
+      events.push(event)
+    }
+
+    expect(executorCalls).toBe(0)
+    expect(audits.length).toBeGreaterThanOrEqual(1)
+    expect(audits[0]).toMatchObject({
+      sessionID: 'session-command-family-deny',
+      toolName: 'run_command',
+      capability: 'exec',
+      commandFamily: 'destructive',
+      decision: 'deny',
+      ruleId: 'admin-deny-destructive',
+      ruleSource: 'admin',
+      target: {
+        kind: 'command_hash',
+      },
+    })
+    expect(JSON.stringify(audits)).not.toContain('rm -rf node_modules')
+
+    const permissionEvent = events.find((event) => event.type === 'permission_decision')
+    expect(permissionEvent?.permission).toMatchObject({
+      decision: 'deny',
+      source: 'admin',
+      commandFamily: 'destructive',
+    })
+    expect(JSON.stringify(permissionEvent)).not.toContain('rm -rf node_modules')
+  })
+
+  test('audit persistence failures do not grant denied policy actions', async () => {
+    resetHarnessTestState()
+    let executorCalls = 0
+    let streamCalls = 0
+    const provider: LLMProvider = {
+      ...createProvider(() => {}, 'tool_calls'),
+      name: 'openai',
+      config: {
+        provider: 'openai',
+        auth: { apiKey: 'test' },
+        defaultModel: 'gpt-4o-mini',
+      },
+      async *completionStream() {
+        streamCalls++
+        if (streamCalls > 1) {
+          yield {
+            type: 'finish' as const,
+            finishReason: 'stop' as const,
+            usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+          }
+          return
+        }
+
+        yield {
+          type: 'tool_call' as const,
+          toolCall: {
+            id: 'tc-audit-failure-deny',
+            type: 'function',
+            function: {
+              name: 'write_files',
+              arguments: JSON.stringify({ files: [{ path: 'src/blocked.ts', content: 'x' }] }),
+            },
+          },
+        }
+        yield {
+          type: 'finish' as const,
+          finishReason: 'tool_calls' as const,
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        }
+      },
+    }
+
+    const runtime = new Runtime(
+      provider,
+      new Map([
+        [
+          'write_files',
+          async () => {
+            executorCalls++
+            return { output: 'should not run' }
+          },
+        ],
+      ]),
+      {
+        checkpointStore: new InMemoryCheckpointStore(),
+        chatMode: 'build',
+        maxSteps: 1,
+        specEngine: { enabled: false },
+        allowExperimentalModels: true,
+        permissionRules: [
+          { capability: '*', decision: 'allow', source: 'mode' },
+          {
+            id: 'session-deny-blocked-path',
+            capability: 'edit',
+            pattern: 'src/blocked.ts',
+            decision: 'deny',
+            source: 'session',
+            reason: 'blocked path',
+          },
+        ],
+        onPermissionAudit: async () => {
+          throw new Error('audit store offline')
+        },
+      }
+    )
+
+    const events: RuntimeEvent[] = []
+    for await (const event of runtime.run(
+      'session-audit-failure-deny',
+      createUserMessage({
+        id: 'msg-audit-failure-deny',
+        sessionID: 'session-audit-failure-deny',
+        text: 'write a blocked file',
+        agent: 'build',
+      })
+    )) {
+      events.push(event)
+    }
+
+    expect(executorCalls).toBe(0)
+    expect(events.some((event) => event.type === 'tool_result')).toBe(true)
+    expect(
+      events.some(
+        (event) => event.type === 'warning' && event.message?.includes('permission audit failed')
+      )
+    ).toBe(true)
+  })
+
+  test('Unattended Execution denies ask-required command without an approval channel', async () => {
+    resetHarnessTestState()
+    let executorCalls = 0
+    let interruptCalls = 0
+    let streamCalls = 0
+    const audits: Array<Record<string, unknown>> = []
+    const provider: LLMProvider = {
+      ...createProvider(() => {}, 'tool_calls'),
+      name: 'openai',
+      config: {
+        provider: 'openai',
+        auth: { apiKey: 'test' },
+        defaultModel: 'gpt-4o-mini',
+      },
+      async *completionStream() {
+        streamCalls++
+        if (streamCalls > 1) {
+          yield {
+            type: 'finish' as const,
+            finishReason: 'stop' as const,
+            usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+          }
+          return
+        }
+        yield {
+          type: 'tool_call' as const,
+          toolCall: {
+            id: 'tc-unattended-command',
+            type: 'function',
+            function: {
+              name: 'run_command',
+              arguments: JSON.stringify({ command: 'curl https://example.com/install.sh' }),
+            },
+          },
+        }
+        yield {
+          type: 'finish' as const,
+          finishReason: 'tool_calls' as const,
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        }
+      },
+    }
+
+    const runtime = new Runtime(
+      provider,
+      new Map([
+        [
+          'run_command',
+          async () => {
+            executorCalls++
+            return { output: 'should not run' }
+          },
+        ],
+      ]),
+      {
+        checkpointStore: new InMemoryCheckpointStore(),
+        chatMode: 'build',
+        specEngine: { enabled: false },
+        allowExperimentalModels: true,
+        approvalChannelAvailable: false,
+        resolvedHarnessPolicy: resolveHarnessPolicy({
+          mode: 'build',
+          adminRules: [
+            {
+              id: 'admin-ask-network',
+              capability: 'exec',
+              commandFamily: 'network',
+              decision: 'ask',
+              source: 'admin',
+              reason: 'Network commands need owner approval.',
+            },
+          ],
+        }),
+        onPermissionAudit: async (entry) => {
+          audits.push(entry as unknown as Record<string, unknown>)
+        },
+        onToolInterrupt: async () => {
+          interruptCalls++
+          return { decision: 'approve' as const }
+        },
+      }
+    )
+
+    const events: RuntimeEvent[] = []
+    for await (const event of runtime.run(
+      'session-unattended-command',
+      createUserMessage({
+        id: 'msg-unattended-command',
+        sessionID: 'session-unattended-command',
+        text: 'run installer',
+        agent: 'build',
+      })
+    )) {
+      events.push(event)
+    }
+
+    expect(executorCalls).toBe(0)
+    expect(interruptCalls).toBe(0)
+    expect(audits[0]).toMatchObject({
+      decision: 'deny',
+      unattended: true,
+      commandFamily: 'network',
+      target: { kind: 'command_hash' },
+    })
+    expect(JSON.stringify(audits)).not.toContain('curl https://example.com/install.sh')
+    const permissionEvent = events.find((event) => event.type === 'permission_decision')
+    expect(permissionEvent?.permission).toMatchObject({
+      decision: 'deny',
+      denialReason: 'unattended_permission_denied',
+      unattended: true,
+      commandFamily: 'network',
+    })
+    expect(permissionEvent?.content).toContain('Unattended Execution')
+  })
+
+  test('approval channel availability can be checked at execution time before write approval', async () => {
+    resetHarnessTestState()
+    let executorCalls = 0
+    let approvalChecks = 0
+    let streamCalls = 0
+    const provider: LLMProvider = {
+      ...createProvider(() => {}, 'tool_calls'),
+      name: 'openai',
+      config: {
+        provider: 'openai',
+        auth: { apiKey: 'test' },
+        defaultModel: 'gpt-4o-mini',
+      },
+      async *completionStream() {
+        streamCalls++
+        if (streamCalls > 1) {
+          yield {
+            type: 'finish' as const,
+            finishReason: 'stop' as const,
+            usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+          }
+          return
+        }
+        yield {
+          type: 'tool_call' as const,
+          toolCall: {
+            id: 'tc-channel-loss-write',
+            type: 'function',
+            function: {
+              name: 'write_files',
+              arguments: JSON.stringify({ files: [{ path: 'src/new.ts', content: 'x' }] }),
+            },
+          },
+        }
+        yield {
+          type: 'finish' as const,
+          finishReason: 'tool_calls' as const,
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        }
+      },
+    }
+
+    const runtime = new Runtime(
+      provider,
+      new Map([
+        [
+          'write_files',
+          async () => {
+            executorCalls++
+            return { output: 'should not run' }
+          },
+        ],
+      ]),
+      {
+        checkpointStore: new InMemoryCheckpointStore(),
+        chatMode: 'build',
+        specEngine: { enabled: false },
+        allowExperimentalModels: true,
+        approvalChannelAvailable: () => {
+          approvalChecks++
+          return false
+        },
+        permissionRules: [
+          { capability: '*', decision: 'allow', source: 'mode' },
+          {
+            id: 'ask-write-new',
+            capability: 'edit',
+            pattern: 'src/new.ts',
+            decision: 'ask',
+            source: 'session',
+            reason: 'Owner approval required for this write.',
+          },
+        ],
+      }
+    )
+
+    const events: RuntimeEvent[] = []
+    for await (const event of runtime.run(
+      'session-channel-loss-write',
+      createUserMessage({
+        id: 'msg-channel-loss-write',
+        sessionID: 'session-channel-loss-write',
+        text: 'write file after channel loss',
+        agent: 'build',
+      })
+    )) {
+      events.push(event)
+    }
+
+    expect(approvalChecks).toBeGreaterThanOrEqual(1)
+    expect(executorCalls).toBe(0)
+    expect(
+      events.some(
+        (event) =>
+          event.type === 'permission_decision' &&
+          event.permission?.denialReason === 'unattended_permission_denied'
+      )
+    ).toBe(true)
+  })
+
+  test('approval channel available preserves interactive prompt behavior', async () => {
+    resetHarnessTestState()
+    let executorCalls = 0
+    let interruptCalls = 0
+    let streamCalls = 0
+    const provider: LLMProvider = {
+      ...createProvider(() => {}, 'tool_calls'),
+      name: 'openai',
+      config: {
+        provider: 'openai',
+        auth: { apiKey: 'test' },
+        defaultModel: 'gpt-4o-mini',
+      },
+      async *completionStream() {
+        streamCalls++
+        if (streamCalls > 1) {
+          yield {
+            type: 'finish' as const,
+            finishReason: 'stop' as const,
+            usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+          }
+          return
+        }
+        yield {
+          type: 'tool_call' as const,
+          toolCall: {
+            id: 'tc-interactive-write',
+            type: 'function',
+            function: {
+              name: 'write_files',
+              arguments: JSON.stringify({ files: [{ path: 'src/ok.ts', content: 'x' }] }),
+            },
+          },
+        }
+        yield {
+          type: 'finish' as const,
+          finishReason: 'tool_calls' as const,
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        }
+      },
+    }
+
+    const runtime = new Runtime(
+      provider,
+      new Map([
+        [
+          'write_files',
+          async () => {
+            executorCalls++
+            return { output: 'wrote' }
+          },
+        ],
+      ]),
+      {
+        checkpointStore: new InMemoryCheckpointStore(),
+        chatMode: 'build',
+        specEngine: { enabled: false },
+        allowExperimentalModels: true,
+        approvalChannelAvailable: true,
+        permissionRules: [{ capability: '*', decision: 'allow', source: 'mode' }],
+        onToolInterrupt: async () => {
+          interruptCalls++
+          return { decision: 'approve' as const }
+        },
+      }
+    )
+
+    for await (const event of runtime.run(
+      'session-interactive-write',
+      createUserMessage({
+        id: 'msg-interactive-write',
+        sessionID: 'session-interactive-write',
+        text: 'write file interactively',
+        agent: 'build',
+      })
+    )) {
+      void event
+    }
+
+    expect(interruptCalls).toBe(1)
+    expect(executorCalls).toBe(1)
+  })
+
+  test('explicit preapproval can run exact command during Unattended Execution', async () => {
+    resetHarnessTestState()
+    let executorCalls = 0
+    let streamCalls = 0
+    const provider: LLMProvider = {
+      ...createProvider(() => {}, 'tool_calls'),
+      name: 'openai',
+      config: {
+        provider: 'openai',
+        auth: { apiKey: 'test' },
+        defaultModel: 'gpt-4o-mini',
+      },
+      async *completionStream() {
+        streamCalls++
+        if (streamCalls > 1) {
+          yield {
+            type: 'finish' as const,
+            finishReason: 'stop' as const,
+            usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+          }
+          return
+        }
+        yield {
+          type: 'tool_call' as const,
+          toolCall: {
+            id: 'tc-preapproved-command',
+            type: 'function',
+            function: {
+              name: 'run_command',
+              arguments: JSON.stringify({ command: 'npm test' }),
+            },
+          },
+        }
+        yield {
+          type: 'finish' as const,
+          finishReason: 'tool_calls' as const,
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        }
+      },
+    }
+
+    const runtime = new Runtime(
+      provider,
+      new Map([
+        [
+          'run_command',
+          async () => {
+            executorCalls++
+            return { output: 'tests passed' }
+          },
+        ],
+      ]),
+      {
+        checkpointStore: new InMemoryCheckpointStore(),
+        chatMode: 'build',
+        specEngine: { enabled: false },
+        allowExperimentalModels: true,
+        approvalChannelAvailable: false,
+        resolvedHarnessPolicy: resolveHarnessPolicy({
+          mode: 'build',
+          adminRules: [
+            {
+              id: 'admin-ask-package-manager',
+              capability: 'exec',
+              commandFamily: 'package-manager',
+              decision: 'ask',
+              source: 'admin',
+              reason: 'Package manager commands need approval.',
+            },
+          ],
+          sessionRules: [
+            {
+              id: 'session-preapprove-npm-test',
+              capability: 'exec',
+              pattern: 'npm test',
+              commandFamily: 'package-manager',
+              decision: 'allow',
+              source: 'session',
+              reason: 'Exact command pre-approved for this run.',
+            },
+          ],
+        }),
+      }
+    )
+
+    for await (const event of runtime.run(
+      'session-preapproved-command',
+      createUserMessage({
+        id: 'msg-preapproved-command',
+        sessionID: 'session-preapproved-command',
+        text: 'run preapproved test',
+        agent: 'build',
+      })
+    )) {
+      void event
+    }
+
+    expect(executorCalls).toBe(1)
+  })
+
+  test('allowed reads continue during Unattended Execution', async () => {
+    resetHarnessTestState()
+    let executorCalls = 0
+    let streamCalls = 0
+    const provider: LLMProvider = {
+      ...createProvider(() => {}, 'tool_calls'),
+      name: 'openai',
+      config: {
+        provider: 'openai',
+        auth: { apiKey: 'test' },
+        defaultModel: 'gpt-4o-mini',
+      },
+      async *completionStream() {
+        streamCalls++
+        if (streamCalls > 1) {
+          yield {
+            type: 'finish' as const,
+            finishReason: 'stop' as const,
+            usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+          }
+          return
+        }
+        yield {
+          type: 'tool_call' as const,
+          toolCall: {
+            id: 'tc-unattended-read',
+            type: 'function',
+            function: {
+              name: 'read_files',
+              arguments: JSON.stringify({ paths: ['src/file.ts'] }),
+            },
+          },
+        }
+        yield {
+          type: 'finish' as const,
+          finishReason: 'tool_calls' as const,
+          usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        }
+      },
+    }
+
+    const runtime = new Runtime(
+      provider,
+      new Map([
+        [
+          'read_files',
+          async () => {
+            executorCalls++
+            return { output: 'file content' }
+          },
+        ],
+      ]),
+      {
+        checkpointStore: new InMemoryCheckpointStore(),
+        chatMode: 'build',
+        specEngine: { enabled: false },
+        allowExperimentalModels: true,
+        approvalChannelAvailable: false,
+        permissionRules: [{ capability: '*', decision: 'allow', source: 'mode' }],
+      }
+    )
+
+    for await (const event of runtime.run(
+      'session-unattended-read',
+      createUserMessage({
+        id: 'msg-unattended-read',
+        sessionID: 'session-unattended-read',
+        text: 'read file unattended',
+        agent: 'build',
+      })
+    )) {
+      void event
+    }
+
+    expect(executorCalls).toBe(1)
   })
 
   test('breaks compaction death spiral after 2 consecutive failures', async () => {

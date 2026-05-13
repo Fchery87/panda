@@ -465,6 +465,41 @@ export function applyNonTerminalAgentEvent(args: {
       return true
     }
 
+    case 'subagent_summary': {
+      if (event.subagentSummary) {
+        const status =
+          event.subagentSummary.status === 'failed' ? 'error' : event.subagentSummary.status
+        const step: ProgressStep = {
+          id: `subagent-${event.subagentSummary.subagentId}-${event.subagentSummary.status}`,
+          content:
+            event.content ??
+            `Subagent ${event.subagentSummary.status}: ${event.subagentSummary.name}`,
+          status: status === 'running' ? 'running' : status === 'error' ? 'error' : 'completed',
+          category: 'analysis',
+          createdAt: Date.now(),
+          details: {
+            toolName: 'task',
+            toolCallId: event.subagentSummary.subagentId,
+            durationMs: event.subagentSummary.durationMs,
+            errorExcerpt: event.subagentSummary.risks?.[0],
+          },
+        }
+        setProgressSteps((prev) => [...prev, step].slice(-30))
+        void appendRunEvent({
+          type: 'subagent_summary',
+          content: step.content,
+          status: event.subagentSummary.status,
+          progressCategory: 'analysis',
+          progressToolName: 'task',
+          toolCallId: event.subagentSummary.subagentId,
+          durationMs: event.subagentSummary.durationMs,
+          error: event.subagentSummary.risks?.[0],
+          subagentSummary: event.subagentSummary,
+        })
+      }
+      return true
+    }
+
     case 'snapshot': {
       if (event.snapshot) {
         const step = buildSnapshotProgressStep({

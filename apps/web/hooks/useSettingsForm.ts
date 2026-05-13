@@ -6,6 +6,7 @@ import { api } from '@convex/_generated/api'
 import { toast } from 'sonner'
 import { appLog } from '@/lib/logger'
 import { getDefaultPolicyForMode, type AgentPolicy } from '@/lib/agent/automationPolicy'
+import type { CommandFamilyPolicyEntry } from '@/lib/agent/command-family-policy'
 import { extractOpenRouterFreeCodingModelIds } from '@/lib/llm/openrouter-free-models'
 import type { ProviderCatalogEntry } from '@/lib/llm/provider-catalog'
 import { normalizeModelIds } from '@/lib/llm/model-sync'
@@ -46,6 +47,7 @@ export interface SettingsState {
   providers: Record<string, ProviderConfig>
   overrideGlobalProvider: boolean
   overrideGlobalModel: boolean
+  commandFamilyPreferences: CommandFamilyPolicyEntry[]
 }
 
 export type SettingsQueryRecord = {
@@ -57,6 +59,7 @@ export type SettingsQueryRecord = {
   overrideGlobalProvider?: boolean | null
   overrideGlobalModel?: boolean | null
   agentDefaults?: AgentPolicy | null
+  commandFamilyPreferences?: CommandFamilyPolicyEntry[] | null
   updatedAt: number
 }
 
@@ -254,6 +257,7 @@ function buildSettingsStateFromQuery(latestSettings: SettingsQueryRecord | null)
         providers: defaultProviders,
         overrideGlobalProvider: false,
         overrideGlobalModel: false,
+        commandFamilyPreferences: [],
       },
     }
   }
@@ -292,6 +296,7 @@ function buildSettingsStateFromQuery(latestSettings: SettingsQueryRecord | null)
         : defaultProviders,
       overrideGlobalProvider: latestSettings.overrideGlobalProvider ?? false,
       overrideGlobalModel: latestSettings.overrideGlobalModel ?? false,
+      commandFamilyPreferences: latestSettings.commandFamilyPreferences ?? [],
     },
   }
 }
@@ -324,6 +329,7 @@ function buildSettingsSignatureInput(
     overrideGlobalProvider: formState.overrideGlobalProvider,
     overrideGlobalModel: formState.overrideGlobalModel,
     agentDefaults,
+    commandFamilyPreferences: formState.commandFamilyPreferences,
   }
 }
 
@@ -343,6 +349,8 @@ export interface UseSettingsFormReturn {
         globalDefaultModel?: string | null
         allowUserOverrides?: boolean
         allowUserMCP?: boolean
+        allowedMCPTransports?: Array<'stdio' | 'sse' | 'http'>
+        commandFamilyPolicy?: CommandFamilyPolicyEntry[]
         allowUserSubagents?: boolean
         allowUserSkills?: boolean
       }
@@ -392,6 +400,7 @@ export function useSettingsForm(
     providers: defaultProviders,
     overrideGlobalProvider: false,
     overrideGlobalModel: false,
+    commandFamilyPreferences: [],
   })
   const freshProviders = useFreshProviderConfigs(formState.providers)
 
@@ -835,6 +844,7 @@ export function useSettingsForm(
         defaultModel: formState.defaultModel,
         providerConfigs: providersForSave,
         agentDefaults,
+        commandFamilyPreferences: formState.commandFamilyPreferences,
         overrideGlobalProvider: formState.overrideGlobalProvider,
         overrideGlobalModel: formState.overrideGlobalModel,
       } as Parameters<typeof updateSettings>[0])

@@ -53,6 +53,77 @@ describe('harness MCP manager', () => {
     const toolExec = await manager.executeTool('srv1', 'remote_tool', { x: 1 })
     expect(toolExec.error).toBeUndefined()
     expect(toolExec.output).toContain('ok')
+    expect(toolExec.metadata).toEqual({ serverID: 'srv1', source: 'user', transport: 'sse' })
+  })
+
+  test('denies transports disabled by MCP policy before connection', async () => {
+    const auditEntries: unknown[] = []
+    const manager = new MCPManager({
+      policy: { allowedTransports: ['sse', 'http'] },
+      onPermissionAudit: (entry) => {
+        auditEntries.push(entry)
+      },
+    })
+    manager.registerServer({
+      id: 'stdio-denied',
+      name: 'Local denied',
+      transport: 'stdio',
+      command: 'npx',
+      args: ['-y', 'fake-mcp'],
+    })
+
+    const result = await manager.testConnection('stdio-denied')
+    expect(result.ok).toBe(false)
+    expect(result.error).toContain('disabled by admin policy')
+    expect(auditEntries).toEqual([
+      expect.objectContaining({
+        serverID: 'stdio-denied',
+        serverSource: 'user',
+        transport: 'stdio',
+        decision: 'deny',
+        target: { kind: 'summary', value: 'user:stdio:stdio-denied' },
+      }),
+    ])
+  })
+
+  test('does not activate project recommendation MCP servers automatically', async () => {
+    const manager = new MCPManager()
+    manager.registerServer({
+      id: 'project-rec',
+      name: 'Project recommendation',
+      transport: 'sse',
+      source: 'project_recommendation',
+      url: 'https://mcp.example.com',
+    })
+
+    const result = await manager.executeTool('project-rec', 'remote_tool', { secret: 'hidden' })
+    expect(result.output).toBe('')
+    expect(result.error).toContain('Project MCP recommendations cannot activate tools')
+    expect(manager.listConnected()).toEqual([])
+  })
+
+  test('emits redacted MCP permission audit entries for tool calls', async () => {
+    const auditEntries: unknown[] = []
+    const manager = new MCPManager({
+      onPermissionAudit: (entry) => {
+        auditEntries.push(entry)
+      },
+    })
+    manager.registerServer({ id: 'mem1', name: 'Memory', transport: 'inmemory', source: 'admin' })
+
+    const result = await manager.executeTool('mem1', 'lookup_secret', { token: 'raw-token' })
+    expect(result.error).toBeUndefined()
+    expect(auditEntries).toEqual([
+      expect.objectContaining({
+        serverID: 'mem1',
+        serverSource: 'admin',
+        transport: 'inmemory',
+        toolName: 'lookup_secret',
+        decision: 'allow',
+        target: { kind: 'summary', value: 'admin:inmemory:mem1:lookup_secret' },
+      }),
+    ])
+    expect(JSON.stringify(auditEntries)).not.toContain('raw-token')
   })
 
   test('returns clear error for stdio transport without bridge factory', async () => {

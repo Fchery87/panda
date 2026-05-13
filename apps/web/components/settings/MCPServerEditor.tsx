@@ -11,13 +11,25 @@ import { mcp } from '@/lib/agent/harness'
 import { Plus, Trash2, Server } from 'lucide-react'
 import { toast } from 'sonner'
 
+type UserMCPTransport = 'stdio' | 'sse' | 'http'
+
 interface MCPServerEditorProps {
+  allowedTransports?: UserMCPTransport[]
   className?: string
 }
 
 type MCPServerId = Id<'mcpServers'>
 
-export function MCPServerEditor({ className }: MCPServerEditorProps) {
+function getFirstAllowedTransport(
+  allowedTransports: readonly UserMCPTransport[]
+): UserMCPTransport {
+  return allowedTransports[0] ?? 'sse'
+}
+
+export function MCPServerEditor({
+  allowedTransports = ['stdio', 'sse', 'http'],
+  className,
+}: MCPServerEditorProps) {
   const servers = useQuery(api.mcpServers.list)
   const addServer = useMutation(api.mcpServers.add)
   const updateServer = useMutation(api.mcpServers.update)
@@ -30,12 +42,22 @@ export function MCPServerEditor({ className }: MCPServerEditorProps) {
   >({})
   const [newServer, setNewServer] = React.useState({
     name: '',
-    transport: 'stdio' as 'stdio' | 'sse',
+    transport: getFirstAllowedTransport(allowedTransports),
     command: '',
     args: [] as string[],
     url: '',
     enabled: true,
   })
+
+  const hasAllowedTransports = allowedTransports.length > 0
+
+  React.useEffect(() => {
+    if (allowedTransports.includes(newServer.transport)) return
+    setNewServer((prev) => ({
+      ...prev,
+      transport: getFirstAllowedTransport(allowedTransports),
+    }))
+  }, [allowedTransports, newServer.transport])
 
   const handleAdd = async () => {
     if (!newServer.name.trim()) return
@@ -51,7 +73,7 @@ export function MCPServerEditor({ className }: MCPServerEditorProps) {
 
     setNewServer({
       name: '',
-      transport: 'stdio',
+      transport: getFirstAllowedTransport(allowedTransports),
       command: '',
       args: [],
       url: '',
@@ -74,7 +96,7 @@ export function MCPServerEditor({ className }: MCPServerEditorProps) {
       mcp.registerServer({
         id: String(server._id),
         name: server.name,
-        transport: server.transport as 'stdio' | 'sse',
+        transport: server.transport as UserMCPTransport,
         command: server.command ?? undefined,
         args: server.args ?? undefined,
         url: server.url ?? undefined,
@@ -115,6 +137,7 @@ export function MCPServerEditor({ className }: MCPServerEditorProps) {
           size="sm"
           onClick={() => setShowAddForm(!showAddForm)}
           className="rounded-none font-mono text-xs"
+          disabled={!hasAllowedTransports}
         >
           <Plus className="mr-1 h-3 w-3" />
           Add Server
@@ -136,8 +159,10 @@ export function MCPServerEditor({ className }: MCPServerEditorProps) {
             Permission Boundary
           </p>
           <p className="mt-2 text-xs text-muted-foreground">
-            MCP servers can expose tools to agent runs. Do not add secrets here; configure secrets
-            in the server runtime. Test before enabling any new server.
+            MCP servers can expose tools to agent runs. Admin policy allows these transports here:
+            {allowedTransports.length > 0 ? ` ${allowedTransports.join(', ')}` : ' none'}.{' '}
+            <span>Do not add secrets</span> here; configure secrets in the server runtime.{' '}
+            <span>Test before enabling</span> any new server.
           </p>
         </div>
       </div>
@@ -162,14 +187,24 @@ export function MCPServerEditor({ className }: MCPServerEditorProps) {
                 onChange={(e) =>
                   setNewServer((prev) => ({
                     ...prev,
-                    transport: e.target.value as 'stdio' | 'sse',
+                    transport: e.target.value as UserMCPTransport,
                   }))
                 }
                 className="w-full rounded-none border border-border bg-background px-3 py-2 font-mono text-xs"
               >
-                <option value="stdio">stdio (local process)</option>
-                <option value="sse">sse (HTTP server)</option>
+                {allowedTransports.includes('stdio') ? (
+                  <option value="stdio">stdio (local process)</option>
+                ) : null}
+                {allowedTransports.includes('sse') ? (
+                  <option value="sse">sse (SSE HTTP server)</option>
+                ) : null}
+                {allowedTransports.includes('http') ? (
+                  <option value="http">http (streamable HTTP server)</option>
+                ) : null}
               </select>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Admin transport ceiling: {allowedTransports.join(', ') || 'none'}.
+              </p>
             </div>
 
             {newServer.transport === 'stdio' ? (
@@ -219,7 +254,7 @@ export function MCPServerEditor({ className }: MCPServerEditorProps) {
                 setShowAddForm(false)
                 setNewServer({
                   name: '',
-                  transport: 'stdio',
+                  transport: getFirstAllowedTransport(allowedTransports),
                   command: '',
                   args: [],
                   url: '',
@@ -233,7 +268,7 @@ export function MCPServerEditor({ className }: MCPServerEditorProps) {
             <Button
               size="sm"
               onClick={handleAdd}
-              disabled={!newServer.name.trim()}
+              disabled={!newServer.name.trim() || !hasAllowedTransports}
               className="rounded-none font-mono text-xs"
             >
               Add Server

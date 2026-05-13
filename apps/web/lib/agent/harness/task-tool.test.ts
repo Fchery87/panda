@@ -62,6 +62,55 @@ describe('executeTaskTool', () => {
     expect(checkPermission(delegatedAgent!.permission, 'run_command')).toBe('ask')
   })
 
+  test('preserves nested subagent summaries in metadata without raw prompt changes', async () => {
+    const parentAgent = agents.get('build')
+    expect(parentAgent).toBeDefined()
+
+    const result = await executeTaskTool(
+      {
+        subagent_type: 'test-generator',
+        prompt: 'write tests with private context',
+        description: 'Generate tests',
+      },
+      {
+        sessionID: 'session-parent',
+        messageID: 'msg-parent',
+        parentAgent: parentAgent!,
+        runSubagent: async () => ({
+          sessionID: 'child-session',
+          output: 'ok',
+          parts: [],
+          subagentSummaries: [
+            {
+              version: 1,
+              subagentId: 'nested-subagent',
+              parentRunId: 'run-1',
+              name: 'debugger',
+              status: 'completed',
+              startedAt: 1,
+              completedAt: 2,
+              durationMs: 1,
+              capabilityPreset: 'research',
+              effectiveCapabilities: ['read', 'search'],
+              delegatedTaskSummary: 'Debug issue',
+              outputSummary: 'Found likely cause',
+              subagentChain: ['test-generator', 'debugger'],
+            },
+          ],
+        }),
+      }
+    )
+
+    expect(result.error).toBeUndefined()
+    expect(result.metadata?.subagentSummaries).toEqual([
+      expect.objectContaining({
+        subagentId: 'nested-subagent',
+        outputSummary: 'Found likely cause',
+      }),
+    ])
+    expect(JSON.stringify(result.metadata)).not.toContain('private context')
+  })
+
   test('preserves child allowed tools when parent allows them', async () => {
     let delegatedAgent: AgentConfig | undefined
 

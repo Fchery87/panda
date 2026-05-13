@@ -180,6 +180,7 @@ export async function executeTaskTool(
         agent: delegatedAgent.name,
         usage: result.usage,
         cost: result.cost,
+        subagentSummaries: result.subagentSummaries,
       },
     }
   } catch (error) {

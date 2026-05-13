@@ -30,6 +30,11 @@ import type {
   ToolInterruptResult,
   ToolRiskTier,
   RuntimeSnapshotEvent,
+  HarnessPermissionAuditEntry,
+  PermissionAuditTarget,
+  RuntimeHarnessPolicySnapshot,
+  HarnessSubagentSummary,
+  HarnessSubagentCapabilityPreset,
 } from './types'
 import type { FormalSpecification, SpecTier } from '../spec/types'
 import type {
@@ -42,7 +47,12 @@ import type {
 } from '../../llm/types'
 import { AGENT_TOOLS, type AgentToolDefinition } from '../tools'
 import { evaluate, narrowRulesForSubagent } from './permission/evaluate'
-import { analyzeCommand } from '../command-analysis'
+import { evaluateHarnessPolicy } from './permission/policy'
+import {
+  analyzeCommand,
+  classifyCommandFamily,
+  createCommandAuditTarget,
+} from '../command-analysis'
 import { ascending } from './identifier'
 import { agents } from './agents'
 import { PermissionManager, checkPermission } from './permissions'
@@ -208,6 +218,7 @@ export type RuntimeEventType =
   | 'tool_result'
   | 'subagent_start'
   | 'subagent_complete'
+  | 'subagent_summary'
   | 'step_start'
   | 'step_finish'
   | 'compaction'
@@ -264,6 +275,7 @@ export interface RuntimeEvent {
     success?: boolean
     error?: string
   }
+  subagentSummary?: HarnessSubagentSummary
   step?: number
   finishReason?: FinishReason
   usage?: { input: number; output: number; reasoning: number }
@@ -302,9 +314,14 @@ export interface RuntimeEvent {
     target?: string
     decision: 'allow' | 'ask' | 'deny'
     source?: string
+    ruleId?: string
     reason: string
     mode: string
     agentId: string
+    commandFamily?: string
+    targetKind?: string
+    unattended?: boolean
+    denialReason?: 'unattended_permission_denied'
   }
 }
 
@@ -360,6 +377,7 @@ export class Runtime {
   private specLifecycleManager: SpecLifecycleManager
   private pendingPluginErrors: RuntimeEvent[] = []
   private permissions!: PermissionManager
+  private resolvedHarnessPolicy: RuntimeHarnessPolicySnapshot | null = null
 
   constructor(
     provider: LLMProvider,
@@ -402,6 +420,7 @@ export class Runtime {
     }
     const maxSteps = agent.steps ?? this.config.maxSteps ?? 50
     this.state = this.createInitialState(sessionID, [...initialMessages, userMessage])
+    this.resolvedHarnessPolicy = this.createRuntimePolicySnapshot(agent)
 
     // SpecNative: Generate spec before execution if enabled
     if (this.specLifecycleManager.isEnabled()) {
@@ -1316,6 +1335,87 @@ export class Runtime {
     return { finishReason, messageID }
   }
 
+  private createRuntimePolicySnapshot(_agent: AgentConfig): RuntimeHarnessPolicySnapshot | null {
+    if (this.config.resolvedHarnessPolicy) {
+      return this.config.resolvedHarnessPolicy
+    }
+
+    if (this.config.permissionRules && this.config.permissionRules.length > 0) {
+      return {
+        version: 1,
+        mode: this.config.chatMode ?? 'code',
+        ...(this.config.runId ? { runId: this.config.runId } : {}),
+        rules: this.config.permissionRules,
+        unattendedDefaultDecision: 'deny',
+        createdAt: Date.now(),
+      }
+    }
+
+    return null
+  }
+
+  private isApprovalChannelAvailable(): boolean {
+    const configured = this.config.approvalChannelAvailable
+    if (typeof configured === 'function') {
+      try {
+        return configured()
+      } catch (error) {
+        appLog.warn('[harness-runtime] approval channel check failed; treating run as unattended', {
+          detail: error instanceof Error ? error.message : 'unknown error',
+        })
+        return false
+      }
+    }
+
+    return configured ?? true
+  }
+
+  private createPermissionAuditTarget(
+    toolName: string,
+    target: string | undefined,
+    args: Record<string, unknown>
+  ): PermissionAuditTarget {
+    if (toolName === 'run_command') {
+      return createCommandAuditTarget(String(args.command ?? ''))
+    }
+
+    if (target && target !== '') {
+      return { kind: 'literal', value: target.slice(0, 500) }
+    }
+
+    return { kind: 'summary', value: toolName }
+  }
+
+  private async persistPermissionAudit(
+    entry: HarnessPermissionAuditEntry
+  ): Promise<RuntimeEvent | null> {
+    if (!this.config.onPermissionAudit) return null
+
+    try {
+      await this.config.onPermissionAudit(entry)
+      return null
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : 'unknown error'
+      appLog.warn('[harness-runtime] permission audit failed', { detail })
+      return {
+        type: 'warning',
+        message: `permission audit failed: ${detail}`,
+      }
+    }
+  }
+
+  private isExplicitPolicyPreapproval(
+    result: ReturnType<typeof evaluate>,
+    target: string | undefined
+  ): boolean {
+    if (result.decision !== 'allow') return false
+    if (!result.rule) return false
+    if (result.rule.source === 'mode') return false
+    if (result.rule.pattern && target && result.rule.pattern === target) return true
+    if (result.rule.source === 'execution_contract' || result.rule.source === 'spec') return true
+    return false
+  }
+
   /**
    * Execute a tool call with permission checking
    */
@@ -1350,38 +1450,93 @@ export class Runtime {
     // Catches tools that slipped through tool-list filtering and enforces
     // target-specific rules (e.g. `rm *` in build mode). Returns a structured
     // tool_result so the LLM can see and reason about the denial.
-    const modeRules = this.config.permissionRules
-    if (modeRules && modeRules.length > 0) {
+    const policy = this.resolvedHarnessPolicy
+    let hasExplicitPolicyPreapproval = false
+    if (policy && policy.rules.length > 0) {
       const agentTool = AGENT_TOOLS.find((t) => t.function.name === toolName)
       if (agentTool?.capability) {
         const targets = patterns.length > 0 ? patterns : [undefined]
+        const commandClassification =
+          toolName === 'run_command' ? classifyCommandFamily(String(args.command ?? '')) : null
+
         for (const target of targets) {
-          const execResult = evaluate(modeRules, {
-            capability: agentTool.capability,
-            target,
-            mode: this.config.chatMode ?? 'code',
+          const execResult = this.config.resolvedHarnessPolicy
+            ? evaluateHarnessPolicy(policy, {
+                capability: agentTool.capability,
+                target,
+                commandFamily: commandClassification?.family,
+                mode: this.config.chatMode ?? policy.mode,
+                agentId: agent.name,
+              })
+            : evaluate(policy.rules, {
+                capability: agentTool.capability,
+                target,
+                commandFamily: commandClassification?.family,
+                mode: this.config.chatMode ?? policy.mode,
+                agentId: agent.name,
+              })
+          hasExplicitPolicyPreapproval ||= this.isExplicitPolicyPreapproval(execResult, target)
+
+          const unattended = !this.isApprovalChannelAvailable()
+          const unattendedPolicyDeny = execResult.decision === 'ask' && unattended
+          const decision = unattendedPolicyDeny ? 'deny' : execResult.decision
+          const denialReason = unattendedPolicyDeny
+            ? ('unattended_permission_denied' as const)
+            : undefined
+          const reason = unattendedPolicyDeny
+            ? `Unattended Execution denied ${toolName}: ${execResult.reason}`
+            : execResult.reason
+          const auditTarget = this.createPermissionAuditTarget(toolName, target, args)
+          const safeTarget = toolName === 'run_command' ? auditTarget.value : target
+          const auditWarning = await this.persistPermissionAudit({
+            sessionID: this.state.sessionID,
+            ...(this.config.runId || policy.runId
+              ? { runId: this.config.runId ?? policy.runId }
+              : {}),
+            ...(this.config.chatId ? { chatId: this.config.chatId } : {}),
+            ...(this.config.projectId ? { projectId: this.config.projectId } : {}),
             agentId: agent.name,
+            toolName,
+            capability: agentTool.capability,
+            ...(commandClassification ? { commandFamily: commandClassification.family } : {}),
+            decision,
+            ...(execResult.rule?.id ? { ruleId: execResult.rule.id } : {}),
+            ...(execResult.rule?.source ? { ruleSource: execResult.rule.source } : {}),
+            reason,
+            target: auditTarget,
+            unattended,
+            createdAt: Date.now(),
           })
+          if (auditWarning) yield auditWarning
+
           yield {
             type: 'permission_decision',
+            content: unattendedPolicyDeny ? reason : undefined,
             permission: {
               tool: toolName,
               capability: agentTool.capability,
-              target,
-              decision: execResult.decision,
+              target: safeTarget,
+              decision,
               source: execResult.rule?.source,
-              reason: execResult.reason,
-              mode: this.config.chatMode ?? 'code',
+              ruleId: execResult.rule?.id,
+              reason,
+              mode: this.config.chatMode ?? policy.mode,
               agentId: agent.name,
+              ...(commandClassification ? { commandFamily: commandClassification.family } : {}),
+              targetKind: auditTarget.kind,
+              unattended,
+              ...(denialReason ? { denialReason } : {}),
             },
           }
 
-          if (execResult.decision === 'deny') {
-            const error = `Permission denied by ${execResult.rule?.source ?? 'mode'} rule: ${execResult.reason}`
+          if (decision === 'deny') {
+            const error = unattendedPolicyDeny
+              ? reason
+              : `Permission denied by ${execResult.rule?.source ?? 'mode'} rule: ${reason}`
             log.warn('Capability denied at execution', {
               tool: toolName,
-              target,
-              reason: execResult.reason,
+              target: safeTarget,
+              reason,
             })
             yield createToolResultEvent({
               toolCallId: toolCall.id,
@@ -1433,20 +1588,50 @@ export class Runtime {
     }
 
     if (riskPolicyDecision === 'ask') {
-      const interruptResult = yield* this.requestToolInterrupt({
-        sessionID: this.state.sessionID,
-        messageID,
-        toolCallId: toolCall.id,
-        toolName,
-        args,
-        patterns,
-        riskTier,
-        reason: `Risk-tier policy requires approval for ${toolName}`,
-      })
-      if (!interruptResult.approved) {
-        return { output: '', error: interruptResult.error ?? 'Tool interrupted', argsUsed: args }
+      const unattended = !this.isApprovalChannelAvailable()
+      if (unattended && !hasExplicitPolicyPreapproval) {
+        const error = `Unattended Execution denied ${toolName}: risk-tier policy requires owner approval (${riskTier})`
+        yield {
+          type: 'interrupt_decision',
+          content: error,
+          interrupt: {
+            toolName,
+            riskTier,
+            decision: 'reject',
+            reason: 'Unattended Execution has no active owner approval channel',
+          },
+        }
+        yield createToolResultEvent({
+          toolCallId: toolCall.id,
+          toolName,
+          args,
+          output: '',
+          error,
+          startedAt,
+        })
+        log.warn('Unattended Execution denied risk-tier approval', {
+          tool: toolName,
+          riskTier,
+        })
+        return { output: '', error, argsUsed: args }
       }
-      args = interruptResult.args
+
+      if (!hasExplicitPolicyPreapproval) {
+        const interruptResult = yield* this.requestToolInterrupt({
+          sessionID: this.state.sessionID,
+          messageID,
+          toolCallId: toolCall.id,
+          toolName,
+          args,
+          patterns,
+          riskTier,
+          reason: `Risk-tier policy requires approval for ${toolName}`,
+        })
+        if (!interruptResult.approved) {
+          return { output: '', error: interruptResult.error ?? 'Tool interrupted', argsUsed: args }
+        }
+        args = interruptResult.args
+      }
     }
 
     // Session-level permission overrides from automation policy.
@@ -1811,6 +1996,97 @@ export class Runtime {
     })
   }
 
+  private inferSubagentCapabilityPreset(
+    capabilities: readonly string[]
+  ): HarnessSubagentCapabilityPreset {
+    const set = new Set(capabilities)
+    if (set.has('edit')) return set.has('exec') ? 'builder' : 'assistant'
+    if (set.has('exec')) return 'assistant'
+    if (set.has('read') || set.has('search')) return 'research'
+    return 'restricted'
+  }
+
+  private summarizeSubagentOutput(output: string | undefined): string | undefined {
+    const normalized = (output ?? '').replace(/\s+/g, ' ').trim()
+    if (!normalized) return undefined
+    return normalized.slice(0, 500)
+  }
+
+  private extractSubagentFilesTouched(output: string | undefined): string[] {
+    const matches =
+      (output ?? '').match(/[\w./@-]+\.(?:ts|tsx|js|jsx|css|md|mdx|json|yaml|yml)/g) ?? []
+    return [...new Set(matches)].slice(0, 20)
+  }
+
+  private extractSubagentTestsRun(output: string | undefined): string[] {
+    const lines = (output ?? '').split(/\r?\n/)
+    return [
+      ...new Set(
+        lines
+          .map((line) => line.trim())
+          .filter((line) =>
+            /\b(?:bun|npm|pnpm|yarn|npx)\b.*\b(?:test|typecheck|lint|format:check|playwright|convex)\b/i.test(
+              line
+            )
+          )
+      ),
+    ].slice(0, 20)
+  }
+
+  private extractSubagentRisks(output: string | undefined, error?: string): string[] {
+    const risks = new Set<string>()
+    if (error) risks.add(error.slice(0, 200))
+    for (const line of (output ?? '').split(/\r?\n/)) {
+      if (/\b(?:risk|warning|blocked|failed|failure|vulnerab|secret|permission)\b/i.test(line)) {
+        risks.add(line.trim().slice(0, 200))
+      }
+      if (risks.size >= 20) break
+    }
+    return [...risks]
+  }
+
+  private createSubagentSummary(args: {
+    pending: PendingSubtask
+    status: HarnessSubagentSummary['status']
+    output?: string
+    error?: string
+    now?: number
+  }): HarnessSubagentSummary {
+    const { pending, status, output, error } = args
+    const now = args.now ?? Date.now()
+    const startedAt = pending.startedAt ?? now
+    const capabilities = agents.get(pending.part.agent)?.maxCapabilities ?? []
+    const currentChain = this.config.subagentChain ?? []
+    const subagentChain = [...currentChain, pending.part.agent].slice(-10)
+    const parentSubagentId =
+      currentChain.length > 0 ? currentChain[currentChain.length - 1] : undefined
+    const outputSummary = this.summarizeSubagentOutput(output)
+    const filesTouched = this.extractSubagentFilesTouched(output)
+    const testsRun = this.extractSubagentTestsRun(output)
+    const risks = this.extractSubagentRisks(output, error)
+
+    return {
+      version: 1,
+      subagentId: pending.part.id,
+      parentRunId: this.config.runId ?? this.state?.sessionID ?? pending.part.sessionID,
+      ...(parentSubagentId ? { parentSubagentId } : {}),
+      name: pending.part.agent,
+      status,
+      startedAt,
+      ...(status === 'running'
+        ? {}
+        : { completedAt: now, durationMs: Math.max(0, now - startedAt) }),
+      capabilityPreset: this.inferSubagentCapabilityPreset(capabilities),
+      effectiveCapabilities: capabilities,
+      delegatedTaskSummary: pending.description.slice(0, 500),
+      ...(outputSummary ? { outputSummary } : {}),
+      ...(filesTouched.length > 0 ? { filesTouched } : {}),
+      ...(testsRun.length > 0 ? { testsRun } : {}),
+      ...(risks.length > 0 ? { risks } : {}),
+      subagentChain,
+    }
+  }
+
   /**
    * Process pending subtasks
    */
@@ -1829,6 +2105,11 @@ export class Runtime {
           sessionID: this.state.sessionID,
           id: pending.part.id,
         },
+      }
+      yield {
+        type: 'subagent_summary',
+        content: `Subagent started: ${pending.part.agent}`,
+        subagentSummary: this.createSubagentSummary({ pending, status: 'running' }),
       }
     }
 
@@ -1901,6 +2182,16 @@ export class Runtime {
         }
 
         yield {
+          type: 'subagent_summary',
+          content: `Subagent failed: ${subtask.agent}`,
+          subagentSummary: this.createSubagentSummary({
+            pending,
+            status: 'failed',
+            error: errorMessage,
+          }),
+        }
+
+        yield {
           type: 'subagent_complete',
           subagent: {
             agent: subtask.agent,
@@ -1935,6 +2226,28 @@ export class Runtime {
             output: taskResult.output,
             ...(taskResult.error ? { error: taskResult.error } : {}),
             startedAt: pending.startedAt,
+          }),
+        }
+
+        const nestedSummaries = taskResult.metadata?.subagentSummaries
+        if (Array.isArray(nestedSummaries)) {
+          for (const summary of nestedSummaries) {
+            yield {
+              type: 'subagent_summary',
+              content: `Nested subagent ${summary.status}: ${summary.name}`,
+              subagentSummary: summary as HarnessSubagentSummary,
+            }
+          }
+        }
+
+        yield {
+          type: 'subagent_summary',
+          content: `Subagent ${taskResult.error ? 'failed' : 'completed'}: ${subtask.agent}`,
+          subagentSummary: this.createSubagentSummary({
+            pending,
+            status: taskResult.error ? 'failed' : 'completed',
+            output: taskResult.output,
+            error: taskResult.error,
           }),
         }
 
@@ -2025,6 +2338,8 @@ export class Runtime {
       ...this.config,
       subagentDepth: currentDepth + 1,
       permissionRules: narrowedRules.length > 0 ? narrowedRules : this.config.permissionRules,
+      resolvedHarnessPolicy: undefined,
+      subagentChain: [...(this.config.subagentChain ?? []), agent.name].slice(-10),
       // Subagents execute a single scoped task — spec generation and
       // verification are handled by the parent session, not children.
       specEngine: { enabled: false },
@@ -2061,6 +2376,7 @@ export class Runtime {
     let output = ''
     let usage: { promptTokens: number; completionTokens: number; totalTokens: number } | undefined
     let error: string | undefined
+    const subagentSummaries: HarnessSubagentSummary[] = []
 
     try {
       for await (const event of childRuntime.run(childSessionID, childUserMessage)) {
@@ -2077,6 +2393,9 @@ export class Runtime {
         if (event.type === 'error' && event.error) {
           error = event.error
         }
+        if (event.type === 'subagent_summary' && event.subagentSummary) {
+          subagentSummaries.push(event.subagentSummary)
+        }
       }
     } finally {
       parentAbortSignal?.removeEventListener('abort', abortChild)
@@ -2088,6 +2407,7 @@ export class Runtime {
       parts: [],
       usage,
       error,
+      subagentSummaries,
     }
   }
 
@@ -2374,15 +2694,21 @@ export class Runtime {
       // Capability-based mode rule evaluation (unified permission system).
       // Rules are defined per-mode in lib/agent/permission/mode-rulesets.ts
       // and evaluated with last-rule-wins semantics.
-      const rules = this.config.permissionRules
-      if (rules && rules.length > 0) {
+      const policy = this.resolvedHarnessPolicy
+      if (policy && policy.rules.length > 0) {
         const agentTool = tool as AgentToolDefinition
         if (agentTool.capability) {
-          const result = evaluate(rules, {
-            capability: agentTool.capability,
-            mode: this.config.chatMode ?? 'code',
-            agentId: agent.name,
-          })
+          const result = this.config.resolvedHarnessPolicy
+            ? evaluateHarnessPolicy(policy, {
+                capability: agentTool.capability,
+                mode: this.config.chatMode ?? policy.mode,
+                agentId: agent.name,
+              })
+            : evaluate(policy.rules, {
+                capability: agentTool.capability,
+                mode: this.config.chatMode ?? policy.mode,
+                agentId: agent.name,
+              })
           if (result.decision === 'deny') return false
         }
       }

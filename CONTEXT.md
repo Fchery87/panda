@@ -12,6 +12,47 @@ Run: message creation, run record updates, event application, receipt summary,
 and plan/spec context attachment. Runtime execution internals, UI rendering, and
 command execution remain outside run orchestration.
 
+### Harness Policy
+
+A `Harness Policy` is the resolved execution-governance contract for a Run. It
+combines admin ceilings, user preferences, approved execution context, and
+session approvals into capability rules for tools, commands, MCP, Subagents, and
+runtime actions.
+
+Admin policy is the strongest layer and defines the maximum allowed capability
+set. User preferences may make behavior stricter inside that ceiling.
+Project-scoped Harness Policy is a future team-governance capability, not a v1
+source of execution authority.
+
+### Command-Family Policy
+
+A `Command-Family Policy` is the Harness Policy layer that governs shell command
+categories such as package-manager, network, git, destructive, remote-exec,
+filesystem-write, and unknown commands.
+
+Command-Family Policy is owned by Convex admin settings first. Runtime receives
+a resolved policy snapshot and must not be treated as the source of truth.
+
+### Permission Audit Decision
+
+A `Permission Audit Decision` is the canonical audit record for an allowed,
+denied, or prompted tool/runtime decision during a Run.
+
+`permissionAuditLog` owns the canonical Permission Audit Decision. Run events
+may mirror bounded proof summaries for the Proof surface, but they are not the
+canonical audit store.
+
+### Unattended Execution
+
+`Unattended Execution` is a Run state where Panda has no active owner approval
+channel available for permission prompts.
+
+Use `Unattended Execution` in product and architecture language. Use `headless`
+only as an internal compatibility term when referring to runtimes without an
+interactive approval channel. Server fallback is not the same thing as
+Unattended Execution: a server-backed Run may still be interactive if the owner
+can approve prompts.
+
 ### Execution Session
 
 An `Execution Session` is the user-facing work thread for one goal inside a

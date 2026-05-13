@@ -45,6 +45,10 @@ Use these labels before following any document for implementation work:
   capability presets, and run visibility
 - [docs/plans/2026-04-23-convex-bandwidth-optimization.md](./plans/2026-04-23-convex-bandwidth-optimization.md) -
   Convex payload-shape and bandwidth remediation plan
+- [docs/plans/layered-harness-policy-implementation.md](./plans/layered-harness-policy-implementation.md) -
+  completed implementation record for layered Harness Policy, command-family
+  governance, permission audit decisions, Subagent summaries, Unattended
+  Execution, MCP policy alignment, and settings/docs surfacing
 - [docs/DEPLOYMENT.md](./DEPLOYMENT.md) - production deployment guide
 - [docs/GOOGLE_OAUTH_SETUP.md](./GOOGLE_OAUTH_SETUP.md) - Google OAuth setup
 - [docs/GITHUB_APP_SETUP.md](./GITHUB_APP_SETUP.md) - GitHub App setup for

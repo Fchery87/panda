@@ -431,6 +431,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const attachVerification = useMutation(api.planningSessions.attachVerification)
   const createRun = useMutation(api.agentRuns.create)
   const appendRunEvents = useMutation(api.agentRuns.appendEvents)
+  const logHarnessPermissionDecision = useMutation(api.permissionAuditLog.logHarnessDecision)
   const completeRun = useMutation(api.agentRuns.complete)
   const failRun = useMutation(api.agentRuns.fail)
   const stopRun = useMutation(api.agentRuns.stop)
@@ -908,6 +909,27 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             harnessSessionPermissions: automationPolicy
               ? buildHarnessSessionPermissions(automationPolicy)
               : undefined,
+            harnessPermissionAudit: async (entry) => {
+              await logHarnessPermissionDecision({
+                sessionID: entry.sessionID,
+                runId,
+                chatId,
+                projectId,
+                agentId: entry.agentId,
+                ...(entry.subagentChain ? { subagentChain: entry.subagentChain } : {}),
+                toolName: entry.toolName,
+                capability: entry.capability,
+                ...(entry.commandFamily ? { commandFamily: entry.commandFamily } : {}),
+                decision: entry.decision,
+                ...(entry.ruleId ? { ruleId: entry.ruleId } : {}),
+                ...(entry.ruleSource ? { ruleSource: entry.ruleSource } : {}),
+                ...(entry.reason ? { reason: entry.reason } : {}),
+                target: entry.target,
+                unattended: entry.unattended,
+                createdAt: entry.createdAt,
+                ...(entry.metadata ? { metadata: entry.metadata } : {}),
+              })
+            },
             ...(runtimeSettings.reasoning ? { reasoning: runtimeSettings.reasoning } : {}),
           },
           toolContext
@@ -1215,6 +1237,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       createRun,
       appendRunEvent,
       completeRun,
+      logHarnessPermissionDecision,
       convex,
       failRun,
       flushRunEventBuffer,

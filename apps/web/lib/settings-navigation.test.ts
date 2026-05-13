@@ -49,6 +49,7 @@ describe('settings navigation helpers', () => {
       overrideGlobalProvider: false,
       overrideGlobalModel: false,
       agentDefaults: getDefaultPolicyForMode('code'),
+      commandFamilyPreferences: [],
     }
 
     const next = {
@@ -82,6 +83,7 @@ describe('settings navigation helpers', () => {
       overrideGlobalProvider: false,
       overrideGlobalModel: false,
       agentDefaults: getDefaultPolicyForMode('code'),
+      commandFamilyPreferences: [],
     }
 
     const next = {

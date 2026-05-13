@@ -25,8 +25,11 @@ import {
   type ToolExecutor as HarnessToolExecutor,
   type ToolInterruptRequest as HarnessToolInterruptRequest,
   type UserMessage as HarnessUserMessage,
+  type HarnessPermissionAuditEntry,
+  type HarnessSubagentSummary,
 } from './harness'
 import { PermissionManager } from './harness/permissions'
+import { resolveHarnessPolicy } from './harness/permission/policy'
 import {
   InMemoryCheckpointStore,
   type CheckpointStore as HarnessCheckpointStore,
@@ -50,6 +53,7 @@ export interface RuntimeOptions {
   harnessEnableRiskInterrupts?: boolean
   harnessEvalMode?: 'read_only' | 'full'
   harnessSessionPermissions?: HarnessPermission
+  harnessPermissionAudit?: (entry: HarnessPermissionAuditEntry) => void | Promise<void>
 }
 
 export type AgentEventType =
@@ -61,6 +65,7 @@ export type AgentEventType =
   | 'text'
   | 'tool_call'
   | 'tool_result'
+  | 'subagent_summary'
   | 'retry'
   | 'reset'
   | 'error'
@@ -107,6 +112,7 @@ export interface AgentEvent {
       description: string
     }>
   }
+  subagentSummary?: HarnessSubagentSummary
   reconcile?: {
     aligned: boolean
     reason: string
@@ -151,6 +157,7 @@ export interface RuntimeConfig {
   harnessEnableRiskInterrupts?: boolean
   harnessEvalMode?: 'read_only' | 'full'
   harnessSpecApprovalMode?: 'interactive' | 'auto_approve'
+  harnessRunId?: string
 }
 
 function logRuntimeError(message: string, error?: unknown): void {
@@ -540,11 +547,19 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
       toolRetryBackoffMs: 200,
       // Wire chat mode into the harness for capability-based tool filtering
       chatMode: promptContext.chatMode,
+      runId: config?.harnessRunId,
       // Allow experimental models — the model was explicitly selected through
       // admin/user settings, so the preflight should not block it. Only truly
       // unverified models (status: 'unverified') remain gated.
       allowExperimentalModels: true,
       permissionRules: resolveRulesForPhase(promptContext.chatMode),
+      resolvedHarnessPolicy: resolveHarnessPolicy({
+        mode: promptContext.chatMode,
+        runId: config?.harnessRunId,
+        legacySessionPermissions: sessionPermissions,
+      }),
+      onPermissionAudit: this.options.harnessPermissionAudit,
+      approvalChannelAvailable: true,
       specEngine: {
         // Spec generation is only valuable for the coordinated Code mode,
         // where work should follow a durable execution contract. Build mode
@@ -976,6 +991,12 @@ function mapHarnessEventToAgentEvent(event: HarnessRuntimeEvent): AgentEvent | n
         progressCategory: 'analysis',
         progressToolName: 'task',
         progressToolCallId: event.subagent?.id,
+      }
+    case 'subagent_summary':
+      return {
+        type: 'subagent_summary',
+        content: event.content,
+        subagentSummary: event.subagentSummary,
       }
     case 'subagent_complete':
       return {

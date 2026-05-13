@@ -57,6 +57,12 @@ export type {
   CompactionResult,
   PermissionRequest,
   PermissionResult,
+  PermissionAuditTarget,
+  HarnessPermissionAuditEntry,
+  HarnessSubagentSummary,
+  HarnessSubagentStatus,
+  HarnessSubagentCapabilityPreset,
+  RuntimeHarnessPolicySnapshot,
 } from './types'
 
 export { ascending, random, parseTimestamp, compare } from './identifier'
@@ -95,7 +101,16 @@ export {
 } from './task-tool'
 export type { TaskToolContext } from './task-tool'
 export { mcp } from './mcp'
-export type { MCPServerConfig, MCPToolDefinition, MCPResource, MCPClient } from './mcp'
+export type {
+  MCPServerConfig,
+  MCPToolDefinition,
+  MCPResource,
+  MCPClient,
+  MCPTransport,
+  MCPServerSource,
+  MCPPolicyConfig,
+  MCPPermissionAuditEntry,
+} from './mcp'
 export { snapshots, diffSnapshots, createPatch } from './snapshots'
 export type { Snapshot } from './snapshots'
 export {

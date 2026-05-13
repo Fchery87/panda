@@ -100,6 +100,7 @@ function toRunEventSummary(event: Doc<'agentRunEvents'>) {
     usage: event.usage,
     snapshot: event.snapshot,
     appliedSkills: event.appliedSkills,
+    subagentSummary: event.subagentSummary,
     createdAt: event.createdAt,
     contentPreview: previewText(event.content),
     errorPreview: previewText(event.error),
@@ -214,6 +215,7 @@ export const appendEvents = mutation({
         usage: event.usage,
         snapshot: event.snapshot,
         appliedSkills: event.appliedSkills,
+        subagentSummary: event.subagentSummary,
         createdAt: createdAt + index,
       })
     }

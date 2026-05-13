@@ -156,6 +156,23 @@ function buildValidationEvidence(filesWritten: string[], commandsRun: { command:
   }))
 }
 
+function buildSubagentRollup(args: BuildExecutionReceiptArgs['runEvents']) {
+  const bySubagent = new Map<string, NonNullable<(typeof args)[number]['subagentSummary']>>()
+
+  for (const event of args) {
+    const summary = event.subagentSummary
+    if (!summary) continue
+    if (summary.status === 'running') continue
+    bySubagent.set(summary.subagentId, summary)
+  }
+
+  const values = [...bySubagent.values()].slice(0, MAX_RECEIPT_ITEMS)
+  return {
+    values,
+    truncated: bySubagent.size > MAX_RECEIPT_ITEMS,
+  }
+}
+
 export function buildExecutionReceipt(args: BuildExecutionReceiptArgs): ExecutionReceipt {
   const filesConsidered = boundArray(args.contextSources.filesConsidered)
   const filesLoaded = boundArray(args.contextSources.filesLoaded)
@@ -205,6 +222,7 @@ export function buildExecutionReceipt(args: BuildExecutionReceiptArgs): Executio
   })
   const approvalsRequested = boundArray(approvalEvents)
   const validationEvidence = buildValidationEvidence(filesWritten.values, commandsRun)
+  const subagentRollup = buildSubagentRollup(args.runEvents)
 
   return {
     version: 1,
@@ -239,6 +257,7 @@ export function buildExecutionReceipt(args: BuildExecutionReceiptArgs): Executio
       cached: args.usage?.cacheRead ?? 0,
     },
     validationEvidence,
+    ...(subagentRollup.values.length > 0 ? { subagents: subagentRollup.values } : {}),
     durationMs: Math.max(0, args.completedAt - args.startedAt),
     resultStatus: args.resultStatus,
   }

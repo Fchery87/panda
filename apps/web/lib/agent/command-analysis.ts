@@ -1,3 +1,6 @@
+import { hashString } from './utils/hash'
+import type { CommandFamily } from './harness/permission/types'
+
 export type CommandAnalysisKind = 'single' | 'pipeline' | 'chain' | 'redirect'
 export type CommandRiskTier = 'low' | 'medium' | 'high'
 
@@ -9,6 +12,16 @@ export interface CommandAnalysis {
   riskTier: CommandRiskTier
   requiresApproval: boolean
   reason: string
+}
+
+export interface CommandFamilyClassification {
+  family: CommandFamily
+  executable: string
+}
+
+export interface CommandAuditTarget {
+  kind: 'command_hash'
+  value: string
 }
 
 const PIPE_OPERATOR = '|'
@@ -28,6 +41,13 @@ const READ_ONLY_PIPE_COMMANDS = new Set([
   'wc',
 ])
 
+const COMMAND_WRAPPERS = new Set(['command', 'env', 'sudo', 'time'])
+const PACKAGE_MANAGER_COMMANDS = new Set(['npm', 'pnpm', 'yarn', 'bun', 'bunx', 'npx'])
+const NETWORK_COMMANDS = new Set(['curl', 'wget'])
+const DESTRUCTIVE_COMMANDS = new Set(['rm', 'mv', 'chmod', 'chown'])
+const REMOTE_EXEC_COMMANDS = new Set(['ssh', 'scp', 'rsync'])
+const FILESYSTEM_WRITE_COMMANDS = new Set(['cp', 'mkdir', 'tee', 'touch'])
+
 export function splitCommandByPipe(command: string): string[] {
   return command
     .split(/\s+\|\s+/u)
@@ -38,6 +58,71 @@ export function splitCommandByPipe(command: string): string[] {
 function getLeadingCommand(segment: string): string {
   const [command = ''] = segment.trim().split(/\s+/u)
   return command.toLowerCase()
+}
+
+function isEnvironmentAssignment(token: string): boolean {
+  return /^[A-Za-z_][A-Za-z0-9_]*=.*/u.test(token)
+}
+
+function getGovernedExecutable(command: string): string {
+  const tokens = command.trim().split(/\s+/u).filter(Boolean)
+  let index = 0
+
+  while (index < tokens.length) {
+    const token = tokens[index].toLowerCase()
+
+    if (isEnvironmentAssignment(tokens[index])) {
+      index++
+      continue
+    }
+
+    if (COMMAND_WRAPPERS.has(token)) {
+      index++
+      continue
+    }
+
+    return token
+  }
+
+  return ''
+}
+
+export function classifyCommandFamily(command: string): CommandFamilyClassification {
+  const executable = getGovernedExecutable(command)
+
+  if (PACKAGE_MANAGER_COMMANDS.has(executable)) {
+    return { family: 'package-manager', executable }
+  }
+
+  if (NETWORK_COMMANDS.has(executable)) {
+    return { family: 'network', executable }
+  }
+
+  if (executable === 'git') {
+    return { family: 'git', executable }
+  }
+
+  if (DESTRUCTIVE_COMMANDS.has(executable)) {
+    return { family: 'destructive', executable }
+  }
+
+  if (REMOTE_EXEC_COMMANDS.has(executable)) {
+    return { family: 'remote-exec', executable }
+  }
+
+  if (FILESYSTEM_WRITE_COMMANDS.has(executable)) {
+    return { family: 'filesystem-write', executable }
+  }
+
+  return { family: 'unknown', executable }
+}
+
+export function createCommandAuditTarget(command: string): CommandAuditTarget {
+  const { family, executable } = classifyCommandFamily(command)
+  return {
+    kind: 'command_hash',
+    value: `${family}:${executable}:${hashString(command)}`,
+  }
 }
 
 export function analyzeCommand(command: string): CommandAnalysis {

@@ -11,17 +11,24 @@ describe('settings browser defaults', () => {
     const getEffectiveBlock = source.slice(getEffectiveStart, getAdminDefaultsStart)
 
     expect(getEffectiveBlock).toContain('agentDefaults: userSettings?.agentDefaults')
+    expect(getEffectiveBlock).toContain('commandFamilyPreferences')
+    expect(getEffectiveBlock).toContain('effectiveCommandFamilyPolicy')
     expect(getEffectiveBlock).not.toContain('permissions: userSettings?.permissions')
 
     const updateStart = source.indexOf('export const update = mutation({')
     const handlerStart = source.indexOf('  handler: async (ctx, args) => {', updateStart)
     const argsBlock = source.slice(updateStart, handlerStart)
     expect(argsBlock).toContain('agentDefaults: v.optional(')
+    expect(argsBlock).toContain('commandFamilyPreferences: v.optional(')
     expect(argsBlock).not.toContain('permissions: v.optional(')
 
     const updateBlock = source.slice(updateStart)
     expect(updateBlock).toContain(
       'if (args.agentDefaults !== undefined) updates.agentDefaults = args.agentDefaults'
+    )
+    expect(updateBlock).toContain('assertCommandFamilyPreferencesWithinAdminCeiling')
+    expect(updateBlock).toContain(
+      'updates.commandFamilyPreferences = args.commandFamilyPreferences'
     )
     expect(updateBlock).not.toContain('updates.permissions')
     expect(updateBlock).not.toContain('permissions: args.permissions')

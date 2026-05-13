@@ -31,6 +31,7 @@ import { ConnectProvider } from '@/components/settings/ConnectProvider'
 import { GitHubConnectionCard } from '@/components/settings/GitHubConnectionCard'
 import { ThemeToggleFull } from '@/components/settings/ThemeToggle'
 import { AgentDefaultsEditor } from '@/components/settings/AgentDefaultsEditor'
+import { CommandFamilyPolicyEditor } from '@/components/settings/CommandFamilyPolicyEditor'
 import { MCPServerEditor } from '@/components/settings/MCPServerEditor'
 import { SubagentEditor } from '@/components/settings/SubagentEditor'
 import { CustomSkillEditor } from '@/components/settings/CustomSkillEditor'
@@ -84,6 +85,7 @@ export default function SettingsPage() {
   } = useSettingsForm(pathname, searchParams, router)
 
   const allowUserMcp = adminDefaults?.allowUserMCP !== false
+  const allowedMcpTransports = adminDefaults?.allowedMCPTransports ?? ['stdio', 'sse', 'http']
   const allowUserSubagents = adminDefaults?.allowUserSubagents !== false
   const allowUserSkills = adminDefaults?.allowUserSkills !== false
 
@@ -427,8 +429,16 @@ export default function SettingsPage() {
                       Default agent behavior for new projects. These can be overridden per-project.
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-6">
                     <AgentDefaultsEditor value={agentDefaults} onChange={setAgentDefaults} />
+                    <Separator />
+                    <CommandFamilyPolicyEditor
+                      adminPolicy={adminDefaults?.commandFamilyPolicy}
+                      userPreferences={formState.commandFamilyPreferences}
+                      onChange={(commandFamilyPreferences) =>
+                        updateFormState({ commandFamilyPreferences })
+                      }
+                    />
                   </CardContent>
                 </Card>
               </div>
@@ -446,7 +456,7 @@ export default function SettingsPage() {
                   </CardHeader>
                   <CardContent>
                     {allowUserMcp ? (
-                      <MCPServerEditor />
+                      <MCPServerEditor allowedTransports={allowedMcpTransports} />
                     ) : (
                       <div className="rounded-none border border-border bg-surface-2 p-3">
                         <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">

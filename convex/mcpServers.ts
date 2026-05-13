@@ -1,5 +1,6 @@
 import { query, mutation, type MutationCtx, type QueryCtx } from './_generated/server'
 import { v } from 'convex/values'
+import { MCPTransport } from './schema'
 import { requireAuth } from './lib/auth'
 
 async function resolveUserId(ctx: QueryCtx | MutationCtx) {
@@ -30,6 +31,17 @@ async function assertMcpEnabled(ctx: QueryCtx | MutationCtx) {
   }
 }
 
+async function assertTransportAllowed(
+  ctx: QueryCtx | MutationCtx,
+  transport: 'stdio' | 'sse' | 'http'
+) {
+  const adminSettings = await ctx.db.query('adminSettings').order('desc').first()
+  const allowed = adminSettings?.allowedMCPTransports ?? ['stdio', 'sse', 'http']
+  if (!allowed.includes(transport)) {
+    throw new Error(`MCP transport "${transport}" is disabled by admin policy`)
+  }
+}
+
 export const list = query({
   args: {},
   handler: async (ctx) => {
@@ -41,14 +53,14 @@ export const list = query({
     return await ctx.db
       .query('mcpServers')
       .withIndex('by_user', (q) => q.eq('userId', userIdAsId!))
-      .collect()
+      .take(100)
   },
 })
 
 export const add = mutation({
   args: {
     name: v.string(),
-    transport: v.union(v.literal('stdio'), v.literal('sse')),
+    transport: MCPTransport,
     command: v.optional(v.string()),
     args: v.optional(v.array(v.string())),
     url: v.optional(v.string()),
@@ -56,6 +68,7 @@ export const add = mutation({
   },
   handler: async (ctx, args) => {
     await assertMcpEnabled(ctx)
+    await assertTransportAllowed(ctx, args.transport)
     const userIdAsId = await resolveUserId(ctx)
 
     const now = Date.now()
@@ -73,6 +86,7 @@ export const add = mutation({
       userId: userIdAsId,
       name: args.name,
       transport: args.transport,
+      source: 'user',
       command: args.command,
       args: args.args,
       url: args.url,
@@ -87,7 +101,7 @@ export const update = mutation({
   args: {
     id: v.id('mcpServers'),
     name: v.optional(v.string()),
-    transport: v.optional(v.union(v.literal('stdio'), v.literal('sse'))),
+    transport: v.optional(MCPTransport),
     command: v.optional(v.string()),
     args: v.optional(v.array(v.string())),
     url: v.optional(v.string()),
@@ -104,6 +118,10 @@ export const update = mutation({
 
     if (server.userId !== userIdAsId) {
       throw new Error('Unauthorized')
+    }
+
+    if (args.transport !== undefined) {
+      await assertTransportAllowed(ctx, args.transport)
     }
 
     const updates: Record<string, unknown> = { updatedAt: Date.now() }

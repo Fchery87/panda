@@ -22,6 +22,8 @@ export function evaluate(rules: PermissionRule[], ctx: PermissionContext): Evalu
       continue
     }
 
+    if (rule.commandFamily && rule.commandFamily !== ctx.commandFamily) continue
+
     match = rule // last match wins — keep iterating
   }
 

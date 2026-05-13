@@ -16,6 +16,9 @@ describe('settings public admin defaults', () => {
     expect(getAdminDefaultsBlock).toContain(
       'systemMaintenance: adminSettings.systemMaintenance ?? false'
     )
+    expect(getAdminDefaultsBlock).toContain(
+      'commandFamilyPolicy: normalizeCommandFamilyPolicy(adminSettings.commandFamilyPolicy)'
+    )
   })
 
   test('does not return raw global provider configs from effective user settings', () => {

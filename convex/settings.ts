@@ -1,6 +1,7 @@
 import { query, mutation, type MutationCtx, type QueryCtx } from './_generated/server'
 import { v } from 'convex/values'
 import { requireAuth, getCurrentUserId } from './lib/auth'
+import { HarnessCommandFamilyPolicyEntry } from './schema'
 
 const DISALLOWED_PROVIDER_SECRET_KEYS = new Set([
   'accessToken',
@@ -12,6 +13,91 @@ const DISALLOWED_PROVIDER_SECRET_KEYS = new Set([
 
 type ProviderConfigMap = Record<string, Record<string, unknown>>
 type SettingsCtx = QueryCtx | MutationCtx
+type CommandFamily =
+  | 'package-manager'
+  | 'network'
+  | 'git'
+  | 'destructive'
+  | 'remote-exec'
+  | 'filesystem-write'
+  | 'unknown'
+type CommandFamilyDecision = 'allow' | 'ask' | 'deny'
+type CommandFamilyPolicyEntry = {
+  family: CommandFamily
+  decision: CommandFamilyDecision
+}
+
+const DEFAULT_COMMAND_FAMILY_POLICY: CommandFamilyPolicyEntry[] = [
+  { family: 'package-manager', decision: 'allow' },
+  { family: 'network', decision: 'ask' },
+  { family: 'git', decision: 'allow' },
+  { family: 'destructive', decision: 'ask' },
+  { family: 'remote-exec', decision: 'ask' },
+  { family: 'filesystem-write', decision: 'ask' },
+  { family: 'unknown', decision: 'ask' },
+]
+
+const COMMAND_FAMILY_DECISION_RANK: Record<CommandFamilyDecision, number> = {
+  allow: 0,
+  ask: 1,
+  deny: 2,
+}
+
+function normalizeCommandFamilyPolicy(
+  policy: CommandFamilyPolicyEntry[] | undefined
+): CommandFamilyPolicyEntry[] {
+  const byFamily = new Map<CommandFamily, CommandFamilyDecision>()
+  for (const entry of DEFAULT_COMMAND_FAMILY_POLICY) {
+    byFamily.set(entry.family, entry.decision)
+  }
+  for (const entry of policy ?? []) {
+    byFamily.set(entry.family, entry.decision)
+  }
+  return DEFAULT_COMMAND_FAMILY_POLICY.map((entry) => ({
+    family: entry.family,
+    decision: byFamily.get(entry.family) ?? entry.decision,
+  }))
+}
+
+function mergeCommandFamilyPolicy(args: {
+  adminPolicy: CommandFamilyPolicyEntry[] | undefined
+  userPreferences: CommandFamilyPolicyEntry[] | undefined
+}): CommandFamilyPolicyEntry[] {
+  const adminPolicy = normalizeCommandFamilyPolicy(args.adminPolicy)
+  const userPreferences = new Map<CommandFamily, CommandFamilyDecision>()
+  for (const entry of args.userPreferences ?? []) {
+    userPreferences.set(entry.family, entry.decision)
+  }
+
+  return adminPolicy.map((adminEntry) => {
+    const userDecision = userPreferences.get(adminEntry.family)
+    if (!userDecision) return adminEntry
+    return COMMAND_FAMILY_DECISION_RANK[userDecision] >=
+      COMMAND_FAMILY_DECISION_RANK[adminEntry.decision]
+      ? { family: adminEntry.family, decision: userDecision }
+      : adminEntry
+  })
+}
+
+function assertCommandFamilyPreferencesWithinAdminCeiling(args: {
+  adminPolicy: CommandFamilyPolicyEntry[] | undefined
+  userPreferences: CommandFamilyPolicyEntry[] | undefined
+}) {
+  const adminPolicy = normalizeCommandFamilyPolicy(args.adminPolicy)
+  const adminByFamily = new Map(adminPolicy.map((entry) => [entry.family, entry.decision] as const))
+
+  for (const preference of args.userPreferences ?? []) {
+    const adminDecision = adminByFamily.get(preference.family) ?? 'ask'
+    if (
+      COMMAND_FAMILY_DECISION_RANK[preference.decision] <
+      COMMAND_FAMILY_DECISION_RANK[adminDecision]
+    ) {
+      throw new Error(
+        `Command-family preference for ${preference.family} cannot loosen admin policy`
+      )
+    }
+  }
+}
 
 function toClientProviderConfigs(
   providerConfigs: ProviderConfigMap | undefined
@@ -55,6 +141,8 @@ async function getAdminSettings(ctx: SettingsCtx) {
       enhancementModel: null,
       allowUserOverrides: true,
       allowUserMCP: true,
+      allowedMCPTransports: ['stdio', 'sse', 'http'],
+      commandFamilyPolicy: DEFAULT_COMMAND_FAMILY_POLICY,
       allowUserSubagents: true,
       allowUserSkills: true,
       allowSkillAutoActivation: true,
@@ -160,6 +248,9 @@ export const getEffective = query({
     let effectiveModel = userSettings?.defaultModel
     let usingGlobalDefaults = false
 
+    const commandFamilyPolicy = normalizeCommandFamilyPolicy(adminSettings.commandFamilyPolicy)
+    const commandFamilyPreferences = userSettings?.commandFamilyPreferences ?? []
+
     // Check if overrides are allowed
     const allowOverrides = adminSettings.allowUserOverrides ?? true
 
@@ -175,6 +266,7 @@ export const getEffective = query({
       theme: userSettings?.theme ?? 'system',
       language: userSettings?.language ?? 'en',
       agentDefaults: userSettings?.agentDefaults,
+      commandFamilyPreferences,
 
       // Provider configuration
       defaultProvider: effectiveProvider,
@@ -186,6 +278,12 @@ export const getEffective = query({
       // Admin settings info
       allowUserOverrides: adminSettings.allowUserOverrides,
       allowUserMCP: adminSettings.allowUserMCP,
+      allowedMCPTransports: adminSettings.allowedMCPTransports ?? ['stdio', 'sse', 'http'],
+      commandFamilyPolicy,
+      effectiveCommandFamilyPolicy: mergeCommandFamilyPolicy({
+        adminPolicy: commandFamilyPolicy,
+        userPreferences: commandFamilyPreferences,
+      }),
       allowUserSubagents: adminSettings.allowUserSubagents,
       allowUserSkills: adminSettings.allowUserSkills ?? true,
       allowSkillAutoActivation: adminSettings.allowSkillAutoActivation ?? true,
@@ -232,6 +330,8 @@ export const getAdminDefaults = query({
       enhancementModel: adminSettings.enhancementModel,
       allowUserOverrides: adminSettings.allowUserOverrides ?? true,
       allowUserMCP: adminSettings.allowUserMCP ?? true,
+      allowedMCPTransports: adminSettings.allowedMCPTransports ?? ['stdio', 'sse', 'http'],
+      commandFamilyPolicy: normalizeCommandFamilyPolicy(adminSettings.commandFamilyPolicy),
       allowUserSubagents: adminSettings.allowUserSubagents ?? true,
       allowUserSkills: adminSettings.allowUserSkills ?? true,
       allowSkillAutoActivation: adminSettings.allowSkillAutoActivation ?? true,
@@ -271,6 +371,7 @@ export const update = mutation({
         })
       )
     ),
+    commandFamilyPreferences: v.optional(v.array(HarnessCommandFamilyPolicyEntry)),
     // Admin override tracking
     overrideGlobalProvider: v.optional(v.boolean()),
     overrideGlobalModel: v.optional(v.boolean()),
@@ -281,6 +382,13 @@ export const update = mutation({
     const sanitizedProviderConfigs = sanitizeProviderConfigsForStorage(
       args.providerConfigs as ProviderConfigMap | undefined
     )
+    const adminSettings = await getAdminSettings(ctx)
+    if (args.commandFamilyPreferences !== undefined) {
+      assertCommandFamilyPreferencesWithinAdminCeiling({
+        adminPolicy: adminSettings.commandFamilyPolicy,
+        userPreferences: args.commandFamilyPreferences,
+      })
+    }
     let userIdAsId = ctx.db.normalizeId('users', userId)
 
     // If normalizeId fails, try to find by dev email
@@ -324,6 +432,8 @@ export const update = mutation({
       if (args.defaultProvider !== undefined) updates.defaultProvider = args.defaultProvider
       if (args.defaultModel !== undefined) updates.defaultModel = args.defaultModel
       if (args.agentDefaults !== undefined) updates.agentDefaults = args.agentDefaults
+      if (args.commandFamilyPreferences !== undefined)
+        updates.commandFamilyPreferences = args.commandFamilyPreferences
       if (args.overrideGlobalProvider !== undefined)
         updates.overrideGlobalProvider = args.overrideGlobalProvider
       if (args.overrideGlobalModel !== undefined)
@@ -343,6 +453,7 @@ export const update = mutation({
         defaultProvider: args.defaultProvider,
         defaultModel: args.defaultModel,
         agentDefaults: args.agentDefaults ?? null,
+        commandFamilyPreferences: args.commandFamilyPreferences,
         overrideGlobalProvider: args.overrideGlobalProvider,
         overrideGlobalModel: args.overrideGlobalModel,
         overrideProviderConfigs: args.overrideProviderConfigs,

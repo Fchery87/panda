@@ -1,28 +1,36 @@
-# Spec: M001 GitHub-Backed Panda Projects Implementation
+# Spec: Admin/User Policy Settings UI and Docs
 
 ## Deliverables
 
-- [ ] Implement all approved slices in `.gsd/milestones/M001/M001-ROADMAP.md` in
-      dependency order.
-- [ ] Preserve the milestone decisions in `.gsd/milestones/M001/M001-CONTEXT.md`
-      and `.gsd/DECISIONS.md`.
-- [ ] Verify each completed slice before advancing to the next slice.
-- [ ] Keep raw GitHub tokens and installation credentials out of client-visible
-      responses, logs, public shares, and telemetry.
+- [x] Add admin settings support for command-family defaults.
+- [x] Add user settings support for stricter command-family preferences inside
+      the admin ceiling.
+- [x] Show effective Harness Policy summaries in user settings.
+- [x] Show admin MCP transport ceilings in user MCP settings and prevent users
+      from selecting blocked transports in the UI.
+- [x] Keep admin settings audit entries redacted and focused on changed policy
+      keys.
+- [x] Update active docs to explain policy layers, command-family settings, MCP
+      transport ceilings, and Unattended Execution behavior.
 
 ## Constraints
 
-- Must keep Convex as Panda's editable project working-copy source of truth.
-- Must derive user identity server-side for GitHub connection and project
-  ownership decisions.
-- Must not use local workspace-root Git APIs as the production GitHub project
-  integration boundary.
-- Must not silently auto-sync GitHub remote changes.
-- Must require explicit confirmation for external GitHub writes.
+- Do not expose secrets, raw command strings, MCP headers, provider tokens,
+  signed URLs, raw tool args, or raw reasoning in settings, audit entries, or
+  docs examples.
+- User preferences may only make command-family behavior stricter than admin
+  defaults; they must not loosen an admin ask or deny.
+- Project-scoped MCP remains recommendation-only until project/team governance
+  exists.
+- Convex schema changes must be widen-first and existing rows must remain valid.
+- Convex query payloads must remain bounded/redacted.
+- Preserve existing admin and user settings UX unless adding policy summaries or
+  admin ceiling explanations.
 
 ## Out of scope (log here during the run, do not act on)
 
-- Full GitHub issue management beyond read-only linked context.
-- Multi-repository Panda projects.
-- Releases, deployments, repository settings, and GitHub organization
-  administration.
+- Wiring command-family settings into production runtime enforcement beyond the
+  existing resolved Harness Policy path.
+- Project/team governance for project-scoped MCP activation.
+- Secret storage or encrypted MCP env management.
+- Full MCP marketplace/discovery UX.

@@ -1,4 +1,5 @@
 import type { ExecutionReceipt } from './receipt'
+import type { HarnessSubagentSummary } from './harness'
 
 export type RunProjectionSurface = 'chat' | 'proof' | 'public_share'
 export type RunProjectionFactType =
@@ -8,6 +9,7 @@ export type RunProjectionFactType =
   | 'tool_result'
   | 'assistant_message'
   | 'spec_verification'
+  | 'subagent_summary'
   | 'error'
   | 'snapshot'
   | 'reset'
@@ -25,6 +27,7 @@ export interface RunProjectionFact {
   args?: unknown
   output?: string
   error?: string
+  subagentSummary?: HarnessSubagentSummary
 }
 
 export interface RunProjectionItem {
@@ -52,6 +55,7 @@ export interface RunProjection {
     changedFiles: number
     commandsRun: number
     approvals: number
+    subagents: number
   }
 }
 
@@ -76,6 +80,7 @@ function sourceForFact(type: string): RunProjectionItem['source'] {
     case 'tool_result':
     case 'assistant_message':
     case 'spec_verification':
+    case 'subagent_summary':
     case 'error':
     case 'snapshot':
     case 'reset':
@@ -92,6 +97,9 @@ function summarizeTargets(paths?: string[]): string | undefined {
 }
 
 function titleForFact(fact: RunProjectionFact): string {
+  if (fact.type === 'subagent_summary' && fact.subagentSummary) {
+    return `Subagent ${fact.subagentSummary.status}: ${fact.subagentSummary.name}`
+  }
   if (fact.content?.trim()) return fact.content.trim()
   if (fact.type === 'tool_call' && fact.progressToolName)
     return `Tool started: ${fact.progressToolName}`
@@ -104,6 +112,9 @@ function titleForFact(fact: RunProjectionFact): string {
 
 function detailForFact(surface: RunProjectionSurface, fact: RunProjectionFact): string | undefined {
   if (surface !== 'proof') return undefined
+  if (fact.type === 'subagent_summary' && fact.subagentSummary) {
+    return fact.subagentSummary.outputSummary ?? fact.subagentSummary.risks?.join('\n')
+  }
   return fact.error ?? fact.output
 }
 
@@ -113,6 +124,7 @@ function shouldIncludeFact(surface: RunProjectionSurface, fact: RunProjectionFac
   if (surface === 'public_share') {
     return fact.type === 'run_started' || fact.type === 'progress_step' || fact.type === 'error'
   }
+  if (fact.type === 'subagent_summary') return false
   return fact.type !== 'tool_result' || Boolean(fact.content || fact.targetFilePaths?.length)
 }
 
@@ -120,7 +132,10 @@ function itemFromFact(surface: RunProjectionSurface, fact: RunProjectionFact): R
   return {
     id: fact.id ?? `${fact.type}-${fact.createdAt ?? 0}`,
     title: titleForFact(fact),
-    summary: summarizeTargets(fact.targetFilePaths) ?? fact.progressToolName,
+    summary:
+      fact.type === 'subagent_summary' && fact.subagentSummary
+        ? fact.subagentSummary.delegatedTaskSummary
+        : (summarizeTargets(fact.targetFilePaths) ?? fact.progressToolName),
     detail: detailForFact(surface, fact),
     status: fact.status,
     createdAt: fact.createdAt,
@@ -134,6 +149,7 @@ function receiptSummary(receipt: ExecutionReceipt): NonNullable<RunProjection['r
     changedFiles: receipt.webcontainer.filesWritten.length,
     commandsRun: receipt.webcontainer.commandsRun.length,
     approvals: receipt.nativeExecution.approvalsRequested.length,
+    subagents: receipt.subagents?.length ?? 0,
   }
 }
 

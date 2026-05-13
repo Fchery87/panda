@@ -7,6 +7,9 @@ describe('settings advanced policy gates', () => {
     const source = fs.readFileSync(path.resolve(import.meta.dir, 'page.tsx'), 'utf8')
 
     expect(source).toContain('adminDefaults?.allowUserMCP !== false')
+    expect(source).toContain('adminDefaults?.allowedMCPTransports')
+    expect(source).toContain('CommandFamilyPolicyEditor')
+    expect(source).toContain('commandFamilyPreferences')
     expect(source).toContain('adminDefaults?.allowUserSubagents !== false')
     expect(source).toContain('MCP access is disabled by your admin')
     expect(source).toContain('Admin policy blocks user-managed MCP servers')

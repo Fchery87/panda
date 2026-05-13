@@ -34,6 +34,14 @@ import { EnhancementLLMConfig } from '@/components/settings/EnhancementLLMConfig
 import { AdminSubNav, AdminPageHeader } from '@/components/admin/AdminSubNav'
 
 import { readAdminEnumQueryParam, useAdminQueryUpdater } from '@/lib/admin/query-state'
+import {
+  COMMAND_FAMILIES,
+  COMMAND_FAMILY_DECISIONS,
+  COMMAND_FAMILY_LABELS,
+  DEFAULT_COMMAND_FAMILY_POLICY,
+  type CommandFamilyDecision,
+  type CommandFamilyPolicyEntry,
+} from '@/lib/agent/command-family-policy'
 import { getEnhancementProviderOptions } from '@/lib/admin/enhancement-provider-options'
 import { useProviderDefinitions } from '@/hooks/useProviderDefinitions'
 import { useFreshProviderConfigs } from '@/hooks/useFreshProviderConfigs'
@@ -41,10 +49,16 @@ import { useFreshProviderConfigs } from '@/hooks/useFreshProviderConfigs'
 const NO_PROVIDER_SELECTED = '__no-provider-selected__'
 const NO_MODEL_SELECTED = '__no-model-selected__'
 const SUBAGENT_CAPABILITY_PRESETS = ['research', 'assistant', 'builder', 'restricted'] as const
+const MCP_TRANSPORTS = ['sse', 'http', 'stdio'] as const
 type SubagentCapabilityPreset = (typeof SUBAGENT_CAPABILITY_PRESETS)[number]
+type MCPTransport = (typeof MCP_TRANSPORTS)[number]
 
 function isSubagentCapabilityPreset(value: string): value is SubagentCapabilityPreset {
   return SUBAGENT_CAPABILITY_PRESETS.includes(value as SubagentCapabilityPreset)
+}
+
+function isMCPTransport(value: string): value is MCPTransport {
+  return MCP_TRANSPORTS.includes(value as MCPTransport)
 }
 
 const systemTabs = ['features', 'llm', 'access', 'limits'] as const
@@ -75,6 +89,8 @@ export default function AdminSystemPage() {
   const [controls, setControls] = React.useState({
     allowUserOverrides: true,
     allowUserMCP: true,
+    allowedMCPTransports: [...MCP_TRANSPORTS] as MCPTransport[],
+    commandFamilyPolicy: [...DEFAULT_COMMAND_FAMILY_POLICY] as CommandFamilyPolicyEntry[],
     allowUserSubagents: true,
     allowUserSkills: true,
     allowSkillAutoActivation: true,
@@ -112,6 +128,12 @@ export default function AdminSystemPage() {
       const newControls = {
         allowUserOverrides: settings.allowUserOverrides !== false,
         allowUserMCP: settings.allowUserMCP !== false,
+        allowedMCPTransports: (settings.allowedMCPTransports ?? [...MCP_TRANSPORTS]).filter(
+          isMCPTransport
+        ),
+        commandFamilyPolicy: (settings.commandFamilyPolicy ?? [
+          ...DEFAULT_COMMAND_FAMILY_POLICY,
+        ]) as CommandFamilyPolicyEntry[],
         allowUserSubagents: settings.allowUserSubagents !== false,
         allowUserSkills: settings.allowUserSkills !== false,
         allowSkillAutoActivation: settings.allowSkillAutoActivation !== false,
@@ -173,6 +195,8 @@ export default function AdminSystemPage() {
       await updateSettings({
         allowUserOverrides: controls.allowUserOverrides,
         allowUserMCP: controls.allowUserMCP,
+        allowedMCPTransports: controls.allowedMCPTransports,
+        commandFamilyPolicy: controls.commandFamilyPolicy,
         allowUserSubagents: controls.allowUserSubagents,
         allowUserSkills: controls.allowUserSkills,
         allowSkillAutoActivation: controls.allowSkillAutoActivation,
@@ -285,6 +309,92 @@ export default function AdminSystemPage() {
                       setControls((prev) => ({ ...prev, allowUserMCP: checked }))
                     }
                   />
+                </div>
+
+                <div className="rounded-none border border-border p-4">
+                  <div className="mb-4 space-y-0.5">
+                    <Label className="font-mono text-sm">Allowed MCP Transports</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Choose which MCP transports users may activate. Project MCP remains
+                      recommendation-only.
+                    </p>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    {MCP_TRANSPORTS.map((transport) => (
+                      <label
+                        key={transport}
+                        className="flex items-center justify-between border border-border p-3 font-mono text-sm"
+                      >
+                        <span>{transport}</span>
+                        <Switch
+                          checked={controls.allowedMCPTransports.includes(transport)}
+                          onCheckedChange={(checked) =>
+                            setControls((prev) => ({
+                              ...prev,
+                              allowedMCPTransports: checked
+                                ? [...new Set([...prev.allowedMCPTransports, transport])]
+                                : prev.allowedMCPTransports.filter((item) => item !== transport),
+                            }))
+                          }
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-none border border-border p-4">
+                  <div className="mb-4 space-y-0.5">
+                    <Label className="font-mono text-sm">Command-Family Defaults</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Set the admin ceiling for command families. User settings can keep these
+                      defaults or make them stricter, never looser.
+                    </p>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    {COMMAND_FAMILIES.map((family) => {
+                      const currentDecision =
+                        controls.commandFamilyPolicy.find((entry) => entry.family === family)
+                          ?.decision ??
+                        DEFAULT_COMMAND_FAMILY_POLICY.find((entry) => entry.family === family)
+                          ?.decision ??
+                        'ask'
+
+                      return (
+                        <label key={family} className="space-y-2 border border-border p-3">
+                          <span className="font-mono text-xs">{COMMAND_FAMILY_LABELS[family]}</span>
+                          <select
+                            value={currentDecision}
+                            onChange={(event) => {
+                              const decision = event.target.value as CommandFamilyDecision
+                              setControls((prev) => ({
+                                ...prev,
+                                commandFamilyPolicy: COMMAND_FAMILIES.map((item) => ({
+                                  family: item,
+                                  decision:
+                                    item === family
+                                      ? decision
+                                      : (prev.commandFamilyPolicy.find(
+                                          (entry) => entry.family === item
+                                        )?.decision ??
+                                        DEFAULT_COMMAND_FAMILY_POLICY.find(
+                                          (entry) => entry.family === item
+                                        )?.decision ??
+                                        'ask'),
+                                })),
+                              }))
+                            }}
+                            className="w-full rounded-none border border-border bg-background px-2 py-1 font-mono text-xs"
+                          >
+                            {COMMAND_FAMILY_DECISIONS.map((decision) => (
+                              <option key={decision} value={decision}>
+                                {decision}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      )
+                    })}
+                  </div>
                 </div>
 
                 <Separator />

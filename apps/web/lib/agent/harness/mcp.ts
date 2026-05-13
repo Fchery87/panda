@@ -10,10 +10,15 @@ import type { ToolDefinition } from '../../llm/types'
 /**
  * MCP server configuration
  */
+export type MCPTransport = 'inmemory' | 'stdio' | 'sse' | 'http'
+export type MCPServerSource = 'user' | 'project_recommendation' | 'admin'
+export type MCPPolicyDecision = 'allow' | 'deny'
+
 export interface MCPServerConfig {
   id: string
   name: string
-  transport?: 'inmemory' | 'stdio' | 'sse' | 'http'
+  transport?: MCPTransport
+  source?: MCPServerSource
   command?: string[] | string
   args?: string[]
   url?: string
@@ -23,6 +28,27 @@ export interface MCPServerConfig {
     resources?: boolean
     prompts?: boolean
   }
+}
+
+export interface MCPPolicyConfig {
+  allowUserMCP?: boolean
+  allowedTransports?: MCPTransport[]
+  defaultToolDecision?: MCPPolicyDecision
+  reason?: string
+}
+
+export interface MCPPermissionAuditEntry {
+  serverID: string
+  serverSource: MCPServerSource
+  transport: MCPTransport
+  toolName?: string
+  decision: MCPPolicyDecision
+  reason: string
+  target: {
+    kind: 'summary'
+    value: string
+  }
+  createdAt: number
 }
 
 /**
@@ -273,11 +299,28 @@ class MCPManager {
   private configs: Map<string, MCPServerConfig> = new Map()
   private fetchImpl: MCPFetch | null
   private stdioBridgeFactory: StdioBridgeFactory | null
+  private policy: MCPPolicyConfig
+  private onPermissionAudit: ((entry: MCPPermissionAuditEntry) => void | Promise<void>) | null
 
-  constructor(options?: { fetchImpl?: MCPFetch; stdioBridgeFactory?: StdioBridgeFactory }) {
+  constructor(options?: {
+    fetchImpl?: MCPFetch
+    stdioBridgeFactory?: StdioBridgeFactory
+    policy?: MCPPolicyConfig
+    onPermissionAudit?: (entry: MCPPermissionAuditEntry) => void | Promise<void>
+  }) {
     this.fetchImpl =
       options?.fetchImpl ?? (typeof fetch === 'function' ? fetch.bind(globalThis) : null)
     this.stdioBridgeFactory = options?.stdioBridgeFactory ?? null
+    this.policy = options?.policy ?? {}
+    this.onPermissionAudit = options?.onPermissionAudit ?? null
+  }
+
+  setPolicy(policy: MCPPolicyConfig): void {
+    this.policy = policy
+  }
+
+  setAuditSink(sink: ((entry: MCPPermissionAuditEntry) => void | Promise<void>) | null): void {
+    this.onPermissionAudit = sink
   }
 
   /**
@@ -301,17 +344,85 @@ class MCPManager {
       throw new Error(`MCP server "${serverID}" not configured`)
     }
 
+    const policyDecision = this.evaluateServerPolicy(config)
+    if (!policyDecision.allowed) {
+      await this.emitAudit(
+        this.createAuditEntry(config, {
+          decision: 'deny',
+          reason: policyDecision.reason,
+        })
+      )
+      throw new Error(policyDecision.reason)
+    }
+
     const client = await this.createClient(config)
     this.clients.set(serverID, client)
 
     return client
   }
 
-  private normalizeTransport(config: MCPServerConfig): 'inmemory' | 'stdio' | 'sse' | 'http' {
+  private normalizeTransport(config: MCPServerConfig): MCPTransport {
     if (config.transport) return config.transport
     if (config.url) return 'sse'
     if (config.command) return 'stdio'
     return 'inmemory'
+  }
+
+  private serverSource(config: MCPServerConfig): MCPServerSource {
+    return config.source ?? 'user'
+  }
+
+  private evaluateServerPolicy(config: MCPServerConfig): { allowed: boolean; reason: string } {
+    const source = this.serverSource(config)
+    const transport = this.normalizeTransport(config)
+
+    if (source === 'project_recommendation') {
+      return {
+        allowed: false,
+        reason: 'Project MCP recommendations cannot activate tools without user/admin ownership',
+      }
+    }
+
+    if (source === 'user' && this.policy.allowUserMCP === false) {
+      return { allowed: false, reason: 'User MCP servers are disabled by admin policy' }
+    }
+
+    const allowedTransports = this.policy.allowedTransports
+    if (allowedTransports && !allowedTransports.includes(transport)) {
+      return {
+        allowed: false,
+        reason: `MCP transport "${transport}" is disabled by admin policy`,
+      }
+    }
+
+    return { allowed: true, reason: this.policy.reason ?? 'MCP policy allowed' }
+  }
+
+  private createAuditEntry(
+    config: MCPServerConfig,
+    args: {
+      toolName?: string
+      decision: MCPPolicyDecision
+      reason: string
+    }
+  ): MCPPermissionAuditEntry {
+    const source = this.serverSource(config)
+    const transport = this.normalizeTransport(config)
+    const targetValue = `${source}:${transport}:${config.id}${args.toolName ? `:${args.toolName}` : ''}`
+    return {
+      serverID: config.id,
+      serverSource: source,
+      transport,
+      ...(args.toolName ? { toolName: args.toolName } : {}),
+      decision: args.decision,
+      reason: args.reason,
+      target: { kind: 'summary', value: targetValue.slice(0, 500) },
+      createdAt: Date.now(),
+    }
+  }
+
+  private async emitAudit(entry: MCPPermissionAuditEntry): Promise<void> {
+    await this.onPermissionAudit?.(entry)
   }
 
   private async createClient(config: MCPServerConfig): Promise<MCPClient> {
@@ -422,25 +533,65 @@ class MCPManager {
     serverID: string,
     toolName: string,
     args: Record<string, unknown>
-  ): Promise<{ output: string; error?: string }> {
+  ): Promise<{
+    output: string
+    error?: string
+    metadata?: { serverID: string; source: MCPServerSource; transport: MCPTransport }
+  }> {
+    const config = this.configs.get(serverID)
+    if (!config) {
+      return { output: '', error: `MCP server "${serverID}" not configured` }
+    }
+
+    const policyDecision = this.evaluateServerPolicy(config)
+    if (!policyDecision.allowed || this.policy.defaultToolDecision === 'deny') {
+      const reason = !policyDecision.allowed
+        ? policyDecision.reason
+        : (this.policy.reason ?? 'MCP tool execution denied by policy')
+      await this.emitAudit(
+        this.createAuditEntry(config, {
+          toolName,
+          decision: 'deny',
+          reason,
+        })
+      )
+      return { output: '', error: reason }
+    }
+
     const client = this.clients.get(serverID)
 
     if (!client || !client.isConnected) {
       try {
         await this.connect(serverID)
       } catch (error) {
+        const reason = `Failed to connect to MCP server "${serverID}": ${error instanceof Error ? error.message : 'Unknown error'}`
+        await this.emitAudit(
+          this.createAuditEntry(config, {
+            toolName,
+            decision: 'deny',
+            reason,
+          })
+        )
         return {
           output: '',
-          error: `Failed to connect to MCP server "${serverID}": ${error instanceof Error ? error.message : 'Unknown error'}`,
+          error: reason,
         }
       }
     }
 
     const connectedClient = this.clients.get(serverID)
     if (!connectedClient) {
+      const reason = `MCP server "${serverID}" not connected`
+      await this.emitAudit(
+        this.createAuditEntry(config, {
+          toolName,
+          decision: 'deny',
+          reason,
+        })
+      )
       return {
         output: '',
-        error: `MCP server "${serverID}" not connected`,
+        error: reason,
       }
     }
 
@@ -448,23 +599,52 @@ class MCPManager {
       const result = await connectedClient.callTool(toolName, args)
 
       if (result.isError) {
+        const error =
+          typeof result.content === 'string' ? result.content : JSON.stringify(result.content)
+        await this.emitAudit(
+          this.createAuditEntry(config, {
+            toolName,
+            decision: 'deny',
+            reason: error,
+          })
+        )
         return {
           output: '',
-          error:
-            typeof result.content === 'string' ? result.content : JSON.stringify(result.content),
+          error,
         }
       }
+
+      await this.emitAudit(
+        this.createAuditEntry(config, {
+          toolName,
+          decision: 'allow',
+          reason: 'MCP tool execution allowed',
+        })
+      )
 
       return {
         output:
           typeof result.content === 'string'
             ? result.content
             : JSON.stringify(result.content, null, 2),
+        metadata: {
+          serverID: config.id,
+          source: this.serverSource(config),
+          transport: this.normalizeTransport(config),
+        },
       }
     } catch (error) {
+      const reason = error instanceof Error ? error.message : 'Unknown error executing MCP tool'
+      await this.emitAudit(
+        this.createAuditEntry(config, {
+          toolName,
+          decision: 'deny',
+          reason,
+        })
+      )
       return {
         output: '',
-        error: error instanceof Error ? error.message : 'Unknown error executing MCP tool',
+        error: reason,
       }
     }
   }

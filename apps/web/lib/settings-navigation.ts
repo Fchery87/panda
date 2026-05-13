@@ -1,4 +1,5 @@
 import type { AgentPolicy } from '@/lib/agent/automationPolicy'
+import type { CommandFamilyPolicyEntry } from '@/lib/agent/command-family-policy'
 
 export const SETTINGS_TABS = ['general', 'providers', 'automation', 'advanced'] as const
 
@@ -36,6 +37,7 @@ export interface SettingsSnapshotInput {
   overrideGlobalProvider: boolean
   overrideGlobalModel: boolean
   agentDefaults: AgentPolicy
+  commandFamilyPreferences: CommandFamilyPolicyEntry[]
 }
 
 export function getSettingsTabFromSearchParams(searchParams: URLSearchParams): SettingsTab {
@@ -82,6 +84,7 @@ export function createSettingsSignature(input: SettingsSnapshotInput): string {
     overrideGlobalProvider: input.overrideGlobalProvider,
     overrideGlobalModel: input.overrideGlobalModel,
     agentDefaults: input.agentDefaults,
+    commandFamilyPreferences: input.commandFamilyPreferences,
     providers: Object.fromEntries(
       Object.keys(input.providers)
         .sort()
