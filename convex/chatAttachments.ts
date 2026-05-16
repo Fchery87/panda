@@ -66,7 +66,7 @@ export const listByMessage = query({
     const attachments = await ctx.db
       .query('chatAttachments')
       .withIndex('by_message', (q) => q.eq('messageId', args.messageId))
-      .collect()
+      .take(100)
 
     return await Promise.all(
       attachments.map(async (attachment) => ({

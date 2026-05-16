@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "commands": [
+    {
+      "command": "bun run dev",
+      "label": "Start workspace",
+      "detail": "Launch Convex dev plus the Next.js app for the full local loop.",
+      "proof": "Starts Convex dev and the Next.js workspace together."
+    },
+    {
+      "command": "bun run typecheck",
+      "label": "Type contract",
+      "detail": "Verify TypeScript, Convex bindings, and package boundaries before review.",
+      "proof": "Verifies TypeScript, package boundaries, and generated Convex bindings."
+    },
+    {
+      "command": "bun run lint",
+      "label": "Code hygiene",
+      "detail": "Run ESLint across the monorepo and catch UI/runtime drift early.",
+      "proof": "Enforces the shared ESLint rules across the monorepo."
+    },
+    {
+      "command": "bun run format:check",
+      "label": "Format gate",
+      "detail": "Confirm Prettier formatting without mutating files.",
+      "proof": "Confirms Prettier formatting without mutating files."
+    },
+    {
+      "command": "bun test",
+      "label": "Unit proof",
+      "detail": "Exercise app, Convex, hooks, components, and runtime behavior with Bun.",
+      "proof": "Runs Bun unit and component coverage across the repo."
+    },
+    {
+      "command": "bun run test:e2e",
+      "label": "Browser acceptance",
+      "detail": "Validate the workbench, agent run, permissions, and sharing flows in Playwright.",
+      "proof": "Runs focused Playwright acceptance for workbench, agent-run, permissions, and sharing flows."
+    },
+    {
+      "command": "bun run build",
+      "label": "Production gate",
+      "detail": "Compile the deployable app after tests, lint, and typecheck are clean.",
+      "proof": "Compiles the production app."
+    },
+    {
+      "command": "bun run validate:web",
+      "label": "Full web gate",
+      "detail": "Run command drift checks, typecheck, lint, format check, web tests, and build in sequence.",
+      "proof": "Runs command drift checks, typecheck, lint, format check, web tests, and build in sequence."
+    }
+  ],
+  "recommendedProofLoop": [
+    "bun run typecheck",
+    "bun run lint",
+    "bun run format:check",
+    "bun test"
+  ]
+}

@@ -90,7 +90,12 @@ export {
 } from './compaction'
 export type { CompactionConfig } from './compaction'
 export { Runtime, createRuntime } from './runtime'
-export type { RuntimeEvent, RuntimeEventType, ToolExecutionContext, ToolExecutor } from './runtime'
+export type {
+  RuntimeEvent,
+  RuntimeEventType,
+  ToolExecutionContext,
+  ToolExecutor,
+} from './runtime-types'
 export {
   TASK_TOOL_DEFINITION,
   QUESTION_TOOL_DEFINITION,

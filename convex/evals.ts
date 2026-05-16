@@ -343,7 +343,7 @@ export const getRunWithResults = query({
       .query('evalRunResults')
       .withIndex('by_run_sequence', (q) => q.eq('runId', args.runId))
       .order('asc')
-      .collect()
+      .take(1000)
     return { run, results }
   },
 })

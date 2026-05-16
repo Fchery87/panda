@@ -73,7 +73,7 @@ export function SidebarRail({
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="flex h-full w-[52px] flex-shrink-0 flex-col bg-foreground text-background">
+      <div className="flex h-full w-12 flex-shrink-0 flex-col bg-foreground text-background">
         {/* Projects link at top */}
         <div className="border-background/20 flex flex-col border-b">
           <Tooltip>
@@ -81,7 +81,7 @@ export function SidebarRail({
               <button
                 type="button"
                 onClick={onHomeClick}
-                className="text-background/70 flex h-12 items-center justify-center transition-colors duration-150 hover:bg-primary hover:text-foreground"
+                className="text-background/70 flex h-11 items-center justify-center transition-colors duration-150 hover:bg-primary hover:text-foreground"
                 aria-label="Home"
               >
                 <IconHome className="h-4.5 w-4.5" />
@@ -96,7 +96,7 @@ export function SidebarRail({
             <TooltipTrigger asChild>
               <Link
                 href="/projects"
-                className="border-background/20 text-background/70 flex h-12 items-center justify-center border-t transition-colors duration-150 hover:bg-primary hover:text-foreground"
+                className="border-background/20 text-background/70 flex h-11 items-center justify-center border-t transition-colors duration-150 hover:bg-primary hover:text-foreground"
                 aria-label="Projects"
               >
                 <IconProjects className="h-4.5 w-4.5" />
@@ -123,7 +123,7 @@ export function SidebarRail({
                     type="button"
                     onClick={() => handleItemClick(item.id)}
                     className={cn(
-                      'border-background/15 relative grid h-12 place-items-center border-b transition-colors duration-100',
+                      'border-background/15 relative grid h-11 place-items-center border-b transition-colors duration-100',
                       isActive
                         ? 'bg-primary text-foreground'
                         : 'text-background/70 hover:bg-background/10 hover:text-background'
@@ -171,7 +171,7 @@ export function SidebarRail({
             <TooltipTrigger asChild>
               <Link
                 href="/settings"
-                className="text-background/70 border-background/15 hover:bg-background/10 flex h-12 items-center justify-center border-b transition-colors duration-100 hover:text-background"
+                className="text-background/70 border-background/15 hover:bg-background/10 flex h-11 items-center justify-center border-b transition-colors duration-100 hover:text-background"
                 aria-label="Settings"
               >
                 <IconSettings className="h-[18px] w-[18px]" />

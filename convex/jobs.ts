@@ -223,7 +223,7 @@ export const cleanupOldJobs = mutation({
       .filter((q) =>
         q.or(q.eq('status', 'completed'), q.eq('status', 'failed'), q.eq('status', 'cancelled'))
       )
-      .collect()
+      .take(500)
 
     let deletedCount = 0
     for (const job of jobs) {

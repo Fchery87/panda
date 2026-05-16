@@ -27,8 +27,8 @@ export function CenterTabBar({ tabs, activeTab, onTabChange, trailingContent }: 
       activeTab={activeTab}
       onTabChange={onTabChange}
       trailingContent={trailingContent}
-      className="h-10 border-b-foreground bg-secondary"
-      tabClassName="px-4"
+      className="h-8 border-b-foreground bg-secondary"
+      tabClassName="px-3"
     />
   )
 }

@@ -59,6 +59,15 @@ Use these labels before following any document for implementation work:
 
 ## Historical And Planning Records
 
+- [docs/development-commands.json](./development-commands.json) - source of
+  truth for commands rendered in Workspace Home and README
+- [docs/convex-collect-audit.json](./convex-collect-audit.json) -
+  machine-readable ceiling for audited production Convex `.collect()` calls
+- [docs/reviews/panda-codebase-workspace-review-2026-05-16.md](./reviews/panda-codebase-workspace-review-2026-05-16.md) -
+  codebase/workspace review snapshot
+- [docs/reviews/convex-collect-audit-2026-05-16.md](./reviews/convex-collect-audit-2026-05-16.md) -
+  Convex `.collect()` risk register
+
 - [VALIDATION_TASKS.md](../VALIDATION_TASKS.md) - historical verification
   snapshot; refresh or remove if CI/task-local status is authoritative
 - [docs/PANDA_WORKBENCH_MODERNIZATION_BRIEF.md](./PANDA_WORKBENCH_MODERNIZATION_BRIEF.md) -

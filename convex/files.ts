@@ -12,7 +12,7 @@ export const list = query({
     return await ctx.db
       .query('files')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
-      .collect()
+      .take(2000)
   },
 })
 
@@ -24,7 +24,7 @@ export const listMetadata = query({
     const files = await ctx.db
       .query('files')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
-      .collect()
+      .take(2000)
     // Exclude content field to reduce payload size
     return files.map(({ content, ...meta }) => meta)
   },
@@ -196,7 +196,7 @@ export const remove = mutation({
     const snapshots = await ctx.db
       .query('fileSnapshots')
       .withIndex('by_file', (q) => q.eq('fileId', args.id))
-      .collect()
+      .take(2000)
 
     for (const snapshot of snapshots) {
       await ctx.db.delete(snapshot._id)
@@ -249,7 +249,7 @@ export const listSnapshots = query({
       .query('fileSnapshots')
       .withIndex('by_file', (q) => q.eq('fileId', args.fileId))
       .order('desc')
-      .collect()
+      .take(2000)
   },
 })
 

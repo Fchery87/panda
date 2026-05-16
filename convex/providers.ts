@@ -139,7 +139,7 @@ export const listConnectedProviders = query({
     const tokens = await ctx.db
       .query('providerTokens')
       .withIndex('by_user', (q) => q.eq('userId', userId))
-      .collect()
+      .take(50)
 
     return tokens.map((t) => ({
       provider: t.provider,

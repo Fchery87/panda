@@ -565,8 +565,8 @@ export function ChatInput({
   }, [isStreaming])
 
   return (
-    <div className="surface-2 shrink-0 border-t border-border p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] sm:p-3 sm:pb-3">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-1">
+    <div className="surface-2 shrink-0 border-t border-border p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+      <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2 px-1">
         <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
           Direct Panda
         </div>
@@ -608,10 +608,10 @@ export function ChatInput({
           placeholder="Ask anything, @ to mention, / for workflows"
           disabled={isStreaming || isUploadingAttachments}
           className={cn(
-            'max-h-[200px] min-h-[72px] resize-none border-0 pr-10 shadow-none sm:min-h-[88px]',
+            'max-h-[160px] min-h-[56px] resize-none border-0 pr-10 shadow-none sm:min-h-[64px]',
             'rounded-none bg-background',
             'focus-visible:ring-0',
-            'placeholder:text-muted-foreground/50 font-mono text-sm'
+            'placeholder:text-muted-foreground/50 font-mono text-[13px] leading-5'
           )}
           rows={1}
         />
@@ -624,7 +624,7 @@ export function ChatInput({
               animate={shouldReduceMotion ? { opacity: 1 } : { scale: 1, opacity: 1 }}
               exit={shouldReduceMotion ? { opacity: 0 } : { scale: 0.8, opacity: 0 }}
               transition={{ duration: shouldReduceMotion ? 0.01 : 0.1 }}
-              className="absolute bottom-3 right-3"
+              className="absolute bottom-2 right-2"
             >
               <Button
                 size="icon"
@@ -647,7 +647,7 @@ export function ChatInput({
                     animate={shouldReduceMotion ? { opacity: 1 } : { scale: 1, opacity: 1 }}
                     exit={shouldReduceMotion ? { opacity: 0 } : { scale: 0.8, opacity: 0 }}
                     transition={{ duration: shouldReduceMotion ? 0.01 : 0.1 }}
-                    className="absolute bottom-3 right-3"
+                    className="absolute bottom-2 right-2"
                   >
                     <Button
                       size="icon"
@@ -680,9 +680,9 @@ export function ChatInput({
       </div>
 
       {/* Inline controls row */}
-      <div className="bg-background/80 mt-2 border border-border">
+      <div className="bg-background/80 mt-1.5 border border-border">
         {/* Row 1: context / attachment / model / mode selectors */}
-        <div className="flex min-w-0 flex-wrap items-center gap-1.5 border-b border-border px-2 py-1.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5 border-b border-border px-2 py-1">
           {(activeFile || selection) && (
             <button
               type="button"
@@ -757,7 +757,7 @@ export function ChatInput({
         <ModelPreflightBadge preflight={modelPreflight} />
 
         {/* Row 2: oversight toggle (left) + send controls (right) */}
-        <div className="flex items-center justify-between gap-2 px-2 py-1.5">
+        <div className="flex items-center justify-between gap-2 px-2 py-1">
           <OversightToggle
             level={oversightLevel}
             onChange={setOversightLevel}

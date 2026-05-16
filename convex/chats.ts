@@ -13,7 +13,7 @@ export const list = query({
       .query('chats')
       .withIndex('by_updated', (q) => q.eq('projectId', args.projectId))
       .order('desc')
-      .collect()
+      .take(100)
   },
 })
 
@@ -72,7 +72,7 @@ export const create = mutation({
     const existingChats = await ctx.db
       .query('chats')
       .withIndex('by_updated', (q) => q.eq('projectId', args.projectId))
-      .collect()
+      .take(1000)
 
     if (existingChats.length >= maxChats) {
       throw new Error(
@@ -131,14 +131,14 @@ export const remove = mutation({
     const messages = await ctx.db
       .query('messages')
       .withIndex('by_chat', (q) => q.eq('chatId', args.id))
-      .collect()
+      .take(1000)
 
     for (const message of messages) {
       // Delete artifacts associated with this message
       const artifacts = await ctx.db
         .query('artifacts')
         .withIndex('by_message', (q) => q.eq('messageId', message._id))
-        .collect()
+        .take(1000)
 
       for (const artifact of artifacts) {
         await ctx.db.delete(artifact._id)
@@ -151,7 +151,7 @@ export const remove = mutation({
     const chatArtifacts = await ctx.db
       .query('artifacts')
       .withIndex('by_chat', (q) => q.eq('chatId', args.id))
-      .collect()
+      .take(1000)
 
     for (const artifact of chatArtifacts) {
       await ctx.db.delete(artifact._id)
@@ -161,7 +161,7 @@ export const remove = mutation({
     const planningSessions = await ctx.db
       .query('planningSessions')
       .withIndex('by_chat', (q) => q.eq('chatId', args.id))
-      .collect()
+      .take(1000)
 
     for (const planningSession of planningSessions) {
       await ctx.db.delete(planningSession._id)
@@ -171,7 +171,7 @@ export const remove = mutation({
     const chatCheckpoints = await ctx.db
       .query('checkpoints')
       .withIndex('by_chat', (q) => q.eq('chatId', args.id))
-      .collect()
+      .take(1000)
 
     for (const checkpoint of chatCheckpoints) {
       await ctx.db.delete(checkpoint._id)
@@ -212,7 +212,7 @@ export const fork = mutation({
       .query('messages')
       .withIndex('by_chat', (q) => q.eq('chatId', args.chatId))
       .order('asc')
-      .collect()
+      .take(1000)
 
     const cutoffTime = args.upToMessageId
       ? (await ctx.db.get(args.upToMessageId))?.createdAt
@@ -260,14 +260,14 @@ export const revert = mutation({
     const messages = await ctx.db
       .query('messages')
       .withIndex('by_chat', (q) => q.eq('chatId', args.chatId))
-      .collect()
+      .take(1000)
 
     for (const message of messages) {
       if (message.createdAt > cutoffMessage.createdAt) {
         const artifacts = await ctx.db
           .query('artifacts')
           .withIndex('by_message', (q) => q.eq('messageId', message._id))
-          .collect()
+          .take(1000)
 
         for (const artifact of artifacts) {
           await ctx.db.delete(artifact._id)

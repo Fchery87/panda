@@ -130,8 +130,8 @@ export function WorkbenchTopBar({
       animate={{ y: 0, opacity: 1 }}
       className="bg-card/95 grid shrink-0 border-b border-foreground"
     >
-      <div className="grid min-h-14 lg:grid-cols-[minmax(230px,0.34fr)_1fr_auto]">
-        <div className="flex min-w-0 items-center gap-3 border-b border-foreground px-3 py-3 lg:border-b-0 lg:border-r lg:px-4">
+      <div className="grid min-h-12 lg:grid-cols-[minmax(210px,0.28fr)_1fr_auto]">
+        <div className="flex min-w-0 items-center gap-2 border-b border-foreground px-2.5 py-2 lg:border-b-0 lg:border-r lg:px-3">
           <div className="flex shrink-0 items-center gap-1.5">
             <Button
               variant="ghost"
@@ -177,11 +177,11 @@ export function WorkbenchTopBar({
           </div>
         </div>
 
-        <div className="flex min-w-0 items-center border-b border-foreground px-3 py-2 lg:border-b-0 lg:px-4">
+        <div className="flex min-w-0 items-center border-b border-foreground px-2.5 py-1.5 lg:border-b-0 lg:px-3">
           <button
             type="button"
             onClick={onOpenCommandPalette}
-            className="flex h-9 w-full items-center gap-3 border border-foreground bg-background px-3 text-left font-mono text-[11px] text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
+            className="flex h-8 w-full items-center gap-2 border border-foreground bg-background px-2.5 text-left font-mono text-[11px] text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
             aria-label="Open command palette"
           >
             <span className="uppercase tracking-[0.18em] text-primary">Search</span>
@@ -192,7 +192,7 @@ export function WorkbenchTopBar({
           </button>
         </div>
 
-        <div className="flex items-center gap-2 px-3 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground lg:border-l lg:border-foreground lg:px-4">
+        <div className="flex items-center gap-1.5 px-2.5 py-2 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground lg:border-l lg:border-foreground lg:px-3">
           <span className="h-2 w-2 border border-foreground bg-primary" />
           <TopBarControls
             branch={gitStatus?.branch}

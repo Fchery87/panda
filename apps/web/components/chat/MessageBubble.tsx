@@ -430,7 +430,7 @@ export function MessageBubble({
   return (
     <div
       className={cn(
-        'flex w-full min-w-0 gap-3 lg:gap-4 xl:gap-5',
+        'flex w-full min-w-0 gap-2.5 lg:gap-3 xl:gap-4',
         isUser ? 'flex-row-reverse' : 'flex-row'
       )}
     >
@@ -440,7 +440,7 @@ export function MessageBubble({
         animate={shouldReduceMotion ? { opacity: 1 } : { scale: 1, opacity: 1 }}
         transition={{ duration: shouldReduceMotion ? 0.01 : 0.2 }}
       >
-        <Avatar className={cn('h-7 w-7 shrink-0 xl:h-8 xl:w-8', isUser && 'bg-primary/10')}>
+        <Avatar className={cn('h-6 w-6 shrink-0 xl:h-7 xl:w-7', isUser && 'bg-primary/10')}>
           {isUser ? (
             <AvatarFallback className="bg-primary text-primary-foreground">
               <User className="h-3.5 w-3.5 xl:h-4 xl:w-4" />
@@ -520,11 +520,11 @@ export function MessageBubble({
               delay: shouldReduceMotion ? 0 : 0.05,
             }}
             className={cn(
-              'relative min-w-0 rounded-none border px-4 py-2.5 text-sm leading-relaxed',
+              'relative min-w-0 rounded-none border text-sm leading-relaxed',
               'px-3 py-2 text-[13px] xl:px-4 xl:py-2.5 xl:text-sm',
               isUser
-                ? 'max-w-[85%] self-end bg-primary text-primary-foreground'
-                : 'w-full self-stretch bg-muted text-foreground'
+                ? 'max-w-[78%] self-end bg-primary text-primary-foreground'
+                : 'w-full self-stretch bg-background text-foreground'
             )}
           >
             <div

@@ -53,11 +53,11 @@ export function RightPanel({
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col bg-background">
-      <div className="border-b border-foreground bg-secondary px-3 py-2">
+      <div className="border-b border-foreground bg-secondary px-3 py-1.5">
         <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
           {activeTab === 'work' ? 'Work Tray' : inspectorEyebrow}
         </div>
-        <h2 className="text-sm font-medium text-foreground">
+        <h2 className="truncate text-[13px] font-medium text-foreground">
           {activeTab === 'work' ? 'Inspect and edit work' : inspectorTitle}
         </h2>
       </div>
@@ -72,9 +72,9 @@ export function RightPanel({
           }
           onInspectorTabChange?.(tab)
         }}
-        className="h-10 shrink-0 overflow-x-auto border-b-foreground bg-card"
+        className="h-8 shrink-0 overflow-x-auto border-b-foreground bg-card"
         tabsClassName="scrollbar-hide min-w-max"
-        tabClassName="whitespace-nowrap px-3 text-[11px]"
+        tabClassName="whitespace-nowrap px-2.5 text-[10px]"
       />
 
       <div className="min-h-0 min-w-0 flex-1 overflow-hidden bg-card">

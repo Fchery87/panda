@@ -9,6 +9,7 @@ import {
   Upload as IconUpload,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { developmentCommands } from '@/lib/product/development-commands'
 import { cn } from '@/lib/utils'
 import { buildExecutionSessionTimelineRows } from '@/lib/workspace/execution-session-timeline'
 import type { WorkspaceFocusState } from './workspace-focus'
@@ -61,6 +62,20 @@ const SIGNAL_TONE_STYLES: Record<NonNullable<WorkspaceHomeProps['focusState']>['
     'border-[oklch(var(--status-success)/0.45)] bg-[oklch(var(--status-success)/0.08)] text-[oklch(var(--status-success))]',
 }
 
+const WORKSPACE_AREAS = [
+  ['Session Thread', 'Intent → plan → execution'],
+  ['Review Proof', 'Run, changes, context, preview'],
+  ['Work Tray', 'Files, diffs, artifacts'],
+  ['Runtime Dock', 'Terminal + execution bridge'],
+]
+
+const REVIEW_CHECKPOINTS = [
+  'Confirm the plan matches the requested scope before build execution.',
+  'Read validation evidence and receipts before accepting generated work.',
+  'Inspect changed files and diffs from the Work Tray, not the chat transcript.',
+  'Keep broad Convex queries bounded and redact command output before persistence.',
+]
+
 const FIRST_RUN_STEPS = [
   {
     label: '1. Project',
@@ -93,7 +108,7 @@ export function WorkspaceHome({
   recentFiles = [],
   pendingDiffs = 0,
   activeAgents = 0,
-  problemCount: _problemCount = 0,
+  problemCount = 0,
   onOpenFile,
   onOpenDiffView,
   onStartAgent,
@@ -108,6 +123,12 @@ export function WorkspaceHome({
   const primarySummary = focusState
     ? focusState.detail
     : 'Direct the agent from the desk, inspect proof before accepting work, and open files only when implementation detail matters.'
+  const workspaceVitals = [
+    ['Recent files', recentFiles.length > 0 ? String(recentFiles.length) : 'Clean'],
+    ['Pending diffs', String(pendingDiffs)],
+    ['Active runs', String(activeAgents)],
+    ['Problems', String(problemCount)],
+  ]
   const quickActions: Array<{
     label: string
     icon: typeof IconFile
@@ -160,6 +181,19 @@ export function WorkspaceHome({
                   : 'Run the workspace from intent, proof, and context.'}
               </h1>
               <p className="text-xs leading-relaxed text-muted-foreground">{primarySummary}</p>
+              <div
+                aria-label="Workspace vitals"
+                className="grid grid-cols-2 gap-1.5 pt-1 md:grid-cols-4"
+              >
+                {workspaceVitals.map(([label, value]) => (
+                  <div key={label} className="bg-card/70 border border-border px-2 py-1.5">
+                    <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
+                      {label}
+                    </div>
+                    <div className="font-mono text-sm font-semibold text-foreground">{value}</div>
+                  </div>
+                ))}
+              </div>
               {scanSignals.length > 0 ? (
                 <div
                   aria-label="Execution session at a glance"
@@ -346,6 +380,82 @@ export function WorkspaceHome({
             ) : null}
           </motion.section>
         ) : null}
+
+        <motion.section
+          aria-labelledby="workspace-map-title"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.07 }}
+          className="mb-4 grid gap-4 xl:grid-cols-2"
+        >
+          <div className="border border-foreground bg-card">
+            <div className="border-b border-foreground bg-secondary px-3 py-2">
+              <h2
+                id="workspace-map-title"
+                className="font-mono text-[10px] uppercase tracking-[0.24em] text-primary"
+              >
+                Workspace Map
+              </h2>
+            </div>
+            <div className="grid gap-px bg-border md:grid-cols-2">
+              {WORKSPACE_AREAS.map(([area, signal]) => (
+                <div key={area} className="bg-background p-3">
+                  <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground">
+                    {area}
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">{signal}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="border border-foreground bg-card">
+            <div className="border-b border-foreground bg-secondary px-3 py-2">
+              <h2 className="font-mono text-[10px] uppercase tracking-[0.24em] text-primary">
+                Review Checklist
+              </h2>
+            </div>
+            <div className="divide-y divide-border">
+              {REVIEW_CHECKPOINTS.map((item) => (
+                <p
+                  key={item}
+                  className="bg-background p-3 text-xs leading-relaxed text-muted-foreground"
+                >
+                  {item}
+                </p>
+              ))}
+            </div>
+          </div>
+        </motion.section>
+
+        <motion.section
+          aria-labelledby="command-deck-title"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.075 }}
+          className="mb-4 border border-foreground bg-card"
+        >
+          <div className="border-b border-foreground bg-secondary px-3 py-2">
+            <h2
+              id="command-deck-title"
+              className="font-mono text-[10px] uppercase tracking-[0.24em] text-primary"
+            >
+              Important Commands
+            </h2>
+          </div>
+          <div className="grid gap-px bg-border md:grid-cols-2 xl:grid-cols-4">
+            {developmentCommands.map((item) => (
+              <div key={item.command} className="bg-background p-3">
+                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-foreground">
+                  {item.label}
+                </div>
+                <code className="mt-1 block truncate border border-border bg-card px-2 py-1 font-mono text-[10px] text-primary">
+                  {item.command}
+                </code>
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{item.detail}</p>
+              </div>
+            ))}
+          </div>
+        </motion.section>
 
         <motion.div
           initial={{ opacity: 0, y: 8 }}

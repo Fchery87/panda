@@ -283,7 +283,7 @@ export const listMySharedChats = query({
     const sharedChats = await ctx.db
       .query('sharedChats')
       .withIndex('by_creator', (q) => q.eq('createdBy', userId))
-      .collect()
+      .take(100)
 
     return sharedChats.map((sc) => ({
       shareId: sc.shareId,

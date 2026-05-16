@@ -409,7 +409,7 @@ async function retireOlderPlanningSessions(
   const sessions = await ctx.db
     .query('planningSessions')
     .withIndex('by_chat', (q) => q.eq('chatId', args.chatId))
-    .collect()
+    .take(100)
 
   const outdatedSessions = sessions.filter(
     (session) =>

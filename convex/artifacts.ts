@@ -11,7 +11,7 @@ export const list = query({
     return await ctx.db
       .query('artifacts')
       .withIndex('by_chat', (q) => q.eq('chatId', args.chatId))
-      .collect()
+      .take(200)
   },
 })
 

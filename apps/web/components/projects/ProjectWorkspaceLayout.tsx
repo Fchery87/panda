@@ -420,7 +420,7 @@ export function ProjectWorkspaceLayoutView({
           <>
             <div className="flex h-full min-h-0 min-w-0 flex-col bg-card">
               <div
-                className="grid shrink-0 border-b border-foreground bg-card font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground sm:grid-cols-4"
+                className="grid shrink-0 border-b border-foreground bg-card font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground sm:grid-cols-4"
                 aria-label="Workspace workflow modes"
               >
                 <button
@@ -430,7 +430,7 @@ export function ProjectWorkspaceLayoutView({
                     if (!isFlyoutOpen) onToggleFlyout()
                   }}
                   className={cn(
-                    'flex h-9 items-center border-b border-foreground px-4 text-left transition-colors hover:bg-background hover:text-foreground sm:border-b-0 sm:border-r',
+                    'flex h-7 items-center border-b border-foreground px-3 text-left transition-colors hover:bg-background hover:text-foreground sm:border-b-0 sm:border-r',
                     isFlyoutOpen && activeSection === 'tasks' && 'bg-primary/10 text-foreground'
                   )}
                 >
@@ -440,7 +440,7 @@ export function ProjectWorkspaceLayoutView({
                   type="button"
                   onClick={() => onCenterTabChange?.('editor')}
                   className={cn(
-                    'flex h-9 items-center border-b border-foreground px-4 text-left transition-colors hover:bg-background hover:text-foreground sm:border-b-0 sm:border-r',
+                    'flex h-7 items-center border-b border-foreground px-3 text-left transition-colors hover:bg-background hover:text-foreground sm:border-b-0 sm:border-r',
                     activeCenterTab === 'editor' && 'bg-primary/10 text-foreground'
                   )}
                 >
@@ -452,7 +452,7 @@ export function ProjectWorkspaceLayoutView({
                     openRightPanelTab(activeReviewTab === 'work' ? 'run' : activeReviewTab)
                   }
                   className={cn(
-                    'flex h-9 items-center border-b border-foreground px-4 text-left transition-colors hover:bg-background hover:text-foreground sm:border-b-0 sm:border-r',
+                    'flex h-7 items-center border-b border-foreground px-3 text-left transition-colors hover:bg-background hover:text-foreground sm:border-b-0 sm:border-r',
                     isRightPanelOpen &&
                       activeReviewTab !== 'work' &&
                       'bg-primary/10 text-foreground'
@@ -464,7 +464,7 @@ export function ProjectWorkspaceLayoutView({
                   type="button"
                   onClick={() => openRightPanelTab('work')}
                   className={cn(
-                    'flex h-9 items-center px-4 text-left transition-colors hover:bg-background hover:text-foreground',
+                    'flex h-7 items-center px-3 text-left transition-colors hover:bg-background hover:text-foreground',
                     isRightPanelOpen &&
                       activeReviewTab === 'work' &&
                       'bg-primary/10 text-foreground'
@@ -519,8 +519,8 @@ export function ProjectWorkspaceLayoutView({
                           aria-label="Execution session timeline and composer"
                           id="workspace-panel"
                           order={2}
-                          defaultSize={isRightPanelOpen ? 50 : 100}
-                          minSize={35}
+                          defaultSize={isRightPanelOpen ? 74 : 100}
+                          minSize={52}
                           className="flex min-h-0 min-w-0 flex-col"
                         >
                           {chatPanel}
@@ -538,9 +538,9 @@ export function ProjectWorkspaceLayoutView({
                               aria-label="Execution session work tray"
                               id="work-tray-panel"
                               order={3}
-                              defaultSize={isCompactDesktopLayout ? 32 : 26}
-                              minSize={22}
-                              maxSize={40}
+                              defaultSize={isCompactDesktopLayout ? 30 : 26}
+                              minSize={18}
+                              maxSize={34}
                               className="flex min-h-0 min-w-0 flex-col"
                             >
                               <div

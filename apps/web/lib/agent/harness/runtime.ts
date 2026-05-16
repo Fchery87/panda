@@ -29,14 +29,13 @@ import type {
   ToolInterruptRequest,
   ToolInterruptResult,
   ToolRiskTier,
-  RuntimeSnapshotEvent,
   HarnessPermissionAuditEntry,
   PermissionAuditTarget,
   RuntimeHarnessPolicySnapshot,
   HarnessSubagentSummary,
   HarnessSubagentCapabilityPreset,
 } from './types'
-import type { FormalSpecification, SpecTier } from '../spec/types'
+import type { FormalSpecification } from '../spec/types'
 import type {
   LLMProvider,
   CompletionOptions,
@@ -90,6 +89,9 @@ import {
   gatherModifiedFiles,
   gatherOutput,
 } from './runtime-summary'
+import { buildActiveSpecSystemContent } from './runtime-active-spec'
+import { DEFAULT_RUNTIME_CONFIG } from './runtime-config'
+import type { RuntimeEvent, ToolExecutor } from './runtime-types'
 import { SpecEngine, createSpecEngine, type SpecGenerationContext } from '../spec/engine'
 import { DefaultSpecLifecycleManager, type SpecLifecycleManager } from '../spec/lifecycle-manager'
 import { sanitizeText } from './stream-sanitizer'
@@ -102,9 +104,16 @@ import { buildSubagentSystemPrompt } from '../skills/subagent-composition'
 import {
   getStrictCustomSkillPreflightSummaries,
   summarizeAppliedSkills,
-  type AppliedSkillSummary,
 } from '../skills/applied-skills'
 import { resolveAgentSkills } from '../skills/resolver'
+
+export { buildActiveSpecSystemContent } from './runtime-active-spec'
+export type {
+  RuntimeEvent,
+  RuntimeEventType,
+  ToolExecutionContext,
+  ToolExecutor,
+} from './runtime-types'
 
 /**
  * Runtime state
@@ -144,217 +153,7 @@ interface RuntimeState {
   consecutiveNarrationTurns: number
 }
 
-export function buildActiveSpecSystemContent(spec: FormalSpecification): string {
-  const lines: string[] = [
-    '## Active Specification',
-    `**Goal:** ${spec.intent.goal}`,
-    `**Status:** ${spec.status} (Tier: ${spec.tier})`,
-    '',
-  ]
-
-  if (spec.intent.constraints.length > 0) {
-    lines.push('**Constraints:**')
-    for (const c of spec.intent.constraints) {
-      lines.push(
-        `- [${c.type}] ${'requirement' in c ? c.requirement : 'rule' in c ? c.rule : 'assertion' in c ? c.assertion : JSON.stringify(c)}`
-      )
-    }
-    lines.push('')
-  }
-
-  if (spec.intent.acceptanceCriteria.length > 0) {
-    lines.push('**Acceptance Criteria:**')
-    for (const a of spec.intent.acceptanceCriteria) {
-      lines.push(`- ${a.behavior}`)
-    }
-    lines.push('')
-  }
-
-  if (spec.plan.steps.length > 0) {
-    lines.push('**Execution Plan:**')
-    for (let i = 0; i < spec.plan.steps.length; i++) {
-      lines.push(`${i + 1}. ${spec.plan.steps[i].description}`)
-    }
-    lines.push('')
-  }
-
-  lines.push(
-    '**Scope Rule:** Only modify files in plan scope. Out-of-scope writes will be flagged.'
-  )
-
-  return lines.join('\n')
-}
-
 type PendingSubtask = RuntimeCheckpointPendingSubtask
-
-/**
- * Tool execution context
- */
-export interface ToolExecutionContext {
-  sessionID: Identifier
-  messageID: Identifier
-  agent: AgentConfig
-  abortSignal: AbortSignal
-  metadata: (data: Record<string, unknown>) => void
-  ask: (question: string) => Promise<string>
-}
-
-/**
- * Tool executor function type
- */
-export type ToolExecutor = (
-  args: Record<string, unknown>,
-  ctx: ToolExecutionContext
-) => Promise<{ output: string; error?: string; metadata?: Record<string, unknown> }>
-
-/**
- * Runtime event types
- */
-export type RuntimeEventType =
-  | 'status'
-  | 'text'
-  | 'reasoning'
-  | 'tool_call'
-  | 'tool_result'
-  | 'subagent_start'
-  | 'subagent_complete'
-  | 'subagent_summary'
-  | 'step_start'
-  | 'step_finish'
-  | 'compaction'
-  | 'permission_request'
-  | 'permission_decision'
-  | 'interrupt_request'
-  | 'interrupt_decision'
-  | 'snapshot'
-  | 'applied_skills'
-  | 'strict_skill_preflight'
-  | 'error'
-  | 'warning'
-  | 'complete'
-  // SpecNative events
-  | 'spec_pending_approval'
-  | 'spec_generated'
-  | 'spec_verification'
-  | 'drift_detected'
-
-/**
- * Runtime event
- */
-export interface RuntimeEvent {
-  type: RuntimeEventType
-  content?: string
-  compaction?: {
-    phase: 'start' | 'deferred' | 'complete'
-  }
-  reasoningContent?: string
-  toolCall?: ToolCall
-  toolResult?: {
-    toolCallId: string
-    toolName: string
-    args: Record<string, unknown>
-    output: string
-    error?: string
-    durationMs: number
-  }
-  interrupt?: {
-    toolName: string
-    riskTier: ToolRiskTier
-    decision?: 'approve' | 'reject' | 'edit'
-    reason?: string
-  }
-  snapshot?: RuntimeSnapshotEvent
-  appliedSkills?: AppliedSkillSummary[]
-  strictSkillPreflight?: {
-    skills: AppliedSkillSummary[]
-  }
-  subagent?: {
-    agent: string
-    sessionID: Identifier
-    id?: string
-    success?: boolean
-    error?: string
-  }
-  subagentSummary?: HarnessSubagentSummary
-  step?: number
-  finishReason?: FinishReason
-  usage?: { input: number; output: number; reasoning: number }
-  cost?: number
-  error?: string
-  terminationReason?: TerminationReason
-  // Warning event fields
-  message?: string
-  pluginName?: string
-  hookType?: string
-  // SpecNative event fields
-  spec?: FormalSpecification
-  tier?: SpecTier
-  reconcile?: {
-    aligned: boolean
-    reason: string
-    gate?: string
-    detail?: string
-  }
-  verification?: {
-    passed: boolean
-    results: Array<{
-      criterionId: string
-      passed: boolean
-      message?: string
-    }>
-  }
-  drift?: {
-    specId: string
-    findings: Array<{ filePath: string; description: string }>
-  }
-  /** Phase 8 — capability-based permission evaluation result */
-  permission?: {
-    tool: string
-    capability: string
-    target?: string
-    decision: 'allow' | 'ask' | 'deny'
-    source?: string
-    ruleId?: string
-    reason: string
-    mode: string
-    agentId: string
-    commandFamily?: string
-    targetKind?: string
-    unattended?: boolean
-    denialReason?: 'unattended_permission_denied'
-  }
-}
-
-/**
- * Default runtime configuration
- */
-const DEFAULT_RUNTIME_CONFIG: RuntimeConfig = {
-  maxIterations: 100,
-  maxSteps: 50,
-  maxToolCallsPerStep: 10,
-  enableToolDeduplication: true,
-  toolLoopThreshold: 3,
-  contextCompactionThreshold: 0.9,
-  enableSnapshots: true,
-  snapshotFailureMode: 'warn',
-  enableReasoning: true,
-  maxSubagentDepth: 2,
-  subagentDepth: 0,
-  maxToolExecutionRetries: 0,
-  toolRetryBackoffMs: 200,
-  enableToolCallIdempotencyCache: false,
-  toolExecutionTimeoutMs: 300000,
-  specEngine: {
-    enabled: true,
-    autoApproveAmbient: true,
-    maxSpecsPerProject: 100,
-    enableDriftDetection: true,
-  },
-  // Stream resilience configuration
-  streamIdleTimeoutMs: 120000,
-  maxStreamRetries: 3,
-  streamRetryBackoffMs: 2000,
-}
 
 /**
  * Agent Runtime class

@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "generatedAt": "2026-05-16",
+  "policy": "Production Convex .collect() calls are not allowed. Use bounded .take(...), cursor pagination, targeted .first()/.unique(), or aggregate tables instead. If a future exception is unavoidable, add it here with owner, risk, and next action, then justify it in review docs.",
+  "files": []
+}

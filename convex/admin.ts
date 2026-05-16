@@ -80,7 +80,7 @@ async function countProjectsByUser(ctx: AdminCtx, userId: string) {
   const projects = await ctx.db
     .query('projects')
     .withIndex('by_creator', (q) => q.eq('createdBy', userIdAsId))
-    .collect()
+    .take(1000)
 
   return projects.length
 }
@@ -92,14 +92,14 @@ async function countChatsByUser(ctx: AdminCtx, userId: string) {
   const projects = await ctx.db
     .query('projects')
     .withIndex('by_creator', (q) => q.eq('createdBy', userIdAsId))
-    .collect()
+    .take(1000)
 
   let chatCount = 0
   for (const project of projects) {
     const chats = await ctx.db
       .query('chats')
       .withIndex('by_project', (q) => q.eq('projectId', project._id))
-      .collect()
+      .take(1000)
     chatCount += chats.length
   }
 
@@ -380,19 +380,19 @@ export const getUserDetails = query({
     const projects = await ctx.db
       .query('projects')
       .withIndex('by_creator', (q) => q.eq('createdBy', args.userId))
-      .collect()
+      .take(1000)
 
     // Get user's MCP servers count
     const mcpServers = await ctx.db
       .query('mcpServers')
       .withIndex('by_user', (q) => q.eq('userId', args.userId))
-      .collect()
+      .take(1000)
 
     // Get user's subagents count
     const subagents = await ctx.db
       .query('subagents')
       .withIndex('by_user', (q) => q.eq('userId', args.userId))
-      .collect()
+      .take(1000)
 
     const chatCount = analytics?.totalChats ?? (await countChatsByUser(ctx, args.userId))
 
@@ -510,7 +510,7 @@ export const deleteUser = mutation({
     const projects = await ctx.db
       .query('projects')
       .withIndex('by_creator', (q) => q.eq('createdBy', args.userId))
-      .collect()
+      .take(1000)
 
     // Delete projects and associated data
     for (const project of projects) {
@@ -518,14 +518,14 @@ export const deleteUser = mutation({
       const files = await ctx.db
         .query('files')
         .withIndex('by_project', (q) => q.eq('projectId', project._id))
-        .collect()
+        .take(1000)
 
       for (const file of files) {
         // Delete file snapshots
         const snapshots = await ctx.db
           .query('fileSnapshots')
           .withIndex('by_file', (q) => q.eq('fileId', file._id))
-          .collect()
+          .take(1000)
         for (const snapshot of snapshots) {
           await ctx.db.delete(snapshot._id)
         }
@@ -536,13 +536,13 @@ export const deleteUser = mutation({
       const chats = await ctx.db
         .query('chats')
         .withIndex('by_project', (q) => q.eq('projectId', project._id))
-        .collect()
+        .take(1000)
 
       for (const chat of chats) {
         const messages = await ctx.db
           .query('messages')
           .withIndex('by_chat', (q) => q.eq('chatId', chat._id))
-          .collect()
+          .take(1000)
         for (const message of messages) {
           await ctx.db.delete(message._id)
         }
@@ -574,7 +574,7 @@ export const deleteUser = mutation({
     const mcpServers = await ctx.db
       .query('mcpServers')
       .withIndex('by_user', (q) => q.eq('userId', args.userId))
-      .collect()
+      .take(1000)
     for (const server of mcpServers) {
       await ctx.db.delete(server._id)
     }
@@ -583,7 +583,7 @@ export const deleteUser = mutation({
     const subagents = await ctx.db
       .query('subagents')
       .withIndex('by_user', (q) => q.eq('userId', args.userId))
-      .collect()
+      .take(1000)
     for (const subagent of subagents) {
       await ctx.db.delete(subagent._id)
     }
@@ -592,7 +592,7 @@ export const deleteUser = mutation({
     const tokens = await ctx.db
       .query('providerTokens')
       .withIndex('by_user', (q) => q.eq('userId', args.userId))
-      .collect()
+      .take(1000)
     for (const token of tokens) {
       await ctx.db.delete(token._id)
     }
@@ -625,33 +625,33 @@ export const getSystemOverview = query({
     await requireAdmin(ctx)
 
     // Count total users
-    const totalUsers = await ctx.db.query('users').collect()
+    const totalUsers = await ctx.db.query('users').take(1000)
     const activeUsers = totalUsers.filter((u) => !u.isBanned)
     const adminUsers = totalUsers.filter((u) => u.isAdmin)
     const bannedUsers = totalUsers.filter((u) => u.isBanned)
 
     // Count total projects
-    const totalProjects = await ctx.db.query('projects').collect()
+    const totalProjects = await ctx.db.query('projects').take(1000)
 
     // Count total chats
-    const totalChats = await ctx.db.query('chats').collect()
+    const totalChats = await ctx.db.query('chats').take(1000)
 
     // Count total messages
-    const totalMessages = await ctx.db.query('messages').collect()
+    const totalMessages = await ctx.db.query('messages').take(1000)
 
     // Get recent registrations (last 24 hours)
     const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000
     const recentRegistrations = totalUsers.filter((u) => u.createdAt && u.createdAt > oneDayAgo)
 
     // Get active users (last 24 hours) - based on analytics
-    const userAnalytics = await ctx.db.query('userAnalytics').collect()
+    const userAnalytics = await ctx.db.query('userAnalytics').take(1000)
     const recentAnalyticsUsers = new Set(
       userAnalytics
         .filter((a) => a.lastActiveAt && a.lastActiveAt > oneDayAgo)
         .map((analytics) => analytics.userId)
     )
     const recentRunUsers = new Set(
-      (await ctx.db.query('agentRuns').collect())
+      (await ctx.db.query('agentRuns').take(1000))
         .filter((run) => run.startedAt > oneDayAgo)
         .map((run) => run.userId)
     )
@@ -690,7 +690,7 @@ export const getProviderAnalytics = query({
   handler: async (ctx, args) => {
     await requireAdmin(ctx)
 
-    const agentRuns = await ctx.db.query('agentRuns').collect()
+    const agentRuns = await ctx.db.query('agentRuns').take(1000)
     const parseDateBoundary = (value: string, endOfDay: boolean) => {
       const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
       if (!match) return null
@@ -778,14 +778,14 @@ export const getAuditLog = query({
           .query('auditLog')
           .withIndex('by_action', (q) => q.eq('action', actionFilter))
           .order('desc')
-          .collect()
+          .take(1000)
       : resourceFilter
         ? await ctx.db
             .query('auditLog')
             .withIndex('by_resource', (q) => q.eq('resource', resourceFilter))
             .order('desc')
-            .collect()
-        : await ctx.db.query('auditLog').withIndex('by_created').order('desc').collect()
+            .take(1000)
+        : await ctx.db.query('auditLog').withIndex('by_created').order('desc').take(1000)
 
     const filteredLogs = logs.filter((log) => {
       if (args.action && log.action !== args.action) return false

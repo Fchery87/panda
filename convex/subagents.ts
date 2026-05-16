@@ -42,7 +42,7 @@ export const list = query({
     return await ctx.db
       .query('subagents')
       .withIndex('by_user', (q) => q.eq('userId', userIdAsId!))
-      .collect()
+      .take(100)
   },
 })
 

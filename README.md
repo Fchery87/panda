@@ -127,21 +127,26 @@ For repository-backed projects, create and install a GitHub App using
 
 ## Development Commands
 
+| Command                | When to use it                                    | What it proves                                                                                                    |
+| ---------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `bun run dev`          | Daily local development                           | Starts Convex dev and the Next.js workspace together.                                                             |
+| `bun run typecheck`    | Before review or after data/model changes         | Verifies TypeScript, package boundaries, and generated Convex bindings.                                           |
+| `bun run lint`         | Before review                                     | Enforces the shared ESLint rules across the monorepo.                                                             |
+| `bun run format:check` | Before PR/CI                                      | Confirms Prettier formatting without mutating files.                                                              |
+| `bun test`             | After runtime, Convex, hook, or component changes | Runs Bun unit and component coverage across the repo.                                                             |
+| `bun run test:e2e`     | Before shipping workspace UX changes              | Runs focused Playwright acceptance for workbench, agent-run, permissions, and sharing flows.                      |
+| `bun run build`        | Release gate                                      | Compiles the production app.                                                                                      |
+| `bun run validate:web` | Full local web gate                               | Runs command drift checks, Convex collect audit, typecheck, lint, format check, web tests, and build in sequence. |
+
+The command catalog source of truth is
+[`docs/development-commands.json`](./docs/development-commands.json);
+`bun run docs:commands:check` guards the README and workspace command deck
+against drift.
+
+Recommended proof loop:
+
 ```bash
-# App + backend
-bun run dev
-
-# Source verification
-bun run typecheck
-bun run lint
-bun run format:check
-bun test
-
-# Focused browser acceptance
-bun run test:e2e
-
-# Production build
-bun run build
+bun run typecheck && bun run lint && bun run format:check && bun test
 ```
 
 ## Canonical Workflow

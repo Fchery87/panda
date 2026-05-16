@@ -111,10 +111,10 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
         isMobileLayout ? 'border-t border-foreground' : ''
       )}
     >
-      <div className="relative flex h-9 shrink-0 items-center justify-between border-b border-foreground bg-secondary px-3">
+      <div className="relative flex h-8 shrink-0 items-center justify-between border-b border-foreground bg-secondary px-3">
         <div className="flex min-w-0 items-center gap-2">
           <span className="shrink-0 font-mono text-[11px] font-medium uppercase tracking-[0.24em] text-foreground">
-            Agent Thread · {sessionStatusLabel}
+            Thread · {sessionStatusLabel}
           </span>
           {sessionSummary ? (
             <span className="min-w-0 truncate font-mono text-[10px] text-muted-foreground">
@@ -129,7 +129,7 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 w-7 rounded-none p-0"
+                className="h-6 w-6 rounded-none p-0"
                 aria-label="Chat actions"
               >
                 <IconOverflow className="h-4 w-4" />

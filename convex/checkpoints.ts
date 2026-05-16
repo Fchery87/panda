@@ -91,7 +91,7 @@ export const create = mutation({
       .query('checkpoints')
       .withIndex('by_project_created', (q) => q.eq('projectId', args.projectId))
       .order('asc')
-      .collect()
+      .take(MAX_CHECKPOINTS_PER_PROJECT + 10)
 
     const withoutNew = existingCheckpoints.filter((cp) => cp._id !== checkpointId)
     if (withoutNew.length >= MAX_CHECKPOINTS_PER_PROJECT) {
@@ -245,7 +245,7 @@ export const createForFileChanges = mutation({
       .query('checkpoints')
       .withIndex('by_project_created', (q) => q.eq('projectId', args.projectId))
       .order('asc')
-      .collect()
+      .take(MAX_CHECKPOINTS_PER_PROJECT + 10)
 
     const withoutNew = existingCheckpoints.filter((cp) => cp._id !== checkpointId)
     if (withoutNew.length >= MAX_CHECKPOINTS_PER_PROJECT) {

@@ -1,4 +1,4 @@
-import type { RuntimeEvent } from './runtime'
+import type { RuntimeEvent } from './runtime-types'
 
 export function createToolResultEvent(args: {
   toolCallId: string

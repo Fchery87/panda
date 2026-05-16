@@ -180,7 +180,7 @@ export function MessageList({
               key={item.id}
               data-index={virtualRow.index}
               ref={virtualizer.measureElement}
-              className="absolute left-0 top-0 w-full px-3 py-2 xl:px-4"
+              className="absolute left-0 top-0 w-full px-3 py-1.5 xl:px-4"
               style={{ transform: `translateY(${virtualRow.start}px)` }}
             >
               {item.type === 'message' ? (

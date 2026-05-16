@@ -20,7 +20,7 @@ async function deleteByIndex<TableName extends Parameters<MutationCtx['db']['que
   const rows = await ctx.db
     .query(table)
     .withIndex(indexName as never, buildQuery as never)
-    .collect()
+    .take(1000)
 
   for (const row of rows) {
     await ctx.db.delete(row._id)
@@ -41,7 +41,7 @@ async function assertProjectLimitAvailable(ctx: MutationCtx, userId: Id<'users'>
   const existingProjects = await ctx.db
     .query('projects')
     .withIndex('by_creator', (q) => q.eq('createdBy', userId))
-    .collect()
+    .take(1000)
 
   if (existingProjects.length >= maxProjects) {
     throw new Error(
@@ -54,7 +54,7 @@ async function deleteChatChildren(ctx: MutationCtx, chatId: Id<'chats'>): Promis
   const messages = await ctx.db
     .query('messages')
     .withIndex('by_chat', (q) => q.eq('chatId', chatId))
-    .collect()
+    .take(1000)
 
   for (const message of messages) {
     await deleteByIndex(ctx, 'chatAttachments', 'by_message', (q) => q.eq('messageId', message._id))
@@ -86,7 +86,7 @@ export const list = query({
     return await ctx.db
       .query('projects')
       .withIndex('by_creator', (q) => q.eq('createdBy', userId as Id<'users'>))
-      .collect()
+      .take(200)
   },
 })
 
@@ -323,7 +323,7 @@ export const remove = mutation({
     const files = await ctx.db
       .query('files')
       .withIndex('by_project', (q) => q.eq('projectId', args.id))
-      .collect()
+      .take(1000)
 
     for (const file of files) {
       await deleteFileWithSnapshots(ctx, file._id)
@@ -332,7 +332,7 @@ export const remove = mutation({
     const chats = await ctx.db
       .query('chats')
       .withIndex('by_project', (q) => q.eq('projectId', args.id))
-      .collect()
+      .take(1000)
 
     let deletedMessageCount = 0
 
@@ -356,7 +356,7 @@ export const remove = mutation({
     const evalRuns = await ctx.db
       .query('evalRuns')
       .withIndex('by_project_started', (q) => q.eq('projectId', args.id))
-      .collect()
+      .take(1000)
 
     for (const evalRun of evalRuns) {
       await deleteByIndex(ctx, 'evalRunResults', 'by_run_sequence', (q) =>

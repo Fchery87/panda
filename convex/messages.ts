@@ -60,14 +60,14 @@ export const list = query({
       .query('messages')
       .withIndex('by_created', (q) => q.eq('chatId', args.chatId))
       .order('asc')
-      .collect()
+      .take(1000)
 
     return await Promise.all(
       messages.map(async (message) => {
         const attachments = await ctx.db
           .query('chatAttachments')
           .withIndex('by_message', (q) => q.eq('messageId', message._id))
-          .collect()
+          .take(1000)
 
         return await enrichMessageWithAttachments({
           message,
@@ -100,7 +100,7 @@ export const listPaginated = query({
           const attachments = await ctx.db
             .query('chatAttachments')
             .withIndex('by_message', (q) => q.eq('messageId', message._id))
-            .collect()
+            .take(1000)
 
           return await enrichMessageWithAttachments({
             message,
@@ -136,7 +136,7 @@ export const listPaginatedLite = query({
           .withIndex('by_chat_message', (q) =>
             q.eq('chatId', args.chatId).eq('messageId', message._id)
           )
-          .collect()
+          .take(1000)
 
         if (attachments.length > 0) {
           attachmentsByMessage.set(message._id, attachments.map(toAttachmentMetadata))
@@ -177,7 +177,7 @@ export const get = query({
     const attachments = await ctx.db
       .query('chatAttachments')
       .withIndex('by_message', (q) => q.eq('messageId', message._id))
-      .collect()
+      .take(1000)
 
     return await enrichMessageWithAttachments({
       message,
@@ -250,7 +250,7 @@ export const remove = mutation({
     const artifacts = await ctx.db
       .query('artifacts')
       .withIndex('by_message', (q) => q.eq('messageId', args.id))
-      .collect()
+      .take(1000)
 
     for (const artifact of artifacts) {
       await ctx.db.delete(artifact._id)
@@ -259,7 +259,7 @@ export const remove = mutation({
     const attachments = await ctx.db
       .query('chatAttachments')
       .withIndex('by_message', (q) => q.eq('messageId', args.id))
-      .collect()
+      .take(1000)
 
     for (const attachment of attachments) {
       await ctx.storage.delete(attachment.storageId)
