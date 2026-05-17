@@ -10,7 +10,7 @@ describe('chat mode surface presentation', () => {
     expect(getChatModeSurfacePresentation('plan')).toMatchObject({
       label: 'Plan',
       shortLabel: 'Plan',
-      description: 'Clarify scope, draft the plan, and get approval before execution.',
+      description: 'Turn findings into a clear implementation plan before execution.',
       advanced: false,
     })
   })
@@ -19,13 +19,13 @@ describe('chat mode surface presentation', () => {
     expect(getChatModeSurfacePresentation('ask')).toMatchObject({
       label: 'Ask',
       shortLabel: 'Ask',
-      description: 'Read-only Q&A without touching files or running changes.',
+      description: 'Research, explain, and answer without changing files.',
       advanced: false,
     })
     expect(getChatModeSurfacePresentation('code')).toMatchObject({
       label: 'Code',
       shortLabel: 'Code',
-      description: 'Execute code changes directly with read, write, and command access.',
+      description: 'Make focused code changes, then run the right checks.',
       advanced: false,
     })
   })
@@ -34,7 +34,7 @@ describe('chat mode surface presentation', () => {
     expect(getChatModeSurfacePresentation('build')).toMatchObject({
       label: 'Build',
       shortLabel: 'Build',
-      description: 'Full-access mode for direct expert execution of complex tasks.',
+      description: 'Execute broad changes end-to-end and keep validating.',
       advanced: false,
     })
   })

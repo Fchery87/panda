@@ -106,6 +106,18 @@ describe('buildResolvedRoutingDecision', () => {
     expect(decision.source).toBe('deterministic_rules')
   })
 
+  it('routes natural-language planning requests out of Ask mode', () => {
+    const decision = buildResolvedRoutingDecision({
+      content: 'Create a comprehensive implementation pla of your findings',
+      requestedMode: 'ask',
+      oversightLevel: 'review',
+    })
+
+    expect(decision.requestedMode).toBe('ask')
+    expect(decision.resolvedMode).toBe('plan')
+    expect(decision.confidence).toBe('high')
+  })
+
   it('preserves explicitly selected modes as manual overrides', () => {
     const decision = buildResolvedRoutingDecision({
       content: 'fix the failing login test',

@@ -35,12 +35,12 @@ export type ModeContract = ChatModeConfig
 
 export const CHAT_MODE_CONFIGS: Record<ChatMode, ChatModeConfig> = {
   ask: {
-    description: 'Read-only Q&A',
+    description: 'Research and answer without changing files',
     fileAccess: 'read-only',
     surface: {
       label: 'Ask',
       shortLabel: 'Ask',
-      description: 'Read-only Q&A without touching files or running changes.',
+      description: 'Research, explain, and answer without changing files.',
       advanced: false,
       primaryShortcut: '⇧1',
     },
@@ -51,12 +51,12 @@ export const CHAT_MODE_CONFIGS: Record<ChatMode, ChatModeConfig> = {
     outputFormat: 'conversational',
   },
   plan: {
-    description: 'Clarify, scope, draft, and approve a plan',
+    description: 'Turn intent and findings into an implementation plan',
     fileAccess: 'read-only',
     surface: {
       label: 'Plan',
       shortLabel: 'Plan',
-      description: 'Clarify scope, draft the plan, and get approval before execution.',
+      description: 'Turn findings into a clear implementation plan before execution.',
       advanced: false,
       primaryShortcut: '⇧2',
     },
@@ -67,12 +67,12 @@ export const CHAT_MODE_CONFIGS: Record<ChatMode, ChatModeConfig> = {
     outputFormat: 'conversational',
   },
   code: {
-    description: 'Execute code changes with read/write/command access',
+    description: 'Make focused code changes and verify them',
     fileAccess: 'read-write',
     surface: {
       label: 'Code',
       shortLabel: 'Code',
-      description: 'Execute code changes directly with read, write, and command access.',
+      description: 'Make focused code changes, then run the right checks.',
       advanced: false,
       primaryShortcut: '⇧3',
     },
@@ -87,12 +87,12 @@ export const CHAT_MODE_CONFIGS: Record<ChatMode, ChatModeConfig> = {
     },
   },
   build: {
-    description: 'Full-access build mode for direct expert execution',
+    description: 'Execute broad changes end-to-end',
     fileAccess: 'read-write',
     surface: {
       label: 'Build',
       shortLabel: 'Build',
-      description: 'Full-access mode for direct expert execution of complex tasks.',
+      description: 'Execute broad changes end-to-end and keep validating.',
       advanced: false,
       primaryShortcut: '⇧4',
     },
