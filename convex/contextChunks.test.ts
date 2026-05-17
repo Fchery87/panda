@@ -5,7 +5,10 @@ import path from 'node:path'
 describe('contextChunks persistence contract', () => {
   test('declares Convex-native lexical and semantic indexes', () => {
     const schemaSource = fs.readFileSync(path.resolve(import.meta.dir, 'schema.ts'), 'utf8')
-    const contextChunksSource = fs.readFileSync(path.resolve(import.meta.dir, 'contextChunks.ts'), 'utf8')
+    const contextChunksSource = fs.readFileSync(
+      path.resolve(import.meta.dir, 'contextChunks.ts'),
+      'utf8'
+    )
 
     expect(schemaSource).toContain('export const ContextChunkSourceType = v.union(')
     expect(schemaSource).toContain('contextChunks: defineTable({')

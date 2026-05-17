@@ -2,7 +2,16 @@ import type { ContextChunkSourceType, LocalContextChunk } from './chunker'
 import { estimateContextTokens } from './chunker'
 import { retrieveContextChunks, type RetrievedContextChunk } from './retriever'
 
-export type ContextPackSectionKind = 'system' | 'project' | 'files' | 'history' | 'summary' | 'plan' | 'spec' | 'runtime' | 'skills'
+export type ContextPackSectionKind =
+  | 'system'
+  | 'project'
+  | 'files'
+  | 'history'
+  | 'summary'
+  | 'plan'
+  | 'spec'
+  | 'runtime'
+  | 'skills'
 
 export interface ContextPackItem {
   sourceType: ContextChunkSourceType
@@ -58,14 +67,21 @@ export interface BuildAgentContextPackOptions {
 
 function sectionKindForSource(sourceType: ContextChunkSourceType): ContextPackSectionKind {
   switch (sourceType) {
-    case 'file': return 'files'
-    case 'message': return 'history'
-    case 'summary': return 'summary'
-    case 'plan': return 'plan'
-    case 'spec': return 'spec'
-    case 'run_event': return 'runtime'
+    case 'file':
+      return 'files'
+    case 'message':
+      return 'history'
+    case 'summary':
+      return 'summary'
+    case 'plan':
+      return 'plan'
+    case 'spec':
+      return 'spec'
+    case 'run_event':
+      return 'runtime'
     case 'skill':
-    case 'subagent': return 'skills'
+    case 'subagent':
+      return 'skills'
   }
 }
 
@@ -103,11 +119,23 @@ export function buildAgentContextPack(options: BuildAgentContextPackOptions): Ag
   for (const chunk of retrieved) {
     const tokenCount = chunk.tokenCount || estimateContextTokens(chunk.content)
     if (seen.has(chunk.contentHash)) {
-      omitted.push({ sourceType: chunk.sourceType, sourceId: chunk.sourceId, chunkId: chunk.chunkId, reason: 'duplicate', tokenCount })
+      omitted.push({
+        sourceType: chunk.sourceType,
+        sourceId: chunk.sourceId,
+        chunkId: chunk.chunkId,
+        reason: 'duplicate',
+        tokenCount,
+      })
       continue
     }
     if (usedTokens + tokenCount > availableTokens) {
-      omitted.push({ sourceType: chunk.sourceType, sourceId: chunk.sourceId, chunkId: chunk.chunkId, reason: 'budget', tokenCount })
+      omitted.push({
+        sourceType: chunk.sourceType,
+        sourceId: chunk.sourceId,
+        chunkId: chunk.chunkId,
+        reason: 'budget',
+        tokenCount,
+      })
       continue
     }
     seen.add(chunk.contentHash)
@@ -120,7 +148,9 @@ export function buildAgentContextPack(options: BuildAgentContextPackOptions): Ag
   }
 
   const sectionList = Array.from(sections.values())
-  const sourceTypes = Array.from(new Set(sectionList.flatMap((section) => section.items.map((item) => item.sourceType))))
+  const sourceTypes = Array.from(
+    new Set(sectionList.flatMap((section) => section.items.map((item) => item.sourceType)))
+  )
   return {
     query: options.query,
     mode: options.mode,
@@ -135,7 +165,6 @@ export function buildAgentContextPack(options: BuildAgentContextPackOptions): Ag
     },
   }
 }
-
 
 export function formatAgentContextPackForPrompt(pack: AgentContextPack): string {
   const lines: string[] = [
@@ -152,7 +181,9 @@ export function formatAgentContextPackForPrompt(pack: AgentContextPack): string 
       const label = item.path ?? item.title ?? `${item.sourceType}:${item.sourceId}`
       const location = item.path && item.title ? ` — ${item.title}` : ''
       const reason = item.reasons.length > 0 ? ` reasons=${item.reasons.join(',')}` : ''
-      lines.push(`- Source: ${label}${location} [${item.sourceType}] score=${item.score.toFixed(2)}${reason}`)
+      lines.push(
+        `- Source: ${label}${location} [${item.sourceType}] score=${item.score.toFixed(2)}${reason}`
+      )
       lines.push('```')
       lines.push(item.content)
       lines.push('```')

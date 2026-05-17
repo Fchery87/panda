@@ -20,7 +20,8 @@ export function convexChunksToLocalContextChunks(
   chunks: ConvexContextChunkLike[]
 ): LocalContextChunk[] {
   return chunks.map((chunk) => ({
-    chunkId: chunk._id ?? `${chunk.sourceType}:${chunk.sourceId}:${chunk.chunkIndex}:${chunk.contentHash}`,
+    chunkId:
+      chunk._id ?? `${chunk.sourceType}:${chunk.sourceId}:${chunk.chunkIndex}:${chunk.contentHash}`,
     sourceType: chunk.sourceType,
     sourceId: chunk.sourceId,
     chunkIndex: chunk.chunkIndex,

@@ -9,7 +9,9 @@ describe('agent context engineering', () => {
       sourceType: 'file',
       sourceId: 'file_1',
       path: 'apps/web/lib/agent/context/retriever.ts',
-      content: Array.from({ length: 40 }, (_, index) => `line ${index} retrieval context`).join('\n'),
+      content: Array.from({ length: 40 }, (_, index) => `line ${index} retrieval context`).join(
+        '\n'
+      ),
       maxChars: 180,
       overlapChars: 30,
     })
@@ -23,12 +25,32 @@ describe('agent context engineering', () => {
 
   test('retrieves chunks using query, active file, and open-tab signals', () => {
     const chunks = [
-      ...chunkContextSource({ sourceType: 'file', sourceId: 'file_agent', path: 'apps/web/lib/agent/runtime.ts', content: 'Runtime creates context packs for agent runs and checkpoints.' }),
-      ...chunkContextSource({ sourceType: 'file', sourceId: 'file_theme', path: 'apps/web/components/theme.tsx', content: 'Theme switcher and visual preferences.' }),
-      ...chunkContextSource({ sourceType: 'summary', sourceId: 'summary_1', title: 'Previous run summary', content: 'The previous agent run failed because context retrieval missed the active file.' }),
+      ...chunkContextSource({
+        sourceType: 'file',
+        sourceId: 'file_agent',
+        path: 'apps/web/lib/agent/runtime.ts',
+        content: 'Runtime creates context packs for agent runs and checkpoints.',
+      }),
+      ...chunkContextSource({
+        sourceType: 'file',
+        sourceId: 'file_theme',
+        path: 'apps/web/components/theme.tsx',
+        content: 'Theme switcher and visual preferences.',
+      }),
+      ...chunkContextSource({
+        sourceType: 'summary',
+        sourceId: 'summary_1',
+        title: 'Previous run summary',
+        content: 'The previous agent run failed because context retrieval missed the active file.',
+      }),
     ]
 
-    const results = retrieveContextChunks({ query: 'fix agent context retrieval runtime', chunks, activeFile: 'apps/web/lib/agent/runtime.ts', openTabs: ['apps/web/lib/agent/runtime.ts'] })
+    const results = retrieveContextChunks({
+      query: 'fix agent context retrieval runtime',
+      chunks,
+      activeFile: 'apps/web/lib/agent/runtime.ts',
+      openTabs: ['apps/web/lib/agent/runtime.ts'],
+    })
 
     expect(results[0].path).toBe('apps/web/lib/agent/runtime.ts')
     expect(results[0].reasons).toContain('active_file')
@@ -37,11 +59,30 @@ describe('agent context engineering', () => {
 
   test('builds a budgeted context pack with omitted provenance', () => {
     const chunks = [
-      ...chunkContextSource({ sourceType: 'file', sourceId: 'file_1', path: 'src/large.ts', content: 'context retrieval '.repeat(600), maxChars: 1_000, overlapChars: 0 }),
-      ...chunkContextSource({ sourceType: 'spec', sourceId: 'spec_1', title: 'Context system spec', content: 'The agent must use Context Packs with token budgets and provenance.' }),
+      ...chunkContextSource({
+        sourceType: 'file',
+        sourceId: 'file_1',
+        path: 'src/large.ts',
+        content: 'context retrieval '.repeat(600),
+        maxChars: 1_000,
+        overlapChars: 0,
+      }),
+      ...chunkContextSource({
+        sourceType: 'spec',
+        sourceId: 'spec_1',
+        title: 'Context system spec',
+        content: 'The agent must use Context Packs with token budgets and provenance.',
+      }),
     ]
 
-    const pack = buildAgentContextPack({ query: 'context retrieval token budget provenance', mode: 'build', chunks, maxTokens: 260, reserveTokens: 40, maxChunks: 8 })
+    const pack = buildAgentContextPack({
+      query: 'context retrieval token budget provenance',
+      mode: 'build',
+      chunks,
+      maxTokens: 260,
+      reserveTokens: 40,
+      maxChunks: 8,
+    })
 
     expect(pack.budget.usedTokens).toBeLessThanOrEqual(220)
     expect(pack.audit.retrievedChunkCount).toBeGreaterThan(0)

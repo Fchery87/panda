@@ -65,7 +65,10 @@ export function chunkContextSource(input: ContextSourceInput): LocalContextChunk
   if (!content) return []
 
   const maxChars = Math.max(400, input.maxChars ?? DEFAULT_MAX_CHARS)
-  const overlapChars = Math.max(0, Math.min(input.overlapChars ?? DEFAULT_OVERLAP_CHARS, maxChars / 3))
+  const overlapChars = Math.max(
+    0,
+    Math.min(input.overlapChars ?? DEFAULT_OVERLAP_CHARS, maxChars / 3)
+  )
   const lines = content.split('\n')
   const chunks: LocalContextChunk[] = []
   let startLine = 0

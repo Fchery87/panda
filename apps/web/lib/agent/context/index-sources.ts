@@ -31,7 +31,13 @@ export function buildContextChunksFromSources(
 }
 
 export function buildFileContextSources(
-  files: Array<{ _id?: string; id?: string; path: string; content?: string | null; updatedAt?: number }>
+  files: Array<{
+    _id?: string
+    id?: string
+    path: string
+    content?: string | null
+    updatedAt?: number
+  }>
 ): ContextIndexableSource[] {
   return files.map((file) => ({
     sourceType: 'file',
@@ -76,8 +82,12 @@ export function buildSpecContextSources(
       spec.intent?.acceptanceCriteria?.length
         ? `Acceptance Criteria:\n${spec.intent.acceptanceCriteria.map((item) => `- ${String(item)}`).join('\n')}`
         : null,
-      spec.plan?.steps?.length ? `Plan Steps:\n${spec.plan.steps.map((item) => `- ${String(item)}`).join('\n')}` : null,
-      spec.plan?.risks?.length ? `Risks:\n${spec.plan.risks.map((item) => `- ${String(item)}`).join('\n')}` : null,
+      spec.plan?.steps?.length
+        ? `Plan Steps:\n${spec.plan.steps.map((item) => `- ${String(item)}`).join('\n')}`
+        : null,
+      spec.plan?.risks?.length
+        ? `Risks:\n${spec.plan.risks.map((item) => `- ${String(item)}`).join('\n')}`
+        : null,
     ]
       .filter(Boolean)
       .join('\n\n'),

@@ -25,7 +25,31 @@ const DEFAULT_SOURCE_BOOSTS: Record<ContextChunkSourceType, number> = {
   subagent: 0.72,
 }
 
-const STOP_WORDS = new Set(['a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from', 'how', 'i', 'in', 'is', 'it', 'of', 'on', 'or', 'that', 'the', 'this', 'to', 'with'])
+const STOP_WORDS = new Set([
+  'a',
+  'an',
+  'and',
+  'are',
+  'as',
+  'at',
+  'be',
+  'by',
+  'for',
+  'from',
+  'how',
+  'i',
+  'in',
+  'is',
+  'it',
+  'of',
+  'on',
+  'or',
+  'that',
+  'the',
+  'this',
+  'to',
+  'with',
+])
 
 export function tokenizeContextQuery(query: string): string[] {
   return Array.from(
@@ -87,7 +111,11 @@ export function retrieveContextChunks(input: ContextRetrievalInput): RetrievedCo
         score += 4
         reasons.push('open_tab')
       }
-      if (chunk.sourceType === 'summary' || chunk.sourceType === 'plan' || chunk.sourceType === 'spec') {
+      if (
+        chunk.sourceType === 'summary' ||
+        chunk.sourceType === 'plan' ||
+        chunk.sourceType === 'spec'
+      ) {
         score += 1
         reasons.push(`source:${chunk.sourceType}`)
       }

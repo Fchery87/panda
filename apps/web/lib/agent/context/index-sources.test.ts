@@ -12,12 +12,18 @@ describe('context index sources', () => {
       ...buildFileContextSources([
         { _id: 'file_1', path: 'src/app.ts', content: 'export const app = true', updatedAt: 10 },
       ]),
-      ...buildSummaryContextSources([{ _id: 'summary_1', summary: 'User approved the plan.', createdAt: 20 }]),
+      ...buildSummaryContextSources([
+        { _id: 'summary_1', summary: 'User approved the plan.', createdAt: 20 },
+      ]),
       ...buildSpecContextSources([
         {
           _id: 'spec_1',
           status: 'approved',
-          intent: { goal: 'Build context packs', rawMessage: 'Implement retrieval context', acceptanceCriteria: ['Uses budget'] },
+          intent: {
+            goal: 'Build context packs',
+            rawMessage: 'Implement retrieval context',
+            acceptanceCriteria: ['Uses budget'],
+          },
           plan: { steps: ['Add chunks'], risks: ['Too much context'] },
           updatedAt: 30,
         },

@@ -130,7 +130,13 @@ async function upsertChunkBatch(
           .eq('chunkIndex', chunk.chunkIndex)
       )
       .unique()
-    const patch = { projectId: args.projectId, chatId: args.chatId, runId: args.runId, ...chunk, updatedAt: now }
+    const patch = {
+      projectId: args.projectId,
+      chatId: args.chatId,
+      runId: args.runId,
+      ...chunk,
+      updatedAt: now,
+    }
     if (existing) await ctx.db.patch(existing._id, patch)
     else await ctx.db.insert('contextChunks', patch)
     written += 1
@@ -216,8 +222,12 @@ export const indexSpecifications = mutation({
         spec.intent.acceptanceCriteria.length
           ? `Acceptance Criteria:\n${spec.intent.acceptanceCriteria.map((item) => `- ${JSON.stringify(item)}`).join('\n')}`
           : null,
-        spec.plan.steps.length ? `Plan Steps:\n${spec.plan.steps.map((item) => `- ${JSON.stringify(item)}`).join('\n')}` : null,
-        spec.plan.risks.length ? `Risks:\n${spec.plan.risks.map((item) => `- ${JSON.stringify(item)}`).join('\n')}` : null,
+        spec.plan.steps.length
+          ? `Plan Steps:\n${spec.plan.steps.map((item) => `- ${JSON.stringify(item)}`).join('\n')}`
+          : null,
+        spec.plan.risks.length
+          ? `Risks:\n${spec.plan.risks.map((item) => `- ${JSON.stringify(item)}`).join('\n')}`
+          : null,
       ]
         .filter(Boolean)
         .join('\n\n')
@@ -225,7 +235,12 @@ export const indexSpecifications = mutation({
         projectId: args.projectId,
         chatId: spec.chatId,
         runId: spec.runId,
-        chunks: chunkSource({ sourceType: 'spec', sourceId: String(spec._id), title: spec.intent.goal, content }),
+        chunks: chunkSource({
+          sourceType: 'spec',
+          sourceId: String(spec._id),
+          title: spec.intent.goal,
+          content,
+        }),
       })
     }
     return written
@@ -249,30 +264,59 @@ export const rebuildProject = mutation({
       }
     }
 
-    const files = await ctx.db.query('files').withIndex('by_project', (q) => q.eq('projectId', args.projectId)).take(2000)
+    const files = await ctx.db
+      .query('files')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .take(2000)
     const fileChunks = files.flatMap((file) =>
-      chunkSource({ sourceType: 'file', sourceId: String(file._id), path: file.path, title: file.path.split('/').pop() ?? file.path, content: file.isBinary ? '' : file.content })
+      chunkSource({
+        sourceType: 'file',
+        sourceId: String(file._id),
+        path: file.path,
+        title: file.path.split('/').pop() ?? file.path,
+        content: file.isBinary ? '' : file.content,
+      })
     )
-    const fileChunksWritten = await upsertChunkBatch(ctx, { projectId: args.projectId, chunks: fileChunks })
+    const fileChunksWritten = await upsertChunkBatch(ctx, {
+      projectId: args.projectId,
+      chunks: fileChunks,
+    })
 
-    const summaries = await ctx.db.query('sessionSummaries').withIndex('by_project_created', (q) => q.eq('projectId', args.projectId)).order('desc').take(100)
+    const summaries = await ctx.db
+      .query('sessionSummaries')
+      .withIndex('by_project_created', (q) => q.eq('projectId', args.projectId))
+      .order('desc')
+      .take(100)
     let summaryChunksWritten = 0
     for (const summary of summaries) {
       summaryChunksWritten += await upsertChunkBatch(ctx, {
         projectId: args.projectId,
         chatId: summary.chatId,
-        chunks: chunkSource({ sourceType: 'summary', sourceId: String(summary._id), title: 'Session summary', content: summary.summary }),
+        chunks: chunkSource({
+          sourceType: 'summary',
+          sourceId: String(summary._id),
+          title: 'Session summary',
+          content: summary.summary,
+        }),
       })
     }
 
-    const specs = await ctx.db.query('specifications').withIndex('by_project', (q) => q.eq('projectId', args.projectId)).take(100)
+    const specs = await ctx.db
+      .query('specifications')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .take(100)
     let specChunksWritten = 0
     for (const spec of specs) {
       specChunksWritten += await upsertChunkBatch(ctx, {
         projectId: args.projectId,
         chatId: spec.chatId,
         runId: spec.runId,
-        chunks: chunkSource({ sourceType: 'spec', sourceId: String(spec._id), title: spec.intent.goal, content: `${spec.intent.goal}\n\n${spec.intent.rawMessage}` }),
+        chunks: chunkSource({
+          sourceType: 'spec',
+          sourceId: String(spec._id),
+          title: spec.intent.goal,
+          content: `${spec.intent.goal}\n\n${spec.intent.rawMessage}`,
+        }),
       })
     }
 
@@ -299,7 +343,12 @@ export const stats = query({
 })
 
 export const search = query({
-  args: { projectId: v.id('projects'), query: v.string(), sourceType: v.optional(ContextChunkSourceType), limit: v.optional(v.number()) },
+  args: {
+    projectId: v.id('projects'),
+    query: v.string(),
+    sourceType: v.optional(ContextChunkSourceType),
+    limit: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
     await requireProjectOwner(ctx, args.projectId)
     const limit = Math.min(Math.max(args.limit ?? 12, 1), 50)
@@ -316,18 +365,28 @@ export const search = query({
 })
 
 export const listByProject = query({
-  args: { projectId: v.id('projects'), sourceType: v.optional(ContextChunkSourceType), limit: v.optional(v.number()) },
+  args: {
+    projectId: v.id('projects'),
+    sourceType: v.optional(ContextChunkSourceType),
+    limit: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
     await requireProjectOwner(ctx, args.projectId)
     const limit = Math.min(Math.max(args.limit ?? 100, 1), 500)
     if (args.sourceType) {
       return await ctx.db
         .query('contextChunks')
-        .withIndex('by_project_source_updated', (q) => q.eq('projectId', args.projectId).eq('sourceType', args.sourceType!))
+        .withIndex('by_project_source_updated', (q) =>
+          q.eq('projectId', args.projectId).eq('sourceType', args.sourceType!)
+        )
         .order('desc')
         .take(limit)
     }
-    return await ctx.db.query('contextChunks').withIndex('by_project_updated', (q) => q.eq('projectId', args.projectId)).order('desc').take(limit)
+    return await ctx.db
+      .query('contextChunks')
+      .withIndex('by_project_updated', (q) => q.eq('projectId', args.projectId))
+      .order('desc')
+      .take(limit)
   },
 })
 
@@ -337,7 +396,12 @@ export const removeBySource = mutation({
     await requireProjectOwner(ctx, args.projectId)
     const chunks = await ctx.db
       .query('contextChunks')
-      .withIndex('by_source', (q) => q.eq('projectId', args.projectId).eq('sourceType', args.sourceType).eq('sourceId', args.sourceId))
+      .withIndex('by_source', (q) =>
+        q
+          .eq('projectId', args.projectId)
+          .eq('sourceType', args.sourceType)
+          .eq('sourceId', args.sourceId)
+      )
       .take(500)
     for (const chunk of chunks) await ctx.db.delete(chunk._id)
     return chunks.length
@@ -350,7 +414,10 @@ export const purgeProject = mutation({
     await requireProjectOwner(ctx, args.projectId)
     let deleted = 0
     while (true) {
-      const chunks = await ctx.db.query('contextChunks').withIndex('by_project_updated', (q) => q.eq('projectId', args.projectId)).take(500)
+      const chunks = await ctx.db
+        .query('contextChunks')
+        .withIndex('by_project_updated', (q) => q.eq('projectId', args.projectId))
+        .take(500)
       if (chunks.length === 0) break
       for (const chunk of chunks) {
         await ctx.db.delete(chunk._id)
@@ -390,13 +457,12 @@ export const semanticSearch = action({
       limit,
       filter: (q) => q.eq('projectId', args.projectId),
     })
-    const chunks: Array<Record<string, unknown> & { _id: Id<'contextChunks'>; sourceType?: string }> = await ctx.runQuery(
-      api.contextChunks.getByIds,
-      {
-        projectId: args.projectId,
-        ids: results.map((result) => result._id),
-      }
-    )
+    const chunks: Array<
+      Record<string, unknown> & { _id: Id<'contextChunks'>; sourceType?: string }
+    > = await ctx.runQuery(api.contextChunks.getByIds, {
+      projectId: args.projectId,
+      ids: results.map((result) => result._id),
+    })
     const scores = new Map(results.map((result) => [result._id, result._score]))
     return chunks
       .filter((chunk) => !args.sourceType || chunk.sourceType === args.sourceType)

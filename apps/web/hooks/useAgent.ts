@@ -49,7 +49,10 @@ import { startRunOrchestration } from '../lib/agent/run-orchestration'
 import type { WebContainer } from '@webcontainer/api'
 import type { TerminationReason } from '../lib/agent/harness/errors'
 import { buildAgentContextPack } from '../lib/agent/context/context-pack'
-import { buildContextPackAudit, convexChunksToLocalContextChunks } from '../lib/agent/context/convex-adapter'
+import {
+  buildContextPackAudit,
+  convexChunksToLocalContextChunks,
+} from '../lib/agent/context/convex-adapter'
 
 import {
   buildAgentRuntimeConfig,
@@ -876,7 +879,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               maxChunks: 16,
             })
           } catch (contextError) {
-            appLog.warn('[useAgent] Failed to build retrieved context pack; continuing without it', contextError)
+            appLog.warn(
+              '[useAgent] Failed to build retrieved context pack; continuing without it',
+              contextError
+            )
             return undefined
           }
         })()

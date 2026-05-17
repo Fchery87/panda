@@ -185,8 +185,13 @@ export function InspectorRunContent({
   )
 }
 
-
-function InspectorContextContent({ projectId, runEvents }: { projectId: Id<'projects'>; runEvents?: PersistedRunEventSummaryInfo[] }) {
+function InspectorContextContent({
+  projectId,
+  runEvents,
+}: {
+  projectId: Id<'projects'>
+  runEvents?: PersistedRunEventSummaryInfo[]
+}) {
   const contextEvents = (runEvents ?? []).filter(
     (event) => event.type === 'context_pack' || event.progressCategory === 'context'
   )
@@ -226,26 +231,50 @@ function InspectorContextContent({ projectId, runEvents }: { projectId: Id<'proj
             Index maintenance
           </div>
           <div className="flex gap-1">
-            <Button type="button" variant="outline" size="sm" className="h-7 rounded-none font-mono text-[10px]" onClick={() => void rebuildProject({ projectId })}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 rounded-none font-mono text-[10px]"
+              onClick={() => void rebuildProject({ projectId })}
+            >
               Rebuild
             </Button>
-            <Button type="button" variant="ghost" size="sm" className="h-7 rounded-none font-mono text-[10px]" onClick={() => void purgeProject({ projectId })}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 rounded-none font-mono text-[10px]"
+              onClick={() => void purgeProject({ projectId })}
+            >
               Purge
             </Button>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-1.5 p-3">
-          <div className="border border-border bg-background/70 px-2 py-2">
-            <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">Chunks</div>
-            <div className="mt-1 text-xs font-medium text-foreground">{stats?.chunkCount ?? '—'}</div>
+          <div className="bg-background/70 border border-border px-2 py-2">
+            <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
+              Chunks
+            </div>
+            <div className="mt-1 text-xs font-medium text-foreground">
+              {stats?.chunkCount ?? '—'}
+            </div>
           </div>
-          <div className="border border-border bg-background/70 px-2 py-2">
-            <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">Tokens</div>
-            <div className="mt-1 text-xs font-medium text-foreground">{stats?.tokenCount ?? '—'}</div>
+          <div className="bg-background/70 border border-border px-2 py-2">
+            <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
+              Tokens
+            </div>
+            <div className="mt-1 text-xs font-medium text-foreground">
+              {stats?.tokenCount ?? '—'}
+            </div>
           </div>
-          <div className="border border-border bg-background/70 px-2 py-2">
-            <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">Sources</div>
-            <div className="mt-1 text-xs font-medium text-foreground">{stats ? Object.keys(stats.bySourceType).length : '—'}</div>
+          <div className="bg-background/70 border border-border px-2 py-2">
+            <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">
+              Sources
+            </div>
+            <div className="mt-1 text-xs font-medium text-foreground">
+              {stats ? Object.keys(stats.bySourceType).length : '—'}
+            </div>
           </div>
         </div>
       </div>
@@ -257,9 +286,14 @@ function InspectorContextContent({ projectId, runEvents }: { projectId: Id<'proj
         <div className="space-y-2 p-3">
           {contextEvents.length > 0 ? (
             contextEvents.map((event) => (
-              <div key={event._id ?? `${event.type}-${event.createdAt}`} className="border border-border bg-background/70 p-2">
+              <div
+                key={event._id ?? `${event.type}-${event.createdAt}`}
+                className="bg-background/70 border border-border p-2"
+              >
                 <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                  {event.createdAt ? new Date(event.createdAt).toLocaleTimeString() : 'Context Pack'}
+                  {event.createdAt
+                    ? new Date(event.createdAt).toLocaleTimeString()
+                    : 'Context Pack'}
                 </div>
                 <p className="mt-1 text-xs leading-relaxed text-foreground">
                   {event.contentPreview ?? 'Context pack was assembled for this run.'}

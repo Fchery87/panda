@@ -408,7 +408,6 @@ describe('prompt-library — project overview integration', () => {
   })
 })
 
-
 describe('context pack injection', () => {
   it('includes retrieved context pack in prompt context', () => {
     const messages = getPromptForMode({
@@ -451,7 +450,19 @@ describe('context pack injection', () => {
       },
     })
 
-    expect(messages.some((message) => typeof message.content === 'string' && message.content.includes('## Retrieved Context Pack'))).toBe(true)
-    expect(messages.some((message) => typeof message.content === 'string' && message.content.includes('Runtime should consume Context Packs.'))).toBe(true)
+    expect(
+      messages.some(
+        (message) =>
+          typeof message.content === 'string' &&
+          message.content.includes('## Retrieved Context Pack')
+      )
+    ).toBe(true)
+    expect(
+      messages.some(
+        (message) =>
+          typeof message.content === 'string' &&
+          message.content.includes('Runtime should consume Context Packs.')
+      )
+    ).toBe(true)
   })
 })

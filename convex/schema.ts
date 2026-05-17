@@ -79,7 +79,6 @@ export const PermissionAuditTarget = v.object({
 
 export const MCPTransport = v.union(v.literal('stdio'), v.literal('sse'), v.literal('http'))
 
-
 export const ContextChunkSourceType = v.union(
   v.literal('file'),
   v.literal('message'),
