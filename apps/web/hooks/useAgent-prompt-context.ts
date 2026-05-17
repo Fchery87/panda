@@ -2,6 +2,7 @@ import type { Id } from '@convex/_generated/dataModel'
 import type { LLMProvider, ProviderType } from '@/lib/llm/types'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import type { PromptContext } from '@/lib/agent/prompt-library'
+import type { AgentContextPack } from '@/lib/agent/context/context-pack'
 import { buildAgentPromptContext } from '@/lib/agent/session-controller'
 import {
   buildPromptMessagesWithModeSummary,
@@ -39,6 +40,7 @@ export interface BuildAgentPromptBundleArgs {
   }
   activeSpec?: FormalSpecification | null
   previousMode?: ChatMode | null
+  agentContextPack?: AgentContextPack
 }
 
 export interface AgentPromptBundle {
@@ -99,6 +101,7 @@ export function buildAgentPromptBundle(args: BuildAgentPromptBundleArgs): AgentP
     approvedPlanExecutionContext: args.approvedPlanExecutionContext,
     activeSpec: args.activeSpec ?? undefined,
     previousMode: args.previousMode ?? null,
+    agentContextPack: args.agentContextPack,
   })
 
   const contextAudit: ContextAuditRecord = {

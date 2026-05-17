@@ -30,6 +30,7 @@ import {
 import { resolveAgentSkillsForPromptContext } from './skills/resolver'
 import type { CustomSkillForMatching, CustomSkillPolicy } from './skills/types'
 import type { FormalSpecification } from './spec/types'
+import { formatAgentContextPackForPrompt, type AgentContextPack } from './context/context-pack'
 
 export type { ChatMode } from './chat-modes'
 
@@ -97,6 +98,8 @@ export interface PromptContext {
     | 'custom'
   /** Model name for token estimation */
   model?: string
+  /** Retrieved, budgeted context assembled by Panda's context system */
+  agentContextPack?: AgentContextPack
   /** Optional workflow skill profile */
   skillProfile?: 'off' | 'soft_guidance' | 'strict_workflow'
   /** User-scoped custom skills available for prompt matching */
@@ -272,6 +275,9 @@ export function getPromptForMode(context: PromptContext): CompletionMessage[] {
     if (context.sessionSummary) {
       parts.push(`\n## Previous Session Context\n${context.sessionSummary}`)
     }
+    if (context.agentContextPack) {
+      parts.push(formatAgentContextPackForPrompt(context.agentContextPack))
+    }
     if (budgetedContent.fileContents) {
       const isReadOnly = MODE_CONFIGS[context.chatMode].fileAccess === 'read-only'
       if (isReadOnly) {
@@ -298,6 +304,9 @@ export function getPromptForMode(context: PromptContext): CompletionMessage[] {
     }
     if (context.sessionSummary) {
       contextContent += `\n## Previous Session Context\n${context.sessionSummary}\n`
+    }
+    if (context.agentContextPack) {
+      contextContent += `\n${formatAgentContextPackForPrompt(context.agentContextPack)}\n`
     }
     if (context.files && context.files.length > 0) {
       const isReadOnly = MODE_CONFIGS[context.chatMode].fileAccess === 'read-only'

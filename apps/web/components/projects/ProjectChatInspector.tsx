@@ -1,6 +1,8 @@
 'use client'
 
 import { AnimatePresence, motion } from 'framer-motion'
+import { useMutation, useQuery } from 'convex/react'
+import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { Settings2, X } from 'lucide-react'
 import { EvalPanel } from '@/components/chat/EvalPanel'
@@ -34,7 +36,7 @@ type PlanningSessionView = {
   generatedPlan?: GeneratedPlanArtifact
 } | null
 
-export type InspectorTab = 'run' | 'plan' | 'artifacts' | 'memory' | 'evals'
+export type InspectorTab = 'run' | 'context' | 'plan' | 'artifacts' | 'memory' | 'evals'
 export type ReviewTab = InspectorTab
 
 type SnapshotEvent = {
@@ -177,6 +179,98 @@ export function InspectorRunContent({
               available.
             </p>
           ) : null}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
+function InspectorContextContent({ projectId, runEvents }: { projectId: Id<'projects'>; runEvents?: PersistedRunEventSummaryInfo[] }) {
+  const contextEvents = (runEvents ?? []).filter(
+    (event) => event.type === 'context_pack' || event.progressCategory === 'context'
+  )
+  const latest = contextEvents.at(-1)
+  const stats = useQuery(api.contextChunks.stats, { projectId })
+  const rebuildProject = useMutation(api.contextChunks.rebuildProject)
+  const purgeProject = useMutation(api.contextChunks.purgeProject)
+
+  return (
+    <div className="m-0 space-y-3">
+      <div className="grid grid-cols-3 gap-1.5">
+        <div className="bg-background/70 border border-border px-3 py-2">
+          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            Packs
+          </div>
+          <div className="mt-1 text-xs font-medium text-foreground">{contextEvents.length}</div>
+        </div>
+        <div className="bg-background/70 border border-border px-3 py-2">
+          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            Status
+          </div>
+          <div className="mt-1 text-xs font-medium text-foreground">
+            {latest?.status ?? 'Not built'}
+          </div>
+        </div>
+        <div className="bg-background/70 border border-border px-3 py-2">
+          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            Source
+          </div>
+          <div className="mt-1 text-xs font-medium text-foreground">Convex</div>
+        </div>
+      </div>
+
+      <div className="bg-background/80 border border-border">
+        <div className="surface-1 flex items-center justify-between border-b border-border px-3 py-2">
+          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            Index maintenance
+          </div>
+          <div className="flex gap-1">
+            <Button type="button" variant="outline" size="sm" className="h-7 rounded-none font-mono text-[10px]" onClick={() => void rebuildProject({ projectId })}>
+              Rebuild
+            </Button>
+            <Button type="button" variant="ghost" size="sm" className="h-7 rounded-none font-mono text-[10px]" onClick={() => void purgeProject({ projectId })}>
+              Purge
+            </Button>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-1.5 p-3">
+          <div className="border border-border bg-background/70 px-2 py-2">
+            <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">Chunks</div>
+            <div className="mt-1 text-xs font-medium text-foreground">{stats?.chunkCount ?? '—'}</div>
+          </div>
+          <div className="border border-border bg-background/70 px-2 py-2">
+            <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">Tokens</div>
+            <div className="mt-1 text-xs font-medium text-foreground">{stats?.tokenCount ?? '—'}</div>
+          </div>
+          <div className="border border-border bg-background/70 px-2 py-2">
+            <div className="font-mono text-[9px] uppercase tracking-[0.16em] text-muted-foreground">Sources</div>
+            <div className="mt-1 text-xs font-medium text-foreground">{stats ? Object.keys(stats.bySourceType).length : '—'}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-background/80 border border-border">
+        <div className="surface-1 border-b border-border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          Retrieval audit
+        </div>
+        <div className="space-y-2 p-3">
+          {contextEvents.length > 0 ? (
+            contextEvents.map((event) => (
+              <div key={event._id ?? `${event.type}-${event.createdAt}`} className="border border-border bg-background/70 p-2">
+                <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+                  {event.createdAt ? new Date(event.createdAt).toLocaleTimeString() : 'Context Pack'}
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-foreground">
+                  {event.contentPreview ?? 'Context pack was assembled for this run.'}
+                </p>
+              </div>
+            ))
+          ) : (
+            <p className="font-mono text-xs text-muted-foreground">
+              Retrieved context pack audits will appear here after a run starts.
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -440,6 +534,12 @@ export function ProjectChatInspector({
               Run
             </TabsTrigger>
             <TabsTrigger
+              value="context"
+              className="h-full rounded-none border-r border-border px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              Context
+            </TabsTrigger>
+            <TabsTrigger
               value="plan"
               className="h-full rounded-none border-r border-border px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
             >
@@ -486,6 +586,10 @@ export function ProjectChatInspector({
             snapshotEvents={snapshotEvents}
             subagentToolCalls={subagentToolCalls}
           />
+        </TabsContent>
+
+        <TabsContent value="context" className="m-0">
+          <InspectorContextContent projectId={projectId} runEvents={runEvents} />
         </TabsContent>
 
         <TabsContent value="plan" className="m-0">

@@ -79,6 +79,18 @@ export const PermissionAuditTarget = v.object({
 
 export const MCPTransport = v.union(v.literal('stdio'), v.literal('sse'), v.literal('http'))
 
+
+export const ContextChunkSourceType = v.union(
+  v.literal('file'),
+  v.literal('message'),
+  v.literal('summary'),
+  v.literal('plan'),
+  v.literal('spec'),
+  v.literal('run_event'),
+  v.literal('skill'),
+  v.literal('subagent')
+)
+
 export const HarnessSubagentStatus = v.union(
   v.literal('running'),
   v.literal('completed'),
@@ -1391,6 +1403,41 @@ export default defineSchema({
     .index('by_planningSession', ['planningSessionId'])
     .index('by_status', ['projectId', 'status'])
     .index('by_tier', ['projectId', 'tier']),
+
+  // 38. Context chunks table - searchable, budgetable agent context retrieval units
+  contextChunks: defineTable({
+    projectId: v.id('projects'),
+    chatId: v.optional(v.id('chats')),
+    runId: v.optional(v.id('agentRuns')),
+    sourceType: ContextChunkSourceType,
+    sourceId: v.string(),
+    chunkIndex: v.number(),
+    content: v.string(),
+    contentHash: v.string(),
+    tokenCount: v.optional(v.number()),
+    path: v.optional(v.string()),
+    title: v.optional(v.string()),
+    startLine: v.optional(v.number()),
+    endLine: v.optional(v.number()),
+    embedding: v.optional(v.array(v.float64())),
+    embeddingModel: v.optional(v.string()),
+    updatedAt: v.number(),
+  })
+    .index('by_project_updated', ['projectId', 'updatedAt'])
+    .index('by_project_source_updated', ['projectId', 'sourceType', 'updatedAt'])
+    .index('by_source', ['projectId', 'sourceType', 'sourceId'])
+    .index('by_source_chunk', ['projectId', 'sourceType', 'sourceId', 'chunkIndex'])
+    .index('by_chat_updated', ['chatId', 'updatedAt'])
+    .index('by_run_updated', ['runId', 'updatedAt'])
+    .searchIndex('search_content', {
+      searchField: 'content',
+      filterFields: ['projectId', 'sourceType'],
+    })
+    .vectorIndex('by_embedding', {
+      vectorField: 'embedding',
+      dimensions: 1536,
+      filterFields: ['projectId', 'sourceType'],
+    }),
 
   // 38. Chat attachments table - storage-backed message attachments
   chatAttachments: defineTable({

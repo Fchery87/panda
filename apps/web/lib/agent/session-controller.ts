@@ -1,6 +1,7 @@
 import { ConvexCheckpointStore } from './harness/convex-checkpoint-store'
 import type { CheckpointStore as HarnessCheckpointStore } from './harness/checkpoint-store'
 import type { PromptContext, ChatMode } from './prompt-library'
+import type { AgentContextPack } from './context/context-pack'
 import type { RuntimeConfig } from './runtime'
 import { buildPlanContext } from './context/plan-context'
 import type { Id } from '@convex/_generated/dataModel'
@@ -41,6 +42,7 @@ export function buildAgentPromptContext(args: {
   }
   activeSpec?: FormalSpecification
   previousMode?: ChatMode | null
+  agentContextPack?: AgentContextPack
 }): PromptContext {
   const projectOverview =
     args.mode === 'plan' && args.projectFiles
@@ -99,6 +101,7 @@ export function buildAgentPromptContext(args: {
     approvedPlanExecution:
       args.mode === 'build' || args.mode === 'code' ? args.approvedPlanExecutionContext : undefined,
     activeSpec: args.activeSpec,
+    agentContextPack: args.agentContextPack,
     modeTransition:
       args.mode === 'build' || args.mode === 'code'
         ? {

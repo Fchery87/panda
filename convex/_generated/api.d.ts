@@ -15,6 +15,7 @@ import type * as auth from "../auth.js";
 import type * as chatAttachments from "../chatAttachments.js";
 import type * as chats from "../chats.js";
 import type * as checkpoints from "../checkpoints.js";
+import type * as contextChunks from "../contextChunks.js";
 import type * as crons from "../crons.js";
 import type * as customSkills from "../customSkills.js";
 import type * as enhancePrompt from "../enhancePrompt.js";
@@ -62,6 +63,7 @@ declare const fullApi: ApiFromModules<{
   chatAttachments: typeof chatAttachments;
   chats: typeof chats;
   checkpoints: typeof checkpoints;
+  contextChunks: typeof contextChunks;
   crons: typeof crons;
   customSkills: typeof customSkills;
   enhancePrompt: typeof enhancePrompt;

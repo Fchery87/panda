@@ -48,6 +48,8 @@ import { buildEditorContextBlock } from '../lib/agent/buildEditorContextBlock'
 import { startRunOrchestration } from '../lib/agent/run-orchestration'
 import type { WebContainer } from '@webcontainer/api'
 import type { TerminationReason } from '../lib/agent/harness/errors'
+import { buildAgentContextPack } from '../lib/agent/context/context-pack'
+import { buildContextPackAudit, convexChunksToLocalContextChunks } from '../lib/agent/context/convex-adapter'
 
 import {
   buildAgentRuntimeConfig,
@@ -427,6 +429,9 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     chatId ? { chatId, mode } : 'skip'
   )
   const addMessage = useMutation(api.messages.add)
+  const indexContextProjectFiles = useMutation(api.contextChunks.indexProjectFiles)
+  const indexContextSessionSummaries = useMutation(api.contextChunks.indexSessionSummaries)
+  const indexContextSpecifications = useMutation(api.contextChunks.indexSpecifications)
   const createChatAttachments = useMutation(api.chatAttachments.createMany)
   const attachVerification = useMutation(api.planningSessions.attachVerification)
   const createRun = useMutation(api.agentRuns.create)
@@ -845,6 +850,47 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           getPlanTotalSteps: () => planSteps.length,
         })
 
+        const contextPack = await (async () => {
+          try {
+            await Promise.allSettled([
+              indexContextProjectFiles({ projectId, limit: 500 }),
+              indexContextSessionSummaries({ projectId, limit: 25 }),
+              indexContextSpecifications({ projectId, limit: 50 }),
+            ])
+
+            const indexedChunks = await convex.query(api.contextChunks.search, {
+              projectId,
+              query: userContent,
+              limit: 24,
+            })
+            const editorState = useEditorContextStore.getState()
+            const localChunks = convexChunksToLocalContextChunks(indexedChunks)
+            return buildAgentContextPack({
+              query: userContent,
+              mode: resolvedMode,
+              chunks: localChunks,
+              maxTokens: Math.min(contextWindowResolution.contextWindow, 16_000),
+              reserveTokens: 1_500,
+              activeFile: editorState.selectedFilePath,
+              openTabs: editorState.openTabs.map((tab) => tab.path),
+              maxChunks: 16,
+            })
+          } catch (contextError) {
+            appLog.warn('[useAgent] Failed to build retrieved context pack; continuing without it', contextError)
+            return undefined
+          }
+        })()
+
+        if (contextPack) {
+          const audit = buildContextPackAudit(contextPack)
+          await appendObservedRunEvent({
+            type: 'context_pack',
+            content: `Context Pack: ${audit.includedChunkCount}/${audit.retrievedChunkCount} chunks included, ${audit.omittedChunkCount} omitted, ${audit.usedTokens}/${audit.maxTokens} tokens used.`,
+            status: 'completed',
+            progressCategory: 'context',
+          })
+        }
+
         const promptBundle = buildAgentPromptBundle({
           projectId,
           chatId,
@@ -864,6 +910,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           approvedPlanExecutionContext: options?.approvedPlanExecutionContext,
           activeSpec: currentSpec ?? undefined,
           previousMode: requestedMode === resolvedMode ? null : requestedMode,
+          agentContextPack: contextPack,
         })
         const { promptContext } = promptBundle
         contextAudit = promptBundle.contextAudit
@@ -1235,6 +1282,9 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       beginRun,
       clearRun,
       createRun,
+      indexContextProjectFiles,
+      indexContextSessionSummaries,
+      indexContextSpecifications,
       appendRunEvent,
       completeRun,
       logHarnessPermissionDecision,

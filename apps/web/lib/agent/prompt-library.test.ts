@@ -407,3 +407,51 @@ describe('prompt-library — project overview integration', () => {
     expect(allContent).not.toContain('## Project Overview')
   })
 })
+
+
+describe('context pack injection', () => {
+  it('includes retrieved context pack in prompt context', () => {
+    const messages = getPromptForMode({
+      projectId: 'project_1',
+      chatId: 'chat_1',
+      userId: 'user_1',
+      chatMode: 'build',
+      userMessage: 'Use the context pack',
+      agentContextPack: {
+        query: 'context pack',
+        mode: 'build',
+        budget: { maxTokens: 1000, usedTokens: 24, reserveTokens: 100 },
+        sections: [
+          {
+            kind: 'files',
+            tokenCount: 24,
+            items: [
+              {
+                sourceType: 'file',
+                sourceId: 'file_1',
+                chunkId: 'chunk_1',
+                chunkIndex: 0,
+                title: 'runtime.ts',
+                path: 'apps/web/lib/agent/runtime.ts',
+                content: 'Runtime should consume Context Packs.',
+                tokenCount: 24,
+                score: 10,
+                reasons: ['active_file'],
+              },
+            ],
+          },
+        ],
+        omitted: [],
+        audit: {
+          retrievedChunkCount: 1,
+          includedChunkCount: 1,
+          omittedChunkCount: 0,
+          sourceTypes: ['file'],
+        },
+      },
+    })
+
+    expect(messages.some((message) => typeof message.content === 'string' && message.content.includes('## Retrieved Context Pack'))).toBe(true)
+    expect(messages.some((message) => typeof message.content === 'string' && message.content.includes('Runtime should consume Context Packs.'))).toBe(true)
+  })
+})

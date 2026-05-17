@@ -23,6 +23,14 @@ interface StartRunOrchestrationArgs {
   attachments?: RunOrchestrationAttachment[]
   attachmentsOnly?: boolean
   approvedPlanExecution?: boolean
+  contextPackAudit?: {
+    retrievedChunkCount: number
+    includedChunkCount: number
+    omittedChunkCount: number
+    sourceTypes: string[]
+    usedTokens: number
+    maxTokens: number
+  }
   addMessage: (args: {
     chatId: Id<'chats'>
     role: 'user'
@@ -127,6 +135,15 @@ export async function startRunOrchestration(args: StartRunOrchestrationArgs): Pr
     content: args.userContent,
     status: 'running',
   })
+
+  if (args.contextPackAudit) {
+    await args.appendRunEvent({
+      type: 'context_pack',
+      content: `Context Pack: ${args.contextPackAudit.includedChunkCount}/${args.contextPackAudit.retrievedChunkCount} chunks included, ${args.contextPackAudit.omittedChunkCount} omitted, ${args.contextPackAudit.usedTokens}/${args.contextPackAudit.maxTokens} tokens used.`,
+      status: 'completed',
+      progressCategory: 'context',
+    })
+  }
 
   return { runId, userMessageId }
 }
