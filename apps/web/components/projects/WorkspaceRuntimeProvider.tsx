@@ -620,6 +620,24 @@ export function WorkspaceRuntimeProvider({
 
   // --- Assemble context value ---
 
+  const handleToggleYolo = useCallback(async () => {
+    const next = !(effectiveAutomationPolicy.yoloCommandMode ?? true)
+    try {
+      await updateProjectMutation({
+        id: projectId,
+        agentPolicy: {
+          ...projectAgentPolicy,
+          autoApplyFiles: effectiveAutomationPolicy.autoApplyFiles,
+          autoRunCommands: effectiveAutomationPolicy.autoRunCommands,
+          allowedCommandPrefixes: effectiveAutomationPolicy.allowedCommandPrefixes,
+          yoloCommandMode: next,
+        },
+      })
+    } catch {
+      toast.error('Failed to update YOLO mode')
+    }
+  }, [effectiveAutomationPolicy, projectAgentPolicy, projectId, updateProjectMutation])
+
   const runtimeValue = useMemo(
     () => ({
       // Identity
@@ -907,24 +925,6 @@ export function WorkspaceRuntimeProvider({
         break
     }
   }, [handleBuildFromPlan, openRightPanelTab, setActiveCenterTab, workspaceFocusState])
-
-  const handleToggleYolo = useCallback(async () => {
-    const next = !(effectiveAutomationPolicy.yoloCommandMode ?? true)
-    try {
-      await updateProjectMutation({
-        id: projectId,
-        agentPolicy: {
-          ...projectAgentPolicy,
-          autoApplyFiles: effectiveAutomationPolicy.autoApplyFiles,
-          autoRunCommands: effectiveAutomationPolicy.autoRunCommands,
-          allowedCommandPrefixes: effectiveAutomationPolicy.allowedCommandPrefixes,
-          yoloCommandMode: next,
-        },
-      })
-    } catch {
-      toast.error('Failed to update YOLO mode')
-    }
-  }, [effectiveAutomationPolicy, projectAgentPolicy, projectId, updateProjectMutation])
 
   const handleImportLocalWorkspace = useCallback(async () => {
     try {
