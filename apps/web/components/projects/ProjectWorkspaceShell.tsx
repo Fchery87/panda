@@ -56,6 +56,8 @@ export function ProjectWorkspaceShell({
     isStreaming,
     shortcutHelpOpen,
     onShortcutHelpOpenChange,
+    yoloCommandMode,
+    onToggleYolo,
   } = useWorkspaceRuntime()
 
   const selectedFilePath = useEditorContextStore((s) => s.selectedFilePath)
@@ -108,6 +110,8 @@ export function ProjectWorkspaceShell({
           focusState={layoutProps.focusState}
           onFocusPrimaryAction={layoutProps.onFocusPrimaryAction}
           onFocusSecondaryAction={layoutProps.onFocusSecondaryAction}
+          yoloCommandMode={yoloCommandMode}
+          onToggleYolo={onToggleYolo}
         />
 
         <ProjectWorkspaceLayout {...layoutProps} />

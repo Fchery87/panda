@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import {
@@ -64,6 +64,8 @@ interface WorkbenchTopBarProps {
   focusState?: WorkspaceFocusState | null
   onFocusPrimaryAction?: () => void
   onFocusSecondaryAction?: () => void
+  yoloCommandMode?: boolean
+  onToggleYolo?: () => void
 }
 
 const FOCUS_TONE_STYLES: Record<
@@ -120,9 +122,32 @@ export function WorkbenchTopBar({
   focusState,
   onFocusPrimaryAction,
   onFocusSecondaryAction,
+  yoloCommandMode = false,
+  onToggleYolo,
 }: WorkbenchTopBarProps) {
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false)
+  const [showYoloConfirm, setShowYoloConfirm] = useState(false)
   const focusTone = focusState ? FOCUS_TONE_STYLES[focusState.tone] : null
+
+  const handleYoloPillClick = useCallback(() => {
+    if (!yoloCommandMode) {
+      const storageKey = `panda_yolo_confirmed_${_projectId}`
+      const alreadyConfirmed = typeof window !== 'undefined' && localStorage.getItem(storageKey)
+      if (!alreadyConfirmed) {
+        setShowYoloConfirm(true)
+        return
+      }
+    }
+    onToggleYolo?.()
+  }, [yoloCommandMode, _projectId, onToggleYolo])
+
+  const handleYoloConfirm = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`panda_yolo_confirmed_${_projectId}`, '1')
+    }
+    setShowYoloConfirm(false)
+    onToggleYolo?.()
+  }, [_projectId, onToggleYolo])
 
   return (
     <motion.div
@@ -217,6 +242,23 @@ export function WorkbenchTopBar({
             isRuntimeRunning={isRuntimeRunning}
           />
           <div className="bg-foreground/30 hidden h-5 w-px sm:block" />
+          <button
+            type="button"
+            onClick={handleYoloPillClick}
+            title={yoloCommandMode ? 'YOLO mode ON — all tools auto-approved. Click to disable.' : 'YOLO mode OFF — commands require approval. Click to enable.'}
+            className={cn(
+              'hidden h-6 items-center gap-1.5 border px-2 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors sm:flex',
+              yoloCommandMode
+                ? 'border-red-500/50 bg-red-500/10 text-red-400 hover:bg-red-500/20'
+                : 'border-border bg-transparent text-muted-foreground hover:text-foreground'
+            )}
+            aria-pressed={yoloCommandMode}
+            aria-label={yoloCommandMode ? 'YOLO mode on' : 'YOLO mode off'}
+          >
+            <span className={cn('h-1.5 w-1.5 rounded-full', yoloCommandMode ? 'bg-red-400' : 'bg-muted-foreground/40')} />
+            YOLO
+          </button>
+          <div className="bg-foreground/30 hidden h-5 w-px sm:block" />
           <ThemeToggle />
           <UserMenu compact />
           <DropdownMenu>
@@ -305,6 +347,35 @@ export function WorkbenchTopBar({
         activeSection={activeSidebarSection}
         onSectionChange={onSidebarSectionChange}
       />
+
+      {showYoloConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-card border border-foreground p-6 font-mono shadow-sharp-lg max-w-sm w-full mx-4">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-1">Enable YOLO mode</p>
+            <p className="text-sm text-foreground mb-4">
+              All commands and file writes will be automatically approved — no confirmation dialogs.
+              Best for sandboxed (WebContainer) projects. You can turn it off anytime in Settings → Agent Defaults.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="rounded-none font-mono text-xs uppercase tracking-wide"
+                onClick={() => setShowYoloConfirm(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                className="rounded-none font-mono text-xs uppercase tracking-wide bg-red-500 hover:bg-red-600 text-white border-0"
+                onClick={handleYoloConfirm}
+              >
+                Enable YOLO
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   )
 }

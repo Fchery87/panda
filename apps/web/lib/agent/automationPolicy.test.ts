@@ -32,7 +32,12 @@ describe('automationPolicy', () => {
         projectPolicy: { autoApplyFiles: true, autoRunCommands: false, allowedCommandPrefixes: [] },
         userDefaults: defaults,
       })
-    ).toEqual({ autoApplyFiles: true, autoRunCommands: false, allowedCommandPrefixes: [] })
+    ).toEqual({
+      autoApplyFiles: true,
+      autoRunCommands: false,
+      allowedCommandPrefixes: [],
+      yoloCommandMode: false,
+    })
   })
 
   it('decides whether to auto-apply artifacts based on policy', () => {
@@ -75,5 +80,31 @@ describe('automationPolicy', () => {
       'run_command:bun test*': 'allow',
       'run_command:bun run lint*': 'allow',
     })
+  })
+
+  it('lets YOLO command mode preapprove all command prompts within policy', () => {
+    const policy: AgentPolicy = {
+      autoApplyFiles: false,
+      autoRunCommands: false,
+      allowedCommandPrefixes: [],
+      yoloCommandMode: true,
+    }
+
+    expect(buildHarnessSessionPermissions(policy)).toEqual({
+      'run_command:*': 'allow',
+      'write_files:*': 'allow',
+    })
+    expect(
+      shouldAutoApplyArtifact(policy, {
+        type: 'command_run',
+        payload: { command: 'bun test', workingDirectory: undefined },
+      })
+    ).toBe(true)
+    expect(
+      shouldAutoApplyArtifact(policy, {
+        type: 'file_write',
+        payload: { files: [{ path: 'src/index.ts', content: '' }] },
+      })
+    ).toBe(true)
   })
 })

@@ -967,6 +967,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             harnessCheckpointStore: checkpointStore,
             // Enable risk interrupts - PermissionDialog handles the UI
             harnessEnableRiskInterrupts: true,
+            harnessYoloMode: automationPolicy?.yoloCommandMode ?? false,
             harnessSessionPermissions: automationPolicy
               ? buildHarnessSessionPermissions(automationPolicy)
               : undefined,

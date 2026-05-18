@@ -15,6 +15,7 @@ import { executeTool, type ToolContext, type ToolExecutionResult } from './tools
 import { resolveAgentSkillsForPromptContext } from './skills/resolver'
 import type { AppliedSkillSummary } from './skills/applied-skills'
 import { resolveRulesForPhase } from './permission/mode-rulesets'
+import type { PermissionRule } from './harness/permission/types'
 import {
   Runtime as HarnessRuntime,
   agents as harnessAgents,
@@ -51,8 +52,11 @@ export interface RuntimeOptions {
   reasoning?: ReasoningOptions
   harnessCheckpointStore?: HarnessCheckpointStore
   harnessEnableRiskInterrupts?: boolean
+  /** When true, risk interrupts are suppressed — all high/critical tools auto-approve */
+  harnessYoloMode?: boolean
   harnessEvalMode?: 'read_only' | 'full'
   harnessSessionPermissions?: HarnessPermission
+  harnessAdminRules?: PermissionRule[]
   harnessPermissionAudit?: (entry: HarnessPermissionAuditEntry) => void | Promise<void>
 }
 
@@ -464,6 +468,7 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
       config?.harnessSessionID ?? `harness_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
     const riskInterruptsEnabled =
       config?.harnessEnableRiskInterrupts ?? this.options.harnessEnableRiskInterrupts ?? false
+    const yoloMode = this.options.harnessYoloMode ?? false
     const harnessEvalMode = config?.harnessEvalMode ?? this.options.harnessEvalMode
     const specApprovalMode = config?.harnessSpecApprovalMode ?? 'auto_approve'
     const sessionPermissions = this.options.harnessSessionPermissions
@@ -498,7 +503,9 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
       checkpointStore,
       ...(riskInterruptsEnabled
         ? {
-            toolRiskPolicy: { high: 'ask', critical: 'ask' as const },
+            toolRiskPolicy: yoloMode
+              ? { high: 'allow', critical: 'allow' as const }
+              : { high: 'ask', critical: 'ask' as const },
             // Spawning a subagent (`task`) inherits the parent session's
             // approved permissions; the side-effect tools the subagent
             // invokes (write_files, run_command) still surface their own
@@ -556,6 +563,7 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
       resolvedHarnessPolicy: resolveHarnessPolicy({
         mode: promptContext.chatMode,
         runId: config?.harnessRunId,
+        adminRules: this.options.harnessAdminRules,
         legacySessionPermissions: sessionPermissions,
       }),
       onPermissionAudit: this.options.harnessPermissionAudit,

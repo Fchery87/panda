@@ -271,6 +271,7 @@ export function WorkspaceRuntimeProvider({
   const addMessageMutation = useMutation(api.messages.add)
   const updateChatMutation = useMutation(api.chats.update)
   const importWorkspaceFileMutation = useMutation(api.files.upsert)
+  const updateProjectMutation = useMutation(api.projects.update)
 
   const {
     setActiveChatId,
@@ -660,6 +661,10 @@ export function WorkspaceRuntimeProvider({
       supportsReasoning,
       hasProvider: provider !== null,
 
+      // YOLO mode
+      yoloCommandMode: effectiveAutomationPolicy.yoloCommandMode ?? true,
+      onToggleYolo: handleToggleYolo,
+
       // Files
       filePaths: files.map((f) => f.path),
       filesForPalette: files.map((f) => ({ path: f.path })),
@@ -902,6 +907,24 @@ export function WorkspaceRuntimeProvider({
         break
     }
   }, [handleBuildFromPlan, openRightPanelTab, setActiveCenterTab, workspaceFocusState])
+
+  const handleToggleYolo = useCallback(async () => {
+    const next = !(effectiveAutomationPolicy.yoloCommandMode ?? true)
+    try {
+      await updateProjectMutation({
+        id: projectId,
+        agentPolicy: {
+          ...projectAgentPolicy,
+          autoApplyFiles: effectiveAutomationPolicy.autoApplyFiles,
+          autoRunCommands: effectiveAutomationPolicy.autoRunCommands,
+          allowedCommandPrefixes: effectiveAutomationPolicy.allowedCommandPrefixes,
+          yoloCommandMode: next,
+        },
+      })
+    } catch {
+      toast.error('Failed to update YOLO mode')
+    }
+  }, [effectiveAutomationPolicy, projectAgentPolicy, projectId, updateProjectMutation])
 
   const handleImportLocalWorkspace = useCallback(async () => {
     try {

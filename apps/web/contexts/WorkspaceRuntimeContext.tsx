@@ -82,6 +82,10 @@ export interface WorkspaceRuntimeValue {
   supportsReasoning: boolean
   hasProvider: boolean
 
+  // YOLO mode — blanket auto-approve for all commands and file writes
+  yoloCommandMode: boolean
+  onToggleYolo: () => void
+
   // Files
   filePaths: string[]
   filesForPalette: Array<{ path: string }>
