@@ -47,6 +47,7 @@ import type {
 import { AGENT_TOOLS, type AgentToolDefinition } from '../tools'
 import { evaluate, narrowRulesForSubagent } from './permission/evaluate'
 import { evaluateHarnessPolicy } from './permission/policy'
+import { wildcardMatch } from './permission/wildcard'
 import {
   analyzeCommand,
   classifyCommandFamily,
@@ -1210,7 +1211,7 @@ export class Runtime {
     if (result.decision !== 'allow') return false
     if (!result.rule) return false
     if (result.rule.source === 'mode') return false
-    if (result.rule.pattern && target && result.rule.pattern === target) return true
+    if (result.rule.pattern && target && wildcardMatch(result.rule.pattern, target)) return true
     if (result.rule.source === 'execution_contract' || result.rule.source === 'spec') return true
     return false
   }

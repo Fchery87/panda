@@ -51,6 +51,7 @@ export function AgentAutomationDialog({
 
   const [autoApplyFiles, setAutoApplyFiles] = React.useState(effective.autoApplyFiles)
   const [autoRunCommands, setAutoRunCommands] = React.useState(effective.autoRunCommands)
+  const [yoloCommandMode, setYoloCommandMode] = React.useState(effective.yoloCommandMode ?? false)
   const [allowedPrefixesText, setAllowedPrefixesText] = React.useState(
     prefixesToText(effective.allowedCommandPrefixes)
   )
@@ -60,6 +61,7 @@ export function AgentAutomationDialog({
     setInheritDefaults(!projectPolicy)
     setAutoApplyFiles(nextEffective.autoApplyFiles)
     setAutoRunCommands(nextEffective.autoRunCommands)
+    setYoloCommandMode(nextEffective.yoloCommandMode ?? false)
     setAllowedPrefixesText(prefixesToText(nextEffective.allowedCommandPrefixes))
   }, [projectPolicy, userDefaults, open])
 
@@ -74,6 +76,7 @@ export function AgentAutomationDialog({
           agentPolicy: {
             autoApplyFiles,
             autoRunCommands,
+            yoloCommandMode,
             allowedCommandPrefixes: textToPrefixes(allowedPrefixesText),
           },
         }
@@ -115,6 +118,21 @@ export function AgentAutomationDialog({
             <Switch checked={inheritDefaults} onCheckedChange={setInheritDefaults} />
           </div>
 
+          <div className="border-destructive/30 bg-destructive/5 flex items-center justify-between gap-4 border p-3">
+            <div className="space-y-1">
+              <Label className="font-mono text-xs">YOLO command mode</Label>
+              <p className="text-xs text-muted-foreground">
+                Runs command executions without approval prompts when admin policy and platform
+                safety blocks allow them.
+              </p>
+            </div>
+            <Switch
+              checked={yoloCommandMode}
+              onCheckedChange={setYoloCommandMode}
+              disabled={inheritDefaults}
+            />
+          </div>
+
           <div className="flex items-center justify-between gap-4">
             <div className="space-y-1">
               <Label className="font-mono text-xs">Auto-apply file writes</Label>
@@ -150,7 +168,7 @@ export function AgentAutomationDialog({
               onChange={(e) => setAllowedPrefixesText(e.target.value)}
               placeholder={'bun test\nbunx eslint\nbun run lint'}
               className="min-h-[120px] rounded-none font-mono text-xs"
-              disabled={inheritDefaults || !autoRunCommands}
+              disabled={inheritDefaults || !autoRunCommands || yoloCommandMode}
             />
           </div>
         </div>

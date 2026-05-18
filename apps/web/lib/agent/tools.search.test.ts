@@ -68,3 +68,48 @@ describe('search tool execution', () => {
     expect(result.error).toContain('not available')
   })
 })
+
+describe('project file materialization tool execution', () => {
+  it('normalizes leading slash file paths before writing persistent project files', async () => {
+    const writtenPaths: string[] = []
+    const context: ToolContext = {
+      ...createBaseContext(),
+      writeFiles: async (files) => {
+        writtenPaths.push(...files.map((file) => file.path))
+        return files.map((file) => ({ path: file.path, success: true }))
+      },
+    }
+
+    const result = await executeTool(
+      makeToolCall('write_files', {
+        files: [{ path: '/docs/index.md', content: '# Docs\n' }],
+      }),
+      context
+    )
+
+    expect(result.error).toBeUndefined()
+    expect(writtenPaths).toEqual(['docs/index.md'])
+    expect(result.output).toContain('docs/index.md')
+    expect(result.output).not.toContain('/docs/index.md')
+  })
+
+  it('rejects filesystem-write commands because they do not update the project file tree', async () => {
+    let commandRan = false
+    const context: ToolContext = {
+      ...createBaseContext(),
+      runCommand: async () => {
+        commandRan = true
+        return { stdout: '', stderr: '', exitCode: 0, durationMs: 1 }
+      },
+    }
+
+    const result = await executeTool(
+      makeToolCall('run_command', { command: 'mkdir docs' }),
+      context
+    )
+
+    expect(commandRan).toBe(false)
+    expect(result.error).toContain('Use write_files')
+    expect(result.error).toContain('project file tree')
+  })
+})

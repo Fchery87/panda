@@ -232,10 +232,20 @@ export const getEffective = query({
     const user = await ctx.db.get(userIdAsId)
     const isAdmin = user?.isAdmin ?? false
 
-    // If user is admin, return their settings without merging
+    const commandFamilyPolicy = normalizeCommandFamilyPolicy(adminSettings.commandFamilyPolicy)
+    const commandFamilyPreferences = userSettings?.commandFamilyPreferences ?? []
+    const effectiveCommandFamilyPolicy = mergeCommandFamilyPolicy({
+      adminPolicy: commandFamilyPolicy,
+      userPreferences: commandFamilyPreferences,
+    })
+
+    // If user is admin, return their settings without provider merging, but still expose
+    // command-family governance metadata used by the runtime permission snapshot.
     if (isAdmin && userSettings) {
       return {
         ...userSettings,
+        commandFamilyPolicy,
+        effectiveCommandFamilyPolicy,
         isAdmin: true,
         effectiveProvider: userSettings.defaultProvider,
         effectiveModel: userSettings.defaultModel,
@@ -247,9 +257,6 @@ export const getEffective = query({
     let effectiveProvider = userSettings?.defaultProvider
     let effectiveModel = userSettings?.defaultModel
     let usingGlobalDefaults = false
-
-    const commandFamilyPolicy = normalizeCommandFamilyPolicy(adminSettings.commandFamilyPolicy)
-    const commandFamilyPreferences = userSettings?.commandFamilyPreferences ?? []
 
     // Check if overrides are allowed
     const allowOverrides = adminSettings.allowUserOverrides ?? true
@@ -280,10 +287,7 @@ export const getEffective = query({
       allowUserMCP: adminSettings.allowUserMCP,
       allowedMCPTransports: adminSettings.allowedMCPTransports ?? ['stdio', 'sse', 'http'],
       commandFamilyPolicy,
-      effectiveCommandFamilyPolicy: mergeCommandFamilyPolicy({
-        adminPolicy: commandFamilyPolicy,
-        userPreferences: commandFamilyPreferences,
-      }),
+      effectiveCommandFamilyPolicy,
       allowUserSubagents: adminSettings.allowUserSubagents,
       allowUserSkills: adminSettings.allowUserSkills ?? true,
       allowSkillAutoActivation: adminSettings.allowSkillAutoActivation ?? true,
@@ -368,6 +372,7 @@ export const update = mutation({
           autoApplyFiles: v.boolean(),
           autoRunCommands: v.boolean(),
           allowedCommandPrefixes: v.array(v.string()),
+          yoloCommandMode: v.optional(v.boolean()),
         })
       )
     ),

@@ -27,10 +27,31 @@ describe('automationPolicy', () => {
       defaults
     )
 
+    // Project policy without yoloCommandMode falls back through base → mode defaults (true)
     expect(
       resolveEffectiveAgentPolicy({
         projectPolicy: { autoApplyFiles: true, autoRunCommands: false, allowedCommandPrefixes: [] },
         userDefaults: defaults,
+        mode: 'code',
+      })
+    ).toEqual({
+      autoApplyFiles: true,
+      autoRunCommands: false,
+      allowedCommandPrefixes: [],
+      yoloCommandMode: true,
+    })
+
+    // Explicit project yoloCommandMode: false overrides mode defaults
+    expect(
+      resolveEffectiveAgentPolicy({
+        projectPolicy: {
+          autoApplyFiles: true,
+          autoRunCommands: false,
+          allowedCommandPrefixes: [],
+          yoloCommandMode: false,
+        },
+        userDefaults: defaults,
+        mode: 'code',
       })
     ).toEqual({
       autoApplyFiles: true,

@@ -62,6 +62,7 @@ interface ProjectWorkspaceLayoutProps {
   onCreateFile: (path: string) => Promise<void>
   onRenameFile: (oldPath: string, newPath: string) => Promise<void>
   onDeleteFile: (path: string) => Promise<void>
+  onImportLocalWorkspace?: () => void
   onSaveFile: (filePath: string, content: string) => Promise<void>
   onEditorDirtyChange: (filePath: string, isDirty: boolean) => void
   isMobileLayout: boolean
@@ -161,6 +162,7 @@ export function ProjectWorkspaceLayoutView({
   onCreateFile,
   onRenameFile,
   onDeleteFile,
+  onImportLocalWorkspace,
   onSaveFile,
   onEditorDirtyChange,
   isMobileLayout,
@@ -286,6 +288,7 @@ export function ProjectWorkspaceLayoutView({
               onCreate={onCreateFile}
               onRename={onRenameFile}
               onDelete={onDeleteFile}
+              onImportLocalWorkspace={onImportLocalWorkspace}
             />
           </div>
           <ExplorerOutline

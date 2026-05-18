@@ -83,7 +83,7 @@ export const CHAT_MODE_CONFIGS: Record<ChatMode, ChatModeConfig> = {
     outputFormat: 'action-log',
     handoffRitual: {
       systemMessage:
-        'You are now in Build mode. Your FIRST action is to call write_files or run_command — never narrate what you plan to do without calling a tool. Read the approved plan, identify step 1, and execute it.',
+        'You are now in Code mode. Your FIRST action is to call write_files or run_command — never narrate what you plan to do without calling a tool. Make the focused change, then verify it.',
     },
   },
   build: {

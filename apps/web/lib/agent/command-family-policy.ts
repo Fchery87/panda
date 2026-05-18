@@ -1,4 +1,9 @@
-import type { CommandFamily, Decision } from '@/lib/agent/harness/permission/types'
+import type {
+  CommandFamily,
+  Decision,
+  PermissionRule,
+  PermissionRuleSource,
+} from '@/lib/agent/harness/permission/types'
 
 export type CommandFamilyDecision = Extract<Decision, 'allow' | 'ask' | 'deny'>
 
@@ -129,4 +134,17 @@ export function mergeCommandFamilyPolicy(args: {
       ? { family: adminEntry.family, decision: userDecision }
       : adminEntry
   })
+}
+
+export function commandFamilyPolicyToRules(
+  entries: readonly CommandFamilyPolicyEntry[] | null | undefined,
+  source: PermissionRuleSource = 'admin'
+): PermissionRule[] {
+  return normalizeCommandFamilyPolicy(entries).map((entry) => ({
+    capability: 'exec' as const,
+    commandFamily: entry.family,
+    decision: entry.decision,
+    source,
+    reason: `${COMMAND_FAMILY_LABELS[entry.family]} command family policy: ${entry.decision}`,
+  }))
 }

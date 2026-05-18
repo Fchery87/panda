@@ -1,36 +1,26 @@
-# Spec: Admin/User Policy Settings UI and Docs
+# Spec: Mode Selector System Scan
 
 ## Deliverables
 
-- [x] Add admin settings support for command-family defaults.
-- [x] Add user settings support for stricter command-family preferences inside
-      the admin ceiling.
-- [x] Show effective Harness Policy summaries in user settings.
-- [x] Show admin MCP transport ceilings in user MCP settings and prevent users
-      from selecting blocked transports in the UI.
-- [x] Keep admin settings audit entries redacted and focused on changed policy
-      keys.
-- [x] Update active docs to explain policy layers, command-family settings, MCP
-      transport ceilings, and Unattended Execution behavior.
+- [x] Validate Panda's mode selector wiring across UI state, chat session state,
+      routing decisions, prompt construction, runtime agent selection, and
+      permission policy.
+- [x] Run the available quality gates needed to catch regressions in mode
+      behavior and recent chat/file materialization fixes.
+- [x] Inspect focused tests for `ask`, `plan`, `code`, and `build` mode
+      contracts and add/repair coverage if a gap is found.
+- [x] Update `VALIDATION_TASKS.md` with scan results, health score, and any
+      remaining tasks.
 
 ## Constraints
 
-- Do not expose secrets, raw command strings, MCP headers, provider tokens,
-  signed URLs, raw tool args, or raw reasoning in settings, audit entries, or
-  docs examples.
-- User preferences may only make command-family behavior stricter than admin
-  defaults; they must not loosen an admin ask or deny.
-- Project-scoped MCP remains recommendation-only until project/team governance
-  exists.
-- Convex schema changes must be widen-first and existing rows must remain valid.
-- Convex query payloads must remain bounded/redacted.
-- Preserve existing admin and user settings UX unless adding policy summaries or
-  admin ceiling explanations.
+- Preserve existing uncommitted and staged work.
+- Do not alter the canonical modes: `ask`, `plan`, `code`, `build`.
+- Do not loosen permission policy or YOLO/session approval boundaries.
+- Avoid running long-lived dev servers.
+- Do not run destructive commands.
 
 ## Out of scope (log here during the run, do not act on)
 
-- Wiring command-family settings into production runtime enforcement beyond the
-  existing resolved Harness Policy path.
-- Project/team governance for project-scoped MCP activation.
-- Secret storage or encrypted MCP env management.
-- Full MCP marketplace/discovery UX.
+- Redesigning the mode selector UI.
+- Reworking the full agent harness architecture.

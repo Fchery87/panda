@@ -245,7 +245,11 @@ export function WorkbenchTopBar({
           <button
             type="button"
             onClick={handleYoloPillClick}
-            title={yoloCommandMode ? 'YOLO mode ON — all tools auto-approved. Click to disable.' : 'YOLO mode OFF — commands require approval. Click to enable.'}
+            title={
+              yoloCommandMode
+                ? 'YOLO mode ON — all tools auto-approved. Click to disable.'
+                : 'YOLO mode OFF — commands require approval. Click to enable.'
+            }
             className={cn(
               'hidden h-6 items-center gap-1.5 border px-2 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors sm:flex',
               yoloCommandMode
@@ -255,7 +259,12 @@ export function WorkbenchTopBar({
             aria-pressed={yoloCommandMode}
             aria-label={yoloCommandMode ? 'YOLO mode on' : 'YOLO mode off'}
           >
-            <span className={cn('h-1.5 w-1.5 rounded-full', yoloCommandMode ? 'bg-red-400' : 'bg-muted-foreground/40')} />
+            <span
+              className={cn(
+                'h-1.5 w-1.5 rounded-full',
+                yoloCommandMode ? 'bg-red-400' : 'bg-muted-foreground/40'
+              )}
+            />
             YOLO
           </button>
           <div className="bg-foreground/30 hidden h-5 w-px sm:block" />
@@ -350,13 +359,16 @@ export function WorkbenchTopBar({
 
       {showYoloConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-card border border-foreground p-6 font-mono shadow-sharp-lg max-w-sm w-full mx-4">
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground mb-1">Enable YOLO mode</p>
-            <p className="text-sm text-foreground mb-4">
-              All commands and file writes will be automatically approved — no confirmation dialogs.
-              Best for sandboxed (WebContainer) projects. You can turn it off anytime in Settings → Agent Defaults.
+          <div className="shadow-sharp-lg mx-4 w-full max-w-sm border border-foreground bg-card p-6 font-mono">
+            <p className="mb-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+              Enable YOLO mode
             </p>
-            <div className="flex gap-2 justify-end">
+            <p className="mb-4 text-sm text-foreground">
+              All commands and file writes will be automatically approved — no confirmation dialogs.
+              Best for sandboxed (WebContainer) projects. You can turn it off anytime in Settings →
+              Agent Defaults.
+            </p>
+            <div className="flex justify-end gap-2">
               <Button
                 variant="ghost"
                 size="sm"
@@ -367,7 +379,7 @@ export function WorkbenchTopBar({
               </Button>
               <Button
                 size="sm"
-                className="rounded-none font-mono text-xs uppercase tracking-wide bg-red-500 hover:bg-red-600 text-white border-0"
+                className="rounded-none border-0 bg-red-500 font-mono text-xs uppercase tracking-wide text-white hover:bg-red-600"
                 onClick={handleYoloConfirm}
               >
                 Enable YOLO

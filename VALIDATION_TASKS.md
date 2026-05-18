@@ -1,9 +1,7 @@
 # Validation Tasks & Health Record - Panda
 
-**Last Updated:** 2026-05-09  
-**Selected Profile:** full + coverage/security add-ons  
-**Validation Health Score:** 82/100  
-**Target Score:** 95/100  
+**Last Updated:** 2026-05-18 **Selected Profile:** browser IDE systems review +
+core gates **Validation Health Score:** 84/100 **Target Score:** 95/100  
 **Perfectionist State:** Not reached  
 **Scope:** Repository root
 
@@ -22,30 +20,34 @@
 
 ## Command Results
 
-| Command                                | Status | Notes                                                                                                                    |
-| -------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------ |
-| `bun run typecheck`                    | PASS   | Convex codegen and Turbo typecheck completed successfully.                                                               |
-| `bun run lint`                         | PASS   | ESLint completed successfully.                                                                                           |
-| `bun run format:check`                 | PASS   | Prettier check passed after applying safe formatting fixes.                                                              |
-| `bun test`                             | PASS   | 1140 tests passed across 243 files.                                                                                      |
-| `bun run build`                        | PASS   | Initial 300s run timed out after successful compile/static generation; rerun with longer timeout completed successfully. |
-| `bun audit --audit-level=moderate`     | PASS   | No audit findings were reported.                                                                                         |
-| `semgrep --config p/owasp-top-ten .`   | PASS   | 0 findings, 0 blocking findings.                                                                                         |
-| `bun run coverage`                     | FAIL   | Root Turbo coverage script references a missing `test:coverage` task for at least one workspace.                         |
-| `cd apps/web && bun run test:coverage` | PASS   | 1053 tests passed across 205 files with coverage output generated. No configured coverage threshold was observed.        |
-| `gitleaks detect --source .`           | FAIL   | 9 historical leaks found in git history.                                                                                 |
+| Command                                                       | Status | Notes                                                                                                                    |
+| ------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------ |
+| `bun run typecheck`                                           | PASS   | Convex codegen and Turbo typecheck completed successfully; 2 Turbo tasks succeeded.                                      |
+| `bun run lint`                                                | PASS   | ESLint completed successfully.                                                                                           |
+| `bun run format:check`                                        | PASS   | Prettier reported all matched files use Prettier style.                                                                  |
+| `bun test`                                                    | PASS   | 1216 tests passed across 259 files after updating one stale ChatInput source-contract assertion.                         |
+| `bun run build`                                               | PASS   | Initial 300s run timed out after successful compile/static generation; rerun with longer timeout completed successfully. |
+| `bun audit --audit-level=moderate`                            | PASS   | No audit findings were reported.                                                                                         |
+| `semgrep --config p/owasp-top-ten .`                          | PASS   | 0 findings, 0 blocking findings.                                                                                         |
+| `bun run coverage`                                            | FAIL   | Root Turbo coverage script references a missing `test:coverage` task for at least one workspace.                         |
+| `cd apps/web && bun run test:coverage`                        | PASS   | 1053 tests passed across 205 files with coverage output generated. No configured coverage threshold was observed.        |
+| `gitleaks detect --source .`                                  | FAIL   | 9 historical leaks found in git history.                                                                                 |
+| `bun test apps/web/components/chat/chat-input-wiring.test.ts` | PASS   | 5 tests and 32 assertions passed after aligning the send-disabled assertion with current workspace loading behavior.     |
 
 ---
 
 ## Open Task Table
 
-| ID       | Status | Severity | Category | Scope                 | Location                                                               | Summary                                                                                                     |
-| -------- | ------ | -------- | -------- | --------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| TASK-001 | todo   | critical | secrets  | history               | `convex/seed.ts` historical commits                                    | Real-looking provider API keys are present in git history.                                                  |
-| TASK-002 | todo   | high     | secrets  | history               | `apps/web/.next-e2e3/**` historical commits                            | Generated Next.js/E2E build artifacts with signing/encryption keys are present in git history.              |
-| TASK-003 | todo   | medium   | config   | global                | `package.json`, `packages/sdk/package.json`                            | Root `coverage` script is miswired for Turbo because not every package exposes `test:coverage`.             |
-| TASK-004 | todo   | medium   | coverage | global                | `apps/web`                                                             | Web coverage runs, but no repository coverage threshold is configured.                                      |
-| TASK-005 | todo   | low      | secrets  | local ignored outputs | `.next/**`, `.next-e2e3/**`, `apps/web/certificates/localhost-key.pem` | Current-tree no-git secrets scan timed out on ignored/generated outputs and local dev certificate material. |
+| ID       | Status | Severity | Category     | Scope                 | Location                                                                                  | Summary                                                                                                                                    |
+| -------- | ------ | -------- | ------------ | --------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| TASK-001 | todo   | critical | secrets      | history               | `convex/seed.ts` historical commits                                                       | Real-looking provider API keys are present in git history.                                                                                 |
+| TASK-002 | todo   | high     | secrets      | history               | `apps/web/.next-e2e3/**` historical commits                                               | Generated Next.js/E2E build artifacts with signing/encryption keys are present in git history.                                             |
+| TASK-003 | todo   | medium   | config       | global                | `package.json`, `packages/sdk/package.json`                                               | Root `coverage` script is miswired for Turbo because not every package exposes `test:coverage`.                                            |
+| TASK-004 | todo   | medium   | coverage     | global                | `apps/web`                                                                                | Web coverage runs, but no repository coverage threshold is configured.                                                                     |
+| TASK-005 | todo   | low      | secrets      | local ignored outputs | `.next/**`, `.next-e2e3/**`, `apps/web/certificates/localhost-key.pem`                    | Current-tree no-git secrets scan timed out on ignored/generated outputs and local dev certificate material.                                |
+| TASK-006 | todo   | high     | architecture | browser IDE runtime   | `apps/web/hooks/useAgent.ts`, `apps/web/components/projects/WorkspaceRuntimeProvider.tsx` | `useAgent` owns too many seams: routing, context, prompt construction, run lifecycle, persistence, checkpoints, runtime adapter, receipts. |
+| TASK-007 | todo   | high     | bandwidth    | file corpus           | `apps/web/lib/agent/tools.ts`, `convex/files.ts`                                          | Agent `listDirectory` uses content-returning `api.files.list` even though it only needs paths.                                             |
+| TASK-008 | todo   | medium   | workspace IA | workspace navigation  | `apps/web/stores/workspaceUiStore.ts`, `apps/web/components/panels/RightPanel.tsx`        | Internal tab vocabulary still drifts from canonical Work/Proof/Changes/Context/Preview contract.                                           |
 
 ---
 
@@ -122,6 +124,50 @@
 - **Auto-fix:** Not applied. Ignored local artifacts were not deleted as part of
   this validation run.
 
+### TASK-006 - `useAgent` is a load-bearing shallow module
+
+- **Severity:** high
+- **Evidence:** Browser IDE systems review found `useAgent` owns mode routing,
+  prompt history filtering, context retrieval, prompt bundle construction, run
+  orchestration, checkpoint persistence, runtime adapter creation, permission
+  audit, receipts, variants, and artifact interactions.
+- **Why it matters:** A maintainer changing one execution behavior must reason
+  about most of the IDE runtime at once, reducing locality and increasing
+  regression risk.
+- **Suggested fix:** Deepen a non-React Run Orchestration module behind a narrow
+  `startWorkspaceRun`-style interface and keep React hooks focused on UI state
+  and event subscription.
+- **Auto-fix:** Not applied. This is a load-bearing refactor that should be
+  sliced behind tests.
+
+### TASK-007 - Agent directory listing reads full file content payloads
+
+- **Severity:** high
+- **Evidence:** `apps/web/lib/agent/tools.ts` calls `api.files.list` in
+  `listDirectory`, while `convex/files.ts` documents `list` as content-including
+  and returns up to 2000 file docs.
+- **Why it matters:** Directory listing is a metadata/path operation; content
+  payloads amplify Convex bandwidth and make future hot-path regressions easy.
+- **Suggested fix:** Add or reuse a path/metadata-only file query for agent
+  directory listing and update bandwidth guard tests to forbid `api.files.list`
+  in tool directory listing.
+- **Auto-fix:** Not applied. Requires changing the tool API reference contract
+  and generated Convex bindings.
+
+### TASK-008 - Workspace tab vocabulary drift
+
+- **Severity:** medium
+- **Evidence:** `workspaceUiStore` uses `run` for Proof and `workspace` for
+  mobile Work; `RightPanel` contains preview label handling but the right panel
+  tab type excludes `preview`.
+- **Why it matters:** The UI mostly works today, but product concepts are
+  translated in multiple places, making future tray/mobile wiring error-prone.
+- **Suggested fix:** Normalize state unions to canonical
+  Work/Proof/Changes/Context/Preview and mobile Work/Chat/Proof/Preview, with a
+  persisted Zustand migration from legacy names.
+- **Auto-fix:** Not applied. Needs a deliberate migration and source-contract
+  test updates.
+
 ---
 
 ## Resolved During This Run
@@ -133,6 +179,10 @@
   class ordering.
 - Fixed `apps/web/lib/convex/bandwidth-guard.test.ts` so it resolves
   `convex/sharing.ts` correctly when run from `apps/web` during coverage.
+- Updated `apps/web/components/chat/chat-input-wiring.test.ts` so the send
+  button source-contract assertion includes the current workspace-loading guard.
+- Added `docs/reviews/panda-browser-ide-systems-review-2026-05-18.md` with
+  browser IDE wiring evidence and deepening candidates.
 
 ---
 
@@ -147,12 +197,15 @@ Panda does **not** currently meet Perfectionist State because:
    command.
 4. Critical/high security tasks remain open until exposed keys are rotated and
    history is cleaned.
+5. Browser IDE architecture tasks remain open around run orchestration depth,
+   metadata-only file corpus operations, and workspace navigation vocabulary.
 
 ---
 
 ## Scan History
 
-| Date       | Profile                  |      Score | Result            | Notes                                                                                                             |
-| ---------- | ------------------------ | ---------: | ----------------- | ----------------------------------------------------------------------------------------------------------------- |
-| 2026-05-09 | full + coverage/security |         82 | Not perfectionist | Core quality gates pass; blockers are historical secrets, root coverage config, and coverage policy.              |
-| 2026-04-27 | redesign snapshot        | not scored | Green snapshot    | Historical entry reported typecheck, lint, format, unit tests, Convex, and E2E passing after chat-first redesign. |
+| Date       | Profile                                 |      Score | Result            | Notes                                                                                                               |
+| ---------- | --------------------------------------- | ---------: | ----------------- | ------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-18 | browser IDE systems review + core gates |         84 | Not perfectionist | Core gates pass; review added architecture/bandwidth/workspace IA tasks and repaired one stale ChatInput assertion. |
+| 2026-05-09 | full + coverage/security                |         82 | Not perfectionist | Core quality gates pass; blockers are historical secrets, root coverage config, and coverage policy.                |
+| 2026-04-27 | redesign snapshot                       | not scored | Green snapshot    | Historical entry reported typecheck, lint, format, unit tests, Convex, and E2E passing after chat-first redesign.   |

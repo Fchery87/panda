@@ -45,6 +45,20 @@ export function AgentDefaultsEditor({ value, onChange, className }: AgentDefault
         </p>
       </div>
 
+      <div className="border-destructive/30 bg-destructive/5 flex items-center justify-between gap-4 border p-3">
+        <div className="space-y-1">
+          <Label className="font-mono text-xs">YOLO command mode</Label>
+          <p className="text-xs text-muted-foreground">
+            Runs command executions without approval prompts when admin policy and platform safety
+            blocks allow them.
+          </p>
+        </div>
+        <Switch
+          checked={effectiveValue.yoloCommandMode ?? false}
+          onCheckedChange={(checked) => update({ yoloCommandMode: checked })}
+        />
+      </div>
+
       <div className="flex items-center justify-between gap-4">
         <div className="space-y-1">
           <Label className="font-mono text-xs">Auto-apply file writes</Label>
@@ -80,10 +94,10 @@ export function AgentDefaultsEditor({ value, onChange, className }: AgentDefault
           }
           placeholder={'bun test\nbun run lint\nbunx eslint'}
           className="min-h-[120px] rounded-none font-mono text-xs"
-          disabled={!effectiveValue.autoRunCommands}
+          disabled={!effectiveValue.autoRunCommands || (effectiveValue.yoloCommandMode ?? false)}
         />
         <p className="text-xs text-muted-foreground">
-          Prefixes are matched case-insensitively and apply only to Panda&apos;s web command flow.
+          Prefixes are matched case-insensitively and apply only when YOLO command mode is off.
         </p>
       </div>
     </div>

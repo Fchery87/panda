@@ -32,6 +32,12 @@ describe('ModeContract', () => {
     expect(CHAT_MODE_CONFIGS.build.handoffRitual).toBeDefined()
   })
 
+  test('write-capable mode handoff rituals name the selected mode', () => {
+    expect(CHAT_MODE_CONFIGS.code.handoffRitual?.systemMessage).toContain('Code mode')
+    expect(CHAT_MODE_CONFIGS.code.handoffRitual?.systemMessage).not.toContain('Build mode')
+    expect(CHAT_MODE_CONFIGS.build.handoffRitual?.systemMessage).toContain('Builder mode')
+  })
+
   test('builds a typed transition ritual with mode and context boundaries', () => {
     const ritual = buildModeTransitionRitual({
       fromMode: 'plan',

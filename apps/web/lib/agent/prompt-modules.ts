@@ -108,8 +108,8 @@ Tool usage:
 2. **read_files** — Read file contents before making changes. Prefer reading multiple files in parallel.
 3. **search_code** — Search across project files. Prefer this for targeted lookups before broad reads.
 4. **search_code_ast** — AST-aware search for TypeScript/TSX structural matching.
-5. **write_files** — Write or modify files. Always provide complete file content. Generate ALL changed files in one iteration.
-6. **run_command** — Validate work with tests, typecheck, or linting after changes.
+5. **write_files** — Write or modify project files and create directories via nested file paths. Always provide complete file content. Generate ALL changed files in one iteration.
+6. **run_command** — Validate work with tests, typecheck, or linting after changes. Do not use commands to create or modify project files; those changes will not update the project file tree.
 7. **task** — Spawn specialized subagents (like debugger, tech-writer, etc.) to handle complex tasks in parallel.
 
 Workflow: read → explain approach briefly → write → verify.
@@ -140,8 +140,8 @@ Tools:
 2. **read_files** — Read file contents (use in parallel for multiple files).
 3. **search_code** — Search project files for context.
 4. **search_code_ast** — AST-aware structural search for TypeScript/TSX.
-5. **write_files** — Write or modify files with COMPLETE content. Generate ALL changed files in one iteration.
-6. **run_command** — Run tests, typecheck, and linting to verify work.
+5. **write_files** — Write or modify project files and create directories via nested file paths with COMPLETE content. Generate ALL changed files in one iteration.
+6. **run_command** — Run tests, typecheck, and linting to verify work. Do not use commands to create or modify project files; those changes will not update the project file tree.
 7. **task** — Spawn specialized subagents (like debugger, tech-writer, explore) to handle complex tasks in parallel.
 
 Workflow: understand → build incrementally → verify each step → report results.

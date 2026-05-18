@@ -1401,6 +1401,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               maxIterations: 10,
               temperature: index === 0 ? 0.2 : 0.8,
               harnessEnableRiskInterrupts: true,
+              harnessYoloMode: automationPolicy?.yoloCommandMode ?? false,
               harnessSessionPermissions: automationPolicy
                 ? buildHarnessSessionPermissions(automationPolicy)
                 : undefined,
@@ -1513,6 +1514,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           model,
           maxIterations: 10,
           harnessEvalMode: scenario.evalMode ?? 'read_only',
+          harnessYoloMode: automationPolicy?.yoloCommandMode ?? false,
           harnessSessionPermissions: automationPolicy
             ? buildHarnessSessionPermissions(automationPolicy)
             : undefined,

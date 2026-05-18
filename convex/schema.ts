@@ -775,6 +775,7 @@ export default defineSchema({
           autoApplyFiles: v.boolean(),
           autoRunCommands: v.boolean(),
           allowedCommandPrefixes: v.array(v.string()),
+          yoloCommandMode: v.optional(v.boolean()),
         })
       )
     ),
@@ -888,6 +889,7 @@ export default defineSchema({
           autoApplyFiles: v.boolean(),
           autoRunCommands: v.boolean(),
           allowedCommandPrefixes: v.array(v.string()),
+          yoloCommandMode: v.optional(v.boolean()),
         })
       )
     ),

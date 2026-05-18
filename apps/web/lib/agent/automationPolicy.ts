@@ -57,7 +57,8 @@ export function resolveEffectiveAgentPolicy(args: {
     autoApplyFiles: project.autoApplyFiles,
     autoRunCommands: project.autoRunCommands,
     allowedCommandPrefixes: normalizePrefixList(project.allowedCommandPrefixes),
-    yoloCommandMode: project.yoloCommandMode ?? false,
+    yoloCommandMode:
+      project.yoloCommandMode ?? base.yoloCommandMode ?? defaults.yoloCommandMode ?? false,
   }
 }
 

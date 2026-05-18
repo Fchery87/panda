@@ -513,6 +513,9 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
             // Cursor norms (Claude Code issue #28584).
             toolRiskOverrides: { task: 'low' as const },
             onToolInterrupt: async (request: HarnessToolInterruptRequest) => {
+              if (yoloMode) {
+                return { decision: 'approve' as const, reason: 'YOLO mode: auto-approved' }
+              }
               const target = request.patterns[0] || request.toolName
               const permissionResult = await this.permissions.request(
                 request.sessionID,

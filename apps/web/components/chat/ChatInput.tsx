@@ -265,7 +265,12 @@ export function ChatInput({
   }, [])
 
   const handleSend = useCallback(async () => {
-    if ((!input.trim() && attachments.length === 0) || isStreaming || isUploadingAttachments || workspaceLoading) {
+    if (
+      (!input.trim() && attachments.length === 0) ||
+      isStreaming ||
+      isUploadingAttachments ||
+      workspaceLoading
+    ) {
       return
     }
 

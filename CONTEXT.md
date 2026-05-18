@@ -53,6 +53,31 @@ interactive approval channel. Server fallback is not the same thing as
 Unattended Execution: a server-backed Run may still be interactive if the owner
 can approve prompts.
 
+### YOLO Command Mode
+
+`YOLO Command Mode` is a user-controlled setting that suppresses interactive
+command approval prompts for commands allowed by Panda's admin Harness Policy
+and platform safety blocks.
+
+YOLO Command Mode is not Unattended Execution: it changes approval behavior
+while an owner may still be present, whereas Unattended Execution describes the
+absence of an active owner approval channel. YOLO Command Mode must not bypass
+admin-deny or platform-deny decisions.
+
+### Project File Corpus
+
+The `Project File Corpus` is the authoritative set of project files Panda uses
+for file navigation, project context, agent file tools, and runtime mounting.
+
+A `Local Workspace Attachment` is an explicit connection from a Panda Project to
+an existing local directory so its files can be imported or synchronized into
+the Project File Corpus.
+
+A Local Workspace Attachment is not itself the Project File Corpus until Panda
+has imported or synchronized it. If a local directory contains files but the
+Project File Corpus is empty, Panda should describe the project as needing
+import or sync rather than as an empty project.
+
 ### Execution Session
 
 An `Execution Session` is the user-facing work thread for one goal inside a

@@ -74,6 +74,7 @@ interface FileTreeProps {
   onCreate: (path: string) => void
   onRename: (oldPath: string, newPath: string) => void
   onDelete: (path: string) => void
+  onImportLocalWorkspace?: () => void
 }
 
 // Build tree structure from flat file list
@@ -408,6 +409,7 @@ export function FileTree({
   onCreate,
   onRename,
   onDelete,
+  onImportLocalWorkspace,
 }: FileTreeProps) {
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set())
   const [newFileParent, setNewFileParent] = useState<string | null>(null)
@@ -473,6 +475,15 @@ export function FileTree({
         >
           Create File
         </button>
+        {onImportLocalWorkspace && (
+          <button
+            type="button"
+            onClick={onImportLocalWorkspace}
+            className="mt-2 border border-border px-3 py-1.5 font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Import Local Workspace
+          </button>
+        )}
         {newFileParent === '' && (
           <div className="mt-3 w-full max-w-xs">
             <NewFileInput

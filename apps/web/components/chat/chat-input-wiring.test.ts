@@ -26,7 +26,7 @@ describe('chat input wiring', () => {
     expect(content).toContain(
       'const hasSendContent = input.trim().length > 0 || attachments.length > 0'
     )
-    expect(content).toContain('disabled={!hasSendContent}')
+    expect(content).toContain('disabled={!hasSendContent || workspaceLoading}')
     expect(content).toContain('hasSendContent')
     expect(content).toContain("'hover:bg-primary/90 bg-primary text-primary-foreground'")
   })

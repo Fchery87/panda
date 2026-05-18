@@ -14,7 +14,7 @@ import { appLog } from '@/lib/logger'
 import type { ToolDefinition, ToolCall, ToolResult } from '../llm/types'
 import type { WebContainer } from '@webcontainer/api'
 import type { Capability } from '@/lib/agent/harness/permission/types'
-import { analyzeCommand, isCommandPipelineSafe } from './command-analysis'
+import { analyzeCommand, classifyCommandFamily, isCommandPipelineSafe } from './command-analysis'
 import { executeOracleSearch } from './harness/oracle'
 import { repairJSON, safeJSONParse } from './harness/tool-repair'
 import { spawnInContainer } from '@/lib/webcontainer/process-adapter'
@@ -446,6 +446,17 @@ interface WriteFileSpec {
   content: string
 }
 
+function normalizeProjectFilePath(path: string): string {
+  const parts = path
+    .trim()
+    .replace(/\\/gu, '/')
+    .replace(/^\/+/u, '')
+    .split('/')
+    .filter((part) => part.length > 0 && part !== '.' && part !== '..')
+
+  return parts.join('/')
+}
+
 function normalizeWriteFilesInput(input: unknown): WriteFileSpec[] {
   if (Array.isArray(input)) {
     return input
@@ -454,7 +465,7 @@ function normalizeWriteFilesInput(input: unknown): WriteFileSpec[] {
           Boolean(item) && typeof item === 'object'
       )
       .map((item) => ({
-        path: String(item.path ?? '').trim(),
+        path: normalizeProjectFilePath(String(item.path ?? '')),
         content: typeof item.content === 'string' ? item.content : String(item.content ?? ''),
       }))
       .filter((item) => item.path.length > 0)
@@ -1057,6 +1068,20 @@ export async function executeTool(
       case 'run_command': {
         const { command, timeout, cwd } = args
         const commandAnalysis = analyzeCommand(String(command ?? ''))
+        const commandFamily = classifyCommandFamily(String(command ?? ''))
+        if (commandAnalysis.kind === 'redirect' || commandFamily.family === 'filesystem-write') {
+          return {
+            toolCallId: toolCall.id,
+            toolName: toolCall.function.name,
+            args,
+            output: '',
+            error:
+              'Use write_files for project file changes so they persist to the project file tree.',
+            durationMs: 0,
+            timestamp: Date.now(),
+            retryCount: 0,
+          }
+        }
         if (commandAnalysis.kind === 'pipeline' && !isCommandPipelineSafe(commandAnalysis)) {
           return {
             toolCallId: toolCall.id,

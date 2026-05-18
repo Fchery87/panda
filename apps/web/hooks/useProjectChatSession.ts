@@ -7,6 +7,7 @@ import type { Id } from '@convex/_generated/dataModel'
 import type { AvailableModel } from '@/components/chat/ModelSelector'
 import { useAutoApplyArtifacts } from './useAutoApplyArtifacts'
 import { resolveEffectiveAgentPolicy, type AgentPolicy } from '@/lib/agent/automationPolicy'
+import type { CommandFamilyPolicyEntry } from '@/lib/agent/command-family-policy'
 import { normalizeChatMode, type ChatMode } from '@/lib/agent/prompt-library'
 import { getGlobalRegistry } from '@/lib/llm/registry'
 import { buildAvailableModelsFromProviderConfigs } from '@/lib/llm/model-sync'
@@ -59,7 +60,10 @@ export function useProjectChatSession<TChat extends ChatSessionChat>(args: {
 
   const settings = useQuery(api.settings.get) as ProviderSettings | undefined
   const effectiveSettings = useQuery(api.settings.getEffective) as
-    | (ProviderSettings & { effectiveModel?: string })
+    | (ProviderSettings & {
+        effectiveModel?: string
+        effectiveCommandFamilyPolicy?: CommandFamilyPolicyEntry[]
+      })
     | undefined
   const freshProviderConfigs = useFreshProviderConfigs(effectiveSettings?.providerConfigs)
 
@@ -270,5 +274,6 @@ export function useProjectChatSession<TChat extends ChatSessionChat>(args: {
     availableModels,
     supportsReasoning,
     effectiveAutomationPolicy,
+    effectiveCommandFamilyPolicy: effectiveSettings?.effectiveCommandFamilyPolicy,
   }
 }

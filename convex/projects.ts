@@ -280,6 +280,7 @@ export const update = mutation({
           autoApplyFiles: v.boolean(),
           autoRunCommands: v.boolean(),
           allowedCommandPrefixes: v.array(v.string()),
+          yoloCommandMode: v.optional(v.boolean()),
         })
       )
     ),
