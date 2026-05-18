@@ -103,7 +103,7 @@ describe('automationPolicy', () => {
     expect(
       shouldAutoApplyArtifact(policy, {
         type: 'file_write',
-        payload: { files: [{ path: 'src/index.ts', content: '' }] },
+        payload: { filePath: 'src/index.ts', content: '' },
       })
     ).toBe(true)
   })

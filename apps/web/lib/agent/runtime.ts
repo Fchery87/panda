@@ -29,7 +29,7 @@ import {
   type HarnessPermissionAuditEntry,
   type HarnessSubagentSummary,
 } from './harness'
-import { PermissionManager } from './harness/permissions'
+import { permissions as sharedPermissions } from './harness/permissions'
 import { resolveHarnessPolicy } from './harness/permission/policy'
 import {
   InMemoryCheckpointStore,
@@ -443,7 +443,7 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
     | ((value: { decision: 'approve' | 'edit' | 'cancel'; spec?: FormalSpecification }) => void)
     | null = null
   private abortController: AbortController | null = null
-  private permissions = new PermissionManager()
+  private permissions = sharedPermissions
 
   constructor(
     private options: RuntimeOptions,
