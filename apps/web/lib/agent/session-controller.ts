@@ -72,6 +72,9 @@ export function buildAgentPromptContext(args: {
     provider: args.provider,
     previousMessages: args.previousMessages,
     projectOverview,
+    files: args.projectFiles?.length
+      ? args.projectFiles.map((f) => ({ path: f.path, content: f.content ?? '', score: 0.5 }))
+      : undefined,
     memoryBank: args.memoryBankContent ?? undefined,
     userMessage:
       args.contextFiles && args.contextFiles.length > 0

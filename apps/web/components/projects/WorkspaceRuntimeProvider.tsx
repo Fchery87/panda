@@ -270,6 +270,7 @@ export function WorkspaceRuntimeProvider({
   const createChatMutation = useMutation(api.chats.create)
   const addMessageMutation = useMutation(api.messages.add)
   const updateChatMutation = useMutation(api.chats.update)
+  const importWorkspaceFileMutation = useMutation(api.files.upsert)
 
   const {
     setActiveChatId,
@@ -283,6 +284,7 @@ export function WorkspaceRuntimeProvider({
     availableModels,
     supportsReasoning,
     effectiveAutomationPolicy,
+    effectiveCommandFamilyPolicy,
   } = useProjectChatSession({ projectId, chats, projectAgentPolicy })
 
   const planningSession = useProjectPlanningSession({ activeChatId: activeChat?._id ?? null })
@@ -329,6 +331,7 @@ export function WorkspaceRuntimeProvider({
         toolCalls: message.toolCalls,
       })),
     automationPolicy: effectiveAutomationPolicy,
+    commandFamilyPolicy: effectiveCommandFamilyPolicy,
     specApprovalMode: agentPolicy.specApprovalMode,
     onRunCreated: handleRunCreated,
     onRunCompleted: handleRunCompleted,
@@ -644,6 +647,7 @@ export function WorkspaceRuntimeProvider({
 
       // Agent state
       isStreaming: agent.isLoading,
+      workspaceReady: agent.workspaceReady,
       currentSpec: agent.currentSpec,
       memoryBank: agent.memoryBank,
       tracePersistenceStatus: agent.tracePersistenceStatus,
@@ -899,6 +903,50 @@ export function WorkspaceRuntimeProvider({
     }
   }, [handleBuildFromPlan, openRightPanelTab, setActiveCenterTab, workspaceFocusState])
 
+  const handleImportLocalWorkspace = useCallback(async () => {
+    try {
+      const response = await fetch('/api/local-workspace/files?maxFiles=500')
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null
+        throw new Error(payload?.error ?? 'Local workspace import is unavailable')
+      }
+
+      const payload = (await response.json()) as {
+        files?: Array<{ path: string; content?: string; isBinary: boolean }>
+        truncated?: boolean
+      }
+      const importableFiles = (payload.files ?? []).filter(
+        (file) => !file.isBinary && typeof file.content === 'string'
+      )
+
+      if (importableFiles.length === 0) {
+        toast.info('No importable local files found')
+        return
+      }
+
+      await Promise.all(
+        importableFiles.map((file) =>
+          importWorkspaceFileMutation({
+            projectId,
+            path: file.path,
+            content: file.content ?? '',
+            isBinary: false,
+          })
+        )
+      )
+
+      toast.success('Imported local workspace files', {
+        description: `${importableFiles.length} file${importableFiles.length === 1 ? '' : 's'} imported${
+          payload.truncated ? ' (scan truncated)' : ''
+        }`,
+      })
+    } catch (error) {
+      toast.error('Failed to import local workspace', {
+        description: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }, [importWorkspaceFileMutation, projectId])
+
   // --- Assemble layout props ---
 
   const layoutProps = {
@@ -923,6 +971,7 @@ export function WorkspaceRuntimeProvider({
     onCreateFile: handleFileCreate,
     onRenameFile: handleFileRename,
     onDeleteFile: handleFileDelete,
+    onImportLocalWorkspace: files.length === 0 ? handleImportLocalWorkspace : undefined,
     onSaveFile: handleEditorSave,
     onEditorDirtyChange: handleEditorDirtyChange,
     isMobileLayout,

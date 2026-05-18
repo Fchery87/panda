@@ -136,6 +136,8 @@ interface ChatInputProps {
   contextualPrompt?: string | null
   onContextualPromptHandled?: () => void
   attachmentsEnabled?: boolean
+  /** Workspace metadata still loading from Convex — disables send to prevent empty-context agent runs */
+  workspaceLoading?: boolean
 }
 
 export function ChatInput({
@@ -159,6 +161,7 @@ export function ChatInput({
   contextualPrompt,
   onContextualPromptHandled,
   attachmentsEnabled = false,
+  workspaceLoading = false,
 }: ChatInputProps) {
   const [input, setInput] = useState('')
   const [uncontrolledMode, setUncontrolledMode] = useState<ChatMode>('code')
@@ -262,7 +265,7 @@ export function ChatInput({
   }, [])
 
   const handleSend = useCallback(async () => {
-    if ((!input.trim() && attachments.length === 0) || isStreaming || isUploadingAttachments) {
+    if ((!input.trim() && attachments.length === 0) || isStreaming || isUploadingAttachments || workspaceLoading) {
       return
     }
 
@@ -377,6 +380,7 @@ export function ChatInput({
     input,
     isStreaming,
     isUploadingAttachments,
+    workspaceLoading,
     mode,
     variant,
     onSendMessage,
@@ -773,11 +777,12 @@ export function ChatInput({
               <Button
                 size="icon"
                 onClick={handleSendWithReset}
-                disabled={!hasSendContent}
-                aria-label="Send message"
+                disabled={!hasSendContent || workspaceLoading}
+                aria-label={workspaceLoading ? 'Loading workspace…' : 'Send message'}
+                title={workspaceLoading ? 'Loading workspace…' : undefined}
                 className={cn(
                   'transition-sharp h-6 w-6 rounded-none',
-                  hasSendContent
+                  hasSendContent && !workspaceLoading
                     ? 'hover:bg-primary/90 bg-primary text-primary-foreground'
                     : 'bg-secondary text-muted-foreground'
                 )}

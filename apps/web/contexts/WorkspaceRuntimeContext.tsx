@@ -69,6 +69,7 @@ export interface WorkspaceRuntimeValue {
 
   // Agent state
   isStreaming: boolean
+  workspaceReady: boolean
   currentSpec: FormalSpecification | null
   memoryBank: string | null | undefined
   tracePersistenceStatus: TracePersistenceStatus

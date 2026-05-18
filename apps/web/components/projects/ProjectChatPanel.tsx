@@ -40,6 +40,7 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
     liveSteps,
     inlineRateLimitError,
     isStreaming,
+    workspaceReady,
     lastUserPrompt,
     currentSpec,
     model,
@@ -311,6 +312,7 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
         onArchitectBrainstormEnabledChange={onArchitectBrainstormEnabledChange}
         onSendMessage={onSendMessage}
         isStreaming={isStreaming}
+        workspaceLoading={!workspaceReady}
         onStopStreaming={onStopStreaming}
         filePaths={filePaths}
         model={model}

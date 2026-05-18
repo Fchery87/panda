@@ -29,6 +29,10 @@ import {
 import type { FormalSpecification } from '../lib/agent/spec/types'
 import { getUserFacingAgentError } from '../lib/chat/error-messages'
 import { buildHarnessSessionPermissions, type AgentPolicy } from '../lib/agent/automationPolicy'
+import {
+  commandFamilyPolicyToRules,
+  type CommandFamilyPolicyEntry,
+} from '../lib/agent/command-family-policy'
 import { normalizeChatMode, type ChatMode } from '../lib/agent/prompt-library'
 import { buildExecutionReceipt, type ContextAuditRecord } from '../lib/agent/receipt'
 import {
@@ -298,6 +302,7 @@ interface UseAgentOptions {
   hydratePersistedMessages?: boolean
   getPromptHistoryMessages?: () => PromptHistoryMessageInput[]
   automationPolicy?: AgentPolicy
+  commandFamilyPolicy?: CommandFamilyPolicyEntry[]
   specApprovalMode?: 'interactive' | 'auto_approve'
   onRunCreated?: (args: {
     runId: Id<'agentRuns'>
@@ -355,6 +360,8 @@ interface UseAgentReturn {
 
   // Project overview (computed on-demand, not stored as file)
   projectOverview: string | null | undefined
+  // True once Convex files query has resolved (even if empty) — gates Send to avoid empty-context runs
+  workspaceReady: boolean
 
   // Actions
   sendMessage: (
@@ -411,6 +418,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     hydratePersistedMessages = true,
     getPromptHistoryMessages,
     automationPolicy,
+    commandFamilyPolicy,
     specApprovalMode,
     onRunCreated,
     onRunCompleted,
@@ -962,6 +970,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             harnessSessionPermissions: automationPolicy
               ? buildHarnessSessionPermissions(automationPolicy)
               : undefined,
+            harnessAdminRules: commandFamilyPolicyToRules(commandFamilyPolicy),
             harnessPermissionAudit: async (entry) => {
               await logHarnessPermissionDecision({
                 sessionID: entry.sessionID,
@@ -1312,6 +1321,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       projectFiles,
       planSteps,
       automationPolicy,
+      commandFamilyPolicy,
       onRunCreated,
       onRunCompleted,
       createSpecMutation,
@@ -1393,6 +1403,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               harnessSessionPermissions: automationPolicy
                 ? buildHarnessSessionPermissions(automationPolicy)
                 : undefined,
+              harnessAdminRules: commandFamilyPolicyToRules(commandFamilyPolicy),
               ...(runtimeSettings.reasoning ? { reasoning: runtimeSettings.reasoning } : {}),
             },
             toolContext
@@ -1440,6 +1451,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       specApprovalMode,
       model,
       automationPolicy,
+      commandFamilyPolicy,
       setMessages,
     ]
   )
@@ -1503,6 +1515,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           harnessSessionPermissions: automationPolicy
             ? buildHarnessSessionPermissions(automationPolicy)
             : undefined,
+          harnessAdminRules: commandFamilyPolicyToRules(commandFamilyPolicy),
           ...(runtimeSettings.reasoning ? { reasoning: runtimeSettings.reasoning } : {}),
         },
         toolContext
@@ -1558,6 +1571,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       projectOverviewContent,
       projectFiles,
       automationPolicy,
+      commandFamilyPolicy,
     ]
   )
 
@@ -1588,6 +1602,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     memoryBank: memoryBankContent,
     updateMemoryBank,
     projectOverview: projectOverviewContent,
+    workspaceReady: projectFiles !== undefined,
     sendMessage,
     variantResults,
     runEvalScenario,
