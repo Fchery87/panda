@@ -85,4 +85,38 @@ describe('artifact execution helpers', () => {
 
     expect(runtimeWrites).toEqual([{ path: 'src/app.ts', content: 'export const value = 1' }])
   })
+
+  it('normalizes absolute artifact paths before applying them to the project tree', async () => {
+    const queriedPaths: string[] = []
+    const upsertedPaths: string[] = []
+    const runtimeWrites: Array<{ path: string; content: string }> = []
+
+    await applyArtifact({
+      artifactId: 'artifact_1' as never,
+      action: {
+        type: 'file_write',
+        payload: { filePath: '/docs/index.md', content: '# Docs\n' },
+      },
+      projectId: 'project_1' as never,
+      convex: {
+        query: async (_api: unknown, args: { path: string }) => {
+          queriedPaths.push(args.path)
+          return null
+        },
+      } as never,
+      upsertFile: (async (args: { path: string }) => {
+        upsertedPaths.push(args.path)
+      }) as never,
+      createAndExecuteJob: (async () => ({ jobId: 'job_1' })) as never,
+      updateJobStatus: (async () => undefined) as never,
+      updateArtifactStatus: (async () => undefined) as never,
+      writeFileToRuntime: async (path, content) => {
+        runtimeWrites.push({ path, content })
+      },
+    })
+
+    expect(queriedPaths).toEqual(['docs/index.md'])
+    expect(upsertedPaths).toEqual(['docs/index.md'])
+    expect(runtimeWrites).toEqual([{ path: 'docs/index.md', content: '# Docs\n' }])
+  })
 })

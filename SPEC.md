@@ -1,26 +1,26 @@
-# Spec: Mode Selector System Scan
+# Spec: Harness File Materialization Review
 
 ## Deliverables
 
-- [x] Validate Panda's mode selector wiring across UI state, chat session state,
-      routing decisions, prompt construction, runtime agent selection, and
-      permission policy.
-- [x] Run the available quality gates needed to catch regressions in mode
-      behavior and recent chat/file materialization fixes.
-- [x] Inspect focused tests for `ask`, `plan`, `code`, and `build` mode
-      contracts and add/repair coverage if a gap is found.
-- [x] Update `VALIDATION_TASKS.md` with scan results, health score, and any
-      remaining tasks.
+- [x] Trace why a simple request to create `/docs` can produce a completion
+      receipt that does not appear in the project file tree.
+- [x] Review the affected harness, Chat Panel send/run path, and project
+      file-system materialization boundaries.
+- [x] Fix the root cause without widening mode permissions or changing the
+      canonical `ask`, `plan`, `code`, `build` workflow.
+- [x] Add or repair regression coverage proving created files/directories are
+      reflected through the file tree path used by the UI.
+- [x] Record validation evidence and remaining risks.
 
 ## Constraints
 
-- Preserve existing uncommitted and staged work.
-- Do not alter the canonical modes: `ask`, `plan`, `code`, `build`.
-- Do not loosen permission policy or YOLO/session approval boundaries.
-- Avoid running long-lived dev servers.
-- Do not run destructive commands.
+- Preserve existing uncommitted work.
+- Do not loosen permission policy, YOLO/session approval boundaries, or mode
+  routing.
+- Keep Convex hot queries bounded and metadata-oriented where possible.
+- Avoid long-lived dev servers and destructive commands.
 
 ## Out of scope (log here during the run, do not act on)
 
-- Redesigning the mode selector UI.
-- Reworking the full agent harness architecture.
+- Redesigning the full Chat Panel UI.
+- Reworking the entire harness architecture.

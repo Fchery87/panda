@@ -18,6 +18,7 @@ import { analyzeCommand, classifyCommandFamily, isCommandPipelineSafe } from './
 import { executeOracleSearch } from './harness/oracle'
 import { repairJSON, safeJSONParse } from './harness/tool-repair'
 import { spawnInContainer } from '@/lib/webcontainer/process-adapter'
+import { normalizeProjectFilePath } from '@/lib/project-files/path'
 
 export interface AgentToolDefinition extends ToolDefinition {
   capability: Capability
@@ -90,7 +91,7 @@ export const AGENT_TOOLS: AgentToolDefinition[] = [
     function: {
       name: 'write_files',
       description:
-        "Write or modify files. Provide complete file content, not diffs. Creates files if they don't exist.",
+        "Write or modify files. Provide complete file content, not diffs. Creates files if they don't exist. To represent a requested empty folder, create the smallest placeholder file inside that folder, such as <folder>/.gitkeep.",
       parameters: {
         type: 'object',
         properties: {
@@ -102,7 +103,8 @@ export const AGENT_TOOLS: AgentToolDefinition[] = [
               properties: {
                 path: {
                   type: 'string',
-                  description: 'File path relative to project root',
+                  description:
+                    'File path relative to project root. Do not use a bare directory path; use a nested placeholder file for empty folders.',
                 },
                 content: {
                   type: 'string',
@@ -444,17 +446,6 @@ export interface ToolContext {
 interface WriteFileSpec {
   path: string
   content: string
-}
-
-function normalizeProjectFilePath(path: string): string {
-  const parts = path
-    .trim()
-    .replace(/\\/gu, '/')
-    .replace(/^\/+/u, '')
-    .split('/')
-    .filter((part) => part.length > 0 && part !== '.' && part !== '..')
-
-  return parts.join('/')
 }
 
 function normalizeWriteFilesInput(input: unknown): WriteFileSpec[] {

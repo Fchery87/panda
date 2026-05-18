@@ -4,6 +4,7 @@ import type { Id } from '@convex/_generated/dataModel'
 import { api } from '@convex/_generated/api'
 import type { ConvexReactClient } from 'convex/react'
 import { executeQueuedJob } from '@/lib/jobs/executeJob'
+import { normalizeProjectFilePath } from '@/lib/project-files/path'
 
 export type ArtifactAction =
   | {
@@ -93,23 +94,28 @@ export async function applyArtifact({
 
   try {
     if (action.type === 'file_write') {
+      const filePath = normalizeProjectFilePath(action.payload.filePath)
+      if (!filePath) {
+        throw new Error('Artifact file path is empty after normalization')
+      }
+
       const existing = await convex.query(api.files.getByPath, {
         projectId,
-        path: action.payload.filePath,
+        path: filePath,
       })
 
       await upsertFile({
         id: existing?._id,
         projectId,
-        path: action.payload.filePath,
+        path: filePath,
         content: action.payload.content,
         isBinary: false,
       })
 
-      await writeFileToRuntime?.(action.payload.filePath, action.payload.content)
+      await writeFileToRuntime?.(filePath, action.payload.content)
 
       await updateArtifactStatus({ id: artifactId, status: 'completed' })
-      return { kind: 'file', description: action.payload.filePath }
+      return { kind: 'file', description: filePath }
     }
 
     const { jobId } = await createAndExecuteJob({

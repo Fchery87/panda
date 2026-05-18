@@ -94,6 +94,19 @@ describe('prompt-library — prompt system contract invariants', () => {
     }
   })
 
+  it('keeps write-capable modes bounded to the literal user request', () => {
+    const codeText = getSystemText('code')
+    const buildText = getSystemText('build')
+
+    for (const text of [codeText, buildText]) {
+      expect(text).toContain('Implement only the user-requested change')
+      expect(text).toContain(
+        'Do not add extra files, docs, examples, setup guides, or architecture notes'
+      )
+      expect(text).toContain('If the user asks for an empty folder')
+    }
+  })
+
   it('keeps active Spec before approved Plan when both are present', () => {
     const activeSpec: FormalSpecification = {
       id: 'spec-1',

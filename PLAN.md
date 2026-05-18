@@ -1,29 +1,30 @@
-# Plan: Mode Selector System Scan
+# Plan: Harness File Materialization Review
 
-## Milestone 1: Inventory Mode Wiring
+## Milestone 1: Trace File Creation Path
 
-What: Trace mode selection from UI controls through Zustand/chat session state,
-routing, prompt bundle, harness agent selection, and permission rules.
-Acceptance criteria: every mode boundary has a source and consumer identified.
-Validation: read-only inspection plus focused source references. Status: [x]
+What: Trace chat request -> mode routing -> run execution -> tool calls ->
+project file mutations -> file tree queries. Acceptance criteria: root cause
+hypothesis is grounded in source references and a reproducible boundary.
+Validation: read-only source inspection plus focused existing tests. Status: [x]
 complete
 
-## Milestone 2: Run Focused Mode Tests
+## Milestone 2: Add Regression Coverage
 
-What: Run existing tests for chat modes, routing, mode rulesets, runtime mode
-behavior, and recent file materialization fixes. Acceptance criteria: focused
-mode tests pass or produce actionable failures. Validation: focused
-`bun test ...` commands. Status: [x] complete
+What: Add the smallest failing test that proves a file created through the
+harness-visible project filesystem appears in the file-tree representation used
+by the UI. Acceptance criteria: the test fails before the fix for the observed
+reason. Validation: focused `bun test ...` command. Status: [x] complete
 
-## Milestone 3: Run Project Gates
+## Milestone 3: Implement Root Fix
 
-What: Run typecheck, lint, format, and broader test/build checks feasible in
-this session. Acceptance criteria: pass/fail state is recorded with exact
-blockers. Validation: `bun run typecheck`, `bun run lint`,
-`bun run format:check`, `bun test`, and build if feasible. Status: [x] complete
+What: Patch the source-of-truth mismatch so project file writes and file tree
+refresh use the same persisted project filesystem contract. Acceptance criteria:
+regression test passes without changing mode policy or adding fake UI-only
+entries. Validation: focused `bun test ...` command. Status: [x] complete
 
-## Milestone 4: Report Scan State
+## Milestone 4: Verify And Record
 
-What: Update `VALIDATION_TASKS.md`, `STATUS.md`, and final response with health
-score, risks, and next actions. Acceptance criteria: remaining issues are
-explicit and prioritized. Status: [x] complete
+What: Run focused affected tests and update `STATUS.md` with evidence,
+explanation, and remaining risks. Acceptance criteria: commands and root cause
+are recorded. Validation: focused tests plus type/lint if impacted files require
+it. Status: [x] complete

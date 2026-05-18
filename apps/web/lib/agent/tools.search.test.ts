@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { executeTool, type ToolContext } from './tools'
+import { AGENT_TOOLS, executeTool, type ToolContext } from './tools'
 import type { ToolCall } from '../llm/types'
 
 function makeToolCall(name: string, args: Record<string, unknown>): ToolCall {
@@ -111,5 +111,12 @@ describe('project file materialization tool execution', () => {
     expect(commandRan).toBe(false)
     expect(result.error).toContain('Use write_files')
     expect(result.error).toContain('project file tree')
+  })
+
+  it('tells agents how to represent requested empty folders durably', () => {
+    const writeFilesTool = AGENT_TOOLS.find((tool) => tool.function.name === 'write_files')
+
+    expect(writeFilesTool?.function.description).toContain('placeholder file')
+    expect(JSON.stringify(writeFilesTool?.function.parameters)).toContain('nested placeholder file')
   })
 })

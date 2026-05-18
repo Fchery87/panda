@@ -15,6 +15,8 @@ export const BROWSER_ENVIRONMENT_CONTEXT = `## Environment Context
 - Prefer browser-aware, workspace-aware instructions over local-IDE assumptions.`
 
 export const IMPLEMENTATION_DISCIPLINE_CONTEXT = `## Implementation Discipline
+- Implement only the user-requested change. Do not add extra files, docs, examples, setup guides, or architecture notes unless the user explicitly requested those artifacts.
+- If the user asks for an empty folder, create the smallest durable placeholder needed for Panda's file tree to represent that folder and explain that limitation; do not invent a documentation set.
 - Do not invent repository state, validation results, user intent, file contents, command output, or implementation scope.
 - If a fact matters and is not in context, inspect the project, ask one blocking question, or state the assumption explicitly before proceeding.
 - After meaningful code changes, run the narrowest relevant validation first.
