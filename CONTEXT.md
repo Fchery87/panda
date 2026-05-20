@@ -12,6 +12,11 @@ Run: message creation, run record updates, event application, receipt summary,
 and plan/spec context attachment. Runtime execution internals, UI rendering, and
 command execution remain outside run orchestration.
 
+In the chat transcript, runs surface through **tool chips** (collapsed grouped
+tool-call summaries like `Edited 3 · Ran 2`) and **plan checklists** (collapsed
+step progress badges like `Plan 2/4 · in progress`). Full execution detail lives
+in the inspector panel and Run proof surface.
+
 ### Harness Policy
 
 A `Harness Policy` is the resolved execution-governance contract for a Run. It

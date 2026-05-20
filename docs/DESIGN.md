@@ -1,5 +1,9 @@
 # Panda Design System
 
+> **Last updated: 2026-05-20** — "Neutral Precision" refresh aligned with
+> Cursor 2.0 / Antigravity 2.0 / 2026 IDE standards. Source of truth is
+> `apps/web/app/globals.css`.
+
 ## Reader And Action
 
 This document is for a product designer, design agent, or frontend engineer
@@ -15,10 +19,10 @@ chatbot, not a project dashboard, and not an IDE clone. It is a session-first
 command surface where context, chat direction, plan review, execution proof,
 changed work, and recovery stay visible in one browser workspace.
 
-The visual direction is **warm editorial utility with brutalist precision**:
-tinted cream surfaces, dark navy product chrome, sharp grid divisions, monospace
-operational labels, dense but legible panels, and a restrained orange accent
-reserved for primary action, active state, and proof.
+The visual direction is **neutral precision**: clean chromatic-neutral surfaces
+(not warm cream, not cold blue-gray), subtle elevation hierarchy, restrained
+orange accent reserved for active states and proof markers, and a professional
+clarity that prioritizes usability over decoration.
 
 ## Core Principles
 
@@ -35,85 +39,169 @@ reserved for primary action, active state, and proof.
    modal afterthoughts; they are first-class states.
 6. Avoid spectacle: motion, color, and elevation must clarify state changes
    rather than decorate the surface.
+7. Both themes are designed, not auto-inverted: light and dark modes each have
+   hand-tuned tokens. Never hardcode a color that only works in one mode.
 
 ## Visual Tokens
 
-Use OKLCH tokens as the source of truth.
+Use OKLCH tokens as the source of truth. All tokens live in
+`apps/web/app/globals.css`.
+
+### Light Mode
 
 ```css
 :root {
-  --bg: oklch(98.18% 0.0054 95.1);
-  --surface: oklch(93.57% 0.0161 82.79);
-  --fg: oklch(19.08% 0.002 106.59);
-  --muted: oklch(52.42% 0.0096 91.56);
-  --border: oklch(90.72% 0.0122 67.67);
-  --accent: oklch(55.53% 0.1455 49);
+  /* Core palette — clean neutral with faint cool undertone */
+  --background: 99.07% 0.003 270;      /* Off-white canvas */
+  --foreground: 14.5% 0.005 270;       /* Near-black text */
 
-  --font-display:
-    -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui,
-    sans-serif;
-  --font-body:
-    -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui,
-    sans-serif;
-  --font-mono:
-    'JetBrains Mono', 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+  /* Surfaces — barely-there elevation */
+  --card: 97.5% 0.003 270;             /* Cards, panels */
+  --surface-0: 99.07% 0.003 270;       /* Canvas */
+  --surface-1: 97.5% 0.003 270;        /* Panels */
+  --surface-2: 95.5% 0.004 270;        /* Hover, flyout */
+  --surface-3: 93.5% 0.005 270;        /* Popovers, overlays */
+
+  /* Brand accent — orange, used sparingly */
+  --primary: 63.5% 0.17 40;            /* Active state, primary CTA */
+  --primary-foreground: 99.07% 0.003 270;
+
+  /* Structural */
+  --muted: 95.5% 0.004 270;            /* Quiet backgrounds */
+  --muted-foreground: 50% 0.008 270;   /* Secondary text */
+  --border: 91.5% 0.004 270;           /* Subtle dividers */
+  --accent: 93.5% 0.005 270;           /* Hover tint */
+
+  /* Sidebar — slightly recessed */
+  --sidebar-background: 96.5% 0.003 270;
+
+  --radius: 6px;
+}
+```
+
+### Dark Mode
+
+```css
+.dark {
+  /* Core palette — deep charcoal with dimension */
+  --background: 13% 0.005 270;         /* Canvas */
+  --foreground: 93% 0.004 270;         /* Text */
+
+  /* Surfaces — progressive lift */
+  --card: 16.5% 0.005 270;
+  --surface-0: 13% 0.005 270;
+  --surface-1: 16.5% 0.005 270;
+  --surface-2: 18% 0.005 270;
+  --surface-3: 22% 0.006 270;
+
+  /* Brand accent — brighter for same perceived vibrancy */
+  --primary: 72% 0.165 55;
+  --primary-foreground: 13% 0.005 270;
+
+  /* Structural */
+  --muted: 18% 0.005 270;
+  --muted-foreground: 60% 0.01 270;
+  --border: 24% 0.006 270;
+  --accent: 22% 0.006 270;
+
+  /* Sidebar — slightly darker than canvas */
+  --sidebar-background: 11% 0.005 270;
+
+  --radius: 6px;
 }
 ```
 
 ### Token Roles
 
-`--bg` is the tinted cream app background and large workspace field. It may
-carry a dot-grid or fine grid treatment.
+`--background` (surface-0) is the app canvas. Clean, neutral, and open. It may
+carry a dot-grid treatment on public pages.
 
-`--surface` is the warm cream panel, editor, card, and control background. Keep
-it clean and flat.
+`--surface-1` (card) is the default panel, card, and editor background. One step
+up from canvas — barely visible elevation.
 
-`--fg` is the strongest structural color. Use it for outer shell borders, rail
-backgrounds, primary text, and high-risk division lines.
+`--surface-2` is for hover states and active flyout backgrounds.
 
-`--muted` is metadata, secondary labels, inactive tabs, helper copy, and
-low-priority transcript text.
+`--surface-3` is for popovers and overlays — the most lifted surface.
+
+`--foreground` is primary text and the strongest structural color. Use it for
+high-priority labels and important content.
+
+`--muted-foreground` is metadata, secondary labels, inactive tabs, helper copy,
+and low-priority text.
 
 `--border` is the default internal divider. Use it for file rows, tab
-separators, card borders, and inspector sections.
+separators, card borders, and inspector sections. Subtle but visible.
 
-`--accent` is Panda's orange active state and proof color. Use it for selected
-rail items, live runtime state, progress, selected screen state, focused mode,
-primary actions, and a small number of status chips. Do not use it as general
-decoration.
+`--primary` is Panda's orange accent. Use it ONLY for:
+- Selected/active navigation items
+- Primary action buttons
+- Live runtime state indicators
+- Proof markers and progress
+- Focus ring outlines
+
+Do not use it as general decoration, background fills, or decorative borders.
+
+`--sidebar-background` is the sidebar rail background. It is recessed (slightly
+lighter than canvas in light mode, slightly darker in dark mode) to create
+natural visual hierarchy without inverting the color scheme.
 
 ## Color Behavior
 
-The system is mostly neutral. Accent should appear in at most two major roles
-per screen: active navigation and one proof/status family. If a screen already
-uses accent for active rail selection, use subtle `color-mix()` tints for chips
-rather than new accent blocks.
+The system is chromatic-neutral by default. Accent should appear in at most two
+major roles per screen: active navigation and one proof/status family. If a
+screen already uses accent for active rail selection, use subtle opacity tints
+for chips rather than new accent blocks.
 
-Use these semantic extensions when needed:
+### Status Colors
 
-```css
---terminal-bg: oklch(20.5% 0.0042 84.59);
---terminal-fg: oklch(85.84% 0.0192 75.3);
---success-bg: oklch(95% 0.035 149.41);
---success-fg: oklch(42% 0.11 149.41);
---danger-bg: oklch(96% 0.035 23.96);
---danger-fg: oklch(42% 0.09 23.96);
---warn-bg: oklch(96% 0.035 67.39);
---warn-border: oklch(77.16% 0.1212 67.39);
-```
+Status colors are refined — clear but not garish. They signal without shouting.
 
-Dark mode uses a brighter orange companion, `oklch(71.02% 0.1464 62.29)`, so
-accent text and focus states remain legible on dark navy product surfaces.
+| Status    | Light Mode             | Dark Mode              | Use                         |
+| --------- | ---------------------- | ---------------------- | --------------------------- |
+| Success   | `55% 0.12 155`         | `62% 0.14 155`         | Completed, online, healthy  |
+| Error     | `52% 0.16 25`          | `58% 0.18 25`          | Failed, destructive         |
+| Warning   | `68% 0.13 75`          | `72% 0.14 75`          | Review required, blocked    |
+| Info      | `58% 0.1 230`          | `64% 0.11 230`         | Waiting, neutral status     |
 
-Do not introduce cool gray canvases, blue/cyan brand accents, purple AI
-gradients, rainbow model badges, glass panels, cute mascot colors, or decorative
-glow systems.
+### Diff Colors
+
+Diff colors use semantic tints with proper opacity layers for background
+highlighting.
+
+| Role          | Use                                    |
+| ------------- | -------------------------------------- |
+| `--diff-added-fg`    | Added line text                        |
+| `--diff-added-bg`    | Added line background                  |
+| `--diff-removed-fg`  | Removed line text                      |
+| `--diff-removed-bg`  | Removed line background                |
+
+### Terminal Colors
+
+Terminal uses muted, readable versions of the status palette. Not full
+saturation — designed for scanning logs at speed.
+
+### Forbidden Colors
+
+Do not introduce:
+- Cool gray canvases (blue-gray `#f0f4f8` style)
+- Blue or cyan brand accents
+- Purple AI gradients
+- Rainbow model badges
+- Glass panels or blur effects
+- Cute mascot colors
+- Decorative glow systems
+- Hardcoded oklch/hex values that bypass the token system
 
 ## Typography
 
 Panda uses one sans family for display and body because utility is the design
 posture. The difference comes from weight, size, spacing, and monospace
 metadata.
+
+```css
+--font-sans: Inter, system-ui, sans-serif;
+--font-mono: Geist Mono, SF Mono, Consolas, monospace;
+```
 
 Display headings are compact, confident, and tightly tracked. Use them for
 objective statements, plan artifact titles, and major public/product-tour
@@ -122,9 +210,10 @@ claims.
 Body text is concise and operational. Avoid soft onboarding prose. A paragraph
 should explain state, consequence, or next action.
 
-Monospace is mandatory for labels, badges, rail markers, command output, file
+Monospace is used for code, file paths, labels, badges, command output, file
 metadata, mode names, runtime states, model names, counters, and audit/proof
-rows.
+rows. Do NOT use monospace for non-code UI text like section headings, button
+labels, or descriptions.
 
 Recommended scale:
 
@@ -134,7 +223,7 @@ Recommended scale:
 | Artifact title  |         32-42px | 720-760 | Used for plan and proof surfaces       |
 | Section heading |         18-26px | 680-720 | Short nouns, not marketing lines       |
 | Body            |         13-16px | 400-500 | Dense but readable                     |
-| Metadata        |         10-12px | 500-700 | Monospace, uppercase when navigational |
+| Metadata        |         10-12px | 500-700 | Monospace, for data and file paths     |
 | Terminal/proof  |            12px | 400-600 | Monospace, tabular numerics            |
 
 ## Spatial System
@@ -153,46 +242,51 @@ Primary spacing values:
 | `--space-5` |  22px | Shell padding, screen padding    |
 | `--space-6` |  24px | Hero/objective card padding      |
 
-Borders are usually 1px. Use `--fg` for external frame lines and critical
-divisions. Use `--border` for internal row separators. Avoid rounded corners;
-default radius is 0. If a browser-native control forces a radius, keep it below
-2px.
+Borders are 1px. Use `--border` for all dividers. Avoid using `--foreground` as
+a border color except for the outermost app shell frame on public marketing
+pages.
+
+Border radius is `6px` (`--radius`). Use `rounded-md` for interactive elements,
+`rounded-sm` for small chips and badges. Avoid `rounded-none` on interactive
+controls — it creates unnecessarily harsh edges.
 
 Public marketing surfaces may use sharp directional shadows, such as
-`10px 10px 0 color-mix(in oklch, var(--fg) 12%, transparent)`. Product workbench
-surfaces should stay mostly flat except for one flagship objective or hero card.
+`shadow-sharp-sm` through `shadow-sharp-lg`. Product workbench surfaces should
+stay mostly flat except for one flagship objective or hero card.
 
 ## Backgrounds And Texture
 
-Workspace and public home surfaces should use restrained technical texture:
+Public landing and education surfaces use a restrained dot-grid pattern:
 
 ```css
-background:
-  linear-gradient(
-    90deg,
-    color-mix(in oklch, var(--border) 60%, transparent) 1px,
-    transparent 1px
-  ),
-  linear-gradient(
-    color-mix(in oklch, var(--border) 60%, transparent) 1px,
-    transparent 1px
-  ),
-  radial-gradient(
-    circle at 16px 16px,
-    color-mix(in oklch, var(--accent) 28%, transparent) 1.3px,
-    transparent 1.4px
-  ),
-  var(--bg);
-background-size:
-  48px 48px,
-  48px 48px,
-  16px 16px,
-  auto;
+.dot-grid {
+  background:
+    radial-gradient(
+      circle at 16px 16px,
+      oklch(var(--foreground) / 0.06) 0.7px,
+      transparent 0.8px
+    ),
+    oklch(var(--background));
+  background-size: 24px 24px, auto;
+}
 ```
 
-Inside the workbench canvas, reduce the grid to fine panel texture and remove
-the dot layer. The grid should help orientation, not compete with code, chat, or
-proof.
+Inside the workbench canvas, the background is flat with no texture. Panels use
+surface elevation to create visual hierarchy, not patterns.
+
+## Surface Elevation
+
+The elevation system creates depth without shadows:
+
+| Level  | Light                      | Dark                       | Use                          |
+| ------ | -------------------------- | -------------------------- | ---------------------------- |
+| 0      | `99.07% 0.003 270` (canvas) | `13% 0.005 270` (canvas)   | App background               |
+| 1      | `97.5% 0.003 270`          | `16.5% 0.005 270`          | Cards, panels, editors       |
+| 2      | `95.5% 0.004 270`          | `18% 0.005 270`            | Hover states, flyouts        |
+| 3      | `93.5% 0.005 270`          | `22% 0.006 270`            | Popovers, overlays           |
+
+Each level is a barely perceptible step. The hierarchy works because of
+consistent layering, not dramatic contrast.
 
 ## App Shell
 
@@ -200,45 +294,63 @@ The desktop workbench shell is the canonical Panda surface.
 
 Required regions:
 
-1. Top bar: project identity, selected mode, search/command entry, model,
+1. **Top bar**: project identity, selected mode, search/command entry, model,
    runtime, share state, and global actions.
-2. Left rail: files, search, git, agents, history/tasks, deploy. Markers should
-   be short monospace codes or purpose-built icons.
-3. Left flyout: active navigation detail such as file tree, search results,
-   changed work, agents, or history.
-4. Center canvas: session home, file editor, plan artifact, diff review, or
-   preview.
-5. Right inspector: chat by default, with Run, Changes, Context, and Preview
-   available as inspector tabs.
-6. Bottom dock: terminal and agent events with collapsed and expanded states.
-7. Status bar: selected file, cursor/path, connection, streaming, spec, and
-   runtime state.
+2. **Left rail** (`SidebarRail`): icon-only navigation using `sidebar-*` tokens.
+   Icons: Home, Projects (Folder), Sessions (History), Project Files (FolderTree),
+   Agent Runs (Bot), Find Context (Search), Source Review (GitBranch), Settings.
+3. **Left flyout** (`SidebarFlyout`): expandable section detail — file tree,
+   search results, agent runs, git status, or session history. Uses `bg-card`
+   and slides to 240px width.
+4. **Center canvas** (`Workbench`): session home, file editor, plan artifact,
+   diff review, or preview. Uses `bg-card` as background.
+5. **Right panel** (`RightPanel`): chat by default, with Proof, Changes, and
+   Context available as inspector tabs. Uses `bg-background` for header and
+   `bg-card` for content.
+6. **Bottom dock** (`BottomDock`): terminal and agent events with collapsed and
+   expanded states. Uses token-based `bg-surface-1` (works in both themes).
+7. **Status bar** (`StatusBar`): selected file, cursor/path, connection,
+   streaming, spec, and runtime state. Uses `surface-1` background.
 
 Do not squeeze all regions onto small screens. Mobile should switch between
 Session, Chat, Proof, and Preview as focused views.
+
+### Sidebar Rail Rules
+
+- Background uses `--sidebar-background` (recessed, not inverted).
+- Icons use `--sidebar-foreground` with opacity modifiers.
+- Active items use `--sidebar-primary` at 10% opacity for background.
+- Hover uses `--sidebar-accent` background.
+- Session signal dots use status colors, not custom hues.
+
+### Bottom Dock Rules
+
+- Always uses token-based colors (`bg-surface-1`, `text-foreground`,
+  `text-muted-foreground`). Never hardcode oklch values.
+- Works identically in light and dark modes.
+- Tab bar uses the `TabBar` component with `dock-tab` styling.
 
 ## Screen Coverage
 
 Apply this system across these Panda surfaces:
 
-1. Public: landing, education, login, maintenance, not-found, error, and shared
-   chat.
-2. Authenticated hub: projects list, empty projects, new project dialog, delete
-   confirmation, and settings entry points.
-3. Workbench: idle home, file editor, chat active, no provider, plan review,
+1. **Public**: landing, education, login, maintenance, not-found, error, and
+   shared chat. Uses dot-grid background, `border-border` for structural lines.
+2. **Authenticated hub**: projects list, empty projects, new project dialog,
+   delete confirmation, and settings entry points. Uses `bg-background` canvas.
+3. **Workbench**: idle home, file editor, chat active, no provider, plan review,
    build executing, permission request, diff review, recoverable checkpoint, and
-   runtime fallback.
-4. Settings: general, LLM providers, automation, advanced permissions, unsaved
-   changes, and provider testing.
-5. Admin: dashboard, users, analytics, system controls, security audit, access
-   denied, and maintenance-sensitive confirmations.
-6. Mobile: Session, Chat, Proof, and Preview as focused views rather than a
+   runtime fallback. Uses sidebar + workbench + right panel layout.
+4. **Settings**: general, LLM providers, automation, advanced permissions,
+   unsaved changes, and provider testing.
+5. **Admin**: dashboard, users, analytics, system controls, security audit,
+   access denied, and maintenance-sensitive confirmations.
+6. **Mobile**: Session, Chat, Proof, and Preview as focused views rather than a
    compressed desktop shell.
 
-The visual language should stay consistent across all surfaces, but density
-changes by context. Public pages are more typographic and graphic. Workbench
-pages are dense and operational. Settings and admin pages are precise
-configuration surfaces.
+The visual language stays consistent across all surfaces. Density changes by
+context: public pages are more typographic, workbench pages are dense and
+operational, settings and admin pages are precise configuration surfaces.
 
 ## Layout Recipes
 
@@ -273,7 +385,7 @@ dirty/saved states, and restrained destructive confirmations.
 ### Public And Shared Views
 
 Public landing and education pages can be more graphic, but they must still feel
-operational. Use large type, dot grid, terminal-style product frames, and hard
+operational. Use large type, dot grid, terminal-style product frames, and
 directional shadows. Shared chat pages must be calm artifact views with no
 owner-only controls.
 
@@ -291,37 +403,46 @@ The mark is a square black tile with a monospace `P` and a small accent tab
 offset to the top-right. It should feel like a terminal cursor, checkpoint tag,
 or workbench stamp rather than a mascot.
 
-### Status Chips
+### Status Chips (Badges)
 
 Chips are small, rectangular, monospace labels. Use them for mode, runtime,
 model, share, approval, run, artifact, and checkpoint state. They are not
 decorative tags.
 
-Default chip: border `--border`, surface background, foreground text.
+Two sizes: `badge-sm` (9px text, compact) and `badge-md` (10px text, with icon).
 
-Accent chip: accent border or 8-12% accent tint for active/proof states.
-
-Warning chip: use the warning semantic extension for review-required or stop
-states.
+Status variants use data attributes:
+- `data-status="running"` — accent tint
+- `data-status="waiting"` — info tint
+- `data-status="review"` — warning tint
+- `data-status="failed"` — destructive tint
+- `data-status="complete"` — success tint
+- `data-status="draft"` — muted/neutral
 
 ### Rails And Tabs
 
-Rails are high-contrast and compact. Active rail items may use accent fill. Tabs
-are rectangular, bordered, and text-first. Active tabs use a surface/background
-tint rather than a large color block unless the state is high trust or live
-proof.
+Rails are compact and use `sidebar-*` tokens. Active rail items use a 10%
+primary tint background. Tabs are rectangular, text-first, and use `dock-tab`
+styling with an active underline indicator. Active tabs show a 2px primary
+bottom inset shadow.
 
 ### Panels
 
-Panels are flat rectangles with hard internal dividers. Panel headers are
-42-48px tall, monospace, uppercase, and quiet. Panel bodies should use real rows
-and state summaries, not blank cards.
+Panels are flat rectangles with `border-border` dividers. Panel headers use
+`panel-header` class: compact, `text-xs`, `text-muted-foreground`. Panel bodies
+should use real rows and state summaries, not blank cards.
+
+### Tab Bar
+
+The `TabBar` component is the shared tab strip for dock tabs, center tabs, and
+right panel tabs. Uses `surface-1` background with `border-border` bottom edge.
+Active tab gets `dock-tab[data-active='true']` styling with inset shadow.
 
 ### Objective Cards
 
 Use one objective card on workbench home or public hero surfaces. It can have a
-hard directional shadow in a restrained accent tint. Do not repeat this
-elevation treatment across every card.
+directional shadow (`shadow-sharp-sm` through `shadow-sharp-lg`) in a restrained
+tint. Do not repeat this elevation treatment across every card.
 
 ### Plan Artifacts
 
@@ -338,14 +459,14 @@ file content belong behind explicit inspection, never in public projection.
 ### Diff Review
 
 Diffs use monospace rows with line numbers. Additions and removals get subtle
-semantic tints. Keep the surrounding shell neutral so the changed work is the
-highest-information area.
+semantic tints via `--diff-added-*` and `--diff-removed-*` tokens. Keep the
+surrounding shell neutral so the changed work is the highest-information area.
 
 ### Terminal And Agent Events
 
-The terminal is dark, rectangular, and grounded at the bottom. Agent events sit
-beside or below it. Keep event copy terse: event name, status, and short
-summary.
+The terminal is a dark surface (token-based via `surface-1` in dark mode), and
+grounded at the bottom dock. Agent events sit beside or below it. Keep event
+copy terse: event name, status, and short summary.
 
 ## Interaction And Motion
 
@@ -431,16 +552,19 @@ readable contrast. Avoid tiny labels below 10px.
 
 Do not use:
 
-1. Rounded glass cards.
-2. Purple or blue AI gradients.
-3. Cute panda mascot illustrations.
-4. Emoji feature icons.
-5. Dashboard KPI cards that make the product feel bureaucratic.
-6. Soft shadows on every panel.
-7. Marketing claims without evidence.
-8. Hidden mode or model state.
-9. Public shared views that resemble editable owner workspaces.
-10. Dense panes without a named next action.
+1. Hardcoded oklch or hex color values — always use CSS variable tokens.
+2. Rounded glass cards or blur effects.
+3. Purple or blue AI gradients.
+4. Cute panda mascot illustrations.
+5. Emoji feature icons.
+6. Dashboard KPI cards that make the product feel bureaucratic.
+7. Soft shadows on every panel.
+8. Marketing claims without evidence.
+9. Hidden mode or model state.
+10. Public shared views that resemble editable owner workspaces.
+11. Dense panes without a named next action.
+12. Inverted color schemes for the sidebar (use `sidebar-*` tokens instead).
+13. `rounded-none` on interactive controls — use `rounded-md` minimum.
 
 ## Acceptance Checklist
 
@@ -455,8 +579,11 @@ Before shipping a Panda screen, check:
 5. At least one clear next action is visible.
 6. Sensitive detail is hidden behind explicit inspection unless the screen is
    owner-only and the user has chosen to inspect it.
-7. The screen uses hard grid, sharp corners, thin borders, and monospace
-   metadata.
+7. The screen uses clean grid, consistent `6px` radius, `border-border` for
+   dividers, and monospace for code/data.
 8. Copy is specific to Panda's workflow and avoids generic AI-product language.
 9. Mobile or narrow layouts reduce scope instead of squeezing the desktop shell.
 10. Public/share/admin surfaces respect their trust boundary.
+11. All colors use token-based CSS variables — no hardcoded oklch or hex values.
+12. Both light and dark modes render correctly — no dark-only or light-only
+    styling.

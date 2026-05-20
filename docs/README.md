@@ -36,8 +36,8 @@ Use these labels before following any document for implementation work:
 - [docs/PANDA_PRODUCT_SYSTEM_DESIGN_BRIEF.md](./PANDA_PRODUCT_SYSTEM_DESIGN_BRIEF.md) -
   shareable product, page, feature, and design-system brief for generating a
   complete Panda design project
-- [docs/CHAT_TRANSCRIPT_POLICY.md](./CHAT_TRANSCRIPT_POLICY.md) - transcript vs
-  inspector behavior
+- [docs/CHAT_TRANSCRIPT_POLICY.md](./CHAT_TRANSCRIPT_POLICY.md) - transcript
+e  elements (tool chips, plan checklist), inspector boundaries, and redaction rules
 - [docs/CHAT_MODE_ARCHITECTURE.md](./CHAT_MODE_ARCHITECTURE.md) - active mode,
   routing, and tool-call hardening architecture notes
 - [docs/CUSTOM_SKILLS_AND_SUBAGENTS_PLAN.md](./CUSTOM_SKILLS_AND_SUBAGENTS_PLAN.md) -
@@ -105,6 +105,8 @@ Panda is a browser-first AI coding workbench with server-backed fallback and:
 - mobile workspace destinations: `Work`, `Chat`, `Proof`, and `Preview`
 - typed execution receipts rendered from bounded run summaries for completed,
   failed, and stopped runs
+- collapsed tool-chip summaries (Cursor-style) and plan checklists
+  (Windsurf-style) in the chat transcript
 
 ## Authority And Archive Policy
 
@@ -128,7 +130,7 @@ artifacts only after maintainer approval.
 | `docs/SECURITY_TRUST_BOUNDARIES.md`        | Authorization, redaction, sharing, token, MCP, and telemetry policy.               |
 | `docs/CONVEX_BACKEND_GOVERNANCE.md`        | Convex ownership, query-shape, retention, and legacy API rules.                    |
 | `docs/AGENTIC_HARNESS.md`                  | Harness architecture, planning workflow, runtime checkpoints, and execution state. |
-| `docs/CHAT_TRANSCRIPT_POLICY.md`           | Defines transcript vs inspector boundaries for tool and receipt detail.            |
+| `docs/CHAT_TRANSCRIPT_POLICY.md`           | Defines chat transcript elements (tool chips, plan checklist) and inspector/receipt boundaries.            |
 | `docs/CHAT_MODE_ARCHITECTURE.md`           | Still useful as the architecture record for mode hardening and routing evolution.  |
 | `docs/CUSTOM_SKILLS_AND_SUBAGENTS_PLAN.md` | Current implementation plan for Custom Skills and Custom Subagent composition.     |
 | `docs/WEBCONTAINER_RUNTIME.md`             | Current browser execution setup and fallback behavior.                             |

@@ -44,22 +44,31 @@ described in terms of the canonical mode values.
 ### Plan
 
 - Allow in chat: intent understanding, structured plan, assumptions, review and
-  approval actions
+  approval actions, plan checklist (Windsurf-style progress tracker)
 - Keep in inspector: tool activity, raw progress events, snapshots, debug labels
 
 ### Code
 
-- Allow in chat: concise progress summaries, changed-file or artifact summaries,
-  approvals
+- Allow in chat: collapsed tool-chip summaries (e.g. `Edited 3 · Ran 2`),
+  plan checklist, approvals
 - Keep in proof: tool calls, detailed execution trace, snapshots, raw progress
-  categories
+  categories, full receipt details
 
 ### Build
 
-- Allow in chat: milestone summaries, blockers, validation summaries, approvals,
-  outcomes, receipt entry points, and next action
+- Allow in chat: collapsed tool-chip summaries, plan checklist, approvals,
+  blockers, validation outcomes
 - Keep in proof: tool calls, snapshots, progress steps, full Applied Skill
   summaries, raw event categories, and full receipt details
+
+Tool chips show a one-line collapsed summary of completed tool activity grouped
+by type (edits, commands, searches, reads). Users click to expand and see
+per-tool details including file paths and durations. This follows the Cursor-style
+pattern where the chat stays clean and operational detail is opt-in.
+
+Plan checklist shows step-by-step progress with completed/active/pending states
+as a collapsed badge (e.g. `Plan 2/4 · in progress`). Users click to expand and
+see each step. This follows the Windsurf Cascade pattern for plan visibility.
 
 ## Internal mode note
 
@@ -69,20 +78,23 @@ described in terms of the canonical mode values.
 - `build` is full-access execution work with stronger proof and validation
   expectations.
 
-## Timeline stages
+## Chat transcript elements
 
-Chat timeline rows should be derived from the bounded run timeline contract:
+The chat transcript keeps user and assistant messages as the primary content.
+Operational detail is surfaced through two collapsed inline elements:
 
-- intent
-- routing
-- planning
-- execution
-- validation
-- receipt
-- next action
+**Tool chips** (code + build modes) — Collapsed inline chips that group completed
+tool calls by type: `Edited 3 · Ran 2`. Click to expand per-tool details with
+file paths, durations, and errors. Keeps the chat conversational while making
+tool activity glanceable.
 
-The transcript should summarize these stages by default. The `Run` proof surface
-owns detailed event inspection.
+**Plan checklist** (all modes when a plan exists) — A collapsed progress badge
+like `Plan 2/4 · in progress`. Click to expand a step-by-step checklist with
+✅ completed, ⏳ active, and ○ pending states. Gives plan visibility without
+cluttering the chat.
+
+The `Run` proof surface and inspector panel carry detailed execution trace,
+receipt, and snapshot data. They are not duplicated in the chat transcript.
 
 ## Never show in the main transcript
 

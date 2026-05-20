@@ -42,8 +42,8 @@ and result status.
 - Browser-native file editing, diffs, artifacts, previews, and terminal jobs
 - Permission review for risky commands in the web UI
 - Deterministic mode routing with `requestedMode` and `resolvedMode` audit data
-- Run timeline summaries in chat with structured execution receipts in proof
-  surfaces
+- Run timeline summaries in chat with collapsed tool-chip and plan-checklist
+  surfaces, and structured execution receipts in proof surfaces
 - Custom Skills that shape agent workflow and strict Skill preflight metadata
 - Custom Subagents with capability presets, attached Skills, and delegated task
   Skill matching
@@ -62,7 +62,7 @@ and result status.
 | Runtime         | React 19 + TypeScript 5.9          |
 | Backend         | Convex                             |
 | Authentication  | Convex Auth + Google OAuth         |
-| UI              | shadcn/ui + custom brutalist theme |
+| UI              | shadcn/ui + Neutral Precision theme |
 | Animation       | Framer Motion                      |
 | Editor          | CodeMirror 6                       |
 | Browser Runtime | WebContainer API                   |
@@ -195,9 +195,15 @@ state. Receipts are designed for auditability and Convex bandwidth safety:
 - approval decisions are captured when present in the run event stream
 
 Run timeline rows in chat are derived from the same bounded run model as the
-proof surfaces. The visible stages are intent, routing, planning, execution,
-validation, receipt, and next action. Low-level tool events remain available in
-inspection surfaces instead of becoming the default transcript experience.
+proof surfaces. The chat shows two collapsed inline elements:
+
+- **Tool chips** (code + build): grouped tool-call summaries like `Edited 3 · Ran 2`
+  that expand to per-tool details (file paths, durations, errors).
+- **Plan checklist** (all modes when a plan exists): a progress badge like
+  `Plan 2/4 · in progress` that expands to a step-by-step checklist.
+
+Low-level tool events, full receipts, and snapshot data remain in the inspector
+panel and Run proof surface, not in the chat transcript.
 
 ## Custom Skills And Subagents
 
@@ -269,8 +275,9 @@ panda/
 - [docs/AGENTIC_HARNESS.md](./docs/AGENTIC_HARNESS.md) - harness architecture
 - [docs/WEBCONTAINER_RUNTIME.md](./docs/WEBCONTAINER_RUNTIME.md) - browser-side
   execution runtime
-- [docs/CHAT_TRANSCRIPT_POLICY.md](./docs/CHAT_TRANSCRIPT_POLICY.md) - chat vs
-  inspector boundaries for progress, tools, and receipts
+- [docs/CHAT_TRANSCRIPT_POLICY.md](./docs/CHAT_TRANSCRIPT_POLICY.md) - chat
+  transcript elements (tool chips, plan checklist), inspector boundaries, and
+  redaction rules
 - [docs/plans/2026-04-26-chat-first-workspace-ia.md](./docs/plans/2026-04-26-chat-first-workspace-ia.md) -
   current chat-first workspace information architecture and implementation notes
 - [docs/LLM_PROVIDER_CATALOG.md](./docs/LLM_PROVIDER_CATALOG.md) - live LLM
