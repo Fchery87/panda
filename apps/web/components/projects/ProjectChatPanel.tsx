@@ -290,6 +290,7 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
           currentSpec={currentSpec}
           planStatus={planStatus}
           chatMode={chatMode}
+          planDraft={planDraft}
         />
       </div>
 

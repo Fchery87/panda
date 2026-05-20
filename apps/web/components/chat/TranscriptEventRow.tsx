@@ -1,20 +1,28 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   AlertTriangle,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   CircleDashed,
   FileStack,
   Loader2,
   ShieldAlert,
   Sparkles,
+  ListChecks,
+  Wrench,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useWorkspaceUiStore } from '@/stores/workspaceUiStore'
-import type { TranscriptBlock } from '@/lib/chat/transcript-blocks'
+import type {
+  TranscriptBlock,
+  ToolChipGroup,
+  ToolChipEntry,
+  PlanChecklistStep,
+} from '@/lib/chat/transcript-blocks'
 import { describeProgressCategory } from './live-run-utils'
 
 interface TranscriptEventRowProps {
@@ -73,6 +81,227 @@ function executionIconClassName(
   }
 }
 
+function chipGroupToneClass(tone: ToolChipGroup['tone']): string {
+  switch (tone) {
+    case 'primary':
+      return 'border-primary/35 bg-primary/[0.04] text-primary'
+    case 'success':
+      return 'border-emerald-500/35 bg-emerald-500/[0.04] text-emerald-600'
+    case 'danger':
+      return 'border-destructive/35 bg-destructive/[0.04] text-destructive'
+    case 'default':
+    default:
+      return 'border-border bg-muted/25 text-muted-foreground'
+  }
+}
+
+function formatDurationMs(ms: number | undefined): string | undefined {
+  if (ms === undefined || ms === null) return undefined
+  if (ms < 1000) return `${ms}ms`
+  return `${(ms / 1000).toFixed(1)}s`
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Tool Chips Row                                                            */
+/* -------------------------------------------------------------------------- */
+
+function ToolChipsRow({ block }: { block: Extract<TranscriptBlock, { kind: 'tool_chips' }> }) {
+  const [expanded, setExpanded] = useState(false)
+  const onOpenFile = (path: string) => {
+    // TODO: wire to workspace file open
+    void path
+  }
+
+  return (
+    <div className="ml-10 mr-1 pl-4">
+      <button
+        type="button"
+        onClick={() => setExpanded((prev) => !prev)}
+        className="flex w-full items-center gap-2 text-left"
+      >
+        <Wrench className="h-3 w-3 shrink-0 text-muted-foreground" />
+        <div className="flex flex-wrap items-center gap-1.5">
+          {block.groups.map((group, index) => (
+            <span
+              key={`${group.label}-${index}`}
+              className={cn(
+                'shadow-sharp-sm inline-flex items-center gap-1 border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.15em]',
+                chipGroupToneClass(group.tone)
+              )}
+            >
+              <span>{group.label}</span>
+              <span className="font-semibold">{group.count}</span>
+            </span>
+          ))}
+        </div>
+        <span className="ml-auto shrink-0 text-muted-foreground/70">
+          {expanded ? (
+            <ChevronDown className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5" />
+          )}
+        </span>
+      </button>
+
+      {expanded && (
+        <div className="mt-1.5 space-y-1">
+          {block.entries.map((entry) => (
+            <div
+              key={entry.id}
+              className={cn(
+                'shadow-sharp-sm flex items-start gap-2 border px-2.5 py-1.5 font-mono text-[11px]',
+                entry.status === 'error'
+                  ? 'border-destructive/40 bg-destructive/[0.03] text-foreground'
+                  : 'border-border bg-background/80 text-foreground'
+              )}
+            >
+              {entry.status === 'error' ? (
+                <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-destructive" />
+              ) : (
+                <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-primary/70" />
+              )}
+              <div className="min-w-0 flex-1 space-y-0.5">
+                <div className="[overflow-wrap:anywhere]">{entry.label}</div>
+                {entry.summary && (
+                  <div className="text-muted-foreground/80 [overflow-wrap:anywhere]">
+                    {entry.summary}
+                  </div>
+                )}
+                {entry.filePaths && entry.filePaths.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {entry.filePaths.slice(0, 3).map((path) => (
+                      <button
+                        key={`${entry.id}-${path}`}
+                        type="button"
+                        onClick={() => onOpenFile(path)}
+                        className="hover:bg-muted/40 border border-border px-1.5 py-0.5 text-[10px] transition-colors"
+                      >
+                        {path}
+                      </button>
+                    ))}
+                    {entry.filePaths.length > 3 && (
+                      <span className="px-1 text-[10px] text-muted-foreground">
+                        +{entry.filePaths.length - 3} more
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+              {entry.durationMs !== undefined && (
+                <span className="shrink-0 text-muted-foreground/60">
+                  {formatDurationMs(entry.durationMs)}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Plan Checklist                                                            */
+/* -------------------------------------------------------------------------- */
+
+function PlanChecklistRow({
+  block,
+}: {
+  block: Extract<TranscriptBlock, { kind: 'plan_checklist' }>
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const isComplete = block.completedCount === block.totalCount
+  const hasActive = block.steps.some((step) => step.status === 'active')
+
+  return (
+    <div className="ml-10 mr-1 pl-4">
+      <button
+        type="button"
+        onClick={() => setExpanded((prev) => !prev)}
+        className="flex w-full items-center gap-2 text-left"
+      >
+        <ListChecks
+          className={cn(
+            'h-3.5 w-3.5 shrink-0',
+            isComplete
+              ? 'text-emerald-500'
+              : hasActive
+                ? 'text-primary'
+                : 'text-muted-foreground'
+          )}
+        />
+        <div
+          className={cn(
+            'shadow-sharp-sm inline-flex items-center gap-2 border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.15em]',
+            isComplete
+              ? 'border-emerald-500/40 bg-emerald-500/[0.04] text-emerald-600'
+              : hasActive
+                ? 'border-primary/40 bg-primary/[0.04] text-primary'
+                : 'border-border bg-muted/25 text-muted-foreground'
+          )}
+        >
+          <span>Plan</span>
+          <span className="font-semibold">
+            {block.completedCount}/{block.totalCount}
+          </span>
+          {hasActive && <span>• in progress</span>}
+          {isComplete && <span>• done</span>}
+        </div>
+        <span className="ml-auto shrink-0 text-muted-foreground/70">
+          {expanded ? (
+            <ChevronDown className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5" />
+          )}
+        </span>
+      </button>
+
+      {expanded && (
+        <div className="mt-1.5 space-y-0.5">
+          {block.steps.map((step) => (
+            <PlanChecklistItem key={`plan-step-${step.index}`} step={step} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PlanChecklistItem({ step }: { step: PlanChecklistStep }) {
+  return (
+    <div
+      className={cn(
+        'shadow-sharp-sm flex items-start gap-2 border px-2.5 py-1.5 font-mono text-[11px]',
+        step.status === 'active' && 'border-primary/30 bg-primary/[0.03]',
+        step.status === 'completed' && 'border-border bg-background/70',
+        step.status === 'pending' && 'border-border/60 bg-muted/15'
+      )}
+    >
+      {step.status === 'completed' ? (
+        <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-emerald-500" />
+      ) : step.status === 'active' ? (
+        <Loader2 className="mt-0.5 h-3 w-3 shrink-0 animate-spin text-primary" />
+      ) : (
+        <CircleDashed className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground/50" />
+      )}
+      <span
+        className={cn(
+          'min-w-0 [overflow-wrap:anywhere]',
+          step.status === 'completed' && 'text-muted-foreground line-through',
+          step.status === 'active' && 'text-foreground',
+          step.status === 'pending' && 'text-muted-foreground/70'
+        )}
+      >
+        {step.title}
+      </span>
+    </div>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Main row component                                                        */
+/* -------------------------------------------------------------------------- */
+
 export function TranscriptEventRow({ block }: TranscriptEventRowProps) {
   const setRightPanelOpen = useWorkspaceUiStore((state) => state.setRightPanelOpen)
   const setRightPanelTab = useWorkspaceUiStore((state) => state.setRightPanelTab)
@@ -94,6 +323,14 @@ export function TranscriptEventRow({ block }: TranscriptEventRowProps) {
         return <Sparkles className="h-3.5 w-3.5" />
     }
   }, [block])
+
+  if (block.kind === 'tool_chips') {
+    return <ToolChipsRow block={block} />
+  }
+
+  if (block.kind === 'plan_checklist') {
+    return <PlanChecklistRow block={block} />
+  }
 
   if (block.kind === 'progress_line') {
     const meta = [block.step.details?.toolName, block.step.planStepTitle]

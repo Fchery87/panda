@@ -26,6 +26,8 @@ interface MessageListProps {
   pendingSpec?: FormalSpecification | null
   planStatus?: PlanStatus | null
   chatMode: ChatMode
+  /** Plan draft text for Windsurf-style checklist rendering in chat */
+  planDraft?: string | null
 }
 
 export function MessageList({
@@ -40,6 +42,7 @@ export function MessageList({
   pendingSpec,
   planStatus,
   chatMode,
+  planDraft,
 }: MessageListProps) {
   const parentRef = useRef<HTMLDivElement>(null)
   const [isPinnedToBottom, setIsPinnedToBottom] = useState(true)
@@ -58,6 +61,7 @@ export function MessageList({
         pendingSpec,
         planStatus,
         isStreaming,
+        planDraft,
       }),
     [
       messages,
@@ -70,6 +74,7 @@ export function MessageList({
       pendingSpec,
       planStatus,
       isStreaming,
+      planDraft,
     ]
   )
   const lastAssistantMessageId = [...messages]

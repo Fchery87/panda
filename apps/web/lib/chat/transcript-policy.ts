@@ -7,9 +7,7 @@ export type TranscriptModePolicy = {
   mode: ChatMode
   surfaceLabel: 'Plan' | 'Code' | 'Build'
   surfaced: boolean
-  chatAllows: Array<
-    'messages' | 'reasoning' | 'plan_actions' | 'spec_actions' | 'milestone_summaries'
-  >
+  chatAllows: Array<'messages' | 'reasoning'>
   inspectorOwns: Array<'tool_calls' | 'progress_steps' | 'snapshots' | 'debug_labels' | 'run_trace'>
   summary: string
 }
@@ -28,7 +26,7 @@ export const TRANSCRIPT_MODE_POLICIES: Record<ChatMode, TranscriptModePolicy> = 
     mode: 'plan',
     surfaceLabel: 'Plan',
     surfaced: true,
-    chatAllows: ['messages', 'reasoning', 'plan_actions', 'spec_actions'],
+    chatAllows: ['messages', 'reasoning'],
     inspectorOwns: ['tool_calls', 'progress_steps', 'snapshots', 'debug_labels', 'run_trace'],
     summary:
       'Plan mode shows structured planning output and approval surfaces, not execution trace.',
@@ -37,19 +35,19 @@ export const TRANSCRIPT_MODE_POLICIES: Record<ChatMode, TranscriptModePolicy> = 
     mode: 'code',
     surfaceLabel: 'Code',
     surfaced: true,
-    chatAllows: ['messages', 'reasoning', 'plan_actions', 'spec_actions', 'milestone_summaries'],
+    chatAllows: ['messages', 'reasoning'],
     inspectorOwns: ['tool_calls', 'progress_steps', 'snapshots', 'debug_labels', 'run_trace'],
     summary:
-      'Code mode keeps the transcript outcome-focused while the inspector carries detailed trace.',
+      'Code mode keeps the transcript conversational while the inspector carries detailed trace.',
   },
   build: {
     mode: 'build',
     surfaceLabel: 'Build',
     surfaced: true,
-    chatAllows: ['messages', 'reasoning', 'plan_actions', 'spec_actions', 'milestone_summaries'],
+    chatAllows: ['messages', 'reasoning'],
     inspectorOwns: ['tool_calls', 'progress_steps', 'snapshots', 'debug_labels', 'run_trace'],
     summary:
-      'Build mode allows concise milestone messaging in chat and full execution detail in the inspector.',
+      'Build mode keeps the transcript conversational while the inspector carries detailed trace.',
   },
 }
 

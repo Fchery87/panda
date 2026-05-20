@@ -1,13 +1,19 @@
 import type { Message, ToolCallInfo } from '@/components/chat/types'
 import {
+  derivePlanProgress,
   mapLatestRunSummaryProgressSteps,
+  parsePlanSteps,
   type LiveProgressStep,
+  type PlanProgressSummary,
 } from '@/components/chat/live-run-utils'
 import type { PersistedRunEventSummaryInfo } from '@/components/chat/types'
 import type { ExecutionReceipt } from '@/lib/agent/receipt'
 import type { ChatMode } from '@/lib/agent/chat-modes'
-import { getRunTimeline, type RunTimelineStage } from '@/components/chat/run-timeline'
 import { getTranscriptModePolicy } from './transcript-policy'
+
+/* -------------------------------------------------------------------------- */
+/*  Block types                                                               */
+/* -------------------------------------------------------------------------- */
 
 export type TranscriptBlock =
   | {
@@ -89,6 +95,62 @@ export type TranscriptBlock =
       }
       createdAt: number
     }
+  /**
+   * Collapsed tool-chip row.
+   *
+   * Groups completed tool calls into a single compact row the user can expand.
+   * Inspired by Cursor's inline tool-chip UX: show a one-line summary like
+   * "Edited 3 files · Ran 2 commands" and let the user click to see details.
+   */
+  | {
+      id: string
+      kind: 'tool_chips'
+      /** Pre-grouped summaries for quick rendering */
+      groups: ToolChipGroup[]
+      /** Expanded detail entries (shown when user clicks to expand) */
+      entries: ToolChipEntry[]
+      createdAt: number
+    }
+  /**
+   * Plan checklist.
+   *
+   * A Windsurf-inspired checklist showing plan step progress in the chat.
+   * Each step shows its status (completed / active / pending) so the user
+   * can see exactly where the agent is in the plan at a glance.
+   */
+  | {
+      id: string
+      kind: 'plan_checklist'
+      steps: PlanChecklistStep[]
+      completedCount: number
+      totalCount: number
+      createdAt: number
+    }
+
+export type ToolChipGroup = {
+  label: string
+  count: number
+  tone: 'default' | 'primary' | 'success' | 'danger'
+}
+
+export type ToolChipEntry = {
+  id: string
+  label: string
+  summary?: string
+  status: 'completed' | 'error' | 'running'
+  filePaths?: string[]
+  durationMs?: number
+}
+
+export type PlanChecklistStep = {
+  index: number
+  title: string
+  status: 'completed' | 'active' | 'pending'
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Feed item type                                                            */
+/* -------------------------------------------------------------------------- */
 
 export type TranscriptFeedItem =
   | {
@@ -103,6 +165,10 @@ export type TranscriptFeedItem =
       createdAt: number
       block: TranscriptBlock
     }
+
+/* -------------------------------------------------------------------------- */
+/*  Reasoning helpers                                                         */
+/* -------------------------------------------------------------------------- */
 
 function buildReasoningPreview(content: string): string {
   const normalized = content.replace(/\s+/g, ' ').trim()
@@ -120,6 +186,10 @@ function buildReasoningUnavailableText(reasoningTokens?: number): string {
   }
   return 'Thinking used · summary unavailable'
 }
+
+/* -------------------------------------------------------------------------- */
+/*  Assistant message blocks                                                  */
+/* -------------------------------------------------------------------------- */
 
 export function buildAssistantMessageTranscriptBlocks(message: Message): TranscriptBlock[] {
   if (message.role !== 'assistant') {
@@ -156,6 +226,144 @@ export function buildAssistantMessageTranscriptBlocks(message: Message): Transcr
   return blocks
 }
 
+/* -------------------------------------------------------------------------- */
+/*  Tool chip builders                                                        */
+/* -------------------------------------------------------------------------- */
+
+function classifyToolName(
+  toolName: string | undefined
+): 'edit' | 'command' | 'search' | 'read' | 'other' {
+  if (!toolName) return 'other'
+  const lower = toolName.toLowerCase()
+  if (
+    lower.includes('write') ||
+    lower.includes('edit') ||
+    lower.includes('patch') ||
+    lower.includes('apply')
+  ) {
+    return 'edit'
+  }
+  if (
+    lower.includes('command') ||
+    lower.includes('terminal') ||
+    lower.includes('shell') ||
+    lower.includes('run') ||
+    lower.includes('test') ||
+    lower.includes('lint')
+  ) {
+    return 'command'
+  }
+  if (lower.includes('search') || lower.includes('grep') || lower.includes('find')) {
+    return 'search'
+  }
+  if (lower.includes('read') || lower.includes('list') || lower.includes('dir')) {
+    return 'read'
+  }
+  return 'other'
+}
+
+const TOOL_GROUP_LABELS: Record<string, string> = {
+  edit: 'Edited',
+  command: 'Ran',
+  search: 'Searched',
+  read: 'Read',
+  other: 'Used',
+}
+
+function summarizeToolEntry(step: LiveProgressStep): string | undefined {
+  const paths = step.details?.targetFilePaths
+  if (paths && paths.length > 0) {
+    const preview = paths.slice(0, 2).join(', ')
+    return paths.length > 2 ? `${preview} +${paths.length - 2} more` : preview
+  }
+  return step.details?.argsSummary
+}
+
+function buildToolChipsFromSteps(steps: LiveProgressStep[]): TranscriptBlock | null {
+  const toolSteps = steps.filter(
+    (step) =>
+      step.category === 'tool' && (step.status === 'completed' || step.status === 'error')
+  )
+
+  if (toolSteps.length === 0) return null
+
+  // Group by classification
+  const groupsMap = new Map<string, { count: number; hasError: boolean }>()
+  const entries: ToolChipEntry[] = []
+
+  for (const step of toolSteps) {
+    const classification = classifyToolName(step.details?.toolName)
+    const group = groupsMap.get(classification)
+    const hasError = step.status === 'error'
+
+    if (group) {
+      group.count++
+      group.hasError = group.hasError || hasError
+    } else {
+      groupsMap.set(classification, { count: 1, hasError })
+    }
+
+    entries.push({
+      id: step.id,
+      label: step.content,
+      summary: summarizeToolEntry(step),
+      status: step.status,
+      filePaths: step.details?.targetFilePaths,
+      durationMs: step.details?.durationMs,
+    })
+  }
+
+  const groups: ToolChipGroup[] = []
+  for (const [classification, data] of groupsMap) {
+    groups.push({
+      label: TOOL_GROUP_LABELS[classification] ?? 'Used',
+      count: data.count,
+      tone: data.hasError ? 'danger' : classification === 'edit' ? 'primary' : 'default',
+    })
+  }
+
+  return {
+    id: `tool-chips-${toolSteps[0].id}`,
+    kind: 'tool_chips',
+    groups,
+    entries,
+    createdAt: toolSteps[0].createdAt,
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Plan checklist builder                                                    */
+/* -------------------------------------------------------------------------- */
+
+function buildPlanChecklist(
+  planDraft: string | null | undefined,
+  steps: LiveProgressStep[]
+): TranscriptBlock | null {
+  const planSteps = parsePlanSteps(planDraft)
+  if (planSteps.length === 0) return null
+
+  const progress = derivePlanProgress(planSteps, steps)
+
+  const checklistSteps: PlanChecklistStep[] = planSteps.map((title, index) => ({
+    index,
+    title,
+    status: progress.statuses[index] ?? 'pending',
+  }))
+
+  return {
+    id: 'plan-checklist',
+    kind: 'plan_checklist',
+    steps: checklistSteps,
+    completedCount: progress.completedSteps,
+    totalCount: progress.totalSteps,
+    createdAt: steps[0]?.createdAt ?? Date.now(),
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Main feed builder                                                         */
+/* -------------------------------------------------------------------------- */
+
 export function buildTranscriptFeedItems(args: {
   messages: Message[]
   chatMode: ChatMode
@@ -167,6 +375,8 @@ export function buildTranscriptFeedItems(args: {
   pendingSpec?: unknown
   planStatus?: unknown
   isStreaming?: boolean
+  /** Plan draft text for checklist rendering */
+  planDraft?: string | null
 }): TranscriptFeedItem[] {
   const items: TranscriptFeedItem[] = args.messages.map((message) => ({
     id: `message-${message._id}`,
@@ -176,92 +386,37 @@ export function buildTranscriptFeedItems(args: {
   }))
 
   const policy = getTranscriptModePolicy(args.chatMode)
-  if (!policy.chatAllows.includes('milestone_summaries')) {
-    return items
-  }
 
   const steps =
     args.liveSteps && args.liveSteps.length > 0
       ? args.liveSteps
       : mapLatestRunSummaryProgressSteps(args.runEvents ?? [])
 
-  const timeline = getRunTimeline(
-    {
-      steps,
-      receipt: args.latestRunReceipt,
-      userIntent: args.userIntent,
-      isStreaming: args.isStreaming,
-    },
-    {
-      mode: 'chat',
-      detail: 'summary',
-      include: {
-        emptyStages: false,
-        diagnostics: false,
-      },
+  // Build tool chips (code + build modes only)
+  if (args.chatMode === 'code' || args.chatMode === 'build') {
+    const toolChipBlock = buildToolChipsFromSteps(steps)
+    if (toolChipBlock) {
+      items.push({
+        id: `block-${toolChipBlock.id}`,
+        type: 'block',
+        createdAt: toolChipBlock.createdAt,
+        block: toolChipBlock,
+      })
     }
-  )
-  const surfacedStages = timeline.stages.filter((stage) => stage.kind !== 'intent')
-
-  if (surfacedStages.length === 0) {
-    return items
   }
 
-  const blocks: TranscriptFeedItem[] = surfacedStages.map((stage) => ({
-    id: `block-${stage.id}`,
-    type: 'block',
-    createdAt: stage.finishedAt ?? stage.startedAt ?? Date.now(),
-    block: buildExecutionUpdateBlock(stage),
-  }))
-
-  return [...items, ...blocks]
-}
-
-function executionToneForStage(
-  stage: RunTimelineStage
-): Extract<TranscriptBlock, { kind: 'execution_update' }>['tone'] {
-  if (stage.status === 'failed') return 'danger'
-  if (stage.status === 'blocked') return 'warning'
-  if (stage.kind === 'routing' || stage.kind === 'execution') return 'primary'
-  if (stage.kind === 'receipt' && stage.status === 'complete') return 'success'
-  if (stage.kind === 'validation' && stage.status === 'complete') return 'success'
-  return 'default'
-}
-
-function summarizeStage(stage: RunTimelineStage): string | undefined {
-  const primaryEntry = stage.entries.at(-1)
-  const summary = primaryEntry?.summary ?? primaryEntry?.detail
-  if (summary) return summary
-  return stage.message
-}
-
-function buildStageAction(
-  stage: RunTimelineStage
-): Extract<TranscriptBlock, { kind: 'execution_update' }>['action'] | undefined {
-  if (stage.kind === 'receipt') {
-    return { label: 'Open Proof', target: 'proof' }
+  // Build plan checklist (all modes that have a plan draft)
+  if (args.planDraft) {
+    const checklistBlock = buildPlanChecklist(args.planDraft, steps)
+    if (checklistBlock) {
+      items.push({
+        id: `block-${checklistBlock.id}`,
+        type: 'block',
+        createdAt: checklistBlock.createdAt,
+        block: checklistBlock,
+      })
+    }
   }
-  if (stage.kind === 'execution' && stage.entries.some((entry) => entry.summary)) {
-    return { label: 'Inspect Changes', target: 'changes' }
-  }
-  return undefined
-}
 
-function buildExecutionUpdateBlock(
-  stage: RunTimelineStage
-): Extract<TranscriptBlock, { kind: 'execution_update' }> {
-  const latestEntry = stage.entries.at(-1)
-  const entryCount = stage.entries.length
-
-  return {
-    id: stage.id,
-    kind: 'execution_update',
-    title: latestEntry?.label ?? stage.label,
-    detail: summarizeStage(stage),
-    tone: executionToneForStage(stage),
-    kicker: stage.label,
-    meta: entryCount > 1 ? `${entryCount} signals` : undefined,
-    action: buildStageAction(stage),
-    createdAt: stage.finishedAt ?? stage.startedAt ?? Date.now(),
-  }
+  return items
 }

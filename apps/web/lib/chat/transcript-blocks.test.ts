@@ -60,6 +60,27 @@ function receipt(overrides: Partial<ExecutionReceipt> = {}): ExecutionReceipt {
   }
 }
 
+function makeToolStep(
+  id: string,
+  content: string,
+  toolName: string,
+  filePaths: string[] = [],
+  status: 'completed' | 'error' | 'running' = 'completed'
+) {
+  return {
+    id,
+    content,
+    status,
+    category: 'tool' as const,
+    details: {
+      toolName,
+      targetFilePaths: filePaths,
+      durationMs: 120,
+    },
+    createdAt: 260,
+  }
+}
+
 describe('transcript blocks', () => {
   test('builds assistant message blocks for reasoning and text only', () => {
     const message: Message = {
@@ -112,7 +133,7 @@ describe('transcript blocks', () => {
     ])
   })
 
-  test('returns transcript messages without operational tail items', () => {
+  test('returns transcript messages without operational tail items for plan mode', () => {
     const messages: Message[] = [
       {
         _id: 'user-1',
@@ -178,10 +199,12 @@ describe('transcript blocks', () => {
       planStatus: 'approved',
     })
 
+    // Plan mode: no tool chips (plan mode doesn't do tool calls), no plan
+    // checklist (no planDraft provided).
     expect(items.map((item) => item.type)).toEqual(['message', 'message'])
   })
 
-  test('adds compact run timeline stages for Build transcript surfaces', () => {
+  test('code and build modes no longer emit milestone summaries in chat', () => {
     const messages: Message[] = [
       {
         _id: 'assistant-1',
@@ -228,37 +251,167 @@ describe('transcript blocks', () => {
       userIntent: 'Refactor the transcript.',
     })
 
-    expect(items.map((item) => item.type)).toEqual(['message', 'block', 'block', 'block', 'block'])
-    expect(items[1]).toEqual(
-      expect.objectContaining({
-        type: 'block',
-        block: expect.objectContaining({
-          kind: 'execution_update',
-          kicker: 'Work',
-          title: 'Tool completed: write_files',
-          action: expect.objectContaining({ target: 'changes' }),
-        }),
-      })
+    // milestone_summaries removed — only the message + tool chips appear.
+    const blockItems = items.filter((item) => item.type === 'block')
+    // The tool chips block should be there (2 completed tool steps)
+    expect(blockItems.length).toBeGreaterThanOrEqual(1)
+    const toolChipBlock = blockItems.find(
+      (item) => item.type === 'block' && 'kind' in item.block && item.block.kind === 'tool_chips'
     )
-    expect(items[2]).toEqual(
-      expect.objectContaining({
-        type: 'block',
-        block: expect.objectContaining({
-          kicker: 'Validation',
-          title: 'Tool completed: run_command',
-        }),
-      })
+    expect(toolChipBlock).toBeDefined()
+  })
+
+  test('builds tool chips for code mode with grouped tool calls', () => {
+    const messages: Message[] = [
+      {
+        _id: 'assistant-1',
+        role: 'assistant',
+        content: 'Done.',
+        annotations: { mode: 'code' },
+        createdAt: 200,
+      },
+    ]
+
+    const items = buildTranscriptFeedItems({
+      messages,
+      chatMode: 'code',
+      liveSteps: [
+        makeToolStep('s1', 'Wrote MessageList.tsx', 'write_files', [
+          'apps/web/components/chat/MessageList.tsx',
+        ]),
+        makeToolStep('s2', 'Wrote types.ts', 'write_files', [
+          'apps/web/components/chat/types.ts',
+        ]),
+        makeToolStep('s3', 'Ran tests', 'run_command', []),
+      ],
+    })
+
+    const blockItems = items.filter((item) => item.type === 'block')
+    const toolChipItem = blockItems.find(
+      (item) => item.type === 'block' && 'kind' in item.block && item.block.kind === 'tool_chips'
     )
-    expect(items[3]).toEqual(
-      expect.objectContaining({
-        type: 'block',
-        block: expect.objectContaining({
-          kicker: 'Receipt',
-          title: 'Commands recorded',
-          action: expect.objectContaining({ target: 'proof' }),
-        }),
-      })
+    expect(toolChipItem).toBeDefined()
+
+    if (toolChipItem && toolChipItem.type === 'block') {
+      const block = toolChipItem.block
+      if (block.kind === 'tool_chips') {
+        // Should have at least "Edited" and "Ran" groups
+        expect(block.groups.length).toBeGreaterThanOrEqual(2)
+        expect(block.entries.length).toBe(3)
+        const editGroup = block.groups.find((g) => g.label === 'Edited')
+        expect(editGroup).toBeDefined()
+        expect(editGroup!.count).toBe(2)
+        const commandGroup = block.groups.find((g) => g.label === 'Ran')
+        expect(commandGroup).toBeDefined()
+        expect(commandGroup!.count).toBe(1)
+      }
+    }
+  })
+
+  test('does not build tool chips for plan or ask mode', () => {
+    const messages: Message[] = [
+      {
+        _id: 'assistant-1',
+        role: 'assistant',
+        content: 'Planning.',
+        annotations: { mode: 'plan' },
+        createdAt: 200,
+      },
+    ]
+
+    const items = buildTranscriptFeedItems({
+      messages,
+      chatMode: 'plan',
+      liveSteps: [
+        makeToolStep('s1', 'Read file', 'read_files', ['src/app.ts']),
+      ],
+    })
+
+    const blockItems = items.filter((item) => item.type === 'block')
+    const hasToolChips = blockItems.some(
+      (item) => item.type === 'block' && 'kind' in item.block && item.block.kind === 'tool_chips'
     )
+    expect(hasToolChips).toBe(false)
+  })
+
+  test('builds plan checklist when planDraft is provided', () => {
+    const messages: Message[] = [
+      {
+        _id: 'assistant-1',
+        role: 'assistant',
+        content: 'Working on it.',
+        annotations: { mode: 'build' },
+        createdAt: 200,
+      },
+    ]
+
+    const planDraft = `## Implementation Plan
+
+1. Analyze existing component structure
+2. Refactor the panel wiring
+3. Add tests for new behavior
+4. Verify all tests pass`
+
+    const items = buildTranscriptFeedItems({
+      messages,
+      chatMode: 'build',
+      planDraft,
+      liveSteps: [
+        {
+          id: 's1',
+          content: 'Analyze existing component structure',
+          status: 'completed',
+          category: 'analysis',
+          createdAt: 250,
+        },
+        {
+          id: 's2',
+          content: 'Refactor the panel wiring',
+          status: 'running',
+          category: 'tool',
+          createdAt: 300,
+        },
+      ],
+    })
+
+    const blockItems = items.filter((item) => item.type === 'block')
+    const checklistItem = blockItems.find(
+      (item) => item.type === 'block' && 'kind' in item.block && item.block.kind === 'plan_checklist'
+    )
+    expect(checklistItem).toBeDefined()
+
+    if (checklistItem && checklistItem.type === 'block') {
+      const block = checklistItem.block
+      if (block.kind === 'plan_checklist') {
+        expect(block.totalCount).toBe(4)
+        expect(block.steps.length).toBe(4)
+        // Step 1 should be completed, step 2 should be active or completed
+        expect(block.steps[0].title).toBe('Analyze existing component structure')
+      }
+    }
+  })
+
+  test('does not build plan checklist when no planDraft is provided', () => {
+    const messages: Message[] = [
+      {
+        _id: 'assistant-1',
+        role: 'assistant',
+        content: 'Working on it.',
+        annotations: { mode: 'build' },
+        createdAt: 200,
+      },
+    ]
+
+    const items = buildTranscriptFeedItems({
+      messages,
+      chatMode: 'build',
+    })
+
+    const blockItems = items.filter((item) => item.type === 'block')
+    const hasChecklist = blockItems.some(
+      (item) => item.type === 'block' && 'kind' in item.block && item.block.kind === 'plan_checklist'
+    )
+    expect(hasChecklist).toBe(false)
   })
 
   test('maps tool and progress events to inspector surface', () => {
@@ -269,10 +422,10 @@ describe('transcript blocks', () => {
     expect(mapRunEventToSurface({ type: 'snapshot' })).toBe('inspector')
   })
 
-  test('defines plan mode transcript policy around plan actions instead of trace rows', () => {
+  test('defines plan mode transcript policy with clean chat output', () => {
     const policy = getTranscriptModePolicy('plan')
 
-    expect(policy.chatAllows).toContain('plan_actions')
+    expect(policy.chatAllows).toEqual(['messages', 'reasoning'])
     expect(policy.inspectorOwns).toContain('tool_calls')
     expect(policy.inspectorOwns).toContain('progress_steps')
     expect(policy.inspectorOwns).toContain('snapshots')
