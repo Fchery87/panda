@@ -17,7 +17,7 @@ export function buildExecutionSessionInspectorViewModel(
   const eyebrow = 'Execution Session Inspector'
 
   switch (tab) {
-    case 'run':
+    case 'proof':
       return {
         eyebrow,
         title: 'Session Proof',

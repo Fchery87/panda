@@ -506,7 +506,7 @@ export function createToolContext(
   api: {
     files: {
       batchGet: ToolApiRef
-      list: ToolApiRef
+      listMetadata: ToolApiRef
     }
     jobs: {
       create: ToolApiRef
@@ -552,12 +552,12 @@ export function createToolContext(
 
     // Write files by queueing artifacts (don't write immediately)
     listDirectory: async (path?: string, recursive?: boolean) => {
-      if (!api.files.list) {
-        throw new Error('list_directory: file listing API is not configured')
+      if (!api.files.listMetadata) {
+        throw new Error('list_directory: metadata file listing API is not configured')
       }
 
       const normalizedBase = (path || '').trim().replace(/^\/+|\/+$/g, '')
-      const allFiles = (await convexClient.query(api.files.list, {
+      const allFiles = (await convexClient.query(api.files.listMetadata, {
         projectId,
       })) as Array<{ path: string }>
 

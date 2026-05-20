@@ -9,7 +9,7 @@ export interface LandingFeature {
   size: 'small' | 'large'
 }
 
-export type EducationIconKey = 'explorer' | 'workspace' | 'chat' | 'inspector'
+export type EducationIconKey = 'explorer' | 'work' | 'chat' | 'inspector'
 
 export interface EducationDetail {
   name: string
@@ -18,7 +18,7 @@ export interface EducationDetail {
 }
 
 export interface EducationSurfaceSection {
-  id: 'explorer' | 'workspace' | 'chat' | 'inspector'
+  id: 'explorer' | 'work' | 'chat' | 'inspector'
   label: string
   title: string
   iconKey: EducationIconKey
@@ -94,10 +94,10 @@ export const interfaceMap: EducationSurfaceSection[] = [
     ],
   },
   {
-    id: 'workspace',
+    id: 'work',
     label: '02',
-    title: 'Workspace',
-    iconKey: 'workspace',
+    title: 'Work',
+    iconKey: 'work',
     summary:
       'Keep editing, diffs, terminal output, preview state, and the current objective in one canvas.',
     bullets: [

@@ -277,7 +277,7 @@ function createFallbackToolContext(
     convexClient,
     artifactQueue,
     {
-      files: { batchGet: api.files.batchGet, list: api.files.list },
+      files: { batchGet: api.files.batchGet, listMetadata: api.files.listMetadata },
       jobs: { create: api.jobs.create, updateStatus: api.jobs.updateStatus },
       artifacts: { create: api.artifacts.create },
       memoryBank: { update: api.memoryBank.update },

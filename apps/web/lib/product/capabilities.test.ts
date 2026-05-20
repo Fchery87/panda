@@ -17,13 +17,13 @@ describe('educationSections', () => {
   test('keeps the education surface order stable', () => {
     expect(
       educationSections.filter((section) => section.id !== 'workflow').map((section) => section.id)
-    ).toEqual(['explorer', 'workspace', 'chat', 'inspector'])
+    ).toEqual(['explorer', 'work', 'chat', 'inspector'])
   })
 
   test('keeps the rendered education surface fields stable', () => {
     expect(interfaceMap.map((section) => section.iconKey)).toEqual([
       'explorer',
-      'workspace',
+      'work',
       'chat',
       'inspector',
     ])

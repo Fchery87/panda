@@ -44,7 +44,7 @@ type CursorPosition = {
   column: number
 } | null
 
-type MobilePrimaryPanel = 'workspace' | 'chat' | 'review' | 'preview'
+type MobilePrimaryPanel = 'work' | 'chat' | 'proof' | 'preview'
 
 interface UseArtifactLifecycleArgs {
   projectId: Id<'projects'>
@@ -132,7 +132,7 @@ export function useArtifactLifecycle({
     }
 
     if (navigation.shouldSelectFile) {
-      setMobilePrimaryPanel('workspace')
+      setMobilePrimaryPanel('work')
       setSelectedFilePath(targetPreview.filePath)
       setSelectedFileLocation(null)
       setCursorPosition(null)

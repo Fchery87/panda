@@ -39,7 +39,7 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
         onEditorDirtyChange={() => {}}
         isMobileLayout={false}
         isCompactDesktopLayout={false}
-        mobilePrimaryPanel="workspace"
+        mobilePrimaryPanel='work'
         onMobilePrimaryPanelChange={() => {}}
         mobileUnreadCount={0}
         isMobileKeyboardOpen={false}
@@ -84,7 +84,7 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
         onEditorDirtyChange={() => {}}
         isMobileLayout={false}
         isCompactDesktopLayout={false}
-        mobilePrimaryPanel="workspace"
+        mobilePrimaryPanel='work'
         onMobilePrimaryPanelChange={() => {}}
         mobileUnreadCount={0}
         isMobileKeyboardOpen={false}
@@ -135,7 +135,7 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
         onEditorDirtyChange={() => {}}
         isMobileLayout={false}
         isCompactDesktopLayout={false}
-        mobilePrimaryPanel="workspace"
+        mobilePrimaryPanel='work'
         onMobilePrimaryPanelChange={() => {}}
         mobileUnreadCount={0}
         isMobileKeyboardOpen={false}
@@ -180,7 +180,7 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
         onEditorDirtyChange={() => {}}
         isMobileLayout={false}
         isCompactDesktopLayout={false}
-        mobilePrimaryPanel="workspace"
+        mobilePrimaryPanel='work'
         onMobilePrimaryPanelChange={() => {}}
         mobileUnreadCount={0}
         isMobileKeyboardOpen={false}
@@ -225,7 +225,7 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
         onEditorDirtyChange={() => {}}
         isMobileLayout={false}
         isCompactDesktopLayout={false}
-        mobilePrimaryPanel="workspace"
+        mobilePrimaryPanel='work'
         onMobilePrimaryPanelChange={() => {}}
         mobileUnreadCount={0}
         isMobileKeyboardOpen={false}

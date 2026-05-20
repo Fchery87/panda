@@ -46,7 +46,7 @@ export function useProjectWorkbenchFiles(args: {
   setSelectedFileLocation: (location: SelectedFileLocation | null) => void
   setCursorPosition: (position: EditorLocation | null) => void
   setOpenTabs: Dispatch<SetStateAction<OpenProjectTab[]>>
-  setMobilePrimaryPanel: (panel: 'workspace' | 'chat') => void
+  setMobilePrimaryPanel: (panel: 'work' | 'chat') => void
   writeFileToRuntime?: (path: string, content: string) => Promise<void>
 }) {
   const {
@@ -79,7 +79,7 @@ export function useProjectWorkbenchFiles(args: {
 
   const handleFileSelect = useCallback(
     (path: string, location?: EditorLocation) => {
-      setMobilePrimaryPanel('workspace')
+      setMobilePrimaryPanel('work')
       setSelectedFilePath(path)
       if (location) {
         setSelectedFileLocation({

@@ -22,7 +22,7 @@ type CursorPosition = {
   column: number
 } | null
 
-type MobilePrimaryPanel = 'workspace' | 'chat' | 'review' | 'preview'
+type MobilePrimaryPanel = 'work' | 'chat' | 'proof' | 'preview'
 
 interface UsePlanArtifactSyncArgs {
   activePlanArtifact: GeneratedPlanArtifact | null | undefined
@@ -66,7 +66,7 @@ export function usePlanArtifactSync({
       setSelectedFilePath(nextPlanTab.path)
       setSelectedFileLocation(null)
       setCursorPosition(null)
-      setMobilePrimaryPanel('workspace')
+      setMobilePrimaryPanel('work')
       lastOpenedPlanArtifactRef.current = activePlanArtifactOpenKey
     }
   }, [

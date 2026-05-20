@@ -12,6 +12,6 @@ describe('project history flow', () => {
     expect(panelSource).toContain('onClick={onOpenHistory}')
     expect(panelSource).toContain('Run History ({runHistoryCount})')
 
-    expect(providerSource).toContain("onOpenHistory: () => openRightPanelTab('run')")
+    expect(providerSource).toContain("onOpenHistory: () => openRightPanelTab('proof')")
   })
 })

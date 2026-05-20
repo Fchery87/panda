@@ -67,8 +67,8 @@ describe('project chat wiring', () => {
   test('project page routes review/open actions directly into the shared work tray', async () => {
     const providerContent = await readProvider()
 
-    expect(providerContent).toContain("onToggleInspector: () => openRightPanelTab('run')")
-    expect(providerContent).toContain("onOpenHistory: () => openRightPanelTab('run')")
+    expect(providerContent).toContain("onToggleInspector: () => openRightPanelTab('proof')")
+    expect(providerContent).toContain("onOpenHistory: () => openRightPanelTab('proof')")
     expect(providerContent).toContain("openRightPanelTab('changes')")
     expect(providerContent).not.toContain('onOpenPreviewPanel')
   })

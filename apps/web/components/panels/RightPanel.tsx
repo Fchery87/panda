@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import { TabBar, type TabBarTab } from '@/components/ui/tab-bar'
 
-export type RightPanelTabId = 'work' | 'run' | 'changes' | 'context'
+export type RightPanelTabId = 'work' | 'proof' | 'changes' | 'context' | 'preview'
 
 export type InspectorTabDef = TabBarTab<string>
 
@@ -39,8 +39,8 @@ export function RightPanel({
     ...inspectorTabs.map((tab) => ({
       ...tab,
       label:
-        tab.id === 'run'
-          ? 'Run Proof'
+        tab.id === 'proof' || tab.id === 'run'
+          ? 'Proof'
           : tab.id === 'changes'
             ? 'Changes'
             : tab.id === 'context'

@@ -369,14 +369,19 @@ export function WorkspaceRuntimeProvider({
 
   const healthStatus = agent.error
     ? ('error' as const)
-    : agent.isLoading
+    : agent.isLoading || !runtimeAvailability.canUseBrowserRuntime
       ? ('issues' as const)
       : ('ready' as const)
+  const runtimeHealthDetail = runtimeAvailability.canUseBrowserRuntime
+    ? 'Browser runtime ready'
+    : `Browser runtime unavailable; using ${runtimeAvailability.label.toLowerCase()} fallback${
+        runtimeAvailability.detail ? ` (${runtimeAvailability.detail})` : ''
+      }`
   const healthDetail = agent.error
-    ? 'Agent execution encountered an error'
+    ? `Agent execution encountered an error • ${runtimeHealthDetail}`
     : agent.isLoading
-      ? 'Agent is actively working'
-      : 'Workspace systems nominal'
+      ? `Agent is actively working • ${runtimeHealthDetail}`
+      : `Workspace systems nominal • ${runtimeHealthDetail}`
 
   const { handleSendMessage, handleSuggestedAction, handleBuildFromPlan, handleModeChange } =
     useProjectMessageWorkflow({
@@ -751,8 +756,8 @@ export function WorkspaceRuntimeProvider({
       onNewChat: () => {
         void handleNewChat()
       },
-      onToggleInspector: () => openRightPanelTab('run'),
-      onOpenHistory: () => openRightPanelTab('run'),
+      onToggleInspector: () => openRightPanelTab('proof'),
+      onOpenHistory: () => openRightPanelTab('proof'),
       onComposerSubmit: (prompt: string, contextFiles?: string[]) =>
         handleSendMessage(prompt, 'build', contextFiles),
 
@@ -762,9 +767,9 @@ export function WorkspaceRuntimeProvider({
         const s = useWorkspaceUiStore.getState()
         if (!s.isRightPanelOpen) {
           s.setRightPanelTab('work')
-          if (isMobileLayout) s.setMobilePrimaryPanel('review')
+          if (isMobileLayout) s.setMobilePrimaryPanel('proof')
         } else if (isMobileLayout && s.mobilePrimaryPanel === 'chat') {
-          s.setMobilePrimaryPanel('workspace')
+          s.setMobilePrimaryPanel('work')
         }
         s.setRightPanelOpen(!s.isRightPanelOpen)
       },
@@ -895,7 +900,7 @@ export function WorkspaceRuntimeProvider({
         void handleBuildFromPlan()
         break
       case 'open_run':
-        openRightPanelTab('run')
+        openRightPanelTab('proof')
         break
       case 'review_changes':
         setActiveCenterTab('diff')
@@ -918,7 +923,7 @@ export function WorkspaceRuntimeProvider({
         openRightPanelTab('changes')
         break
       case 'open_run':
-        openRightPanelTab('run')
+        openRightPanelTab('proof')
         break
       case 'build_from_plan':
         void handleBuildFromPlan()

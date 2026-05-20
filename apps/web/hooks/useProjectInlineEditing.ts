@@ -9,7 +9,7 @@ interface UseProjectInlineEditingParams {
   projectId: string
   isMobileLayout: boolean
   setContextualPrompt: (value: string | null) => void
-  setMobilePrimaryPanel: (panel: 'workspace' | 'chat' | 'review') => void
+  setMobilePrimaryPanel: (panel: 'work' | 'chat' | 'proof') => void
   runEvalScenario: (args: {
     prompt: string
     mode: 'code'

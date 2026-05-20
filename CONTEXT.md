@@ -99,7 +99,9 @@ bottom drawer.
 The central session thread is the primary surface for chat narrative, mode
 selection, model choice, attachments, approvals, stop/recover actions, and next
 steps. The work tray contains implementation detail and inspection surfaces:
-`Work`, `Proof`, `Changes`, `Context`, and `Preview`. The bottom drawer is only
+`Work`, `Proof`, `Changes`, `Context`, and `Preview`. Persisted workspace UI
+state should use these product terms at the seam; legacy `run` and `workspace`
+panel names are migration-only compatibility terms. The bottom drawer is only
 for terminal command execution; agent events belong in `Proof`.
 
 Use `Execution Session Shell` for the implemented workspace structure. Use

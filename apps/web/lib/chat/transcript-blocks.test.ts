@@ -255,7 +255,7 @@ describe('transcript blocks', () => {
         block: expect.objectContaining({
           kicker: 'Receipt',
           title: 'Commands recorded',
-          action: expect.objectContaining({ target: 'run' }),
+          action: expect.objectContaining({ target: 'proof' }),
         }),
       })
     )

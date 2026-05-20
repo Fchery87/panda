@@ -85,7 +85,7 @@ export type TranscriptBlock =
       meta?: string
       action?: {
         label: string
-        target: 'run' | 'changes'
+        target: 'proof' | 'changes'
       }
       createdAt: number
     }
@@ -239,7 +239,7 @@ function buildStageAction(
   stage: RunTimelineStage
 ): Extract<TranscriptBlock, { kind: 'execution_update' }>['action'] | undefined {
   if (stage.kind === 'receipt') {
-    return { label: 'Open Run Proof', target: 'run' }
+    return { label: 'Open Proof', target: 'proof' }
   }
   if (stage.kind === 'execution' && stage.entries.some((entry) => entry.summary)) {
     return { label: 'Inspect Changes', target: 'changes' }

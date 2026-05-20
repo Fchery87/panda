@@ -66,7 +66,7 @@ export function WorkbenchRightPanel({ projectId, workContent }: WorkbenchRightPa
   const activeInspectorTab = isDrawerOpen ? activeTab : undefined
 
   const inspectorTabs: InspectorTabDef[] = [
-    { id: 'run', label: 'Run' },
+    { id: 'proof', label: 'Proof' },
     { id: 'changes', label: 'Changes' },
     { id: 'context', label: 'Context' },
   ]
@@ -126,7 +126,7 @@ export function WorkbenchRightPanel({ projectId, workContent }: WorkbenchRightPa
             </div>
           </div>
         )
-      case 'run':
+      case 'proof':
         return (
           <div className="h-full min-h-0 overflow-auto p-3">
             <InspectorRunContent

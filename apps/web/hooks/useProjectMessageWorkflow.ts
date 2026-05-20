@@ -152,7 +152,7 @@ export function useProjectMessageWorkflow(args: {
     options?: SendAgentMessageOptions
   ) => Promise<void>
   setActiveChatId: (chatId: Id<'chats'>) => void
-  setMobilePrimaryPanel: (panel: 'workspace' | 'chat') => void
+  setMobilePrimaryPanel: (panel: 'work' | 'chat') => void
 }) {
   const {
     projectId,

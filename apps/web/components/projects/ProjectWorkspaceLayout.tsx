@@ -67,9 +67,9 @@ interface ProjectWorkspaceLayoutProps {
   onEditorDirtyChange: (filePath: string, isDirty: boolean) => void
   isMobileLayout: boolean
   isCompactDesktopLayout: boolean
-  mobilePrimaryPanel: 'workspace' | 'chat' | 'review' | 'preview'
-  onMobilePrimaryPanelChange: (panel: 'workspace' | 'chat' | 'review' | 'preview') => void
-  onMobileReviewTabChange?: (tab: 'run' | 'changes' | 'context') => void
+  mobilePrimaryPanel: 'work' | 'chat' | 'proof' | 'preview'
+  onMobilePrimaryPanelChange: (panel: 'work' | 'chat' | 'proof' | 'preview') => void
+  onMobileReviewTabChange?: (tab: 'proof' | 'changes' | 'context') => void
   mobileUnreadCount: number
   isMobileKeyboardOpen: boolean
   chatPanel: React.ReactNode
@@ -219,11 +219,11 @@ export function ProjectWorkspaceLayoutView({
   }
   const activeReviewTab = useWorkspaceUiStore((state) => state.rightPanelTab)
   const openRightPanelTab = useWorkspaceUiStore((state) => state.openRightPanelTab)
-  const isMobileReviewPanelActive = mobilePrimaryPanel === 'review'
+  const isMobileReviewPanelActive = mobilePrimaryPanel === 'proof'
   const isMobileProofActive = isMobileReviewPanelActive
   const openMobileProof = () => {
-    onMobileReviewTabChange?.('run')
-    onMobilePrimaryPanelChange('review')
+    onMobileReviewTabChange?.('proof')
+    onMobilePrimaryPanelChange('proof')
   }
 
   // Dock tab definitions with badge counts
@@ -335,11 +335,11 @@ export function ProjectWorkspaceLayoutView({
         {isMobileLayout ? (
           <div className="relative flex h-full min-h-0 min-w-0 flex-col">
             <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
-              {mobilePrimaryPanel === 'workspace'
+              {mobilePrimaryPanel === 'work'
                 ? workbench
                 : mobilePrimaryPanel === 'chat'
                   ? chatPanel
-                  : mobilePrimaryPanel === 'review'
+                  : mobilePrimaryPanel === 'proof'
                     ? rightPanelContent
                     : mobilePrimaryPanel === 'preview'
                       ? workbench
@@ -353,13 +353,13 @@ export function ProjectWorkspaceLayoutView({
               >
                 <button
                   type="button"
-                  onClick={() => onMobilePrimaryPanelChange('workspace')}
+                  onClick={() => onMobilePrimaryPanelChange('work')}
                   role="tab"
-                  aria-selected={mobilePrimaryPanel === 'workspace'}
+                  aria-selected={mobilePrimaryPanel === 'work'}
                   aria-label="Show session workspace"
                   className={cn(
                     'min-h-12 border-r border-foreground px-1 transition-colors focus-visible:-outline-offset-2 active:scale-[0.96]',
-                    mobilePrimaryPanel === 'workspace'
+                    mobilePrimaryPanel === 'work'
                       ? 'bg-primary text-primary-foreground shadow-[inset_0_-2px_0_oklch(var(--foreground)/0.18)]'
                       : 'hover:bg-primary/10 bg-card text-muted-foreground hover:text-foreground'
                   )}
@@ -452,7 +452,7 @@ export function ProjectWorkspaceLayoutView({
                 <button
                   type="button"
                   onClick={() =>
-                    openRightPanelTab(activeReviewTab === 'work' ? 'run' : activeReviewTab)
+                    openRightPanelTab(activeReviewTab === 'work' ? 'proof' : activeReviewTab)
                   }
                   className={cn(
                     'flex h-7 items-center border-b border-foreground px-3 text-left transition-colors hover:bg-background hover:text-foreground sm:border-b-0 sm:border-r',

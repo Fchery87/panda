@@ -67,7 +67,7 @@ function DetailCard({
 
 const sectionIcons = {
   explorer: PanelLeft,
-  workspace: Monitor,
+  work: Monitor,
   chat: PanelRight,
   inspector: Shield,
 } as const
@@ -301,7 +301,7 @@ export default function EducationPage() {
                     transition={{ delay: index * 0.08 }}
                     className={cn(
                       'group block border border-transparent bg-background p-6 transition-colors hover:bg-surface-1',
-                      section.id === 'workspace' && 'md:col-span-2'
+                      section.id === 'work' && 'md:col-span-2'
                     )}
                   >
                     <div className="mb-4 flex items-center justify-between">

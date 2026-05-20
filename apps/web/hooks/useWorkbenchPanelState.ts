@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect } from 'react'
 
-type RightPanelTab = 'work' | 'run' | 'changes' | 'context'
-type MobilePrimaryPanel = 'workspace' | 'chat' | 'review' | 'preview'
+type RightPanelTab = 'work' | 'proof' | 'changes' | 'context' | 'preview'
+type MobilePrimaryPanel = 'work' | 'chat' | 'proof' | 'preview'
 
 interface UseWorkbenchPanelStateArgs {
   isMobileLayout: boolean
@@ -28,7 +28,7 @@ export function useWorkbenchPanelState({
     (tab: RightPanelTab) => {
       setRightPanelTab(tab)
       if (isMobileLayout) {
-        setMobilePrimaryPanel('review')
+        setMobilePrimaryPanel('proof')
         return
       }
       setIsRightPanelOpen(true)

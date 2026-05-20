@@ -49,7 +49,7 @@ const session: ExecutionSessionViewModel = {
 
 describe('buildExecutionSessionInspectorViewModel', () => {
   test('labels proof as a session inspector surface', () => {
-    expect(buildExecutionSessionInspectorViewModel('run', session)).toEqual({
+    expect(buildExecutionSessionInspectorViewModel('proof', session)).toEqual({
       eyebrow: 'Execution Session Inspector',
       title: 'Session Proof',
       summary:
