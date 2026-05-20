@@ -347,7 +347,7 @@ export function ProjectWorkspaceLayoutView({
             </div>
             {!isMobileKeyboardOpen && (
               <div
-                className="grid min-h-14 grid-cols-4 border-t border-foreground bg-card pb-[env(safe-area-inset-bottom)] font-mono text-[10px] uppercase tracking-[0.18em]"
+                className="grid min-h-14 grid-cols-4 border-t border-border bg-card pb-[env(safe-area-inset-bottom)] text-[11px]"
                 role="tablist"
                 aria-label="Workspace mobile panels"
               >
@@ -358,10 +358,10 @@ export function ProjectWorkspaceLayoutView({
                   aria-selected={mobilePrimaryPanel === 'work'}
                   aria-label="Show session workspace"
                   className={cn(
-                    'min-h-12 border-r border-foreground px-1 transition-colors focus-visible:-outline-offset-2 active:scale-[0.96]',
+                    'min-h-12 border-r border-border px-1 transition-colors focus-visible:-outline-offset-2 active:scale-[0.96]',
                     mobilePrimaryPanel === 'work'
-                      ? 'bg-primary text-primary-foreground shadow-[inset_0_-2px_0_oklch(var(--foreground)/0.18)]'
-                      : 'hover:bg-primary/10 bg-card text-muted-foreground hover:text-foreground'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-card text-muted-foreground hover:bg-accent hover:text-foreground'
                   )}
                 >
                   Session
@@ -373,15 +373,15 @@ export function ProjectWorkspaceLayoutView({
                   aria-selected={mobilePrimaryPanel === 'chat'}
                   aria-label="Show chat timeline"
                   className={cn(
-                    'relative min-h-12 border-r border-foreground px-1 transition-colors focus-visible:-outline-offset-2 active:scale-[0.96]',
+                    'relative min-h-12 border-r border-border px-1 transition-colors focus-visible:-outline-offset-2 active:scale-[0.96]',
                     mobilePrimaryPanel === 'chat'
-                      ? 'bg-primary text-primary-foreground shadow-[inset_0_-2px_0_oklch(var(--foreground)/0.18)]'
-                      : 'hover:bg-primary/10 bg-card text-muted-foreground hover:text-foreground'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-card text-muted-foreground hover:bg-accent hover:text-foreground'
                   )}
                 >
                   Chat
                   {mobileUnreadCount > 0 && mobilePrimaryPanel !== 'chat' && (
-                    <span className="absolute right-2 top-1.5 min-w-5 border border-border bg-destructive px-1.5 py-0.5 text-center font-mono text-xs text-destructive-foreground">
+                    <span className="absolute right-2 top-1.5 min-w-5 rounded-sm border border-border bg-destructive px-1.5 py-0.5 text-center text-xs text-destructive-foreground">
                       {mobileUnreadCount}
                     </span>
                   )}
@@ -393,10 +393,10 @@ export function ProjectWorkspaceLayoutView({
                   aria-selected={isMobileProofActive}
                   aria-label="Show run proof"
                   className={cn(
-                    'relative min-h-12 border-r border-foreground px-1 transition-colors focus-visible:-outline-offset-2 active:scale-[0.96]',
+                    'relative min-h-12 border-r border-border px-1 transition-colors focus-visible:-outline-offset-2 active:scale-[0.96]',
                     isMobileProofActive
-                      ? 'bg-primary text-primary-foreground shadow-[inset_0_-2px_0_oklch(var(--foreground)/0.18)]'
-                      : 'hover:bg-primary/10 bg-card text-muted-foreground hover:text-foreground'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-card text-muted-foreground hover:bg-accent hover:text-foreground'
                   )}
                 >
                   Proof
@@ -410,8 +410,8 @@ export function ProjectWorkspaceLayoutView({
                   className={cn(
                     'relative min-h-12 px-1 transition-colors focus-visible:-outline-offset-2 active:scale-[0.96]',
                     mobilePrimaryPanel === 'preview'
-                      ? 'bg-primary text-primary-foreground shadow-[inset_0_-2px_0_oklch(var(--foreground)/0.18)]'
-                      : 'hover:bg-primary/10 bg-card text-muted-foreground hover:text-foreground'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-card text-muted-foreground hover:bg-accent hover:text-foreground'
                   )}
                 >
                   Preview
@@ -423,7 +423,7 @@ export function ProjectWorkspaceLayoutView({
           <>
             <div className="flex h-full min-h-0 min-w-0 flex-col bg-card">
               <div
-                className="grid shrink-0 border-b border-foreground bg-card font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground sm:grid-cols-4"
+                className="grid shrink-0 border-b border-border bg-card text-[10px] text-muted-foreground sm:grid-cols-4"
                 aria-label="Workspace workflow modes"
               >
                 <button
@@ -433,8 +433,8 @@ export function ProjectWorkspaceLayoutView({
                     if (!isFlyoutOpen) onToggleFlyout()
                   }}
                   className={cn(
-                    'flex h-7 items-center border-b border-foreground px-3 text-left transition-colors hover:bg-background hover:text-foreground sm:border-b-0 sm:border-r',
-                    isFlyoutOpen && activeSection === 'tasks' && 'bg-primary/10 text-foreground'
+                    'flex h-7 items-center border-b border-border px-3 text-left transition-colors hover:bg-accent hover:text-foreground sm:border-b-0 sm:border-r',
+                    isFlyoutOpen && activeSection === 'tasks' && 'bg-primary/10 text-primary'
                   )}
                 >
                   Sessions
@@ -443,11 +443,11 @@ export function ProjectWorkspaceLayoutView({
                   type="button"
                   onClick={() => onCenterTabChange?.('editor')}
                   className={cn(
-                    'flex h-7 items-center border-b border-foreground px-3 text-left transition-colors hover:bg-background hover:text-foreground sm:border-b-0 sm:border-r',
-                    activeCenterTab === 'editor' && 'bg-primary/10 text-foreground'
+                    'flex h-7 items-center border-b border-border px-3 text-left transition-colors hover:bg-accent hover:text-foreground sm:border-b-0 sm:border-r',
+                    activeCenterTab === 'editor' && 'bg-primary/10 text-primary'
                   )}
                 >
-                  Session Thread
+                  Thread
                 </button>
                 <button
                   type="button"
@@ -455,28 +455,28 @@ export function ProjectWorkspaceLayoutView({
                     openRightPanelTab(activeReviewTab === 'work' ? 'proof' : activeReviewTab)
                   }
                   className={cn(
-                    'flex h-7 items-center border-b border-foreground px-3 text-left transition-colors hover:bg-background hover:text-foreground sm:border-b-0 sm:border-r',
+                    'flex h-7 items-center border-b border-border px-3 text-left transition-colors hover:bg-accent hover:text-foreground sm:border-b-0 sm:border-r',
                     isRightPanelOpen &&
                       activeReviewTab !== 'work' &&
-                      'bg-primary/10 text-foreground'
+                      'bg-primary/10 text-primary'
                   )}
                 >
-                  Review Proof
+                  Proof
                 </button>
                 <button
                   type="button"
                   onClick={() => openRightPanelTab('work')}
                   className={cn(
-                    'flex h-7 items-center px-3 text-left transition-colors hover:bg-background hover:text-foreground',
+                    'flex h-7 items-center px-3 text-left transition-colors hover:bg-accent hover:text-foreground',
                     isRightPanelOpen &&
                       activeReviewTab === 'work' &&
-                      'bg-primary/10 text-foreground'
+                      'bg-primary/10 text-primary'
                   )}
                 >
-                  Work Tray
+                  Work
                 </button>
               </div>
-              <div className="bg-foreground/80 flex min-h-0 min-w-0 flex-1">
+              <div className="flex min-h-0 min-w-0 flex-1">
                 <div
                   data-testid="execution-session-rail-region"
                   aria-label="Execution session rail"
@@ -534,7 +534,7 @@ export function ProjectWorkspaceLayoutView({
                           <>
                             <PanelResizeHandle
                               data-testid="workspace-right-resize-handle"
-                              className="h-full w-px bg-foreground transition-colors hover:bg-primary"
+                              className="h-full w-px bg-border transition-colors hover:bg-primary"
                             />
                             <Panel
                               data-testid="execution-session-work-tray-region"
@@ -568,7 +568,7 @@ export function ProjectWorkspaceLayoutView({
                       <>
                         <PanelResizeHandle
                           data-testid="workspace-bottom-resize-handle"
-                          className="h-px w-full bg-foreground transition-colors hover:bg-primary"
+                          className="h-px w-full bg-border transition-colors hover:bg-primary"
                         />
                         <Panel
                           data-testid="execution-session-terminal-drawer-region"

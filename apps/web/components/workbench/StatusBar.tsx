@@ -75,7 +75,7 @@ function AgentStatusIcon({ status }: { status: AgentStatus }) {
     case 'running':
       return <IconSpinner className="h-3 w-3 animate-spin" />
     case 'completed':
-      return <IconCheck className="h-3 w-3 text-green-500" />
+      return <IconCheck className="h-3 w-3 text-success" />
     case 'failed':
       return <IconError className="h-3 w-3 text-destructive" />
     default:

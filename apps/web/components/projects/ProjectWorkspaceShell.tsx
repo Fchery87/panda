@@ -66,7 +66,7 @@ export function ProjectWorkspaceShell({
   return (
     <div
       data-testid="workspace-shell"
-      className="dot-grid fixed inset-0 top-0 z-10 overflow-hidden bg-background p-2 text-foreground sm:p-3 lg:p-4"
+      className="dot-grid fixed inset-0 top-0 z-10 overflow-hidden bg-background p-1.5 text-foreground sm:p-2 lg:p-3"
     >
       <div
         className={`pointer-events-none absolute inset-x-0 z-40 px-3 py-2 ${layoutProps.focusState ? 'top-20' : 'top-11'}`}
@@ -79,7 +79,7 @@ export function ProjectWorkspaceShell({
         chatId={activeChatId}
         chatTitle={activeChatTitle}
       />
-      <div className="bg-background/92 shadow-sharp-lg mx-auto flex h-full min-h-0 max-w-[1680px] flex-col overflow-hidden border border-foreground">
+      <div className="bg-background/92 shadow-sharp-lg mx-auto flex h-full min-h-0 max-w-[1680px] flex-col overflow-hidden rounded-lg border border-border">
         <WorkbenchTopBar
           projectName={projectName}
           projectId={projectId}

@@ -153,15 +153,15 @@ export function WorkbenchTopBar({
     <motion.div
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      className="bg-card/95 grid shrink-0 border-b border-foreground"
+      className="bg-card/95 grid shrink-0 border-b border-border"
     >
-      <div className="grid min-h-12 lg:grid-cols-[minmax(210px,0.28fr)_1fr_auto]">
-        <div className="flex min-w-0 items-center gap-2 border-b border-foreground px-2.5 py-2 lg:border-b-0 lg:border-r lg:px-3">
+      <div className="grid min-h-11 lg:grid-cols-[minmax(210px,0.28fr)_1fr_auto]">
+        <div className="flex min-w-0 items-center gap-2 border-b border-border px-3 py-2 lg:border-b-0 lg:border-r lg:px-3">
           <div className="flex shrink-0 items-center gap-1.5">
             <Button
               variant="ghost"
               size="sm"
-              className="hidden h-7 w-7 rounded-none p-0 md:flex"
+              className="hidden h-7 w-7 rounded-md p-0 md:flex"
               onClick={onToggleFlyout}
               title={isFlyoutOpen ? 'Close sidebar' : 'Open sidebar'}
               aria-label={isFlyoutOpen ? 'Close sidebar' : 'Open sidebar'}
@@ -175,7 +175,7 @@ export function WorkbenchTopBar({
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 w-7 rounded-none p-0 md:hidden"
+              className="h-7 w-7 rounded-md p-0 md:hidden"
               onClick={() => setMobileSheetOpen(true)}
               title="Open navigation"
               aria-label="Open navigation"
@@ -196,29 +196,29 @@ export function WorkbenchTopBar({
             >
               <ChevronLeft className="h-3.5 w-3.5" />
             </Link>
-            <h1 className="min-w-0 truncate text-base font-bold leading-none tracking-tight text-foreground">
+            <h1 className="min-w-0 truncate text-sm font-semibold leading-none tracking-tight text-foreground">
               {projectName}
             </h1>
           </div>
         </div>
 
-        <div className="flex min-w-0 items-center border-b border-foreground px-2.5 py-1.5 lg:border-b-0 lg:px-3">
+        <div className="flex min-w-0 items-center border-b border-border px-3 py-1.5 lg:border-b-0 lg:px-3">
           <button
             type="button"
             onClick={onOpenCommandPalette}
-            className="flex h-8 w-full items-center gap-2 border border-foreground bg-background px-2.5 text-left font-mono text-[11px] text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
+            className="flex h-7 w-full items-center gap-2 rounded-md border border-border bg-background px-2.5 text-left text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             aria-label="Open command palette"
           >
-            <span className="uppercase tracking-[0.18em] text-primary">Search</span>
+            <span className="font-medium text-primary">Search</span>
             <span className="min-w-0 flex-1 truncate">Files, commands, proof, runtime</span>
-            <span className="shrink-0 border border-border bg-card px-2 py-0.5 text-[10px] uppercase tracking-[0.18em]">
+            <span className="shrink-0 rounded border border-border bg-card px-1.5 py-0.5 text-[10px] text-muted-foreground">
               Ctrl+K
             </span>
           </button>
         </div>
 
-        <div className="flex items-center gap-1.5 px-2.5 py-2 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground lg:border-l lg:border-foreground lg:px-3">
-          <span className="h-2 w-2 border border-foreground bg-primary" />
+        <div className="flex items-center gap-1.5 px-3 py-2 text-[10px] text-muted-foreground lg:border-l lg:border-border lg:px-3">
+          <span className="h-2 w-2 rounded-full bg-primary" />
           <TopBarControls
             branch={gitStatus?.branch}
             model={selectedModel}
@@ -275,24 +275,24 @@ export function WorkbenchTopBar({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 w-7 rounded-none p-0"
+                className="h-7 w-7 rounded-md p-0"
                 title="More actions"
                 aria-label="More actions"
               >
                 <MoreHorizontal className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="rounded-none border-border font-mono">
+            <DropdownMenuContent align="end" className="rounded-md border-border">
               <DropdownMenuItem
                 onClick={onResetWorkspace}
-                className="rounded-none text-xs uppercase tracking-wide"
+                className="rounded-md text-xs"
               >
                 <RotateCcw className="mr-2 h-3.5 w-3.5" />
                 Clear Workspace State
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={onOpenShareDialog}
-                className="rounded-none text-xs uppercase tracking-wide"
+                className="rounded-md text-xs"
               >
                 Share
               </DropdownMenuItem>
@@ -302,9 +302,9 @@ export function WorkbenchTopBar({
       </div>
 
       {focusState && focusTone ? (
-        <div className="border-foreground/80 flex h-9 items-center justify-between border-t bg-background px-3">
+        <div className="border-border/80 flex h-8 items-center justify-between border-t bg-background px-3">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            <span className="text-[10px] text-muted-foreground">
               {focusState.kicker}
             </span>
             <div className="min-w-0">
@@ -331,7 +331,7 @@ export function WorkbenchTopBar({
               <Button
                 variant="ghost"
                 size="sm"
-                className="hidden h-7 rounded-none px-2 font-mono text-[10px] uppercase tracking-[0.18em] md:inline-flex"
+                className="hidden h-7 rounded-md px-2 text-[10px] md:inline-flex"
                 onClick={onFocusSecondaryAction}
               >
                 {focusState.secondaryAction.label}
@@ -340,7 +340,7 @@ export function WorkbenchTopBar({
             {focusState.primaryAction && onFocusPrimaryAction ? (
               <Button
                 size="sm"
-                className="h-7 rounded-none px-3 font-mono text-[10px] uppercase tracking-[0.18em]"
+                className="h-7 rounded-md px-3 text-[10px]"
                 onClick={onFocusPrimaryAction}
               >
                 {focusState.primaryAction.label}
@@ -359,8 +359,8 @@ export function WorkbenchTopBar({
 
       {showYoloConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="shadow-sharp-lg mx-4 w-full max-w-sm border border-foreground bg-card p-6 font-mono">
-            <p className="mb-1 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+          <div className="shadow-sharp-lg mx-4 w-full max-w-sm rounded-lg border border-border bg-card p-6">
+            <p className="mb-1 text-[10px] text-muted-foreground">
               Enable YOLO mode
             </p>
             <p className="mb-4 text-sm text-foreground">
@@ -372,14 +372,14 @@ export function WorkbenchTopBar({
               <Button
                 variant="ghost"
                 size="sm"
-                className="rounded-none font-mono text-xs uppercase tracking-wide"
+                className="rounded-md text-xs"
                 onClick={() => setShowYoloConfirm(false)}
               >
                 Cancel
               </Button>
               <Button
                 size="sm"
-                className="rounded-none border-0 bg-red-500 font-mono text-xs uppercase tracking-wide text-white hover:bg-red-600"
+                className="rounded-md border-0 bg-red-500 text-xs text-white hover:bg-red-600"
                 onClick={handleYoloConfirm}
               >
                 Enable YOLO

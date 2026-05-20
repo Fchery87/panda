@@ -32,20 +32,20 @@ export function SidebarFlyout({ isOpen, activeSection, children }: SidebarFlyout
       {isOpen && (
         <motion.div
           initial={{ width: 0, opacity: 0 }}
-          animate={{ width: 232, opacity: 1 }}
+          animate={{ width: 240, opacity: 1 }}
           exit={{ width: 0, opacity: 0 }}
           transition={{ duration: 0.18, ease: 'easeOut' }}
-          className="bg-secondary/70 h-full flex-shrink-0 overflow-hidden border-r border-foreground"
+          className="bg-card h-full flex-shrink-0 overflow-hidden border-r border-border"
         >
-          <div className="flex h-full flex-col" style={{ width: 232 }}>
-            <div className="shrink-0 border-b border-foreground bg-card px-3 py-2">
+          <div className="flex h-full flex-col" style={{ width: 240 }}>
+            <div className="shrink-0 border-b border-border bg-card px-3 py-2.5">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h2 className="font-mono text-xs font-medium uppercase tracking-[0.16em] text-foreground">
+                  <h2 className="text-xs font-medium text-foreground">
                     {SECTION_LABELS[activeSection]}
                   </h2>
                 </div>
-                <div className="flex h-6 min-w-6 items-center justify-center border border-border bg-background px-1.5 font-mono text-[9px] uppercase tracking-widest text-primary">
+                <div className="flex h-6 min-w-6 items-center justify-center rounded-md border border-border bg-background px-1.5 text-[10px] text-primary">
                   {SECTION_LABELS[activeSection].slice(0, 3)}
                 </div>
               </div>

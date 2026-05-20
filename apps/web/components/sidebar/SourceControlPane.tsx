@@ -98,7 +98,7 @@ export function SourceControlPane({ projectId: _projectId }: SourceControlPanePr
             <Button
               variant="ghost"
               size="sm"
-              className="h-5 w-5 rounded-none p-0"
+              className="h-5 w-5 rounded-md p-0"
               onClick={() => {
                 refreshStatus()
                 refreshLog(10)
@@ -115,7 +115,7 @@ export function SourceControlPane({ projectId: _projectId }: SourceControlPanePr
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 gap-1 rounded-none border border-border px-2 font-mono text-[10px] uppercase tracking-[0.18em]"
+            className="h-7 gap-1 rounded-md border border-border px-2 font-mono text-[10px] uppercase tracking-[0.18em]"
             onClick={handleCommit}
             disabled={!commitMessage.trim() || stagedCount === 0}
           >
@@ -125,7 +125,7 @@ export function SourceControlPane({ projectId: _projectId }: SourceControlPanePr
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 gap-1 rounded-none border border-border px-2 font-mono text-[10px] uppercase tracking-[0.18em]"
+            className="h-7 gap-1 rounded-md border border-border px-2 font-mono text-[10px] uppercase tracking-[0.18em]"
             disabled
             title="Push integration not yet wired"
           >
@@ -135,7 +135,7 @@ export function SourceControlPane({ projectId: _projectId }: SourceControlPanePr
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 gap-1 rounded-none border border-border px-2 font-mono text-[10px] uppercase tracking-[0.18em]"
+            className="h-7 gap-1 rounded-md border border-border px-2 font-mono text-[10px] uppercase tracking-[0.18em]"
             disabled={totalChanges === 0}
             title="Revert flow coming next"
           >
@@ -145,7 +145,7 @@ export function SourceControlPane({ projectId: _projectId }: SourceControlPanePr
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 gap-1 rounded-none border border-border px-2 font-mono text-[10px] uppercase tracking-[0.18em]"
+            className="h-7 gap-1 rounded-md border border-border px-2 font-mono text-[10px] uppercase tracking-[0.18em]"
             disabled
             title="Pull request creation is not wired from this pane yet"
           >
@@ -256,7 +256,7 @@ export function SourceControlPane({ projectId: _projectId }: SourceControlPanePr
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 w-full gap-1.5 rounded-none border border-border font-mono text-[10px] uppercase tracking-widest"
+            className="h-7 w-full gap-1.5 rounded-md border border-border font-mono text-[10px] uppercase tracking-widest"
             onClick={handleStageAll}
           >
             Stage All ({unstagedCount + untrackedCount})
@@ -284,7 +284,7 @@ export function SourceControlPane({ projectId: _projectId }: SourceControlPanePr
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 flex-1 gap-1.5 rounded-none border border-border font-mono text-[10px] uppercase tracking-widest"
+              className="h-7 flex-1 gap-1.5 rounded-md border border-border font-mono text-[10px] uppercase tracking-widest"
               onClick={handleCommit}
               disabled={!commitMessage.trim()}
             >
@@ -537,7 +537,7 @@ function GitHubSourceControlState({
         <Button
           variant="ghost"
           size="sm"
-          className="mb-2 h-7 w-full rounded-none border border-border font-mono text-[10px] uppercase tracking-widest"
+          className="mb-2 h-7 w-full rounded-md border border-border font-mono text-[10px] uppercase tracking-widest"
           onClick={handleSyncFromGitHub}
           disabled={isSyncing}
         >
@@ -547,7 +547,7 @@ function GitHubSourceControlState({
           <Button
             variant="ghost"
             size="sm"
-            className="mb-2 h-7 w-full rounded-none border border-border font-mono text-[10px] uppercase tracking-widest"
+            className="mb-2 h-7 w-full rounded-md border border-border font-mono text-[10px] uppercase tracking-widest"
             onClick={handleCreateTaskBranch}
             disabled={isCreatingBranch}
           >
@@ -566,7 +566,7 @@ function GitHubSourceControlState({
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 w-full rounded-none border border-border font-mono text-[10px] uppercase tracking-widest"
+              className="h-7 w-full rounded-md border border-border font-mono text-[10px] uppercase tracking-widest"
               onClick={handleCommitWorkingCopy}
               disabled={!commitMessage.trim() || isCommitting}
             >
@@ -587,7 +587,7 @@ function GitHubSourceControlState({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 w-full rounded-none border border-border font-mono text-[10px] uppercase tracking-widest"
+                  className="h-7 w-full rounded-md border border-border font-mono text-[10px] uppercase tracking-widest"
                   onClick={handleConfirmPush}
                   disabled={isPushing}
                 >
@@ -598,7 +598,7 @@ function GitHubSourceControlState({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 w-full rounded-none border border-border font-mono text-[10px] uppercase tracking-widest"
+                className="h-7 w-full rounded-md border border-border font-mono text-[10px] uppercase tracking-widest"
                 onClick={() => setShowPushConfirm(true)}
               >
                 Confirm Push to GitHub
@@ -610,7 +610,7 @@ function GitHubSourceControlState({
           <Button
             variant="ghost"
             size="sm"
-            className="mb-2 h-7 w-full rounded-none border border-border font-mono text-[10px] uppercase tracking-widest"
+            className="mb-2 h-7 w-full rounded-md border border-border font-mono text-[10px] uppercase tracking-widest"
             onClick={handleCreatePrDraft}
             disabled={isDraftingPr}
           >
@@ -627,7 +627,7 @@ function GitHubSourceControlState({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 w-full rounded-none border border-border font-mono text-[10px] uppercase tracking-widest"
+                className="h-7 w-full rounded-md border border-border font-mono text-[10px] uppercase tracking-widest"
                 onClick={handleConfirmCreatePr}
                 disabled={isCreatingPr}
               >
@@ -646,7 +646,7 @@ function GitHubSourceControlState({
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 w-full rounded-none border border-border font-mono text-[10px] uppercase tracking-widest"
+          className="h-7 w-full rounded-md border border-border font-mono text-[10px] uppercase tracking-widest"
           disabled
           title="GitHub review loop actions stay in this pane"
         >

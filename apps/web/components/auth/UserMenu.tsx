@@ -44,24 +44,24 @@ export function UserMenu({ compact = false, className }: UserMenuProps = {}) {
           variant="ghost"
           className={cn(
             compact ? 'h-9 w-9 sm:h-9 sm:w-9' : 'h-11 w-11',
-            'rounded-none p-0',
+            'rounded-md p-0',
             className
           )}
           aria-label="User menu"
         >
-          <Avatar className={cn(compact ? 'h-8 w-8 sm:h-8 sm:w-8' : 'h-11 w-11', 'rounded-none')}>
+          <Avatar className={cn(compact ? 'h-8 w-8 sm:h-8 sm:w-8' : 'h-11 w-11', 'rounded-md')}>
             <AvatarImage src={avatarSrc} alt={avatarAlt} />
-            <AvatarFallback className="rounded-none">
+            <AvatarFallback className="rounded-md">
               <User className={cn(compact ? 'h-3.5 w-3.5' : 'h-4 w-4')} />
             </AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56 rounded-none border-border">
+      <DropdownMenuContent align="end" className="w-56 rounded-md border-border">
         <div className="flex items-center gap-2 p-2">
-          <Avatar className="h-9 w-9 rounded-none border border-border">
+          <Avatar className="h-9 w-9 rounded-md border border-border">
             <AvatarImage src={avatarSrc} alt={avatarAlt} />
-            <AvatarFallback className="rounded-none">
+            <AvatarFallback className="rounded-md">
               <User className="h-4 w-4" />
             </AvatarFallback>
           </Avatar>
@@ -73,21 +73,21 @@ export function UserMenu({ compact = false, className }: UserMenuProps = {}) {
           </div>
         </div>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild className="cursor-pointer rounded-none">
+        <DropdownMenuItem asChild className="cursor-pointer rounded-md">
           <Link href="/settings">
             <Settings className="mr-2 h-4 w-4" />
             Settings
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem
-          className="cursor-pointer rounded-none"
+          className="cursor-pointer rounded-md"
           onSelect={() => router.push('/settings#llm')}
         >
           <BookOpen className="mr-2 h-4 w-4" />
           LLM Providers
         </DropdownMenuItem>
         {isAdmin && (
-          <DropdownMenuItem asChild className="cursor-pointer rounded-none">
+          <DropdownMenuItem asChild className="cursor-pointer rounded-md">
             <Link href="/admin">
               <Shield className="mr-2 h-4 w-4" />
               Admin Dashboard
@@ -95,12 +95,12 @@ export function UserMenu({ compact = false, className }: UserMenuProps = {}) {
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={openCommandPalette} className="cursor-pointer rounded-none">
+        <DropdownMenuItem onSelect={openCommandPalette} className="cursor-pointer rounded-md">
           <Keyboard className="mr-2 h-4 w-4" />
           Keyboard Shortcuts
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => signOut()} className="cursor-pointer rounded-none">
+        <DropdownMenuItem onClick={() => signOut()} className="cursor-pointer rounded-md">
           <LogOut className="mr-2 h-4 w-4" />
           Sign out
         </DropdownMenuItem>

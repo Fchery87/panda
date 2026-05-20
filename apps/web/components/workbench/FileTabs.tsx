@@ -217,7 +217,7 @@ export function FileTabs({
                 <button
                   type="button"
                   className={cn(
-                    'ml-0.5 flex h-6 w-6 items-center justify-center rounded-none',
+                    'ml-0.5 flex h-6 w-6 items-center justify-center rounded-md',
                     'opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100',
                     isActive && 'opacity-60'
                   )}
@@ -240,7 +240,7 @@ export function FileTabs({
             <button
               type="button"
               onClick={onOpenAgentManager}
-              className="flex h-8 items-center gap-1.5 rounded-none border border-transparent px-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:border-border hover:bg-surface-2 hover:text-foreground"
+              className="flex h-8 items-center gap-1.5 rounded-md border border-transparent px-2 font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:border-border hover:bg-surface-2 hover:text-foreground"
               title="Open Agent Manager"
             >
               <IconBot className="h-3.5 w-3.5" />

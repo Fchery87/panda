@@ -33,7 +33,7 @@ export function BottomDock({
   if (!isOpen) {
     return (
       <div
-        className="dock-collapsed-bar border-foreground bg-[oklch(16%_0.018_240)] px-3 text-[oklch(86%_0.018_145)]"
+        className="dock-collapsed-bar px-3"
         onClick={onToggle}
         role="button"
         tabIndex={0}
@@ -50,7 +50,7 @@ export function BottomDock({
             <span key={tab.id} className="flex items-center gap-1">
               <span
                 className={cn(
-                  tab.id === activeTab ? 'text-primary' : 'text-[oklch(86%_0.018_145/0.65)]'
+                  tab.id === activeTab ? 'text-primary' : 'text-muted-foreground'
                 )}
               >
                 {tab.label}
@@ -63,7 +63,7 @@ export function BottomDock({
             </span>
           ))}
         </div>
-        <span className="ml-auto font-mono text-[10px] text-[oklch(86%_0.018_145/0.55)]">
+        <span className="ml-auto font-mono text-[10px] text-muted-foreground">
           <kbd className="bg-muted px-1">Ctrl</kbd>+<kbd className="bg-muted px-1">J</kbd>
         </span>
       </div>
@@ -71,13 +71,13 @@ export function BottomDock({
   }
 
   return (
-    <div className="flex min-h-0 flex-col border-t border-foreground bg-[oklch(16%_0.018_240)] text-[oklch(86%_0.018_145)]">
+    <div className="flex min-h-0 flex-col border-t border-border bg-surface-1 text-foreground">
       {/* Tab bar */}
       <TabBar
         tabs={tabs}
         activeTab={activeTab}
         onTabChange={onTabChange}
-        className="border-b-background/20 h-9 bg-[oklch(16%_0.018_240)]"
+        className="border-b-border/50 h-9 bg-surface-1"
         trailingContent={
           <button
             type="button"

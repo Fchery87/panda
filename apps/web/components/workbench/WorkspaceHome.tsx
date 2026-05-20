@@ -166,7 +166,7 @@ export function WorkspaceHome({
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="shadow-sharp-md mb-4 border border-foreground bg-background"
+          className="shadow-sharp-md mb-4 border border-border bg-background"
         >
           <div className="bg-foreground/80 grid gap-px">
             <div className="space-y-2 bg-background p-3">
@@ -310,9 +310,9 @@ export function WorkspaceHome({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.06 }}
-            className="mb-4 border border-foreground bg-card"
+            className="mb-4 border border-border bg-card"
           >
-            <div className="border-b border-foreground bg-secondary px-3 py-2">
+            <div className="border-b border-border bg-secondary px-3 py-2">
               <h2
                 id="resume-recovery-title"
                 className="font-mono text-[10px] uppercase tracking-[0.24em] text-primary"
@@ -346,9 +346,9 @@ export function WorkspaceHome({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.04 }}
-            className="mb-4 border border-foreground bg-card"
+            className="mb-4 border border-border bg-card"
           >
-            <div className="border-b border-foreground bg-secondary px-3 py-2">
+            <div className="border-b border-border bg-secondary px-3 py-2">
               <h2
                 id="first-run-path-title"
                 className="font-mono text-[10px] uppercase tracking-[0.24em] text-primary"
@@ -388,8 +388,8 @@ export function WorkspaceHome({
           transition={{ duration: 0.3, delay: 0.07 }}
           className="mb-4 grid gap-4 xl:grid-cols-2"
         >
-          <div className="border border-foreground bg-card">
-            <div className="border-b border-foreground bg-secondary px-3 py-2">
+          <div className="border border-border bg-card">
+            <div className="border-b border-border bg-secondary px-3 py-2">
               <h2
                 id="workspace-map-title"
                 className="font-mono text-[10px] uppercase tracking-[0.24em] text-primary"
@@ -408,8 +408,8 @@ export function WorkspaceHome({
               ))}
             </div>
           </div>
-          <div className="border border-foreground bg-card">
-            <div className="border-b border-foreground bg-secondary px-3 py-2">
+          <div className="border border-border bg-card">
+            <div className="border-b border-border bg-secondary px-3 py-2">
               <h2 className="font-mono text-[10px] uppercase tracking-[0.24em] text-primary">
                 Review Checklist
               </h2>
@@ -432,9 +432,9 @@ export function WorkspaceHome({
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.075 }}
-          className="mb-4 border border-foreground bg-card"
+          className="mb-4 border border-border bg-card"
         >
-          <div className="border-b border-foreground bg-secondary px-3 py-2">
+          <div className="border-b border-border bg-secondary px-3 py-2">
             <h2
               id="command-deck-title"
               className="font-mono text-[10px] uppercase tracking-[0.24em] text-primary"
@@ -461,9 +461,9 @@ export function WorkspaceHome({
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.08 }}
-          className="mb-4 border border-foreground bg-card"
+          className="mb-4 border border-border bg-card"
         >
-          <div className="border-b border-foreground bg-secondary px-3 py-2">
+          <div className="border-b border-border bg-secondary px-3 py-2">
             <h2 className="font-mono text-[10px] uppercase tracking-[0.24em] text-primary">
               Session Timeline
             </h2>

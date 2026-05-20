@@ -63,7 +63,7 @@ export function ActiveAgentsPane({
           <Button
             variant="outline"
             size="sm"
-            className="h-7 rounded-none font-mono text-[10px] uppercase tracking-widest"
+            className="h-7 rounded-md font-mono text-[10px] uppercase tracking-widest"
             onClick={onStartAgent}
           >
             Start Agent

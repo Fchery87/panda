@@ -60,7 +60,7 @@ export function TaskHeader({
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 rounded-none px-2 font-mono text-[10px] uppercase tracking-widest"
+            className="h-6 rounded-md px-2 font-mono text-[10px] uppercase tracking-widest"
             onClick={onPause}
           >
             Pause
@@ -70,7 +70,7 @@ export function TaskHeader({
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 rounded-none px-2 font-mono text-[10px] uppercase tracking-widest text-destructive hover:text-destructive"
+            className="h-6 rounded-md px-2 font-mono text-[10px] uppercase tracking-widest text-destructive hover:text-destructive"
             onClick={onStop}
           >
             Stop
@@ -80,7 +80,7 @@ export function TaskHeader({
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 gap-1 rounded-none px-2 font-mono text-[10px] uppercase tracking-widest"
+            className="h-6 gap-1 rounded-md px-2 font-mono text-[10px] uppercase tracking-widest"
             onClick={onRetry}
           >
             <IconRefresh className="h-3 w-3" />
@@ -92,7 +92,7 @@ export function TaskHeader({
         {changedFilesCount > 0 && status !== 'running' && onReviewChanges && (
           <Button
             size="sm"
-            className="hover:bg-primary/90 h-6 gap-1.5 rounded-none bg-primary px-3 font-mono text-[10px] uppercase tracking-widest text-primary-foreground"
+            className="hover:bg-primary/90 h-6 gap-1.5 rounded-md bg-primary px-3 font-mono text-[10px] uppercase tracking-widest text-primary-foreground"
             onClick={onReviewChanges}
           >
             <IconDiff className="h-3 w-3" />

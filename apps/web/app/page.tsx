@@ -58,16 +58,16 @@ export default function Home() {
       <PublicNav showEducationLink />
 
       <section className="px-3 pb-14 pt-20 sm:px-5 lg:px-8 lg:pb-20 lg:pt-24">
-        <div className="bg-background/92 shadow-sharp-lg mx-auto max-w-[1500px] border border-foreground">
+        <div className="bg-background/92 shadow-sharp-lg mx-auto max-w-[1500px] border border-border">
           <nav
-            className="grid border-b border-foreground bg-card sm:grid-cols-4"
+            className="grid border-b border-border bg-card sm:grid-cols-4"
             aria-label="Panda workflow modes"
           >
             {heroSignals.map((mode, index) => (
               <div
                 key={mode}
                 className={cn(
-                  'flex min-h-11 items-center justify-between border-b border-foreground px-4 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground sm:border-b-0 sm:border-r',
+                  'flex min-h-11 items-center justify-between border-b border-border px-4 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground sm:border-b-0 sm:border-r',
                   index === 1 && 'bg-primary/10 text-foreground',
                   index === heroSignals.length - 1 && 'sm:border-r-0'
                 )}
@@ -99,7 +99,7 @@ export default function Home() {
                 </p>
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                   <Link href="/projects">
-                    <Button className="h-11 rounded-none border border-foreground px-5 font-mono text-xs uppercase tracking-[0.16em] shadow-none">
+                    <Button className="h-11 rounded-none border border-border px-5 font-mono text-xs uppercase tracking-[0.16em] shadow-none">
                       {isAuthenticated ? 'Open Workbench' : 'Start Workbench'}
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
@@ -107,7 +107,7 @@ export default function Home() {
                   <Link href="/education">
                     <Button
                       variant="outline"
-                      className="h-11 rounded-none border-foreground bg-card px-5 font-mono text-xs uppercase tracking-[0.16em]"
+                      className="h-11 rounded-none border-border bg-card px-5 font-mono text-xs uppercase tracking-[0.16em]"
                     >
                       Read Workflow
                     </Button>
@@ -195,10 +195,10 @@ export default function Home() {
 
 function WorkbenchPreview() {
   return (
-    <div className="shadow-sharp-md min-h-[560px] overflow-hidden border border-foreground bg-background">
-      <div className="grid min-h-12 items-center border-b border-foreground bg-secondary px-3 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground sm:grid-cols-[180px_1fr_auto]">
+    <div className="shadow-sharp-md min-h-[560px] overflow-hidden border border-border bg-background">
+      <div className="grid min-h-12 items-center border-b border-border bg-secondary px-3 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground sm:grid-cols-[180px_1fr_auto]">
         <div className="flex items-center gap-2 border-b border-border py-3 sm:border-b-0 sm:border-r">
-          <span className="h-2 w-2 border border-foreground bg-primary" />
+          <span className="h-2 w-2 border border-border bg-primary" />
           Project / panda
         </div>
         <div className="hidden px-3 sm:block">Search files, commands, settings</div>
@@ -225,7 +225,7 @@ function WorkbenchPreview() {
           ))}
         </div>
 
-        <div className="bg-secondary/70 hidden border-r border-foreground md:block">
+        <div className="bg-secondary/70 hidden border-r border-border md:block">
           <PanelHeader label="Files" />
           {['app/page.tsx', 'components/workbench', 'convex/runs.ts', 'docs/DESIGN.md'].map(
             (file, index) => (
@@ -268,7 +268,7 @@ function WorkbenchPreview() {
           </div>
         </div>
 
-        <div className="hidden border-l border-foreground bg-background md:block">
+        <div className="hidden border-l border-border bg-background md:block">
           <PanelHeader label="Inspector" />
           <div className="grid gap-px bg-border">
             {[
@@ -295,7 +295,7 @@ function WorkbenchPreview() {
         </div>
       </div>
 
-      <div className="grid border-t border-foreground bg-[oklch(16%_0.018_240)] text-[oklch(86%_0.018_145)] sm:grid-cols-[1fr_220px]">
+      <div className="grid border-t border-border bg-card text-muted-foreground sm:grid-cols-[1fr_220px]">
         <div className="p-3 font-mono text-[11px]">
           <Terminal className="mr-2 inline h-3.5 w-3.5" aria-hidden="true" />
           bun run typecheck && bun run lint

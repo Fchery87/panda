@@ -72,7 +72,7 @@ export function TopBarControls({
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 rounded-none px-2 font-mono text-[10px] uppercase tracking-widest"
+              className="h-7 rounded-md px-2 font-mono text-[10px] uppercase tracking-widest"
               onClick={onStopRuntime}
             >
               Stop App
@@ -81,7 +81,7 @@ export function TopBarControls({
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 rounded-none px-2 font-mono text-[10px] uppercase tracking-widest"
+              className="h-7 rounded-md px-2 font-mono text-[10px] uppercase tracking-widest"
               onClick={onStartRuntime}
             >
               Start App
@@ -127,7 +127,7 @@ export function TopBarControls({
       {/* New Task CTA */}
       <Button
         size="sm"
-        className="hover:bg-primary/90 h-7 gap-1.5 rounded-none bg-primary px-3 font-mono text-[10px] uppercase tracking-widest text-primary-foreground"
+        className="hover:bg-primary/90 h-7 gap-1.5 rounded-md bg-primary px-3 font-mono text-[10px] uppercase tracking-widest text-primary-foreground"
         onClick={onNewTask}
       >
         <IconQuickAction className="h-3.5 w-3.5" />

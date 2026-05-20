@@ -73,21 +73,21 @@ export function SidebarRail({
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="flex h-full w-12 flex-shrink-0 flex-col bg-foreground text-background">
+      <div className="flex h-full w-12 flex-shrink-0 flex-col items-center border-r border-border bg-sidebar-background">
         {/* Projects link at top */}
-        <div className="border-background/20 flex flex-col border-b">
+        <div className="flex flex-col border-b border-border">
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 type="button"
                 onClick={onHomeClick}
-                className="text-background/70 flex h-11 items-center justify-center transition-colors duration-150 hover:bg-primary hover:text-foreground"
+                className="flex h-11 items-center justify-center text-sidebar-foreground/70 transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 aria-label="Home"
               >
                 <IconHome className="h-4.5 w-4.5" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="font-mono text-xs">
+            <TooltipContent side="right" className="text-xs">
               Home
             </TooltipContent>
           </Tooltip>
@@ -96,13 +96,13 @@ export function SidebarRail({
             <TooltipTrigger asChild>
               <Link
                 href="/projects"
-                className="border-background/20 text-background/70 flex h-11 items-center justify-center border-t transition-colors duration-150 hover:bg-primary hover:text-foreground"
+                className="flex h-11 items-center justify-center border-t border-sidebar-border text-sidebar-foreground/70 transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 aria-label="Projects"
               >
                 <IconProjects className="h-4.5 w-4.5" />
               </Link>
             </TooltipTrigger>
-            <TooltipContent side="right" className="font-mono text-xs">
+            <TooltipContent side="right" className="text-xs">
               Projects
             </TooltipContent>
           </Tooltip>
@@ -123,10 +123,10 @@ export function SidebarRail({
                     type="button"
                     onClick={() => handleItemClick(item.id)}
                     className={cn(
-                      'border-background/15 relative grid h-11 place-items-center border-b transition-colors duration-100',
+                      'relative grid h-11 place-items-center transition-colors duration-100',
                       isActive
-                        ? 'bg-primary text-foreground'
-                        : 'text-background/70 hover:bg-background/10 hover:text-background'
+                        ? 'bg-sidebar-primary/10 text-sidebar-primary'
+                        : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground'
                     )}
                     aria-label={item.label}
                     aria-pressed={isActive}
@@ -135,7 +135,7 @@ export function SidebarRail({
                     {showSessionSignal ? (
                       <span
                         className={cn(
-                          'absolute right-1.5 top-1.5 h-1.5 w-1.5 border border-background',
+                          'absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full border border-card',
                           sessionSignal.state === 'running' && 'animate-pulse bg-primary',
                           sessionSignal.state === 'blocked' && 'bg-destructive',
                           sessionSignal.state === 'review' && 'bg-[oklch(var(--status-warning))]',
@@ -145,7 +145,7 @@ export function SidebarRail({
                     ) : null}
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="font-mono text-xs">
+                <TooltipContent side="right" className="text-xs">
                   {item.label}
                   {showSessionSignal ? (
                     <span className="ml-2 text-muted-foreground">
@@ -166,18 +166,18 @@ export function SidebarRail({
         <div className="flex-1" />
 
         {/* Bottom section - Settings */}
-        <div className="border-background/20 flex flex-col border-t py-1">
+        <div className="flex flex-col border-t border-border py-1">
           <Tooltip>
             <TooltipTrigger asChild>
               <Link
                 href="/settings"
-                className="text-background/70 border-background/15 hover:bg-background/10 flex h-11 items-center justify-center border-b transition-colors duration-100 hover:text-background"
+                className="flex h-11 items-center justify-center text-sidebar-foreground/60 transition-colors duration-100 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                 aria-label="Settings"
               >
                 <IconSettings className="h-[18px] w-[18px]" />
               </Link>
             </TooltipTrigger>
-            <TooltipContent side="right" className="font-mono text-xs">
+            <TooltipContent side="right" className="text-xs">
               Settings
             </TooltipContent>
           </Tooltip>

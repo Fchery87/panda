@@ -13,10 +13,10 @@ interface PublicNavProps {
 export function PublicNav({ showEducationLink = false }: PublicNavProps) {
   return (
     <nav className="fixed left-0 right-0 top-0 z-50 px-3 pt-3 sm:px-5 lg:px-8">
-      <div className="shadow-sharp-sm bg-card/95 mx-auto grid h-14 max-w-[1500px] grid-cols-[auto_1fr_auto] border border-foreground text-foreground">
+      <div className="shadow-sharp-sm bg-card/95 mx-auto grid h-14 max-w-[1500px] grid-cols-[auto_1fr_auto] border border-border text-foreground">
         <Link
           href="/"
-          className="hover:bg-background/70 flex items-center border-r border-foreground px-4 transition-colors sm:px-5"
+          className="hover:bg-background/70 flex items-center border-r border-border px-4 transition-colors sm:px-5"
         >
           <PandaLogo size="md" variant="full" />
         </Link>
@@ -41,12 +41,12 @@ export function PublicNav({ showEducationLink = false }: PublicNavProps) {
           </a>
         </div>
 
-        <div className="flex items-center border-l border-foreground">
+        <div className="flex items-center border-l border-border">
           <div className="hidden h-full items-center border-r border-border px-2 sm:flex">
             <ThemeToggle />
           </div>
           <Link href="/projects" className="h-full">
-            <Button className="h-full rounded-none border-0 px-4 font-mono text-xs uppercase tracking-[0.16em] shadow-none sm:px-5">
+            <Button className="h-full rounded-md border-0 px-4 font-mono text-xs uppercase tracking-[0.16em] shadow-none sm:px-5">
               Launch App
               <ArrowRight className="ml-2" size={14} />
             </Button>

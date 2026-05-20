@@ -2,129 +2,235 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * ═══════════════════════════════════════════════════════════════════
+ *  PANDA — "Neutral Precision" Design System
+ *  Inspired by Cursor 2.0 · Antigravity 2.0 · 2026 IDE standards
+ *
+ *  Philosophy:
+ *  - Clean chromatic-neutral backgrounds (not warm cream, not cold blue)
+ *  - Orange accent reserved ONLY for active states & primary CTAs
+ *  - Ultra-subtle borders — visible where needed, invisible where not
+ *  - Three crisp surface elevations with clear hierarchy
+ *  - Both light and dark modes designed, not auto-inverted
+ * ═══════════════════════════════════════════════════════════════════
+ */
+
 @layer base {
   :root {
-    --background: 98.18% 0.0054 95.1;
-    --foreground: 19.08% 0.002 106.59;
-    --card: 93.57% 0.0161 82.79;
-    --card-foreground: 19.08% 0.002 106.59;
-    --popover: 95.68% 0.0119 79.78;
-    --popover-foreground: 19.08% 0.002 106.59;
-    --primary: 55.53% 0.1455 49;
-    --primary-foreground: 98.18% 0.0054 95.1;
-    --secondary: 95.68% 0.0119 79.78;
-    --secondary-foreground: 19.08% 0.002 106.59;
-    --muted: 95.68% 0.0119 79.78;
-    --muted-foreground: 52.42% 0.0096 91.56;
-    --accent: 90.92% 0.0207 81.78;
-    --accent-foreground: 19.08% 0.002 106.59;
-    --destructive: 57.04% 0.1649 23.96;
-    --destructive-foreground: 98.18% 0.0054 95.1;
-    --border: 90.72% 0.0122 67.67;
-    --input: 90.72% 0.0122 67.67;
-    --ring: 55.53% 0.1455 49;
-    --radius: 0px;
-    --surface-0: 98.18% 0.0054 95.1;
-    --surface-1: 93.57% 0.0161 82.79;
-    --surface-2: 95.68% 0.0119 79.78;
-    --surface-3: 90.92% 0.0207 81.78;
-    --chart-1: 55.53% 0.1455 49;
-    --chart-2: 72.13% 0.0918 179;
-    --chart-3: 77.16% 0.1212 67.39;
-    --chart-4: 52.42% 0.0096 91.56;
-    --chart-5: 57.04% 0.1649 23.96;
-    --sidebar-background: 20.5% 0.0042 84.59;
-    --sidebar-foreground: 98.18% 0.0054 95.1;
-    --sidebar-primary: 55.53% 0.1455 49;
-    --sidebar-primary-foreground: 98.18% 0.0054 95.1;
-    --sidebar-accent: 25.72% 0.0063 78.21;
-    --sidebar-accent-foreground: 98.18% 0.0054 95.1;
-    --sidebar-border: 33.75% 0.0126 87.56;
-    --sidebar-ring: 55.53% 0.1455 49;
+    /* ── Core Palette ──────────────────────────────────────────
+     *  Light: Clean neutral with the faintest warm undertone
+     *  This is NOT cream — it's a carefully tuned off-white
+     *  that feels warm without looking parchment-y.        */
 
-    /* Status colors */
-    --status-success: 70.85% 0.1343 149.41;
-    --status-error: 57.04% 0.1649 23.96;
-    --status-warning: 73.5% 0.1462 84.27;
-    --status-info: 72.13% 0.0918 179;
-    --status-online: 70.85% 0.1343 149.41;
+    --background: 99.07% 0.003 270;
+    --foreground: 14.5% 0.005 270;
 
-    /* Terminal semantic colors */
-    --terminal-success: 85.84% 0.0192 75.3;
-    --terminal-error: 76% 0.12 25;
-    --terminal-warning: 77.16% 0.1212 67.39;
+    /* Cards: barely-there elevation, not a different color */
+    --card: 97.5% 0.003 270;
+    --card-foreground: 14.5% 0.005 270;
 
-    /* Diff semantic colors */
-    --diff-added-fg: 42% 0.11 149.41;
-    --diff-added-bg: 95% 0.035 149.41 / 0.68;
-    --diff-removed-fg: 42% 0.09 23.96;
-    --diff-removed-bg: 96% 0.035 23.96 / 0.72;
+    /* Popover: matches card for consistency */
+    --popover: 97.5% 0.003 270;
+    --popover-foreground: 14.5% 0.005 270;
 
-    /* Interactive states */
-    --interactive-hover: 55.53% 0.1455 49;
-    --interactive-selected: 55.53% 0.1455 49;
+    /* ── Brand Accent ──────────────────────────────────────────
+     *  Panda orange — used SPARINGLY. Active states, primary
+     *  CTAs, selected items, proof markers only.              */
+
+    --primary: 63.5% 0.17 40;
+    --primary-foreground: 99.07% 0.003 270;
+
+    /* Secondary: subtle container tint */
+    --secondary: 95.5% 0.004 270;
+    --secondary-foreground: 14.5% 0.005 270;
+
+    /* Muted: quiet backgrounds for metadata areas */
+    --muted: 95.5% 0.004 270;
+    --muted-foreground: 50% 0.008 270;
+
+    /* Accent hover: slightly warmer neutral for hover states */
+    --accent: 93.5% 0.005 270;
+    --accent-foreground: 14.5% 0.005 270;
+
+    /* Destructive */
+    --destructive: 55% 0.2 25;
+    --destructive-foreground: 99.07% 0.003 270;
+
+    /* ── Borders ─────────────────────────────────────────────
+     *  Subtle. Visible enough to group, quiet enough to ignore. */
+
+    --border: 91.5% 0.004 270;
+    --input: 91.5% 0.004 270;
+    --ring: 63.5% 0.17 40;
+
+    --radius: 6px;
+
+    /* ── Surface Elevations ────────────────────────────────────
+     *  0 = canvas (app bg)
+     *  1 = panels, cards (barely lifted)
+     *  2 = raised surfaces (hover, active flyout)
+     *  3 = popovers, overlays (most lifted)                    */
+
+    --surface-0: 99.07% 0.003 270;
+    --surface-1: 97.5% 0.003 270;
+    --surface-2: 95.5% 0.004 270;
+    --surface-3: 93.5% 0.005 270;
+
+    /* ── Charts ──────────────────────────────────────────────── */
+
+    --chart-1: 63.5% 0.17 40;
+    --chart-2: 62% 0.1 220;
+    --chart-3: 65% 0.13 160;
+    --chart-4: 50% 0.008 270;
+    --chart-5: 55% 0.2 25;
+
+    /* ── Sidebar ───────────────────────────────────────────────
+     *  Sidebar is slightly recessed — darker than the canvas
+     *  to create a natural visual hierarchy.                    */
+
+    --sidebar-background: 96.5% 0.003 270;
+    --sidebar-foreground: 14.5% 0.005 270;
+    --sidebar-primary: 63.5% 0.17 40;
+    --sidebar-primary-foreground: 99.07% 0.003 270;
+    --sidebar-accent: 93.5% 0.005 270;
+    --sidebar-accent-foreground: 14.5% 0.005 270;
+    --sidebar-border: 91.5% 0.004 270;
+    --sidebar-ring: 63.5% 0.17 40;
+
+    /* ── Status Colors ─────────────────────────────────────────
+     *  Refined, lower saturation than before — clear but
+     *  not garish. They signal without shouting.                */
+
+    --status-success: 55% 0.12 155;
+    --status-error: 52% 0.16 25;
+    --status-warning: 68% 0.13 75;
+    --status-info: 58% 0.1 230;
+    --status-online: 55% 0.12 155;
+
+    /* ── Terminal Semantic Colors ─────────────────────────────── */
+
+    --terminal-success: 45% 0.08 155;
+    --terminal-error: 50% 0.12 25;
+    --terminal-warning: 55% 0.1 75;
+
+    /* ── Diff Semantic Colors ─────────────────────────────────── */
+
+    --diff-added-fg: 35% 0.09 155;
+    --diff-added-bg: 96% 0.02 155 / 0.6;
+    --diff-removed-fg: 35% 0.08 25;
+    --diff-removed-bg: 96% 0.02 25 / 0.6;
+
+    /* ── Interactive States ───────────────────────────────────── */
+
+    --interactive-hover: 63.5% 0.17 40;
+    --interactive-selected: 63.5% 0.17 40;
   }
 
   .dark {
-    --background: 20.5% 0.0042 84.59;
-    --foreground: 98.18% 0.0054 95.1;
-    --card: 25.72% 0.0063 78.21;
-    --card-foreground: 98.18% 0.0054 95.1;
-    --popover: 25.72% 0.0063 78.21;
-    --popover-foreground: 98.18% 0.0054 95.1;
-    --primary: 71.02% 0.1464 62.29;
-    --primary-foreground: 19.08% 0.002 106.59;
-    --secondary: 23.5% 0.0058 91.61;
-    --secondary-foreground: 98.18% 0.0054 95.1;
-    --muted: 23.5% 0.0058 91.61;
-    --muted-foreground: 69.65% 0.0106 87.49;
-    --accent: 33.75% 0.0126 87.56;
-    --accent-foreground: 98.18% 0.0054 95.1;
-    --destructive: 57.04% 0.1649 23.96;
-    --destructive-foreground: 98.18% 0.0054 95.1;
-    --border: 33.75% 0.0126 87.56;
-    --input: 33.75% 0.0126 87.56;
-    --ring: 71.02% 0.1464 62.29;
-    --radius: 0px;
-    --surface-0: 20.5% 0.0042 84.59;
-    --surface-1: 25.72% 0.0063 78.21;
-    --surface-2: 23.5% 0.0058 91.61;
-    --surface-3: 33.75% 0.0126 87.56;
-    --chart-1: 71.02% 0.1464 62.29;
-    --chart-2: 72.13% 0.0918 179;
-    --chart-3: 77.16% 0.1212 67.39;
-    --chart-4: 69.65% 0.0106 87.49;
-    --chart-5: 57.04% 0.1649 23.96;
-    --sidebar-background: 19.08% 0.002 106.59;
-    --sidebar-foreground: 98.18% 0.0054 95.1;
-    --sidebar-primary: 71.02% 0.1464 62.29;
-    --sidebar-primary-foreground: 19.08% 0.002 106.59;
-    --sidebar-accent: 23.5% 0.0058 91.61;
-    --sidebar-accent-foreground: 98.18% 0.0054 95.1;
-    --sidebar-border: 33.75% 0.0126 87.56;
-    --sidebar-ring: 71.02% 0.1464 62.29;
+    /* ── Core Palette ──────────────────────────────────────────
+     *  Dark: Deep charcoal with enough warmth to not feel
+     *  cold/blue but enough neutrality to not feel brown.
+     *  This is NOT pure black — it has dimension.               */
 
-    /* Status colors */
-    --status-success: 70.85% 0.1343 149.41;
-    --status-error: 57.04% 0.1649 23.96;
-    --status-warning: 77.16% 0.1212 67.39;
-    --status-info: 72.13% 0.0918 179;
-    --status-online: 70.85% 0.1343 149.41;
+    --background: 13% 0.005 270;
+    --foreground: 93% 0.004 270;
 
-    /* Terminal semantic colors */
-    --terminal-success: 85.84% 0.0192 75.3;
-    --terminal-error: 78% 0.12 23.96;
-    --terminal-warning: 77.16% 0.1212 67.39;
+    /* Cards: barely lighter — creates depth without rings */
+    --card: 16.5% 0.005 270;
+    --card-foreground: 93% 0.004 270;
 
-    /* Diff semantic colors */
-    --diff-added-fg: 85.84% 0.0192 75.3;
-    --diff-added-bg: 32% 0.08 149.41 / 0.36;
-    --diff-removed-fg: 84% 0.07 23.96;
-    --diff-removed-bg: 42% 0.09 23.96 / 0.35;
+    /* Popover */
+    --popover: 16.5% 0.005 270;
+    --popover-foreground: 93% 0.004 270;
 
-    /* Interactive states */
-    --interactive-hover: 71.02% 0.1464 62.29;
-    --interactive-selected: 71.02% 0.1464 62.29;
+    /* ── Brand Accent ──────────────────────────────────────────
+     *  Orange is slightly brighter/lighter in dark mode
+     *  to maintain the same perceived vibrancy.                 */
+
+    --primary: 72% 0.165 55;
+    --primary-foreground: 13% 0.005 270;
+
+    /* Secondary: subtle surface for quiet areas */
+    --secondary: 18% 0.005 270;
+    --secondary-foreground: 93% 0.004 270;
+
+    /* Muted */
+    --muted: 18% 0.005 270;
+    --muted-foreground: 60% 0.01 270;
+
+    /* Accent hover */
+    --accent: 22% 0.006 270;
+    --accent-foreground: 93% 0.004 270;
+
+    /* Destructive */
+    --destructive: 58% 0.18 25;
+    --destructive-foreground: 99.07% 0.003 270;
+
+    /* ── Borders ─────────────────────────────────────────────
+     *  Dark borders are slightly more visible than light
+     *  mode borders to maintain edge definition.                */
+
+    --border: 24% 0.006 270;
+    --input: 24% 0.006 270;
+    --ring: 72% 0.165 55;
+
+    --radius: 6px;
+
+    /* ── Surface Elevations ──────────────────────────────────── */
+
+    --surface-0: 13% 0.005 270;
+    --surface-1: 16.5% 0.005 270;
+    --surface-2: 18% 0.005 270;
+    --surface-3: 22% 0.006 270;
+
+    /* ── Charts ──────────────────────────────────────────────── */
+
+    --chart-1: 72% 0.165 55;
+    --chart-2: 62% 0.1 220;
+    --chart-3: 65% 0.13 160;
+    --chart-4: 60% 0.01 270;
+    --chart-5: 58% 0.18 25;
+
+    /* ── Sidebar ───────────────────────────────────────────────
+     *  Dark sidebar: slightly darker than canvas for depth.     */
+
+    --sidebar-background: 11% 0.005 270;
+    --sidebar-foreground: 93% 0.004 270;
+    --sidebar-primary: 72% 0.165 55;
+    --sidebar-primary-foreground: 13% 0.005 270;
+    --sidebar-accent: 18% 0.005 270;
+    --sidebar-accent-foreground: 93% 0.004 270;
+    --sidebar-border: 24% 0.006 270;
+    --sidebar-ring: 72% 0.165 55;
+
+    /* ── Status Colors ─────────────────────────────────────────
+     *  Slightly brighter in dark mode for same perceived
+     *  intensity as light mode counterparts.                    */
+
+    --status-success: 62% 0.14 155;
+    --status-error: 58% 0.18 25;
+    --status-warning: 72% 0.14 75;
+    --status-info: 64% 0.11 230;
+    --status-online: 62% 0.14 155;
+
+    /* ── Terminal Semantic Colors ─────────────────────────────── */
+
+    --terminal-success: 72% 0.06 155;
+    --terminal-error: 72% 0.12 25;
+    --terminal-warning: 75% 0.1 75;
+
+    /* ── Diff Semantic Colors ─────────────────────────────────── */
+
+    --diff-added-fg: 72% 0.06 155;
+    --diff-added-bg: 30% 0.06 155 / 0.3;
+    --diff-removed-fg: 72% 0.08 25;
+    --diff-removed-bg: 30% 0.06 25 / 0.3;
+
+    /* ── Interactive States ───────────────────────────────────── */
+
+    --interactive-hover: 72% 0.165 55;
+    --interactive-selected: 72% 0.165 55;
   }
 }
 
@@ -157,15 +263,15 @@
       'zero' 1;
   }
 
-  /* Sharp focus states - solid outline, no blur */
+  /* Sharp focus states — clean ring, no glow */
   :focus-visible {
     outline: 2px solid oklch(var(--primary));
     outline-offset: 2px;
   }
 
-  /* Selection - restrained orange highlight */
+  /* Selection — accent highlight */
   ::selection {
-    background: oklch(var(--primary) / 0.25);
+    background: oklch(var(--primary) / 0.2);
     color: inherit;
   }
 }
@@ -188,55 +294,63 @@
   }
 
   /* ═══════════════════════════════════════════════════════════
-     REFINED SHADOWS — Subtle, layered
+     REFINED SHADOWS — Soft, modern elevation
      ═══════════════════════════════════════════════════════════ */
   .shadow-sharp-sm {
-    box-shadow: 4px 4px 0 oklch(var(--foreground) / 0.08);
+    box-shadow:
+      0 1px 2px oklch(var(--foreground) / 0.04),
+      0 1px 3px oklch(var(--foreground) / 0.02);
   }
   .shadow-sharp-md {
-    box-shadow: 8px 8px 0 oklch(var(--foreground) / 0.1);
+    box-shadow:
+      0 2px 4px oklch(var(--foreground) / 0.04),
+      0 4px 8px oklch(var(--foreground) / 0.03);
   }
   .shadow-sharp-lg {
-    box-shadow: 10px 10px 0 oklch(var(--foreground) / 0.12);
+    box-shadow:
+      0 4px 6px oklch(var(--foreground) / 0.03),
+      0 10px 20px oklch(var(--foreground) / 0.04);
   }
 
   .dark .shadow-sharp-sm {
-    box-shadow: 4px 4px 0 oklch(0% 0 0 / 0.32);
+    box-shadow:
+      0 1px 2px oklch(0% 0 0 / 0.16),
+      0 1px 3px oklch(0% 0 0 / 0.1);
   }
   .dark .shadow-sharp-md {
-    box-shadow: 8px 8px 0 oklch(0% 0 0 / 0.34);
+    box-shadow:
+      0 2px 4px oklch(0% 0 0 / 0.2),
+      0 4px 8px oklch(0% 0 0 / 0.12);
   }
   .dark .shadow-sharp-lg {
-    box-shadow: 10px 10px 0 oklch(0% 0 0 / 0.38);
+    box-shadow:
+      0 4px 6px oklch(0% 0 0 / 0.2),
+      0 10px 20px oklch(0% 0 0 / 0.14);
   }
 
   /* ═══════════════════════════════════════════════════════════
-     DOT GRID PATTERN — Subtle texture
+     DOT GRID PATTERN — Subtle texture (landing page)
      ═══════════════════════════════════════════════════════════ */
   .dot-grid {
     background:
-      linear-gradient(90deg, oklch(var(--border) / 0.6) 1px, transparent 1px),
-      linear-gradient(oklch(var(--border) / 0.6) 1px, transparent 1px),
-      radial-gradient(circle at 16px 16px, oklch(var(--primary) / 0.28) 1.3px, transparent 1.4px),
+      radial-gradient(
+        circle at 16px 16px,
+        oklch(var(--foreground) / 0.06) 0.7px,
+        transparent 0.8px
+      ),
       oklch(var(--background));
-    background-size:
-      48px 48px,
-      48px 48px,
-      16px 16px,
-      auto;
+    background-size: 24px 24px, auto;
   }
 
   .dark .dot-grid {
     background:
-      linear-gradient(90deg, oklch(var(--border) / 0.42) 1px, transparent 1px),
-      linear-gradient(oklch(var(--border) / 0.42) 1px, transparent 1px),
-      radial-gradient(circle at 16px 16px, oklch(var(--primary) / 0.2) 1.3px, transparent 1.4px),
+      radial-gradient(
+        circle at 16px 16px,
+        oklch(var(--foreground) / 0.04) 0.7px,
+        transparent 0.8px
+      ),
       oklch(var(--background));
-    background-size:
-      48px 48px,
-      48px 48px,
-      16px 16px,
-      auto;
+    background-size: 24px 24px, auto;
   }
 
   /* ═══════════════════════════════════════════════════════════
@@ -257,11 +371,11 @@
      PANEL HEADER STYLE
      ═══════════════════════════════════════════════════════════ */
   .panel-header {
-    @apply border-b border-border px-3 py-2 font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground;
+    @apply border-b border-border px-3 py-2 text-xs font-medium text-muted-foreground;
   }
 
   .panel-header-compact {
-    @apply border-b border-border px-3 py-1.5 font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground;
+    @apply border-b border-border px-3 py-1.5 text-xs font-medium text-muted-foreground;
   }
 
   .panel-header-numbered::before {
@@ -270,14 +384,14 @@
   }
 
   .panel-inset {
-    box-shadow: inset 0 1px 0 oklch(var(--foreground) / 0.04);
+    box-shadow: inset 0 1px 0 oklch(var(--foreground) / 0.03);
   }
 
   /* ═══════════════════════════════════════════════════════════
-     BUTTON OVERRIDES — Sharp, clean
+     BUTTON OVERRIDES — Clean, modern
      ═══════════════════════════════════════════════════════════ */
   .btn-sharp {
-    @apply rounded-none font-medium tracking-wide;
+    @apply rounded-md font-medium tracking-wide;
   }
 
   /* ═══════════════════════════════════════════════════════════
@@ -285,12 +399,12 @@
      ═══════════════════════════════════════════════════════════ */
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: oklch(var(--muted-foreground) / 0.25) transparent;
+    scrollbar-color: oklch(var(--muted-foreground) / 0.2) transparent;
   }
 
   .scrollbar-thin::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-track {
@@ -298,12 +412,12 @@
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: oklch(var(--muted-foreground) / 0.25);
-    border-radius: 0;
+    background-color: oklch(var(--muted-foreground) / 0.2);
+    border-radius: 3px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background-color: oklch(var(--muted-foreground) / 0.4);
+    background-color: oklch(var(--muted-foreground) / 0.35);
   }
 
   .scrollbar-hide {
@@ -339,10 +453,10 @@
     color: oklch(var(--status-warning));
   }
   .bg-success {
-    background-color: oklch(var(--status-success) / 0.1);
+    background-color: oklch(var(--status-success) / 0.08);
   }
   .bg-warning {
-    background-color: oklch(var(--status-warning) / 0.1);
+    background-color: oklch(var(--status-warning) / 0.08);
   }
   .text-diff-added {
     color: oklch(var(--diff-added-fg));
@@ -364,7 +478,7 @@
      TABS AND BADGES
      ═══════════════════════════════════════════════════════════ */
   .dock-tab {
-    @apply relative flex items-center gap-1.5 border-r border-border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition-colors duration-100;
+    @apply relative flex items-center gap-1.5 border-r border-border px-3 py-1.5 text-[11px] text-muted-foreground transition-colors duration-100;
   }
   .dock-tab:hover {
     @apply text-foreground;
@@ -376,16 +490,16 @@
     box-shadow: inset 0 -2px 0 oklch(var(--primary));
   }
   .badge-sm {
-    @apply inline-flex min-w-[16px] items-center justify-center border border-border px-1 py-px font-mono text-[9px] tabular-nums leading-none;
+    @apply inline-flex min-w-[16px] items-center justify-center border border-border rounded-sm px-1 py-px text-[9px] tabular-nums leading-none;
   }
   .badge-sm[data-severity='error'] {
     border-color: oklch(var(--destructive) / 0.4);
-    background-color: oklch(var(--destructive) / 0.1);
+    background-color: oklch(var(--destructive) / 0.08);
     color: oklch(var(--destructive));
   }
   .badge-sm[data-severity='warning'] {
     border-color: oklch(var(--status-warning) / 0.4);
-    background-color: oklch(var(--status-warning) / 0.1);
+    background-color: oklch(var(--status-warning) / 0.08);
     color: oklch(var(--status-warning));
   }
   .badge-sm[data-severity='info'] {
@@ -393,31 +507,31 @@
   }
 
   .badge-md {
-    @apply inline-flex items-center gap-1 border border-border px-1.5 py-0.5 font-mono text-[10px] uppercase leading-none tracking-[0.14em];
+    @apply inline-flex items-center gap-1 border border-border rounded-sm px-1.5 py-0.5 text-[10px] leading-none;
   }
   .badge-md[data-status='running'] {
     border-color: oklch(var(--primary) / 0.4);
-    background-color: oklch(var(--primary) / 0.1);
+    background-color: oklch(var(--primary) / 0.08);
     color: oklch(var(--primary));
   }
   .badge-md[data-status='waiting'] {
     border-color: oklch(var(--status-info) / 0.4);
-    background-color: oklch(var(--status-info) / 0.1);
+    background-color: oklch(var(--status-info) / 0.08);
     color: oklch(var(--status-info));
   }
   .badge-md[data-status='review'] {
     border-color: oklch(var(--status-warning) / 0.4);
-    background-color: oklch(var(--status-warning) / 0.1);
+    background-color: oklch(var(--status-warning) / 0.08);
     color: oklch(var(--status-warning));
   }
   .badge-md[data-status='failed'] {
     border-color: oklch(var(--destructive) / 0.4);
-    background-color: oklch(var(--destructive) / 0.1);
+    background-color: oklch(var(--destructive) / 0.08);
     color: oklch(var(--destructive));
   }
   .badge-md[data-status='complete'] {
     border-color: oklch(var(--status-success) / 0.4);
-    background-color: oklch(var(--status-success) / 0.1);
+    background-color: oklch(var(--status-success) / 0.08);
     color: oklch(var(--status-success));
   }
   .badge-md[data-status='draft'] {
@@ -429,17 +543,17 @@
   }
   .state-band[data-state='running'],
   .state-band[data-state='success'] {
-    border-color: oklch(var(--primary) / 0.45);
-    background-color: oklch(var(--primary) / 0.08);
+    border-color: oklch(var(--primary) / 0.4);
+    background-color: oklch(var(--primary) / 0.06);
   }
   .state-band[data-state='blocked'],
   .state-band[data-state='approval'] {
-    border-color: oklch(var(--status-warning) / 0.45);
-    background-color: oklch(var(--status-warning) / 0.08);
+    border-color: oklch(var(--status-warning) / 0.4);
+    background-color: oklch(var(--status-warning) / 0.06);
   }
   .state-band[data-state='failure'] {
-    border-color: oklch(var(--status-error) / 0.45);
-    background-color: oklch(var(--status-error) / 0.08);
+    border-color: oklch(var(--status-error) / 0.4);
+    background-color: oklch(var(--status-error) / 0.06);
   }
 
   /* ═══════════════════════════════════════════════════════════
@@ -447,8 +561,8 @@
      ═══════════════════════════════════════════════════════════ */
   .review-banner {
     @apply flex items-center justify-between gap-3 border-b px-4 py-2 font-mono text-xs;
-    border-color: oklch(var(--status-warning) / 0.4);
-    background-color: oklch(var(--status-warning) / 0.06);
+    border-color: oklch(var(--status-warning) / 0.35);
+    background-color: oklch(var(--status-warning) / 0.05);
   }
 }
 
@@ -462,9 +576,9 @@
 
   .text-label {
     font-family: var(--font-mono), 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
+    font-size: 0.6875rem;
     font-weight: 500;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
   }
 
@@ -482,7 +596,7 @@
     @apply transition-refined;
   }
   .hover-accent-border:hover {
-    border-color: oklch(var(--primary) / 0.6);
+    border-color: oklch(var(--primary) / 0.5);
   }
 
   /* Layout transition utilities */
@@ -497,7 +611,7 @@
 
   /* Dock collapsed bar */
   .dock-collapsed-bar {
-    @apply flex h-8 cursor-pointer items-center border-t border-border font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground;
+    @apply flex h-8 cursor-pointer items-center border-t border-border text-[11px] text-muted-foreground;
   }
   .dock-collapsed-bar:hover {
     @apply text-foreground;

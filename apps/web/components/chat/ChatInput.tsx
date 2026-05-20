@@ -576,22 +576,22 @@ export function ChatInput({
   return (
     <div className="surface-2 shrink-0 border-t border-border p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
       <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2 px-1">
-        <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+        <div className="text-[10px] text-muted-foreground">
           Direct Panda
         </div>
         <div className="flex items-center gap-2">
-          <span className="bg-background/70 border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          <span className="rounded-sm border border-border bg-background/70 px-2 py-1 text-[10px] text-muted-foreground">
             @{filePaths.length} files
           </span>
           {attachments.length > 0 ? (
-            <span className="bg-background/70 border border-border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            <span className="rounded-sm border border-border bg-background/70 px-2 py-1 text-[10px] text-muted-foreground">
               {attachments.length} attachments
             </span>
           ) : null}
         </div>
       </div>
 
-      <div className="bg-background/90 relative border border-border">
+      <div className="bg-background/90 relative rounded-md border border-border">
         {/* @-mention picker */}
         {mentionQuery !== null && (
           <MentionPicker
@@ -618,9 +618,9 @@ export function ChatInput({
           disabled={isStreaming || isUploadingAttachments}
           className={cn(
             'max-h-[160px] min-h-[56px] resize-none border-0 pr-10 shadow-none sm:min-h-[64px]',
-            'rounded-none bg-background',
+            'rounded-md bg-background',
             'focus-visible:ring-0',
-            'placeholder:text-muted-foreground/50 font-mono text-[13px] leading-5'
+            'placeholder:text-muted-foreground/50 text-[13px] leading-5'
           )}
           rows={1}
         />
@@ -640,7 +640,7 @@ export function ChatInput({
                 variant="outline"
                 onClick={handleStop}
                 aria-label="Stop generation"
-                className="h-7 w-7 rounded-none border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                className="h-7 w-7 rounded-md border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
               >
                 <IconStop className="h-3 w-3" />
               </Button>
@@ -750,7 +750,7 @@ export function ChatInput({
                 architectBrainstormEnabled ? 'Disable brainstorming' : 'Enable brainstorming'
               }
               className={cn(
-                'transition-sharp flex h-6 items-center border border-border px-2 font-mono text-[10px] uppercase leading-none tracking-wide',
+                'transition-sharp flex h-6 items-center rounded-sm border border-border px-2 text-[10px] leading-none',
                 'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary',
                 'disabled:pointer-events-none disabled:opacity-50',
                 architectBrainstormEnabled
@@ -774,7 +774,7 @@ export function ChatInput({
           />
 
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            <span className="text-[10px] text-muted-foreground">
               Enter to send
             </span>
 
@@ -786,7 +786,7 @@ export function ChatInput({
                 aria-label={workspaceLoading ? 'Loading workspace…' : 'Send message'}
                 title={workspaceLoading ? 'Loading workspace…' : undefined}
                 className={cn(
-                  'transition-sharp h-6 w-6 rounded-none',
+                  'transition-sharp h-6 w-6 rounded-md',
                   hasSendContent && !workspaceLoading
                     ? 'hover:bg-primary/90 bg-primary text-primary-foreground'
                     : 'bg-secondary text-muted-foreground'

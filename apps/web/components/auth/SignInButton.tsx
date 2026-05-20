@@ -15,7 +15,7 @@ export function SignInButton({ disabled = false }: SignInButtonProps) {
     <Button
       onClick={() => signIn('google')}
       disabled={disabled}
-      className="gap-2 rounded-none font-mono"
+      className="gap-2 rounded-md font-mono"
       variant="outline"
     >
       <Chrome className="h-4 w-4" />

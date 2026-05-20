@@ -109,16 +109,16 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
     <div
       className={cn(
         'relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-card',
-        isMobileLayout ? 'border-t border-foreground' : ''
+        isMobileLayout ? 'border-t border-border' : ''
       )}
     >
-      <div className="relative flex h-8 shrink-0 items-center justify-between border-b border-foreground bg-secondary px-3">
+      <div className="relative flex h-8 shrink-0 items-center justify-between border-b border-border bg-secondary/50 px-3">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="shrink-0 font-mono text-[11px] font-medium uppercase tracking-[0.24em] text-foreground">
+          <span className="shrink-0 text-[11px] font-medium text-foreground">
             Thread · {sessionStatusLabel}
           </span>
           {sessionSummary ? (
-            <span className="min-w-0 truncate font-mono text-[10px] text-muted-foreground">
+            <span className="min-w-0 truncate text-[10px] text-muted-foreground">
               {sessionSummary}
             </span>
           ) : null}
@@ -130,43 +130,43 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 w-6 rounded-none p-0"
+                className="h-6 w-6 rounded-md p-0"
                 aria-label="Chat actions"
               >
                 <IconOverflow className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="rounded-none border-border font-mono">
+            <DropdownMenuContent align="end" className="rounded-md border-border">
               <DropdownMenuItem
                 onClick={onNewChat}
-                className="rounded-none text-xs uppercase tracking-wide"
+                className="rounded-md text-xs"
               >
                 <IconNewChat className="mr-2 h-3.5 w-3.5" />
                 New Chat
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={onToggleInspector}
-                className="rounded-none text-xs uppercase tracking-wide"
+                className="rounded-md text-xs"
               >
                 Review
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={onOpenShare}
-                className="rounded-none text-xs uppercase tracking-wide"
+                className="rounded-md text-xs"
               >
                 Share
               </DropdownMenuItem>
               {activeChatExists && (
                 <DropdownMenuItem
                   onClick={onOpenHistory}
-                  className="rounded-none text-xs uppercase tracking-wide"
+                  className="rounded-md text-xs"
                 >
                   Run History ({runHistoryCount})
                 </DropdownMenuItem>
               )}
               <DropdownMenuItem
                 onClick={onResetWorkspace}
-                className="rounded-none text-xs uppercase tracking-wide"
+                className="rounded-md text-xs"
               >
                 Clear Local Workspace
               </DropdownMenuItem>
@@ -219,7 +219,7 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
               variant="outline"
               size="sm"
               onClick={() => onResumeRuntimeSession(latestRecoverableCheckpoint.sessionID!)}
-              className="border-primary/40 h-7 rounded-none px-2 font-mono text-[10px] uppercase tracking-wide"
+              className="border-primary/40 h-7 rounded-md px-2 text-[10px]"
             >
               <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
               Recover Run
@@ -230,18 +230,18 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
 
       {!hasProvider && chatMessages.length === 0 ? (
         <div className="px-3 pb-2">
-          <Alert className="border-primary/40 bg-primary/5 rounded-none">
-            <AlertTitle className="font-mono text-xs uppercase tracking-wide">
+          <Alert className="border-primary/40 bg-primary/5 rounded-md">
+            <AlertTitle className="text-xs">
               No LLM Provider Configured
             </AlertTitle>
-            <AlertDescription className="space-y-2 font-mono text-xs">
+            <AlertDescription className="space-y-2 text-xs">
               <p>Configure an API key in Settings to start chatting with Panda.</p>
               <div className="flex items-center gap-2">
                 <Button
                   asChild
                   size="sm"
                   variant="outline"
-                  className="h-7 rounded-none font-mono text-xs"
+                  className="h-7 rounded-md text-xs"
                 >
                   <Link href="/settings">Open Settings</Link>
                 </Button>
@@ -255,20 +255,20 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
         <div className="px-3 pb-2">
           <Alert
             variant="destructive"
-            className="border-destructive/70 bg-destructive/5 rounded-none"
+            className="border-destructive/70 bg-destructive/5 rounded-md"
           >
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle className="font-mono text-xs uppercase tracking-wide">
+            <AlertTitle className="text-xs">
               {inlineRateLimitError.title}
             </AlertTitle>
-            <AlertDescription className="space-y-2 font-mono text-xs">
+            <AlertDescription className="space-y-2 text-xs">
               <p>{inlineRateLimitError.description}</p>
               <div className="flex items-center gap-2">
                 <Button
                   asChild
                   size="sm"
                   variant="outline"
-                  className="h-7 rounded-none font-mono text-xs"
+                  className="h-7 rounded-md text-xs"
                 >
                   <Link href="/settings">Open LLM Settings</Link>
                 </Button>

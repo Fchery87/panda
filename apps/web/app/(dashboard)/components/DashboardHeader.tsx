@@ -26,11 +26,11 @@ export function DashboardHeader() {
       transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
       className="sticky top-0 z-50 w-full px-3 py-3 sm:px-5 lg:px-8"
     >
-      <div className="shadow-sharp-sm bg-card/95 mx-auto grid h-14 max-w-[1500px] grid-cols-[auto_auto_minmax(120px,1fr)_auto] border border-foreground text-foreground">
+      <div className="shadow-sharp-sm bg-card/95 mx-auto grid h-14 max-w-[1500px] grid-cols-[auto_auto_minmax(120px,1fr)_auto] border border-border text-foreground">
         {/* Logo */}
         <Link
           href="/"
-          className="hover:bg-background/70 flex shrink-0 items-center border-r border-foreground px-3 transition-colors sm:px-4"
+          className="hover:bg-background/70 flex shrink-0 items-center border-r border-border px-3 transition-colors sm:px-4"
         >
           <PandaLogo size="md" variant="full" />
         </Link>
@@ -80,7 +80,7 @@ export function DashboardHeader() {
         </button>
 
         {/* Right side */}
-        <div className="flex shrink-0 items-center border-l border-foreground">
+        <div className="flex shrink-0 items-center border-l border-border">
           {/* New Project CTA */}
           <Link
             href="/projects"
