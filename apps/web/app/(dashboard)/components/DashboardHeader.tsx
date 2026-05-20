@@ -82,13 +82,24 @@ export function DashboardHeader() {
         {/* Right side */}
         <div className="flex shrink-0 items-center border-l border-border">
           {/* New Project CTA */}
-          <Link
-            href="/projects"
-            className="hover:bg-primary/90 flex h-full items-center gap-2 border-r border-border bg-primary px-3 font-mono text-[11px] uppercase tracking-[0.16em] text-primary-foreground transition-colors sm:px-4"
-          >
-            <Plus size={14} />
-            <span className="hidden md:inline">New Project</span>
-          </Link>
+          {pathname === '/projects' ? (
+            <button
+              type="button"
+              className="hover:bg-primary/90 flex h-full items-center gap-2 border-r border-border bg-primary px-3 font-mono text-[11px] uppercase tracking-[0.16em] text-primary-foreground transition-colors sm:px-4"
+              onClick={() => window.dispatchEvent(new Event('panda:create-project'))}
+            >
+              <Plus size={14} />
+              <span className="hidden md:inline">New Project</span>
+            </button>
+          ) : (
+            <Link
+              href="/projects?create=1"
+              className="hover:bg-primary/90 flex h-full items-center gap-2 border-r border-border bg-primary px-3 font-mono text-[11px] uppercase tracking-[0.16em] text-primary-foreground transition-colors sm:px-4"
+            >
+              <Plus size={14} />
+              <span className="hidden md:inline">New Project</span>
+            </Link>
+          )}
 
           <div className="hidden h-full items-center border-r border-border px-2 sm:flex">
             <ThemeToggle />

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
@@ -46,12 +46,16 @@ interface Project {
 
 function CreateProjectDialog({
   onCreate,
+  showTrigger = true,
+  listenForCreateEvent = false,
 }: {
   onCreate: (
     name: string,
     description?: string,
     repository?: GitHubRepositorySelection | null
   ) => Promise<void>
+  showTrigger?: boolean
+  listenForCreateEvent?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
@@ -59,6 +63,21 @@ function CreateProjectDialog({
   const [repository, setRepository] = useState<GitHubRepositorySelection | null>(null)
   const [isCreating, setIsCreating] = useState(false)
   const [submitError, setSubmitError] = useState<CreateProjectErrorDisplay | null>(null)
+
+  useEffect(() => {
+    if (!listenForCreateEvent) {
+      return
+    }
+
+    const handleCreateProjectRequest = () => {
+      setOpen(true)
+    }
+
+    window.addEventListener('panda:create-project', handleCreateProjectRequest)
+    return () => {
+      window.removeEventListener('panda:create-project', handleCreateProjectRequest)
+    }
+  }, [listenForCreateEvent])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -95,12 +114,14 @@ function CreateProjectDialog({
         }
       }}
     >
-      <DialogTrigger asChild>
-        <Button className="gap-2 rounded-none font-mono">
-          <Plus size={16} />
-          New Project
-        </Button>
-      </DialogTrigger>
+      {showTrigger ? (
+        <DialogTrigger asChild>
+          <Button className="gap-2 rounded-none font-mono">
+            <Plus size={16} />
+            New Project
+          </Button>
+        </DialogTrigger>
+      ) : null}
       <DialogContent className="rounded-none sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="font-mono">Create New Project</DialogTitle>
@@ -443,6 +464,13 @@ export default function ProjectsPage() {
 
   const isLoading = projects === undefined
 
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('create') === '1') {
+      window.dispatchEvent(new Event('panda:create-project'))
+      router.replace('/projects', { scroll: false })
+    }
+  }, [router])
+
   return (
     <AuthenticatedPageShell
       hideHeader
@@ -468,6 +496,11 @@ export default function ProjectsPage() {
       }
       contentClassName="lg:p-0"
     >
+      <CreateProjectDialog
+        onCreate={handleCreateProject}
+        showTrigger={false}
+        listenForCreateEvent
+      />
       <div className="grid gap-px bg-border lg:grid-cols-[minmax(0,0.74fr)_minmax(360px,0.26fr)]">
         <div className="bg-background p-5 sm:p-7 lg:p-9">
           <div className="mb-8 max-w-3xl">
