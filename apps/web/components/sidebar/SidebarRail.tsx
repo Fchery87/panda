@@ -6,6 +6,7 @@ import type { LucideProps } from 'lucide-react'
 import {
   House as IconHome,
   Folder as IconProjects,
+  FolderTree as IconFiles,
   Bot as IconAgents,
   Search as IconSearch,
   GitBranch as IconGit,
@@ -42,7 +43,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { id: 'tasks', icon: IconHistory, label: 'Sessions', shortcut: 'Ctrl+Shift+H' },
-  { id: 'files', icon: IconProjects, label: 'Project Files', shortcut: 'Ctrl+Shift+E' },
+  { id: 'files', icon: IconFiles, label: 'Project Files', shortcut: 'Ctrl+Shift+E' },
   { id: 'agents', icon: IconAgents, label: 'Agent Runs', shortcut: 'Ctrl+Shift+A' },
   { id: 'search', icon: IconSearch, label: 'Find Context', shortcut: 'Ctrl+Shift+F' },
   { id: 'git', icon: IconGit, label: 'Source Review', shortcut: 'Ctrl+Shift+G' },
