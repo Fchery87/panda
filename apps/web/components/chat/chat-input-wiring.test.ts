@@ -35,7 +35,20 @@ describe('chat input wiring', () => {
     const content = await readChatComponent('ChatInput.tsx')
 
     expect(content).toContain('aria-label="Message input"')
-    expect(content).toContain('placeholder="Ask anything, @ to mention, / for workflows"')
+    expect(content).toContain("'Ask anything, @ to mention, / for workflows'")
+    expect(content).toContain("'Queue a follow-up while Panda finishes…'")
+  })
+
+  test('ChatInput exposes running-state follow-up queue controls', async () => {
+    const content = await readChatComponent('ChatInput.tsx')
+
+    expect(content).toContain('type QueuedFollowUp')
+    expect(content).toContain('queuedFollowUps')
+    expect(content).toContain('Follow-up queued')
+    expect(content).toContain('Queue')
+    expect(content).toContain('Enter to queue')
+    expect(content).toContain('Cancel queued follow-up')
+    expect(content).toContain('onSendMessage?.(next.content, next.mode, next.contextFiles, next.options)')
   })
 
   test('ChatInput surfaces a Plan-only brainstorm toggle wired to the architect callback', async () => {

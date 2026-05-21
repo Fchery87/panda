@@ -3,22 +3,61 @@ import type { ChatMode } from '@/lib/agent/chat-modes'
 
 export type TranscriptSurface = 'chat' | 'inspector'
 
+export type ChatSurfaceCapability =
+  | 'messages'
+  | 'reasoning'
+  | 'compact_tool_chips'
+  | 'plan_checklist'
+  | 'run_summary'
+
+export type InspectorSurfaceCapability =
+  | 'tool_calls'
+  | 'progress_steps'
+  | 'snapshots'
+  | 'debug_labels'
+  | 'run_trace'
+  | 'approvals'
+  | 'artifacts'
+  | 'memory'
+  | 'evals'
+
+export const TRANSCRIPT_SURFACE_OWNERSHIP = {
+  chat: 'user intent, assistant answer, compact reasoning, compact run summary',
+  proof: 'run trace, tool calls, approvals, snapshots, debug/provenance',
+  changes: 'artifacts, diffs, generated/modified files',
+  context: 'plan, memory, evals, specifications',
+  workbench: 'editor, file tabs, preview, active file work',
+  terminal: 'command logs and running processes',
+} as const
+
 export type TranscriptModePolicy = {
   mode: ChatMode
   surfaceLabel: 'Plan' | 'Code' | 'Build'
   surfaced: boolean
-  chatAllows: Array<'messages' | 'reasoning'>
-  inspectorOwns: Array<'tool_calls' | 'progress_steps' | 'snapshots' | 'debug_labels' | 'run_trace'>
+  chatAllows: ChatSurfaceCapability[]
+  inspectorOwns: InspectorSurfaceCapability[]
   summary: string
 }
+
+const DEFAULT_INSPECTOR_OWNERSHIP: InspectorSurfaceCapability[] = [
+  'tool_calls',
+  'progress_steps',
+  'snapshots',
+  'debug_labels',
+  'run_trace',
+  'approvals',
+  'artifacts',
+  'memory',
+  'evals',
+]
 
 export const TRANSCRIPT_MODE_POLICIES: Record<ChatMode, TranscriptModePolicy> = {
   ask: {
     mode: 'ask',
     surfaceLabel: 'Code',
     surfaced: false,
-    chatAllows: ['messages', 'reasoning'],
-    inspectorOwns: ['tool_calls', 'progress_steps', 'snapshots', 'debug_labels', 'run_trace'],
+    chatAllows: ['messages', 'reasoning', 'run_summary'],
+    inspectorOwns: DEFAULT_INSPECTOR_OWNERSHIP,
     summary:
       'Internal ask behavior stays conversational and is surfaced under the Code experience.',
   },
@@ -26,8 +65,8 @@ export const TRANSCRIPT_MODE_POLICIES: Record<ChatMode, TranscriptModePolicy> = 
     mode: 'plan',
     surfaceLabel: 'Plan',
     surfaced: true,
-    chatAllows: ['messages', 'reasoning'],
-    inspectorOwns: ['tool_calls', 'progress_steps', 'snapshots', 'debug_labels', 'run_trace'],
+    chatAllows: ['messages', 'reasoning', 'plan_checklist', 'run_summary'],
+    inspectorOwns: DEFAULT_INSPECTOR_OWNERSHIP,
     summary:
       'Plan mode shows structured planning output and approval surfaces, not execution trace.',
   },
@@ -35,8 +74,8 @@ export const TRANSCRIPT_MODE_POLICIES: Record<ChatMode, TranscriptModePolicy> = 
     mode: 'code',
     surfaceLabel: 'Code',
     surfaced: true,
-    chatAllows: ['messages', 'reasoning'],
-    inspectorOwns: ['tool_calls', 'progress_steps', 'snapshots', 'debug_labels', 'run_trace'],
+    chatAllows: ['messages', 'reasoning', 'compact_tool_chips', 'plan_checklist', 'run_summary'],
+    inspectorOwns: DEFAULT_INSPECTOR_OWNERSHIP,
     summary:
       'Code mode keeps the transcript conversational while the inspector carries detailed trace.',
   },
@@ -44,8 +83,8 @@ export const TRANSCRIPT_MODE_POLICIES: Record<ChatMode, TranscriptModePolicy> = 
     mode: 'build',
     surfaceLabel: 'Build',
     surfaced: true,
-    chatAllows: ['messages', 'reasoning'],
-    inspectorOwns: ['tool_calls', 'progress_steps', 'snapshots', 'debug_labels', 'run_trace'],
+    chatAllows: ['messages', 'reasoning', 'compact_tool_chips', 'plan_checklist', 'run_summary'],
+    inspectorOwns: DEFAULT_INSPECTOR_OWNERSHIP,
     summary:
       'Build mode keeps the transcript conversational while the inspector carries detailed trace.',
   },

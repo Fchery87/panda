@@ -6,12 +6,18 @@ import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import type { ChatMode } from '../lib/agent/prompt-library'
 import { normalizeChatMode } from '../lib/agent/prompt-library'
-import type { MessageAnnotationInfo, TokenSource, ToolCallInfo } from '../components/chat/types'
+import type {
+  MessageAnnotationInfo,
+  MessageBlockInfo,
+  TokenSource,
+  ToolCallInfo,
+} from '../components/chat/types'
 
 export interface Message {
   id: string
   role: 'user' | 'assistant' | 'tool'
   content: string
+  blocks?: MessageBlockInfo[]
   createdAt: number
   reasoningContent?: string
   mode: ChatMode
@@ -26,6 +32,7 @@ export interface Message {
     totalTokens?: number
     tokenSource?: TokenSource
     reasoningTokens?: number
+    reasoningState?: MessageAnnotationInfo['reasoningState']
     contextWindow?: number
     contextUsedTokens?: number
     contextRemainingTokens?: number
@@ -42,6 +49,7 @@ export interface UseMessageHistoryResult {
         _id: string
         role: string
         content: string
+        blocks?: MessageBlockInfo[]
         createdAt: number
         annotations?: unknown[]
         attachments?: Array<{
@@ -102,6 +110,7 @@ export function useMessageHistory(
           id: msg._id,
           role: msg.role as 'user' | 'assistant' | 'tool',
           content: msg.content,
+          blocks: Array.isArray(msg.blocks) ? (msg.blocks as MessageBlockInfo[]) : undefined,
           createdAt: msg.createdAt,
           reasoningContent:
             runtimeSettings.showReasoningPanel &&
@@ -132,6 +141,7 @@ export function useMessageHistory(
                 ? firstAnnotation.tokenSource
                 : undefined,
             reasoningTokens: toOptionalFiniteNumber(firstAnnotation?.reasoningTokens),
+            reasoningState: firstAnnotation?.reasoningState,
             contextWindow: toOptionalFiniteNumber(firstAnnotation?.contextWindow),
             contextUsedTokens: toOptionalFiniteNumber(firstAnnotation?.contextUsedTokens),
             contextRemainingTokens: toOptionalFiniteNumber(firstAnnotation?.contextRemainingTokens),

@@ -6,6 +6,7 @@ import type { BottomDockTab } from '@/components/layout/BottomDock'
 export type RightPanelTab = 'work' | 'proof' | 'changes' | 'context' | 'preview'
 export type CenterTab = 'editor' | 'diff' | 'logs' | 'tests'
 export type MobilePrimaryPanel = 'work' | 'chat' | 'proof' | 'preview'
+export type WorkspaceFocusMode = 'chat' | 'workbench' | 'proof' | 'changes'
 
 export type ChatInspectorTab =
   | 'run'
@@ -41,6 +42,9 @@ export interface WorkspaceUiState {
 
   activeCenterTab: CenterTab
   setActiveCenterTab: (tab: CenterTab) => void
+
+  workspaceFocusMode: WorkspaceFocusMode
+  setWorkspaceFocusMode: (mode: WorkspaceFocusMode) => void
 
   mobilePrimaryPanel: MobilePrimaryPanel
   setMobilePrimaryPanel: (panel: MobilePrimaryPanel) => void
@@ -82,6 +86,7 @@ const DEFAULTS = {
   isBottomDockOpen: false,
   activeBottomDockTab: 'terminal' as BottomDockTab,
   activeCenterTab: 'editor' as CenterTab,
+  workspaceFocusMode: 'workbench' as WorkspaceFocusMode,
   mobilePrimaryPanel: 'chat' as MobilePrimaryPanel,
   mobileUnreadCount: 0,
   isMobileKeyboardOpen: false,
@@ -112,6 +117,8 @@ export const useWorkspaceUiStore = create<WorkspaceUiState>()(
 
       setActiveCenterTab: (tab) => set({ activeCenterTab: tab }),
 
+      setWorkspaceFocusMode: (mode) => set({ workspaceFocusMode: mode }),
+
       setMobilePrimaryPanel: (panel) => set({ mobilePrimaryPanel: panel }),
       setMobileUnreadCount: (count) => set({ mobileUnreadCount: count }),
       setIsMobileKeyboardOpen: (open) => set({ isMobileKeyboardOpen: open }),
@@ -138,7 +145,7 @@ export const useWorkspaceUiStore = create<WorkspaceUiState>()(
     }),
     {
       name: 'panda:workspaceUi',
-      version: 4,
+      version: 5,
       migrate: (persistedState) => {
         if (!persistedState || typeof persistedState !== 'object') return persistedState
         const state = persistedState as Record<string, unknown>
@@ -151,6 +158,7 @@ export const useWorkspaceUiStore = create<WorkspaceUiState>()(
           ...state,
           rightPanelTab,
           mobilePrimaryPanel,
+          workspaceFocusMode: state.workspaceFocusMode ?? DEFAULTS.workspaceFocusMode,
         }
       },
       partialize: (state) => ({
@@ -158,6 +166,7 @@ export const useWorkspaceUiStore = create<WorkspaceUiState>()(
         rightPanelTab: state.rightPanelTab,
         isBottomDockOpen: state.isBottomDockOpen,
         activeBottomDockTab: state.activeBottomDockTab,
+        workspaceFocusMode: state.workspaceFocusMode,
       }),
     }
   )

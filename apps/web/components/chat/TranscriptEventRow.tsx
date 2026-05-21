@@ -20,7 +20,6 @@ import { useWorkspaceUiStore } from '@/stores/workspaceUiStore'
 import type {
   TranscriptBlock,
   ToolChipGroup,
-  ToolChipEntry,
   PlanChecklistStep,
 } from '@/lib/chat/transcript-blocks'
 import { describeProgressCategory } from './live-run-utils'
@@ -95,30 +94,17 @@ function chipGroupToneClass(tone: ToolChipGroup['tone']): string {
   }
 }
 
-function formatDurationMs(ms: number | undefined): string | undefined {
-  if (ms === undefined || ms === null) return undefined
-  if (ms < 1000) return `${ms}ms`
-  return `${(ms / 1000).toFixed(1)}s`
-}
-
 /* -------------------------------------------------------------------------- */
 /*  Tool Chips Row                                                            */
 /* -------------------------------------------------------------------------- */
 
 function ToolChipsRow({ block }: { block: Extract<TranscriptBlock, { kind: 'tool_chips' }> }) {
-  const [expanded, setExpanded] = useState(false)
-  const onOpenFile = (path: string) => {
-    // TODO: wire to workspace file open
-    void path
-  }
+  const errorCount = block.entries.filter((entry) => entry.status === 'error').length
+  const runningCount = block.entries.filter((entry) => entry.status === 'running').length
 
   return (
     <div className="ml-10 mr-1 pl-4">
-      <button
-        type="button"
-        onClick={() => setExpanded((prev) => !prev)}
-        className="flex w-full items-center gap-2 text-left"
-      >
+      <div className="flex w-full items-center gap-2 text-left">
         <Wrench className="h-3 w-3 shrink-0 text-muted-foreground" />
         <div className="flex flex-wrap items-center gap-1.5">
           {block.groups.map((group, index) => (
@@ -134,68 +120,14 @@ function ToolChipsRow({ block }: { block: Extract<TranscriptBlock, { kind: 'tool
             </span>
           ))}
         </div>
-        <span className="ml-auto shrink-0 text-muted-foreground/70">
-          {expanded ? (
-            <ChevronDown className="h-3.5 w-3.5" />
-          ) : (
-            <ChevronRight className="h-3.5 w-3.5" />
-          )}
+        <span className="ml-auto shrink-0 font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground/70">
+          {runningCount > 0
+            ? `${runningCount} running · details in Proof`
+            : errorCount > 0
+              ? `${errorCount} issue${errorCount === 1 ? '' : 's'} · details in Proof`
+              : 'Details in Proof'}
         </span>
-      </button>
-
-      {expanded && (
-        <div className="mt-1.5 space-y-1">
-          {block.entries.map((entry) => (
-            <div
-              key={entry.id}
-              className={cn(
-                'shadow-sharp-sm flex items-start gap-2 border px-2.5 py-1.5 font-mono text-[11px]',
-                entry.status === 'error'
-                  ? 'border-destructive/40 bg-destructive/[0.03] text-foreground'
-                  : 'border-border bg-background/80 text-foreground'
-              )}
-            >
-              {entry.status === 'error' ? (
-                <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-destructive" />
-              ) : (
-                <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-primary/70" />
-              )}
-              <div className="min-w-0 flex-1 space-y-0.5">
-                <div className="[overflow-wrap:anywhere]">{entry.label}</div>
-                {entry.summary && (
-                  <div className="text-muted-foreground/80 [overflow-wrap:anywhere]">
-                    {entry.summary}
-                  </div>
-                )}
-                {entry.filePaths && entry.filePaths.length > 0 && (
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {entry.filePaths.slice(0, 3).map((path) => (
-                      <button
-                        key={`${entry.id}-${path}`}
-                        type="button"
-                        onClick={() => onOpenFile(path)}
-                        className="hover:bg-muted/40 border border-border px-1.5 py-0.5 text-[10px] transition-colors"
-                      >
-                        {path}
-                      </button>
-                    ))}
-                    {entry.filePaths.length > 3 && (
-                      <span className="px-1 text-[10px] text-muted-foreground">
-                        +{entry.filePaths.length - 3} more
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-              {entry.durationMs !== undefined && (
-                <span className="shrink-0 text-muted-foreground/60">
-                  {formatDurationMs(entry.durationMs)}
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+      </div>
     </div>
   )
 }

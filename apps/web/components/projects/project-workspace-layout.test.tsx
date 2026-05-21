@@ -245,11 +245,58 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
     )
 
     expect(html).toContain('aria-label="Sessions"')
-    expect(html).toContain('Session Thread')
-    expect(html).toContain('Review Proof')
-    expect(html).toContain('Work Tray')
+    expect(html).toContain('Focus Chat')
+    expect(html).toContain('Focus Workbench')
+    expect(html).toContain('Focus Proof')
+    expect(html).toContain('Focus Changes')
     expect(html).toContain('aria-label="Project Files"')
     expect(html).toContain('aria-label="Source Review"')
+  })
+
+  test('renders desktop focus mode switcher without changing mobile panels', () => {
+    const html = renderToStaticMarkup(
+      <ProjectWorkspaceLayoutView
+        projectId={'project' as never}
+        activeSection="files"
+        isFlyoutOpen={false}
+        onSidebarSectionChange={() => {}}
+        onToggleFlyout={() => {}}
+        onSelectChat={() => {}}
+        onNewChat={() => {}}
+        files={[]}
+        selectedFilePath={null}
+        openTabs={[]}
+        onSelectFile={() => {}}
+        onCloseTab={() => {}}
+        onCreateFile={async () => {}}
+        onRenameFile={async () => {}}
+        onDeleteFile={async () => {}}
+        onSaveFile={async () => {}}
+        onEditorDirtyChange={() => {}}
+        isMobileLayout={false}
+        isCompactDesktopLayout={false}
+        mobilePrimaryPanel='work'
+        onMobilePrimaryPanelChange={() => {}}
+        mobileUnreadCount={0}
+        isMobileKeyboardOpen={false}
+        chatPanel={<div>chat-panel</div>}
+        rightPanelContent={<div>right-panel</div>}
+        isRightPanelOpen={true}
+        chatMode="code"
+        onModeChange={() => {}}
+        cursorPosition={null}
+        isStreaming={false}
+        currentSpec={null}
+        openSpecInspect={() => {}}
+        onApplyPendingArtifact={() => {}}
+        onRejectPendingArtifact={() => {}}
+        sessionRailSummary={{ state: 'idle', label: 'Idle', count: 0, tasks: [] }}
+      />
+    )
+
+    expect(html).toContain('aria-label="Workspace focus modes"')
+    expect(html).toContain('data-workspace-focus-mode="workbench"')
+    expect(html).toContain('aria-pressed="true"')
   })
 
   test('renders chat-first mobile navigation with proof access', () => {

@@ -99,6 +99,20 @@ type UploadedAttachmentPayload = {
   url?: string
 }
 
+type QueuedFollowUp = {
+  id: string
+  content: string
+  mode: ChatMode
+  contextFiles: string[]
+  options: {
+    includeEditorContext?: boolean
+    variantCount?: number
+    attachments?: UploadedAttachmentPayload[]
+    attachmentsOnly?: boolean
+    manualModeOverride?: boolean
+  }
+}
+
 interface ChatInputProps {
   projectId?: Id<'projects'>
   chatId?: Id<'chats'>
@@ -168,6 +182,8 @@ export function ChatInput({
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [includeEditorContext, setIncludeEditorContext] = useState(true)
   const [isUploadingAttachments, setIsUploadingAttachments] = useState(false)
+  const [queuedFollowUps, setQueuedFollowUps] = useState<QueuedFollowUp[]>([])
+  const queuedDispatchInFlightRef = useRef(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const mentionPickerRef = useRef<import('./MentionPicker').MentionPickerHandle | null>(null)
   const timeoutRefs = useRef<ReturnType<typeof setTimeout>[]>([])
@@ -265,12 +281,7 @@ export function ChatInput({
   }, [])
 
   const handleSend = useCallback(async () => {
-    if (
-      (!input.trim() && attachments.length === 0) ||
-      isStreaming ||
-      isUploadingAttachments ||
-      workspaceLoading
-    ) {
+    if ((!input.trim() && attachments.length === 0) || isUploadingAttachments || workspaceLoading) {
       return
     }
 
@@ -365,13 +376,32 @@ export function ChatInput({
       attachmentCount: uploadedAttachments.length,
     })
 
-    onSendMessage?.(nextMessage || input.trim(), mode, nextContextFiles, {
+    const sendOptions = {
       includeEditorContext,
       variantCount: variant === 'parallel:2' ? 2 : undefined,
       attachments: uploadedAttachments,
       attachmentsOnly: !message.trim() && uploadedAttachments.length > 0,
       manualModeOverride: true,
-    })
+    }
+    const sendContent = nextMessage || input.trim()
+
+    if (isStreaming) {
+      setQueuedFollowUps((prev) => [
+        ...prev,
+        {
+          id: `queued-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          content: sendContent,
+          mode,
+          contextFiles: nextContextFiles,
+          options: sendOptions,
+        },
+      ])
+      toast.success('Follow-up queued', {
+        description: 'Panda will send it after the current run finishes.',
+      })
+    } else {
+      onSendMessage?.(sendContent, mode, nextContextFiles, sendOptions)
+    }
     setInput('')
     setMentionQuery(null)
     setActiveMentionDescendant(undefined)
@@ -401,6 +431,24 @@ export function ChatInput({
     setEnhanceState('idle')
     setPreEnhanceText('')
   }, [handleSend])
+
+  useEffect(() => {
+    if (isStreaming) {
+      queuedDispatchInFlightRef.current = false
+      return
+    }
+    if (queuedDispatchInFlightRef.current || queuedFollowUps.length === 0) return
+    const [next, ...rest] = queuedFollowUps
+    if (!next) return
+
+    queuedDispatchInFlightRef.current = true
+    setQueuedFollowUps(rest)
+    onSendMessage?.(next.content, next.mode, next.contextFiles, next.options)
+  }, [isStreaming, onSendMessage, queuedFollowUps])
+
+  const handleCancelQueuedFollowUp = useCallback((id: string) => {
+    setQueuedFollowUps((prev) => prev.filter((item) => item.id !== id))
+  }, [])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -604,6 +652,32 @@ export function ChatInput({
           />
         )}
 
+        {queuedFollowUps.length > 0 && (
+          <div className="border-b border-border bg-primary/[0.04] px-2 py-1.5">
+            <div className="mb-1 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">
+              Queued follow-up{queuedFollowUps.length === 1 ? '' : 's'}
+            </div>
+            <div className="space-y-1">
+              {queuedFollowUps.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-2 border border-border bg-background/70 px-2 py-1 text-[11px] text-muted-foreground"
+                >
+                  <span className="min-w-0 flex-1 truncate">{item.content}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleCancelQueuedFollowUp(item.id)}
+                    className="shrink-0 font-mono text-[10px] uppercase tracking-wide hover:text-foreground"
+                    aria-label="Cancel queued follow-up"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <Textarea
           ref={textareaRef}
           value={input}
@@ -614,8 +688,12 @@ export function ChatInput({
           aria-controls={mentionQuery !== null ? mentionListId : undefined}
           aria-expanded={mentionQuery !== null}
           aria-activedescendant={mentionQuery !== null ? activeMentionDescendant : undefined}
-          placeholder="Ask anything, @ to mention, / for workflows"
-          disabled={isStreaming || isUploadingAttachments}
+          placeholder={
+            isStreaming
+              ? 'Queue a follow-up while Panda finishes…'
+              : 'Ask anything, @ to mention, / for workflows'
+          }
+          disabled={isUploadingAttachments}
           className={cn(
             'max-h-[160px] min-h-[56px] resize-none border-0 pr-10 shadow-none sm:min-h-[64px]',
             'rounded-md bg-background',
@@ -633,8 +711,20 @@ export function ChatInput({
               animate={shouldReduceMotion ? { opacity: 1 } : { scale: 1, opacity: 1 }}
               exit={shouldReduceMotion ? { opacity: 0 } : { scale: 0.8, opacity: 0 }}
               transition={{ duration: shouldReduceMotion ? 0.01 : 0.1 }}
-              className="absolute bottom-2 right-2"
+              className="absolute bottom-2 right-2 flex items-center gap-1"
             >
+              {hasSendContent && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleSendWithReset}
+                  disabled={workspaceLoading || isUploadingAttachments}
+                  aria-label="Queue follow-up"
+                  className="h-7 rounded-md border-primary px-2 font-mono text-[10px] uppercase tracking-wide text-primary hover:bg-primary hover:text-primary-foreground"
+                >
+                  Queue
+                </Button>
+              )}
               <Button
                 size="icon"
                 variant="outline"
@@ -775,7 +865,7 @@ export function ChatInput({
 
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-muted-foreground">
-              Enter to send
+              {isStreaming ? 'Enter to queue' : 'Enter to send'}
             </span>
 
             {!isStreaming && (

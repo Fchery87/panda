@@ -186,6 +186,13 @@ export type StreamChunkType =
   | 'error'
   | 'finish'
 
+export type ReasoningProviderMetadata = {
+  encryptedContent?: string
+  signature?: string
+  redactedPayload?: string
+  thoughtSignature?: string
+}
+
 /**
  * Streaming chunk from LLM
  */
@@ -193,6 +200,7 @@ export interface StreamChunk {
   type: StreamChunkType
   content?: string
   reasoningContent?: string
+  reasoningProviderMetadata?: ReasoningProviderMetadata
   toolCall?: ToolCall
   toolResult?: ToolResult
   finishReason?: 'stop' | 'length' | 'tool_calls' | 'error'

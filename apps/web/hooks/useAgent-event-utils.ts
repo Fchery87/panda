@@ -172,8 +172,21 @@ export function buildAssistantAnnotations(args: {
 
   if (args.assistantReasoning) {
     annotations.reasoningSummary = args.assistantReasoning
+    annotations.reasoningState = {
+      mode: 'auto',
+      display: 'summary',
+      summary: args.assistantReasoning,
+      tokenCount: args.runUsage.completionTokens || undefined,
+    }
     if (args.runUsage.completionTokens) {
       annotations.reasoningTokens = args.runUsage.completionTokens
+    }
+  } else if (args.runUsage.completionTokens) {
+    annotations.reasoningState = {
+      mode: 'auto',
+      display: 'hidden',
+      redacted: true,
+      tokenCount: args.runUsage.completionTokens,
     }
   }
 

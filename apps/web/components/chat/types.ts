@@ -18,6 +18,21 @@ import type { ContextWindowSource } from '@/lib/llm/model-metadata'
 
 export type TokenSource = 'exact' | 'estimated'
 
+export type ReasoningStateInfo = {
+  mode: 'off' | 'auto' | 'low' | 'medium' | 'high' | 'max'
+  display: 'hidden' | 'summary' | 'expanded' | 'debug'
+  summary?: string
+  visibleContent?: string
+  redacted?: boolean
+  tokenCount?: number
+  providerMetadata?: {
+    encryptedContent?: string
+    signature?: string
+    redactedPayload?: string
+    thoughtSignature?: string
+  }
+}
+
 export interface TokenUsageInfo {
   promptTokens: number
   completionTokens: number
@@ -26,6 +41,15 @@ export interface TokenUsageInfo {
   cacheRead?: number
   cacheWrite?: number
 }
+
+export type MessageBlockInfo =
+  | { type: 'text'; text: string }
+  | { type: 'reasoning_summary'; text?: string; redacted?: boolean; tokenCount?: number }
+  | { type: 'tool_call_ref'; toolCallId: string; toolName?: string }
+  | { type: 'tool_result_ref'; toolCallId: string; eventId?: string }
+  | { type: 'artifact_ref'; artifactId: string }
+  | { type: 'file_change_ref'; path: string; action: 'created' | 'updated' | 'deleted' }
+  | { type: 'error'; message: string }
 
 export interface MessageAnnotationInfo {
   model?: string
@@ -44,6 +68,7 @@ export interface MessageAnnotationInfo {
   provider?: string
   reasoningTokens?: number
   reasoningSummary?: string
+  reasoningState?: ReasoningStateInfo
   toolCalls?: ToolCallInfo[]
   attachments?: Array<{
     id: string
@@ -141,6 +166,7 @@ export interface Message {
   _id: string
   role: 'user' | 'assistant' | 'system'
   content: string
+  blocks?: MessageBlockInfo[]
   reasoningContent?: string
   toolCalls?: ToolCallInfo[]
   suggestedActions?: SuggestedAction[]

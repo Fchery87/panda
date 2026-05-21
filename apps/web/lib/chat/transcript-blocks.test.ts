@@ -112,6 +112,48 @@ describe('transcript blocks', () => {
     ])
   })
 
+  test('prefers structured message blocks when present', () => {
+    const message: Message = {
+      _id: 'assistant-structured',
+      role: 'assistant',
+      content: 'Fallback text should not render.',
+      blocks: [
+        { type: 'reasoning_summary', text: 'Checked the transcript policy first.' },
+        { type: 'tool_call_ref', toolCallId: 'tool-1', toolName: 'read_file' },
+        { type: 'text', text: 'Structured answer.' },
+      ],
+      createdAt: 210,
+    }
+
+    const blocks = buildAssistantMessageTranscriptBlocks(message)
+
+    expect(blocks).toHaveLength(2)
+    expect(blocks[0]).toMatchObject({ kind: 'thinking_teaser' })
+    expect(blocks[1]).toMatchObject({ kind: 'assistant_text', content: 'Structured answer.' })
+  })
+
+  test('renders structured redacted reasoning without requiring content migration', () => {
+    const message: Message = {
+      _id: 'assistant-redacted',
+      role: 'assistant',
+      content: 'Fallback text should not render.',
+      blocks: [
+        { type: 'reasoning_summary', redacted: true, tokenCount: 42 },
+        { type: 'error', message: 'Structured error.' },
+      ],
+      createdAt: 220,
+    }
+
+    const blocks = buildAssistantMessageTranscriptBlocks(message)
+
+    expect(blocks).toHaveLength(2)
+    expect(blocks[0]).toMatchObject({
+      kind: 'thinking_redacted',
+      content: 'Thinking used · summary unavailable · 42 tokens',
+    })
+    expect(blocks[1]).toMatchObject({ kind: 'assistant_text', content: 'Structured error.' })
+  })
+
   test('builds unavailable Thinking block from reasoning tokens without summary', () => {
     const message: Message = {
       _id: 'assistant-1',
@@ -425,7 +467,8 @@ describe('transcript blocks', () => {
   test('defines plan mode transcript policy with clean chat output', () => {
     const policy = getTranscriptModePolicy('plan')
 
-    expect(policy.chatAllows).toEqual(['messages', 'reasoning'])
+    expect(policy.chatAllows).toEqual(['messages', 'reasoning', 'plan_checklist', 'run_summary'])
+    expect(policy.chatAllows).not.toContain('compact_tool_chips')
     expect(policy.inspectorOwns).toContain('tool_calls')
     expect(policy.inspectorOwns).toContain('progress_steps')
     expect(policy.inspectorOwns).toContain('snapshots')

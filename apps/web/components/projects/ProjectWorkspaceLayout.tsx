@@ -219,6 +219,8 @@ export function ProjectWorkspaceLayoutView({
   }
   const activeReviewTab = useWorkspaceUiStore((state) => state.rightPanelTab)
   const openRightPanelTab = useWorkspaceUiStore((state) => state.openRightPanelTab)
+  const workspaceFocusMode = useWorkspaceUiStore((state) => state.workspaceFocusMode)
+  const setWorkspaceFocusMode = useWorkspaceUiStore((state) => state.setWorkspaceFocusMode)
   const isMobileReviewPanelActive = mobilePrimaryPanel === 'proof'
   const isMobileProofActive = isMobileReviewPanelActive
   const openMobileProof = () => {
@@ -229,7 +231,22 @@ export function ProjectWorkspaceLayoutView({
   // Dock tab definitions with badge counts
   const dockTabs = useMemo(() => [{ id: 'terminal' as BottomDockTab, label: 'Terminal' }], [])
 
-  const outerLayoutPersistenceKey = `panda-workspace-${isRightPanelOpen ? 'right-open' : 'right-closed'}`
+  const shouldRenderRightPanel = Boolean(isRightPanelOpen && workspaceFocusMode !== 'chat')
+  const isInspectorFocus = workspaceFocusMode === 'proof' || workspaceFocusMode === 'changes'
+  const rightPanelDefaultSize =
+    workspaceFocusMode === 'workbench' ? 46 : isInspectorFocus ? 38 : isCompactDesktopLayout ? 30 : 26
+  const centerDefaultSize = shouldRenderRightPanel ? 100 - rightPanelDefaultSize : 100
+  const rightPanelMaxSize = workspaceFocusMode === 'workbench' ? 62 : isInspectorFocus ? 50 : 34
+  const outerLayoutPersistenceKey = `panda-workspace-${shouldRenderRightPanel ? 'right-open' : 'right-closed'}-${workspaceFocusMode}`
+
+  const activateWorkspaceFocus = (focus: 'chat' | 'workbench' | 'proof' | 'changes') => {
+    setWorkspaceFocusMode(focus)
+    if (focus === 'chat') {
+      onCenterTabChange?.('editor')
+      return
+    }
+    openRightPanelTab(focus === 'workbench' ? 'work' : focus)
+  }
 
   const workbench = (
     <Workbench
@@ -423,8 +440,9 @@ export function ProjectWorkspaceLayoutView({
           <>
             <div className="flex h-full min-h-0 min-w-0 flex-col bg-card">
               <div
-                className="grid shrink-0 border-b border-border bg-card text-[10px] text-muted-foreground sm:grid-cols-4"
-                aria-label="Workspace workflow modes"
+                className="grid shrink-0 border-b border-border bg-card text-[10px] text-muted-foreground sm:grid-cols-5"
+                aria-label="Workspace focus modes"
+                data-workspace-focus-mode={workspaceFocusMode}
               >
                 <button
                   type="button"
@@ -441,39 +459,47 @@ export function ProjectWorkspaceLayoutView({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onCenterTabChange?.('editor')}
+                  onClick={() => activateWorkspaceFocus('chat')}
+                  aria-pressed={workspaceFocusMode === 'chat'}
                   className={cn(
                     'flex h-7 items-center border-b border-border px-3 text-left transition-colors hover:bg-accent hover:text-foreground sm:border-b-0 sm:border-r',
-                    activeCenterTab === 'editor' && 'bg-primary/10 text-primary'
+                    workspaceFocusMode === 'chat' && 'bg-primary/10 text-primary'
                   )}
                 >
-                  Thread
+                  Focus Chat
                 </button>
                 <button
                   type="button"
-                  onClick={() =>
-                    openRightPanelTab(activeReviewTab === 'work' ? 'proof' : activeReviewTab)
-                  }
+                  onClick={() => activateWorkspaceFocus('workbench')}
+                  aria-pressed={workspaceFocusMode === 'workbench'}
                   className={cn(
                     'flex h-7 items-center border-b border-border px-3 text-left transition-colors hover:bg-accent hover:text-foreground sm:border-b-0 sm:border-r',
-                    isRightPanelOpen &&
-                      activeReviewTab !== 'work' &&
-                      'bg-primary/10 text-primary'
+                    workspaceFocusMode === 'workbench' && 'bg-primary/10 text-primary'
                   )}
                 >
-                  Proof
+                  Focus Workbench
                 </button>
                 <button
                   type="button"
-                  onClick={() => openRightPanelTab('work')}
+                  onClick={() => activateWorkspaceFocus('proof')}
+                  aria-pressed={workspaceFocusMode === 'proof'}
+                  className={cn(
+                    'flex h-7 items-center border-b border-border px-3 text-left transition-colors hover:bg-accent hover:text-foreground sm:border-b-0 sm:border-r',
+                    workspaceFocusMode === 'proof' && 'bg-primary/10 text-primary'
+                  )}
+                >
+                  Focus Proof
+                </button>
+                <button
+                  type="button"
+                  onClick={() => activateWorkspaceFocus('changes')}
+                  aria-pressed={workspaceFocusMode === 'changes'}
                   className={cn(
                     'flex h-7 items-center px-3 text-left transition-colors hover:bg-accent hover:text-foreground',
-                    isRightPanelOpen &&
-                      activeReviewTab === 'work' &&
-                      'bg-primary/10 text-primary'
+                    workspaceFocusMode === 'changes' && 'bg-primary/10 text-primary'
                   )}
                 >
-                  Work
+                  Focus Changes
                 </button>
               </div>
               <div className="flex min-h-0 min-w-0 flex-1">
@@ -508,7 +534,7 @@ export function ProjectWorkspaceLayoutView({
                       minSize={40}
                     >
                       <PanelGroup
-                        key={`layout-${isRightPanelOpen ? 'right-open' : 'right-closed'}`}
+                        key={`layout-${shouldRenderRightPanel ? 'right-open' : 'right-closed'}-${workspaceFocusMode}`}
                         direction="horizontal"
                         className="h-full min-h-0 min-w-0"
                         autoSaveId={outerLayoutPersistenceKey}
@@ -522,7 +548,7 @@ export function ProjectWorkspaceLayoutView({
                           aria-label="Execution session timeline and composer"
                           id="workspace-panel"
                           order={2}
-                          defaultSize={isRightPanelOpen ? 74 : 100}
+                          defaultSize={centerDefaultSize}
                           minSize={52}
                           className="flex min-h-0 min-w-0 flex-col"
                         >
@@ -530,7 +556,7 @@ export function ProjectWorkspaceLayoutView({
                         </Panel>
 
                         {/* Right work tray - implementation detail and review surfaces */}
-                        {isRightPanelOpen && (
+                        {shouldRenderRightPanel && (
                           <>
                             <PanelResizeHandle
                               data-testid="workspace-right-resize-handle"
@@ -541,9 +567,9 @@ export function ProjectWorkspaceLayoutView({
                               aria-label="Execution session work tray"
                               id="work-tray-panel"
                               order={3}
-                              defaultSize={isCompactDesktopLayout ? 30 : 26}
+                              defaultSize={rightPanelDefaultSize}
                               minSize={18}
-                              maxSize={34}
+                              maxSize={rightPanelMaxSize}
                               className="flex min-h-0 min-w-0 flex-col"
                             >
                               <div

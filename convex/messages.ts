@@ -2,7 +2,7 @@ import { query, mutation } from './_generated/server'
 import type { Doc, Id } from './_generated/dataModel'
 import { paginationOptsValidator } from 'convex/server'
 import { v } from 'convex/values'
-import { MessageAnnotation } from './schema'
+import { MessageAnnotation, MessageBlock } from './schema'
 import { requireChatOwner, requireMessageOwner } from './lib/authz'
 import { trackUserAnalytics } from './lib/userAnalytics'
 
@@ -193,6 +193,7 @@ export const add = mutation({
     chatId: v.id('chats'),
     role: v.union(v.literal('user'), v.literal('assistant'), v.literal('system')),
     content: v.string(),
+    blocks: v.optional(v.array(MessageBlock)),
     annotations: v.optional(v.array(MessageAnnotation)),
   },
   handler: async (ctx, args) => {
@@ -204,6 +205,7 @@ export const add = mutation({
       chatId: args.chatId,
       role: args.role,
       content: args.content,
+      blocks: args.blocks,
       annotations: args.annotations,
       createdAt: now,
     })
@@ -225,6 +227,7 @@ export const update = mutation({
   args: {
     id: v.id('messages'),
     content: v.optional(v.string()),
+    blocks: v.optional(v.array(MessageBlock)),
     annotations: v.optional(v.array(MessageAnnotation)),
   },
   handler: async (ctx, args) => {
@@ -233,6 +236,7 @@ export const update = mutation({
     const updates: Partial<typeof message> = {}
 
     if (args.content !== undefined) updates.content = args.content
+    if (args.blocks !== undefined) updates.blocks = args.blocks
     if (args.annotations !== undefined) updates.annotations = args.annotations
 
     await ctx.db.patch(args.id, updates)

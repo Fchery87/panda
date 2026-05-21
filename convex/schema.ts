@@ -448,10 +448,76 @@ export const MessageToolCall = v.object({
   result: v.optional(MessageToolCallResult),
 })
 
+export const MessageBlock = v.union(
+  v.object({
+    type: v.literal('text'),
+    text: v.string(),
+  }),
+  v.object({
+    type: v.literal('reasoning_summary'),
+    text: v.optional(v.string()),
+    redacted: v.optional(v.boolean()),
+    tokenCount: v.optional(v.number()),
+  }),
+  v.object({
+    type: v.literal('tool_call_ref'),
+    toolCallId: v.string(),
+    toolName: v.optional(v.string()),
+  }),
+  v.object({
+    type: v.literal('tool_result_ref'),
+    toolCallId: v.string(),
+    eventId: v.optional(v.string()),
+  }),
+  v.object({
+    type: v.literal('artifact_ref'),
+    artifactId: v.string(),
+  }),
+  v.object({
+    type: v.literal('file_change_ref'),
+    path: v.string(),
+    action: v.union(v.literal('created'), v.literal('updated'), v.literal('deleted')),
+  }),
+  v.object({
+    type: v.literal('error'),
+    message: v.string(),
+  })
+)
+
+export const ReasoningProviderMetadata = v.object({
+  encryptedContent: v.optional(v.string()),
+  signature: v.optional(v.string()),
+  redactedPayload: v.optional(v.string()),
+  thoughtSignature: v.optional(v.string()),
+})
+
+export const ReasoningState = v.object({
+  mode: v.union(
+    v.literal('off'),
+    v.literal('auto'),
+    v.literal('low'),
+    v.literal('medium'),
+    v.literal('high'),
+    v.literal('max')
+  ),
+  display: v.union(
+    v.literal('hidden'),
+    v.literal('summary'),
+    v.literal('expanded'),
+    v.literal('debug')
+  ),
+  summary: v.optional(v.string()),
+  visibleContent: v.optional(v.string()),
+  redacted: v.optional(v.boolean()),
+  tokenCount: v.optional(v.number()),
+  providerMetadata: v.optional(ReasoningProviderMetadata),
+})
+
 export const MessageAnnotation = v.object({
   mode: v.optional(StoredChatMode),
   attachmentsOnly: v.optional(v.boolean()),
   reasoningSummary: v.optional(v.string()),
+  reasoningState: v.optional(ReasoningState),
   toolCalls: v.optional(v.array(MessageToolCall)),
   model: v.optional(v.string()),
   provider: v.optional(v.string()),
@@ -850,6 +916,7 @@ export default defineSchema({
     chatId: v.id('chats'),
     role: v.union(v.literal('user'), v.literal('assistant'), v.literal('system')),
     content: v.string(),
+    blocks: v.optional(v.array(MessageBlock)),
     annotations: v.optional(v.array(MessageAnnotation)),
     createdAt: v.number(),
   })

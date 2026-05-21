@@ -167,6 +167,65 @@ export type TranscriptFeedItem =
     }
 
 /* -------------------------------------------------------------------------- */
+/*  Message block helpers                                                     */
+/* -------------------------------------------------------------------------- */
+
+function buildAssistantBlocksFromStructuredMessage(message: Message): TranscriptBlock[] | null {
+  if (!message.blocks?.length) return null
+
+  const blocks: TranscriptBlock[] = []
+
+  message.blocks.forEach((block, index) => {
+    const createdAt = message.createdAt
+    const id = `${message._id}-block-${index}`
+
+    switch (block.type) {
+      case 'reasoning_summary': {
+        if (block.redacted || !block.text?.trim()) {
+          blocks.push({
+            id,
+            kind: 'thinking_redacted',
+            content: buildReasoningUnavailableText(block.tokenCount),
+            createdAt,
+          })
+        } else {
+          blocks.push({
+            id,
+            kind: 'thinking_teaser',
+            content: buildReasoningPreview(block.text),
+            fullContent: block.text,
+            createdAt,
+          })
+        }
+        break
+      }
+      case 'text': {
+        blocks.push({
+          id,
+          kind: 'assistant_text',
+          content: block.text,
+          createdAt,
+        })
+        break
+      }
+      case 'error': {
+        blocks.push({
+          id,
+          kind: 'assistant_text',
+          content: block.message,
+          createdAt,
+        })
+        break
+      }
+      default:
+        break
+    }
+  })
+
+  return blocks.length > 0 ? blocks : null
+}
+
+/* -------------------------------------------------------------------------- */
 /*  Reasoning helpers                                                         */
 /* -------------------------------------------------------------------------- */
 
@@ -195,6 +254,9 @@ export function buildAssistantMessageTranscriptBlocks(message: Message): Transcr
   if (message.role !== 'assistant') {
     return []
   }
+
+  const structuredBlocks = buildAssistantBlocksFromStructuredMessage(message)
+  if (structuredBlocks) return structuredBlocks
 
   const blocks: TranscriptBlock[] = []
   const reasoningContent = message.reasoningContent?.trim()
@@ -392,8 +454,8 @@ export function buildTranscriptFeedItems(args: {
       ? args.liveSteps
       : mapLatestRunSummaryProgressSteps(args.runEvents ?? [])
 
-  // Build tool chips (code + build modes only)
-  if (args.chatMode === 'code' || args.chatMode === 'build') {
+  // Chat owns only compact tool summaries; full tool details belong in the Proof inspector.
+  if (policy.chatAllows.includes('compact_tool_chips')) {
     const toolChipBlock = buildToolChipsFromSteps(steps)
     if (toolChipBlock) {
       items.push({
@@ -405,8 +467,8 @@ export function buildTranscriptFeedItems(args: {
     }
   }
 
-  // Build plan checklist (all modes that have a plan draft)
-  if (args.planDraft) {
+  // Chat may show a compact plan checklist; plan detail stays in Context.
+  if (policy.chatAllows.includes('plan_checklist') && args.planDraft) {
     const checklistBlock = buildPlanChecklist(args.planDraft, steps)
     if (checklistBlock) {
       items.push({
