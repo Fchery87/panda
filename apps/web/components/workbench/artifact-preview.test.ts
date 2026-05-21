@@ -141,6 +141,7 @@ describe('artifact preview helpers', () => {
 
     expect(entries).toEqual([
       {
+        artifactId: 'artifact-1',
         path: 'src/app.ts',
         status: 'modified',
         reviewStatus: 'pending',

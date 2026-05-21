@@ -27,6 +27,8 @@ import type { PlanStatus } from '@/lib/chat/planDraft'
 import type { TracePersistenceStatus } from '@/hooks/useRunEventBuffer'
 import type { PlanningSessionDebugSummary } from '@/components/plan/PlanningSessionDebugCard'
 import type { GeneratedPlanArtifact, PlanningAnswer, PlanningQuestion } from '@/lib/planning/types'
+import type { DiffFileEntry } from '@/components/workbench/DiffTab'
+import { cn } from '@/lib/utils'
 
 type PlanningSessionView = {
   sessionId: string
@@ -69,6 +71,110 @@ export interface InspectorRunContentProps {
   snapshotEvents: SnapshotEvent[]
   subagentToolCalls: ToolCallInfo[]
   planningDebug?: PlanningSessionDebugSummary | null
+  pendingDiffEntries?: DiffFileEntry[]
+}
+
+function WalkthroughSummary({
+  latestRunReceipt,
+  runEvents,
+  pendingDiffEntries = [],
+}: {
+  latestRunReceipt?: LatestRunReceiptInfo | null
+  runEvents?: PersistedRunEventSummaryInfo[]
+  pendingDiffEntries?: DiffFileEntry[]
+}) {
+  const receipt = latestRunReceipt?.receipt
+  const receiptFiles = receipt?.webcontainer?.filesWritten ?? []
+  const pendingFiles = pendingDiffEntries.map((entry) => entry.path)
+  const eventFiles = (runEvents ?? []).flatMap((event) => event.targetFilePaths ?? [])
+  const filesChanged = Array.from(new Set([...pendingFiles, ...receiptFiles, ...eventFiles])).slice(
+    0,
+    12
+  )
+  const commandsRun = receipt?.webcontainer?.commandsRun ?? []
+  const validationEvidence = receipt?.validationEvidence ?? []
+  const errorEvents = (runEvents ?? []).filter((event) => event.status === 'error' || event.errorPreview)
+  const hasWalkthrough = Boolean(receipt || filesChanged.length > 0 || commandsRun.length > 0)
+
+  return (
+    <div className="bg-background/80 border border-border">
+      <div className="surface-1 border-b border-border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+        Walkthrough
+      </div>
+      <div className="space-y-3 p-3">
+        <div className="border border-border bg-background/70 p-3">
+          <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            Summary
+          </div>
+          <p className="mt-2 text-xs leading-5 text-muted-foreground">
+            {hasWalkthrough
+              ? `Latest run ${latestRunReceipt?.status ?? 'activity'} captured ${filesChanged.length} changed file${filesChanged.length === 1 ? '' : 's'} and ${commandsRun.length} command${commandsRun.length === 1 ? '' : 's'}.`
+              : 'A completed run walkthrough will appear here after Panda records changed files, commands, or validation evidence.'}
+          </p>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <PlanFileList title="Files changed" files={filesChanged} emptyLabel="No file changes recorded" />
+          <div className="bg-background/80 border border-border px-3 py-3">
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Commands run
+            </div>
+            {commandsRun.length > 0 ? (
+              <ul className="mt-2 space-y-1">
+                {commandsRun.slice(0, 8).map((command, index) => (
+                  <li key={`${command.command}-${index}`} className="truncate font-mono text-xs text-foreground">
+                    {command.command}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-xs text-muted-foreground">No commands recorded</p>
+            )}
+          </div>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="bg-background/80 border border-border px-3 py-3">
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Validation
+            </div>
+            {validationEvidence.length > 0 ? (
+              <ul className="mt-2 space-y-1">
+                {validationEvidence.slice(0, 8).map((evidence) => (
+                  <li key={evidence.changeType} className="text-xs text-muted-foreground">
+                    <span className="font-mono text-foreground">{evidence.changeType}</span>: {evidence.validationCommands.length || 0} validation command{evidence.validationCommands.length === 1 ? '' : 's'}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-xs text-muted-foreground">No validation evidence recorded</p>
+            )}
+          </div>
+          <div className="bg-background/80 border border-border px-3 py-3">
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Known issues
+            </div>
+            {errorEvents.length > 0 ? (
+              <ul className="mt-2 space-y-1">
+                {errorEvents.slice(0, 5).map((event, index) => (
+                  <li key={event._id ?? index} className="text-xs text-destructive">
+                    {event.errorPreview ?? event.contentPreview ?? 'Run event reported an error'}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-xs text-muted-foreground">No known issues recorded</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function getLatestSnapshotSummary(events: InspectorRunContentProps['snapshotEvents']) {
+  const snapshots = events.filter((event) => event.snapshot?.hash)
+  return snapshots.at(-1) ?? null
 }
 
 export function InspectorRunContent({
@@ -89,10 +195,12 @@ export function InspectorRunContent({
   snapshotEvents,
   subagentToolCalls,
   planningDebug,
+  pendingDiffEntries = [],
 }: InspectorRunContentProps) {
   const hasActivePlan = Boolean(planStatus && planStatus !== 'idle')
   const hasSpec = Boolean(currentSpec)
   const hasSnapshots = snapshotEvents.length > 0
+  const latestSnapshot = getLatestSnapshotSummary(snapshotEvents)
   const hasSubagents = subagentToolCalls.length > 0
 
   return (
@@ -157,6 +265,12 @@ export function InspectorRunContent({
         </div>
       </div>
 
+      <WalkthroughSummary
+        latestRunReceipt={latestRunReceipt}
+        runEvents={runEvents}
+        pendingDiffEntries={pendingDiffEntries}
+      />
+
       <div className="bg-background/80 border border-border">
         <div className="surface-1 border-b border-border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
           Agent events
@@ -171,12 +285,31 @@ export function InspectorRunContent({
           Recovery and delegation
         </div>
         <div className="space-y-3 p-3">
+          <div className="border border-border bg-background/70 p-3">
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Recovery checkpoint
+            </div>
+            {latestSnapshot?.snapshot?.hash ? (
+              <div className="mt-2 space-y-1">
+                <div className="font-mono text-xs text-foreground">
+                  Latest snapshot: {latestSnapshot.snapshot.hash.slice(0, 8)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Use the snapshot timeline below to view diffs or restore work before accepting
+                  generated changes.
+                </p>
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Recovery checkpoints will appear here after the runtime captures a snapshot.
+              </p>
+            )}
+          </div>
           {hasSnapshots ? <SnapshotTimeline events={snapshotEvents} /> : null}
           {hasSubagents ? <SubagentPanel toolCalls={subagentToolCalls} /> : null}
           {!hasSnapshots && !hasSubagents ? (
             <p className="font-mono text-xs text-muted-foreground">
-              Recovery checkpoints and delegated subagent activity will appear here when they are
-              available.
+              Delegated subagent activity will appear here when it is available.
             </p>
           ) : null}
         </div>
@@ -311,6 +444,77 @@ function InspectorContextContent({
   )
 }
 
+type PlanLifecycleStep = {
+  label: string
+  state: 'done' | 'active' | 'upcoming'
+}
+
+function getPlanLifecycleSteps(
+  artifactStatus?: GeneratedPlanArtifact['status'],
+  planStatus?: PlanStatus | null
+): PlanLifecycleStep[] {
+  const hasDraft = Boolean(planStatus && planStatus !== 'idle') || Boolean(artifactStatus)
+  const order = ['Draft', 'Review', 'Approved', 'Building', 'Changes', 'Verified']
+  const activeIndex = artifactStatus
+    ? artifactStatus === 'ready_for_review'
+      ? 1
+      : artifactStatus === 'accepted'
+        ? 2
+        : artifactStatus === 'executing'
+          ? 3
+          : artifactStatus === 'completed'
+            ? 5
+            : artifactStatus === 'failed'
+              ? 4
+              : 0
+    : hasDraft
+      ? 0
+      : -1
+
+  return order.map((label, index) => ({
+    label,
+    state: index < activeIndex ? 'done' : index === activeIndex ? 'active' : 'upcoming',
+  }))
+}
+
+function extractPlanFilePaths(artifact?: GeneratedPlanArtifact | null): string[] {
+  if (!artifact) return []
+  const content = [artifact.summary, artifact.markdown, ...artifact.sections.map((s) => s.content)]
+    .filter(Boolean)
+    .join('\n')
+  const matches = content.match(/(?:[\w.-]+\/)+[\w.-]+\.[A-Za-z0-9]+/g) ?? []
+  return Array.from(new Set(matches)).slice(0, 12)
+}
+
+function PlanFileList({
+  title,
+  files,
+  emptyLabel,
+}: {
+  title: string
+  files: string[]
+  emptyLabel: string
+}) {
+  return (
+    <div className="bg-background/80 border border-border px-3 py-3">
+      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+        {title}
+      </div>
+      {files.length > 0 ? (
+        <ul className="mt-2 space-y-1">
+          {files.map((file) => (
+            <li key={file} className="truncate font-mono text-xs text-foreground">
+              {file}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-xs text-muted-foreground">{emptyLabel}</p>
+      )}
+    </div>
+  )
+}
+
 export interface InspectorPlanContentProps {
   planDraft: string
   generatedPlanArtifact?: GeneratedPlanArtifact | null
@@ -324,6 +528,8 @@ export interface InspectorPlanContentProps {
   lastGeneratedAt?: number | null
   approveDisabled: boolean
   buildDisabled: boolean
+  pendingDiffEntries?: DiffFileEntry[]
+  onReviewDiff?: () => void
 }
 
 export function InspectorPlanContent({
@@ -339,9 +545,14 @@ export function InspectorPlanContent({
   lastGeneratedAt,
   approveDisabled,
   buildDisabled,
+  pendingDiffEntries = [],
+  onReviewDiff,
 }: InspectorPlanContentProps) {
   const generatedSummary = generatedPlanArtifact?.summary?.trim() || null
   const acceptanceCheckCount = generatedPlanArtifact?.acceptanceChecks.length ?? 0
+  const expectedFiles = extractPlanFilePaths(generatedPlanArtifact)
+  const actualChangedFiles = Array.from(new Set(pendingDiffEntries.map((entry) => entry.path)))
+  const lifecycleSteps = getPlanLifecycleSteps(generatedPlanArtifact?.status, planStatus)
 
   return (
     <div className="m-0 space-y-3">
@@ -371,6 +582,57 @@ export function InspectorPlanContent({
           </div>
         </div>
       </div>
+
+      <div className="bg-background/80 border border-border px-3 py-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Implementation lifecycle
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Plan context moves from draft to reviewed changes and proof.
+            </p>
+          </div>
+          {actualChangedFiles.length > 0 && onReviewDiff ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 shrink-0 rounded-none font-mono text-[10px] uppercase tracking-[0.16em]"
+              onClick={onReviewDiff}
+            >
+              Open Review Diff
+            </Button>
+          ) : null}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {lifecycleSteps.map((step) => (
+            <span
+              key={step.label}
+              className={cn(
+                'border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.14em]',
+                step.state === 'done' && 'border-primary/30 bg-primary/10 text-primary',
+                step.state === 'active' &&
+                  'border-[oklch(var(--status-warning)/0.35)] bg-[oklch(var(--status-warning)/0.1)] text-[oklch(var(--status-warning))]',
+                step.state === 'upcoming' && 'border-border bg-background/60 text-muted-foreground'
+              )}
+            >
+              {step.label}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {(expectedFiles.length > 0 || actualChangedFiles.length > 0) && (
+        <div className="grid gap-3 md:grid-cols-2">
+          <PlanFileList title="Expected files" files={expectedFiles} emptyLabel="Not specified" />
+          <PlanFileList
+            title="Actual changed files"
+            files={actualChangedFiles}
+            emptyLabel="No generated changes yet"
+          />
+        </div>
+      )}
 
       {generatedSummary ? (
         <div className="bg-background/80 border border-border px-3 py-3">

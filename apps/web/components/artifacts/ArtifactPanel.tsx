@@ -28,6 +28,8 @@ interface ArtifactPanelProps {
   onClose?: () => void
   position?: 'right' | 'floating'
   writeFileToRuntime?: (path: string, content: string) => Promise<unknown>
+  onOpenFile?: (path: string) => void
+  onReviewDiff?: () => void
 }
 
 type ArtifactCardData = React.ComponentProps<typeof ArtifactCard>['artifact']
@@ -55,6 +57,8 @@ export function ArtifactPanel({
   onClose,
   position = 'right',
   writeFileToRuntime,
+  onOpenFile,
+  onReviewDiff,
 }: ArtifactPanelProps) {
   const artifactController = useArtifactController({ projectId, chatId, writeFileToRuntime })
   const records = artifactController.records as ArtifactRecord[] | undefined
@@ -211,8 +215,30 @@ export function ArtifactPanel({
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
-          className="border-b px-4 py-3"
+          className="space-y-3 border-b px-4 py-3"
         >
+          <div className="border border-border bg-background/70 p-3">
+            <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Session changed work
+            </div>
+            <div className="mt-1 text-sm font-medium text-foreground">
+              {pendingCount} pending change{pendingCount === 1 ? '' : 's'}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Review generated file changes in the central Review Diff tab.
+            </p>
+            {onReviewDiff && (
+              <Button
+                type="button"
+                onClick={onReviewDiff}
+                variant="outline"
+                className="mt-3 h-8 w-full rounded-none font-mono text-[10px] uppercase tracking-[0.16em]"
+                size="sm"
+              >
+                Open Review Diff
+              </Button>
+            )}
+          </div>
           <div className="flex gap-2">
             <Button
               onClick={handleApplyAll}
@@ -288,6 +314,8 @@ export function ArtifactPanel({
                           artifact={artifact}
                           onApply={handleApply}
                           onReject={handleReject}
+                          onOpenFile={onOpenFile}
+                          onReviewDiff={onReviewDiff}
                         />
                       </motion.div>
                     ))}
@@ -318,6 +346,8 @@ export function ArtifactPanel({
                           artifact={artifact}
                           onApply={handleApply}
                           onReject={handleReject}
+                          onOpenFile={onOpenFile}
+                          onReviewDiff={onReviewDiff}
                         />
                       </motion.div>
                     ))}
@@ -348,6 +378,8 @@ export function ArtifactPanel({
                           artifact={artifact}
                           onApply={handleApply}
                           onReject={handleReject}
+                          onOpenFile={onOpenFile}
+                          onReviewDiff={onReviewDiff}
                         />
                       </motion.div>
                     ))}

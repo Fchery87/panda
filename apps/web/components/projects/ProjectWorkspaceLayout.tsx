@@ -13,7 +13,7 @@ import type { TaskStatus } from '@/components/layout/TaskHeader'
 import { Terminal } from '@/components/workbench/Terminal'
 import { SidebarRail } from '@/components/sidebar/SidebarRail'
 import { SidebarFlyout } from '@/components/sidebar/SidebarFlyout'
-import { FileTree } from '@/components/workbench/FileTree'
+import { FileTree, type WorkspaceFileStatus } from '@/components/workbench/FileTree'
 import { ExplorerOutline } from '@/components/sidebar/ExplorerOutline'
 import { ActiveAgentsPane } from '@/components/sidebar/ActiveAgentsPane'
 import { ProjectSearchPanel } from '@/components/workbench/ProjectSearchPanel'
@@ -217,7 +217,6 @@ export function ProjectWorkspaceLayoutView({
     count: 0,
     tasks: [],
   }
-  const activeReviewTab = useWorkspaceUiStore((state) => state.rightPanelTab)
   const openRightPanelTab = useWorkspaceUiStore((state) => state.openRightPanelTab)
   const workspaceFocusMode = useWorkspaceUiStore((state) => state.workspaceFocusMode)
   const setWorkspaceFocusMode = useWorkspaceUiStore((state) => state.setWorkspaceFocusMode)
@@ -238,6 +237,41 @@ export function ProjectWorkspaceLayoutView({
   const centerDefaultSize = shouldRenderRightPanel ? 100 - rightPanelDefaultSize : 100
   const rightPanelMaxSize = workspaceFocusMode === 'workbench' ? 62 : isInspectorFocus ? 50 : 34
   const outerLayoutPersistenceKey = `panda-workspace-${shouldRenderRightPanel ? 'right-open' : 'right-closed'}-${workspaceFocusMode}`
+
+  const pendingFileStatuses = useMemo(() => {
+    const statuses: Record<string, WorkspaceFileStatus> = {}
+    for (const entry of pendingDiffEntries ?? []) {
+      statuses[entry.path] = {
+        source: 'agent',
+        changeType: entry.status,
+        reviewStatus: entry.reviewStatus,
+        artifactId: entry.artifactId,
+      }
+    }
+    return statuses
+  }, [pendingDiffEntries])
+
+  const fileTreeFiles = useMemo(() => {
+    const mapped = files.map((file) => ({
+      _id: String(file._id),
+      path: file.path,
+      isBinary: file.isBinary ?? false,
+      updatedAt: file.updatedAt,
+    }))
+    const seen = new Set(mapped.map((file) => file.path))
+    for (const entry of pendingDiffEntries ?? []) {
+      if (!seen.has(entry.path) && entry.status !== 'deleted') {
+        mapped.push({
+          _id: entry.artifactId ?? `pending:${entry.path}`,
+          path: entry.path,
+          isBinary: false,
+          updatedAt: 0,
+        })
+        seen.add(entry.path)
+      }
+    }
+    return mapped
+  }, [files, pendingDiffEntries])
 
   const activateWorkspaceFocus = (focus: 'chat' | 'workbench' | 'proof' | 'changes') => {
     setWorkspaceFocusMode(focus)
@@ -282,6 +316,10 @@ export function ProjectWorkspaceLayoutView({
       isAgentRunning={isStreaming}
       onStartAgent={onStartAgent}
       onOpenTerminal={onOpenTerminal}
+      onOpenProof={() => {
+        setWorkspaceFocusMode('proof')
+        openRightPanelTab('proof')
+      }}
       focusState={focusState}
       onFocusPrimaryAction={onFocusPrimaryAction}
       onFocusSecondaryAction={onFocusSecondaryAction}
@@ -294,12 +332,8 @@ export function ProjectWorkspaceLayoutView({
         <div className="flex h-full flex-col overflow-hidden">
           <div className="flex-1 overflow-auto">
             <FileTree
-              files={files.map((file) => ({
-                _id: file._id,
-                path: file.path,
-                isBinary: file.isBinary ?? false,
-                updatedAt: file.updatedAt,
-              }))}
+              files={fileTreeFiles}
+              fileStatuses={pendingFileStatuses}
               selectedPath={selectedFilePath}
               onSelect={onSelectFile}
               onCreate={onCreateFile}

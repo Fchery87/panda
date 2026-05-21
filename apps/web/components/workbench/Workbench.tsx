@@ -64,6 +64,7 @@ interface WorkbenchProps {
   /** Called when user wants to start a new agent task (e.g. from WorkspaceHome) */
   onStartAgent?: () => void
   onOpenTerminal?: () => void
+  onOpenProof?: () => void
   focusState?: WorkspaceFocusState | null
   onFocusPrimaryAction?: () => void
   onFocusSecondaryAction?: () => void
@@ -109,6 +110,7 @@ export function Workbench({
   isAgentRunning = false,
   onStartAgent,
   onOpenTerminal,
+  onOpenProof,
   focusState = null,
   onFocusPrimaryAction,
   onFocusSecondaryAction,
@@ -132,6 +134,25 @@ export function Workbench({
   const shortcuts = useMemo(() => [], [])
 
   useShortcuts(shortcuts)
+
+  const handleAcceptDiffFile = (fileIndex: number) => {
+    const artifactId = pendingDiffEntries[fileIndex]?.artifactId
+    if (artifactId) onApplyPendingArtifact(artifactId)
+  }
+  const handleRejectDiffFile = (fileIndex: number) => {
+    const artifactId = pendingDiffEntries[fileIndex]?.artifactId
+    if (artifactId) onRejectPendingArtifact(artifactId)
+  }
+  const handleAcceptAllDiffs = () => {
+    for (const entry of pendingDiffEntries) {
+      if (entry.artifactId) onApplyPendingArtifact(entry.artifactId)
+    }
+  }
+  const handleRejectAllDiffs = () => {
+    for (const entry of pendingDiffEntries) {
+      if (entry.artifactId) onRejectPendingArtifact(entry.artifactId)
+    }
+  }
 
   const effectiveTab = activeCenterTab
   const centerTabs = useMemo(
@@ -205,6 +226,11 @@ export function Workbench({
               files={pendingDiffEntries}
               pendingDiffCount={pendingDiffCount}
               agentLabel="Agent"
+              onAcceptFile={handleAcceptDiffFile}
+              onRejectFile={handleRejectDiffFile}
+              onAcceptAll={handleAcceptAllDiffs}
+              onRejectAll={handleRejectAllDiffs}
+              onOpenProof={onOpenProof}
             />
           )}
         </div>
@@ -310,6 +336,11 @@ export function Workbench({
               files={pendingDiffEntries}
               pendingDiffCount={pendingDiffCount}
               agentLabel="Agent"
+              onAcceptFile={handleAcceptDiffFile}
+              onRejectFile={handleRejectDiffFile}
+              onAcceptAll={handleAcceptAllDiffs}
+              onRejectAll={handleRejectAllDiffs}
+              onOpenProof={onOpenProof}
             />
           )}
         </div>

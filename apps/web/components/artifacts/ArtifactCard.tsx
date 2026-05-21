@@ -32,6 +32,8 @@ interface ArtifactCardProps {
   artifact: Artifact
   onApply: (id: string) => void
   onReject: (id: string) => void
+  onOpenFile?: (path: string) => void
+  onReviewDiff?: () => void
   isBatchAction?: boolean
 }
 
@@ -57,6 +59,8 @@ export function ArtifactCard({
   artifact,
   onApply,
   onReject,
+  onOpenFile,
+  onReviewDiff,
   isBatchAction = false,
 }: ArtifactCardProps) {
   const isFileWrite = artifact.type === 'file_write'
@@ -172,6 +176,33 @@ export function ArtifactCard({
 
           {artifact.description && (
             <p className="mb-3 text-sm italic text-muted-foreground">{artifact.description}</p>
+          )}
+
+          {isFileWritePayload(payload) && (onOpenFile || onReviewDiff) && (
+            <div className="mb-2 flex gap-2">
+              {onOpenFile && (
+                <Button
+                  type="button"
+                  onClick={() => onOpenFile(payload.filePath)}
+                  variant="outline"
+                  className="flex-1 rounded-none"
+                  size="sm"
+                >
+                  Open File
+                </Button>
+              )}
+              {onReviewDiff && (
+                <Button
+                  type="button"
+                  onClick={onReviewDiff}
+                  variant="outline"
+                  className="flex-1 rounded-none"
+                  size="sm"
+                >
+                  Review Diff
+                </Button>
+              )}
+            </div>
           )}
 
           {isPending && !isBatchAction && (

@@ -29,6 +29,7 @@ export interface DiffHunk {
 }
 
 export interface DiffFileEntry {
+  artifactId?: string
   path: string
   status: 'added' | 'modified' | 'deleted' | 'renamed'
   hunks: DiffHunk[]
@@ -46,6 +47,7 @@ interface DiffTabProps {
   onAcceptAll?: () => void
   onRejectAll?: () => void
   onRevertFile?: (fileIndex: number) => void
+  onOpenProof?: () => void
   pendingDiffCount?: number
 }
 
@@ -73,6 +75,7 @@ export function DiffTab({
   onAcceptAll,
   onRejectAll,
   onRevertFile,
+  onOpenProof,
   pendingDiffCount = 0,
 }: DiffTabProps) {
   const [selectedFileIndex, setSelectedFileIndex] = useState(0)
@@ -130,6 +133,17 @@ export function DiffTab({
           </span>
         </div>
         <div className="flex items-center gap-1">
+          {onOpenProof && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 gap-1 rounded-none font-mono text-[10px] uppercase tracking-widest"
+              onClick={onOpenProof}
+            >
+              <IconRevert className="h-3 w-3" />
+              Restore in Proof
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"

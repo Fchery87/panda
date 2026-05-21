@@ -691,6 +691,7 @@ export function WorkspaceRuntimeProvider({
       // Files
       filePaths: files.map((f) => f.path),
       filesForPalette: files.map((f) => ({ path: f.path })),
+      pendingDiffEntries,
 
       // Plan state
       planDraft,
@@ -827,6 +828,7 @@ export function WorkspaceRuntimeProvider({
       supportsReasoning,
       provider,
       files,
+      pendingDiffEntries,
       planDraft,
       isSavingPlanDraft,
       canApproveCurrentPlan,

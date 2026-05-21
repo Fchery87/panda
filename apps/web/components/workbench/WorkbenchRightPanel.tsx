@@ -53,14 +53,20 @@ export function WorkbenchRightPanel({ projectId, workContent }: WorkbenchRightPa
     openRightPanelTab,
     writeFileToRuntime,
     executionSession,
+    pendingDiffEntries,
   } = useWorkspaceRuntime()
 
   const activeTab = useWorkspaceUiStore((s) => s.rightPanelTab)
   const setActiveTab = useWorkspaceUiStore((s) => s.setRightPanelTab)
+  const setActiveCenterTab = useWorkspaceUiStore((s) => s.setActiveCenterTab)
 
   const onSpecClick = () => useWorkspaceUiStore.getState().setSpecSurfaceMode('inspect')
   const onPlanClick = () => openRightPanelTab('context')
   const onOpenArtifacts = () => openRightPanelTab('changes')
+  const onReviewDiff = () => {
+    setActiveCenterTab('diff')
+    openRightPanelTab('changes')
+  }
 
   const isDrawerOpen = activeTab !== 'work'
   const activeInspectorTab = isDrawerOpen ? activeTab : undefined
@@ -96,6 +102,8 @@ export function WorkbenchRightPanel({ projectId, workContent }: WorkbenchRightPa
                 lastGeneratedAt={lastGeneratedAt}
                 approveDisabled={planApproveDisabled}
                 buildDisabled={planBuildDisabled}
+                pendingDiffEntries={pendingDiffEntries}
+                onReviewDiff={onReviewDiff}
               />
               <InspectorMemoryContent memoryBank={memoryBank} onSaveMemoryBank={onSaveMemoryBank} />
               <InspectorEvalsContent
@@ -122,6 +130,8 @@ export function WorkbenchRightPanel({ projectId, workContent }: WorkbenchRightPa
                 chatId={activeChatId}
                 position="right"
                 writeFileToRuntime={writeFileToRuntime}
+                onOpenFile={onOpenFile}
+                onReviewDiff={onReviewDiff}
               />
             </div>
           </div>
@@ -147,6 +157,7 @@ export function WorkbenchRightPanel({ projectId, workContent }: WorkbenchRightPa
               planningDebug={planningDebug}
               snapshotEvents={snapshotEvents}
               subagentToolCalls={subagentToolCalls}
+              pendingDiffEntries={pendingDiffEntries}
             />
           </div>
         )

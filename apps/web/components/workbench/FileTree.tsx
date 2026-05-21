@@ -15,6 +15,7 @@ import {
   Edit2,
   File as FileIcon,
 } from 'lucide-react'
+import type { DiffFileEntry } from './DiffTab'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import {
@@ -53,6 +54,13 @@ function getFileIcon(filename: string) {
   }
 }
 
+export interface WorkspaceFileStatus {
+  source?: 'agent' | 'user'
+  changeType?: DiffFileEntry['status']
+  reviewStatus?: 'pending' | 'accepted' | 'rejected'
+  artifactId?: string
+}
+
 interface FileTreeNode {
   name: string
   path: string
@@ -60,6 +68,7 @@ interface FileTreeNode {
   children: FileTreeNode[]
   isBinary: boolean
   updatedAt: number
+  status?: WorkspaceFileStatus
 }
 
 interface FileTreeProps {
@@ -75,10 +84,14 @@ interface FileTreeProps {
   onRename: (oldPath: string, newPath: string) => void
   onDelete: (path: string) => void
   onImportLocalWorkspace?: () => void
+  fileStatuses?: Record<string, WorkspaceFileStatus>
 }
 
 // Build tree structure from flat file list
-function buildTree(files: FileTreeProps['files']): FileTreeNode[] {
+function buildTree(
+  files: FileTreeProps['files'],
+  fileStatuses: Record<string, WorkspaceFileStatus> = {}
+): FileTreeNode[] {
   // Guard against undefined/null files
   if (!files || !Array.isArray(files) || files.length === 0) {
     return []
@@ -108,6 +121,7 @@ function buildTree(files: FileTreeProps['files']): FileTreeNode[] {
           children: [],
           isBinary: isLastPart ? file.isBinary : false,
           updatedAt: isLastPart ? file.updatedAt : 0,
+          status: isLastPart ? fileStatuses[currentPath] : undefined,
         }
         nodeMap.set(currentPath, node)
 
@@ -155,6 +169,35 @@ interface TreeItemProps {
   depth: number
 }
 
+const CHANGE_STATUS_LABELS: Record<NonNullable<WorkspaceFileStatus['changeType']>, string> = {
+  added: 'New',
+  modified: 'Modified',
+  deleted: 'Deleted',
+  renamed: 'Renamed',
+}
+
+function getFileStatusLabel(status?: WorkspaceFileStatus): string | null {
+  if (!status) return null
+  if (status.reviewStatus === 'rejected') return 'Rejected'
+  if (status.changeType) return CHANGE_STATUS_LABELS[status.changeType]
+  if (status.reviewStatus === 'pending') return 'Pending'
+  if (status.reviewStatus === 'accepted') return 'Applied'
+  return null
+}
+
+function getFileStatusClass(status?: WorkspaceFileStatus): string {
+  if (status?.reviewStatus === 'rejected' || status?.changeType === 'deleted') {
+    return 'border-destructive/30 bg-destructive/10 text-destructive'
+  }
+  if (status?.changeType === 'added') {
+    return 'border-[oklch(var(--status-success)/0.3)] bg-[oklch(var(--status-success)/0.1)] text-[oklch(var(--status-success))]'
+  }
+  if (status?.changeType === 'modified' || status?.changeType === 'renamed') {
+    return 'border-[oklch(var(--status-warning)/0.3)] bg-[oklch(var(--status-warning)/0.1)] text-[oklch(var(--status-warning))]'
+  }
+  return 'border-border bg-muted/40 text-muted-foreground'
+}
+
 function TreeItem({
   node,
   selectedPath,
@@ -171,6 +214,7 @@ function TreeItem({
   const isExpanded = expandedPaths.has(node.path)
   const isSelected = selectedPath === node.path
   const isDirectory = node.type === 'directory'
+  const statusLabel = !isDirectory ? getFileStatusLabel(node.status) : null
 
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -285,14 +329,26 @@ function TreeItem({
                 />
               </form>
             ) : (
-              <span
-                className={cn(
-                  'flex-1 truncate font-mono text-code-base',
-                  isSelected && 'font-medium text-foreground'
-                )}
-              >
-                {node.name}
-              </span>
+              <>
+                <span
+                  className={cn(
+                    'min-w-0 flex-1 truncate font-mono text-code-base',
+                    isSelected && 'font-medium text-foreground'
+                  )}
+                >
+                  {node.name}
+                </span>
+                {statusLabel ? (
+                  <span
+                    className={cn(
+                      'shrink-0 border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em]',
+                      getFileStatusClass(node.status)
+                    )}
+                  >
+                    {statusLabel}
+                  </span>
+                ) : null}
+              </>
             )}
           </motion.div>
         </ContextMenuTrigger>
@@ -410,11 +466,12 @@ export function FileTree({
   onRename,
   onDelete,
   onImportLocalWorkspace,
+  fileStatuses = {},
 }: FileTreeProps) {
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set())
   const [newFileParent, setNewFileParent] = useState<string | null>(null)
 
-  const tree = useMemo(() => buildTree(files), [files])
+  const tree = useMemo(() => buildTree(files, fileStatuses), [files, fileStatuses])
 
   const handleToggle = useCallback((path: string) => {
     setExpandedPaths((prev) => {

@@ -78,6 +78,7 @@ export function derivePreviewDiffEntries(previews: WorkspaceArtifactPreview[]): 
     const pendingLines = preview.pendingContent.split('\n')
 
     return {
+      artifactId: preview.artifactId,
       path: preview.filePath,
       status: preview.originalContent ? 'modified' : 'added',
       reviewStatus: 'pending',

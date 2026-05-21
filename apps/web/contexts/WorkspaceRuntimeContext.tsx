@@ -20,6 +20,7 @@ import type { PlanningSessionDebugSummary } from '@/components/plan/PlanningSess
 import type { SidebarSection } from '@/components/sidebar/SidebarRail'
 import type { RightPanelTabId } from '@/components/panels/RightPanel'
 import type { ExecutionSessionViewModel } from '@/lib/workspace/execution-session-view-model'
+import type { DiffFileEntry } from '@/components/workbench/DiffTab'
 
 export type PlanningSessionView = {
   sessionId: string
@@ -89,6 +90,7 @@ export interface WorkspaceRuntimeValue {
   // Files
   filePaths: string[]
   filesForPalette: Array<{ path: string }>
+  pendingDiffEntries: DiffFileEntry[]
 
   // Plan state (from useProjectPlanDraft + computed)
   planDraft: string
