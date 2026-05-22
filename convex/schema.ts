@@ -514,6 +514,81 @@ export const ReasoningState = v.object({
   providerMetadata: v.optional(ReasoningProviderMetadata),
 })
 
+export const ChatContextItem = v.object({
+  id: v.string(),
+  type: v.union(
+    v.literal('file'),
+    v.literal('folder'),
+    v.literal('selection'),
+    v.literal('upload'),
+    v.literal('image'),
+    v.literal('docs'),
+    v.literal('terminal'),
+    v.literal('browser'),
+    v.literal('git'),
+    v.literal('past-chat'),
+    v.literal('codebase'),
+    v.literal('spec'),
+    v.literal('plan'),
+    v.literal('memory')
+  ),
+  label: v.string(),
+  path: v.optional(v.string()),
+  range: v.optional(
+    v.object({
+      startLine: v.number(),
+      endLine: v.number(),
+    })
+  ),
+  source: v.union(
+    v.literal('user'),
+    v.literal('editor'),
+    v.literal('upload'),
+    v.literal('retrieval'),
+    v.literal('system')
+  ),
+  status: v.union(
+    v.literal('pending'),
+    v.literal('resolved'),
+    v.literal('failed'),
+    v.literal('omitted')
+  ),
+  tokenEstimate: v.optional(v.number()),
+  relevanceScore: v.optional(v.number()),
+  reason: v.optional(v.string()),
+})
+
+export const ContextRetrievalSummary = v.object({
+  retrieved: v.number(),
+  included: v.number(),
+  omitted: v.number(),
+  usedTokens: v.number(),
+  maxTokens: v.number(),
+  sourceTypes: v.optional(v.array(v.string())),
+  includedItems: v.optional(
+    v.array(
+      v.object({
+        label: v.string(),
+        sourceType: v.string(),
+        path: v.optional(v.union(v.string(), v.null())),
+        score: v.optional(v.number()),
+        tokenCount: v.optional(v.number()),
+        reasons: v.optional(v.array(v.string())),
+      })
+    )
+  ),
+  omittedItems: v.optional(
+    v.array(
+      v.object({
+        label: v.string(),
+        sourceType: v.string(),
+        reason: v.string(),
+        tokenCount: v.optional(v.number()),
+      })
+    )
+  ),
+})
+
 export const MessageAnnotation = v.object({
   mode: v.optional(StoredChatMode),
   attachmentsOnly: v.optional(v.boolean()),
@@ -535,6 +610,8 @@ export const MessageAnnotation = v.object({
     v.union(v.literal('map'), v.literal('provider'), v.literal('fallback'))
   ),
   reasoningTokens: v.optional(v.number()),
+  contextItems: v.optional(v.array(ChatContextItem)),
+  retrievalSummary: v.optional(ContextRetrievalSummary),
   attachments: v.optional(
     v.array(
       v.object({

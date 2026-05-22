@@ -51,6 +51,59 @@ export type MessageBlockInfo =
   | { type: 'file_change_ref'; path: string; action: 'created' | 'updated' | 'deleted' }
   | { type: 'error'; message: string }
 
+export interface ChatContextItemInfo {
+  id: string
+  type:
+    | 'file'
+    | 'folder'
+    | 'selection'
+    | 'upload'
+    | 'image'
+    | 'docs'
+    | 'terminal'
+    | 'browser'
+    | 'git'
+    | 'past-chat'
+    | 'codebase'
+    | 'spec'
+    | 'plan'
+    | 'memory'
+  label: string
+  path?: string
+  range?: {
+    startLine: number
+    endLine: number
+  }
+  source: 'user' | 'editor' | 'upload' | 'retrieval' | 'system'
+  status: 'pending' | 'resolved' | 'failed' | 'omitted'
+  tokenEstimate?: number
+  relevanceScore?: number
+  reason?: string
+}
+
+export interface ContextRetrievalSummaryInfo {
+  retrieved: number
+  included: number
+  omitted: number
+  usedTokens: number
+  maxTokens: number
+  sourceTypes?: string[]
+  includedItems?: Array<{
+    label: string
+    sourceType: string
+    path?: string | null
+    score?: number
+    tokenCount?: number
+    reasons?: string[]
+  }>
+  omittedItems?: Array<{
+    label: string
+    sourceType: string
+    reason: string
+    tokenCount?: number
+  }>
+}
+
 export interface MessageAnnotationInfo {
   model?: string
   tokenCount?: number
@@ -65,6 +118,8 @@ export interface MessageAnnotationInfo {
   contextSource?: ContextWindowSource
   mode?: ChatMode
   attachmentsOnly?: boolean
+  contextItems?: ChatContextItemInfo[]
+  retrievalSummary?: ContextRetrievalSummaryInfo
   provider?: string
   reasoningTokens?: number
   reasoningSummary?: string

@@ -39,16 +39,22 @@ type EnhanceState = 'idle' | 'enhancing' | 'enhanced'
  * Parse @-mention tokens from the message text.
  * Returns the cleaned message (tokens removed) and extracted file paths.
  */
-function parseMentions(text: string): { message: string; contextFiles: string[] } {
+function parseMentions(text: string, filePaths: string[] = []): { message: string; contextFiles: string[] } {
+  const knownFiles = new Set(filePaths)
   const contextFiles: string[] = []
   const message = text
-    .replace(/@([^\s@]+)/g, (_, path) => {
+    .replace(/(^|\s)@([^\s@]+)/g, (match, prefix: string, rawPath: string) => {
+      const path = rawPath.trim()
+      const isContextAsset =
+        knownFiles.has(path) || path.startsWith('folder:') || /^https?:\/\//i.test(path)
+      if (!isContextAsset) return match
       contextFiles.push(path)
-      return ''
+      return prefix
     })
-    .replace(/\s+/g, ' ')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
     .trim()
-  return { message, contextFiles }
+  return { message, contextFiles: Array.from(new Set(contextFiles)) }
 }
 
 function sanitizeAttachmentFileName(fileName: string): string {
@@ -245,6 +251,10 @@ export function ChatInput({
   const userSettings = useQuery(api.settings.get)
 
   const mode = controlledMode ?? uncontrolledMode
+  const pendingMentionContextFiles = useMemo(
+    () => parseMentions(input, filePaths).contextFiles,
+    [filePaths, input]
+  )
   const hasSendContent = input.trim().length > 0 || attachments.length > 0
   const selectedModelId = model || 'claude-sonnet-4-5'
   const selectedModelMetadata = availableModels?.find((entry) => entry.id === selectedModelId)
@@ -285,7 +295,7 @@ export function ChatInput({
       return
     }
 
-    const { message, contextFiles } = parseMentions(input.trim())
+    const { message, contextFiles } = parseMentions(input.trim(), filePaths)
     let uploadedAttachments: UploadedAttachmentPayload[] = []
 
     if (attachments.length > 0) {
@@ -423,6 +433,7 @@ export function ChatInput({
     generateAttachmentUploadUrl,
     includeEditorContext,
     upsertFile,
+    filePaths,
   ])
 
   const handleSendWithReset = useCallback(() => {
@@ -651,6 +662,25 @@ export function ChatInput({
             onSelect={handleMentionSelect}
           />
         )}
+
+        {pendingMentionContextFiles.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5 border-b border-border bg-primary/[0.03] px-2 py-1.5">
+            {pendingMentionContextFiles.slice(0, 4).map((path) => (
+              <span
+                key={path}
+                className="max-w-[180px] truncate border border-primary/25 bg-primary/5 px-2 py-1 font-mono text-[10px] text-primary/90"
+                title={path}
+              >
+                @{path}
+              </span>
+            ))}
+            {pendingMentionContextFiles.length > 4 ? (
+              <span className="border border-border bg-background/70 px-2 py-1 font-mono text-[10px] text-muted-foreground">
+                +{pendingMentionContextFiles.length - 4} more
+              </span>
+            ) : null}
+          </div>
+        ) : null}
 
         {queuedFollowUps.length > 0 && (
           <div className="border-b border-border bg-primary/[0.04] px-2 py-1.5">

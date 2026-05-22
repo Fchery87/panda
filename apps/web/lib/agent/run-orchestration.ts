@@ -1,5 +1,9 @@
 import type { Id } from '@convex/_generated/dataModel'
-import type { MessageAnnotationInfo, PersistedRunEventInfo } from '@/components/chat/types'
+import type {
+  ChatContextItemInfo,
+  MessageAnnotationInfo,
+  PersistedRunEventInfo,
+} from '@/components/chat/types'
 import type { ChatMode } from './prompt-library'
 
 export interface RunOrchestrationAttachment {
@@ -23,6 +27,7 @@ interface StartRunOrchestrationArgs {
   attachments?: RunOrchestrationAttachment[]
   attachmentsOnly?: boolean
   approvedPlanExecution?: boolean
+  contextItems?: ChatContextItemInfo[]
   contextPackAudit?: {
     retrievedChunkCount: number
     includedChunkCount: number
@@ -83,6 +88,7 @@ export async function startRunOrchestration(args: StartRunOrchestrationArgs): Pr
         attachmentsOnly: args.attachmentsOnly,
         model: args.model,
         provider: args.provider,
+        contextItems: args.contextItems,
         attachments: args.attachments?.map((attachment) => ({
           id: String(attachment.storageId),
           kind: attachment.kind,

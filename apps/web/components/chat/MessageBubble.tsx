@@ -9,8 +9,9 @@ import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
-import { Copy, Download, FileText, User, Bot } from 'lucide-react'
+import { Copy, Download, FileText, User, Bot, Paperclip } from 'lucide-react'
 import type { Message } from './types'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import { ReasoningPanel } from './ReasoningPanel'
@@ -38,6 +39,132 @@ function formatTimestamp(timestamp: number): string {
 function redactFencedCodeBlocks(content: string): string {
   if (!content.includes('```')) return content
   return content.replace(/```[\s\S]*?```/g, '[code omitted in Build mode — see artifacts]')
+}
+
+function MessageContextInspector({ message }: { message: Message }) {
+  const items = message.annotations?.contextItems ?? []
+  const summary = message.annotations?.retrievalSummary
+  const usedPct = summary?.maxTokens ? Math.round((summary.usedTokens / summary.maxTokens) * 100) : 0
+
+  return (
+    <div className="max-h-[420px] space-y-3 overflow-y-auto text-xs">
+      <div>
+        <div className="mb-1 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+          Explicit context
+        </div>
+        {items.length > 0 ? (
+          <div className="space-y-1">
+            {items.map((item) => (
+              <div key={item.id} className="border border-border bg-background/70 p-2">
+                <div className="flex items-center justify-between gap-2 font-mono text-[11px]">
+                  <span className="truncate text-foreground">{item.label}</span>
+                  <span className="shrink-0 text-muted-foreground">{item.type}</span>
+                </div>
+                <div className="mt-1 text-[11px] text-muted-foreground">
+                  {item.source} · {item.status}{item.reason ? ` · ${item.reason}` : ''}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-muted-foreground">No explicit context attached.</div>
+        )}
+      </div>
+
+      {summary ? (
+        <div>
+          <div className="mb-1 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+            Auto-retrieved context
+          </div>
+          <div className="mb-2 border border-border bg-background/70 p-2 font-mono text-[11px] text-muted-foreground">
+            {summary.included}/{summary.retrieved} included · {summary.omitted} omitted ·{' '}
+            {summary.usedTokens}/{summary.maxTokens} tokens ({usedPct}%)
+          </div>
+          {summary.includedItems && summary.includedItems.length > 0 ? (
+            <div className="space-y-1">
+              {summary.includedItems.map((item, index) => (
+                <div key={`${item.label}-${index}`} className="border border-border bg-background/70 p-2">
+                  <div className="flex items-center justify-between gap-2 font-mono text-[11px]">
+                    <span className="truncate text-foreground">{item.label}</span>
+                    <span className="shrink-0 text-muted-foreground">
+                      {item.sourceType}{typeof item.score === 'number' ? ` · ${item.score.toFixed(2)}` : ''}
+                    </span>
+                  </div>
+                  {item.reasons && item.reasons.length > 0 ? (
+                    <div className="mt-1 line-clamp-2 text-[11px] text-muted-foreground">
+                      {item.reasons.join(', ')}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {summary.omittedItems && summary.omittedItems.length > 0 ? (
+            <div className="mt-2">
+              <div className="mb-1 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+                Omitted
+              </div>
+              <div className="space-y-1">
+                {summary.omittedItems.map((item, index) => (
+                  <div key={`${item.label}-${index}`} className="border border-border bg-muted/30 p-2 font-mono text-[11px] text-muted-foreground">
+                    <span className="text-foreground">{item.label}</span> · {item.reason}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function MessageContextStrip({ message }: { message: Message }) {
+  const items = message.annotations?.contextItems ?? []
+  const summary = message.annotations?.retrievalSummary
+  if (items.length === 0 && !summary) return null
+
+  const visibleItems = items.slice(0, 4)
+  const hiddenCount = Math.max(0, items.length - visibleItems.length)
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="flex w-full max-w-[78%] flex-wrap items-center justify-end gap-1.5 self-end text-[10px] text-muted-foreground hover:text-foreground"
+          aria-label="Inspect message context"
+        >
+          {visibleItems.map((item) => (
+            <span
+              key={item.id}
+              className="inline-flex max-w-[180px] items-center gap-1 border border-primary/25 bg-primary/5 px-2 py-1 font-mono text-primary/90"
+              title={item.reason ? `${item.label} — ${item.reason}` : item.label}
+            >
+              <Paperclip className="h-3 w-3 shrink-0" />
+              <span className="truncate">{item.label}</span>
+            </span>
+          ))}
+          {hiddenCount > 0 ? (
+            <span className="border border-border bg-background/70 px-2 py-1 font-mono">
+              +{hiddenCount} more
+            </span>
+          ) : null}
+          {summary ? (
+            <span
+              className="border border-border bg-background/70 px-2 py-1 font-mono"
+              title={`${summary.included}/${summary.retrieved} retrieved, ${summary.omitted} omitted`}
+            >
+              Auto context · {summary.included} snippets
+            </span>
+          ) : null}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-[min(34rem,calc(100vw-2rem))] p-3">
+        <MessageContextInspector message={message} />
+      </PopoverContent>
+    </Popover>
+  )
 }
 
 function MessageAttachmentItem({
@@ -581,6 +708,8 @@ export function MessageBubble({
             </div>
           </motion.div>
         ) : null}
+
+        {isUser ? <MessageContextStrip message={message} /> : null}
 
         {message.attachments && message.attachments.length > 0 ? (
           <div className="grid w-full gap-2">

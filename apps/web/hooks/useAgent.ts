@@ -84,6 +84,7 @@ import { useMessageHistory } from './useMessageHistory'
 import { useSpecManagement } from './useSpecManagement'
 import { useEditorContextStore } from '@/stores/editorContextStore'
 import type {
+  ChatContextItemInfo,
   Message,
   MessageAnnotationInfo,
   PersistedRunEventInfo,
@@ -145,6 +146,64 @@ type SendMessageOptions = {
   attachments?: UploadedAttachment[]
   attachmentsOnly?: boolean
   manualModeOverride?: boolean
+}
+
+function buildExplicitContextItems(args: {
+  contextFiles?: string[]
+  attachments?: UploadedAttachment[]
+  includeEditorContext?: boolean
+}): ChatContextItemInfo[] {
+  const items: ChatContextItemInfo[] = []
+  for (const asset of args.contextFiles ?? []) {
+    const isFolder = asset.startsWith('folder:')
+    const path = isFolder ? asset.replace(/^folder:/, '') : asset
+    items.push({
+      id: `ctx-${items.length}-${path}`,
+      type: isFolder ? 'folder' : /^https?:\/\//i.test(path) ? 'browser' : 'file',
+      label: path,
+      path,
+      source: 'user',
+      status: 'resolved',
+    })
+  }
+  for (const attachment of args.attachments ?? []) {
+    items.push({
+      id: `upload-${attachment.storageId}`,
+      type: attachment.kind === 'image' ? 'image' : 'upload',
+      label: attachment.filename,
+      path: attachment.contextFilePath,
+      source: 'upload',
+      status: 'resolved',
+    })
+  }
+  if (args.includeEditorContext) {
+    const editorState = useEditorContextStore.getState()
+    if (editorState.selection) {
+      items.push({
+        id: `selection-${editorState.selection.filePath}-${editorState.selection.startLine}-${editorState.selection.endLine}`,
+        type: 'selection',
+        label: `${editorState.selection.filePath}:${editorState.selection.startLine}-${editorState.selection.endLine}`,
+        path: editorState.selection.filePath,
+        range: {
+          startLine: editorState.selection.startLine,
+          endLine: editorState.selection.endLine,
+        },
+        source: 'editor',
+        status: 'resolved',
+      })
+    } else if (editorState.selectedFilePath) {
+      items.push({
+        id: `active-file-${editorState.selectedFilePath}`,
+        type: 'file',
+        label: editorState.selectedFilePath,
+        path: editorState.selectedFilePath,
+        source: 'editor',
+        status: 'resolved',
+        reason: 'Active editor file',
+      })
+    }
+  }
+  return items
 }
 
 type PromptHistoryMessageInput = {
@@ -795,6 +854,12 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         specPersistenceRef.current.clear()
       }
 
+      const explicitContextItems = buildExplicitContextItems({
+        contextFiles,
+        attachments: options?.attachments,
+        includeEditorContext: options?.includeEditorContext,
+      })
+
       // Add user message to local state
       localMessagesChatIdRef.current = chatId
       const userMessageId = `msg-${Date.now()}-user`
@@ -810,6 +875,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           annotations: {
             mode: requestedMode,
             attachmentsOnly: options?.attachmentsOnly,
+            contextItems: explicitContextItems,
           },
           attachments: options?.attachments?.map((attachment) => ({
             kind: attachment.kind,
@@ -839,6 +905,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           userContent,
           attachments: options?.attachments,
           attachmentsOnly: options?.attachmentsOnly,
+          contextItems: explicitContextItems,
           approvedPlanExecution: options?.approvedPlanExecution,
           addMessage,
           createChatAttachments,
@@ -872,7 +939,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             const indexedChunks = await convex.query(api.contextChunks.search, {
               projectId,
               query: userContent,
-              limit: 24,
+              limit: explicitContextItems.length > 0 ? 10 : 24,
             })
             const editorState = useEditorContextStore.getState()
             const localChunks = convexChunksToLocalContextChunks(indexedChunks)
@@ -884,7 +951,11 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               reserveTokens: 1_500,
               activeFile: editorState.selectedFilePath,
               openTabs: editorState.openTabs.map((tab) => tab.path),
-              maxChunks: 16,
+              maxChunks: explicitContextItems.length > 0 ? 6 : 16,
+              minScore: explicitContextItems.length > 0 ? 0.55 : 0,
+              sourceTypeCaps: explicitContextItems.length > 0
+                ? { file: 4, message: 1, summary: 1, plan: resolvedMode === 'build' ? 1 : 0, spec: 1, run_event: 0, skill: 1, subagent: 0 }
+                : { run_event: 2, message: 4, summary: 2 },
             })
           } catch (contextError) {
             appLog.warn(
@@ -897,6 +968,43 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
 
         if (contextPack) {
           const audit = buildContextPackAudit(contextPack)
+          setMessages((prev) =>
+            prev.map((message) =>
+              message.id === userMessageId
+                ? {
+                    ...message,
+                    annotations: {
+                      mode: message.mode,
+                      ...message.annotations,
+                      retrievalSummary: {
+                        retrieved: audit.retrievedChunkCount,
+                        included: audit.includedChunkCount,
+                        omitted: audit.omittedChunkCount,
+                        usedTokens: audit.usedTokens,
+                        maxTokens: audit.maxTokens,
+                        sourceTypes: audit.sourceTypes,
+                        includedItems: contextPack.sections.flatMap((section) =>
+                          section.items.map((item) => ({
+                            label: item.path ?? item.title ?? `${item.sourceType}:${item.sourceId}`,
+                            sourceType: item.sourceType,
+                            path: item.path,
+                            score: item.score,
+                            tokenCount: item.tokenCount,
+                            reasons: item.reasons,
+                          }))
+                        ),
+                        omittedItems: contextPack.omitted.slice(0, 8).map((item) => ({
+                          label: `${item.sourceType}:${item.sourceId}`,
+                          sourceType: item.sourceType,
+                          reason: item.reason,
+                          tokenCount: item.tokenCount,
+                        })),
+                      },
+                    },
+                  }
+                : message
+            )
+          )
           await appendObservedRunEvent({
             type: 'context_pack',
             content: `Context Pack: ${audit.includedChunkCount}/${audit.retrievedChunkCount} chunks included, ${audit.omittedChunkCount} omitted, ${audit.usedTokens}/${audit.maxTokens} tokens used.`,

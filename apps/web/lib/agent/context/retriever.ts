@@ -7,6 +7,8 @@ export interface ContextRetrievalInput {
   openTabs?: string[]
   maxChunks?: number
   sourceTypeBoosts?: Partial<Record<ContextChunkSourceType, number>>
+  minScore?: number
+  sourceTypeCaps?: Partial<Record<ContextChunkSourceType, number>>
 }
 
 export interface RetrievedContextChunk extends LocalContextChunk {
@@ -74,6 +76,9 @@ export function retrieveContextChunks(input: ContextRetrievalInput): RetrievedCo
   const activeFile = input.activeFile?.toLowerCase() ?? null
   const sourceBoosts = { ...DEFAULT_SOURCE_BOOSTS, ...input.sourceTypeBoosts }
 
+  const sourceCounts = new Map<ContextChunkSourceType, number>()
+  const minScore = input.minScore ?? 0
+
   return input.chunks
     .map((chunk): RetrievedContextChunk => {
       const content = chunk.content.toLowerCase()
@@ -123,7 +128,15 @@ export function retrieveContextChunks(input: ContextRetrievalInput): RetrievedCo
       score *= sourceBoosts[chunk.sourceType]
       return { ...chunk, score, reasons: Array.from(new Set(reasons)) }
     })
-    .filter((chunk) => chunk.score > 0)
+    .filter((chunk) => chunk.score > minScore)
     .sort((a, b) => b.score - a.score || b.tokenCount - a.tokenCount)
+    .filter((chunk) => {
+      const cap = input.sourceTypeCaps?.[chunk.sourceType]
+      if (cap === undefined) return true
+      const current = sourceCounts.get(chunk.sourceType) ?? 0
+      if (current >= cap) return false
+      sourceCounts.set(chunk.sourceType, current + 1)
+      return true
+    })
     .slice(0, input.maxChunks ?? 12)
 }

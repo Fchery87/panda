@@ -98,6 +98,8 @@ export interface PromptContext {
     | 'custom'
   /** Model name for token estimation */
   model?: string
+  /** Explicit context assets selected by the user/editor; kept separate from the user message. */
+  contextAssets?: string[]
   /** Retrieved, budgeted context assembled by Panda's context system */
   agentContextPack?: AgentContextPack
   /** Optional workflow skill profile */
@@ -275,6 +277,9 @@ export function getPromptForMode(context: PromptContext): CompletionMessage[] {
     if (context.sessionSummary) {
       parts.push(`\n## Previous Session Context\n${context.sessionSummary}`)
     }
+    if (context.contextAssets?.length) {
+      parts.push(`\n## User-Attached Context Assets\n${context.contextAssets.map((asset) => `- ${asset}`).join('\n')}`)
+    }
     if (context.agentContextPack) {
       parts.push(formatAgentContextPackForPrompt(context.agentContextPack))
     }
@@ -304,6 +309,9 @@ export function getPromptForMode(context: PromptContext): CompletionMessage[] {
     }
     if (context.sessionSummary) {
       contextContent += `\n## Previous Session Context\n${context.sessionSummary}\n`
+    }
+    if (context.contextAssets?.length) {
+      contextContent += `\n## User-Attached Context Assets\n${context.contextAssets.map((asset) => `- ${asset}`).join('\n')}\n`
     }
     if (context.agentContextPack) {
       contextContent += `\n${formatAgentContextPackForPrompt(context.agentContextPack)}\n`

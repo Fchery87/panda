@@ -63,6 +63,9 @@ export interface BuildAgentContextPackOptions {
   activeFile?: string | null
   openTabs?: string[]
   maxChunks?: number
+  minScore?: number
+  sourceTypeCaps?: Partial<Record<ContextChunkSourceType, number>>
+  sourceTypeBoosts?: Partial<Record<ContextChunkSourceType, number>>
 }
 
 function sectionKindForSource(sourceType: ContextChunkSourceType): ContextPackSectionKind {
@@ -109,6 +112,9 @@ export function buildAgentContextPack(options: BuildAgentContextPackOptions): Ag
     activeFile: options.activeFile,
     openTabs: options.openTabs,
     maxChunks: options.maxChunks ?? 24,
+    minScore: options.minScore,
+    sourceTypeCaps: options.sourceTypeCaps,
+    sourceTypeBoosts: options.sourceTypeBoosts,
   })
 
   const sections = new Map<ContextPackSectionKind, ContextPackSection>()

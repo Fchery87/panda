@@ -7,6 +7,8 @@ import type { Id } from '@convex/_generated/dataModel'
 import type { ChatMode } from '../lib/agent/prompt-library'
 import { normalizeChatMode } from '../lib/agent/prompt-library'
 import type {
+  ChatContextItemInfo,
+  ContextRetrievalSummaryInfo,
   MessageAnnotationInfo,
   MessageBlockInfo,
   TokenSource,
@@ -38,6 +40,9 @@ export interface Message {
     contextRemainingTokens?: number
     contextUsagePct?: number
     contextSource?: 'map' | 'provider' | 'fallback'
+    contextItems?: ChatContextItemInfo[]
+    retrievalSummary?: ContextRetrievalSummaryInfo
+    attachmentsOnly?: boolean
   }
 }
 
@@ -152,6 +157,10 @@ export function useMessageHistory(
               firstAnnotation?.contextSource === 'fallback'
                 ? firstAnnotation.contextSource
                 : undefined,
+            contextItems: Array.isArray(firstAnnotation?.contextItems)
+              ? firstAnnotation.contextItems
+              : undefined,
+            retrievalSummary: firstAnnotation?.retrievalSummary,
             attachments: Array.isArray(firstAnnotation?.attachments)
               ? firstAnnotation.attachments
               : undefined,
