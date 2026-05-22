@@ -1,5 +1,22 @@
 # Implementation Plan: Workbench-Owned File Opening, Plan Auto-Open, and Right Rail Cleanup
 
+**Status:** Implemented and verified locally on 2026-05-22.
+
+## Implementation Summary
+
+Panda now uses a workbench-owned file model:
+
+- The central workbench owns file viewing, editing, and Review Diff.
+- Explicit file clicks route to the workbench and editor tab.
+- Generated non-plan files appear in the file tree, Changes, and Review Diff without auto-opening or stealing focus.
+- Generated Plan Mode artifacts continue to auto-open in the workbench.
+- The right rail is support-only: `Proof`, `Changes`, and `Context`.
+- Mobile navigation is `Work`, `Chat`, `Proof`, and `Changes`; product-level live `Preview` navigation has been removed.
+- Plan documents now render with `.plan.md`-style frontmatter, clean metadata/task cards, styled Markdown, and Mermaid diagram support.
+- Plan generation now prefers shallow headings, Mermaid architecture diagrams, tables, checklists, and fewer visible heading markers.
+
+Verified with targeted ESLint, TypeScript, Convex planning-session tests, and targeted component/hook tests.
+
 ## Goal
 
 Configure Panda so the central workbench is the canonical place where files are viewed, edited, and reviewed.

@@ -37,18 +37,26 @@ Use these labels before following any document for implementation work:
   shareable product, page, feature, and design-system brief for generating a
   complete Panda design project
 - [docs/CHAT_TRANSCRIPT_POLICY.md](./CHAT_TRANSCRIPT_POLICY.md) - transcript
-e  elements (tool chips, plan checklist), inspector boundaries, and redaction rules
+  elements (tool chips, plan checklist), inspector boundaries, and redaction rules
 - [docs/CHAT_MODE_ARCHITECTURE.md](./CHAT_MODE_ARCHITECTURE.md) - active mode,
   routing, and tool-call hardening architecture notes
+- [docs/PLAN_DOCUMENT_FORMAT.md](./PLAN_DOCUMENT_FORMAT.md) - current
+  `.plan.md` frontmatter, Mermaid, task metadata, and clean generated-plan
+  document format
+- [docs/WORKBENCH.md](./WORKBENCH.md) - current workbench-owned file opening,
+  generated-file review, right support rail, Proof/recovery, and mobile
+  workspace contract
 - [docs/CUSTOM_SKILLS_AND_SUBAGENTS_PLAN.md](./CUSTOM_SKILLS_AND_SUBAGENTS_PLAN.md) -
   implementation plan for Custom Skills, Custom Subagents, skill activation,
   capability presets, and run visibility
-- [docs/plans/2026-04-23-convex-bandwidth-optimization.md](./plans/2026-04-23-convex-bandwidth-optimization.md) -
-  Convex payload-shape and bandwidth remediation plan
 - [docs/plans/layered-harness-policy-implementation.md](./plans/layered-harness-policy-implementation.md) -
   completed implementation record for layered Harness Policy, command-family
   governance, permission audit decisions, Subagent summaries, Unattended
   Execution, MCP policy alignment, and settings/docs surfacing
+- [docs/plans/2026-05-22-workbench-owned-file-opening-plan.md](./plans/2026-05-22-workbench-owned-file-opening-plan.md) -
+  completed/current implementation record for workbench-owned file opening,
+  generated-file review, clean `.plan.md` rendering, Mermaid plan diagrams,
+  central Review Diff, and the `Proof` / `Changes` / `Context` support rail
 - [docs/DEPLOYMENT.md](./DEPLOYMENT.md) - production deployment guide
 - [docs/GOOGLE_OAUTH_SETUP.md](./GOOGLE_OAUTH_SETUP.md) - Google OAuth setup
 - [docs/GITHUB_APP_SETUP.md](./GITHUB_APP_SETUP.md) - GitHub App setup for
@@ -59,31 +67,20 @@ e  elements (tool chips, plan checklist), inspector boundaries, and redaction ru
 
 ## Historical And Planning Records
 
+The docs directory has been cleaned to prefer current source-of-truth documents
+over stale implementation-plan snapshots. Historical plans and reviews that were
+clearly superseded by the current architecture contract and workbench-owned IA
+were removed.
+
+Remaining historical or planning records are intentionally retained when they
+still describe current policy, an ADR decision, or an active follow-up area.
+
 - [docs/development-commands.json](./development-commands.json) - source of
   truth for commands rendered in Workspace Home and README
 - [docs/convex-collect-audit.json](./convex-collect-audit.json) -
   machine-readable ceiling for audited production Convex `.collect()` calls
-- [docs/reviews/panda-codebase-workspace-review-2026-05-16.md](./reviews/panda-codebase-workspace-review-2026-05-16.md) -
-  codebase/workspace review snapshot
-- [docs/reviews/convex-collect-audit-2026-05-16.md](./reviews/convex-collect-audit-2026-05-16.md) -
-  Convex `.collect()` risk register
-
 - [VALIDATION_TASKS.md](../VALIDATION_TASKS.md) - historical verification
   snapshot; refresh or remove if CI/task-local status is authoritative
-- [docs/PANDA_WORKBENCH_MODERNIZATION_BRIEF.md](./PANDA_WORKBENCH_MODERNIZATION_BRIEF.md) -
-  historical modernization brief; superseded for workspace IA by the active
-  architecture contract
-- [docs/plans/2026-04-29-execution-session-upgrade.md](./plans/2026-04-29-execution-session-upgrade.md) -
-  proposed/completed session-first workspace upgrade plan; verify current state
-  against active contracts before using it
-- [docs/plans/2026-04-29-execution-session-finalization.md](./plans/2026-04-29-execution-session-finalization.md) -
-  proposed/completed vertical-slice plan for timeline, composer,
-  support-surface, resumability, and browser-smoke work
-- [docs/plans/2026-04-26-chat-first-workspace-ia.md](./plans/2026-04-26-chat-first-workspace-ia.md) -
-  historical chat-first workspace implementation record; superseded for current
-  IA decisions
-- [docs/panda-executive-view-action-plan.md](./panda-executive-view-action-plan.md) -
-  findings and action-plan input; not a canonical contract
 
 ## Current Product Surface
 
@@ -91,8 +88,7 @@ Panda is a browser-first AI coding workbench with server-backed fallback and:
 
 - landing and education pages
 - project list and project workbench routes
-- session-first per-project workspace with the Execution Session as the primary
-  surface
+- workbench-owned per-project workspace with central file editing and Review Diff
 - login and shared-chat routes
 - admin console pages for users, analytics, system, and security
 - Convex-backed persistence for chat, files, runs, delivery state, and sharing
@@ -101,8 +97,8 @@ Panda is a browser-first AI coding workbench with server-backed fallback and:
 - live LLM provider and model metadata from `models.dev`
 - deterministic `ask` / `plan` / `code` / `build` routing with requested and
   resolved mode audit data
-- consolidated proof surfaces: `Run`, `Changes`, `Context`, and `Preview`
-- mobile workspace destinations: `Work`, `Chat`, `Proof`, and `Preview`
+- support rail surfaces: `Proof`, `Changes`, and `Context`
+- mobile workspace destinations: `Work`, `Chat`, `Proof`, and `Changes`
 - typed execution receipts rendered from bounded run summaries for completed,
   failed, and stopped runs
 - collapsed tool-chip summaries (Cursor-style) and plan checklists
@@ -132,6 +128,8 @@ artifacts only after maintainer approval.
 | `docs/AGENTIC_HARNESS.md`                  | Harness architecture, planning workflow, runtime checkpoints, and execution state. |
 | `docs/CHAT_TRANSCRIPT_POLICY.md`           | Defines chat transcript elements (tool chips, plan checklist) and inspector/receipt boundaries.            |
 | `docs/CHAT_MODE_ARCHITECTURE.md`           | Still useful as the architecture record for mode hardening and routing evolution.  |
+| `docs/WORKBENCH.md`                        | Current workbench-owned file opening and support-rail behavior.                    |
+| `docs/PLAN_DOCUMENT_FORMAT.md`             | Current generated plan document format and renderer behavior.                      |
 | `docs/CUSTOM_SKILLS_AND_SUBAGENTS_PLAN.md` | Current implementation plan for Custom Skills and Custom Subagent composition.     |
 | `docs/WEBCONTAINER_RUNTIME.md`             | Current browser execution setup and fallback behavior.                             |
 | `docs/LLM_PROVIDER_CATALOG.md`             | Current provider/model catalog behavior.                                           |
@@ -143,21 +141,18 @@ artifacts only after maintainer approval.
 
 ### Keep As Historical Plans
 
-These files are not current authority unless they explicitly link back to an
-active contract doc or state that they are the current implementation record.
-Keep them unless the team moves historical plans into an archive folder:
+These files are retained because they still describe current policy, a durable
+architecture decision, or an active follow-up area. They are not higher
+authority than the active contracts unless they explicitly say so.
 
 | File                                                      | Reason                                                                                                     |
 | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `docs/adr/*.md`                                           | Durable architecture decision records.                                                                     |
 | `docs/PANDA_CLEANUP_REFACTOR_PROGRAM.md`                  | Strategic cleanup program; still relevant as a north-star audit record.                                    |
-| `docs/panda-executive-view-action-plan.md`                | Executive findings and action plan; keep as review input, not as the active architecture contract.         |
-| `docs/PANDA_WORKBENCH_MODERNIZATION_BRIEF.md`             | Historical product/design modernization brief; superseded by the chat-first IA for current shell behavior. |
-| `docs/WORKBENCH_UX_PLAN.md`                               | Historical UX planning artifact; keep for refactor context, not as current workspace contract.             |
-| `docs/IMPLEMENTATION_PLAN.md`                             | Historical harness/spec integration plan; archive once fully superseded.                                   |
-| `docs/plans/2026-04-29-execution-session-upgrade.md`      | Proposed/completed session-first workspace upgrade plan; verify against active contracts before use.       |
-| `docs/plans/2026-04-29-execution-session-finalization.md` | Proposed/completed finalization plan; verify against active contracts before use.                          |
-| `docs/plans/2026-04-26-chat-first-workspace-ia.md`        | Historical chat-first workspace record superseded for current IA decisions.                                |
-| `docs/plans/*.md`                                         | Date-stamped planning records; historical by default unless a file says it is current.                     |
+| `docs/PANDA_RUNTIME_AND_WORKSPACE_MODERNIZATION_PLAN.md`  | Current multi-phase runtime/workspace modernization context.                                               |
+| `docs/plans/2026-05-22-workbench-owned-file-opening-plan.md` | Current completed record for workbench-owned file opening, plan rendering, and support-rail cleanup.       |
+| `docs/plans/layered-harness-policy-implementation.md`     | Completed/current harness policy implementation record.                                                    |
+| `docs/revise/*.md`                                        | Runtime steering / stop-replace phase records retained until Phase 7 is resolved or replaced.              |
 
 ### Review For Removal Or Archive
 
@@ -165,12 +160,22 @@ Do not delete these automatically. Confirm ownership first:
 
 | File                              | Recommendation                                                                                                                                      |
 | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `VALIDATION_TASKS.md`             | Health snapshot refreshed for the chat-first workspace pass. Keep current with CI/task-local gates or remove if CI fully owns verification records. |
+| `VALIDATION_TASKS.md`             | Historical health snapshot. Keep current with CI/task-local gates or remove if CI fully owns verification records. |
 | `SPEC.md`, `PLAN.md`, `STATUS.md` | Runtime artifacts for the current agent task. Keep only until reviewed, then remove unless the team wants them committed as audit evidence.         |
 | `.agents/skills/**/*.md`          | Project-local skill docs. Keep if the local skill system is intentional; otherwise move them out of product docs rather than deleting piecemeal.    |
 
-### Remove Candidates
+### Removed In The Docs Cleanup
 
-No tracked Markdown file is safe to delete without a maintainer decision. The
-only clear cleanup action is to remove temporary root task artifacts after this
-work is accepted, if they are not intended to be committed.
+Clearly superseded implementation-plan snapshots and old review records were
+removed instead of archived. If historical context is needed, recover it from git
+history.
+
+Removed categories:
+
+- old chat-first/session-first workspace IA plans
+- old workspace overhaul/finalization plans
+- old workbench modernization briefs superseded by the current workbench-owned IA
+- one-off review snapshots that no longer define current implementation work
+
+Temporary root task artifacts may also be removed after active work is accepted,
+if they are not intended to be committed as audit evidence.

@@ -18,10 +18,12 @@ The harness executes work through provider-agnostic agents while Convex owns
 truth for delivery lifecycle, task tracking, review gates, QA evidence, ship
 readiness, browser session metadata, and durable runtime checkpoints.
 
-The current workspace presents this runtime through a chat-first session
-timeline. Chat owns intent and the narrative record; the proof surface owns run
-detail, changes, context, and preview. This keeps the harness provider-agnostic
-while making execution inspectable from one coherent workspace flow.
+The current workspace presents this runtime through a workbench-owned shell.
+Chat owns intent and the narrative record; the central workbench owns file
+opening, editing, and Review Diff; the support rail owns Proof, Changes, and
+Context. This keeps the harness provider-agnostic while making execution
+inspectable from one coherent workspace flow without requiring a live-preview
+surface.
 
 ## Architecture
 

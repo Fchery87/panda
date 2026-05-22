@@ -1,6 +1,6 @@
 # Panda Architecture Contract
 
-> Last updated: May 02, 2026
+> Last updated: May 22, 2026
 >
 > Reader: Panda maintainers and future agents making architecture or
 > implementation decisions.
@@ -12,9 +12,9 @@
 ## Purpose
 
 Panda is a browser-first AI coding workbench with server-backed fallback. The
-product uses a chat-first workflow, Convex-backed persistence, and a
-provider-agnostic agent runtime. This document defines the canonical terms and
-ownership rules that keep those systems aligned.
+product uses a workbench-owned file model, chat-based intent capture,
+Convex-backed persistence, and a provider-agnostic agent runtime. This document
+defines the canonical terms and ownership rules that keep those systems aligned.
 
 If another document uses older language, this contract wins unless that document
 is explicitly marked as historical.
@@ -102,7 +102,7 @@ have different payload, retention, and display rules.
 | Concern                     | Canonical owner                                                                                                                    | Mirrors or derived views                                        | Rule                                                                                                                      |
 | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | Chat mode                   | Chat state in Convex plus runtime mode contract                                                                                    | UI selector, receipt routing fields                             | Manual mode selection is authoritative for composer sends.                                                                |
-| Execution session           | Derived projection over chat, planning session, run summaries, receipts, changed work, runtime preview state, and branch summaries | Execution Session Shell, session rail, work tray, proof surface | Do not add a dedicated table until cross-chat continuity, stable session URLs, branch selection, or analytics require it. |
+| Execution session           | Derived projection over chat, planning session, run summaries, receipts, changed work, runtime availability, and branch summaries | Execution Session Shell, session rail, workbench, support rail | Do not add a dedicated table until cross-chat continuity, stable session URLs, branch selection, or analytics require it. |
 | Mode labels and permissions | Mode contract                                                                                                                      | Buttons, prompts, proof rendering                               | Do not scatter mode conditionals across UI or runtime code.                                                               |
 | Planning lifecycle          | Planning session state                                                                                                             | Chat badges, run progress, plan tabs                            | Plan approval and execution read from planning state first.                                                               |
 | Approved plan content       | Generated plan artifact                                                                                                            | Prompt injection, proof surface                                 | Build-from-plan uses the accepted artifact as primary context.                                                            |
@@ -111,7 +111,7 @@ have different payload, retention, and display rules.
 | Run proof                   | Receipt plus bounded event summaries, including Applied Skill summaries                                                            | Chat timeline, proof surface                                    | Full event details are lazy inspection data. Skill bodies are not copied into public or compact summaries.                |
 | Custom Skills               | User-scoped Convex `customSkills` records plus admin policy                                                                        | Prompt composition, settings UI                                 | Custom Skills are workflow documents, not executable plugins. Admin policy is enforced at storage and runtime matching.   |
 | Custom Subagents            | User-scoped Convex `subagents` records                                                                                             | Settings UI, task tool registry                                 | Subagents do delegated work. Capability presets and attached Skills shape their execution contract.                       |
-| Runtime availability        | WebContainer provider and server execution path                                                                                    | Preview/runtime badges                                          | Browser failure falls back to server execution.                                                                           |
+| Runtime availability        | WebContainer provider and server execution path                                                                                    | Runtime badges, terminal state, Proof evidence                  | Browser failure falls back to server execution.                                                                           |
 | Share state                 | Shared-chat records                                                                                                                | Public share page                                               | Share output is a redacted public projection, not the owner transcript.                                                   |
 | Attachments                 | Attachment metadata and authorized storage URL lookup                                                                              | Message previews                                                | Signed URLs are resolved lazily and only for authorized contexts.                                                         |
 | Provider config             | User/admin settings plus live catalog hydration                                                                                    | Model selectors                                                 | Catalog data can hydrate UI but must not auto-enable credentials.                                                         |

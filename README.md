@@ -12,21 +12,23 @@
 ## Overview
 
 Panda is a browser-first coding workspace built for AI-assisted development. It
-combines a chat-first workspace, canonical 4-mode workflow (`ask`, `plan`,
-`code`, `build`), structured plan approval, build execution, file editing,
-runtime checkpoints, shared chat history, and admin controls. Browser execution
-is preferred when WebContainer is available; server-backed execution remains the
-fallback when browser-side execution is unavailable.
+combines a workbench-owned file surface, canonical 4-mode workflow (`ask`,
+`plan`, `code`, `build`), structured plan approval, build execution, central
+file editing and diff review, runtime checkpoints, shared chat history, and
+admin controls. Browser execution is preferred when WebContainer is available;
+server-backed execution remains the fallback when browser-side execution is
+unavailable.
 
 Panda also supports user-scoped Custom Skills and Custom Subagents. Skills are
 reusable workflow guidance that can auto-activate by intent; Subagents are
 delegated workers with capability presets and optional attached Skills.
 
-The current workspace is organized around one session timeline. User intent
-enters through chat, Panda routes it, work executes, proof accumulates, and the
-user reviews the result through focused `Run`, `Changes`, `Context`, and
-`Preview` surfaces. Mobile keeps the same contract through `Work`, `Chat`,
-`Proof`, and `Preview` destinations.
+The current workspace is organized around a central workbench with supporting
+chat and right-rail review surfaces. User intent enters through chat, Panda
+routes it, plans can auto-open in the workbench, generated files appear in the
+file tree and central Review Diff, proof accumulates, and the user reviews the
+result through `Proof`, `Changes`, and `Context`. Mobile keeps the same contract
+through `Work`, `Chat`, `Proof`, and `Changes` destinations.
 
 The current agent runtime includes deterministic routing, bounded session
 summaries, and typed execution receipts. Routing records both the user-requested
@@ -37,13 +39,15 @@ and result status.
 ## Current Product Surface
 
 - Landing page plus an education page that explains the workbench workflow
-- Project list and per-project chat-first workbench routes
-- Structured planning sessions with approved build-from-plan runs
-- Browser-native file editing, diffs, artifacts, previews, and terminal jobs
+- Project list and per-project workbench routes
+- Structured planning sessions with approved build-from-plan runs and clean
+  `.plan.md`-style documents
+- Browser-native file editing, central diffs, generated-file review, artifacts,
+  and terminal jobs
 - Permission review for risky commands in the web UI
 - Deterministic mode routing with `requestedMode` and `resolvedMode` audit data
 - Run timeline summaries in chat with collapsed tool-chip and plan-checklist
-  surfaces, and structured execution receipts in proof surfaces
+  surfaces, and structured execution receipts in Proof surfaces
 - Custom Skills that shape agent workflow and strict Skill preflight metadata
 - Custom Subagents with capability presets, attached Skills, and delegated task
   Skill matching
@@ -161,13 +165,16 @@ Panda is optimized for this flow:
 
 Workspace surfaces:
 
-- Chat is the primary session timeline and composer surface.
-- `Run` shows progress, validation evidence, recovery state, and receipts.
-- `Changes` shows artifacts, diffs, generated files, and review actions.
+- `Work` is the primary file/editing surface. Every explicit file click opens in
+  the central workbench.
+- `Chat` is the session timeline and composer surface.
+- `Proof` shows progress, validation evidence, recovery state, receipts,
+  walkthroughs, and checkpoints.
+- `Changes` summarizes generated files and actions, then routes review into the
+  central `Review Diff` surface.
 - `Context` shows planning, memory, specifications, and context audit state.
-- `Preview` shows the browser/runtime preview when available.
-- Mobile navigation exposes `Work`, `Chat`, `Proof`, and `Preview` without
-  changing the underlying workspace contract.
+- Mobile navigation exposes `Work`, `Chat`, `Proof`, and `Changes` without
+  relying on a live-preview destination.
 
 Modes:
 
@@ -202,8 +209,8 @@ proof surfaces. The chat shows two collapsed inline elements:
 - **Plan checklist** (all modes when a plan exists): a progress badge like
   `Plan 2/4 · in progress` that expands to a step-by-step checklist.
 
-Low-level tool events, full receipts, and snapshot data remain in the inspector
-panel and Run proof surface, not in the chat transcript.
+Low-level tool events, full receipts, and snapshot data remain in the support
+rail and Proof surface, not in the chat transcript.
 
 ## Custom Skills And Subagents
 
@@ -247,10 +254,11 @@ panda/
   behind a feature flag.
 - Keep execution receipt fields typed, bounded, and redacted before they enter
   Convex.
-- Keep the workspace chat-first: chat is primary, proof is focused, and the
-  editor supports inspection and spot edits rather than replacing the session
-  timeline.
-- Keep proof tabs consolidated as `Run`, `Changes`, `Context`, and `Preview`.
+- Keep the workspace workbench-owned: the central workbench owns file opening,
+  editing, and Review Diff; chat remains the session timeline and composer.
+- Keep the right support rail consolidated as `Proof`, `Changes`, and `Context`.
+  Do not reintroduce a product-level live `Preview` destination unless the
+  feature is intentionally rebuilt.
 - Use Zustand for local shell/chat-session state and Convex for persisted
   product data.
 - Keep Convex live queries narrow. Project boot should subscribe to metadata,
@@ -278,8 +286,12 @@ panda/
 - [docs/CHAT_TRANSCRIPT_POLICY.md](./docs/CHAT_TRANSCRIPT_POLICY.md) - chat
   transcript elements (tool chips, plan checklist), inspector boundaries, and
   redaction rules
-- [docs/plans/2026-04-26-chat-first-workspace-ia.md](./docs/plans/2026-04-26-chat-first-workspace-ia.md) -
-  current chat-first workspace information architecture and implementation notes
+- [docs/PLAN_DOCUMENT_FORMAT.md](./docs/PLAN_DOCUMENT_FORMAT.md) - `.plan.md`
+  frontmatter, Mermaid, and clean generated-plan document format
+- [docs/WORKBENCH.md](./docs/WORKBENCH.md) - current workbench-owned file
+  opening, generated-file review, support rail, and mobile workspace contract
+- [docs/plans/2026-05-22-workbench-owned-file-opening-plan.md](./docs/plans/2026-05-22-workbench-owned-file-opening-plan.md) -
+  current workbench-owned file opening, plan rendering, and support-rail implementation record
 - [docs/LLM_PROVIDER_CATALOG.md](./docs/LLM_PROVIDER_CATALOG.md) - live LLM
   provider and model catalog behavior
 - [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) - deployment guide
@@ -293,7 +305,7 @@ Historical verification snapshots may exist in
 [VALIDATION_TASKS.md](./VALIDATION_TASKS.md). Treat the current CI output and
 the latest task-local validation notes as authoritative when they differ.
 
-The chat-first workspace redesign was last verified with:
+The workbench-owned workspace redesign should be verified with:
 
 - `bun run typecheck && bun run lint && bun run format:check && bun test`
 - `npx convex dev --once`

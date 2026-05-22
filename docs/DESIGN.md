@@ -345,8 +345,8 @@ Apply this system across these Panda surfaces:
    unsaved changes, and provider testing.
 5. **Admin**: dashboard, users, analytics, system controls, security audit,
    access denied, and maintenance-sensitive confirmations.
-6. **Mobile**: Session, Chat, Proof, and Preview as focused views rather than a
-   compressed desktop shell.
+6. **Mobile**: Work, Chat, Proof, and Changes as focused views rather than a
+   compressed desktop shell. Panda does not depend on a live-preview destination.
 
 The visual language stays consistent across all surfaces. Density changes by
 context: public pages are more typographic, workbench pages are dense and

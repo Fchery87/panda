@@ -166,11 +166,11 @@ context audit records, WebContainer/native execution summaries, approval audit
 records, token counts, duration, and result status. Receipt builders must redact
 secrets and cap arrays before writing to Convex.
 
-The chat-first workspace reads run state through summary queries by default. The
-session rail uses recent project-level run summaries plus recent chat summaries;
-chat timeline and proof surfaces use bounded event summaries and receipt
-metadata. Full run details, checkpoint payloads, file contents, and attachment
-URLs should remain lazy detail fetches instead of project-boot subscriptions.
+The workbench-owned workspace reads run state through summary queries by
+default. The support rail uses bounded event summaries and receipt metadata for
+Proof, Changes, and Context. Full run details, checkpoint payloads, file
+contents, and attachment URLs should remain lazy detail fetches instead of
+project-boot subscriptions.
 
 ### Sharing and admin
 
@@ -230,8 +230,8 @@ bunx convex deploy
 - [docs/AGENTIC_HARNESS.md](../docs/AGENTIC_HARNESS.md) - Agent harness docs
 - [docs/CHAT_TRANSCRIPT_POLICY.md](../docs/CHAT_TRANSCRIPT_POLICY.md) - Chat and
   inspector boundary policy
-- [docs/plans/2026-04-26-chat-first-workspace-ia.md](../docs/plans/2026-04-26-chat-first-workspace-ia.md) -
-  Chat-first workspace IA and run proof surface contract
+- [docs/plans/2026-05-22-workbench-owned-file-opening-plan.md](../docs/plans/2026-05-22-workbench-owned-file-opening-plan.md) -
+  Workbench-owned file opening, generated-file review, and support-rail contract
 - [docs/LLM_PROVIDER_CATALOG.md](../docs/LLM_PROVIDER_CATALOG.md) - LLM provider
   catalog and settings hydration behavior
 - [docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md) - Deployment guide
