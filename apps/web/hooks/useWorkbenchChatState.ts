@@ -38,7 +38,7 @@ interface AgentRunEventSummary extends PersistedRunEventSummaryInfo {
   createdAt: number
 }
 
-type MobilePrimaryPanel = 'work' | 'chat' | 'proof' | 'preview'
+type MobilePrimaryPanel = 'work' | 'chat' | 'changes' | 'proof'
 
 interface UseWorkbenchChatStateArgs {
   activeChat: {
@@ -66,7 +66,7 @@ interface UseWorkbenchChatStateArgs {
   setMobileUnreadCount: React.Dispatch<React.SetStateAction<number>>
   _setIsRightPanelOpen: React.Dispatch<React.SetStateAction<boolean>>
   _setMobilePrimaryPanel: (panel: MobilePrimaryPanel) => void
-  _setRightPanelTab: React.Dispatch<React.SetStateAction<'work' | 'proof' | 'changes' | 'context' | 'preview'>>
+  _setRightPanelTab: React.Dispatch<React.SetStateAction<'proof' | 'changes' | 'context'>>
 }
 
 export function useWorkbenchChatState({

@@ -52,6 +52,9 @@ interface WorkbenchProps {
   onInlineChat?: (prompt: string, selectedText: string, filePath: string) => Promise<string | null>
   onApprovePlan?: () => void
   onBuildFromPlan?: () => void
+  onPlanDraftChange?: (markdown: string) => void
+  onSavePlanDraft?: () => void
+  isSavingPlanDraft?: boolean
   planApproveDisabled?: boolean
   planBuildDisabled?: boolean
   /** Called when user clicks "Home" tab in center */
@@ -102,6 +105,9 @@ export function Workbench({
   onInlineChat,
   onApprovePlan,
   onBuildFromPlan,
+  onPlanDraftChange,
+  onSavePlanDraft,
+  isSavingPlanDraft = false,
   planApproveDisabled = false,
   planBuildDisabled = false,
   activeCenterTab = 'editor',
@@ -190,6 +196,9 @@ export function Workbench({
                     artifact={selectedPlanTab.artifact}
                     onApprove={onApprovePlan}
                     onBuildFromPlan={onBuildFromPlan}
+                    onPlanDraftChange={onPlanDraftChange}
+                    onSavePlanDraft={onSavePlanDraft}
+                    isSavingPlanDraft={isSavingPlanDraft}
                     approveDisabled={planApproveDisabled}
                     buildDisabled={planBuildDisabled}
                   />
@@ -230,6 +239,7 @@ export function Workbench({
               onRejectFile={handleRejectDiffFile}
               onAcceptAll={handleAcceptAllDiffs}
               onRejectAll={handleRejectAllDiffs}
+              onOpenFile={onSelectFile}
               onOpenProof={onOpenProof}
             />
           )}
@@ -287,6 +297,9 @@ export function Workbench({
                   artifact={selectedPlanTab.artifact}
                   onApprove={onApprovePlan}
                   onBuildFromPlan={onBuildFromPlan}
+                  onPlanDraftChange={onPlanDraftChange}
+                  onSavePlanDraft={onSavePlanDraft}
+                  isSavingPlanDraft={isSavingPlanDraft}
                   approveDisabled={planApproveDisabled}
                   buildDisabled={planBuildDisabled}
                 />
@@ -340,6 +353,7 @@ export function Workbench({
               onRejectFile={handleRejectDiffFile}
               onAcceptAll={handleAcceptAllDiffs}
               onRejectAll={handleRejectAllDiffs}
+              onOpenFile={onSelectFile}
               onOpenProof={onOpenProof}
             />
           )}

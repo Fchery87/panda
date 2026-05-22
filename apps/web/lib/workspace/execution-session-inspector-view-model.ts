@@ -43,14 +43,13 @@ export function buildExecutionSessionInspectorViewModel(
         emptyTitle: 'No session context yet',
         emptyDetail: 'Plans, specs, memory, and eval checks appear here as they are attached.',
       }
-    case 'work':
     default:
       return {
         eyebrow,
-        title: 'Session Work',
-        summary: 'Open files, inspect diffs, and review implementation detail for this session.',
-        emptyTitle: 'No work selected',
-        emptyDetail: 'Open a file, diff, or generated artifact to inspect implementation detail.',
+        title: 'Session Proof',
+        summary: 'Track progress, receipts, recovery, and validation evidence.',
+        emptyTitle: 'No run proof yet',
+        emptyDetail: 'Proof appears after Panda executes work in this session.',
       }
   }
 }

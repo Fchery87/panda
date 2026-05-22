@@ -1,5 +1,6 @@
 import { describe, expect, test, mock } from 'bun:test'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { useWorkspaceUiStore } from '@/stores/workspaceUiStore'
 import { ProjectWorkspaceLayoutView } from './ProjectWorkspaceLayout'
 
 mock.module('next/navigation', () => ({
@@ -17,7 +18,8 @@ mock.module('@/components/workbench/Terminal', () => ({
 }))
 
 describe('ProjectWorkspaceLayout desktop shell', () => {
-  test('renders chat as the desktop center timeline', () => {
+  test('renders workbench as the desktop center by default with support rail alongside it', () => {
+    useWorkspaceUiStore.setState({ workspaceFocusMode: 'workbench' })
     const html = renderToStaticMarkup(
       <ProjectWorkspaceLayoutView
         projectId={'project' as never}
@@ -58,8 +60,9 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
       />
     )
 
-    expect(html).toContain('chat-panel')
+    expect(html).toContain('panda-workbench-inner')
     expect(html).toContain('right-panel')
+    expect(html).not.toContain('chat-panel')
   })
 
   test('renders named execution session shell regions without moving surfaces', () => {
@@ -113,7 +116,8 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
     expect(html).not.toContain('Agent Events')
   })
 
-  test('renders chat panel as the primary session canvas', () => {
+  test('renders the workbench as the primary session canvas', () => {
+    useWorkspaceUiStore.setState({ workspaceFocusMode: 'workbench' })
     const html = renderToStaticMarkup(
       <ProjectWorkspaceLayoutView
         projectId={'project' as never}
@@ -155,7 +159,8 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
     )
 
     expect(html).toContain('data-testid="execution-session-timeline-region"')
-    expect(html).toContain('chat-panel')
+    expect(html).toContain('panda-workbench-inner')
+    expect(html).not.toContain('chat-panel')
   })
 
   test('renders session-centered rail language', () => {
@@ -341,12 +346,13 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
     )
 
     expect(html).toContain('role="tablist"')
-    expect(html).toContain('aria-label="Show session workspace"')
+    expect(html).toContain('aria-label="Show workspace"')
     expect(html).toContain('aria-label="Show chat timeline"')
     expect(html).toContain('aria-label="Show run proof"')
-    expect(html).toContain('Session')
+    expect(html).toContain('Work')
     expect(html).toContain('Chat')
     expect(html).toContain('Proof')
+    expect(html).toContain('Changes')
     expect(html).toContain('chat-panel')
   })
 })

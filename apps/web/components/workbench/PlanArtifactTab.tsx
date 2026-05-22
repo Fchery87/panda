@@ -1,6 +1,7 @@
 'use client'
 
-import { FileText, GitBranch, ListChecks } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { FileText, GitBranch, ListChecks, Pencil, Eye, Save } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Button } from '@/components/ui/button'
@@ -13,8 +14,11 @@ export interface PlanArtifactTabProps {
   artifact: GeneratedPlanArtifact
   onApprove?: () => void
   onBuildFromPlan?: () => void
+  onPlanDraftChange?: (markdown: string) => void
+  onSavePlanDraft?: () => void
   approveDisabled?: boolean
   buildDisabled?: boolean
+  isSavingPlanDraft?: boolean
   className?: string
 }
 
@@ -66,10 +70,34 @@ export function PlanArtifactTab({
   artifact,
   onApprove,
   onBuildFromPlan,
+  onPlanDraftChange,
+  onSavePlanDraft,
   approveDisabled = false,
   buildDisabled = false,
+  isSavingPlanDraft = false,
   className,
 }: PlanArtifactTabProps) {
+  const [mode, setMode] = useState<'review' | 'edit'>('review')
+  const [draftMarkdown, setDraftMarkdown] = useState(artifact.markdown.trim())
+  const [lastSavedMarkdown, setLastSavedMarkdown] = useState(artifact.markdown.trim())
+  const isDirty = draftMarkdown !== lastSavedMarkdown
+
+  useEffect(() => {
+    const nextMarkdown = artifact.markdown.trim()
+    setDraftMarkdown(nextMarkdown)
+    setLastSavedMarkdown(nextMarkdown)
+  }, [artifact.sessionId, artifact.generatedAt, artifact.markdown])
+
+  const handleDraftChange = (value: string) => {
+    setDraftMarkdown(value)
+    onPlanDraftChange?.(value)
+  }
+
+  const handleSaveDraft = () => {
+    onPlanDraftChange?.(draftMarkdown)
+    onSavePlanDraft?.()
+    setLastSavedMarkdown(draftMarkdown)
+  }
   const sectionContent = artifact.sections.slice().sort((left, right) => left.order - right.order)
   const canApprove = artifact.status === 'ready_for_review' && !!onApprove
   const canBuild =
@@ -100,8 +128,28 @@ export function PlanArtifactTab({
           </span>
         </div>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{artifact.summary}</p>
-        {(canApprove || canBuild) && (
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setMode((current) => (current === 'review' ? 'edit' : 'review'))}
+              className="h-7 rounded-none px-3 font-mono text-xs"
+            >
+              {mode === 'review' ? <Pencil className="mr-1.5 h-3 w-3" /> : <Eye className="mr-1.5 h-3 w-3" />}
+              {mode === 'review' ? 'Edit' : 'Review'}
+            </Button>
+            {mode === 'edit' ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleSaveDraft}
+                disabled={!isDirty || isSavingPlanDraft}
+                className="h-7 rounded-none px-3 font-mono text-xs"
+              >
+                <Save className="mr-1.5 h-3 w-3" />
+                {isSavingPlanDraft ? 'Saving' : 'Save Draft'}
+              </Button>
+            ) : null}
             {canApprove ? (
               <Button
                 size="sm"
@@ -124,7 +172,6 @@ export function PlanArtifactTab({
               </Button>
             ) : null}
           </div>
-        )}
       </header>
 
       <div className="min-h-0 flex-1 overflow-auto">
@@ -136,9 +183,16 @@ export function PlanArtifactTab({
                 Full plan
               </div>
               <div className="prose prose-sm dark:prose-invert prose-headings:font-mono prose-headings:uppercase prose-headings:tracking-[0.14em] max-w-none">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {artifact.markdown.trim()}
-                </ReactMarkdown>
+                {mode === 'edit' ? (
+                  <textarea
+                    value={draftMarkdown}
+                    onChange={(event) => handleDraftChange(event.currentTarget.value)}
+                    className="min-h-[520px] w-full resize-y border border-border bg-background p-3 font-mono text-sm leading-6 text-foreground outline-none focus:border-primary"
+                    aria-label="Edit generated plan markdown"
+                  />
+                ) : (
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{draftMarkdown}</ReactMarkdown>
+                )}
               </div>
             </div>
 

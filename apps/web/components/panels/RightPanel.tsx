@@ -1,84 +1,66 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import { TabBar, type TabBarTab } from '@/components/ui/tab-bar'
 
-export type RightPanelTabId = 'work' | 'proof' | 'changes' | 'context' | 'preview'
+export type RightPanelTabId = 'proof' | 'changes' | 'context'
 
-export type InspectorTabDef = TabBarTab<string>
+export type InspectorTabDef = TabBarTab<RightPanelTabId>
 
 interface RightPanelProps {
-  workContent: ReactNode
-  inspectorContent?: ReactNode
+  inspectorContent?: React.ReactNode
   inspectorTabs?: InspectorTabDef[]
-  activeInspectorTab?: string
-  onInspectorTabChange?: (tab: string) => void
-  isInspectorOpen?: boolean
-  onInspectorToggle?: () => void
+  activeInspectorTab?: RightPanelTabId
+  onInspectorTabChange?: (tab: RightPanelTabId) => void
   inspectorTitle?: string
   inspectorSummary?: string
   inspectorEyebrow?: string
 }
 
 export function RightPanel({
-  workContent,
   inspectorContent,
   inspectorTabs = [],
-  activeInspectorTab,
+  activeInspectorTab = 'proof',
   onInspectorTabChange,
-  isInspectorOpen = false,
-  onInspectorToggle,
   inspectorTitle = 'Evidence Surface',
   inspectorSummary:
     _inspectorSummary = 'Run proof, receipts, snapshots, subagents, specs, and validation.',
   inspectorEyebrow = 'Evidence Surface',
 }: RightPanelProps) {
-  const activeTab = isInspectorOpen && activeInspectorTab ? activeInspectorTab : 'work'
-  const tabs: TabBarTab<string>[] = [
-    { id: 'work', label: 'Work' },
-    ...inspectorTabs.map((tab) => ({
-      ...tab,
-      label:
-        tab.id === 'proof' || tab.id === 'run'
-          ? 'Proof'
-          : tab.id === 'changes'
-            ? 'Changes'
-            : tab.id === 'context'
-              ? 'Context'
-              : tab.id === 'preview'
-                ? 'Preview'
-                : tab.label,
-    })),
-  ]
+  const activeTab = activeInspectorTab
+  const tabs: TabBarTab<RightPanelTabId>[] = inspectorTabs.map((tab) => ({
+    ...tab,
+    label:
+      tab.id === 'proof'
+        ? 'Proof'
+        : tab.id === 'changes'
+          ? 'Changes'
+          : tab.id === 'context'
+            ? 'Context'
+            : tab.label,
+  }))
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col bg-background">
       <div className="border-b border-border bg-background px-3 py-1.5">
         <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-          {activeTab === 'work' ? 'Work Tray' : inspectorEyebrow}
+          {inspectorEyebrow}
         </div>
         <h2 className="truncate text-[13px] font-medium text-foreground">
-          {activeTab === 'work' ? 'Inspect and edit work' : inspectorTitle}
+          {inspectorTitle}
         </h2>
       </div>
 
       <TabBar
         tabs={tabs}
         activeTab={activeTab}
-        onTabChange={(tab) => {
-          if (tab === 'work') {
-            onInspectorToggle?.()
-            return
-          }
-          onInspectorTabChange?.(tab)
-        }}
+        onTabChange={(tab) => onInspectorTabChange?.(tab)}
         className="h-8 shrink-0 overflow-x-auto border-b-border bg-card"
         tabsClassName="scrollbar-hide min-w-max"
         tabClassName="whitespace-nowrap px-2.5 text-[10px]"
       />
 
       <div className="min-h-0 min-w-0 flex-1 overflow-hidden bg-card">
-        {activeTab === 'work' ? workContent : inspectorContent}
+        {inspectorContent}
       </div>
     </div>
   )

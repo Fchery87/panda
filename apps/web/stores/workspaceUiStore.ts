@@ -3,9 +3,9 @@ import { persist } from 'zustand/middleware'
 
 import type { BottomDockTab } from '@/components/layout/BottomDock'
 
-export type RightPanelTab = 'work' | 'proof' | 'changes' | 'context' | 'preview'
+export type RightPanelTab = 'proof' | 'changes' | 'context'
 export type CenterTab = 'editor' | 'diff' | 'logs' | 'tests'
-export type MobilePrimaryPanel = 'work' | 'chat' | 'proof' | 'preview'
+export type MobilePrimaryPanel = 'work' | 'chat' | 'changes' | 'proof'
 export type WorkspaceFocusMode = 'chat' | 'workbench' | 'proof' | 'changes'
 
 export type ChatInspectorTab =
@@ -82,7 +82,7 @@ const DEFAULTS = {
   isMobileLayout: false,
   isCompactDesktopLayout: false,
   isRightPanelOpen: false,
-  rightPanelTab: 'work' as RightPanelTab,
+  rightPanelTab: 'proof' as RightPanelTab,
   isBottomDockOpen: false,
   activeBottomDockTab: 'terminal' as BottomDockTab,
   activeCenterTab: 'editor' as CenterTab,
@@ -150,10 +150,15 @@ export const useWorkspaceUiStore = create<WorkspaceUiState>()(
         if (!persistedState || typeof persistedState !== 'object') return persistedState
         const state = persistedState as Record<string, unknown>
         const tab = state.rightPanelTab
-        const rightPanelTab = tab === 'run' ? 'proof' : tab === 'chat' ? 'work' : tab
+        const rightPanelTab =
+          tab === 'run' || tab === 'chat' || tab === 'work' || tab === 'preview' ? 'proof' : tab
         const mobilePanel = state.mobilePrimaryPanel
         const mobilePrimaryPanel =
-          mobilePanel === 'workspace' ? 'work' : mobilePanel === 'review' ? 'proof' : mobilePanel
+          mobilePanel === 'workspace'
+            ? 'work'
+            : mobilePanel === 'review' || mobilePanel === 'preview'
+              ? 'proof'
+              : mobilePanel
         return {
           ...state,
           rightPanelTab,

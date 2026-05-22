@@ -1,6 +1,5 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import type { Id } from '@convex/_generated/dataModel'
 import type { RightPanelTabId, InspectorTabDef } from '@/components/panels/RightPanel'
 import { RightPanel } from '@/components/panels/RightPanel'
@@ -17,10 +16,9 @@ import { buildExecutionSessionInspectorViewModel } from '@/lib/workspace/executi
 
 export interface WorkbenchRightPanelProps {
   projectId: Id<'projects'>
-  workContent: ReactNode
 }
 
-export function WorkbenchRightPanel({ projectId, workContent }: WorkbenchRightPanelProps) {
+export function WorkbenchRightPanel({ projectId }: WorkbenchRightPanelProps) {
   const {
     activeChatId,
     runEvents,
@@ -68,8 +66,7 @@ export function WorkbenchRightPanel({ projectId, workContent }: WorkbenchRightPa
     openRightPanelTab('changes')
   }
 
-  const isDrawerOpen = activeTab !== 'work'
-  const activeInspectorTab = isDrawerOpen ? activeTab : undefined
+  const activeInspectorTab = activeTab
 
   const inspectorTabs: InspectorTabDef[] = [
     { id: 'proof', label: 'Proof' },
@@ -168,13 +165,10 @@ export function WorkbenchRightPanel({ projectId, workContent }: WorkbenchRightPa
 
   return (
     <RightPanel
-      workContent={workContent}
       inspectorContent={getInspectorContent()}
       inspectorTabs={inspectorTabs}
       activeInspectorTab={activeInspectorTab}
       onInspectorTabChange={(tab) => setActiveTab(tab as RightPanelTabId)}
-      isInspectorOpen={isDrawerOpen}
-      onInspectorToggle={() => setActiveTab('work')}
       inspectorTitle={inspectorView.title}
       inspectorSummary={inspectorView.summary}
       inspectorEyebrow={inspectorView.eyebrow}

@@ -22,7 +22,9 @@ type CursorPosition = {
   column: number
 } | null
 
-type MobilePrimaryPanel = 'work' | 'chat' | 'proof' | 'preview'
+type MobilePrimaryPanel = 'work' | 'chat' | 'changes' | 'proof'
+type WorkspaceFocusMode = 'chat' | 'workbench' | 'proof' | 'changes'
+type CenterTab = 'editor' | 'diff' | 'logs' | 'tests'
 
 interface UsePlanArtifactSyncArgs {
   activePlanArtifact: GeneratedPlanArtifact | null | undefined
@@ -32,6 +34,8 @@ interface UsePlanArtifactSyncArgs {
   setSelectedFileLocation: (loc: FileLocation) => void
   setCursorPosition: (pos: CursorPosition) => void
   setMobilePrimaryPanel: (panel: MobilePrimaryPanel) => void
+  setWorkspaceFocusMode?: (mode: WorkspaceFocusMode) => void
+  setActiveCenterTab?: (tab: CenterTab) => void
 }
 
 export function usePlanArtifactSync({
@@ -42,6 +46,8 @@ export function usePlanArtifactSync({
   setSelectedFileLocation,
   setCursorPosition,
   setMobilePrimaryPanel,
+  setWorkspaceFocusMode,
+  setActiveCenterTab,
 }: UsePlanArtifactSyncArgs) {
   const lastOpenedPlanArtifactRef = useRef<string | null>(null)
   const lastSyncedPlanArtifactRef = useRef<string | null>(null)
@@ -67,6 +73,8 @@ export function usePlanArtifactSync({
       setSelectedFileLocation(null)
       setCursorPosition(null)
       setMobilePrimaryPanel('work')
+      setWorkspaceFocusMode?.('workbench')
+      setActiveCenterTab?.('editor')
       lastOpenedPlanArtifactRef.current = activePlanArtifactOpenKey
     }
   }, [
@@ -76,6 +84,8 @@ export function usePlanArtifactSync({
     setCursorPosition,
     setMobilePrimaryPanel,
     setOpenTabs,
+    setWorkspaceFocusMode,
+    setActiveCenterTab,
     setSelectedFileLocation,
     setSelectedFilePath,
   ])

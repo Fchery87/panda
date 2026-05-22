@@ -28,17 +28,17 @@ describe('project chat wiring', () => {
     expect(content).toContain('projectId={projectId}')
   })
 
-  test('ProjectWorkspaceLayout renders chat in the central execution session region', async () => {
+  test('ProjectWorkspaceLayout renders workbench in the central workspace region with chat as a focus surface', async () => {
     const content = await readProjectComponent('ProjectWorkspaceLayout.tsx')
 
-    expect(content).toContain('{chatPanel}')
+    expect(content).toContain("workspaceFocusMode === 'chat' ? chatPanel : workbench")
     expect(content).toContain('data-testid="execution-session-timeline-region"')
     expect(content).not.toContain(
       '<RightPanel\n                              chatContent={chatPanel}'
     )
   })
 
-  test('ProjectChatPanel routes planning and review actions into the work tray instead of mounting an inline inspector', async () => {
+  test('ProjectChatPanel routes planning and review actions into the support rail instead of mounting an inline inspector', async () => {
     const content = await readProjectComponent('ProjectChatPanel.tsx')
 
     expect(content).not.toContain('const inspectorPanel = (')
@@ -64,7 +64,7 @@ describe('project chat wiring', () => {
     expect(content).toContain('<AgentEventsPanel />')
   })
 
-  test('project page routes review/open actions directly into the shared work tray', async () => {
+  test('project page routes review/open actions directly into the shared support rail', async () => {
     const providerContent = await readProvider()
 
     expect(providerContent).toContain("onToggleInspector: () => openRightPanelTab('proof')")

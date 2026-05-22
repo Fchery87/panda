@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 
-type MobilePrimaryPanel = 'work' | 'chat' | 'proof' | 'preview'
+type MobilePrimaryPanel = 'work' | 'chat' | 'changes' | 'proof'
 
 export function useMobileLayout() {
   const [isMobileLayout, setIsMobileLayout] = useState(false)

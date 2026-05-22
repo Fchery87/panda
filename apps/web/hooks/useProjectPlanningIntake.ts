@@ -19,7 +19,7 @@ interface UseProjectPlanningIntakeParams {
     content: string
     annotations: Array<{ mode: 'plan' }>
   }) => Promise<unknown>
-  openRightPanelTab: (tab: 'work' | 'changes' | 'context') => void
+  openRightPanelTab: (tab: 'proof' | 'changes' | 'context') => void
 }
 
 export function useProjectPlanningIntake({

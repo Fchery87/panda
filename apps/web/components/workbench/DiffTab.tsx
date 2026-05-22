@@ -12,6 +12,7 @@ import {
   ChevronRight as IconChevronRight,
   FileCode as IconFile,
   Undo2 as IconRevert,
+  ExternalLink as IconExternalLink,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -47,6 +48,7 @@ interface DiffTabProps {
   onAcceptAll?: () => void
   onRejectAll?: () => void
   onRevertFile?: (fileIndex: number) => void
+  onOpenFile?: (path: string, location?: { line: number; column: number }) => void
   onOpenProof?: () => void
   pendingDiffCount?: number
 }
@@ -75,6 +77,7 @@ export function DiffTab({
   onAcceptAll,
   onRejectAll,
   onRevertFile,
+  onOpenFile,
   onOpenProof,
   pendingDiffCount = 0,
 }: DiffTabProps) {
@@ -232,6 +235,17 @@ export function DiffTab({
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
+                  {onOpenFile && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 gap-1 rounded-none font-mono text-[10px] uppercase tracking-widest"
+                      onClick={() => onOpenFile(selectedFile.path)}
+                    >
+                      <IconExternalLink className="h-3 w-3" />
+                      Open File
+                    </Button>
+                  )}
                   {onRevertFile && (
                     <Button
                       variant="ghost"
@@ -302,6 +316,23 @@ export function DiffTab({
                               <span className="text-destructive">−{hunk.removed.length}</span>
                             </button>
                             <div className="flex items-center gap-1">
+                              {onOpenFile && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-5 gap-1 rounded-none px-1 font-mono text-[9px] uppercase tracking-widest"
+                                  onClick={() =>
+                                    onOpenFile(selectedFile.path, {
+                                      line: hunk.startLine,
+                                      column: 0,
+                                    })
+                                  }
+                                  title="Open hunk in file"
+                                >
+                                  <IconExternalLink className="h-3 w-3" />
+                                  Open
+                                </Button>
+                              )}
                               {hunk.status === 'pending' ? (
                                 <>
                                   <Button

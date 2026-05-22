@@ -157,6 +157,7 @@ export function WorkspaceRuntimeProvider({
     isRightPanelOpen,
     setRightPanelOpen,
     setRightPanelTab,
+    setWorkspaceFocusMode,
   } = useWorkspaceUiStore()
 
   const { oversightLevel, setContextualPrompt } = useChatSessionStore()
@@ -412,12 +413,6 @@ export function WorkspaceRuntimeProvider({
     activeChat,
     autoApply: false,
     selectedFilePath,
-    openTabs,
-    setOpenTabs,
-    setSelectedFilePath,
-    setSelectedFileLocation,
-    setCursorPosition,
-    setMobilePrimaryPanel,
     writeFileToRuntime,
   })
 
@@ -441,6 +436,8 @@ export function WorkspaceRuntimeProvider({
     setSelectedFileLocation,
     setCursorPosition,
     setMobilePrimaryPanel,
+    setWorkspaceFocusMode,
+    setActiveCenterTab,
   })
 
   const requestedFilePath = searchParams.get('filePath')
@@ -520,6 +517,8 @@ export function WorkspaceRuntimeProvider({
     setCursorPosition,
     setOpenTabs,
     setMobilePrimaryPanel: handleSetMobilePrimaryPanel,
+    setWorkspaceFocusMode,
+    setActiveCenterTab,
     writeFileToRuntime,
   })
 
@@ -767,7 +766,7 @@ export function WorkspaceRuntimeProvider({
       onToggleRightPanel: () => {
         const s = useWorkspaceUiStore.getState()
         if (!s.isRightPanelOpen) {
-          s.setRightPanelTab('work')
+          s.setRightPanelTab('proof')
           if (isMobileLayout) s.setMobilePrimaryPanel('proof')
         } else if (isMobileLayout && s.mobilePrimaryPanel === 'chat') {
           s.setMobilePrimaryPanel('work')
@@ -1027,6 +1026,11 @@ export function WorkspaceRuntimeProvider({
     onInlineChat: handleInlineChat,
     onApprovePlan: handleApprovePlan,
     onBuildFromPlan: handleBuildFromPlan,
+    onPlanDraftChange: setPlanDraft,
+    onSavePlanDraft: () => {
+      void handleSavePlanDraft()
+    },
+    isSavingPlanDraft,
     planApproveDisabled: !canApproveCurrentPlan || agent.isLoading,
     planBuildDisabled: !canBuildCurrentPlan || agent.isLoading,
     isBottomDockOpen: _isBottomDockOpen,

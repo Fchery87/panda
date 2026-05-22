@@ -67,8 +67,8 @@ interface ProjectWorkspaceLayoutProps {
   onEditorDirtyChange: (filePath: string, isDirty: boolean) => void
   isMobileLayout: boolean
   isCompactDesktopLayout: boolean
-  mobilePrimaryPanel: 'work' | 'chat' | 'proof' | 'preview'
-  onMobilePrimaryPanelChange: (panel: 'work' | 'chat' | 'proof' | 'preview') => void
+  mobilePrimaryPanel: 'work' | 'chat' | 'changes' | 'proof'
+  onMobilePrimaryPanelChange: (panel: 'work' | 'chat' | 'changes' | 'proof') => void
   onMobileReviewTabChange?: (tab: 'proof' | 'changes' | 'context') => void
   mobileUnreadCount: number
   isMobileKeyboardOpen: boolean
@@ -88,6 +88,9 @@ interface ProjectWorkspaceLayoutProps {
   onInlineChat?: (prompt: string, selectedText: string, filePath: string) => Promise<string | null>
   onApprovePlan?: () => void
   onBuildFromPlan?: () => void
+  onPlanDraftChange?: (markdown: string) => void
+  onSavePlanDraft?: () => void
+  isSavingPlanDraft?: boolean
   planApproveDisabled?: boolean
   planBuildDisabled?: boolean
   // New: bottom dock and center tab state
@@ -188,6 +191,9 @@ export function ProjectWorkspaceLayoutView({
   onInlineChat,
   onApprovePlan,
   onBuildFromPlan,
+  onPlanDraftChange,
+  onSavePlanDraft,
+  isSavingPlanDraft = false,
   planApproveDisabled = false,
   planBuildDisabled = false,
   // New props with defaults
@@ -220,11 +226,17 @@ export function ProjectWorkspaceLayoutView({
   const openRightPanelTab = useWorkspaceUiStore((state) => state.openRightPanelTab)
   const workspaceFocusMode = useWorkspaceUiStore((state) => state.workspaceFocusMode)
   const setWorkspaceFocusMode = useWorkspaceUiStore((state) => state.setWorkspaceFocusMode)
-  const isMobileReviewPanelActive = mobilePrimaryPanel === 'proof'
-  const isMobileProofActive = isMobileReviewPanelActive
+  const isMobileProofActive = mobilePrimaryPanel === 'proof'
+  const isMobileChangesActive = mobilePrimaryPanel === 'changes'
   const openMobileProof = () => {
     onMobileReviewTabChange?.('proof')
+    openRightPanelTab('proof')
     onMobilePrimaryPanelChange('proof')
+  }
+  const openMobileChanges = () => {
+    onMobileReviewTabChange?.('changes')
+    openRightPanelTab('changes')
+    onMobilePrimaryPanelChange('changes')
   }
 
   // Dock tab definitions with badge counts
@@ -232,10 +244,9 @@ export function ProjectWorkspaceLayoutView({
 
   const shouldRenderRightPanel = Boolean(isRightPanelOpen && workspaceFocusMode !== 'chat')
   const isInspectorFocus = workspaceFocusMode === 'proof' || workspaceFocusMode === 'changes'
-  const rightPanelDefaultSize =
-    workspaceFocusMode === 'workbench' ? 46 : isInspectorFocus ? 38 : isCompactDesktopLayout ? 30 : 26
+  const rightPanelDefaultSize = isInspectorFocus ? 38 : isCompactDesktopLayout ? 30 : 26
   const centerDefaultSize = shouldRenderRightPanel ? 100 - rightPanelDefaultSize : 100
-  const rightPanelMaxSize = workspaceFocusMode === 'workbench' ? 62 : isInspectorFocus ? 50 : 34
+  const rightPanelMaxSize = isInspectorFocus ? 50 : 34
   const outerLayoutPersistenceKey = `panda-workspace-${shouldRenderRightPanel ? 'right-open' : 'right-closed'}-${workspaceFocusMode}`
 
   const pendingFileStatuses = useMemo(() => {
@@ -279,7 +290,11 @@ export function ProjectWorkspaceLayoutView({
       onCenterTabChange?.('editor')
       return
     }
-    openRightPanelTab(focus === 'workbench' ? 'work' : focus)
+    if (focus === 'workbench') {
+      onCenterTabChange?.('editor')
+      return
+    }
+    openRightPanelTab(focus)
   }
 
   const workbench = (
@@ -308,6 +323,9 @@ export function ProjectWorkspaceLayoutView({
       onInlineChat={onInlineChat}
       onApprovePlan={onApprovePlan}
       onBuildFromPlan={onBuildFromPlan}
+      onPlanDraftChange={onPlanDraftChange}
+      onSavePlanDraft={onSavePlanDraft}
+      isSavingPlanDraft={isSavingPlanDraft}
       planApproveDisabled={planApproveDisabled}
       planBuildDisabled={planBuildDisabled}
       activeCenterTab={activeCenterTab}
@@ -390,11 +408,9 @@ export function ProjectWorkspaceLayoutView({
                 ? workbench
                 : mobilePrimaryPanel === 'chat'
                   ? chatPanel
-                  : mobilePrimaryPanel === 'proof'
-                    ? rightPanelContent
-                    : mobilePrimaryPanel === 'preview'
-                      ? workbench
-                      : null}
+                  : mobilePrimaryPanel === 'proof' || mobilePrimaryPanel === 'changes'
+                    ? rightPanelContent ?? <WorkbenchRightPanel projectId={projectId} />
+                    : null}
             </div>
             {!isMobileKeyboardOpen && (
               <div
@@ -407,7 +423,7 @@ export function ProjectWorkspaceLayoutView({
                   onClick={() => onMobilePrimaryPanelChange('work')}
                   role="tab"
                   aria-selected={mobilePrimaryPanel === 'work'}
-                  aria-label="Show session workspace"
+                  aria-label="Show workspace"
                   className={cn(
                     'min-h-12 border-r border-border px-1 transition-colors focus-visible:-outline-offset-2 active:scale-[0.96]',
                     mobilePrimaryPanel === 'work'
@@ -415,7 +431,7 @@ export function ProjectWorkspaceLayoutView({
                       : 'bg-card text-muted-foreground hover:bg-accent hover:text-foreground'
                   )}
                 >
-                  Session
+                  Work
                 </button>
                 <button
                   type="button"
@@ -454,18 +470,18 @@ export function ProjectWorkspaceLayoutView({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onMobilePrimaryPanelChange('preview')}
+                  onClick={openMobileChanges}
                   role="tab"
-                  aria-selected={mobilePrimaryPanel === 'preview'}
-                  aria-label="Show runtime preview"
+                  aria-selected={isMobileChangesActive}
+                  aria-label="Show generated changes"
                   className={cn(
                     'relative min-h-12 px-1 transition-colors focus-visible:-outline-offset-2 active:scale-[0.96]',
-                    mobilePrimaryPanel === 'preview'
+                    isMobileChangesActive
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-card text-muted-foreground hover:bg-accent hover:text-foreground'
                   )}
                 >
-                  Preview
+                  Changes
                 </button>
               </div>
             )}
@@ -576,20 +592,24 @@ export function ProjectWorkspaceLayoutView({
                         {/* Legacy contract marker retained for source-based integration tests:
                           id="review-panel" order={1}
                       */}
-                        {/* Center execution session thread - dominant panel */}
+                        {/* Primary workspace surface: files/workbench or chat focus */}
                         <Panel
                           data-testid="execution-session-timeline-region"
-                          aria-label="Execution session timeline and composer"
+                          aria-label={
+                            workspaceFocusMode === 'chat'
+                              ? 'Execution session timeline and composer'
+                              : 'Workspace workbench'
+                          }
                           id="workspace-panel"
                           order={2}
                           defaultSize={centerDefaultSize}
                           minSize={52}
                           className="flex min-h-0 min-w-0 flex-col"
                         >
-                          {chatPanel}
+                          {workspaceFocusMode === 'chat' ? chatPanel : workbench}
                         </Panel>
 
-                        {/* Right work tray - implementation detail and review surfaces */}
+                        {/* Right support rail: proof, changes, and context */}
                         {shouldRenderRightPanel && (
                           <>
                             <PanelResizeHandle
@@ -598,7 +618,7 @@ export function ProjectWorkspaceLayoutView({
                             />
                             <Panel
                               data-testid="execution-session-work-tray-region"
-                              aria-label="Execution session work tray"
+                              aria-label="Workspace support rail"
                               id="work-tray-panel"
                               order={3}
                               defaultSize={rightPanelDefaultSize}
@@ -610,12 +630,7 @@ export function ProjectWorkspaceLayoutView({
                                 data-testid="right-panel"
                                 className="flex h-full min-h-0 flex-col"
                               >
-                                {rightPanelContent ?? (
-                                  <WorkbenchRightPanel
-                                    projectId={projectId}
-                                    workContent={workbench}
-                                  />
-                                )}
+                                {rightPanelContent ?? <WorkbenchRightPanel projectId={projectId} />}
                               </div>
                             </Panel>
                           </>

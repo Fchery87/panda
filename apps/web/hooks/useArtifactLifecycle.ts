@@ -6,7 +6,6 @@ import { toast } from 'sonner'
 import {
   derivePreviewDiffEntries,
   deriveWorkspaceArtifactPreviews,
-  resolveArtifactPreviewNavigation,
   type WorkspaceArtifactPreview,
 } from '@/components/workbench/artifact-preview'
 import { getPrimaryArtifactAction } from '@/lib/artifacts/executeArtifact'
@@ -25,38 +24,11 @@ interface Chat {
   _id: Id<'chats'>
 }
 
-interface OpenTab {
-  path: string
-}
-
-interface OpenTab {
-  path: string
-}
-
-type FileLocation = {
-  line: number
-  column: number
-  nonce: number
-} | null
-
-type CursorPosition = {
-  line: number
-  column: number
-} | null
-
-type MobilePrimaryPanel = 'work' | 'chat' | 'proof' | 'preview'
-
 interface UseArtifactLifecycleArgs {
   projectId: Id<'projects'>
   activeChat: Chat | null
   autoApply?: boolean
   selectedFilePath: string | null
-  openTabs: OpenTab[]
-  setOpenTabs: React.Dispatch<React.SetStateAction<OpenTab[]>>
-  setSelectedFilePath: (path: string | null) => void
-  setSelectedFileLocation: (loc: FileLocation) => void
-  setCursorPosition: (pos: CursorPosition) => void
-  setMobilePrimaryPanel: (panel: MobilePrimaryPanel) => void
   writeFileToRuntime?: (path: string, content: string) => Promise<unknown>
 }
 
@@ -65,12 +37,6 @@ export function useArtifactLifecycle({
   activeChat,
   autoApply = false,
   selectedFilePath,
-  openTabs,
-  setOpenTabs,
-  setSelectedFilePath,
-  setSelectedFileLocation,
-  setCursorPosition,
-  setMobilePrimaryPanel,
   writeFileToRuntime,
 }: UseArtifactLifecycleArgs) {
   const seenPendingArtifactIdsRef = useRef<Set<string>>(new Set())
@@ -117,35 +83,10 @@ export function useArtifactLifecycle({
       seenPendingArtifactIdsRef.current.add(preview.artifactId)
     }
 
-    const targetPreview = newPreviews[0]
-    const navigation = resolveArtifactPreviewNavigation({
-      preview: targetPreview,
-      openTabs,
-      selectedFilePath,
-    })
-
-    if (navigation.shouldOpenTab) {
-      setOpenTabs((prev) => {
-        if (prev.some((tab) => tab.path === targetPreview.filePath)) return prev
-        return [...prev, { path: targetPreview.filePath }]
-      })
-    }
-
-    if (navigation.shouldSelectFile) {
-      setMobilePrimaryPanel('work')
-      setSelectedFilePath(targetPreview.filePath)
-      setSelectedFileLocation(null)
-      setCursorPosition(null)
-    }
+    // Non-plan generated files intentionally do not auto-open or steal focus.
+    // They surface through pendingDiffEntries, FileTree badges, Changes, and Review Diff.
   }, [
-    openTabs,
     pendingArtifactPreviews,
-    selectedFilePath,
-    setCursorPosition,
-    setMobilePrimaryPanel,
-    setOpenTabs,
-    setSelectedFileLocation,
-    setSelectedFilePath,
   ])
 
   const handleApplyPendingArtifact = useCallback(

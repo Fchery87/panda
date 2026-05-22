@@ -1,9 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import {
-  derivePreviewDiffEntries,
-  deriveWorkspaceArtifactPreviews,
-  resolveArtifactPreviewNavigation,
-} from './artifact-preview'
+import { derivePreviewDiffEntries, deriveWorkspaceArtifactPreviews } from './artifact-preview'
 
 describe('artifact preview helpers', () => {
   test('derives active workspace previews only from pending file-write artifacts', () => {
@@ -87,44 +83,28 @@ describe('artifact preview helpers', () => {
     ])
   })
 
-  test('opens and selects a new preview target when there is no conflicting dirty tab', () => {
-    const decision = resolveArtifactPreviewNavigation({
-      preview: {
-        artifactId: 'artifact-4',
-        createdAt: 40,
-        filePath: 'src/new.ts',
-        pendingContent: 'export const value = 1\n',
-        originalContent: '',
+  test('keeps generated file previews as review data instead of navigation decisions', () => {
+    const previews = deriveWorkspaceArtifactPreviews([
+      {
+        _id: 'artifact-4',
         status: 'pending',
-      },
-      openTabs: [{ path: 'src/other.ts', isDirty: false }],
-      selectedFilePath: 'src/other.ts',
-    })
-
-    expect(decision).toEqual({
-      shouldOpenTab: true,
-      shouldSelectFile: true,
-    })
-  })
-
-  test('avoids stealing focus from a different dirty tab while still opening the preview tab', () => {
-    const decision = resolveArtifactPreviewNavigation({
-      preview: {
-        artifactId: 'artifact-4',
         createdAt: 40,
-        filePath: 'src/new.ts',
-        pendingContent: 'export const value = 1\n',
-        originalContent: '',
-        status: 'pending',
+        actions: [
+          {
+            type: 'file_write',
+            payload: {
+              filePath: 'src/new.ts',
+              content: 'export const value = 1\n',
+            },
+          },
+        ],
       },
-      openTabs: [{ path: 'src/other.ts', isDirty: true }],
-      selectedFilePath: 'src/other.ts',
-    })
+    ])
 
-    expect(decision).toEqual({
-      shouldOpenTab: true,
-      shouldSelectFile: false,
-    })
+    expect(previews).toHaveLength(1)
+    expect(previews[0]?.filePath).toBe('src/new.ts')
+    expect('shouldOpenTab' in previews[0]!).toBe(false)
+    expect('shouldSelectFile' in previews[0]!).toBe(false)
   })
 
   test('derives diff entries from pending previews for the center diff surface', () => {
@@ -147,12 +127,12 @@ describe('artifact preview helpers', () => {
         reviewStatus: 'pending',
         hunks: [
           {
-            id: 'artifact-1',
+            id: 'artifact-1:0',
             startLine: 1,
-            endLine: 2,
-            added: ['console.log("next")', ''],
-            removed: ['console.log("prev")', ''],
-            context: [],
+            endLine: 1,
+            added: ['console.log("next")'],
+            removed: ['console.log("prev")'],
+            context: [''],
             status: 'pending',
           },
         ],
