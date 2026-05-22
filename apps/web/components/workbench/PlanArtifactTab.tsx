@@ -1,14 +1,21 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { FileText, GitBranch, ListChecks, Pencil, Eye, Save } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Button } from '@/components/ui/button'
 import type { WorkspaceOpenTab } from '@/contexts/WorkspaceContext'
 import type { GeneratedPlanArtifact } from '@/lib/planning/types'
-import { createWorkspacePlanTabRef } from '@/lib/planning/types'
+import { createWorkspacePlanTabRef, serializeGeneratedPlanArtifact } from '@/lib/planning/types'
 import { cn } from '@/lib/utils'
+
+type PlanFrontmatter = {
+  raw: string | null
+  body: string
+  fields: Record<string, string>
+  todos: Array<{ content: string; status: string }>
+}
 
 export interface PlanArtifactTabProps {
   artifact: GeneratedPlanArtifact
@@ -49,6 +56,183 @@ export function upsertPlanArtifactWorkspaceTab(
   return nextTabs
 }
 
+function parsePlanFrontmatter(markdown: string): PlanFrontmatter {
+  if (!markdown.startsWith('---')) {
+    return { raw: null, body: markdown, fields: {}, todos: [] }
+  }
+
+  const closeIndex = markdown.indexOf('\n---', 3)
+  if (closeIndex === -1) {
+    return { raw: null, body: markdown, fields: {}, todos: [] }
+  }
+
+  const raw = markdown.slice(0, closeIndex + 4)
+  const body = markdown.slice(closeIndex + 4).replace(/^\s+/, '')
+  const fields: Record<string, string> = {}
+  const todos: Array<{ content: string; status: string }> = []
+  let currentTodo: { content: string; status: string } | null = null
+
+  for (const line of raw.split('\n').slice(1, -1)) {
+    const fieldMatch = line.match(/^([A-Za-z][A-Za-z0-9_-]*):\s*(.*)$/)
+    if (fieldMatch) {
+      fields[fieldMatch[1]!] = fieldMatch[2]!.replace(/^['"]|['"]$/g, '')
+    }
+
+    const todoContentMatch = line.match(/^\s+content:\s*(.*)$/)
+    if (todoContentMatch) {
+      currentTodo = {
+        content: todoContentMatch[1]!.replace(/^['"]|['"]$/g, ''),
+        status: 'pending',
+      }
+      todos.push(currentTodo)
+    }
+
+    const todoStatusMatch = line.match(/^\s+status:\s*(.*)$/)
+    if (todoStatusMatch && currentTodo) {
+      currentTodo.status = todoStatusMatch[1]!.replace(/^['"]|['"]$/g, '')
+    }
+  }
+
+  return { raw, body, fields, todos }
+}
+
+function MermaidBlock({ chart }: { chart: string }) {
+  const [svg, setSvg] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    const render = async () => {
+      try {
+        const mermaid = (await import('mermaid')).default
+        mermaid.initialize({
+          startOnLoad: false,
+          securityLevel: 'strict',
+          theme: document.documentElement.classList.contains('dark') ? 'dark' : 'default',
+        })
+        const id = `panda-plan-mermaid-${Math.random().toString(36).slice(2)}`
+        const result = await mermaid.render(id, chart)
+        if (!cancelled) setSvg(result.svg)
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Unable to render diagram')
+      }
+    }
+    void render()
+    return () => {
+      cancelled = true
+    }
+  }, [chart])
+
+  if (error) {
+    return (
+      <pre className="overflow-auto border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+        <code>{chart}</code>
+      </pre>
+    )
+  }
+
+  if (!svg) {
+    return (
+      <div className="flex min-h-32 items-center justify-center border border-border bg-muted/20 font-mono text-xs uppercase tracking-widest text-muted-foreground">
+        Rendering diagram…
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="overflow-auto border border-border bg-background p-3 [&_svg]:mx-auto [&_svg]:max-w-full"
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+  )
+}
+
+function PlanMarkdownView({ markdown }: { markdown: string }) {
+  const parsed = useMemo(() => parsePlanFrontmatter(markdown), [markdown])
+
+  return (
+    <div className="space-y-4">
+      {(parsed.fields.name || parsed.fields.overview || parsed.todos.length > 0) && (
+        <div className="grid gap-3 border border-border bg-muted/10 p-3 md:grid-cols-[1fr_auto]">
+          <div className="min-w-0">
+            {parsed.fields.name ? (
+              <div className="truncate font-mono text-sm uppercase tracking-[0.16em] text-foreground">
+                {parsed.fields.name}
+              </div>
+            ) : null}
+            {parsed.fields.overview ? (
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                {parsed.fields.overview}
+              </p>
+            ) : null}
+          </div>
+          {parsed.todos.length > 0 ? (
+            <div className="min-w-48 border border-border bg-background p-2">
+              <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                Plan tasks
+              </div>
+              <div className="mt-2 space-y-1.5">
+                {parsed.todos.slice(0, 5).map((todo, index) => (
+                  <div key={`${todo.content}-${index}`} className="flex items-start gap-2 text-xs">
+                    <span className="mt-1 h-2 w-2 shrink-0 border border-border bg-muted" />
+                    <span className="min-w-0 flex-1 text-muted-foreground">{todo.content}</span>
+                    <span className="font-mono text-[9px] uppercase text-muted-foreground">
+                      {todo.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          h1: ({ children }) => (
+            <h1 className="border-b border-border pb-2 font-mono text-xl uppercase tracking-[0.14em] text-foreground">
+              {children}
+            </h1>
+          ),
+          h2: ({ children }) => (
+            <h2 className="mt-6 font-mono text-sm uppercase tracking-[0.18em] text-foreground">
+              {children}
+            </h2>
+          ),
+          h3: ({ children }) => (
+            <h3 className="mt-4 font-mono text-xs uppercase tracking-[0.16em] text-muted-foreground">
+              {children}
+            </h3>
+          ),
+          table: ({ children }) => (
+            <div className="overflow-x-auto border border-border">
+              <table className="w-full border-collapse text-sm">{children}</table>
+            </div>
+          ),
+          th: ({ children }) => (
+            <th className="border-b border-border bg-muted/30 px-3 py-2 text-left font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+              {children}
+            </th>
+          ),
+          td: ({ children }) => <td className="border-t border-border px-3 py-2">{children}</td>,
+          code: ({ className, children }) => {
+            const match = /language-(\w+)/.exec(className ?? '')
+            const code = String(children).replace(/\n$/, '')
+            if (match?.[1] === 'mermaid') return <MermaidBlock chart={code} />
+            return <code className={className}>{children}</code>
+          },
+          pre: ({ children }) => (
+            <pre className="overflow-auto border border-border bg-muted/30 p-3 text-xs">{children}</pre>
+          ),
+        }}
+      >
+        {parsed.body || markdown}
+      </ReactMarkdown>
+    </div>
+  )
+}
+
 function formatPlanStatus(status: GeneratedPlanArtifact['status']): string {
   switch (status) {
     case 'ready_for_review':
@@ -77,16 +261,16 @@ export function PlanArtifactTab({
   isSavingPlanDraft = false,
   className,
 }: PlanArtifactTabProps) {
+  const initialMarkdown = useMemo(() => serializeGeneratedPlanArtifact(artifact), [artifact])
   const [mode, setMode] = useState<'review' | 'edit'>('review')
-  const [draftMarkdown, setDraftMarkdown] = useState(artifact.markdown.trim())
-  const [lastSavedMarkdown, setLastSavedMarkdown] = useState(artifact.markdown.trim())
+  const [draftMarkdown, setDraftMarkdown] = useState(initialMarkdown)
+  const [lastSavedMarkdown, setLastSavedMarkdown] = useState(initialMarkdown)
   const isDirty = draftMarkdown !== lastSavedMarkdown
 
   useEffect(() => {
-    const nextMarkdown = artifact.markdown.trim()
-    setDraftMarkdown(nextMarkdown)
-    setLastSavedMarkdown(nextMarkdown)
-  }, [artifact.sessionId, artifact.generatedAt, artifact.markdown])
+    setDraftMarkdown(initialMarkdown)
+    setLastSavedMarkdown(initialMarkdown)
+  }, [initialMarkdown])
 
   const handleDraftChange = (value: string) => {
     setDraftMarkdown(value)
@@ -191,7 +375,7 @@ export function PlanArtifactTab({
                     aria-label="Edit generated plan markdown"
                   />
                 ) : (
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{draftMarkdown}</ReactMarkdown>
+                  <PlanMarkdownView markdown={draftMarkdown} />
                 )}
               </div>
             </div>

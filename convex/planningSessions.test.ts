@@ -228,16 +228,19 @@ describe('planningSessions helpers', () => {
     expect(plan.summary).toContain('Target outcome: fix the final intake regression.')
     expect(plan.summary).toContain('Primary scope: planning session backend and tests.')
     expect(plan.sections.map((section) => section.title)).toEqual([
-      'Outcome',
-      'Scope',
-      'Approach',
-      'Validation',
+      'Summary',
+      'Architecture',
+      'Implementation Plan',
+      'Files',
+      'Risks',
     ])
     expect(plan.acceptanceChecks).toEqual([
       'Run focused unit tests for the planning completion flow.',
     ])
+    expect(plan.markdown).toContain('## Architecture')
+    expect(plan.markdown).toContain('```mermaid')
+    expect(plan.markdown).toContain('| Step | Area | Planned direction |')
     expect(plan.markdown).toContain('## Validation')
-    expect(plan.markdown).toContain('## Acceptance Checks')
   })
 
   it('final answer generates a review-ready plan artifact and awaiting_review mirror', () => {

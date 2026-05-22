@@ -48,6 +48,12 @@ export interface GeneratedPlanSection {
   order: number
 }
 
+export interface GeneratedPlanTodo {
+  id: string
+  content: string
+  status: 'pending' | 'in-progress' | 'completed' | 'error'
+}
+
 export interface GeneratedPlanArtifact {
   chatId: PlanningChatId
   sessionId: PlanningSessionId
@@ -58,6 +64,7 @@ export interface GeneratedPlanArtifact {
   acceptanceChecks: string[]
   status: 'ready_for_review' | 'accepted' | 'executing' | 'completed' | 'failed'
   generatedAt: number
+  workspacePath?: string
 }
 
 export interface WorkspacePlanTabRef {
@@ -79,6 +86,79 @@ function isString(value: unknown): value is string {
 
 function isNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value)
+}
+
+function escapeYamlString(value: string): string {
+  return JSON.stringify(value)
+}
+
+function planStatusToTodoStatus(
+  status: GeneratedPlanArtifact['status']
+): GeneratedPlanTodo['status'] {
+  switch (status) {
+    case 'completed':
+      return 'completed'
+    case 'executing':
+      return 'in-progress'
+    case 'failed':
+      return 'error'
+    default:
+      return 'pending'
+  }
+}
+
+function slugifyPlanId(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
+export function deriveGeneratedPlanTodos(artifact: GeneratedPlanArtifact): GeneratedPlanTodo[] {
+  const sectionTodos = [...artifact.sections]
+    .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id))
+    .map((section) => ({
+      id: section.id || slugifyPlanId(section.title),
+      content: section.title,
+      status: planStatusToTodoStatus(artifact.status),
+    }))
+
+  if (sectionTodos.length > 0) return sectionTodos
+
+  return artifact.acceptanceChecks.map((check, index) => ({
+    id: `acceptance-${index + 1}`,
+    content: check,
+    status: 'pending',
+  }))
+}
+
+export function serializeGeneratedPlanFrontmatter(artifact: GeneratedPlanArtifact): string {
+  const todos = deriveGeneratedPlanTodos(artifact)
+  const lines = [
+    '---',
+    `name: ${escapeYamlString(artifact.title)}`,
+    `overview: ${escapeYamlString(artifact.summary)}`,
+    `status: ${escapeYamlString(artifact.status)}`,
+    `sessionId: ${escapeYamlString(artifact.sessionId)}`,
+  ]
+
+  if (artifact.workspacePath) {
+    lines.push(`workspacePath: ${escapeYamlString(artifact.workspacePath)}`)
+  }
+
+  lines.push('todos:')
+  if (todos.length === 0) {
+    lines.push('  []')
+  } else {
+    for (const todo of todos) {
+      lines.push(`  - id: ${escapeYamlString(todo.id)}`)
+      lines.push(`    content: ${escapeYamlString(todo.content)}`)
+      lines.push(`    status: ${escapeYamlString(todo.status)}`)
+    }
+  }
+  lines.push('isProject: false', '---')
+  return lines.join('\n')
 }
 
 function isGeneratedPlanSection(value: unknown): value is GeneratedPlanSection {
@@ -107,7 +187,8 @@ export function isGeneratedPlanArtifact(value: unknown): value is GeneratedPlanA
       record.status === 'executing' ||
       record.status === 'completed' ||
       record.status === 'failed') &&
-    isNumber(record.generatedAt)
+    isNumber(record.generatedAt) &&
+    (record.workspacePath === undefined || isString(record.workspacePath))
   )
 }
 
@@ -122,14 +203,21 @@ export function createWorkspacePlanTabRef(artifact: GeneratedPlanArtifact): Work
   }
 }
 
+function hasYamlFrontmatter(markdown: string): boolean {
+  return markdown.startsWith('---\n') && markdown.indexOf('\n---', 4) > 0
+}
+
 export function serializeGeneratedPlanArtifact(artifact: GeneratedPlanArtifact): string {
   const markdown = artifact.markdown.trim()
-  if (markdown) return markdown
+  if (markdown) {
+    if (hasYamlFrontmatter(markdown)) return markdown
+    return `${serializeGeneratedPlanFrontmatter(artifact)}\n\n${markdown}`
+  }
 
   const sections = [...artifact.sections].sort(
     (a, b) => a.order - b.order || a.id.localeCompare(b.id)
   )
-  const lines = [`# ${artifact.title}`]
+  const lines = [serializeGeneratedPlanFrontmatter(artifact), '', `# ${artifact.title}`]
 
   if (artifact.summary.trim()) {
     lines.push('', artifact.summary.trim())
@@ -140,9 +228,9 @@ export function serializeGeneratedPlanArtifact(artifact: GeneratedPlanArtifact):
   }
 
   if (artifact.acceptanceChecks.length > 0) {
-    lines.push('', '## Acceptance Checks')
+    lines.push('', '## Validation')
     for (const check of artifact.acceptanceChecks) {
-      lines.push(`- ${check}`)
+      lines.push(`- [ ] ${check}`)
     }
   }
 

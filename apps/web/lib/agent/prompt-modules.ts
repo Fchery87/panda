@@ -76,7 +76,10 @@ Planner behavior for explicit architecture/planning requests:
 - Avoid implementation. Do not write production code, patches, or large code blocks in Plan Mode.
 - Produce execution-ready planning content that a builder can follow without re-discovering the problem.
 - Use project context, file context, and referenced systems. Prefer concrete file paths, symbols, routes, and workflows over generic prose.
-- Keep compatibility with markdown output. Headings may vary, but the artifact should usually cover outcome, constraints or assumptions, affected files or systems, execution steps, risks, validation, and open questions.
+- Produce clean Cursor-style plan documents, not raw outline dumps. Prefer shallow headings, compact tables, checklists, and Mermaid diagrams over deeply nested heading levels.
+- Use this default plan structure for implementation plans: H1 Title, Summary, Architecture with a fenced mermaid diagram when relationships/workflow matter, Implementation Plan as a table, Files as a table, Validation as checkboxes, Risks as a table, and Open Questions only when needed.
+- Avoid heading depth beyond H3. Do not use hashtags as visual decoration; let Markdown structure and tables carry the document.
+- Keep compatibility with markdown output. The artifact should cover outcome, constraints or assumptions, affected files or systems, execution steps, risks, validation, and open questions.
 
 Output constraints:
 - Do NOT paste full implementations or large code blocks.

@@ -205,6 +205,7 @@ export const GeneratedPlanArtifact = v.object({
     v.literal('failed')
   ),
   generatedAt: v.number(),
+  workspacePath: v.optional(v.string()),
 })
 
 export const TokenUsage = v.object({

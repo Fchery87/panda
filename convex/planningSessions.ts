@@ -41,14 +41,63 @@ function isTerminalPlanningSessionStatus(status: PlanningSessionStatus): boolean
   return TERMINAL_STATUSES.has(status)
 }
 
+function escapeYamlString(value: string): string {
+  return JSON.stringify(value)
+}
+
+function slugifyPlanId(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
+function hasYamlFrontmatter(markdown: string): boolean {
+  return markdown.startsWith('---\n') && markdown.indexOf('\n---', 4) > 0
+}
+
+function serializeGeneratedPlanFrontmatter(artifact: GeneratedPlanArtifact): string {
+  const sections = [...artifact.sections].sort(
+    (a, b) => a.order - b.order || a.id.localeCompare(b.id)
+  )
+  const lines = [
+    '---',
+    `name: ${escapeYamlString(artifact.title)}`,
+    `overview: ${escapeYamlString(artifact.summary)}`,
+    `status: ${escapeYamlString(artifact.status)}`,
+    `sessionId: ${escapeYamlString(artifact.sessionId)}`,
+  ]
+
+  if (artifact.workspacePath) {
+    lines.push(`workspacePath: ${escapeYamlString(artifact.workspacePath)}`)
+  }
+
+  lines.push('todos:')
+  if (sections.length === 0) {
+    lines.push('  []')
+  } else {
+    for (const section of sections) {
+      lines.push(`  - id: ${escapeYamlString(section.id || slugifyPlanId(section.title))}`)
+      lines.push(`    content: ${escapeYamlString(section.title)}`)
+      lines.push('    status: "pending"')
+    }
+  }
+  lines.push('isProject: false', '---')
+  return lines.join('\n')
+}
+
 function serializeGeneratedPlanArtifact(artifact: GeneratedPlanArtifact): string {
   const markdown = artifact.markdown.trim()
-  if (markdown) return markdown
+  if (markdown) {
+    if (hasYamlFrontmatter(markdown)) return markdown
+    return `${serializeGeneratedPlanFrontmatter(artifact)}\n\n${markdown}`
+  }
 
   const sections = [...artifact.sections].sort(
     (a, b) => a.order - b.order || a.id.localeCompare(b.id)
   )
-  const lines = [`# ${artifact.title}`]
+  const lines = [serializeGeneratedPlanFrontmatter(artifact), '', `# ${artifact.title}`]
 
   if (artifact.summary.trim()) {
     lines.push('', artifact.summary.trim())
@@ -59,9 +108,9 @@ function serializeGeneratedPlanArtifact(artifact: GeneratedPlanArtifact): string
   }
 
   if (artifact.acceptanceChecks.length > 0) {
-    lines.push('', '## Acceptance Checks')
+    lines.push('', '## Validation')
     for (const check of artifact.acceptanceChecks) {
-      lines.push(`- ${check}`)
+      lines.push(`- [ ] ${check}`)
     }
   }
 
@@ -218,23 +267,12 @@ function buildStructuredPlanFromAnswers(
   session: PlanningSessionDoc,
   generatedAt: number
 ): GeneratedPlanArtifact {
-  const sections = [...session.questions]
-    .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id))
-    .map((question, index) => {
-      const answerText = resolvePlanningAnswerText(
-        question,
-        getLatestPlanningAnswer(session, question.id)
-      )
-
-      return {
-        id: question.id,
-        title: question.title,
-        content: answerText
-          ? `${question.prompt}\n\nPlanned direction: ${answerText}`
-          : `${question.prompt}\n\nPlanned direction: Confirm during implementation planning.`,
-        order: index + 1,
-      }
-    })
+  const answerByQuestion = new Map(
+    session.questions.map((question) => [
+      question.id,
+      resolvePlanningAnswerText(question, getLatestPlanningAnswer(session, question.id)),
+    ])
+  )
 
   const outcomeQuestion = session.questions.find((question) => question.id === 'outcome')
   const scopeQuestion = session.questions.find((question) => question.id === 'scope')
@@ -262,6 +300,64 @@ function buildStructuredPlanFromAnswers(
         getLatestPlanningAnswer(session, validationQuestion.id)
       )
     : null
+
+  const sections = [
+    {
+      id: 'summary',
+      title: 'Summary',
+      content: [
+        outcomeText ? `**Outcome:** ${outcomeText}` : null,
+        scopeText ? `**Scope:** ${scopeText}` : null,
+        approachText ? `**Approach:** ${approachText}` : null,
+      ]
+        .filter((line): line is string => Boolean(line))
+        .join('\n\n'),
+      order: 1,
+    },
+    {
+      id: 'architecture',
+      title: 'Architecture',
+      content: [
+        '```mermaid',
+        'flowchart LR',
+        '  Request[User Request] --> Plan[Reviewable Plan]',
+        '  Plan --> Build[Approved Build]',
+        '  Build --> Verify[Validation]',
+        '  Verify --> Review[User Review]',
+        '```',
+      ].join('\n'),
+      order: 2,
+    },
+    {
+      id: 'implementation-plan',
+      title: 'Implementation Plan',
+      content: [
+        '| Step | Area | Planned direction |',
+        '|---:|---|---|',
+        ...[...session.questions]
+          .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id))
+          .map((question, index) => {
+            const answerText = answerByQuestion.get(question.id) ?? 'Confirm during implementation.'
+            return `| ${index + 1} | ${question.title} | ${answerText.replace(/\|/g, '\\|')} |`
+          }),
+      ].join('\n'),
+      order: 3,
+    },
+    {
+      id: 'files',
+      title: 'Files',
+      content:
+        '| File / System | Expected change |\n|---|---|\n| Project files identified during build | Inspect and modify only files required by the approved plan. |\n| Tests / validation files | Add or update focused coverage when the change requires it. |',
+      order: 4,
+    },
+    {
+      id: 'risks',
+      title: 'Risks',
+      content:
+        '| Risk | Mitigation |\n|---|---|\n| Scope drift during implementation | Keep changes bound to the approved plan and ask before expanding scope. |\n| Missing project-specific constraints | Re-check relevant files before writing and update the plan if assumptions change. |',
+      order: 5,
+    },
+  ]
 
   const title = outcomeText
     ? `Implementation plan for ${outcomeText.toLowerCase()}`
