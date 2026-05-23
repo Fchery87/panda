@@ -1174,3 +1174,40 @@ Recommended next implementation areas:
 2. Add deeper Convex integration tests for child run lifecycle.
 3. Implement true snapshot/worktree availability detection.
 4. Add saved chains only after patch review and isolation semantics are stable.
+
+---
+
+## 23. Front-End Mode Selector Decision — 2026-05-23
+
+**Decision:** The main front-end `AgentSelector` remains a parent-run mode selector. It must not list built-in or custom subagents.
+
+The selector is responsible for primary run intent and trust posture:
+
+- **Primary modes:** Ask, Plan, Agent Guided
+- **Agent autonomy:** Guided (`code`) and Autopilot (`build`)
+- **Mode routing:** Auto-switch, Suggest first, Manual only
+
+Subagents are delegated child workers, not top-level modes. They should be surfaced through:
+
+- Settings → Subagents for creation and configuration
+- Agent Manager run-tree views
+- Active Agents nested child rows
+- Chat Inspector / SubagentPanel persisted child-run views
+- future explicit delegation affordances such as a Delegate menu, slash command, or `@subagent` mention autocomplete
+
+This preserves the core Subagents v2 model:
+
+```text
+Modes = parent-run intent and trust boundary
+Subagents = parent-controlled delegated child work
+Run tree = execution visibility and proof
+Settings = customization and policy-scoped configuration
+```
+
+Implementation update:
+
+- `apps/web/components/chat/AgentSelector.tsx` no longer calls `agents.listSubagents()`.
+- The selector no longer renders a `Subagents (use @mention)` section.
+- `apps/web/components/chat/AgentSelector.test.ts` guards this boundary.
+
+Do not add custom subagents to the main mode selector automatically. A user with many custom subagents should see them in a dedicated delegation picker/search surface, not as global mode options.

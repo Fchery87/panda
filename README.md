@@ -198,7 +198,11 @@ Runtime compatibility is preserved internally:
 
 Debug, Review, and Docs are secondary actions/task intents rather than primary
 modes. Routing emits suggested skill hints for those intents so Panda can attach
-the right workflow without expanding the top-level mode picker.
+the right workflow without expanding the top-level mode picker. Subagents are
+also intentionally excluded from the main mode selector: the selector chooses
+the parent run's intent and trust boundary, while Subagents are delegated child
+workers surfaced through Settings, Agent Manager, Active Agents, Chat Inspector,
+SubagentPanel run-tree views, and future explicit delegation affordances.
 
 Routing is rules-first and deterministic. Manual mode overrides remain
 authoritative. Otherwise Panda can automatically switch modes, suggest a switch,
@@ -257,9 +261,12 @@ Custom Skills and Custom Subagents are separate extension points:
 
 The implemented foundation supports create/delete settings flows, deterministic
 Skill matching, prompt composition, strict Skill preflight events, delegated
-Subagent Skill composition, and compact run visibility. Edit, duplicate,
-import/export, richer proof detail, and full browser acceptance coverage remain
-planned follow-up work.
+Subagent Skill composition, first-class child run persistence, run-tree UI,
+parent stop propagation, fresh/fork child context filtering, structured
+Subagent diagnostics, patch-proposal previews, and bounded retention cleanup.
+Edit, duplicate, import/export, richer proof detail, parent-reviewed patch apply,
+true snapshot/worktree isolation, saved chains, and full browser acceptance
+coverage remain planned follow-up work.
 
 ## Repository Shape
 

@@ -49,6 +49,10 @@ Use these labels before following any document for implementation work:
 - [docs/CUSTOM_SKILLS_AND_SUBAGENTS_PLAN.md](./CUSTOM_SKILLS_AND_SUBAGENTS_PLAN.md) -
   implementation plan for Custom Skills, Custom Subagents, skill activation,
   capability presets, and run visibility
+- [docs/plans/2026-05-23-panda-subagents-v2-architecture.md](./plans/2026-05-23-panda-subagents-v2-architecture.md) -
+  completed/current implementation record for Panda Subagents v2, first-class
+  child runs, run-tree UI, patch-proposal previews, retention cleanup, and the
+  decision to keep Subagents out of the main mode selector
 - [docs/plans/layered-harness-policy-implementation.md](./plans/layered-harness-policy-implementation.md) -
   completed implementation record for layered Harness Policy, command-family
   governance, permission audit decisions, Subagent summaries, Unattended
@@ -97,14 +101,18 @@ Panda is a browser-first AI coding workbench with server-backed fallback and:
 - optional browser-side project command execution through WebContainer
 - server-backed execution when browser-side execution is unsupported or fails
 - live LLM provider and model metadata from `models.dev`
-- deterministic `ask` / `plan` / `code` / `build` routing with requested and
-  resolved mode audit data
+- deterministic Ask / Plan / Agent mode selection backed by `ask` / `plan` /
+  `code` / `build` runtime compatibility values, with requested and resolved
+  mode audit data
 - support rail surfaces: `Proof`, `Changes`, and `Context`
 - mobile workspace destinations: `Work`, `Chat`, `Proof`, and `Changes`
 - typed execution receipts rendered from bounded run summaries for completed,
   failed, and stopped runs
 - collapsed tool-chip summaries (Cursor-style) and plan checklists
   (Windsurf-style) in the chat transcript
+- Convex-backed Custom Subagents as delegated child workers with first-class
+  child runs, run-tree visibility, diagnostics, patch-proposal previews, and
+  bounded retention cleanup; they are not top-level mode-selector options
 
 ## Authority And Archive Policy
 

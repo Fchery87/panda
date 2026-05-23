@@ -454,11 +454,14 @@ Mobile preserves the same contract through `Work`, `Chat`, `Proof`, and
 
 ### AgentSelector
 
-Dropdown for agent selection:
+Dropdown for parent-run mode selection:
 
-- Primary chat modes: Plan, Build, and Code
-- Subagents: Listed with @mention hints
-- Uses harness agent registry
+- Primary modes: Ask, Plan, and Agent Guided.
+- Agent autonomy: Guided maps to `code`; Autopilot maps to `build`.
+- Mode routing: Auto-switch, Suggest first, or Manual only.
+- Subagents are **not** listed in this main mode selector. They are delegated child workers invoked through the `task` tool and surfaced in Settings, Agent Manager, Active Agents, Chat Inspector, and SubagentPanel run-tree views.
+
+This separation is intentional: the selector chooses the primary run's intent and trust boundary, while subagents remain parent-controlled delegated execution units.
 
 ## Database Schema
 

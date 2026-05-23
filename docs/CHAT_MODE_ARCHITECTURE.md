@@ -24,10 +24,14 @@ safety.
 
 ## 1. Context
 
-Panda's chat panel exposes four canonical user-facing modes: `ask`, `plan`,
-`code`, and `build`. Older notes used labels such as `Architect` and `Builder`;
-those labels are historical or internal-role terminology and should not define
-current product vocabulary. In practice the mode-switching flow has several
+Panda's runtime still supports four canonical runtime modes: `ask`, `plan`,
+`code`, and `build`. The current front-end mode selector intentionally presents
+these as parent-run surfaces instead of four equal peers: Ask, Plan, and Agent
+Guided, with Agent Autopilot as an autonomy option that maps to `build`. Older
+notes used labels such as `Architect` and `Builder`; those labels are historical
+or internal-role terminology and should not define current product vocabulary.
+Subagents are not top-level modes in this selector; they are delegated child
+workers controlled by the selected parent run. In practice the mode-switching flow has several
 classes of defect that together can make implementation modes unreliable. The
 goal of this document is to define a target architecture that:
 

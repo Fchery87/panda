@@ -324,7 +324,7 @@ panda-ai/
 │       │   ├── ui/           # shadcn/ui components (base)
 │       │   ├── chat/          # Chat components
 │       │   │   ├── RunProgressPanel.tsx    # Unified run progress
-│       │   │   ├── AgentSelector.tsx        # 4-mode selector
+│       │   │   ├── AgentSelector.tsx        # Primary mode/autonomy selector; subagents stay in delegation surfaces
 │       │   │   ├── MemoryBankEditor.tsx    # Project memory
 │       │   │   └── ReasoningPanel.tsx     # Thinking display
 │       │   ├── workbench/    # Workbench panels
@@ -937,7 +937,7 @@ gates before merging. Merge contract defined in `PLAN.md` upfront.
 ### Chat Panel Components
 
 - **RunProgressPanel** — Unified live/historical run progress
-- **AgentSelector** — Dropdown for canonical mode selection
+- **AgentSelector** — Dropdown for parent-run mode/autonomy selection; subagents are delegated separately
 - **MemoryBankEditor** — Project memory management
 - **ReasoningPanel** — Model thinking display
 
