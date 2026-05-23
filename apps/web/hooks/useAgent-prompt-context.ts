@@ -12,6 +12,7 @@ import {
 import type { GeneratedPlanArtifact } from '@/lib/planning/types'
 import type { FormalSpecification } from '@/lib/agent/spec/types'
 import type { ContextAuditRecord } from '@/lib/agent/receipt'
+import { resolveModeHandoff, type UnresolvedModeHandoff } from '@/lib/agent/context/mode-handoff'
 
 interface ProjectFileMetadata {
   path: string
@@ -48,6 +49,7 @@ export interface AgentPromptBundle {
   previousMessagesSnapshot: PromptHistoryMessage[]
   promptContext: PromptContext
   contextAudit: ContextAuditRecord
+  unresolvedModeHandoff?: UnresolvedModeHandoff
 }
 
 export function buildAgentPreviousMessagesSnapshot(args: {
@@ -81,6 +83,13 @@ export function buildAgentPromptBundle(args: BuildAgentPromptBundleArgs): AgentP
     mode: args.mode,
     messages: args.messages,
   })
+  const modeHandoffResolution = resolveModeHandoff({
+    targetMode: args.mode,
+    userContent: args.userContent,
+    messages: args.messages,
+    approvedPlanExecutionContext: args.approvedPlanExecutionContext,
+  })
+  const modeHandoff = modeHandoffResolution.unresolved ? undefined : modeHandoffResolution.packet
 
   const promptContext = buildAgentPromptContext({
     projectId: args.projectId,
@@ -102,6 +111,7 @@ export function buildAgentPromptBundle(args: BuildAgentPromptBundleArgs): AgentP
     activeSpec: args.activeSpec ?? undefined,
     previousMode: args.previousMode ?? null,
     agentContextPack: args.agentContextPack,
+    modeHandoff,
   })
 
   const contextAudit: ContextAuditRecord = {
@@ -114,7 +124,7 @@ export function buildAgentPromptBundle(args: BuildAgentPromptBundleArgs): AgentP
     filesExcluded: [],
     memoryBankIncluded: Boolean(args.memoryBankContent),
     specIncluded: Boolean(args.activeSpec),
-    planIncluded: Boolean(args.planDraft || args.approvedPlanExecutionContext),
+    planIncluded: Boolean(args.planDraft || args.approvedPlanExecutionContext || modeHandoff?.kind === 'latest_plan' || modeHandoff?.kind === 'approved_plan'),
     sessionSummaryIncluded: Boolean(promptContext.sessionSummary),
     compactionOccurred: false,
     truncated: false,
@@ -125,5 +135,6 @@ export function buildAgentPromptBundle(args: BuildAgentPromptBundleArgs): AgentP
     previousMessagesSnapshot,
     promptContext,
     contextAudit,
+    unresolvedModeHandoff: modeHandoffResolution.unresolved ? modeHandoffResolution : undefined,
   }
 }

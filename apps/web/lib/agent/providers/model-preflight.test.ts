@@ -31,7 +31,7 @@ describe('buildModelPreflight', () => {
     ).toEqual({
       tone: 'ready',
       modelLabel: 'anthropic / claude-sonnet-4-6',
-      modeSupport: 'Build mode can use tools with this model.',
+      modeSupport: 'Agent · Autopilot mode can use tools with this model.',
       toolGrammar: 'Tool grammar: anthropic-native, anthropic-xml-fallback',
       context: 'Context: 1000000 tokens from provider metadata',
       cost: 'Cost visibility: pricing available',
@@ -49,7 +49,7 @@ describe('buildModelPreflight', () => {
     })
 
     expect(preflight.tone).toBe('warning')
-    expect(preflight.modeSupport).toBe('Code mode needs tool support; this model is unverified.')
+    expect(preflight.modeSupport).toBe('Agent · Guided mode needs tool support; this model is unverified.')
     expect(preflight.toolGrammar).toBe('Tool grammar: no verified grammar')
     expect(preflight.context).toBe('Context: 32000 tokens from fallback estimate')
     expect(preflight.cost).toBe('Cost visibility: pricing unavailable')

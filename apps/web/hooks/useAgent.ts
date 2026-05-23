@@ -57,6 +57,7 @@ import {
   buildContextPackAudit,
   convexChunksToLocalContextChunks,
 } from '../lib/agent/context/convex-adapter'
+import { resolveModeHandoff } from '../lib/agent/context/mode-handoff'
 
 import {
   buildAgentRuntimeConfig,
@@ -146,6 +147,7 @@ type SendMessageOptions = {
   attachments?: UploadedAttachment[]
   attachmentsOnly?: boolean
   manualModeOverride?: boolean
+  modeOverride?: ChatMode
 }
 
 function buildExplicitContextItems(args: {
@@ -502,6 +504,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const indexContextProjectFiles = useMutation(api.contextChunks.indexProjectFiles)
   const indexContextSessionSummaries = useMutation(api.contextChunks.indexSessionSummaries)
   const indexContextSpecifications = useMutation(api.contextChunks.indexSpecifications)
+  const indexContextMessages = useMutation(api.contextChunks.indexMessages)
+  const indexContextPlanningSessionPlans = useMutation(api.contextChunks.indexPlanningSessionPlans)
   const createChatAttachments = useMutation(api.chatAttachments.createMany)
   const attachVerification = useMutation(api.planningSessions.attachVerification)
   const createRun = useMutation(api.agentRuns.create)
@@ -749,6 +753,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         attachments?: UploadedAttachment[]
         attachmentsOnly?: boolean
         manualModeOverride?: boolean
+        modeOverride?: ChatMode
       }
     ) => {
       const userContent = buildSendMessageContent(rawContent, options)
@@ -763,9 +768,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       // IMPORTANT: Claude Code-style mode separation.
       // When in Plan mode, don't include Build messages in context (and vice versa),
       // otherwise the model continues implementation even after switching modes.
+      const baseRequestedMode = options?.modeOverride ?? mode
       const routingDecision = buildResolvedRoutingDecision({
         content: userContent,
-        requestedMode: mode,
+        requestedMode: baseRequestedMode,
         oversightLevel:
           automationPolicy?.autoApplyFiles || automationPolicy?.autoRunCommands
             ? 'autopilot'
@@ -813,6 +819,32 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         })
 
       const promptHistoryMessages = getPromptHistoryMessages?.() ?? messages
+      const unresolvedHandoffPreflight = resolveModeHandoff({
+        targetMode: resolvedMode,
+        userContent,
+        messages: promptHistoryMessages,
+        approvedPlanExecutionContext: options?.approvedPlanExecutionContext,
+      })
+      if (unresolvedHandoffPreflight.unresolved) {
+        const clarification =
+          unresolvedHandoffPreflight.referent === 'plan'
+            ? 'I could not identify which plan you want me to use. Please choose the latest Plan response, approve a structured plan, or ask me to create a new plan from the codebase.'
+            : 'I could not identify which prior audit/findings you want me to use. Please point me to the relevant Ask response or ask me to run a new audit.'
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `msg-${Date.now()}-handoff-clarification`,
+            _id: `msg-${Date.now()}-handoff-clarification`,
+            role: 'assistant',
+            content: clarification,
+            mode: resolvedMode,
+            createdAt: Date.now(),
+            annotations: { mode: resolvedMode },
+          },
+        ])
+        toast.error('Context handoff needs clarification', { description: clarification })
+        return
+      }
       const previousMessagesSnapshot = buildAgentPreviousMessagesSnapshot({
         mode: resolvedMode,
         messages: promptHistoryMessages,
@@ -934,6 +966,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               indexContextProjectFiles({ projectId, limit: 500 }),
               indexContextSessionSummaries({ projectId, limit: 25 }),
               indexContextSpecifications({ projectId, limit: 50 }),
+              indexContextMessages({ projectId, limit: 100 }),
+              indexContextPlanningSessionPlans({ projectId, limit: 25 }),
             ])
 
             const indexedChunks = await convex.query(api.contextChunks.search, {
@@ -1409,6 +1443,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       indexContextProjectFiles,
       indexContextSessionSummaries,
       indexContextSpecifications,
+      indexContextMessages,
+      indexContextPlanningSessionPlans,
       appendRunEvent,
       completeRun,
       logHarnessPermissionDecision,

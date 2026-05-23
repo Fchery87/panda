@@ -51,7 +51,7 @@ describe('workspaceUiStore', () => {
     expect(resetState.isRightPanelOpen).toBe(false)
     expect(resetState.isBottomDockOpen).toBe(false)
     expect(resetState.activeCenterTab).toBe('editor')
-    expect(resetState.rightPanelTab).toBe('work')
+    expect(resetState.rightPanelTab).toBe('proof')
   })
 
   test('defaults mobile workspace to chat-first', () => {

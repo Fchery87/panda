@@ -31,6 +31,7 @@ import { resolveAgentSkillsForPromptContext } from './skills/resolver'
 import type { CustomSkillForMatching, CustomSkillPolicy } from './skills/types'
 import type { FormalSpecification } from './spec/types'
 import { formatAgentContextPackForPrompt, type AgentContextPack } from './context/context-pack'
+import { formatModeHandoffForPrompt, type ModeHandoffPacket } from './context/mode-handoff'
 
 export type { ChatMode } from './chat-modes'
 
@@ -134,6 +135,7 @@ export interface PromptContext {
     approvedPlanId?: string | null
     activeSpecId?: string | null
   }
+  modeHandoff?: ModeHandoffPacket
 }
 
 function getSystemPromptForMode(mode: ChatMode): string {
@@ -224,6 +226,10 @@ export function getPromptForMode(context: PromptContext): CompletionMessage[] {
   const approvedPlanExecutionSection = buildApprovedPlanExecutionContext(context)
   if (approvedPlanExecutionSection) {
     systemPrompt = `${systemPrompt}\n\n${approvedPlanExecutionSection}`
+  }
+
+  if (context.modeHandoff) {
+    systemPrompt = `${systemPrompt}\n\n${formatModeHandoffForPrompt(context.modeHandoff)}`
   }
 
   if (resolvedSkills.matches.length > 0) {

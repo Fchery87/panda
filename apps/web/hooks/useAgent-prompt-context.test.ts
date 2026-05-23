@@ -105,4 +105,55 @@ describe('buildAgentPromptBundle', () => {
       plan,
     })
   })
+
+  test('adds latest Plan handoff for Agent Guided runtime when user references this plan', () => {
+    const bundle = buildAgentPromptBundle({
+      projectId: 'project-1' as Id<'projects'>,
+      chatId: 'chat-1' as Id<'chats'>,
+      userId: 'user-1' as Id<'users'>,
+      mode: 'code',
+      provider: baseProvider,
+      messages: [
+        { role: 'user', mode: 'ask', content: 'Audit context.' },
+        { role: 'assistant', mode: 'ask', content: 'Audit: handoff is lossy.' },
+        { role: 'user', mode: 'plan', content: 'Plan it.' },
+        { role: 'assistant', mode: 'plan', content: '# Handoff Plan\nAdd ModeHandoffPacket.' },
+      ],
+      userContent: 'Save this plan as markdown.',
+    })
+
+    expect(bundle.unresolvedModeHandoff).toBeUndefined()
+    expect(bundle.promptContext.modeHandoff?.kind).toBe('latest_plan')
+    expect(bundle.promptContext.modeHandoff?.content).toContain('ModeHandoffPacket')
+  })
+
+  test('adds latest Plan handoff for Agent Autopilot runtime when user references this plan', () => {
+    const bundle = buildAgentPromptBundle({
+      projectId: 'project-1' as Id<'projects'>,
+      chatId: 'chat-1' as Id<'chats'>,
+      userId: 'user-1' as Id<'users'>,
+      mode: 'build',
+      provider: baseProvider,
+      messages: [{ role: 'assistant', mode: 'plan', content: '# Build Plan\nShip it.' }],
+      userContent: 'Implement the plan.',
+    })
+
+    expect(bundle.promptContext.modeHandoff?.kind).toBe('latest_plan')
+    expect(bundle.promptContext.modeHandoff?.toMode).toBe('build')
+  })
+
+  test('returns unresolved handoff when this plan cannot be resolved', () => {
+    const bundle = buildAgentPromptBundle({
+      projectId: 'project-1' as Id<'projects'>,
+      chatId: 'chat-1' as Id<'chats'>,
+      userId: 'user-1' as Id<'users'>,
+      mode: 'code',
+      provider: baseProvider,
+      messages: [],
+      userContent: 'Save this plan.',
+    })
+
+    expect(bundle.unresolvedModeHandoff?.referent).toBe('plan')
+    expect(bundle.promptContext.modeHandoff).toBeUndefined()
+  })
 })

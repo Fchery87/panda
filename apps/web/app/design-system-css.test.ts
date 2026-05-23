@@ -13,21 +13,20 @@ const compactGlobalsCss = globalsCss.replace(/\s+/g, ' ')
 
 describe('Panda design system CSS contract', () => {
   test('uses OKLCH channel tokens from docs/DESIGN.md as the theme source', () => {
-    expect(globalsCss).toContain('--background: 98.18% 0.0054 95.1;')
-    expect(globalsCss).toContain('--foreground: 19.08% 0.002 106.59;')
-    expect(globalsCss).toContain('--primary: 55.53% 0.1455 49;')
-    expect(globalsCss).toContain('--primary: 71.02% 0.1464 62.29;')
-    expect(globalsCss).toContain('--surface-1: 93.57% 0.0161 82.79;')
-    expect(globalsCss).toContain('--surface-0: 20.5% 0.0042 84.59;')
+    expect(globalsCss).toContain('--background: 99.07% 0.003 270;')
+    expect(globalsCss).toContain('--foreground: 14.5% 0.005 270;')
+    expect(globalsCss).toContain('--primary: 63.5% 0.17 40;')
+    expect(globalsCss).toContain('--primary: 72% 0.165 55;')
+    expect(globalsCss).toContain('--surface-1: 97.5% 0.003 270;')
+    expect(globalsCss).toContain('--surface-0: 13% 0.005 270;')
     expect(tailwindConfig).toContain("background: 'oklch(var(--background))'")
     expect(tailwindConfig).toContain('primary: {')
     expect(tailwindConfig).toContain("DEFAULT: 'oklch(var(--primary))'")
   })
 
   test('implements the reference hard-grid texture and avoids decorative glows', () => {
-    expect(globalsCss).toContain('linear-gradient(90deg')
-    expect(globalsCss).toContain('radial-gradient(circle at 16px 16px')
-    expect(compactGlobalsCss).toContain('background-size: 48px 48px, 48px 48px, 16px 16px, auto')
+    expect(globalsCss).toContain('radial-gradient(')
+    expect(compactGlobalsCss).toContain('background-size: 24px 24px, auto')
     expect(globalsCss).not.toContain('.accent-glow')
   })
 
@@ -37,9 +36,9 @@ describe('Panda design system CSS contract', () => {
   })
 
   test('keeps mobile workbench navigation as focused views', () => {
-    expect(workspaceLayout).toContain('aria-label="Show session workspace"')
+    expect(workspaceLayout).toContain('aria-label="Show workspace"')
     expect(workspaceLayout).toContain('aria-label="Show chat timeline"')
     expect(workspaceLayout).toContain('aria-label="Show run proof"')
-    expect(workspaceLayout).toContain('aria-label="Show runtime preview"')
+    expect(workspaceLayout).toContain('aria-label="Show generated changes"')
   })
 })

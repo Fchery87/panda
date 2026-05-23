@@ -1,4 +1,32 @@
 export type ChatMode = 'ask' | 'plan' | 'code' | 'build'
+export type PrimaryMode = 'ask' | 'plan' | 'agent'
+export type AgentAutonomy = 'guided' | 'autopilot'
+export type SecondaryAction = 'debug' | 'review' | 'docs'
+
+export interface ModeSelection {
+  primaryMode: PrimaryMode
+  autonomy?: AgentAutonomy
+  secondaryAction?: SecondaryAction | null
+}
+
+export interface PrimaryModeSurface {
+  id: PrimaryMode
+  label: string
+  shortLabel: string
+  description: string
+  primaryShortcut?: string
+  defaultRuntimeMode: ChatMode
+  allowedAutonomy?: AgentAutonomy[]
+  defaultAutonomy?: AgentAutonomy
+}
+
+export interface SecondaryActionConfig {
+  id: SecondaryAction
+  label: string
+  description: string
+  defaultModeSelection: ModeSelection
+  promptHint: string
+}
 
 export interface HandoffRitual {
   systemMessage: string
@@ -32,6 +60,59 @@ export interface ChatModeConfig {
 }
 
 export type ModeContract = ChatModeConfig
+
+export const PRIMARY_MODE_SURFACES: Record<PrimaryMode, PrimaryModeSurface> = {
+  ask: {
+    id: 'ask',
+    label: 'Ask',
+    shortLabel: 'Ask',
+    description: 'Research, explain, audit, and answer without changing files.',
+    primaryShortcut: '⇧1',
+    defaultRuntimeMode: 'ask',
+  },
+  plan: {
+    id: 'plan',
+    label: 'Plan',
+    shortLabel: 'Plan',
+    description: 'Turn findings and constraints into a durable implementation plan.',
+    primaryShortcut: '⇧2',
+    defaultRuntimeMode: 'plan',
+  },
+  agent: {
+    id: 'agent',
+    label: 'Agent',
+    shortLabel: 'Agent',
+    description: 'Implement, verify, and iterate with selectable autonomy.',
+    primaryShortcut: '⇧3',
+    defaultRuntimeMode: 'code',
+    allowedAutonomy: ['guided', 'autopilot'],
+    defaultAutonomy: 'guided',
+  },
+}
+
+export const SECONDARY_ACTION_CONFIGS: Record<SecondaryAction, SecondaryActionConfig> = {
+  debug: {
+    id: 'debug',
+    label: 'Debug',
+    description: 'Investigate, reproduce, patch, and verify a bug.',
+    defaultModeSelection: { primaryMode: 'agent', autonomy: 'guided', secondaryAction: 'debug' },
+    promptHint: 'Use a hypothesis-driven debug loop: hypothesize, inspect/reproduce, instrument if needed, patch, then verify.',
+  },
+  review: {
+    id: 'review',
+    label: 'Review',
+    description: 'Review a diff, plan, implementation, or selected files.',
+    defaultModeSelection: { primaryMode: 'ask', secondaryAction: 'review' },
+    promptHint: 'Review the target carefully, separate blockers from suggestions, and cite concrete files or plan sections.',
+  },
+  docs: {
+    id: 'docs',
+    label: 'Docs',
+    description: 'Create or update documentation and implementation notes.',
+    defaultModeSelection: { primaryMode: 'agent', autonomy: 'guided', secondaryAction: 'docs' },
+    promptHint: 'Focus on documentation changes and keep code edits out of scope unless explicitly requested.',
+  },
+}
 
 export const CHAT_MODE_CONFIGS: Record<ChatMode, ChatModeConfig> = {
   ask: {
@@ -70,9 +151,9 @@ export const CHAT_MODE_CONFIGS: Record<ChatMode, ChatModeConfig> = {
     description: 'Make focused code changes and verify them',
     fileAccess: 'read-write',
     surface: {
-      label: 'Code',
-      shortLabel: 'Code',
-      description: 'Make focused code changes, then run the right checks.',
+      label: 'Agent · Guided',
+      shortLabel: 'Guided',
+      description: 'Agent mode with review prompts before edits and commands.',
       advanced: false,
       primaryShortcut: '⇧3',
     },
@@ -90,9 +171,9 @@ export const CHAT_MODE_CONFIGS: Record<ChatMode, ChatModeConfig> = {
     description: 'Execute broad changes end-to-end',
     fileAccess: 'read-write',
     surface: {
-      label: 'Build',
-      shortLabel: 'Build',
-      description: 'Execute broad changes end-to-end and keep validating.',
+      label: 'Agent · Autopilot',
+      shortLabel: 'Autopilot',
+      description: 'Agent mode that applies safe changes and interrupts for risky actions.',
       advanced: false,
       primaryShortcut: '⇧4',
     },
@@ -108,16 +189,59 @@ export const CHAT_MODE_CONFIGS: Record<ChatMode, ChatModeConfig> = {
   },
 }
 
+export function resolveRuntimeMode(selection: ModeSelection): ChatMode {
+  if (selection.primaryMode === 'ask') return 'ask'
+  if (selection.primaryMode === 'plan') return 'plan'
+  return selection.autonomy === 'autopilot' ? 'build' : 'code'
+}
+
+export function modeSelectionFromRuntimeMode(mode: ChatMode): ModeSelection {
+  if (mode === 'ask') return { primaryMode: 'ask' }
+  if (mode === 'plan') return { primaryMode: 'plan' }
+  if (mode === 'build') return { primaryMode: 'agent', autonomy: 'autopilot' }
+  return { primaryMode: 'agent', autonomy: 'guided' }
+}
+
+export function getPrimaryModeSurfaces(): PrimaryModeSurface[] {
+  return [PRIMARY_MODE_SURFACES.ask, PRIMARY_MODE_SURFACES.plan, PRIMARY_MODE_SURFACES.agent]
+}
+
+export function getAgentAutonomyOptions(): Array<{
+  id: AgentAutonomy
+  label: string
+  description: string
+  runtimeMode: ChatMode
+}> {
+  return [
+    {
+      id: 'guided',
+      label: 'Guided',
+      description: 'Review edits and commands before they run.',
+      runtimeMode: 'code',
+    },
+    {
+      id: 'autopilot',
+      label: 'Autopilot',
+      description: 'Let Panda apply safe changes and interrupt for risky actions.',
+      runtimeMode: 'build',
+    },
+  ]
+}
+
+export function getSecondaryActions(): SecondaryActionConfig[] {
+  return [SECONDARY_ACTION_CONFIGS.debug, SECONDARY_ACTION_CONFIGS.review, SECONDARY_ACTION_CONFIGS.docs]
+}
+
+/**
+ * Legacy runtime modes retained for compatibility with persisted chats and the harness.
+ * New UI should prefer getPrimaryModeSurfaces() plus getAgentAutonomyOptions().
+ */
 export function getPrimaryChatModes(): ChatMode[] {
-  return (Object.keys(CHAT_MODE_CONFIGS) as ChatMode[]).filter(
-    (mode) => !CHAT_MODE_CONFIGS[mode].surface.advanced
-  )
+  return ['ask', 'plan', 'code']
 }
 
 export function getAdvancedChatModes(): ChatMode[] {
-  return (Object.keys(CHAT_MODE_CONFIGS) as ChatMode[]).filter(
-    (mode) => CHAT_MODE_CONFIGS[mode].surface.advanced
-  )
+  return []
 }
 
 export function getDefaultHarnessAgent(mode: ChatMode): ChatModeConfig['runtime']['primaryAgent'] {

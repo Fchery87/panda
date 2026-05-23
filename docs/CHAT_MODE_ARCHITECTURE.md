@@ -502,3 +502,47 @@ terms. This local glossary only defines hardening-specific terms.
 - **Preflight** — Synchronous pre-turn verification of mode, model, permissions,
   and required artifacts.
 - **Ritual** — A mandatory first-action sequence for a mode.
+
+## 2026 Mode Surface Update: Ask / Plan / Agent
+
+Panda's user-facing primary mode surface is now:
+
+```txt
+Ask      Plan      Agent
+                  ├─ Guided
+                  └─ Autopilot
+```
+
+Runtime compatibility is intentionally preserved:
+
+| User-facing selection | Runtime chat mode | Purpose |
+| --- | --- | --- |
+| Ask | `ask` | Read-only explanation, audit, research, and codebase inspection. |
+| Plan | `plan` | Read-only planning and durable implementation-plan creation. |
+| Agent · Guided | `code` | Implementation with approval prompts for edits/commands. |
+| Agent · Autopilot | `build` | Implementation that can apply safe changes and interrupts for risky actions. |
+
+`code` and `build` remain valid persisted/runtime values, but should no longer be presented as two peer primary modes. They are autonomy levels inside Agent.
+
+Secondary actions are modeled as task templates rather than primary modes:
+
+- Debug — hypothesis, reproduce/inspect, patch, verify.
+- Review — review a diff, plan, implementation, or selected files.
+- Docs — create/update documentation and implementation notes.
+
+Future mode work may add Background/Worktree Agent as another Agent autonomy/environment option.
+
+## Cross-Mode Handoff Contract
+
+Mode switches are permission/behavior changes, not memory resets. When users move from Ask or Plan into Agent Guided/Autopilot and use referential language like “this plan,” “implement it,” or “your audit findings,” the prompt system resolves a `ModeHandoffPacket` and injects it as system context.
+
+Priority order:
+
+1. Approved structured plan.
+2. Latest planning-session generated plan.
+3. Latest Plan-mode assistant output.
+4. Latest Ask-mode audit/findings output.
+5. Cross-mode summary.
+6. Clarification if the referent cannot be resolved.
+
+Handoff context must not be appended as a synthetic user message. It belongs in system/developer context so the transcript remains user-authored.

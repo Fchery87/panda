@@ -204,6 +204,88 @@ export const indexSessionSummaries = mutation({
   },
 })
 
+export const indexMessages = mutation({
+  args: { projectId: v.id('projects'), limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
+    const chats = await ctx.db
+      .query('chats')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .collect()
+    let written = 0
+    for (const chat of chats) {
+      const messages = await ctx.db
+        .query('messages')
+        .withIndex('by_created', (q) => q.eq('chatId', chat._id))
+        .order('desc')
+        .take(Math.min(Math.max(args.limit ?? 100, 1), 500))
+      for (const message of messages) {
+        if (message.role !== 'user' && message.role !== 'assistant') continue
+        written += await upsertChunkBatch(ctx, {
+          projectId: args.projectId,
+          chatId: message.chatId,
+          chunks: chunkSource({
+            sourceType: 'message',
+            sourceId: String(message._id),
+            title: `${message.role} message`,
+            content: message.content,
+          }),
+        })
+      }
+    }
+    return written
+  },
+})
+
+export const indexPlanningSessionPlans = mutation({
+  args: { projectId: v.id('projects'), limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
+    const chats = await ctx.db
+      .query('chats')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .collect()
+    let written = 0
+    for (const chat of chats) {
+      const sessions = await ctx.db
+        .query('planningSessions')
+        .withIndex('by_updated', (q) => q.eq('chatId', chat._id))
+        .order('desc')
+        .take(Math.min(Math.max(args.limit ?? 25, 1), 250))
+      for (const session of sessions) {
+        const plan = session.generatedPlan
+        if (!plan) continue
+        const sections = [...plan.sections]
+          .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id))
+          .map((section) => `## ${section.title}\n${section.content}`)
+          .join('\n\n')
+        const content = [
+          `# ${plan.title}`,
+          plan.summary,
+          plan.markdown,
+          sections,
+          plan.acceptanceChecks.length
+            ? `## Acceptance Checks\n${plan.acceptanceChecks.map((check) => `- ${check}`).join('\n')}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join('\n\n')
+        written += await upsertChunkBatch(ctx, {
+          projectId: args.projectId,
+          chatId: chat._id,
+          chunks: chunkSource({
+            sourceType: 'plan',
+            sourceId: String(session._id),
+            title: plan.title,
+            content,
+          }),
+        })
+      }
+    }
+    return written
+  },
+})
+
 export const indexSpecifications = mutation({
   args: { projectId: v.id('projects'), limit: v.optional(v.number()) },
   handler: async (ctx, args) => {

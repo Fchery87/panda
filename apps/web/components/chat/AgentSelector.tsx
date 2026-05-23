@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo } from 'react'
-import { Lightbulb, Code, Hammer, Bot, ChevronDown, HelpCircle } from 'lucide-react'
+import { Lightbulb, Bot, ChevronDown, HelpCircle, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   DropdownMenu,
@@ -14,7 +14,7 @@ import {
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu'
 import { agents } from '@/lib/agent/harness'
-import { CHAT_MODE_CONFIGS, type ChatMode } from '@/lib/agent/chat-modes'
+import { CHAT_MODE_CONFIGS, getAgentAutonomyOptions, type ChatMode } from '@/lib/agent/chat-modes'
 import {
   getChatModeSurfacePresentation,
   getPrimaryChatModeSurfaceOptions,
@@ -30,8 +30,8 @@ interface AgentSelectorProps {
 const MODE_ICONS: Partial<Record<ChatMode, React.ReactNode>> = {
   ask: <HelpCircle className="h-3.5 w-3.5" />,
   plan: <Lightbulb className="h-3.5 w-3.5" />,
-  code: <Code className="h-3.5 w-3.5" />,
-  build: <Hammer className="h-3.5 w-3.5" />,
+  code: <Bot className="h-3.5 w-3.5" />,
+  build: <Zap className="h-3.5 w-3.5" />,
 }
 
 const PRIMARY_SHORTCUTS: Partial<Record<ChatMode, string>> = Object.fromEntries(
@@ -43,6 +43,7 @@ const PRIMARY_SHORTCUTS: Partial<Record<ChatMode, string>> = Object.fromEntries(
 export function AgentSelector({ mode, onModeChange, disabled, className }: AgentSelectorProps) {
   const subagents = useMemo(() => agents.listSubagents(), [])
   const primaryOptions = useMemo(() => getPrimaryChatModeSurfaceOptions(), [])
+  const autonomyOptions = useMemo(() => getAgentAutonomyOptions(), [])
 
   const currentPresentation = getChatModeSurfacePresentation(mode)
   const currentIcon = MODE_ICONS[mode] ?? <Bot className="h-3.5 w-3.5" />
@@ -93,7 +94,7 @@ export function AgentSelector({ mode, onModeChange, disabled, className }: Agent
         className="bg-background/95 rounded-none border-border backdrop-blur-sm"
       >
         <DropdownMenuLabel className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
-          Modes
+          Primary modes
         </DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={mode}
@@ -115,6 +116,29 @@ export function AgentSelector({ mode, onModeChange, disabled, className }: Agent
                 </span>
                 <span className="ml-2 text-muted-foreground">{option.description}</span>
                 {shortcut && <DropdownMenuShortcut>{shortcut}</DropdownMenuShortcut>}
+              </DropdownMenuRadioItem>
+            )
+          })}
+        </DropdownMenuRadioGroup>
+
+        <DropdownMenuSeparator className="bg-border" />
+        <DropdownMenuLabel className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
+          Agent autonomy
+        </DropdownMenuLabel>
+        <DropdownMenuRadioGroup value={mode} onValueChange={(value) => onModeChange(value as ChatMode)}>
+          {autonomyOptions.map((option) => {
+            const icon = MODE_ICONS[option.runtimeMode] ?? <Bot className="h-3.5 w-3.5" />
+            return (
+              <DropdownMenuRadioItem
+                key={option.id}
+                value={option.runtimeMode}
+                className="rounded-none font-mono text-xs"
+              >
+                <span className="flex items-center gap-2">
+                  {icon}
+                  <span className="uppercase">{option.label}</span>
+                </span>
+                <span className="ml-2 text-muted-foreground">{option.description}</span>
               </DropdownMenuRadioItem>
             )
           })}

@@ -13,6 +13,7 @@ import { useWorkspaceUiStore } from '@/stores/workspaceUiStore' // eslint-disabl
 // We mock the store with a simple module-level state so test mutations are visible.
 let _isPlanningPopupOpen = false
 let _planningSessionId: string | null = null
+let _workspaceFocusMode: 'chat' | 'workbench' | 'proof' | 'changes' = 'workbench'
 const openPlanningPopup = (id?: string) => {
   _planningSessionId = id ?? _planningSessionId ?? `planning_${Date.now().toString(36)}`
   _isPlanningPopupOpen = true
@@ -22,21 +23,34 @@ const closePlanningPopup = () => {
   _planningSessionId = null
 }
 
+const getMockWorkspaceUiState = () => ({
+  isPlanningPopupOpen: _isPlanningPopupOpen,
+  planningSessionId: _planningSessionId,
+  openPlanningPopup,
+  closePlanningPopup,
+  workspaceFocusMode: _workspaceFocusMode,
+  setWorkspaceFocusMode: () => {},
+  openRightPanelTab: () => {},
+})
+
 mock.module('@/stores/workspaceUiStore', () => ({
   useWorkspaceUiStore: Object.assign(
-    () => ({
-      isPlanningPopupOpen: _isPlanningPopupOpen,
-      planningSessionId: _planningSessionId,
-      openPlanningPopup,
-      closePlanningPopup,
-    }),
+    (selector?: (state: ReturnType<typeof getMockWorkspaceUiState>) => unknown) => {
+      const state = getMockWorkspaceUiState()
+      return typeof selector === 'function' ? selector(state) : state
+    },
     {
-      getState: () => ({
-        isPlanningPopupOpen: _isPlanningPopupOpen,
-        planningSessionId: _planningSessionId,
-        openPlanningPopup,
-        closePlanningPopup,
-      }),
+      getState: getMockWorkspaceUiState,
+      setState: (patch: Partial<ReturnType<typeof getMockWorkspaceUiState>>) => {
+        if (
+          patch.workspaceFocusMode === 'chat' ||
+          patch.workspaceFocusMode === 'workbench' ||
+          patch.workspaceFocusMode === 'proof' ||
+          patch.workspaceFocusMode === 'changes'
+        ) {
+          _workspaceFocusMode = patch.workspaceFocusMode
+        }
+      },
     }
   ),
 }))

@@ -151,3 +151,26 @@ Before content enters chat, proof, logs, telemetry, or public sharing, redact:
 
 If redaction cannot be guaranteed, keep the content in owner-only inspection or
 omit it from the transcript entirely.
+
+## Mode Handoff Transcript Policy
+
+Panda may carry task state across Ask, Plan, Agent Guided, and Agent Autopilot. This is done through structured prompt context, not by fabricating user messages.
+
+When a user says “save this plan,” “implement the plan,” or “use your audit findings,” Panda should resolve the referenced prior artifact/message and inject a `ModeHandoffPacket` into system context for the next run.
+
+Transcript rules:
+
+- Preserve original user/assistant messages as authored.
+- Do not insert synthetic user messages to restate plans or audits.
+- Approved structured plans are preferred over inferred chat text.
+- If Panda cannot identify the referenced plan/audit, it should ask for clarification instead of guessing.
+- Message and plan chunks may be indexed as retrieval sources with source types `message` and `plan`, subject to project ownership checks.
+
+Current runtime mapping:
+
+```txt
+Ask                → ask
+Plan               → plan
+Agent · Guided     → code
+Agent · Autopilot  → build
+```

@@ -15,7 +15,7 @@ describe('chat mode surface presentation', () => {
     })
   })
 
-  test('keeps ask as read-only Q&A and code as coordinated Code execution', () => {
+  test('keeps ask as read-only Q&A and code as Agent Guided execution', () => {
     expect(getChatModeSurfacePresentation('ask')).toMatchObject({
       label: 'Ask',
       shortLabel: 'Ask',
@@ -23,28 +23,27 @@ describe('chat mode surface presentation', () => {
       advanced: false,
     })
     expect(getChatModeSurfacePresentation('code')).toMatchObject({
-      label: 'Code',
-      shortLabel: 'Code',
-      description: 'Make focused code changes, then run the right checks.',
+      label: 'Agent · Guided',
+      shortLabel: 'Guided',
+      description: 'Agent mode with review prompts before edits and commands.',
       advanced: false,
     })
   })
 
-  test('exposes build as a primary mode (no longer advanced)', () => {
+  test('exposes build as Agent Autopilot runtime presentation', () => {
     expect(getChatModeSurfacePresentation('build')).toMatchObject({
-      label: 'Build',
-      shortLabel: 'Build',
-      description: 'Execute broad changes end-to-end and keep validating.',
+      label: 'Agent · Autopilot',
+      shortLabel: 'Autopilot',
+      description: 'Agent mode that applies safe changes and interrupts for risky actions.',
       advanced: false,
     })
   })
 
-  test('exposes Ask, Plan, Code, and Build as the four primary picker options with no advanced section', () => {
+  test('exposes Ask, Plan, and Agent Guided as primary picker options with no advanced section', () => {
     expect(getPrimaryChatModeSurfaceOptions().map((option) => option.label)).toEqual([
       'Ask',
       'Plan',
-      'Code',
-      'Build',
+      'Agent · Guided',
     ])
     expect(getAdvancedChatModeSurfaceOptions()).toEqual([])
   })
@@ -64,8 +63,7 @@ describe('chat mode surface presentation', () => {
     expect(getPrimaryChatModeSurfaceOptions().map((option) => option.label)).toEqual([
       'Ask',
       'Plan',
-      'Code',
-      'Build',
+      'Agent · Guided',
     ])
   })
 })

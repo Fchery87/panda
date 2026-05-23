@@ -81,6 +81,8 @@ still describe current policy, an ADR decision, or an active follow-up area.
   machine-readable ceiling for audited production Convex `.collect()` calls
 - [VALIDATION_TASKS.md](../VALIDATION_TASKS.md) - historical verification
   snapshot; refresh or remove if CI/task-local status is authoritative
+- Date-stamped planning records; historical by default unless explicitly promoted
+  to active authority or completed/current implementation evidence.
 
 ## Current Product Surface
 

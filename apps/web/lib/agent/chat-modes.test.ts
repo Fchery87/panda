@@ -1,5 +1,13 @@
 import { describe, expect, test } from 'bun:test'
-import { buildModeTransitionRitual, CHAT_MODE_CONFIGS } from './chat-modes'
+import {
+  buildModeTransitionRitual,
+  CHAT_MODE_CONFIGS,
+  getAgentAutonomyOptions,
+  getPrimaryModeSurfaces,
+  getSecondaryActions,
+  modeSelectionFromRuntimeMode,
+  resolveRuntimeMode,
+} from './chat-modes'
 
 describe('ModeContract', () => {
   test('each mode declares requiresToolCalls', () => {
@@ -55,5 +63,29 @@ describe('ModeContract', () => {
     expect(ritual.systemMessage).toContain('Approved plan: plan-123')
     expect(ritual.systemMessage).toContain('Active spec: spec-456')
     expect(ritual.firstAction).toContain('call')
+  })
+})
+
+describe('modern Panda mode surface', () => {
+  test('presents Ask, Plan, Agent as primary modes', () => {
+    expect(getPrimaryModeSurfaces().map((mode) => mode.label)).toEqual(['Ask', 'Plan', 'Agent'])
+  })
+
+  test('maps Agent autonomy to legacy runtime modes', () => {
+    expect(resolveRuntimeMode({ primaryMode: 'agent', autonomy: 'guided' })).toBe('code')
+    expect(resolveRuntimeMode({ primaryMode: 'agent', autonomy: 'autopilot' })).toBe('build')
+    expect(modeSelectionFromRuntimeMode('code')).toEqual({ primaryMode: 'agent', autonomy: 'guided' })
+    expect(modeSelectionFromRuntimeMode('build')).toEqual({
+      primaryMode: 'agent',
+      autonomy: 'autopilot',
+    })
+  })
+
+  test('defines Guided and Autopilot autonomy options', () => {
+    expect(getAgentAutonomyOptions().map((option) => option.label)).toEqual(['Guided', 'Autopilot'])
+  })
+
+  test('defines Debug Review Docs as secondary actions', () => {
+    expect(getSecondaryActions().map((action) => action.id)).toEqual(['debug', 'review', 'docs'])
   })
 })
