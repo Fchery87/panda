@@ -502,6 +502,31 @@ function formatAttachmentSize(size?: number): string | null {
   return `${Math.round(size / (1024 * 102.4)) / 10} MB`
 }
 
+function AutoModeSwitchReceipt({
+  autoModeSwitch,
+}: {
+  autoModeSwitch: NonNullable<NonNullable<Message['annotations']>['autoModeSwitch']>
+}) {
+  const from = getChatModeSurfacePresentation(autoModeSwitch.fromMode)
+  const to = getChatModeSurfacePresentation(autoModeSwitch.toMode)
+  const boundaryLabel = autoModeSwitch.boundary === 'write-capable' ? 'write-capable' : 'read-only'
+
+  return (
+    <div className="w-full max-w-[78%] self-end border border-primary/25 bg-primary/[0.06] px-2.5 py-2 text-left font-mono text-[10px] text-primary/90 shadow-sm">
+      <div className="flex flex-wrap items-center gap-1.5 uppercase tracking-[0.16em]">
+        <span>Routed by Panda</span>
+        <span className="text-primary/50">·</span>
+        <span>{autoModeSwitch.confidence} confidence</span>
+        <span className="text-primary/50">·</span>
+        <span>{boundaryLabel}</span>
+      </div>
+      <div className="mt-1 text-[11px] normal-case tracking-normal text-foreground">
+        {from.shortLabel} → {to.label}: {autoModeSwitch.rationale}
+      </div>
+    </div>
+  )
+}
+
 export function MessageBubble({
   message,
   isStreaming = false,
@@ -637,6 +662,10 @@ export function MessageBubble({
             {formatTimestamp(message.createdAt)}
           </span>
         </div>
+
+        {isUser && autoModeSwitch ? (
+          <AutoModeSwitchReceipt autoModeSwitch={autoModeSwitch} />
+        ) : null}
 
         {reasoningBlock?.kind === 'thinking_teaser' ? (
           <ReasoningPanel

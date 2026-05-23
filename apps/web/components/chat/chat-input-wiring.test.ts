@@ -51,6 +51,14 @@ describe('chat input wiring', () => {
     expect(content).toContain('onSendMessage?.(next.content, next.mode, next.contextFiles, next.options)')
   })
 
+  test('ChatInput lets natural-language routing reconcile selected mode by default', async () => {
+    const content = await readChatComponent('ChatInput.tsx')
+
+    expect(content).toContain('manualModeOverride: false')
+    expect(content).toContain('Mode routing control set to Manual only')
+    expect(content).not.toContain('manualModeOverride: true')
+  })
+
   test('ChatInput surfaces a Plan-only brainstorm toggle wired to the architect callback', async () => {
     const content = await readChatComponent('ChatInput.tsx')
 

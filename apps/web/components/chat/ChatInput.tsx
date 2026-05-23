@@ -391,7 +391,10 @@ export function ChatInput({
       variantCount: variant === 'parallel:2' ? 2 : undefined,
       attachments: uploadedAttachments,
       attachmentsOnly: !message.trim() && uploadedAttachments.length > 0,
-      manualModeOverride: true,
+      // Let Panda's natural-language router reconcile the selected mode with
+      // the user's latest wording. Users who want a hard lock can use the
+      // Mode routing control set to Manual only.
+      manualModeOverride: false,
     }
     const sendContent = nextMessage || input.trim()
 

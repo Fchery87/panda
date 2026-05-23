@@ -786,6 +786,14 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     setStatus('idle')
   }, [flushRunEventBuffer, pendingSpec, runIdRef, setCurrentSpec, setPendingSpec, stopRun])
 
+  const stopRef = useRef(stop)
+  const runEventBufferCleanupRef = useRef(runEventBufferCleanup)
+
+  useEffect(() => {
+    stopRef.current = stop
+    runEventBufferCleanupRef.current = runEventBufferCleanup
+  }, [runEventBufferCleanup, stop])
+
   // Clear messages
   const clear = useCallback(async () => {
     // Save session summary before clearing
@@ -1979,13 +1987,16 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     ]
   )
 
-  // Cleanup on unmount
+  // Cleanup only on unmount. Do not depend on `stop` directly here: that callback
+  // can legitimately change while a run is active (for example when Plan/Spec
+  // state changes), and React would run the cleanup for the previous callback,
+  // aborting the active Panda run even though the component is still mounted.
   useEffect(() => {
     return () => {
-      stop()
-      runEventBufferCleanup()
+      stopRef.current()
+      runEventBufferCleanupRef.current()
     }
-  }, [stop, runEventBufferCleanup])
+  }, [])
 
   const returnedMessages =
     hydratePersistedMessages || localMessagesChatIdRef.current === chatId ? messages : []

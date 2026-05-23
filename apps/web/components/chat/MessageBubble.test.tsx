@@ -18,6 +18,19 @@ function assistantMessage(overrides: Partial<Message> = {}): Message {
   }
 }
 
+function userMessage(overrides: Partial<Message> = {}): Message {
+  return {
+    _id: 'user-1',
+    role: 'user',
+    content: 'create a folder named docs',
+    createdAt: 100,
+    annotations: {
+      mode: 'code',
+    },
+    ...overrides,
+  }
+}
+
 describe('MessageBubble Thinking rendering', () => {
   test('renders live Thinking before answer text exists without an empty answer bubble', () => {
     const html = renderToStaticMarkup(
@@ -66,5 +79,33 @@ describe('MessageBubble Thinking rendering', () => {
 
     expect(html).toContain('Thinking used')
     expect(html).toContain('summary unavailable')
+  })
+})
+
+describe('MessageBubble routing receipts', () => {
+  test('renders a visible natural-language auto-routing receipt on user messages', () => {
+    const html = renderToStaticMarkup(
+      <MessageBubble
+        message={userMessage({
+          annotations: {
+            mode: 'code',
+            autoModeSwitch: {
+              fromMode: 'plan',
+              toMode: 'code',
+              confidence: 'high',
+              rationale: 'The request asks for a concrete file-system change.',
+              boundary: 'write-capable',
+            },
+          },
+        })}
+      />
+    )
+
+    expect(html).toContain('Routed by Panda')
+    expect(html).toContain('high confidence')
+    expect(html).toContain('write-capable')
+    expect(html).toContain('Plan')
+    expect(html).toContain('Agent · Guided')
+    expect(html).toContain('concrete file-system change')
   })
 })

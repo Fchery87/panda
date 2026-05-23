@@ -38,6 +38,8 @@ describe('deterministic routing rules', () => {
     ['turn these findings into an implementation plan', 'plan'],
     ['fix the failing login test', 'code'],
     ['update the login form copy', 'code'],
+    ['create a folder named docs in the project', 'code'],
+    ['mkdir src/features/billing', 'code'],
     ['run the full implementation and verify it', 'build'],
     ['implement the approved plan and keep going until CI is green', 'build'],
   ]

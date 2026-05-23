@@ -89,8 +89,29 @@ describe('project file materialization tool execution', () => {
 
     expect(result.error).toBeUndefined()
     expect(writtenPaths).toEqual(['docs/index.md'])
+    expect(result.output).toContain('pending_review')
+    expect(result.output).toContain('must be applied to persist to the project file tree')
     expect(result.output).toContain('docs/index.md')
     expect(result.output).not.toContain('/docs/index.md')
+  })
+
+  it('explains placeholder files used to represent empty folders', async () => {
+    const context: ToolContext = {
+      ...createBaseContext(),
+      writeFiles: async (files) => files.map((file) => ({ path: file.path, success: true })),
+    }
+
+    const result = await executeTool(
+      makeToolCall('write_files', {
+        files: [{ path: 'docs/.gitkeep', content: '' }],
+      }),
+      context
+    )
+
+    expect(result.error).toBeUndefined()
+    expect(result.output).toContain('folderPlaceholderNote')
+    expect(result.output).toContain('represent empty folder')
+    expect(result.output).toContain('docs')
   })
 
   it('rejects filesystem-write commands because they do not update the project file tree', async () => {

@@ -117,9 +117,10 @@ export function ChatActionBar({
                   Plan {planStatus?.replace('_', ' ')}
                 </p>
                 <p className="font-mono text-[10px] text-muted-foreground [overflow-wrap:anywhere]">
-                  {planStatus === 'awaiting_review' && 'Review before building'}
-                  {planStatus === 'stale' && 'Plan changed, needs review'}
-                  {planStatus === 'approved' && 'Ready for execution'}
+                  {planStatus === 'awaiting_review' &&
+                    'Review first. Panda will not change files until you approve and build.'}
+                  {planStatus === 'stale' && 'Plan changed, needs review before any build runs'}
+                  {planStatus === 'approved' && 'Approved. Click Build to start file changes.'}
                   {planStatus === 'executing' && 'Build in progress'}
                   {planStatus === 'partial' && 'Build stopped before all plan steps completed'}
                   {planStatus === 'completed' && 'Build completed successfully'}

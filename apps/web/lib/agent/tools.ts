@@ -1048,10 +1048,28 @@ export async function executeTool(
           )
         }
         const results = await context.writeFiles(files)
-        output = JSON.stringify(results, null, 2)
+        const placeholderFolders = results
+          .filter((result) => result.success && /(?:^|\/)\.gitkeep$/.test(result.path))
+          .map((result) => result.path.replace(/(?:^|\/)\.gitkeep$/, ''))
+          .filter(Boolean)
+        output = JSON.stringify(
+          {
+            status: 'pending_review',
+            message:
+              'Queued pending file artifact(s). They appear in the Changes/File Tree review surfaces and must be applied to persist to the project file tree.',
+            files: results,
+            ...(placeholderFolders.length > 0
+              ? {
+                  folderPlaceholderNote: `Created placeholder file(s) so Panda can represent empty folder(s): ${placeholderFolders.join(', ')}.`,
+                }
+              : {}),
+          },
+          null,
+          2
+        )
         const failures = results.filter((r) => !r.success)
         if (failures.length > 0) {
-          error = `Failed to write ${failures.length} file(s): ${failures.map((f) => f.path).join(', ')}`
+          error = `Failed to queue ${failures.length} file artifact(s): ${failures.map((f) => f.path).join(', ')}`
         }
         break
       }
