@@ -34,6 +34,7 @@ import {
   type CommandFamilyPolicyEntry,
 } from '../lib/agent/command-family-policy'
 import { normalizeChatMode, type ChatMode } from '../lib/agent/prompt-library'
+import { CHAT_MODE_CONFIGS, type AutoModeSwitchPolicy } from '../lib/agent/chat-modes'
 import { buildExecutionReceipt, type ContextAuditRecord } from '../lib/agent/receipt'
 import {
   createInitialRoutingInput,
@@ -148,6 +149,7 @@ type SendMessageOptions = {
   attachmentsOnly?: boolean
   manualModeOverride?: boolean
   modeOverride?: ChatMode
+  autoModeSwitchPolicy?: AutoModeSwitchPolicy
 }
 
 function buildExplicitContextItems(args: {
@@ -242,7 +244,75 @@ export function buildPublicSendMessageOptions(
     attachments: options?.attachments,
     attachmentsOnly: options?.attachmentsOnly,
     manualModeOverride: options?.manualModeOverride,
+    modeOverride: options?.modeOverride,
+    autoModeSwitchPolicy: options?.autoModeSwitchPolicy,
   }
+}
+
+function isWriteCapableMode(mode: ChatMode): boolean {
+  return mode === 'code' || mode === 'build'
+}
+
+export type AutoModeSwitchDecision =
+  | {
+      action: 'switch'
+      fromMode: ChatMode
+      toMode: ChatMode
+      confidence: RoutingDecision['confidence']
+      rationale: string
+      boundary: 'read-only' | 'write-capable'
+    }
+  | {
+      action: 'suggest'
+      fromMode: ChatMode
+      toMode: ChatMode
+      confidence: RoutingDecision['confidence']
+      rationale: string
+      boundary: 'read-only' | 'write-capable'
+      reason: string
+    }
+  | { action: 'stay'; reason: string }
+
+export function buildAutoModeSwitchDecision(args: {
+  routingDecision: RoutingDecision
+  policy?: AutoModeSwitchPolicy
+}): AutoModeSwitchDecision {
+  const { routingDecision } = args
+  const policy = args.policy ?? 'auto'
+  if (routingDecision.source === 'manual_override') {
+    return { action: 'stay', reason: 'Manual mode override is active.' }
+  }
+  if (routingDecision.requestedMode === routingDecision.resolvedMode) {
+    return { action: 'stay', reason: 'Requested mode already matches the resolved mode.' }
+  }
+  if (policy === 'manual') {
+    return { action: 'stay', reason: 'Automatic mode switching is disabled.' }
+  }
+
+  const boundary = isWriteCapableMode(routingDecision.resolvedMode) ? 'write-capable' : 'read-only'
+  const base = {
+    fromMode: routingDecision.requestedMode,
+    toMode: routingDecision.resolvedMode,
+    confidence: routingDecision.confidence,
+    rationale: routingDecision.rationale,
+    boundary,
+  } as const
+
+  if (routingDecision.confidence === 'low') {
+    return { action: 'stay', reason: 'Routing confidence is too low to change modes.' }
+  }
+  if (policy === 'suggest' || routingDecision.confidence === 'medium') {
+    return {
+      action: 'suggest',
+      ...base,
+      reason:
+        routingDecision.confidence === 'medium'
+          ? 'Routing confidence is medium, so Panda should ask before switching.'
+          : 'Mode routing preference is set to suggest before switching.',
+    }
+  }
+
+  return { action: 'switch', ...base }
 }
 
 export function buildResolvedRoutingDecision(args: {
@@ -375,6 +445,13 @@ interface UseAgentOptions {
     completedPlanStepIndexes: number[]
     planTotalSteps: number
   }) => void | Promise<void>
+  autoModeSwitchPolicy?: AutoModeSwitchPolicy
+  onAutoModeSwitch?: (args: {
+    fromMode: ChatMode
+    toMode: ChatMode
+    confidence: RoutingDecision['confidence']
+    rationale: string
+  }) => void | Promise<void>
   webcontainer?: WebContainer | null
 }
 
@@ -392,6 +469,7 @@ interface UseAgentReturn {
     createdAt: number
     toolCalls?: ToolCallInfo[]
     annotations?: MessageAnnotationInfo
+    suggestedActions?: Message['suggestedActions']
     attachments?: Message['attachments']
   }>
 
@@ -483,6 +561,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     specApprovalMode,
     onRunCreated,
     onRunCompleted,
+    autoModeSwitchPolicy = 'auto',
+    onAutoModeSwitch,
     webcontainer,
   } = options
 
@@ -754,6 +834,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         attachmentsOnly?: boolean
         manualModeOverride?: boolean
         modeOverride?: ChatMode
+        autoModeSwitchPolicy?: AutoModeSwitchPolicy
       }
     ) => {
       const userContent = buildSendMessageContent(rawContent, options)
@@ -780,6 +861,59 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       })
       const requestedMode = routingDecision.requestedMode
       const resolvedMode = routingDecision.resolvedMode
+      const autoModeSwitch = buildAutoModeSwitchDecision({
+        routingDecision,
+        policy: options?.autoModeSwitchPolicy ?? autoModeSwitchPolicy,
+      })
+      if (autoModeSwitch.action === 'suggest') {
+        const fromLabel = CHAT_MODE_CONFIGS[autoModeSwitch.fromMode].surface.label
+        const toLabel = CHAT_MODE_CONFIGS[autoModeSwitch.toMode].surface.label
+        const suggestionId = `msg-${Date.now()}-mode-suggestion`
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `msg-${Date.now()}-user`,
+            _id: `msg-${Date.now()}-user`,
+            role: 'user',
+            content: userContent,
+            mode: autoModeSwitch.fromMode,
+            createdAt: Date.now(),
+            annotations: { mode: autoModeSwitch.fromMode },
+          },
+          {
+            id: suggestionId,
+            _id: suggestionId,
+            role: 'assistant',
+            content: `This looks like a ${toLabel} request, but I want confirmation before switching from ${fromLabel}.`,
+            mode: autoModeSwitch.fromMode,
+            createdAt: Date.now(),
+            annotations: { mode: autoModeSwitch.fromMode },
+            suggestedActions: [
+              {
+                label: `Switch to ${toLabel} and continue`,
+                prompt: userContent,
+                targetMode: autoModeSwitch.toMode,
+              },
+            ],
+          },
+        ])
+        toast.info('Mode switch suggested', {
+          description: autoModeSwitch.rationale,
+        })
+        return
+      }
+      if (autoModeSwitch.action === 'switch') {
+        try {
+          await onAutoModeSwitch?.({
+            fromMode: autoModeSwitch.fromMode,
+            toMode: autoModeSwitch.toMode,
+            confidence: autoModeSwitch.confidence,
+            rationale: autoModeSwitch.rationale,
+          })
+        } catch (autoSwitchError) {
+          appLog.warn('[useAgent] Failed to persist automatic mode switch; continuing with resolved mode', autoSwitchError)
+        }
+      }
       const runEventsForReceipt: RunEventInput[] = []
       let runStartedAt = Date.now()
       let contextAudit: ContextAuditRecord | null = null
@@ -902,10 +1036,20 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           _id: userMessageId,
           role: 'user',
           content: userContent,
-          mode: requestedMode,
+          mode: resolvedMode,
           createdAt: Date.now(),
           annotations: {
-            mode: requestedMode,
+            mode: resolvedMode,
+            autoModeSwitch:
+              autoModeSwitch.action === 'switch'
+                ? {
+                    fromMode: autoModeSwitch.fromMode,
+                    toMode: autoModeSwitch.toMode,
+                    confidence: autoModeSwitch.confidence,
+                    rationale: autoModeSwitch.rationale,
+                    boundary: autoModeSwitch.boundary,
+                  }
+                : undefined,
             attachmentsOnly: options?.attachmentsOnly,
             contextItems: explicitContextItems,
           },
@@ -1429,6 +1573,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       chatId,
       projectId,
       mode,
+      autoModeSwitchPolicy,
+      onAutoModeSwitch,
       provider,
       model,
       architectBrainstormEnabled,

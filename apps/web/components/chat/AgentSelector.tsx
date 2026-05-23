@@ -14,7 +14,13 @@ import {
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu'
 import { agents } from '@/lib/agent/harness'
-import { CHAT_MODE_CONFIGS, getAgentAutonomyOptions, type ChatMode } from '@/lib/agent/chat-modes'
+import {
+  CHAT_MODE_CONFIGS,
+  getAgentAutonomyOptions,
+  type AutoModeSwitchPolicy,
+  type ChatMode,
+} from '@/lib/agent/chat-modes'
+import { useChatSessionStore } from '@/stores/chatSessionStore'
 import {
   getChatModeSurfacePresentation,
   getPrimaryChatModeSurfaceOptions,
@@ -34,6 +40,28 @@ const MODE_ICONS: Partial<Record<ChatMode, React.ReactNode>> = {
   build: <Zap className="h-3.5 w-3.5" />,
 }
 
+const AUTO_MODE_SWITCH_OPTIONS: Array<{
+  id: AutoModeSwitchPolicy
+  label: string
+  description: string
+}> = [
+  {
+    id: 'auto',
+    label: 'Auto-switch',
+    description: 'Switch automatically on high-confidence intent changes.',
+  },
+  {
+    id: 'suggest',
+    label: 'Suggest first',
+    description: 'Ask before changing modes.',
+  },
+  {
+    id: 'manual',
+    label: 'Manual only',
+    description: 'Never change modes automatically.',
+  },
+]
+
 const PRIMARY_SHORTCUTS: Partial<Record<ChatMode, string>> = Object.fromEntries(
   (Object.entries(CHAT_MODE_CONFIGS) as Array<[ChatMode, (typeof CHAT_MODE_CONFIGS)[ChatMode]]>)
     .map(([mode, config]) => [mode, config.surface.primaryShortcut])
@@ -44,6 +72,8 @@ export function AgentSelector({ mode, onModeChange, disabled, className }: Agent
   const subagents = useMemo(() => agents.listSubagents(), [])
   const primaryOptions = useMemo(() => getPrimaryChatModeSurfaceOptions(), [])
   const autonomyOptions = useMemo(() => getAgentAutonomyOptions(), [])
+  const autoModeSwitchPolicy = useChatSessionStore((state) => state.autoModeSwitchPolicy)
+  const setAutoModeSwitchPolicy = useChatSessionStore((state) => state.setAutoModeSwitchPolicy)
 
   const currentPresentation = getChatModeSurfacePresentation(mode)
   const currentIcon = MODE_ICONS[mode] ?? <Bot className="h-3.5 w-3.5" />
@@ -142,6 +172,26 @@ export function AgentSelector({ mode, onModeChange, disabled, className }: Agent
               </DropdownMenuRadioItem>
             )
           })}
+        </DropdownMenuRadioGroup>
+
+        <DropdownMenuSeparator className="bg-border" />
+        <DropdownMenuLabel className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
+          Mode routing
+        </DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={autoModeSwitchPolicy}
+          onValueChange={(value) => setAutoModeSwitchPolicy(value as AutoModeSwitchPolicy)}
+        >
+          {AUTO_MODE_SWITCH_OPTIONS.map((option) => (
+            <DropdownMenuRadioItem
+              key={option.id}
+              value={option.id}
+              className="rounded-none font-mono text-xs"
+            >
+              <span className="uppercase">{option.label}</span>
+              <span className="ml-2 text-muted-foreground">{option.description}</span>
+            </DropdownMenuRadioItem>
+          ))}
         </DropdownMenuRadioGroup>
 
         {subagents.length > 0 && (

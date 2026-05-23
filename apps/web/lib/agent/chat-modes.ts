@@ -2,6 +2,7 @@ export type ChatMode = 'ask' | 'plan' | 'code' | 'build'
 export type PrimaryMode = 'ask' | 'plan' | 'agent'
 export type AgentAutonomy = 'guided' | 'autopilot'
 export type SecondaryAction = 'debug' | 'review' | 'docs'
+export type AutoModeSwitchPolicy = 'auto' | 'suggest' | 'manual'
 
 export interface ModeSelection {
   primaryMode: PrimaryMode

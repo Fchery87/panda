@@ -117,6 +117,13 @@ export interface MessageAnnotationInfo {
   contextUsagePct?: number
   contextSource?: ContextWindowSource
   mode?: ChatMode
+  autoModeSwitch?: {
+    fromMode: ChatMode
+    toMode: ChatMode
+    confidence: 'high' | 'medium' | 'low'
+    rationale: string
+    boundary: 'read-only' | 'write-capable'
+  }
   attachmentsOnly?: boolean
   contextItems?: ChatContextItemInfo[]
   retrievalSummary?: ContextRetrievalSummaryInfo

@@ -202,6 +202,20 @@ function collectContextSignals(input: RoutingInput, message: string): IntentSign
   return signals
 }
 
+function collectSuggestedSkills(message: string): string[] {
+  const skills = new Set<string>()
+  if (/\b(debug|stack trace|traceback|crash|exception|reproduce|logs?|not working|fails?|failing|failure|runtime error)\b/iu.test(message)) {
+    skills.add('debug')
+  }
+  if (/\b(review|audit|diff|recommendations?)\b/iu.test(message)) {
+    skills.add('review')
+  }
+  if (/\b(docs?|documentation|readme|changelog|guide)\b/iu.test(message)) {
+    skills.add('docs')
+  }
+  return [...skills]
+}
+
 function findDirectModeRequest(message: string): ChatMode | null {
   return (
     DIRECT_MODE_REQUESTS.find((request) =>
@@ -273,7 +287,7 @@ export function decideRouting(input: RoutingInput): RoutingDecision {
       rationale: `The user explicitly asked to use ${directModeRequest} mode.`,
       requiresApproval: false,
       webcontainerRequired: false,
-      suggestedSkills: [],
+      suggestedSkills: collectSuggestedSkills(message),
       source: 'deterministic_rules',
     }
   }
@@ -295,7 +309,7 @@ export function decideRouting(input: RoutingInput): RoutingDecision {
     rationale: scored.rationale,
     requiresApproval: confidence !== 'high' && input.oversightLevel === 'review',
     webcontainerRequired: false,
-    suggestedSkills: [],
+    suggestedSkills: collectSuggestedSkills(message),
     source: 'deterministic_rules',
   }
 }

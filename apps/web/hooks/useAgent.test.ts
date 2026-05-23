@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import {
+  buildAutoModeSwitchDecision,
   buildFailedRunEvent,
   buildPublicSendMessageOptions,
   buildResolvedRoutingDecision,
@@ -93,6 +94,51 @@ describe('useAgent run event builders', () => {
   })
 })
 
+describe('buildAutoModeSwitchDecision', () => {
+  it('requests an automatic mode switch when deterministic routing changes modes', () => {
+    const routingDecision = buildResolvedRoutingDecision({
+      content: 'fix the failing login test',
+      requestedMode: 'ask',
+      oversightLevel: 'review',
+    })
+
+    expect(buildAutoModeSwitchDecision({ routingDecision })).toMatchObject({
+      action: 'switch',
+      fromMode: 'ask',
+      toMode: 'code',
+      boundary: 'write-capable',
+    })
+  })
+
+  it('does not auto-switch when the user explicitly locks the mode', () => {
+    const routingDecision = buildResolvedRoutingDecision({
+      content: 'fix the failing login test',
+      requestedMode: 'ask',
+      oversightLevel: 'review',
+      manualOverride: true,
+    })
+
+    expect(buildAutoModeSwitchDecision({ routingDecision })).toEqual({
+      action: 'stay',
+      reason: 'Manual mode override is active.',
+    })
+  })
+
+  it('suggests instead of switching when preference requires confirmation', () => {
+    const routingDecision = buildResolvedRoutingDecision({
+      content: 'fix the failing login test',
+      requestedMode: 'ask',
+      oversightLevel: 'review',
+    })
+
+    expect(buildAutoModeSwitchDecision({ routingDecision, policy: 'suggest' })).toMatchObject({
+      action: 'suggest',
+      fromMode: 'ask',
+      toMode: 'code',
+    })
+  })
+})
+
 describe('buildResolvedRoutingDecision', () => {
   it('uses deterministic routing for automatic sends', () => {
     const decision = buildResolvedRoutingDecision({
@@ -104,6 +150,7 @@ describe('buildResolvedRoutingDecision', () => {
     expect(decision.requestedMode).toBe('ask')
     expect(decision.resolvedMode).toBe('code')
     expect(decision.source).toBe('deterministic_rules')
+    expect(decision.suggestedSkills).toContain('debug')
   })
 
   it('routes natural-language planning requests out of Ask mode', () => {

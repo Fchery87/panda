@@ -3,6 +3,7 @@ import { create } from 'zustand'
 import type { Id } from '@convex/_generated/dataModel'
 
 import type { ChatMode } from '@/lib/agent/prompt-library'
+import type { AutoModeSwitchPolicy } from '@/lib/agent/chat-modes'
 
 export type OversightLevel = 'review' | 'autopilot'
 
@@ -17,6 +18,7 @@ export interface ChatSessionState {
   uiSelectedModel: UiModelSelection | null
   reasoningVariant: string | null
   oversightLevel: OversightLevel
+  autoModeSwitchPolicy: AutoModeSwitchPolicy
   contextualPrompt: string | null
 
   setActiveChatId: (id: Id<'chats'> | null) => void
@@ -25,6 +27,7 @@ export interface ChatSessionState {
   setUiSelectedModel: (model: UiModelSelection | null) => void
   setReasoningVariant: (variant: string | null) => void
   setOversightLevel: (level: OversightLevel) => void
+  setAutoModeSwitchPolicy: (policy: AutoModeSwitchPolicy) => void
   setContextualPrompt: (prompt: string | null) => void
 
   reset: () => void
@@ -37,6 +40,7 @@ const DEFAULTS = {
   uiSelectedModel: null,
   reasoningVariant: 'none',
   oversightLevel: 'review' as OversightLevel,
+  autoModeSwitchPolicy: 'auto' as AutoModeSwitchPolicy,
   contextualPrompt: null,
 }
 
@@ -53,6 +57,7 @@ export const useChatSessionStore = create<ChatSessionState>((set) => ({
   setUiSelectedModel: (model) => set({ uiSelectedModel: model }),
   setReasoningVariant: (variant) => set({ reasoningVariant: variant }),
   setOversightLevel: (level) => set({ oversightLevel: level }),
+  setAutoModeSwitchPolicy: (policy) => set({ autoModeSwitchPolicy: policy }),
   setContextualPrompt: (prompt) => set({ contextualPrompt: prompt }),
 
   reset: () => set(DEFAULTS),

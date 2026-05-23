@@ -287,6 +287,7 @@ export function WorkspaceRuntimeProvider({
     supportsReasoning,
     effectiveAutomationPolicy,
     effectiveCommandFamilyPolicy,
+    autoModeSwitchPolicy,
   } = useProjectChatSession({ projectId, chats, projectAgentPolicy })
 
   const planningSession = useProjectPlanningSession({ activeChatId: activeChat?._id ?? null })
@@ -314,6 +315,16 @@ export function WorkspaceRuntimeProvider({
     approvedPlanRunSessionsRef,
   })
 
+  const handleAutoModeSwitch = useCallback(
+    async ({ toMode }: { fromMode: ChatMode; toMode: ChatMode; confidence: string; rationale: string }) => {
+      setChatMode(toMode)
+      if (activeChat && activeChat.mode !== toMode) {
+        await updateChatMutation({ id: activeChat._id, mode: toMode })
+      }
+    },
+    [activeChat, setChatMode, updateChatMutation]
+  )
+
   const agent = useAgent({
     chatId: activeChat?._id as Id<'chats'>,
     projectId,
@@ -335,8 +346,10 @@ export function WorkspaceRuntimeProvider({
     automationPolicy: effectiveAutomationPolicy,
     commandFamilyPolicy: effectiveCommandFamilyPolicy,
     specApprovalMode: agentPolicy.specApprovalMode,
+    autoModeSwitchPolicy,
     onRunCreated: handleRunCreated,
     onRunCompleted: handleRunCompleted,
+    onAutoModeSwitch: handleAutoModeSwitch,
     webcontainer: webcontainer.status === 'ready' ? webcontainer.instance : null,
   })
 

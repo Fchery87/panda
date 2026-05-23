@@ -31,4 +31,14 @@ describe('chatSessionStore', () => {
 
     expect(useChatSessionStore.getState().oversightLevel).toBe('autopilot')
   })
+
+  test('auto mode switch policy defaults to auto and can be changed', () => {
+    resetStore()
+    const state = useChatSessionStore.getState()
+
+    expect(state.autoModeSwitchPolicy).toBe('auto')
+    state.setAutoModeSwitchPolicy('suggest')
+
+    expect(useChatSessionStore.getState().autoModeSwitchPolicy).toBe('suggest')
+  })
 })

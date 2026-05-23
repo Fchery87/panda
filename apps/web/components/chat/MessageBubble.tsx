@@ -538,6 +538,7 @@ export function MessageBubble({
   const rolePresentation = message.annotations?.mode
     ? getChatModeSurfacePresentation(message.annotations.mode)
     : null
+  const autoModeSwitch = message.annotations?.autoModeSwitch
   const assistantBlocks = isAssistant ? buildAssistantMessageTranscriptBlocks(message) : []
   const reasoningBlock = assistantBlocks.find(
     (block) => block.kind === 'thinking_teaser' || block.kind === 'thinking_redacted'
@@ -620,6 +621,16 @@ export function MessageBubble({
               title={String(message.annotations.model)}
             >
               {message.annotations.model}
+            </Badge>
+          )}
+          {autoModeSwitch && (
+            <Badge
+              variant="outline"
+              className="h-5 px-1.5 py-0 font-mono text-[10px]"
+              title={autoModeSwitch.rationale}
+            >
+              Auto-switched {getChatModeSurfacePresentation(autoModeSwitch.fromMode).shortLabel} →{' '}
+              {getChatModeSurfacePresentation(autoModeSwitch.toMode).shortLabel}
             </Badge>
           )}
           <span className="text-muted-foreground/60 font-mono text-[10px] tabular-nums xl:text-[11px]">

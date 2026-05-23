@@ -57,6 +57,7 @@ export function useProjectChatSession<TChat extends ChatSessionChat>(args: {
   const setUiSelectedModel = useChatSessionStore((state) => state.setUiSelectedModel)
   const reasoningVariant = useChatSessionStore((state) => state.reasoningVariant ?? 'none')
   const setReasoningVariant = useChatSessionStore((state) => state.setReasoningVariant)
+  const autoModeSwitchPolicy = useChatSessionStore((state) => state.autoModeSwitchPolicy)
 
   const settings = useQuery(api.settings.get) as ProviderSettings | undefined
   const effectiveSettings = useQuery(api.settings.getEffective) as
@@ -269,6 +270,7 @@ export function useProjectChatSession<TChat extends ChatSessionChat>(args: {
       setUiSelectedModel(model ? { modelId: model } : null),
     reasoningVariant,
     setReasoningVariant: (variant: string | null) => setReasoningVariant(variant),
+    autoModeSwitchPolicy,
     provider,
     selectedModel,
     availableModels,
