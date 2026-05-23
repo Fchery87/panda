@@ -112,6 +112,7 @@ export function applyNonTerminalAgentEvent(args: {
   mutable: EventApplierMutableState
   estimateCompletionTokens: (content: string) => number
   appendRunEvent: (event: RunEventInput, options?: { forceFlush?: boolean }) => Promise<void>
+  onSubagentSummary?: (summary: NonNullable<AgentEvent['subagentSummary']>) => void | Promise<void>
   createSpec: (args: CreateSpecInput) => Promise<Id<'specifications'>>
   attachVerification?: (args: {
     sessionId: string
@@ -143,6 +144,7 @@ export function applyNonTerminalAgentEvent(args: {
     mutable,
     estimateCompletionTokens,
     appendRunEvent,
+    onSubagentSummary,
     createSpec,
     attachVerification,
     updateSpec,
@@ -496,6 +498,7 @@ export function applyNonTerminalAgentEvent(args: {
           error: event.subagentSummary.risks?.[0],
           subagentSummary: event.subagentSummary,
         })
+        void onSubagentSummary?.(event.subagentSummary)
       }
       return true
     }

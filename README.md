@@ -12,12 +12,12 @@
 ## Overview
 
 Panda is a browser-first coding workspace built for AI-assisted development. It
-combines a workbench-owned file surface, canonical 4-mode workflow (`ask`,
-`plan`, `code`, `build`), structured plan approval, build execution, central
-file editing and diff review, runtime checkpoints, shared chat history, and
-admin controls. Browser execution is preferred when WebContainer is available;
-server-backed execution remains the fallback when browser-side execution is
-unavailable.
+combines a workbench-owned file surface, modern Ask / Plan / Agent workflow,
+Agent autonomy levels (`Guided` and `Autopilot`), structured plan approval,
+build execution, central file editing and diff review, runtime checkpoints,
+shared chat history, and admin controls. Browser execution is preferred when
+WebContainer is available; server-backed execution remains the fallback when
+browser-side execution is unavailable.
 
 Panda also supports user-scoped Custom Skills and Custom Subagents. Skills are
 reusable workflow guidance that can auto-activate by intent; Subagents are
@@ -30,11 +30,13 @@ file tree and central Review Diff, proof accumulates, and the user reviews the
 result through `Proof`, `Changes`, and `Context`. Mobile keeps the same contract
 through `Work`, `Chat`, `Proof`, and `Changes` destinations.
 
-The current agent runtime includes deterministic routing, bounded session
-summaries, and typed execution receipts. Routing records both the user-requested
-mode and the resolved execution mode, while receipts provide a bounded audit
-trail for context, tools, commands, approvals, token usage, execution duration,
-and result status.
+The current agent runtime includes deterministic routing, automatic mode
+switching, cross-mode handoff context, bounded session summaries, and typed
+execution receipts. Routing records both the user-requested mode and the
+resolved execution mode. When intent clearly changes, Panda can switch or
+suggest switching modes according to the user's mode-routing preference. Receipts
+provide a bounded audit trail for context, tools, commands, approvals, token
+usage, execution duration, and result status.
 
 ## Current Product Surface
 
@@ -45,7 +47,9 @@ and result status.
 - Browser-native file editing, central diffs, generated-file review, artifacts,
   and terminal jobs
 - Permission review for risky commands in the web UI
-- Deterministic mode routing with `requestedMode` and `resolvedMode` audit data
+- Deterministic mode routing with `requestedMode` and `resolvedMode` audit data,
+  confidence-aware auto-switching, visible auto-switch transcript chips, and a
+  user preference for `Auto-switch`, `Suggest first`, or `Manual only`
 - Run timeline summaries in chat with collapsed tool-chip and plan-checklist
   surfaces, and structured execution receipts in Proof surfaces
 - Custom Skills that shape agent workflow and strict Skill preflight metadata
@@ -55,8 +59,8 @@ and result status.
   completed work
 - Shared chat links for public, read-only conversation review
 - Admin console pages for users, analytics, system controls, and security
-- Convex-backed persistence for plans, messages, runs, checkpoints, specs, and
-  sharing
+- Convex-backed persistence for plans, messages, runs, checkpoints, specs,
+  indexed message/plan context chunks, and sharing
 
 ## Tech Stack
 
@@ -178,16 +182,37 @@ Workspace surfaces:
 
 Modes:
 
-- `ask` - read-only Q&A
-- `plan` - planning and review
-- `code` - direct code changes
-- `build` - full-access execution
+```text
+Ask      Plan      Agent
+                  ├─ Guided
+                  └─ Autopilot
+```
 
-Routing is rules-first and deterministic. Manual mode selection remains
-authoritative for composer sends, while programmatic sends can resolve to a more
-appropriate mode when a clear intent is detected. WebContainer readiness does
-not globally block `code` or `build`; Panda falls back to the server-backed path
-when browser execution is unavailable.
+Runtime compatibility is preserved internally:
+
+- `ask` - Ask: read-only Q&A, review, research, and codebase inspection
+- `plan` - Plan: read-only planning, clarification, and durable plan drafting
+- `code` - Agent · Guided: implementation with review prompts for edits and commands
+- `build` - Agent · Autopilot: broader execution that applies safe changes and
+  interrupts for risky actions
+
+Debug, Review, and Docs are secondary actions/task intents rather than primary
+modes. Routing emits suggested skill hints for those intents so Panda can attach
+the right workflow without expanding the top-level mode picker.
+
+Routing is rules-first and deterministic. Manual mode overrides remain
+authoritative. Otherwise Panda can automatically switch modes, suggest a switch,
+or stay put based on confidence and the user's mode-routing preference:
+`Auto-switch`, `Suggest first`, or `Manual only`. Auto-switches are recorded in
+message annotations and rendered as visible transcript chips. WebContainer
+readiness does not globally block Agent Guided or Agent Autopilot; Panda falls
+back to the server-backed path when browser execution is unavailable.
+
+Cross-mode handoff keeps task continuity across Ask → Plan → Agent flows. For
+referential requests like “save this plan” or “use your audit findings,” Panda
+resolves the latest approved plan, Plan-mode output, or Ask-mode findings and
+injects that handoff as system context instead of fabricating user transcript
+messages.
 
 ## Execution Receipts
 
@@ -249,9 +274,14 @@ panda/
 ## Notes For Contributors
 
 - Treat `planningSessions` as the canonical planning system.
-- Treat the 4-mode model as canonical across UI, runtime, and tests.
+- Treat Ask / Plan / Agent as the canonical user-facing mode model. Preserve
+  `ask`, `plan`, `code`, and `build` as runtime/persisted compatibility values,
+  where `code` is Agent · Guided and `build` is Agent · Autopilot.
 - Keep routing deterministic unless a future LLM classifier is explicitly added
-  behind a feature flag.
+  behind a feature flag. Auto-switch behavior must remain confidence-aware,
+  preference-aware, transcript-visible, and respectful of manual overrides.
+- Keep cross-mode handoff context out of synthetic user messages; inject plan,
+  audit, and approved-plan handoffs as system/developer context.
 - Keep execution receipt fields typed, bounded, and redacted before they enter
   Convex.
 - Keep the workspace workbench-owned: the central workbench owns file opening,
@@ -283,9 +313,12 @@ panda/
 - [docs/AGENTIC_HARNESS.md](./docs/AGENTIC_HARNESS.md) - harness architecture
 - [docs/WEBCONTAINER_RUNTIME.md](./docs/WEBCONTAINER_RUNTIME.md) - browser-side
   execution runtime
+- [docs/CHAT_MODE_ARCHITECTURE.md](./docs/CHAT_MODE_ARCHITECTURE.md) - Ask /
+  Plan / Agent mode architecture, autonomy mapping, automatic mode switching,
+  and cross-mode handoff contract
 - [docs/CHAT_TRANSCRIPT_POLICY.md](./docs/CHAT_TRANSCRIPT_POLICY.md) - chat
-  transcript elements (tool chips, plan checklist), inspector boundaries, and
-  redaction rules
+  transcript elements (tool chips, plan checklist, auto-switch chips), inspector
+  boundaries, handoff transcript policy, and redaction rules
 - [docs/PLAN_DOCUMENT_FORMAT.md](./docs/PLAN_DOCUMENT_FORMAT.md) - `.plan.md`
   frontmatter, Mermaid, and clean generated-plan document format
 - [docs/WORKBENCH.md](./docs/WORKBENCH.md) - current workbench-owned file

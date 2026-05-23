@@ -572,6 +572,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   // Convex queries & mutations
   const currentUser = useQuery(api.users.getCurrent)
   const settings = useQuery(api.settings.get)
+  const customSubagents = useQuery(api.subagents.list)
   const activePlanningSession = useQuery(
     api.planningSessions.getActiveByChat,
     chatId ? { chatId } : 'skip'
@@ -589,6 +590,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const createChatAttachments = useMutation(api.chatAttachments.createMany)
   const attachVerification = useMutation(api.planningSessions.attachVerification)
   const createRun = useMutation(api.agentRuns.create)
+  const createChildRun = useMutation(api.agentRuns.createChild)
+  const touchRunActivity = useMutation(api.agentRuns.touchActivity)
   const appendRunEvents = useMutation(api.agentRuns.appendEvents)
   const logHarnessPermissionDecision = useMutation(api.permissionAuditLog.logHarnessDecision)
   const completeRun = useMutation(api.agentRuns.complete)
@@ -646,6 +649,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const rafFlushRef = useRef<number | null>(null)
   const runtimeRef = useRef<AgentRuntimeLike | null>(null)
   const localMessagesChatIdRef = useRef<Id<'chats'> | null>(null)
+  const childRunIdsRef = useRef<Map<string, Promise<Id<'agentRuns'>>>>(new Map())
+  const activeChildRunIdsRef = useRef<Map<string, Promise<Id<'agentRuns'>>>>(new Map())
+  const childRunSequencesRef = useRef<Map<string, number>>(new Map())
+  const terminalChildRunIdsRef = useRef<Set<string>>(new Set())
 
   // Spec management hook
   const {
@@ -762,8 +769,22 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       // trailing abort-unwind events can still be buffered and persisted.
       void flushRunEventBuffer({ force: true, reason: 'stop' })
     }
+    const activeChildRuns = [...activeChildRunIdsRef.current.entries()]
+    for (const [subagentId, childRunPromise] of activeChildRuns) {
+      void childRunPromise
+        .then(async (childRunId) => {
+          const terminalKey = String(childRunId)
+          if (terminalChildRunIdsRef.current.has(terminalKey)) return
+          terminalChildRunIdsRef.current.add(terminalKey)
+          activeChildRunIdsRef.current.delete(subagentId)
+          await stopRun({ runId: childRunId, terminationReason: { kind: 'user-abort' } })
+        })
+        .catch((childStopError) => {
+          logUseAgentError('Failed to stop active subagent child run', childStopError)
+        })
+    }
     setStatus('idle')
-  }, [flushRunEventBuffer, pendingSpec, runIdRef, setCurrentSpec, setPendingSpec])
+  }, [flushRunEventBuffer, pendingSpec, runIdRef, setCurrentSpec, setPendingSpec, stopRun])
 
   // Clear messages
   const clear = useCallback(async () => {
@@ -952,6 +973,88 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           },
         })
 
+      const ensureChildRun = (
+        summary: NonNullable<import('../lib/agent/runtime').AgentEvent['subagentSummary']>
+      ) => {
+        const existing = childRunIdsRef.current.get(summary.subagentId)
+        if (existing) return existing
+        const parentRunId = runIdRef.current
+        if (!parentRunId) {
+          return Promise.reject(new Error('Cannot persist subagent child run without a parent run'))
+        }
+        const childRunPromise = createChildRun({
+          parentRunId,
+          parentSubagentId: summary.parentSubagentId,
+          subagentName: summary.name,
+          delegatedTaskSummary: summary.delegatedTaskSummary,
+          contextMode: 'fresh',
+          isolationMode: 'shared-readonly',
+          provider: provider?.config?.provider,
+          model,
+          outputMode: 'inline',
+        })
+        childRunIdsRef.current.set(summary.subagentId, childRunPromise)
+        activeChildRunIdsRef.current.set(summary.subagentId, childRunPromise)
+        return childRunPromise
+      }
+
+      const persistSubagentSummary = async (
+        summary: NonNullable<import('../lib/agent/runtime').AgentEvent['subagentSummary']>
+      ) => {
+        try {
+          const childRunId = await ensureChildRun(summary)
+          const terminalKey = String(childRunId)
+          if (terminalChildRunIdsRef.current.has(terminalKey)) return
+
+          const previousSequence = childRunSequencesRef.current.get(summary.subagentId) ?? 0
+          const nextSequence = previousSequence + 1
+          childRunSequencesRef.current.set(summary.subagentId, nextSequence)
+          await appendRunEvents({
+            runId: childRunId,
+            events: [
+              {
+                sequence: nextSequence,
+                type: 'subagent_summary',
+                content:
+                  summary.outputSummary ??
+                  `Subagent ${summary.status}: ${summary.name}`,
+                status: summary.status,
+                progressCategory: 'analysis',
+                progressToolName: 'task',
+                toolCallId: summary.subagentId,
+                durationMs: summary.durationMs,
+                error: summary.risks?.[0],
+                subagentSummary: summary,
+              },
+            ],
+          })
+
+          const artifactCount =
+            (summary.filesTouched?.length ?? 0) + (summary.patchProposals?.length ?? 0)
+          if (summary.status === 'completed') {
+            terminalChildRunIdsRef.current.add(terminalKey)
+            activeChildRunIdsRef.current.delete(summary.subagentId)
+            await completeRun({
+              runId: childRunId,
+              summary: summary.outputSummary ?? summary.delegatedTaskSummary,
+            })
+            return
+          }
+          if (summary.status === 'failed') {
+            terminalChildRunIdsRef.current.add(terminalKey)
+            activeChildRunIdsRef.current.delete(summary.subagentId)
+            await failRun({
+              runId: childRunId,
+              error: summary.risks?.[0] ?? 'Subagent failed',
+            })
+            return
+          }
+          await touchRunActivity({ runId: childRunId, artifactCount })
+        } catch (subagentPersistenceError) {
+          logUseAgentError('Failed to persist subagent child run', subagentPersistenceError)
+        }
+      }
+
       const promptHistoryMessages = getPromptHistoryMessages?.() ?? messages
       const unresolvedHandoffPreflight = resolveModeHandoff({
         targetMode: resolvedMode,
@@ -1091,6 +1194,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           appendRunEvent: appendObservedRunEvent,
         })
         runStartedAt = Date.now()
+        childRunIdsRef.current = new Map()
+        activeChildRunIdsRef.current = new Map()
+        childRunSequencesRef.current = new Map()
+        terminalChildRunIdsRef.current = new Set()
         let terminalAgentStatus: 'complete' | 'error' | null = null
         const runLifecycle = createRunLifecycle({
           runIdRef,
@@ -1251,6 +1358,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             model,
             maxIterations: runtimeConfig.maxIterations,
             harnessCheckpointStore: checkpointStore,
+            harnessCustomSubagents: customSubagents,
             // Enable risk interrupts - PermissionDialog handles the UI
             harnessEnableRiskInterrupts: true,
             harnessYoloMode: automationPolicy?.yoloCommandMode ?? false,
@@ -1409,6 +1517,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                 content,
               }),
             appendRunEvent: appendObservedRunEvent,
+            onSubagentSummary: persistSubagentSummary,
             createSpec: createSpecMutation,
             attachVerification,
             updateSpec: updateSpecMutation,
@@ -1692,6 +1801,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               temperature: index === 0 ? 0.2 : 0.8,
               harnessEnableRiskInterrupts: true,
               harnessYoloMode: automationPolicy?.yoloCommandMode ?? false,
+              harnessCustomSubagents: customSubagents,
               harnessSessionPermissions: automationPolicy
                 ? buildHarnessSessionPermissions(automationPolicy)
                 : undefined,
@@ -1805,6 +1915,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           maxIterations: 10,
           harnessEvalMode: scenario.evalMode ?? 'read_only',
           harnessYoloMode: automationPolicy?.yoloCommandMode ?? false,
+          harnessCustomSubagents: customSubagents,
           harnessSessionPermissions: automationPolicy
             ? buildHarnessSessionPermissions(automationPolicy)
             : undefined,

@@ -97,6 +97,17 @@ export const HarnessSubagentStatus = v.union(
   v.literal('stopped')
 )
 
+export const AgentRunKind = v.union(v.literal('primary'), v.literal('subagent'))
+
+export const SubagentContextMode = v.union(v.literal('fresh'), v.literal('fork'))
+
+export const SubagentIsolationMode = v.union(
+  v.literal('shared-readonly'),
+  v.literal('snapshot'),
+  v.literal('worktree'),
+  v.literal('patch-proposal')
+)
+
 export const HarnessSubagentSummary = v.object({
   version: v.literal(1),
   subagentId: v.string(),
@@ -1103,12 +1114,27 @@ export default defineSchema({
     terminationReason: v.optional(TerminationReason),
     usage: v.optional(TokenUsage),
     receipt: v.optional(ExecutionReceipt),
+    runKind: v.optional(AgentRunKind),
+    parentRunId: v.optional(v.id('agentRuns')),
+    parentSubagentId: v.optional(v.string()),
+    rootRunId: v.optional(v.id('agentRuns')),
+    subagentName: v.optional(v.string()),
+    subagentDepth: v.optional(v.number()),
+    contextMode: v.optional(SubagentContextMode),
+    isolationMode: v.optional(SubagentIsolationMode),
+    delegatedTaskSummary: v.optional(v.string()),
+    outputMode: v.optional(v.union(v.literal('inline'), v.literal('file-only'))),
+    artifactCount: v.optional(v.number()),
+    lastActivityAt: v.optional(v.number()),
     startedAt: v.number(),
     completedAt: v.optional(v.number()),
   })
     .index('by_chat_started', ['chatId', 'startedAt'])
     .index('by_project_started', ['projectId', 'startedAt'])
-    .index('by_user_started', ['userId', 'startedAt']),
+    .index('by_user_started', ['userId', 'startedAt'])
+    .index('by_parent_started', ['parentRunId', 'startedAt'])
+    .index('by_root_started', ['rootRunId', 'startedAt'])
+    .index('by_project_kind_started', ['projectId', 'runKind', 'startedAt']),
 
   // 11. AgentRunEvents table - persisted timeline events for each run
   agentRunEvents: defineTable({

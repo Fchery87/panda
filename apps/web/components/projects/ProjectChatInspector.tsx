@@ -9,7 +9,7 @@ import { EvalPanel } from '@/components/chat/EvalPanel'
 import { MemoryBankEditor } from '@/components/chat/MemoryBankEditor'
 import { RunProgressPanel } from '@/components/chat/RunProgressPanel'
 import { SnapshotTimeline } from '@/components/chat/SnapshotTimeline'
-import { SubagentPanel } from '@/components/chat/SubagentPanel'
+import { SubagentPanel, type PersistedSubagentRunRow } from '@/components/chat/SubagentPanel'
 import type {
   LatestRunReceiptInfo,
   PersistedRunEventSummaryInfo,
@@ -40,6 +40,32 @@ type PlanningSessionView = {
 
 export type InspectorTab = 'run' | 'context' | 'plan' | 'artifacts' | 'memory' | 'evals'
 export type ReviewTab = InspectorTab
+
+type InspectorChildRunSummary = {
+  _id: Id<'agentRuns'> | string
+  subagentName?: string
+  status: 'running' | 'completed' | 'failed' | 'stopped'
+  delegatedTaskSummary?: string
+  summary?: string
+  userMessage?: string
+  error?: string
+  startedAt: number
+  completedAt?: number
+  lastActivityAt?: number
+  artifactCount?: number
+  errorCategory?: 'registry' | 'policy' | 'isolation' | 'runtime' | 'persistence' | 'unknown'
+  patchProposals?: Array<{
+    kind: 'patch-proposal'
+    title: string
+    summary?: string
+    files: string[]
+    patch?: string
+  }>
+}
+
+type InspectorRunTree = {
+  children: InspectorChildRunSummary[]
+}
 
 type SnapshotEvent = {
   _id?: string
@@ -172,6 +198,18 @@ function WalkthroughSummary({
   )
 }
 
+function formatRelativeRunTime(timestamp?: number): string | undefined {
+  if (!timestamp) return undefined
+  const diff = Math.max(0, Date.now() - timestamp)
+  const minutes = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+  if (days > 0) return `${days}d`
+  if (hours > 0) return `${hours}h`
+  if (minutes > 0) return `${minutes}m`
+  return 'now'
+}
+
 function getLatestSnapshotSummary(events: InspectorRunContentProps['snapshotEvents']) {
   const snapshots = events.filter((event) => event.snapshot?.hash)
   return snapshots.at(-1) ?? null
@@ -201,7 +239,30 @@ export function InspectorRunContent({
   const hasSpec = Boolean(currentSpec)
   const hasSnapshots = snapshotEvents.length > 0
   const latestSnapshot = getLatestSnapshotSummary(snapshotEvents)
-  const hasSubagents = subagentToolCalls.length > 0
+  const runTree = useQuery(
+    api.agentRuns.listRunTree,
+    latestRunReceipt?.runId
+      ? { runId: latestRunReceipt.runId as Id<'agentRuns'>, childLimit: 40 }
+      : 'skip'
+  ) as InspectorRunTree | undefined
+  const persistedSubagents: PersistedSubagentRunRow[] = (runTree?.children ?? []).map((child) => {
+    const startedAt = child.startedAt
+    const completedAt = child.completedAt
+    return {
+      id: String(child._id),
+      name: child.subagentName ?? 'subagent',
+      status: child.status,
+      summary: child.delegatedTaskSummary ?? child.summary ?? child.userMessage ?? 'Delegated task',
+      lastActivity: formatRelativeRunTime(child.lastActivityAt ?? completedAt ?? startedAt),
+      durationMs: completedAt ? completedAt - startedAt : undefined,
+      error: child.error,
+      artifactCount: child.artifactCount,
+      patchProposalCount: child.patchProposals?.length,
+      patchProposals: child.patchProposals,
+      errorCategory: child.errorCategory,
+    }
+  })
+  const hasSubagents = subagentToolCalls.length > 0 || persistedSubagents.length > 0
 
   return (
     <div className="m-0 space-y-3">
@@ -306,7 +367,12 @@ export function InspectorRunContent({
             )}
           </div>
           {hasSnapshots ? <SnapshotTimeline events={snapshotEvents} /> : null}
-          {hasSubagents ? <SubagentPanel toolCalls={subagentToolCalls} /> : null}
+          {hasSubagents ? (
+            <SubagentPanel
+              toolCalls={subagentToolCalls}
+              persistedSubagents={persistedSubagents}
+            />
+          ) : null}
           {!hasSnapshots && !hasSubagents ? (
             <p className="font-mono text-xs text-muted-foreground">
               Delegated subagent activity will appear here when it is available.

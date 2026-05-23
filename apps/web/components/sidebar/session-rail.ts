@@ -14,15 +14,32 @@ export interface RecentRunSummary {
   resultStatus?: 'complete' | 'error' | 'aborted' | 'approval_timeout'
   startedAt: number
   completedAt?: number
+  runKind?: 'primary' | 'subagent'
+  parentRunId?: Id<'agentRuns'> | string
+  rootRunId?: Id<'agentRuns'> | string
+  subagentName?: string
+  delegatedTaskSummary?: string
+  lastActivityAt?: number
+  artifactCount?: number
 }
 
 export interface SessionRailTask {
   id: string
   chatId: string
   title: string
-  status: 'running' | 'waiting' | 'review' | 'failed' | 'complete'
+  status: 'running' | 'waiting' | 'review' | 'failed' | 'complete' | 'stopped'
   lastActivity: string
   changedFiles: number
+  subagents?: SessionRailSubagent[]
+}
+
+export interface SessionRailSubagent {
+  id: string
+  name: string
+  status: 'running' | 'failed' | 'complete' | 'stopped'
+  summary: string
+  lastActivity: string
+  artifactCount?: number
 }
 
 export interface SessionRailSummary {
@@ -52,9 +69,17 @@ function formatRelativeTime(timestamp: number, now: number): string {
 
 function runState(run: RecentRunSummary): SessionRailTask['status'] {
   if (run.status === 'running') return 'running'
+  if (run.status === 'stopped') return 'stopped'
   if (run.status === 'failed' || run.resultStatus === 'error') return 'failed'
   if (run.resultStatus === 'approval_timeout') return 'waiting'
   if (run.changedFiles > 0) return 'review'
+  return 'complete'
+}
+
+function subagentState(run: RecentRunSummary): SessionRailSubagent['status'] {
+  if (run.status === 'running') return 'running'
+  if (run.status === 'failed') return 'failed'
+  if (run.status === 'stopped') return 'stopped'
   return 'complete'
 }
 
@@ -87,7 +112,18 @@ export function buildSessionRailSummary(args: {
   now?: number
 }): SessionRailSummary {
   const now = args.now ?? Date.now()
-  const tasks = (args.runs ?? []).slice(0, 8).map<SessionRailTask>((run) => {
+  const runs = args.runs ?? []
+  const childRunsByParent = new Map<string, RecentRunSummary[]>()
+  for (const run of runs) {
+    if (run.runKind !== 'subagent' || !run.parentRunId) continue
+    const parentKey = String(run.parentRunId)
+    const children = childRunsByParent.get(parentKey) ?? []
+    children.push(run)
+    childRunsByParent.set(parentKey, children)
+  }
+
+  const primaryRuns = runs.filter((run) => run.runKind !== 'subagent').slice(0, 8)
+  const tasks = primaryRuns.map<SessionRailTask>((run) => {
     const isActiveChat = args.activeChatId
       ? String(run.chatId) === String(args.activeChatId)
       : false
@@ -95,6 +131,16 @@ export function buildSessionRailSummary(args: {
     const changedFiles = isActiveChat
       ? Math.max(run.changedFiles, args.pendingChangedFilesCount ?? 0)
       : run.changedFiles
+    const subagents = (childRunsByParent.get(String(run._id)) ?? []).map<SessionRailSubagent>(
+      (child) => ({
+        id: String(child._id),
+        name: child.subagentName ?? 'subagent',
+        status: subagentState(child),
+        summary: child.delegatedTaskSummary ?? child.summary ?? child.userMessage ?? 'Delegated task',
+        lastActivity: formatRelativeTime(child.lastActivityAt ?? child.completedAt ?? child.startedAt, now),
+        artifactCount: child.artifactCount,
+      })
+    )
 
     return {
       id: String(run._id),
@@ -105,8 +151,9 @@ export function buildSessionRailSummary(args: {
         run.userMessage ??
         'Agent run',
       status,
-      lastActivity: formatRelativeTime(run.completedAt ?? run.startedAt, now),
+      lastActivity: formatRelativeTime(run.lastActivityAt ?? run.completedAt ?? run.startedAt, now),
       changedFiles,
+      subagents,
     }
   })
 

@@ -1,10 +1,13 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import {
+  AgentRunKind,
   ChatMode,
   ExecutionReceipt,
   PersistedRunEvent,
   RuntimeCheckpointPayload,
+  SubagentContextMode,
+  SubagentIsolationMode,
   TerminationReason,
   TokenUsage,
 } from './schema'
@@ -120,6 +123,12 @@ function toRuntimeCheckpointSummary(checkpoint: Doc<'harnessRuntimeCheckpoints'>
   }
 }
 
+const MAX_RUN_TREE_CHILD_LIMIT = 500
+const MAX_RUN_EVENT_APPEND_BATCH = 100
+const MAX_RETENTION_DELETE_BATCH = 500
+const DEFAULT_CHILD_RUN_EVENT_RETENTION = 200
+const DEFAULT_CHECKPOINT_RETENTION = 20
+
 function toProjectRunSummary(run: Doc<'agentRuns'>) {
   const changedFiles = run.receipt?.webcontainer.filesWritten.length ?? 0
   const commandCount = run.receipt?.webcontainer.commandsRun.length ?? 0
@@ -129,6 +138,16 @@ function toProjectRunSummary(run: Doc<'agentRuns'>) {
     _id: run._id,
     chatId: run.chatId,
     mode: run.mode,
+    runKind: run.runKind ?? 'primary',
+    parentRunId: run.parentRunId,
+    rootRunId: run.rootRunId,
+    subagentName: run.subagentName,
+    subagentDepth: run.subagentDepth,
+    contextMode: run.contextMode,
+    isolationMode: run.isolationMode,
+    delegatedTaskSummary: previewText(run.delegatedTaskSummary),
+    lastActivityAt: run.lastActivityAt,
+    artifactCount: run.artifactCount,
     status: run.status,
     userMessage: previewText(run.userMessage),
     summary: previewText(run.summary),
@@ -165,6 +184,7 @@ export const create = mutation({
       chatId: args.chatId,
       userId,
       mode: args.mode,
+      runKind: 'primary',
       provider: args.provider,
       model: args.model,
       userMessage: args.userMessage,
@@ -180,6 +200,62 @@ export const create = mutation({
   },
 })
 
+export const createChild = mutation({
+  args: {
+    parentRunId: v.id('agentRuns'),
+    parentSubagentId: v.optional(v.string()),
+    subagentName: v.string(),
+    delegatedTaskSummary: v.string(),
+    contextMode: v.optional(SubagentContextMode),
+    isolationMode: v.optional(SubagentIsolationMode),
+    provider: v.optional(v.string()),
+    model: v.optional(v.string()),
+    outputMode: v.optional(v.union(v.literal('inline'), v.literal('file-only'))),
+  },
+  handler: async (ctx, args) => {
+    const { run: parentRun, userId } = await requireAgentRunOwner(ctx, args.parentRunId)
+    const startedAt = Date.now()
+    return await ctx.db.insert('agentRuns', {
+      projectId: parentRun.projectId,
+      chatId: parentRun.chatId,
+      userId,
+      mode: parentRun.mode,
+      provider: args.provider ?? parentRun.provider,
+      model: args.model ?? parentRun.model,
+      status: 'running',
+      userMessage: args.delegatedTaskSummary,
+      runKind: 'subagent',
+      parentRunId: args.parentRunId,
+      parentSubagentId: args.parentSubagentId,
+      rootRunId: parentRun.rootRunId ?? parentRun._id,
+      subagentName: args.subagentName,
+      subagentDepth: (parentRun.subagentDepth ?? 0) + 1,
+      contextMode: args.contextMode ?? 'fresh',
+      isolationMode: args.isolationMode ?? 'shared-readonly',
+      delegatedTaskSummary: previewText(args.delegatedTaskSummary),
+      outputMode: args.outputMode ?? 'inline',
+      artifactCount: 0,
+      lastActivityAt: startedAt,
+      startedAt,
+    })
+  },
+})
+
+export const touchActivity = mutation({
+  args: {
+    runId: v.id('agentRuns'),
+    artifactCount: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await requireAgentRunOwner(ctx, args.runId)
+    await ctx.db.patch(args.runId, {
+      lastActivityAt: Date.now(),
+      ...(args.artifactCount !== undefined ? { artifactCount: args.artifactCount } : {}),
+    })
+    return args.runId
+  },
+})
+
 export const appendEvents = mutation({
   args: {
     runId: v.id('agentRuns'),
@@ -187,6 +263,9 @@ export const appendEvents = mutation({
   },
   handler: async (ctx, args) => {
     const { run } = await requireAgentRunOwner(ctx, args.runId)
+    if (args.events.length > MAX_RUN_EVENT_APPEND_BATCH) {
+      throw new Error(`Cannot append more than ${MAX_RUN_EVENT_APPEND_BATCH} run events at once`)
+    }
 
     const normalizedEvents = [...args.events].sort((a, b) => a.sequence - b.sequence)
     const createdAt = Date.now()
@@ -224,6 +303,48 @@ export const appendEvents = mutation({
   },
 })
 
+export const pruneRunRetention = mutation({
+  args: {
+    runId: v.id('agentRuns'),
+    keepEvents: v.optional(v.number()),
+    keepCheckpoints: v.optional(v.number()),
+    deleteBatchSize: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await requireAgentRunOwner(ctx, args.runId)
+    const keepEvents = Math.max(0, Math.min(args.keepEvents ?? DEFAULT_CHILD_RUN_EVENT_RETENTION, 1000))
+    const keepCheckpoints = Math.max(0, Math.min(args.keepCheckpoints ?? DEFAULT_CHECKPOINT_RETENTION, 200))
+    const deleteBatchSize = Math.max(1, Math.min(args.deleteBatchSize ?? MAX_RETENTION_DELETE_BATCH, MAX_RETENTION_DELETE_BATCH))
+
+    const events = await ctx.db
+      .query('agentRunEvents')
+      .withIndex('by_run_sequence', (q) => q.eq('runId', args.runId))
+      .order('desc')
+      .take(keepEvents + deleteBatchSize)
+    const eventIdsToDelete = events.slice(keepEvents).map((event) => event._id)
+    for (const eventId of eventIdsToDelete) {
+      await ctx.db.delete(eventId)
+    }
+
+    const checkpoints = await ctx.db
+      .query('harnessRuntimeCheckpoints')
+      .withIndex('by_run_saved', (q) => q.eq('runId', args.runId))
+      .order('desc')
+      .take(keepCheckpoints + deleteBatchSize)
+    const checkpointIdsToDelete = checkpoints.slice(keepCheckpoints).map((checkpoint) => checkpoint._id)
+    for (const checkpointId of checkpointIdsToDelete) {
+      await ctx.db.delete(checkpointId)
+    }
+
+    return {
+      deletedEvents: eventIdsToDelete.length,
+      deletedCheckpoints: checkpointIdsToDelete.length,
+      hasMore:
+        eventIdsToDelete.length === deleteBatchSize || checkpointIdsToDelete.length === deleteBatchSize,
+    }
+  },
+})
+
 export const complete = mutation({
   args: {
     runId: v.id('agentRuns'),
@@ -241,6 +362,7 @@ export const complete = mutation({
       summary: args.summary,
       usage: args.usage,
       receipt: args.receipt,
+      lastActivityAt: completedAt,
       completedAt,
     })
 
@@ -263,12 +385,14 @@ export const fail = mutation({
     const { run } = await requireAgentRunOwner(ctx, args.runId)
     assertAgentRunTransition(run.status, 'failed')
 
+    const completedAt = Date.now()
     await ctx.db.patch(args.runId, {
       status: 'failed',
       error: args.error,
       receipt: args.receipt,
       terminationReason: args.terminationReason,
-      completedAt: Date.now(),
+      lastActivityAt: completedAt,
+      completedAt,
     })
 
     return args.runId
@@ -285,11 +409,13 @@ export const stop = mutation({
     const { run } = await requireAgentRunOwner(ctx, args.runId)
     assertAgentRunTransition(run.status, 'stopped')
 
+    const completedAt = Date.now()
     await ctx.db.patch(args.runId, {
       status: 'stopped',
       receipt: args.receipt,
       terminationReason: args.terminationReason,
-      completedAt: Date.now(),
+      lastActivityAt: completedAt,
+      completedAt,
     })
 
     return args.runId
@@ -343,13 +469,39 @@ export const listRecentByProject = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { project } = await requireProjectOwner(ctx, args.projectId)
+    await requireProjectOwner(ctx, args.projectId)
     const limit = Math.max(1, Math.min(args.limit ?? 5, 50))
     return await ctx.db
       .query('agentRuns')
       .withIndex('by_project_started', (q) => q.eq('projectId', args.projectId))
       .order('desc')
       .take(limit)
+  },
+})
+
+export const listRunTree = query({
+  args: {
+    runId: v.id('agentRuns'),
+    childLimit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const { run } = await requireAgentRunOwner(ctx, args.runId)
+    const rootRunId = run.runKind === 'subagent' && run.rootRunId ? run.rootRunId : run._id
+    const rootRun = rootRunId === run._id ? run : await ctx.db.get(rootRunId)
+    if (!rootRun) {
+      throw new Error('Root run not found')
+    }
+    const childLimit = Math.max(1, Math.min(args.childLimit ?? 100, MAX_RUN_TREE_CHILD_LIMIT))
+    const children = await ctx.db
+      .query('agentRuns')
+      .withIndex('by_root_started', (q) => q.eq('rootRunId', rootRunId))
+      .order('asc')
+      .take(childLimit)
+
+    return {
+      root: toProjectRunSummary(rootRun),
+      children: children.map(toProjectRunSummary),
+    }
   },
 })
 

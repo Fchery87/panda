@@ -3,11 +3,43 @@
 import { useState } from 'react'
 import { Bot, ChevronDown, ChevronRight, Clock as Clock3 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { deriveSubagentEntries } from './run-insights'
+import { deriveSubagentEntries, type SubagentEntry } from './run-insights'
 import type { ToolCallInfo } from './types'
+
+export interface PersistedPatchProposalPreview {
+  kind: 'patch-proposal'
+  title: string
+  summary?: string
+  files: string[]
+  patch?: string
+}
+
+export interface PersistedSubagentRunRow {
+  id: string
+  name: string
+  status: 'running' | 'completed' | 'failed' | 'stopped'
+  summary: string
+  lastActivity?: string
+  durationMs?: number
+  error?: string
+  artifactCount?: number
+  patchProposalCount?: number
+  patchProposals?: PersistedPatchProposalPreview[]
+  errorCategory?: 'registry' | 'policy' | 'isolation' | 'runtime' | 'persistence' | 'unknown'
+}
 
 interface SubagentPanelProps {
   toolCalls?: ToolCallInfo[]
+  persistedSubagents?: PersistedSubagentRunRow[]
+}
+
+type PanelSubagentEntry = SubagentEntry & {
+  source?: 'live' | 'persisted'
+  lastActivity?: string
+  artifactCount?: number
+  patchProposalCount?: number
+  patchProposals?: PersistedPatchProposalPreview[]
+  errorCategory?: 'registry' | 'policy' | 'isolation' | 'runtime' | 'persistence' | 'unknown'
 }
 
 function statusColor(status: string): string {
@@ -17,14 +49,37 @@ function statusColor(status: string): string {
     case 'running':
       return 'bg-primary animate-pulse'
     case 'error':
+    case 'failed':
       return 'bg-[oklch(var(--status-error))]'
+    case 'stopped':
+      return 'bg-muted-foreground'
     default:
       return 'bg-muted-foreground/50'
   }
 }
 
-export function SubagentPanel({ toolCalls = [] }: SubagentPanelProps) {
-  const entries = deriveSubagentEntries(toolCalls)
+export function SubagentPanel({ toolCalls = [], persistedSubagents = [] }: SubagentPanelProps) {
+  const liveEntries = deriveSubagentEntries(toolCalls)
+  const persistedEntries: PanelSubagentEntry[] = persistedSubagents.map((run) => ({
+    id: run.id,
+    agent: run.name,
+    status: run.status === 'failed' ? 'error' : run.status,
+    prompt: run.summary,
+    output: run.status === 'completed' ? run.summary : undefined,
+    error: run.error,
+    durationMs: run.durationMs,
+    artifactCount: run.artifactCount,
+    patchProposalCount: run.patchProposalCount ?? run.patchProposals?.length,
+    patchProposals: run.patchProposals,
+    errorCategory: run.errorCategory,
+    lastActivity: run.lastActivity,
+    source: 'persisted' as const,
+  }))
+  const liveIds = new Set(liveEntries.map((entry) => entry.id))
+  const entries: PanelSubagentEntry[] = [
+    ...persistedEntries.filter((entry) => !liveIds.has(entry.id)),
+    ...liveEntries.map((entry): PanelSubagentEntry => ({ ...entry, source: 'live' as const })),
+  ]
 
   if (entries.length === 0) return null
 
@@ -45,9 +100,10 @@ export function SubagentPanel({ toolCalls = [] }: SubagentPanelProps) {
   )
 }
 
-function SubagentLane({ entry }: { entry: ReturnType<typeof deriveSubagentEntries>[number] }) {
-  const [expanded, setExpanded] = useState(false)
-  const hasDetail = Boolean(entry.output || entry.error)
+function SubagentLane({ entry }: { entry: PanelSubagentEntry }) {
+  const hasPatchProposals = Boolean(entry.patchProposals?.length)
+  const [expanded, setExpanded] = useState(hasPatchProposals)
+  const hasDetail = Boolean(entry.output || entry.error || hasPatchProposals)
   const durationSec =
     typeof entry.durationMs === 'number' ? Math.max(1, Math.round(entry.durationMs / 1000)) : null
 
@@ -78,6 +134,11 @@ function SubagentLane({ entry }: { entry: ReturnType<typeof deriveSubagentEntrie
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 font-mono text-xs">
           <span className="min-w-0 flex-1 truncate text-foreground">{entry.agent}</span>
+          {'source' in entry && entry.source === 'persisted' ? (
+            <span className="shrink-0 rounded-none bg-surface-2 px-1 font-mono text-[10px] text-muted-foreground">
+              persisted
+            </span>
+          ) : null}
           {durationSec !== null ? (
             <span className="flex shrink-0 items-center gap-0.5 font-mono text-[10px] text-muted-foreground">
               <Clock3 className="h-2.5 w-2.5" />
@@ -95,6 +156,18 @@ function SubagentLane({ entry }: { entry: ReturnType<typeof deriveSubagentEntrie
         <p className="mt-0.5 line-clamp-1 font-mono text-[11px] text-muted-foreground">
           {entry.prompt}
         </p>
+        {'lastActivity' in entry && entry.lastActivity ? (
+          <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+            active {entry.lastActivity}
+            {'artifactCount' in entry && entry.artifactCount ? ` · ${entry.artifactCount} artifacts` : ''}
+            {'patchProposalCount' in entry && entry.patchProposalCount ? ` · ${entry.patchProposalCount} patch proposals` : ''}
+          </p>
+        ) : null}
+        {entry.errorCategory ? (
+          <p className="mt-0.5 font-mono text-[10px] text-destructive">
+            Failure category: {entry.errorCategory}
+          </p>
+        ) : null}
         {expanded && hasDetail ? (
           <div className="mt-1.5 space-y-1 border-t border-border pt-1.5">
             {entry.output ? (
@@ -106,6 +179,35 @@ function SubagentLane({ entry }: { entry: ReturnType<typeof deriveSubagentEntrie
               <p className="font-mono text-xs text-destructive [overflow-wrap:anywhere]">
                 {entry.error}
               </p>
+            ) : null}
+            {entry.patchProposals?.length ? (
+              <div className="space-y-1.5">
+                <div className="border border-warning/40 bg-warning/5 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+                  Patch proposal — parent review required. Preview only; not applied automatically.
+                </div>
+                {entry.patchProposals.map((proposal) => (
+                  <div key={`${proposal.title}-${proposal.files.join(',')}`} className="border border-border bg-background/80 p-2">
+                    <div className="font-mono text-[11px] font-medium text-foreground">
+                      {proposal.title}
+                    </div>
+                    {proposal.summary ? (
+                      <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+                        {proposal.summary}
+                      </p>
+                    ) : null}
+                    {proposal.files.length > 0 ? (
+                      <p className="mt-1 line-clamp-2 font-mono text-[10px] text-muted-foreground">
+                        Files: {proposal.files.join(', ')}
+                      </p>
+                    ) : null}
+                    {proposal.patch ? (
+                      <pre className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap border border-border bg-surface-2 p-2 font-mono text-[10px] text-muted-foreground">
+                        {proposal.patch.slice(0, 1200)}
+                      </pre>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
             ) : null}
           </div>
         ) : null}

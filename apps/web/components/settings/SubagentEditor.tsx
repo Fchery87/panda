@@ -8,41 +8,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { Plus, Trash2, Bot } from 'lucide-react'
+import { permissionForPreset } from '@/lib/agent/subagents/presets'
 
 interface SubagentEditorProps {
   className?: string
 }
 
 type SubagentId = Id<'subagents'>
-
-const PRESET_PERMISSIONS = {
-  readOnly: {
-    tools: {
-      read: 'allow',
-      glob: 'allow',
-      grep: 'allow',
-      list: 'allow',
-      edit: 'deny',
-      write: 'deny',
-      bash: 'deny',
-    },
-  },
-  standard: {
-    tools: {
-      read: 'allow',
-      glob: 'allow',
-      grep: 'allow',
-      list: 'allow',
-      edit: 'ask',
-      write: 'ask',
-      bash: 'ask',
-    },
-  },
-  full: {
-    tools: { '*': 'allow' },
-    bash: { '*': 'allow' },
-  },
-}
 
 export function SubagentEditor({ className }: SubagentEditorProps) {
   const subagents = useQuery(api.subagents.list)
@@ -60,11 +32,9 @@ export function SubagentEditor({ className }: SubagentEditorProps) {
     skillAutoMatchingEnabled: true,
   })
 
-  const getPermissionsForCapability = (preset: typeof newAgent.capabilityPreset) => {
-    if (preset === 'research') return PRESET_PERMISSIONS.readOnly
-    if (preset === 'builder') return PRESET_PERMISSIONS.full
-    return PRESET_PERMISSIONS.standard
-  }
+  const getPermissionsForCapability = (preset: typeof newAgent.capabilityPreset) => ({
+    tools: permissionForPreset(preset),
+  })
 
   const handleAdd = async () => {
     if (!newAgent.name.trim() || !newAgent.description.trim()) return
@@ -275,7 +245,7 @@ export function SubagentEditor({ className }: SubagentEditorProps) {
           <Bot className="text-muted-foreground/50 mx-auto mb-2 h-8 w-8" />
           <p className="font-mono text-xs text-muted-foreground">No custom subagents yet</p>
           <p className="text-muted-foreground/60 mt-1 font-mono text-xs">
-            Built-in agents: @explore, @general, @review
+            Built-in agents: @scout, @planner, @worker, @reviewer, @oracle
           </p>
         </div>
       )}

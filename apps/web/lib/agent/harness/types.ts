@@ -74,6 +74,11 @@ export interface ToolInterruptResult {
 export type FinishReason = 'stop' | 'length' | 'tool-calls' | 'error' | 'content-filter' | 'unknown'
 
 /**
+ * Subagent isolation strategies.
+ */
+export type SubagentIsolationMode = 'shared-readonly' | 'snapshot' | 'worktree' | 'patch-proposal'
+
+/**
  * Agent configuration
  */
 export interface AgentConfig {
@@ -99,6 +104,10 @@ export interface AgentConfig {
    * inheriting parent capabilities beyond their declared scope.
    */
   maxCapabilities?: Capability[]
+  /** Whether delegated children start fresh or receive a filtered parent context fork. */
+  defaultContextMode?: 'fresh' | 'fork'
+  /** Preferred isolation strategy when this agent is delegated as a child. */
+  defaultIsolationMode?: SubagentIsolationMode
 }
 
 /**
@@ -412,6 +421,21 @@ export interface HarnessPermissionAuditEntry {
 
 export type HarnessSubagentStatus = 'running' | 'completed' | 'failed' | 'stopped'
 export type HarnessSubagentCapabilityPreset = 'research' | 'assistant' | 'builder' | 'restricted'
+export type HarnessSubagentErrorCategory =
+  | 'registry'
+  | 'policy'
+  | 'isolation'
+  | 'runtime'
+  | 'persistence'
+  | 'unknown'
+
+export interface HarnessPatchProposalArtifact {
+  kind: 'patch-proposal'
+  title: string
+  summary?: string
+  files: string[]
+  patch?: string
+}
 
 export interface HarnessSubagentSummary {
   version: 1
@@ -431,6 +455,9 @@ export interface HarnessSubagentSummary {
   testsRun?: string[]
   risks?: string[]
   subagentChain: string[]
+  isolationMode?: SubagentIsolationMode
+  patchProposals?: HarnessPatchProposalArtifact[]
+  errorCategory?: HarnessSubagentErrorCategory
 }
 
 export interface RuntimeHarnessPolicySnapshot {
@@ -457,6 +484,14 @@ export interface RuntimeConfig {
   enableReasoning?: boolean
   maxSubagentDepth?: number
   subagentDepth?: number
+  /** Maximum read-only subagents that may execute concurrently in one task batch. */
+  maxConcurrentSubagents?: number
+  /** Maximum mutating subagents that may execute concurrently. Defaults to 1 until isolation lands. */
+  maxConcurrentMutatingSubagents?: number
+  /** Default isolation mode used for delegated children when the agent has no preference. */
+  defaultSubagentIsolationMode?: SubagentIsolationMode
+  /** Isolation strategies available in this runtime environment. */
+  availableSubagentIsolationModes?: SubagentIsolationMode[]
   checkpointStore?: CheckpointStore
   toolRiskPolicy?: Partial<Record<ToolRiskTier, PermissionDecision>>
   toolRiskOverrides?: Record<string, ToolRiskTier>

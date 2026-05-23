@@ -40,6 +40,7 @@ import type { FormalSpecification, SpecTier } from './spec/types'
 import { mapToolCallToProgressStep, mapToolResultToProgressStep } from './runtime-progress'
 import { shouldTriggerRewrite } from './runtime/rewrite-guardrails'
 import type { TerminationReason } from './harness/errors'
+import { resolveSubagentRegistry, type CustomSubagentRecord } from './subagents'
 
 const isE2ESpecApprovalModeEnabled = process.env.NEXT_PUBLIC_E2E_AGENT_MODE === 'spec-approval'
 
@@ -58,6 +59,8 @@ export interface RuntimeOptions {
   harnessSessionPermissions?: HarnessPermission
   harnessAdminRules?: PermissionRule[]
   harnessPermissionAudit?: (entry: HarnessPermissionAuditEntry) => void | Promise<void>
+  /** User-scoped custom subagents available for delegated task execution. */
+  harnessCustomSubagents?: CustomSubagentRecord[]
 }
 
 export type AgentEventType =
@@ -591,6 +594,12 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
           this.pendingSpecApprovalResolver = resolve
         })
       },
+    }
+
+    for (const subagent of resolveSubagentRegistry({
+      customSubagents: this.options.harnessCustomSubagents,
+    }).filter((agent) => agent.source === 'custom')) {
+      harnessAgents.register(subagent)
     }
 
     const harnessProvider = createReasoningAwareProvider(

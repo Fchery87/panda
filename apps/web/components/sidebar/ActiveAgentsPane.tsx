@@ -5,7 +5,16 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
-export type AgentTaskStatus = 'running' | 'waiting' | 'review' | 'failed' | 'complete'
+export type AgentTaskStatus = 'running' | 'waiting' | 'review' | 'failed' | 'complete' | 'stopped'
+
+export interface AgentSubagentRow {
+  id: string
+  name: string
+  status: 'running' | 'failed' | 'complete' | 'stopped'
+  summary: string
+  lastActivity: string
+  artifactCount?: number
+}
 
 export interface AgentTaskRow {
   id: string
@@ -14,6 +23,7 @@ export interface AgentTaskRow {
   status: AgentTaskStatus
   lastActivity: string
   changedFiles?: number
+  subagents?: AgentSubagentRow[]
 }
 
 interface ActiveAgentsPaneProps {
@@ -34,7 +44,8 @@ function StatusDot({ status }: { status: AgentTaskStatus }) {
         status === 'waiting' && 'bg-[oklch(var(--status-info))]',
         status === 'review' && 'bg-[oklch(var(--status-warning))]',
         status === 'failed' && 'bg-destructive',
-        status === 'complete' && 'bg-[oklch(var(--status-success))]'
+        status === 'complete' && 'bg-[oklch(var(--status-success))]',
+        status === 'stopped' && 'bg-muted-foreground'
       )}
     />
   )
@@ -108,6 +119,33 @@ export function ActiveAgentsPane({
                 <span>·</span>
                 <span className="shrink-0">{task.lastActivity}</span>
               </div>
+              {task.subagents && task.subagents.length > 0 && (
+                <div className="mt-2 space-y-1 border-l border-border pl-2">
+                  {task.subagents.slice(0, 4).map((subagent) => (
+                    <div key={subagent.id} className="min-w-0 font-mono text-[10px]">
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <StatusDot status={subagent.status} />
+                        <span className="truncate text-foreground">@{subagent.name}</span>
+                        <span className="badge-md" data-status={subagent.status}>
+                          {subagent.status}
+                        </span>
+                      </div>
+                      <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-muted-foreground">
+                        <span className="truncate">{subagent.summary}</span>
+                        <span className="shrink-0">· {subagent.lastActivity}</span>
+                        {subagent.artifactCount ? (
+                          <span className="shrink-0">· {subagent.artifactCount} artifacts</span>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                  {task.subagents.length > 4 && (
+                    <div className="font-mono text-[10px] text-muted-foreground">
+                      +{task.subagents.length - 4} more subagents
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             {/* Quick actions - show on hover */}
             <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">

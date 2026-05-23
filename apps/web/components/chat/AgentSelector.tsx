@@ -13,7 +13,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu'
-import { agents } from '@/lib/agent/harness'
 import {
   CHAT_MODE_CONFIGS,
   getAgentAutonomyOptions,
@@ -69,7 +68,6 @@ const PRIMARY_SHORTCUTS: Partial<Record<ChatMode, string>> = Object.fromEntries(
 ) as Partial<Record<ChatMode, string>>
 
 export function AgentSelector({ mode, onModeChange, disabled, className }: AgentSelectorProps) {
-  const subagents = useMemo(() => agents.listSubagents(), [])
   const primaryOptions = useMemo(() => getPrimaryChatModeSurfaceOptions(), [])
   const autonomyOptions = useMemo(() => getAgentAutonomyOptions(), [])
   const autoModeSwitchPolicy = useChatSessionStore((state) => state.autoModeSwitchPolicy)
@@ -193,25 +191,6 @@ export function AgentSelector({ mode, onModeChange, disabled, className }: Agent
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
-
-        {subagents.length > 0 && (
-          <>
-            <DropdownMenuSeparator className="bg-border" />
-            <DropdownMenuLabel className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
-              Subagents (use @mention)
-            </DropdownMenuLabel>
-            {subagents.slice(0, 5).map((agent) => (
-              <div
-                key={agent.name}
-                className="flex items-center gap-2 px-2 py-1.5 font-mono text-xs text-muted-foreground"
-              >
-                <Bot className="h-3 w-3" />
-                <span className="uppercase">{agent.name}</span>
-                <span className="ml-auto truncate text-xs opacity-70">@{agent.name}</span>
-              </div>
-            ))}
-          </>
-        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )

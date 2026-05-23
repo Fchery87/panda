@@ -15,6 +15,7 @@ import {
   Loader2 as IconSpinner,
   X as IconX,
   Square as IconStop,
+  GitBranch as IconBranch,
 } from 'lucide-react'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import type { LiveProgressStep } from '@/components/chat/live-run-utils'
@@ -44,6 +45,21 @@ interface AgentRun {
   model?: string
   startedAt: number
   completedAt?: number
+  runKind?: 'primary' | 'subagent'
+  parentRunId?: Id<'agentRuns'>
+  rootRunId?: Id<'agentRuns'>
+  subagentName?: string
+  subagentDepth?: number
+  contextMode?: 'fresh' | 'fork'
+  isolationMode?: 'shared-readonly' | 'snapshot' | 'worktree' | 'patch-proposal'
+  delegatedTaskSummary?: string
+  lastActivityAt?: number
+  artifactCount?: number
+}
+
+interface AgentRunTree {
+  root: AgentRun
+  children: AgentRun[]
 }
 
 function formatDuration(startedAt: number, completedAt?: number): string {
@@ -113,6 +129,11 @@ export function AgentManagerDrawer({
 
   // Find active run from recent runs or use currentRunId
   const activeRun = recentRuns?.find((run) => run.status === 'running' || run._id === currentRunId)
+  const activeRunTree = useQuery(
+    api.agentRuns.listRunTree,
+    activeRun ? { runId: activeRun._id, childLimit: 20 } : 'skip'
+  ) as AgentRunTree | undefined
+  const activeChildRuns = activeRunTree?.children ?? []
 
   return (
     <AnimatePresence>
@@ -185,6 +206,47 @@ export function AgentManagerDrawer({
                       <span>{formatDuration(activeRun.startedAt)}</span>
                       {liveSteps && liveSteps.length > 0 && <span>Step {liveSteps.length}</span>}
                     </div>
+
+                    {activeChildRuns.length > 0 && (
+                      <div className="mt-3 rounded-none border border-border bg-background p-2">
+                        <div className="mb-1 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+                          <IconBranch className="h-3 w-3" />
+                          <span>Subagent run tree</span>
+                        </div>
+                        <div className="max-h-36 space-y-1 overflow-y-auto">
+                          {activeChildRuns.map((child) => {
+                            const childSummary =
+                              child.delegatedTaskSummary || child.summary || child.userMessage || 'Delegated task'
+                            return (
+                              <div
+                                key={child._id}
+                                className="flex items-start gap-2 border-l border-border py-1 pl-2 font-mono text-[10px]"
+                              >
+                                <StatusIcon status={child.status} />
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5 text-foreground">
+                                    <span className="truncate">
+                                      @{child.subagentName || 'subagent'}
+                                    </span>
+                                    {child.contextMode && (
+                                      <span className="bg-surface-2 px-1 text-muted-foreground">
+                                        {child.contextMode}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="truncate text-muted-foreground">{childSummary}</div>
+                                  <div className="mt-0.5 flex gap-2 text-[9px] text-muted-foreground">
+                                    <span>{formatDuration(child.startedAt, child.completedAt)}</span>
+                                    <span>active {formatRelativeTime(child.lastActivityAt || child.startedAt)}</span>
+                                    {child.artifactCount ? <span>{child.artifactCount} artifacts</span> : null}
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
 
                     {liveSteps && liveSteps.length > 0 && (
                       <div className="mt-3 max-h-32 overflow-y-auto rounded-none border border-border bg-background p-2">

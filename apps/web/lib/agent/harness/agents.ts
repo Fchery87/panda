@@ -770,15 +770,37 @@ When exploring code, ensure your generated documentation strictly matches the ac
 /**
  * Agent Registry - manages all agents
  */
+function inferDefaultContextMode(config: AgentConfig): 'fresh' | 'fork' | undefined {
+  if (config.defaultContextMode) return config.defaultContextMode
+  if (config.mode !== 'subagent' && config.mode !== 'all') return undefined
+  const canMutate = config.permission.write_files === 'allow' || config.permission.run_command === 'allow'
+  return canMutate ? 'fork' : 'fresh'
+}
+
+function inferDefaultIsolationMode(config: AgentConfig): AgentConfig['defaultIsolationMode'] {
+  if (config.defaultIsolationMode) return config.defaultIsolationMode
+  if (config.mode !== 'subagent' && config.mode !== 'all') return undefined
+  const canMutate = config.permission.write_files === 'allow' || config.permission.run_command === 'allow'
+  return canMutate ? 'patch-proposal' : 'shared-readonly'
+}
+
+function normalizeAgentConfig(config: AgentConfig): AgentConfig {
+  return {
+    ...config,
+    defaultContextMode: inferDefaultContextMode(config),
+    defaultIsolationMode: inferDefaultIsolationMode(config),
+  }
+}
+
 class AgentRegistry {
   private agents: Map<string, AgentConfig> = new Map()
 
   constructor() {
     for (const agent of BUILTIN_AGENTS) {
-      this.agents.set(agent.name, agent)
+      this.agents.set(agent.name, normalizeAgentConfig(agent))
     }
     for (const agent of SUBAGENT_TEMPLATES) {
-      this.agents.set(agent.name, agent)
+      this.agents.set(agent.name, normalizeAgentConfig(agent))
     }
   }
 
@@ -821,7 +843,7 @@ class AgentRegistry {
    * Register a custom agent
    */
   register(config: AgentConfig): void {
-    this.agents.set(config.name, config)
+    this.agents.set(config.name, normalizeAgentConfig(config))
   }
 
   /**

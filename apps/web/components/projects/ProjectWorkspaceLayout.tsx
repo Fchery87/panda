@@ -380,6 +380,7 @@ export function ProjectWorkspaceLayoutView({
             status: task.status,
             lastActivity: task.lastActivity,
             changedFiles: task.changedFiles,
+            subagents: task.subagents,
           }))}
           onStartAgent={onStartAgent}
         />

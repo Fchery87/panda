@@ -146,6 +146,89 @@ describe('Harness adapter guardrail parity', () => {
     expect(true).toBe(true)
   })
 
+  it('executes a custom Convex subagent through the harness adapter task tool', async () => {
+    let callCount = 0
+    let taskToolDescription = ''
+    const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }
+    const provider: LLMProvider = {
+      name: 'fake',
+      config,
+      async listModels() {
+        return []
+      },
+      async complete() {
+        throw new Error('not used')
+      },
+      async *completionStream(options: CompletionOptions): AsyncGenerator<StreamChunk> {
+        callCount += 1
+        if (callCount === 1) {
+          const taskTool = options.tools?.find((tool) => tool.function.name === 'task')
+          taskToolDescription = taskTool?.function.description ?? ''
+          yield {
+            type: 'tool_call',
+            toolCall: makeToolCall('task', {
+              subagent_type: 'design-reviewer-custom',
+              prompt: 'Inspect settings UI consistency.',
+              description: 'Review UI',
+            }),
+          }
+          yield makeFinish()
+          return
+        }
+        if (callCount === 2) {
+          yield { type: 'text', content: 'Custom design review complete.' }
+          yield makeFinish()
+          return
+        }
+        yield { type: 'text', content: 'Parent received custom review.' }
+        yield makeFinish()
+      },
+    }
+
+    const events: any[] = []
+    for await (const evt of streamAgent(
+      provider,
+      {
+        projectId: 'p',
+        chatId: 'c',
+        userId: 'u',
+        chatMode: 'build',
+        provider: 'openai',
+        userMessage: 'use the custom design reviewer',
+      },
+      makeToolContext(),
+      {
+        harnessCheckpointStore: new InMemoryCheckpointStore(),
+        harnessCustomSubagents: [
+          {
+            _id: 'custom-design-reviewer',
+            name: 'Design Reviewer Custom',
+            description: 'Reviews UI consistency from a custom Convex subagent.',
+            prompt: 'Review UI consistency.',
+            capabilityPreset: 'research',
+          },
+        ],
+      },
+      { harnessEnableRiskInterrupts: false }
+    )) {
+      events.push(evt)
+    }
+
+    expect(callCount).toBe(3)
+    expect(taskToolDescription).toContain('design-reviewer-custom')
+    const taskResult = events.find(
+      (e) => e.type === 'tool_result' && e.toolResult?.toolName === 'task'
+    )
+    expect(taskResult?.toolResult?.error).toBeUndefined()
+    expect(taskResult?.toolResult?.output).toContain('Custom design review complete')
+    expect(
+      events.some(
+        (e) =>
+          e.type === 'subagent_summary' && e.subagentSummary?.name === 'design-reviewer-custom'
+      )
+    ).toBe(true)
+  })
+
   it('executes task tool through the harness adapter and emits subagent progress', async () => {
     let callCount = 0
     const config: ProviderConfig = { provider: 'openai', auth: { apiKey: 'x' } }

@@ -17,38 +17,31 @@ import { ascending } from './identifier'
 import { intersectPermissions } from './permissions'
 import { bus } from './event-bus'
 
+function buildAvailableSubagentDescription(): string {
+  const available = agents
+    .listSubagents()
+    .map((agent) => `- ${agent.name}: ${agent.description ?? 'Custom delegated worker'}`)
+    .join('\n')
+
+  return available || '- No subagents are currently available'
+}
+
 /**
- * Task tool input schema
+ * Create the task tool input schema from the currently registered subagent registry.
+ *
+ * Do not use a JSON-schema enum for `subagent_type`: custom Convex subagents are
+ * registered at runtime, and a static enum would make them impossible for models
+ * with strict function validation to call.
  */
-export const TASK_TOOL_DEFINITION: ToolDefinition = {
-  type: 'function',
-  function: {
-    name: 'task',
-    description: `Launch a specialized subagent to handle a complex task.
+export function createTaskToolDefinition(): ToolDefinition {
+  return {
+    type: 'function',
+    function: {
+      name: 'task',
+      description: `Launch a specialized subagent to handle a complex task.
 
 Available subagent types:
-- planner: Break requests into executable steps
-- architect: Design app structure and boundaries
-- repo-scout: Map the codebase and dependencies
-- context-curator: Collect only the relevant context
-- spec-writer: Turn vague ideas into crisp requirements
-- backend-builder: Implement APIs, services, and business logic
-- database-designer: Handle schema, migrations, and queries
-- refactorer: Clean up code without changing behavior
-- docs-writer: Produce README, setup, and usage docs
-- security-checker: Flag auth, secrets, permissions, and input risks
-- pm-orchestrator: Coordinate subagents and decide next work
-- test-writer: Generate unit, integration, and end-to-end tests
-- deployer: Handle build, release, and environment steps
-- observability-agent: Watch logs, metrics, and alerts after launch
-- ux-copywriter: Write labels, onboarding, and user-facing text
-- explore: Thorough codebase exploration for understanding unfamiliar code
-- security-auditor: Security-focused code review for vulnerabilities
-- performance-analyzer: Analyze code for performance bottlenecks
-- test-generator: Generate comprehensive test suites
-- code-reviewer: Review code for quality and best practices
-- debugger: Dedicated debugger for tracking down runtime exceptions
-- tech-writer: Tech writer for generating or updating documentation
+${buildAvailableSubagentDescription()}
 
 Use this tool when:
 - You need specialized expertise for a specific task
@@ -58,52 +51,33 @@ Use this tool when:
 
 The subagent will work autonomously and return its findings.
 
-CRITICAL: You can spawn multiple subagents in parallel! To do this, simply output multiple \`task\` tool calls in a single response. They will all execute concurrently (Panda Swarm) and return their results together.`,
-    parameters: {
-      type: 'object',
-      properties: {
-        subagent_type: {
-          type: 'string',
-          description: 'The type of specialized agent to use',
-          enum: [
-            'planner',
-            'architect',
-            'repo-scout',
-            'context-curator',
-            'spec-writer',
-            'backend-builder',
-            'database-designer',
-            'refactorer',
-            'docs-writer',
-            'security-checker',
-            'pm-orchestrator',
-            'test-writer',
-            'deployer',
-            'observability-agent',
-            'ux-copywriter',
-            'explore',
-            'security-auditor',
-            'performance-analyzer',
-            'test-generator',
-            'code-reviewer',
-            'debugger',
-            'tech-writer',
-          ],
+CRITICAL: You can spawn multiple subagents in parallel by outputting multiple \`task\` tool calls in a single response. Panda runs read-only subagents concurrently and serializes mutating subagents until isolated snapshot/worktree execution is available.`,
+      parameters: {
+        type: 'object',
+        properties: {
+          subagent_type: {
+            type: 'string',
+            description:
+              'The runtime name of the specialized agent to use. Use one of the available subagent types listed in this tool description, including user-created custom subagents when present.',
+          },
+          prompt: {
+            type: 'string',
+            description:
+              'The detailed task for the subagent to perform. Be specific about what you need.',
+          },
+          description: {
+            type: 'string',
+            description: 'A short (3-5 words) description of the task for logging',
+          },
         },
-        prompt: {
-          type: 'string',
-          description:
-            'The detailed task for the subagent to perform. Be specific about what you need.',
-        },
-        description: {
-          type: 'string',
-          description: 'A short (3-5 words) description of the task for logging',
-        },
+        required: ['subagent_type', 'prompt', 'description'],
       },
-      required: ['subagent_type', 'prompt', 'description'],
     },
-  },
+  }
 }
+
+/** Backwards-compatible snapshot for imports that expect a constant definition. */
+export const TASK_TOOL_DEFINITION: ToolDefinition = createTaskToolDefinition()
 
 /**
  * Task tool execution context
@@ -327,5 +301,5 @@ export async function executeQuestionTool(
  * Get all task-related tool definitions
  */
 export function getTaskToolDefinitions(): ToolDefinition[] {
-  return [TASK_TOOL_DEFINITION, QUESTION_TOOL_DEFINITION]
+  return [createTaskToolDefinition(), QUESTION_TOOL_DEFINITION]
 }

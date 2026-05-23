@@ -35,7 +35,7 @@ export interface SubagentEntry {
   id: string
   agent: string
   prompt: string
-  status: ToolCallLike['status']
+  status: ToolCallLike['status'] | 'stopped'
   output?: string
   durationMs?: number
   error?: string

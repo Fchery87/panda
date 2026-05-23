@@ -107,6 +107,7 @@ import {
   summarizeAppliedSkills,
 } from '../skills/applied-skills'
 import { resolveAgentSkills } from '../skills/resolver'
+import { isMutatingPermissionSet } from '../subagents/presets'
 
 export { buildActiveSpecSystemContent } from './runtime-active-spec'
 export type {
@@ -1833,6 +1834,31 @@ export class Runtime {
     ].slice(0, 20)
   }
 
+  private extractSubagentPatchProposals(output: string | undefined) {
+    const text = output ?? ''
+    const proposals = [...text.matchAll(/```(?:diff|patch)\n([\s\S]*?)```/gi)]
+      .map((match, index) => {
+        const patch = match[1]?.trim()
+        if (!patch) return null
+        const files = [
+          ...new Set(
+            [...patch.matchAll(/^(?:\+\+\+|---)\s+(?:[ab]\/)??([^\s]+)$/gm)]
+              .map((fileMatch) => fileMatch[1])
+              .filter(Boolean)
+          ),
+        ].slice(0, 20)
+        return {
+          kind: 'patch-proposal' as const,
+          title: `Patch proposal ${index + 1}`,
+          summary: files.length > 0 ? `Proposes changes to ${files.join(', ')}` : 'Proposed patch',
+          files,
+          patch: patch.slice(0, 20_000),
+        }
+      })
+      .filter((proposal): proposal is NonNullable<typeof proposal> => Boolean(proposal))
+    return proposals.slice(0, 5)
+  }
+
   private extractSubagentRisks(output: string | undefined, error?: string): string[] {
     const risks = new Set<string>()
     if (error) risks.add(error.slice(0, 200))
@@ -1845,6 +1871,26 @@ export class Runtime {
     return [...risks]
   }
 
+  private classifySubagentError(error?: string): NonNullable<HarnessSubagentSummary['errorCategory']> | undefined {
+    if (!error) return undefined
+    if (/unknown subagent|not found|registry/i.test(error)) return 'registry'
+    if (/permission|denied|policy|capability/i.test(error)) return 'policy'
+    if (/isolation|worktree|snapshot|patch-proposal/i.test(error)) return 'isolation'
+    if (/persist|convex|database|storage/i.test(error)) return 'persistence'
+    if (/runtime|maximum subagent depth|aborted|timeout|tool/i.test(error)) return 'runtime'
+    return 'unknown'
+  }
+
+  private selectSubagentIsolationMode(agent?: AgentConfig): NonNullable<AgentConfig['defaultIsolationMode']> {
+    const requested = agent?.defaultIsolationMode ?? this.config.defaultSubagentIsolationMode ?? 'shared-readonly'
+    const available = new Set(this.config.availableSubagentIsolationModes ?? ['shared-readonly'])
+    if (available.has(requested)) return requested
+    if (agent && isMutatingPermissionSet(agent.permission)) {
+      return available.has('patch-proposal') ? 'patch-proposal' : 'shared-readonly'
+    }
+    return 'shared-readonly'
+  }
+
   private createSubagentSummary(args: {
     pending: PendingSubtask
     status: HarnessSubagentSummary['status']
@@ -1855,7 +1901,8 @@ export class Runtime {
     const { pending, status, output, error } = args
     const now = args.now ?? Date.now()
     const startedAt = pending.startedAt ?? now
-    const capabilities = agents.get(pending.part.agent)?.maxCapabilities ?? []
+    const subagentConfig = agents.get(pending.part.agent)
+    const capabilities = subagentConfig?.maxCapabilities ?? []
     const currentChain = this.config.subagentChain ?? []
     const subagentChain = [...currentChain, pending.part.agent].slice(-10)
     const parentSubagentId =
@@ -1864,6 +1911,10 @@ export class Runtime {
     const filesTouched = this.extractSubagentFilesTouched(output)
     const testsRun = this.extractSubagentTestsRun(output)
     const risks = this.extractSubagentRisks(output, error)
+    const patchProposals =
+      this.selectSubagentIsolationMode(subagentConfig) === 'patch-proposal'
+        ? this.extractSubagentPatchProposals(output)
+        : []
 
     return {
       version: 1,
@@ -1884,6 +1935,9 @@ export class Runtime {
       ...(testsRun.length > 0 ? { testsRun } : {}),
       ...(risks.length > 0 ? { risks } : {}),
       subagentChain,
+      isolationMode: this.selectSubagentIsolationMode(subagentConfig),
+      ...(patchProposals.length > 0 ? { patchProposals } : {}),
+      ...(error ? { errorCategory: this.classifySubagentError(error) } : {}),
     }
   }
 
@@ -1913,40 +1967,74 @@ export class Runtime {
       }
     }
 
-    // 2. Execute all subagents concurrently
-    const results = await Promise.all(
-      subtasksToProcess.map(async (pending) => {
-        const subtask = pending.part
-        const subagentConfig = agents.get(subtask.agent)
+    // 2. Execute read-only subagents concurrently, but serialize mutating subagents.
+    // Until snapshot/worktree/patch-proposal isolation lands, this prevents two
+    // write/exec-capable children from mutating the same workspace concurrently.
+    const runPendingSubtask = async (pending: PendingSubtask) => {
+      const subtask = pending.part
+      const subagentConfig = agents.get(subtask.agent)
 
-        if (!subagentConfig) {
-          const errorMessage = `Unknown subagent type: ${subtask.agent}`
-          return { pending, success: false, errorMessage, taskResult: null }
-        }
+      if (!subagentConfig) {
+        const errorMessage = `Unknown subagent type: ${subtask.agent}`
+        return { pending, success: false, errorMessage, taskResult: null }
+      }
 
-        try {
-          const taskResult = await executeTaskTool(
-            {
-              subagent_type: subtask.agent,
-              prompt: subtask.prompt,
-              description: pending.description,
-            },
-            {
-              sessionID: this.state!.sessionID,
-              messageID: subtask.messageID,
-              parentAgent: pending.parentAgent,
-              runSubagent: async (childAgent, prompt, childSessionID) =>
-                this.runSubagent(childAgent, prompt, childSessionID),
-            }
-          )
-          return { pending, success: true, errorMessage: taskResult.error, taskResult }
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : 'Unknown subagent execution error'
-          return { pending, success: false, errorMessage, taskResult: null }
-        }
-      })
-    )
+      try {
+        const taskResult = await executeTaskTool(
+          {
+            subagent_type: subtask.agent,
+            prompt: subtask.prompt,
+            description: pending.description,
+          },
+          {
+            sessionID: this.state!.sessionID,
+            messageID: subtask.messageID,
+            parentAgent: pending.parentAgent,
+            runSubagent: async (childAgent, prompt, childSessionID) =>
+              this.runSubagent(childAgent, prompt, childSessionID),
+          }
+        )
+        return { pending, success: true, errorMessage: taskResult.error, taskResult }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown subagent execution error'
+        return { pending, success: false, errorMessage, taskResult: null }
+      }
+    }
+
+    const readonlySubtasks = subtasksToProcess.filter((pending) => {
+      const subagentConfig = agents.get(pending.part.agent)
+      return !subagentConfig || !isMutatingPermissionSet(subagentConfig.permission)
+    })
+    const mutatingSubtasks = subtasksToProcess.filter((pending) => {
+      const subagentConfig = agents.get(pending.part.agent)
+      return Boolean(subagentConfig && isMutatingPermissionSet(subagentConfig.permission))
+    })
+
+    if (mutatingSubtasks.length > 1) {
+      yield {
+        type: 'warning',
+        content:
+          'Multiple mutating subagents were requested. Panda is serializing them until isolated snapshot/worktree execution is available.',
+      }
+    }
+
+    const runWithConcurrency = async (items: PendingSubtask[], concurrency: number) => {
+      const output: Awaited<ReturnType<typeof runPendingSubtask>>[] = []
+      for (let index = 0; index < items.length; index += concurrency) {
+        output.push(...(await Promise.all(items.slice(index, index + concurrency).map(runPendingSubtask))))
+      }
+      return output
+    }
+
+    const readonlyConcurrency = Math.max(1, this.config.maxConcurrentSubagents ?? 4)
+    const mutatingIsolationReady = mutatingSubtasks.every((pending) => {
+      const subagentConfig = agents.get(pending.part.agent)
+      return this.selectSubagentIsolationMode(subagentConfig) !== 'shared-readonly'
+    })
+    const requestedMutatingConcurrency = Math.max(1, this.config.maxConcurrentMutatingSubagents ?? 1)
+    const mutatingConcurrency = mutatingIsolationReady ? requestedMutatingConcurrency : 1
+    const results = await runWithConcurrency(readonlySubtasks, readonlyConcurrency)
+    results.push(...(await runWithConcurrency(mutatingSubtasks, mutatingConcurrency)))
 
     // 3. Yield completion events for all subagents
     for (const res of results) {
@@ -2108,6 +2196,27 @@ export class Runtime {
     }
   }
 
+  private buildSubagentInitialMessages(agent: AgentConfig, childSessionID: Identifier): Message[] {
+    if ((agent.defaultContextMode ?? 'fresh') !== 'fork') return []
+    const blockedPartTypes = new Set([
+      'subtask',
+      'agent',
+      'step_start',
+      'step_finish',
+      'snapshot',
+      'retry',
+      'compaction',
+      'permission',
+    ])
+    return (this.state?.messages ?? [])
+      .map((message) => ({
+        ...message,
+        sessionID: childSessionID,
+        parts: message.parts.filter((part) => !blockedPartTypes.has(part.type)),
+      }))
+      .filter((message) => message.parts.length > 0)
+  }
+
   private async runSubagent(
     agent: AgentConfig,
     prompt: string,
@@ -2155,6 +2264,7 @@ export class Runtime {
       customSkills: this.config.customSkills,
       customSkillPolicy: this.config.customSkillPolicy,
     })
+    const childInitialMessages = this.buildSubagentInitialMessages(agent, childSessionID)
     const childUserMessage: UserMessage = {
       id: childMessageID,
       sessionID: childSessionID,
@@ -2179,7 +2289,7 @@ export class Runtime {
     const subagentSummaries: HarnessSubagentSummary[] = []
 
     try {
-      for await (const event of childRuntime.run(childSessionID, childUserMessage)) {
+      for await (const event of childRuntime.run(childSessionID, childUserMessage, childInitialMessages)) {
         if (event.type === 'text' && event.content) {
           output += event.content
         }
