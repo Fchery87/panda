@@ -79,14 +79,14 @@ const faqItems = [
       'No desktop setup is required. Panda is browser-first and uses a server-backed fallback when browser execution is unavailable.',
   },
   {
-    question: 'What happens when a build run gets interrupted?',
+    question: 'What happens when an Agent run gets interrupted?',
     answer:
       'Panda saves run events, receipts, and checkpoints. If a run pauses or disconnects, the recovery path stays attached to the same work thread.',
   },
   {
     question: 'Can I review code changes before they are applied?',
     answer:
-      'Yes. Plan mode produces a reviewable execution contract, and risky commands or sensitive actions pause for explicit approval.',
+      'Yes. Plan mode produces a reviewable execution contract before larger work begins. During Agent runs, Guided mode prompts for more review, Autopilot can apply safe changes, and risky commands or sensitive actions pause for explicit approval. Changed work remains inspectable through the workbench and Review Diff.',
   },
   {
     question: 'Does Panda remember context between sessions?',
@@ -96,12 +96,17 @@ const faqItems = [
   {
     question: 'Which AI providers does Panda support?',
     answer:
-      'Panda supports OpenAI, Anthropic, OpenRouter, Together.ai, DeepSeek, Groq, Fireworks, Chutes, Z.ai, crof.ai, and any OpenAI-compatible endpoint. You bring your own API key.',
+      'Panda supports multiple hosted model providers and OpenAI-compatible endpoints. You bring your own API key, and available models are shown through the model catalog in the workbench.',
   },
   {
     question: 'Can I share my workbench session with someone else?',
     answer:
       'Yes. Panda creates a public projection of the active chat so collaborators can inspect the thread without exposing private workspace data.',
+  },
+  {
+    question: 'Are custom subagents separate modes?',
+    answer:
+      'No. Ask, Plan, and Agent are the primary user-facing modes. Custom subagents are delegated workers inside Agent runs; they use capability presets and attached Skills while reporting back through the parent run proof and review surfaces.',
   },
 ]
 
@@ -130,14 +135,14 @@ export default function EducationPage() {
                   </div>
 
                   <h1 className="text-display text-4xl sm:text-5xl lg:text-6xl">
-                    Learn the workbench built for reviewable AI coding.
+                    Ask, plan, and run agents from one reviewable browser workbench.
                   </h1>
 
                   <p className="max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-                    Panda is a browser-first AI coding workbench with server fallback. It keeps the
-                    objective, selected files, chat mode, plan, run proof, changed work, and
-                    recovery state in one project session so you can steer the agent without
-                    rebuilding context every turn.
+                    Panda is a browser-first AI coding workbench with server fallback. Ask for
+                    understanding, create reviewable plans, then run Agent in Guided or Autopilot
+                    mode while workbench-owned files, approvals, receipts, changed work, and
+                    checkpoints stay attached to one project session.
                   </p>
 
                   <div className="flex flex-wrap gap-3">
@@ -185,7 +190,8 @@ export default function EducationPage() {
                           Workspace holds the active work
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Edit, diff, preview, and run commands beside the current objective.
+                          Edit files, inspect diffs, review changed work, and run commands beside
+                          the current objective.
                         </p>
                       </div>
                     </div>
@@ -196,7 +202,8 @@ export default function EducationPage() {
                           Chat directs the agent
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Choose ask, plan, code, or build and keep the handoff in one thread.
+                          Choose Ask, Plan, or Agent. Inside Agent, select Guided or Autopilot based
+                          on how much autonomy the run should have.
                         </p>
                       </div>
                     </div>
@@ -204,10 +211,11 @@ export default function EducationPage() {
                       <Shield size={16} className="mt-0.5 shrink-0 text-primary" />
                       <div>
                         <p className="font-mono text-xs uppercase tracking-wide">
-                          Operational rail reviews state
+                          Proof rail reviews state
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Inspect run events, receipts, plans, changes, memory, and checkpoints.
+                          Inspect run events, receipts, plans, changes, memory, delegated work, and
+                          checkpoints.
                         </p>
                       </div>
                     </div>
@@ -246,7 +254,7 @@ export default function EducationPage() {
                 <Shield size={20} className="mb-4 text-primary" />
                 <h3 className="mb-2 text-lg font-semibold">Reviewable</h3>
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  Plan artifacts, build handoffs, and risky commands create deliberate approval
+                  Plan artifacts, Agent handoffs, and risky commands create deliberate approval
                   points before execution continues.
                 </p>
               </motion.div>
@@ -284,7 +292,7 @@ export default function EducationPage() {
                 </h2>
               </div>
               <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                Explorer {'->'} Workspace {'->'} Chat {'->'} Operational Rail
+                Explorer {'->'} Work {'->'} Chat {'->'} Proof / Changes / Context
               </div>
             </div>
 
@@ -445,34 +453,33 @@ export default function EducationPage() {
         </section>
 
         {/* Workspace */}
-        <section id="workspace" className="border-y border-border py-20 lg:py-24">
+        <section id="work" className="border-y border-border py-20 lg:py-24">
           <div className="container">
             <div className="mb-8 grid gap-6 lg:grid-cols-12">
               <div className="lg:col-span-4">
                 <div className="mb-4 flex items-center gap-3">
                   <Monitor size={16} className="text-primary" />
                   <span className="font-mono text-xs uppercase tracking-[0.06em] text-muted-foreground">
-                    Workspace
+                    Work
                   </span>
                 </div>
                 <h2 className="text-4xl font-bold leading-[1.1] -tracking-[0.025em]">
-                  Edit, inspect, and execute in one place
+                  Edit, inspect, and verify in one place
                 </h2>
               </div>
               <div className="lg:col-span-8">
                 <p className="text-base leading-relaxed text-muted-foreground">
-                  The Workspace combines file tabs, editor state, changed-work review, terminal
-                  execution, preview output, and timeline context. Browser execution is preferred
-                  when available, and server fallback keeps command work unblocked.
+                  The Work surface combines file tabs, editor state, generated-file review, Review
+                  Diff, terminal execution, run proof, and timeline context. Browser execution is
+                  preferred when available, and server fallback keeps command work unblocked.
                 </p>
                 <div className="mt-4 border border-border bg-background p-4">
                   <div className="mb-2 font-mono text-xs uppercase tracking-widest text-primary">
                     Responsive layout
                   </div>
                   <p className="text-sm leading-relaxed text-muted-foreground">
-                    Desktop uses resizable panels. Smaller screens preserve the same Explorer,
-                    Workspace, Chat, and Operational Rail model without forcing you out of the
-                    project session.
+                    Desktop uses resizable panels. Smaller screens preserve the same Explorer, Work,
+                    Chat, and Support Rail model without forcing you out of the project session.
                   </p>
                 </div>
               </div>
@@ -504,20 +511,20 @@ export default function EducationPage() {
               <div className="lg:col-span-8">
                 <p className="text-base leading-relaxed text-muted-foreground">
                   The Chat Panel is Panda&apos;s orchestration surface. It carries the canonical
-                  ask, plan, code, and build modes, plus model controls, file mentions, permission
-                  review, and message history. Plans and run status surface inline so the handoff
-                  from strategy to execution stays visible.
+                  Ask, Plan, and Agent modes, Agent autonomy controls for Guided or Autopilot, model
+                  controls, file mentions, permission review, and message history. Plans and run
+                  status surface inline so the handoff from strategy to execution stays visible.
                 </p>
 
                 <div className="mt-4 grid gap-px bg-border sm:grid-cols-3">
                   <div className="border border-transparent bg-background p-4">
                     <div className="mb-2 flex items-center gap-2 font-mono text-xs uppercase tracking-wide">
                       <Terminal size={14} className="text-primary" />
-                      Plan + Run
+                      Plan + Agent Run
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Saved plans and run status cards keep execution visible before and during
-                      work.
+                      Saved plans, Agent run status, and approval gates keep execution visible
+                      before and during work.
                     </p>
                   </div>
                   <div className="border border-transparent bg-background p-4">
@@ -550,7 +557,7 @@ export default function EducationPage() {
           </div>
         </section>
 
-        {/* Inspector */}
+        {/* Support Rail */}
         <section id="inspector" className="border-y border-border py-20 lg:py-24">
           <div className="container">
             <div className="mb-8 grid gap-6 lg:grid-cols-12">
@@ -558,40 +565,37 @@ export default function EducationPage() {
                 <div className="mb-4 flex items-center gap-3">
                   <Shield size={16} className="text-primary" />
                   <span className="font-mono text-xs uppercase tracking-[0.06em] text-muted-foreground">
-                    Inspector
+                    Support Rail
                   </span>
                 </div>
                 <h2 className="text-4xl font-bold leading-[1.1] -tracking-[0.025em]">
-                  Review what happened and decide what comes next
+                  Review proof, changes, context, and next steps
                 </h2>
               </div>
               <div className="lg:col-span-8">
                 <p className="text-base leading-relaxed text-muted-foreground">
-                  Panda&apos;s operational rail keeps the current run, saved plan, changed work,
-                  project memory, eval tooling, preview state, and recovery signals close to the
-                  active chat. Instead of scattering review state across separate pages, the rail
-                  gives you one proof surface.
+                  Panda&apos;s support rail keeps Proof, Changes, and Context close to the active
+                  chat. Inspect run events, receipts, checkpoints, saved plans, changed work,
+                  project memory, delegated work, and recovery signals without leaving the project
+                  session.
                 </p>
                 <div className="mt-6 grid gap-4 sm:grid-cols-3">
                   <div className="border border-border bg-background p-4">
-                    <div className="mb-2 font-mono text-xs font-bold text-primary">RUN</div>
+                    <div className="mb-2 font-mono text-xs font-bold text-primary">PROOF</div>
                     <p className="text-sm text-muted-foreground">
-                      Inspect bounded run summaries, progress, receipts, and recovery state.
+                      Inspect run events, receipts, approvals, checkpoints, and recovery state.
                     </p>
                   </div>
                   <div className="border border-border bg-background p-4">
-                    <div className="mb-2 font-mono text-xs font-bold text-primary">PLAN</div>
+                    <div className="mb-2 font-mono text-xs font-bold text-primary">CHANGES</div>
                     <p className="text-sm text-muted-foreground">
-                      Review, approve, and build from the saved execution contract.
+                      Inspect generated files, changed work, and Review Diff entry points.
                     </p>
                   </div>
                   <div className="border border-border bg-background p-4">
-                    <div className="mb-2 font-mono text-xs font-bold text-primary">
-                      CHANGES / NOTES
-                    </div>
+                    <div className="mb-2 font-mono text-xs font-bold text-primary">CONTEXT</div>
                     <p className="text-sm text-muted-foreground">
-                      Inspect changed work, preserve project memory, and validate repeatable
-                      behavior.
+                      Review plans, memory, selected files, Skills, Subagents, and handoff context.
                     </p>
                   </div>
                 </div>
@@ -634,10 +638,10 @@ export default function EducationPage() {
                   <div className="flex items-start gap-3">
                     <Target size={16} className="mt-1 shrink-0 text-primary" />
                     <div>
-                      <h4 className="text-sm font-semibold">Build from plan</h4>
+                      <h4 className="text-sm font-semibold">Run from plan</h4>
                       <p className="text-xs text-muted-foreground">
                         Approve the saved plan artifact, then use it as the execution contract for
-                        build.
+                        an Agent run.
                       </p>
                     </div>
                   </div>
@@ -680,17 +684,22 @@ export default function EducationPage() {
                       chat to pull exact files into the request context.
                     </li>
                     <li>
-                      Use ask for explanation, plan for scope, code for focused edits, and build for
-                      approved execution.
+                      Use Ask for explanation, Plan for scope, and Agent for implementation. Choose
+                      Guided for review-heavy edits or Autopilot for broader execution.
                     </li>
                     <li>
                       Use the chat actions menu to open run history or share the active thread.
                     </li>
                     <li>
-                      Open the operational rail when you need Run, Plan, Changes, Memory, or Evals
-                      without leaving the project page.
+                      Open the support rail when you need Proof, Changes, Context, receipts,
+                      checkpoints, delegated work, or memory without leaving the project page.
                     </li>
-                    <li>Review the plan before using Build for larger implementation tasks.</li>
+                    <li>Review the plan before starting a larger Agent run.</li>
+                    <li>
+                      Use custom subagents as delegated workers for bounded subtasks; they inherit
+                      the parent run&apos;s intent and review boundary rather than becoming separate
+                      primary modes.
+                    </li>
                   </ul>
                 </div>
               </div>
@@ -755,8 +764,8 @@ export default function EducationPage() {
               Start building with Panda
             </h2>
             <p className="mx-auto mb-8 max-w-lg text-muted-foreground">
-              Create a project, choose the right mode, review the plan, approve what matters,
-              inspect proof, and keep moving. No desktop install required.
+              Create a project, choose Ask, Plan, or Agent, review the plan, approve what matters,
+              inspect receipts and changed work, then keep moving. No desktop install required.
             </p>
             <Link href="/projects">
               <Button className="shadow-sharp-md rounded-none font-mono tracking-wide">

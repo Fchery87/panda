@@ -32,19 +32,22 @@ describe('educationSections', () => {
       [
         'Project-aware file tree navigation',
         'Search when structure is not enough',
-        'Selected files route into editor and chat context',
+        'Selected files open in Work and attach to chat context',
       ],
       [
         'Tabbed editor and changed-work review',
         'Browser runtime with server fallback',
-        'Terminal and preview beside the task thread',
+        'Terminal output and proof beside the task thread',
       ],
       [
-        'Canonical mode, model, and context controls',
-        'Plan review and build handoff in-thread',
-        'Permission gates before risky actions',
+        'Ask / Plan / Agent mode controls',
+        'Guided / Autopilot autonomy for Agent runs',
+        'Plan review, approvals, and run status in-thread',
       ],
-      ['Run events, receipts, and checkpoints', 'Plans, changes, memory, evals, and preview'],
+      [
+        'Run events, receipts, and checkpoints',
+        'Plans, changes, memory, delegated work, and recovery state',
+      ],
     ])
   })
 

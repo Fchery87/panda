@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     template: '%s | Panda.ai',
   },
   description:
-    'Plan, approve, and build software in the browser. Panda is an AI coding workbench with plan review, execution approvals, resumable runs, and shared chat history.',
+    'Ask, plan, and run agents in a browser-first AI coding workbench with workbench-owned files, reviewable plans, execution approvals, receipts, checkpoints, and shared chat history.',
   icons: {
     icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
     shortcut: ['/icon.svg'],

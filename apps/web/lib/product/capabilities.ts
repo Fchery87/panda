@@ -45,36 +45,36 @@ export const landingFeatures: LandingFeature[] = [
   {
     id: 'plan-review',
     number: '01',
-    title: 'Review Before Execution',
+    title: 'Reviewable Plans',
     description:
-      'Move from request to approved execution with saved plans, explicit review gates, and a build contract you can inspect first.',
+      'Move from request to execution with saved plans, explicit review gates, and acceptance checks you can inspect first.',
     iconKey: 'bot',
     size: 'small',
   },
   {
     id: 'artifacts',
     number: '02',
-    title: 'One Operational Workspace',
+    title: 'Workbench-Owned Files',
     description:
-      'Edit files, inspect diffs, review generated artifacts, and keep the current objective in view without leaving the browser.',
+      'Open, edit, generate, and review files in the central workbench while chat stays focused on direction.',
     iconKey: 'fileCode',
     size: 'large',
   },
   {
     id: 'runs',
     number: '03',
-    title: 'Runs You Can Recover',
+    title: 'Recoverable Agent Runs',
     description:
-      'Track run progress, inspect history, recover paused execution from checkpoints, and continue without losing context.',
+      'Run Agent in Guided or Autopilot mode with bounded receipts, command summaries, checkpoints, and recovery state.',
     iconKey: 'terminal',
     size: 'large',
   },
   {
     id: 'approvals',
     number: '04',
-    title: 'Approvals, Memory, and Sharing',
+    title: 'Approvals, Receipts, and Delegation',
     description:
-      'Review risky actions in the browser, keep persistent project context close at hand, and share the active work thread when needed.',
+      'Approve risky actions in the browser, preserve project context, and delegate bounded subtasks to custom subagents.',
     iconKey: 'zap',
     size: 'small',
   },
@@ -90,7 +90,7 @@ export const interfaceMap: EducationSurfaceSection[] = [
     bullets: [
       'Project-aware file tree navigation',
       'Search when structure is not enough',
-      'Selected files route into editor and chat context',
+      'Selected files open in Work and attach to chat context',
     ],
   },
   {
@@ -99,11 +99,11 @@ export const interfaceMap: EducationSurfaceSection[] = [
     title: 'Work',
     iconKey: 'work',
     summary:
-      'Keep editing, diffs, terminal output, preview state, and the current objective in one canvas.',
+      'Keep editing, Review Diff, terminal output, changed work, and the current objective in one canvas.',
     bullets: [
       'Tabbed editor and changed-work review',
       'Browser runtime with server fallback',
-      'Terminal and preview beside the task thread',
+      'Terminal output and proof beside the task thread',
     ],
   },
   {
@@ -112,23 +112,23 @@ export const interfaceMap: EducationSurfaceSection[] = [
     title: 'Chat Panel',
     iconKey: 'chat',
     summary:
-      'Direct Panda through ask, plan, code, and build without separating the conversation from the work.',
+      'Direct Panda through Ask, Plan, and Agent without separating the conversation from the work.',
     bullets: [
-      'Canonical mode, model, and context controls',
-      'Plan review and build handoff in-thread',
-      'Permission gates before risky actions',
+      'Ask / Plan / Agent mode controls',
+      'Guided / Autopilot autonomy for Agent runs',
+      'Plan review, approvals, and run status in-thread',
     ],
   },
   {
     id: 'inspector',
     label: '04',
-    title: 'Operational Rail',
+    title: 'Support Rail',
     iconKey: 'inspector',
     summary:
-      'Inspect proof, plans, changed work, memory, and recovery state without leaving the session.',
+      'Inspect proof, plans, changed work, memory, delegated work, and recovery state without leaving the session.',
     bullets: [
       'Run events, receipts, and checkpoints',
-      'Plans, changes, memory, evals, and preview',
+      'Plans, changes, memory, delegated work, and recovery state',
     ],
   },
 ]
@@ -183,12 +183,13 @@ export const chatDetails: EducationDetail[] = [
   },
   {
     name: 'ChatInput',
-    role: 'Prompt composer with mode, model, depth, and `@` file controls.',
-    userValue: 'Choose ask, plan, code, or build and attach the project context inline.',
+    role: 'Prompt composer with Ask / Plan / Agent mode controls, Agent autonomy, model selection, depth, and `@` file controls.',
+    userValue:
+      'Choose Ask, Plan, or Agent; then select Guided or Autopilot when implementation work should run.',
   },
   {
     name: 'Plan Review Card',
-    role: 'Inline plan state tied to approval and build execution.',
+    role: 'Inline plan state tied to approval and Agent execution.',
     userValue:
       'Review the execution contract before Panda starts changing files or running commands.',
   },
@@ -208,13 +209,13 @@ export const chatDetails: EducationDetail[] = [
 
 export const specDetails: EducationDetail[] = [
   {
-    name: 'Run Tab',
-    role: 'Shows persisted run progress, event summaries, receipts, and recovery signals.',
+    name: 'Proof Tab',
+    role: 'Shows persisted run progress, event summaries, receipts, approvals, and recovery signals.',
     userValue: 'Inspect what happened, what passed, and where a paused run can resume.',
   },
   {
     name: 'Context Tab',
-    role: 'Plan, project memory, spec, and eval surface tied to the active chat.',
+    role: 'Plan, project memory, selected files, and handoff context tied to the active chat.',
     userValue: 'Review the durable context Panda will use before it continues work.',
   },
   {
@@ -223,9 +224,9 @@ export const specDetails: EducationDetail[] = [
     userValue: 'Inspect the current work before continuing or sharing results.',
   },
   {
-    name: 'Preview Tab',
-    role: 'Runtime output surface for browser or app previews.',
-    userValue: 'Check the result next to the plan, diff, and conversation that produced it.',
+    name: 'Receipts + Checkpoints',
+    role: 'Bounded execution evidence and recovery state for Agent runs.',
+    userValue: 'See what happened, what was approved, and where work can resume.',
   },
 ]
 
@@ -240,13 +241,13 @@ export const workflowSteps: EducationWorkflowStep[] = [
     id: 'edit-and-inspect',
     title: 'Choose the right mode',
     description:
-      'Use ask for explanation, plan for reviewable strategy, code for focused edits, and build for larger approved execution.',
+      'Use Ask for explanation, Plan for a reviewable strategy, and Agent for implementation. Agent can run as Guided or Autopilot depending on the review boundary you want.',
   },
   {
     id: 'ask-panda',
     title: 'Review the execution contract',
     description:
-      'For structured work, Panda saves a plan artifact so you can inspect scope, constraints, and acceptance checks before build starts.',
+      'For structured work, Panda saves a plan artifact so you can inspect scope, constraints, and acceptance checks before Agent execution starts.',
   },
   {
     id: 'review-and-approve',
@@ -264,7 +265,7 @@ export const workflowSteps: EducationWorkflowStep[] = [
     id: 'share-verify-repeat',
     title: 'Verify, share, or resume',
     description:
-      'Review the diff and preview, run checks, share the redacted work thread, or resume from a checkpoint after interruption.',
+      'Review the diff, inspect receipts, run checks, share the redacted work thread, or resume from a checkpoint after interruption.',
   },
 ]
 

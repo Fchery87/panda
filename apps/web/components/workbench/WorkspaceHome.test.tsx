@@ -14,7 +14,7 @@ describe('WorkspaceHome first-run guidance', () => {
     expect(html).toContain('4. Proof')
     expect(html).toContain('5. Changes')
     expect(html).toContain('6. Next Action')
-    expect(html).toContain('ask / plan / code / build')
+    expect(html).toContain('Choose Ask / Plan / Agent')
     expect(html).toContain('Workspace Map')
     expect(html).toContain('Important Commands')
     expect(html).toContain('bun run typecheck')

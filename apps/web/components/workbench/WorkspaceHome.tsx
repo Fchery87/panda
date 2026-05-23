@@ -70,7 +70,7 @@ const WORKSPACE_AREAS = [
 ]
 
 const REVIEW_CHECKPOINTS = [
-  'Confirm the plan matches the requested scope before build execution.',
+  'Confirm the plan matches the requested scope before Agent execution.',
   'Read validation evidence and receipts before accepting generated work.',
   'Inspect changed files and diffs from the Work Tray, not the chat transcript.',
   'Keep broad Convex queries bounded and redact command output before persistence.',
@@ -83,7 +83,7 @@ const FIRST_RUN_STEPS = [
   },
   {
     label: '2. Mode',
-    detail: 'Choose ask / plan / code / build from the canonical workflow.',
+    detail: 'Choose Ask / Plan / Agent, then set Guided or Autopilot for implementation.',
   },
   {
     label: '3. Plan',

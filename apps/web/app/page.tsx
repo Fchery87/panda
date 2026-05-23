@@ -10,43 +10,55 @@ import { PublicNav } from '@/components/layout/PublicNav'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
-const heroSignals = ['ASK', 'PLAN', 'CODE', 'BUILD'] as const
+const heroSignals = ['ASK', 'PLAN', 'AGENT'] as const
 
 const proofRows = [
-  ['MODE', 'plan review', 'Owner approval required'],
-  ['RUNTIME', 'ready', 'Browser workspace mounted'],
-  ['PROOF', 'checkpoint', '2 changed files inspectable'],
+  ['MODE', 'Ask / Plan / Agent', 'Guided and Autopilot define the Agent trust boundary.'],
+  ['RUNTIME', 'Browser first', 'Server fallback keeps command work available when needed.'],
+  [
+    'PROOF',
+    'Receipts + checkpoints',
+    'Changed files, approvals, commands, and recovery state stay inspectable.',
+  ],
 ]
 
 const featureRows = [
   {
     icon: Shield,
-    title: 'Approval is visible',
+    title: 'Files stay workbench-owned',
     detail:
-      'Plans, risky actions, permission boundaries, and share state sit near the action they affect.',
-  },
-  {
-    icon: Clock,
-    title: 'Runs are recoverable',
-    detail:
-      'Checkpoint and receipt state stay attached to the session, so interrupted work has a return path.',
+      'The central workbench owns file opening, editing, generated files, and Review Diff. Chat directs the work without becoming the file system.',
   },
   {
     icon: GitBranch,
-    title: 'Context stays bounded',
+    title: 'Plans become contracts',
     detail:
-      'Project files, chat direction, changed work, and proof are visible without turning the app into an IDE clone.',
+      'Plan mode captures scope, constraints, and acceptance checks before an Agent run starts changing files or running commands.',
+  },
+  {
+    icon: Clock,
+    title: 'Runs leave receipts',
+    detail:
+      'Agent runs preserve bounded receipts, approval decisions, command summaries, changed work, and checkpoint state.',
   },
 ]
 
 const workflowRows = [
-  ['01', 'Orient', 'Bring file context, current objective, and mode into one shell.'],
-  ['02', 'Approve', 'Review the plan and permission boundary before execution starts.'],
-  ['03', 'Execute', 'Watch run events, terminal output, changed work, and checkpoint state.'],
+  ['01', 'Orient', 'Select files, objective, memory, and project context in the workbench.'],
+  [
+    '02',
+    'Choose',
+    'Use Ask for understanding, Plan for a reviewable contract, or Agent for implementation.',
+  ],
+  [
+    '03',
+    'Control',
+    'Run Agent as Guided or Autopilot and approve gated actions when risk increases.',
+  ],
   [
     '04',
-    'Inspect',
-    'Move through diff, proof, preview, and next action without losing the thread.',
+    'Review',
+    'Move through Review Diff, proof, receipts, checkpoints, and next action without losing the thread.',
   ],
 ]
 
@@ -60,7 +72,7 @@ export default function Home() {
       <section className="px-3 pb-14 pt-20 sm:px-5 lg:px-8 lg:pb-20 lg:pt-24">
         <div className="bg-background/92 shadow-sharp-lg mx-auto max-w-[1500px] border border-border">
           <nav
-            className="grid border-b border-border bg-card sm:grid-cols-4"
+            className="grid border-b border-border bg-card sm:grid-cols-3"
             aria-label="Panda workflow modes"
           >
             {heroSignals.map((mode, index) => (
@@ -68,12 +80,12 @@ export default function Home() {
                 key={mode}
                 className={cn(
                   'flex min-h-11 items-center justify-between border-b border-border px-4 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground sm:border-b-0 sm:border-r',
-                  index === 1 && 'bg-primary/10 text-foreground',
+                  mode === 'AGENT' && 'bg-primary/10 text-foreground',
                   index === heroSignals.length - 1 && 'sm:border-r-0'
                 )}
               >
                 <span>{mode}</span>
-                {index === 1 ? <span className="text-primary">ACTIVE</span> : null}
+                {mode === 'AGENT' ? <span className="text-primary">GUIDED / AUTOPILOT</span> : null}
               </div>
             ))}
           </nav>
@@ -90,12 +102,13 @@ export default function Home() {
                   Calm under load. Exact during risk.
                 </p>
                 <h2 className="text-[clamp(3rem,8vw,5.5rem)] font-extrabold leading-[0.92] tracking-tight text-foreground">
-                  Keep the work in one place.
+                  Ask, plan, and run agents from one workbench.
                 </h2>
                 <p className="mt-6 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-                  Panda is not a chatbot and not an IDE clone. It is a command surface for
-                  technically fluent users who need the objective, approval boundary, execution
-                  proof, changed files, and next action to stay visible.
+                  Panda is a browser-first AI coding workbench for technically fluent users. Ask for
+                  understanding, draft reviewable plans, then run Agent in Guided or Autopilot mode
+                  while files, approvals, receipts, checkpoints, and changed work stay attached to
+                  the same project session.
                 </p>
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                   <Link href="/projects">
@@ -149,7 +162,7 @@ export default function Home() {
               Operating model
             </p>
             <h2 className="mt-4 max-w-xl text-3xl font-bold tracking-tight sm:text-4xl">
-              Designed around recoverable software work, not chat theatrics.
+              Designed around reviewable Agent work, not chat theatrics.
             </h2>
           </div>
           <div className="grid gap-px bg-border">
@@ -203,9 +216,9 @@ function WorkbenchPreview() {
         </div>
         <div className="hidden px-3 sm:block">Search files, commands, settings</div>
         <div className="flex gap-2 py-3 sm:py-0">
-          <span className="border border-border bg-card px-2 py-1">plan</span>
+          <span className="border border-border bg-card px-2 py-1">Agent · Guided</span>
           <span className="bg-primary/10 border border-primary px-2 py-1 text-foreground">
-            live proof
+            proof ready
           </span>
         </div>
       </div>
@@ -243,19 +256,19 @@ function WorkbenchPreview() {
         </div>
 
         <div className="min-w-0 bg-card">
-          <PanelHeader label="Plan artifact" />
+          <PanelHeader label="Reviewable plan" />
           <div className="p-4 sm:p-5">
             <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-primary">
               Awaiting owner approval
             </p>
             <h3 className="mt-3 max-w-xl text-2xl font-bold tracking-tight">
-              Redesign Panda around a session-first command surface.
+              Update Panda through a reviewable Agent run.
             </h3>
             <div className="mt-5 grid gap-px bg-border">
               {[
-                ['01', 'Replace tokens with OKLCH source of truth'],
-                ['02', 'Reframe shell around Session, Chat, Proof, Preview'],
-                ['03', 'Verify mobile focus views and changed-work proof'],
+                ['01', 'Update the affected workbench-owned files'],
+                ['02', 'Keep Ask / Plan / Agent copy consistent'],
+                ['03', 'Verify Review Diff, receipts, and checkpoint state'],
               ].map(([step, text]) => (
                 <div key={step} className="grid grid-cols-[42px_1fr] bg-background">
                   <span className="border-r border-border p-3 font-mono text-[10px] text-primary">
@@ -269,13 +282,13 @@ function WorkbenchPreview() {
         </div>
 
         <div className="hidden border-l border-border bg-background md:block">
-          <PanelHeader label="Inspector" />
+          <PanelHeader label="Proof rail" />
           <div className="grid gap-px bg-border">
             {[
               ['RUN', '3 steps ready'],
+              ['RECEIPT', 'pending'],
               ['CHANGES', '2 files'],
-              ['CONTEXT', 'bounded'],
-              ['PREVIEW', 'attached'],
+              ['CHECKPOINT', 'saved'],
             ].map(([label, value]) => (
               <div key={label} className="flex items-center justify-between bg-card px-3 py-3">
                 <span className="font-mono text-[10px] text-muted-foreground">{label}</span>
