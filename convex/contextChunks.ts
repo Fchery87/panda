@@ -178,6 +178,39 @@ export const indexProjectFiles = mutation({
   },
 })
 
+export const indexRunOutput = mutation({
+  args: {
+    projectId: v.id('projects'),
+    chatId: v.optional(v.id('chats')),
+    runId: v.optional(v.id('agentRuns')),
+    sourceId: v.string(),
+    title: v.optional(v.string()),
+    path: v.optional(v.string()),
+    content: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
+    const chunks = chunkSource({
+      sourceType: 'run_event',
+      sourceId: args.sourceId,
+      title: args.title ?? 'Command output',
+      path: args.path,
+      content: args.content,
+    })
+    const written = await upsertChunkBatch(ctx, {
+      projectId: args.projectId,
+      chatId: args.chatId,
+      runId: args.runId,
+      chunks,
+    })
+    return {
+      sourceType: 'run_event' as const,
+      sourceId: args.sourceId,
+      chunksWritten: written,
+    }
+  },
+})
+
 export const indexSessionSummaries = mutation({
   args: { projectId: v.id('projects'), limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
@@ -424,6 +457,96 @@ export const stats = query({
   },
 })
 
+function buildFocusedSnippet(content: string, terms: string[], maxChars = 1_200): string {
+  const normalized = content.trim()
+  if (normalized.length <= maxChars) return normalized
+  if (terms.length === 0) return `${normalized.slice(0, maxChars).trim()}\n…`
+
+  const lower = normalized.toLowerCase()
+  const matchIndex = terms
+    .map((term) => lower.indexOf(term))
+    .filter((index) => index >= 0)
+    .sort((a, b) => a - b)[0]
+
+  if (matchIndex === undefined) return `${normalized.slice(0, maxChars).trim()}\n…`
+
+  const halfWindow = Math.floor(maxChars / 2)
+  const windowStart = Math.max(0, matchIndex - halfWindow)
+  const windowEnd = Math.min(normalized.length, windowStart + maxChars)
+  const lineStart = normalized.lastIndexOf('\n', windowStart)
+  const lineEnd = normalized.indexOf('\n', windowEnd)
+  const start = lineStart >= 0 ? lineStart + 1 : windowStart
+  const end = lineEnd >= 0 ? lineEnd : windowEnd
+  const prefix = start > 0 ? '…\n' : ''
+  const suffix = end < normalized.length ? '\n…' : ''
+  return `${prefix}${normalized.slice(start, end).trim()}${suffix}`
+}
+
+function matchedTerms(content: string, terms: string[]): string[] {
+  const lower = content.toLowerCase()
+  return terms.filter((term) => lower.includes(term))
+}
+
+export const searchRunOutput = query({
+  args: {
+    projectId: v.id('projects'),
+    sourceId: v.string(),
+    query: v.optional(v.string()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
+    const limit = Math.min(Math.max(args.limit ?? 8, 1), 25)
+    const terms = (args.query ?? '')
+      .trim()
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 8)
+
+    const chunks = await ctx.db
+      .query('contextChunks')
+      .withIndex('by_source', (q) =>
+        q
+          .eq('projectId', args.projectId)
+          .eq('sourceType', 'run_event')
+          .eq('sourceId', args.sourceId)
+      )
+      .take(200)
+
+    const scored = chunks
+      .map((chunk) => {
+        const lower = chunk.content.toLowerCase()
+        const score = terms.length
+          ? terms.reduce((sum, term) => sum + (lower.includes(term) ? 1 : 0), 0)
+          : 1
+        return { chunk, score }
+      })
+      .filter((item) => item.score > 0)
+      .sort((a, b) => b.score - a.score || a.chunk.chunkIndex - b.chunk.chunkIndex)
+      .slice(0, limit)
+
+    return scored.map(({ chunk, score }) => {
+      const matches = matchedTerms(chunk.content, terms)
+      const content = buildFocusedSnippet(chunk.content, terms)
+      return {
+        chunkId: chunk._id,
+        sourceType: chunk.sourceType,
+        sourceId: chunk.sourceId,
+        chunkIndex: chunk.chunkIndex,
+        title: chunk.title,
+        path: chunk.path,
+        startLine: chunk.startLine,
+        endLine: chunk.endLine,
+        content,
+        matchedTerms: matches,
+        score,
+        truncated: content !== chunk.content.trim(),
+      }
+    })
+  },
+})
+
 export const search = query({
   args: {
     projectId: v.id('projects'),
@@ -469,6 +592,72 @@ export const listByProject = query({
       .withIndex('by_project_updated', (q) => q.eq('projectId', args.projectId))
       .order('desc')
       .take(limit)
+  },
+})
+
+export const removeRunOutputBySource = mutation({
+  args: { projectId: v.id('projects'), sourceId: v.string(), limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
+    const limit = Math.min(Math.max(args.limit ?? 500, 1), 1000)
+    const chunks = await ctx.db
+      .query('contextChunks')
+      .withIndex('by_source', (q) =>
+        q
+          .eq('projectId', args.projectId)
+          .eq('sourceType', 'run_event')
+          .eq('sourceId', args.sourceId)
+      )
+      .take(limit)
+    for (const chunk of chunks) await ctx.db.delete(chunk._id)
+    return {
+      sourceType: 'run_event' as const,
+      sourceId: args.sourceId,
+      deleted: chunks.length,
+      hasMore: chunks.length === limit,
+    }
+  },
+})
+
+export const removeRunOutputByRun = mutation({
+  args: { projectId: v.id('projects'), runId: v.id('agentRuns'), limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
+    const limit = Math.min(Math.max(args.limit ?? 500, 1), 1000)
+    const chunks = await ctx.db
+      .query('contextChunks')
+      .withIndex('by_run_updated', (q) => q.eq('runId', args.runId))
+      .take(limit)
+    const runOutputChunks = chunks.filter(
+      (chunk) => chunk.projectId === args.projectId && chunk.sourceType === 'run_event'
+    )
+    for (const chunk of runOutputChunks) await ctx.db.delete(chunk._id)
+    return {
+      sourceType: 'run_event' as const,
+      runId: args.runId,
+      deleted: runOutputChunks.length,
+      hasMore: chunks.length === limit,
+    }
+  },
+})
+
+export const purgeRunOutputs = mutation({
+  args: { projectId: v.id('projects'), limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
+    const limit = Math.min(Math.max(args.limit ?? 500, 1), 1000)
+    const chunks = await ctx.db
+      .query('contextChunks')
+      .withIndex('by_project_source_updated', (q) =>
+        q.eq('projectId', args.projectId).eq('sourceType', 'run_event')
+      )
+      .take(limit)
+    for (const chunk of chunks) await ctx.db.delete(chunk._id)
+    return {
+      sourceType: 'run_event' as const,
+      deleted: chunks.length,
+      hasMore: chunks.length === limit,
+    }
   },
 })
 

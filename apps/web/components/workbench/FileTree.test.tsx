@@ -2,6 +2,32 @@ import { describe, expect, test } from 'bun:test'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { FileTree } from './FileTree'
 
+describe('FileTree folder placeholders', () => {
+  test('renders .gitkeep placeholders as folders without showing placeholder files', () => {
+    const html = renderToStaticMarkup(
+      <FileTree
+        files={[
+          {
+            _id: 'file:docs/.gitkeep',
+            path: 'docs/.gitkeep',
+            isBinary: false,
+            updatedAt: 0,
+          },
+        ]}
+        selectedPath={null}
+        onSelect={() => {}}
+        onCreate={() => {}}
+        onRename={() => {}}
+        onDelete={() => {}}
+      />
+    )
+
+    expect(html).toContain('docs')
+    expect(html).not.toContain('.gitkeep')
+    expect(html).not.toContain('No files yet')
+  })
+})
+
 describe('FileTree generated change badges', () => {
   test('renders pending generated file badges', () => {
     const html = renderToStaticMarkup(

@@ -338,6 +338,27 @@ export const ExecutionReceiptApprovalRecord = v.object({
   timestamp: v.number(),
 })
 
+export const ExecutionReceiptContextGuardSource = v.object({
+  toolName: v.string(),
+  toolCallId: v.optional(v.string()),
+  classification: v.optional(v.string()),
+  sourceId: v.optional(v.string()),
+  rawBytes: v.number(),
+  returnedBytes: v.number(),
+  bytesAvoided: v.number(),
+  chunksWritten: v.optional(v.number()),
+})
+
+export const ExecutionReceiptContextGuardSummary = v.object({
+  guardedToolResults: v.number(),
+  rawBytes: v.number(),
+  returnedBytes: v.number(),
+  bytesAvoided: v.number(),
+  indexedChunks: v.number(),
+  sources: v.array(ExecutionReceiptContextGuardSource),
+  truncated: v.boolean(),
+})
+
 export const ExecutionReceiptValidationEvidence = v.object({
   changeType: v.union(
     v.literal('docs'),
@@ -383,6 +404,7 @@ export const ExecutionReceiptV1 = v.object({
   }),
   estimatedCost: v.optional(v.number()),
   validationEvidence: v.optional(v.array(ExecutionReceiptValidationEvidence)),
+  contextGuard: v.optional(ExecutionReceiptContextGuardSummary),
   subagents: v.optional(v.array(HarnessSubagentSummary)),
   durationMs: v.number(),
   resultStatus: v.union(

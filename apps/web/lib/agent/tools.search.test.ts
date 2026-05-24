@@ -114,6 +114,33 @@ describe('project file materialization tool execution', () => {
     expect(result.output).toContain('docs')
   })
 
+  it('normalizes explicit directory write intents to durable .gitkeep placeholders', async () => {
+    const writtenPaths: string[] = []
+    const context: ToolContext = {
+      ...createBaseContext(),
+      writeFiles: async (files) => {
+        writtenPaths.push(...files.map((file) => file.path))
+        return files.map((file) => ({ path: file.path, success: true }))
+      },
+    }
+
+    const result = await executeTool(
+      makeToolCall('write_files', {
+        files: [
+          { path: 'docs/', type: 'directory' },
+          { path: '/notes', kind: 'folder' },
+        ],
+      }),
+      context
+    )
+
+    expect(result.error).toBeUndefined()
+    expect(writtenPaths).toEqual(['docs/.gitkeep', 'notes/.gitkeep'])
+    expect(result.output).toContain('folderPlaceholderNote')
+    expect(result.output).toContain('docs')
+    expect(result.output).toContain('notes')
+  })
+
   it('rejects filesystem-write commands because they do not update the project file tree', async () => {
     let commandRan = false
     const context: ToolContext = {

@@ -358,6 +358,7 @@ function createHarnessToolExecutors(toolContext: ToolContext): Map<string, Harne
     'write_files',
     'apply_patch',
     'run_command',
+    'search_indexed_output',
     'search_codebase',
     'search_code',
     'search_code_ast',

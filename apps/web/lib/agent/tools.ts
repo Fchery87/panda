@@ -15,6 +15,7 @@ import type { ToolDefinition, ToolCall, ToolResult } from '../llm/types'
 import type { WebContainer } from '@webcontainer/api'
 import type { Capability } from '@/lib/agent/harness/permission/types'
 import { analyzeCommand, classifyCommandFamily, isCommandPipelineSafe } from './command-analysis'
+import { guardCommandOutput, isContextGuardEnabled } from './context-guard'
 import { executeOracleSearch } from './harness/oracle'
 import { repairJSON, safeJSONParse } from './harness/tool-repair'
 import { spawnInContainer } from '@/lib/webcontainer/process-adapter'
@@ -145,6 +146,35 @@ export const AGENT_TOOLS: AgentToolDefinition[] = [
           },
         },
         required: ['command'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    capability: 'search',
+    readOnly: true,
+    function: {
+      name: 'search_indexed_output',
+      description:
+        'Search focused excerpts from previously guarded command output using a Context Guard evidence sourceId. Use this instead of asking for the full raw terminal log.',
+      parameters: {
+        type: 'object',
+        properties: {
+          sourceId: {
+            type: 'string',
+            description:
+              'The contextGuard.evidence.sourceId returned by a guarded run_command result.',
+          },
+          query: {
+            type: 'string',
+            description: 'Optional terms to find in the indexed command output.',
+          },
+          limit: {
+            type: 'number',
+            description: 'Maximum excerpts to return, from 1 to 25.',
+          },
+        },
+        required: ['sourceId'],
       },
     },
   },
@@ -378,6 +408,32 @@ export interface ToolContext {
     exitCode: number
     durationMs: number
   }>
+  indexCommandOutput?: (args: {
+    toolCallId: string
+    command: string
+    cwd?: string
+    stdout: string
+    stderr: string
+    exitCode: number
+  }) => Promise<{ sourceType: 'run_event'; sourceId: string; chunksWritten: number } | null>
+  searchIndexedOutput?: (params: {
+    sourceId: string
+    query?: string
+    limit?: number
+  }) => Promise<{
+    sourceType: 'run_event'
+    sourceId: string
+    query?: string
+    excerpts: Array<{
+      chunkIndex: number
+      startLine?: number
+      endLine?: number
+      content: string
+      matchedTerms?: string[]
+      score?: number
+      truncated?: boolean
+    }>
+  }>
   searchCode?: (params: {
     query: string
     mode?: 'literal' | 'regex'
@@ -448,17 +504,41 @@ interface WriteFileSpec {
   content: string
 }
 
+function isDirectoryWriteIntent(item: Record<string, unknown>, rawPath: string): boolean {
+  const kind = typeof item.kind === 'string' ? item.kind.toLowerCase() : undefined
+  const type = typeof item.type === 'string' ? item.type.toLowerCase() : undefined
+  return (
+    rawPath.endsWith('/') ||
+    item.isDirectory === true ||
+    item.directory === true ||
+    kind === 'directory' ||
+    kind === 'folder' ||
+    type === 'directory' ||
+    type === 'folder'
+  )
+}
+
+function normalizeDirectoryPlaceholderPath(path: string): string {
+  const normalized = normalizeProjectFilePath(path.replace(/\/+$/g, ''))
+  return normalized ? `${normalized}/.gitkeep` : ''
+}
+
 function normalizeWriteFilesInput(input: unknown): WriteFileSpec[] {
   if (Array.isArray(input)) {
     return input
       .filter(
-        (item): item is { path: unknown; content: unknown } =>
-          Boolean(item) && typeof item === 'object'
+        (item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object'
       )
-      .map((item) => ({
-        path: normalizeProjectFilePath(String(item.path ?? '')),
-        content: typeof item.content === 'string' ? item.content : String(item.content ?? ''),
-      }))
+      .map((item) => {
+        const rawPath = String(item.path ?? '')
+        const path = isDirectoryWriteIntent(item, rawPath)
+          ? normalizeDirectoryPlaceholderPath(rawPath)
+          : normalizeProjectFilePath(rawPath)
+        return {
+          path,
+          content: typeof item.content === 'string' ? item.content : String(item.content ?? ''),
+        }
+      })
       .filter((item) => item.path.length > 0)
   }
 
@@ -473,7 +553,7 @@ function normalizeWriteFilesInput(input: unknown): WriteFileSpec[] {
       return normalizeWriteFilesInput([record.file])
     }
 
-    if ('path' in record && 'content' in record) {
+    if ('path' in record) {
       return normalizeWriteFilesInput([record])
     }
   }
@@ -517,6 +597,10 @@ export function createToolContext(
     }
     memoryBank: {
       update: ToolApiRef
+    }
+    contextChunks?: {
+      indexRunOutput?: ToolApiRef
+      searchRunOutput?: ToolApiRef
     }
   },
   options: { webcontainer?: WebContainer | null } = {}
@@ -678,6 +762,80 @@ export function createToolContext(
     },
 
     // Run command by creating a job in Convex
+    indexCommandOutput: async ({ toolCallId, command, cwd, stdout, stderr, exitCode }) => {
+      if (!api.contextChunks?.indexRunOutput) return null
+      try {
+        const sourceId = `tool:${toolCallId}:command-output`
+        const content = [
+          `# Command output`,
+          `Command: ${command}`,
+          cwd ? `Working directory: ${cwd}` : null,
+          `Exit code: ${exitCode}`,
+          '',
+          '## stdout',
+          stdout || '(empty)',
+          '',
+          '## stderr',
+          stderr || '(empty)',
+        ]
+          .filter((part): part is string => part !== null)
+          .join('\n')
+        return await convexClient.mutation<{
+          sourceType: 'run_event'
+          sourceId: string
+          chunksWritten: number
+        }>(api.contextChunks.indexRunOutput, {
+          projectId,
+          chatId,
+          sourceId,
+          title: `Command: ${command.slice(0, 120)}`,
+          path: cwd,
+          content,
+        })
+      } catch (error) {
+        logToolError('Failed to index command output', error)
+        return null
+      }
+    },
+
+    searchIndexedOutput: async ({ sourceId, query, limit }) => {
+      if (!api.contextChunks?.searchRunOutput) {
+        throw new Error('search_indexed_output is not available in this context')
+      }
+      const excerpts = await convexClient.query<
+        Array<{
+          sourceType: 'run_event'
+          sourceId: string
+          chunkIndex: number
+          startLine?: number
+          endLine?: number
+          content: string
+          matchedTerms?: string[]
+          score?: number
+          truncated?: boolean
+        }>
+      >(api.contextChunks.searchRunOutput, {
+        projectId,
+        sourceId,
+        query,
+        limit,
+      })
+      return {
+        sourceType: 'run_event' as const,
+        sourceId,
+        ...(query ? { query } : {}),
+        excerpts: excerpts.map((excerpt) => ({
+          chunkIndex: excerpt.chunkIndex,
+          startLine: excerpt.startLine,
+          endLine: excerpt.endLine,
+          content: excerpt.content,
+          matchedTerms: excerpt.matchedTerms,
+          score: excerpt.score,
+          truncated: excerpt.truncated,
+        })),
+      }
+    },
+
     runCommand: async (command: string, timeout?: number, cwd?: string) => {
       const startTime = Date.now()
 
@@ -1104,18 +1262,67 @@ export async function executeTool(
           }
         }
         const result = await context.runCommand(command, timeout, cwd)
-        output = JSON.stringify(
-          {
+        const guardEnabled = isContextGuardEnabled()
+        let modelFacingResult = {
+          stdout: result.stdout,
+          stderr: result.stderr,
+          exitCode: result.exitCode,
+        }
+        if (guardEnabled) {
+          const initialGuard = guardCommandOutput({
             stdout: result.stdout,
             stderr: result.stderr,
             exitCode: result.exitCode,
-          },
-          null,
-          2
-        )
+          })
+          let evidence:
+            | { sourceType: 'run_event'; sourceId: string; chunksWritten: number; retrievalHint?: string }
+            | undefined
+          if (
+            initialGuard.metadata.guarded &&
+            process.env.PANDA_CONTEXT_GUARD_INDEX_OUTPUTS === '1'
+          ) {
+            const indexed = await context.indexCommandOutput?.({
+              toolCallId: toolCall.id,
+              command: String(command ?? ''),
+              cwd: typeof cwd === 'string' ? cwd : undefined,
+              stdout: result.stdout,
+              stderr: result.stderr,
+              exitCode: result.exitCode,
+            })
+            if (indexed) {
+              evidence = {
+                ...indexed,
+                retrievalHint:
+                  'Search contextChunks with sourceType=run_event and this sourceId to retrieve full command output excerpts.',
+              }
+            }
+          }
+          modelFacingResult = evidence
+            ? guardCommandOutput({
+                stdout: result.stdout,
+                stderr: result.stderr,
+                exitCode: result.exitCode,
+                evidence,
+              }).modelFacing
+            : initialGuard.modelFacing
+        }
+        output = JSON.stringify(modelFacingResult, null, 2)
         if (result.exitCode !== 0) {
           error = `Command failed with exit code ${result.exitCode}`
         }
+        break
+      }
+
+      case 'search_indexed_output': {
+        if (!context.searchIndexedOutput) {
+          throw new Error('search_indexed_output is not available in this context')
+        }
+        const result = await context.searchIndexedOutput({
+          sourceId: String(args.sourceId ?? ''),
+          query: typeof args.query === 'string' ? args.query : undefined,
+          limit: typeof args.limit === 'number' ? args.limit : undefined,
+        })
+        output = JSON.stringify(result, null, 2)
         break
       }
 

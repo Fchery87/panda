@@ -380,4 +380,55 @@ describe('buildExecutionReceipt', () => {
       },
     ])
   })
+  test('aggregates Context Guard receipt metrics from guarded tool results', () => {
+    const receipt = buildExecutionReceipt({
+      routingDecision,
+      contextSources: {
+        filesConsidered: [],
+        filesLoaded: [],
+        filesExcluded: [],
+        memoryBankIncluded: false,
+        specIncluded: false,
+        planIncluded: false,
+        sessionSummaryIncluded: false,
+        compactionOccurred: false,
+        truncated: false,
+      },
+      runEvents: [
+        {
+          type: 'tool_result',
+          toolName: 'run_command',
+          toolCallId: 'tool-1',
+          output: JSON.stringify({
+            stdout: 'preview',
+            stderr: '',
+            exitCode: 0,
+            contextGuard: {
+              guarded: true,
+              classification: 'large',
+              rawBytes: 100000,
+              returnedBytes: 6000,
+              bytesAvoided: 94000,
+              evidence: {
+                sourceId: 'tool:tool-1:command-output',
+                chunksWritten: 5,
+              },
+            },
+          }),
+        },
+      ],
+      startedAt: 0,
+      completedAt: 10,
+      resultStatus: 'complete',
+      webcontainer: { used: true },
+    })
+
+    expect(receipt.contextGuard?.guardedToolResults).toBe(1)
+    expect(receipt.contextGuard?.rawBytes).toBe(100000)
+    expect(receipt.contextGuard?.returnedBytes).toBe(6000)
+    expect(receipt.contextGuard?.bytesAvoided).toBe(94000)
+    expect(receipt.contextGuard?.indexedChunks).toBe(5)
+    expect(receipt.contextGuard?.sources[0]?.sourceId).toBe('tool:tool-1:command-output')
+  })
+
 })

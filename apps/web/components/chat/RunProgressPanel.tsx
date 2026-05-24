@@ -11,6 +11,7 @@ import {
   ChevronRight,
   History,
   Loader2,
+  ShieldCheck,
   XCircle,
   Zap,
 } from 'lucide-react'
@@ -399,6 +400,29 @@ export function RunProgressPanel({
                                 {meta.error ? (
                                   <div className="text-destructive/90 [overflow-wrap:anywhere]">
                                     {meta.error}
+                                  </div>
+                                ) : null}
+                                {step.details?.contextGuard ? (
+                                  <div className="border-primary/30 bg-primary/5 mt-1 space-y-1 border px-2 py-1.5 text-[11px] text-primary">
+                                    <div className="flex items-center gap-1.5 font-mono uppercase tracking-[0.16em]">
+                                      <ShieldCheck className="h-3 w-3" />
+                                      Context Guard
+                                    </div>
+                                    <div className="text-muted-foreground [overflow-wrap:anywhere]">
+                                      {step.details.contextGuard.classification ?? 'guarded'} output •{' '}
+                                      {step.details.contextGuard.bytesAvoided?.toLocaleString() ?? 'some'} bytes avoided
+                                      {typeof step.details.contextGuard.rawBytes === 'number'
+                                        ? ` • ${step.details.contextGuard.rawBytes.toLocaleString()} raw bytes`
+                                        : ''}
+                                      {typeof step.details.contextGuard.chunksWritten === 'number'
+                                        ? ` • ${step.details.contextGuard.chunksWritten} indexed chunk${step.details.contextGuard.chunksWritten === 1 ? '' : 's'}`
+                                        : ''}
+                                    </div>
+                                    {step.details.contextGuard.sourceId ? (
+                                      <div className="font-mono text-[10px] text-muted-foreground [overflow-wrap:anywhere]">
+                                        evidence: {step.details.contextGuard.sourceId}
+                                      </div>
+                                    ) : null}
                                   </div>
                                 ) : null}
                                 {step.details?.targetFilePaths &&

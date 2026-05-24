@@ -159,6 +159,7 @@ export interface PersistedRunEventInfo {
   args?: Record<string, unknown>
   output?: string
   error?: string
+  outputPreview?: string
   errorPreview?: string
   durationMs?: number
   planStepIndex?: number
@@ -191,6 +192,7 @@ export interface PersistedRunEventSummaryInfo {
   targetFilePaths?: string[]
   toolCallId?: string
   toolName?: string
+  outputPreview?: string
   errorPreview?: string
   durationMs?: number
   planStepIndex?: number

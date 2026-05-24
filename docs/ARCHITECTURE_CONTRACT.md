@@ -81,21 +81,30 @@ approval or execution decisions.
 
 ## Runtime Terms
 
-| Term               | Canonical meaning                                                                                                                                                     |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Execution Session  | User-facing work thread for one goal inside a project; currently a derived projection over chat, planning, run, receipt, changed-work, preview, and branch summaries. |
-| Run                | One agent execution lifecycle tied to a chat turn or approved plan execution.                                                                                         |
-| Run event          | A persisted progress, tool, status, validation, error, or receipt event for a run.                                                                                    |
-| Applied Skill      | A built-in or user Custom Skill selected for a Run or delegated Subagent task.                                                                                        |
-| Receipt            | A bounded audit record persisted when a run completes, fails, or stops.                                                                                               |
-| Checkpoint         | Durable runtime state that enables recovery or resume.                                                                                                                |
-| Runtime status     | Browser/server execution availability and current job state.                                                                                                          |
-| Termination reason | A typed explanation for why a run ended or stopped needing attention.                                                                                                 |
+| Term                 | Canonical meaning                                                                                                                                                     |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Execution Session    | User-facing work thread for one goal inside a project; currently a derived projection over chat, planning, run, receipt, changed-work, preview, and branch summaries. |
+| Run                  | One agent execution lifecycle tied to a chat turn or approved plan execution.                                                                                         |
+| Run event            | A persisted progress, tool, status, validation, error, or receipt event for a run.                                                                                    |
+| Applied Skill        | A built-in or user Custom Skill selected for a Run or delegated Subagent task.                                                                                        |
+| Receipt              | A bounded audit record persisted when a run completes, fails, or stops.                                                                                               |
+| Checkpoint           | Durable runtime state that enables recovery or resume.                                                                                                                |
+| Runtime status       | Browser/server execution availability and current job state.                                                                                                          |
+| Termination reason   | A typed explanation for why a run ended or stopped needing attention.                                                                                                 |
+| Context Guard        | Panda's runtime boundary that prevents large raw tool data from flooding chat/model context while preserving and indexing full evidence.                              |
+| Tool Output Guard    | The Context Guard component that measures/classifies tool output and returns a bounded model-facing result.                                                           |
+| Indexed Evidence     | Full or chunked tool/run evidence persisted into Panda-owned storage, especially `contextChunks`, and referenced by retrieval handles.                                |
+| Model-facing summary | The bounded payload returned to the model after guarding; it must be explicit when output was guarded and must include evidence handles when available.                |
 
 Execution Session is the product projection the user navigates. It is not a
 dedicated persisted table today. Receipts summarize proof. Run events explain
 progress. Checkpoints support recovery. They must remain separate because they
 have different payload, retention, and display rules.
+
+Context Guard is Panda-native. It is not a vendored or hosted exposure of any
+third-party context-management package. Full evidence belongs in Proof,
+Terminal, run events, receipts, jobs, artifacts, or indexed context storage; the
+model loop receives bounded summaries and retrieval handles.
 
 ## Source-Of-Truth Map
 

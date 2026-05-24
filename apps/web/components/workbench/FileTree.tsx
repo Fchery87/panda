@@ -104,16 +104,19 @@ function buildTree(
   const sortedFiles = [...files].sort((a, b) => a.path.localeCompare(b.path))
 
   for (const file of sortedFiles) {
-    const parts = file.path.split('/')
+    const parts = file.path.split('/').filter(Boolean)
     let currentPath = ''
 
     for (let i = 0; i < parts.length; i++) {
       const part = parts[i]
+      const isLastPart = i === parts.length - 1
+      const isDirectoryPlaceholder = isLastPart && part === '.gitkeep'
+      if (isDirectoryPlaceholder) continue
+
       const parentPath = currentPath
       currentPath = currentPath ? `${currentPath}/${part}` : part
 
       if (!nodeMap.has(currentPath)) {
-        const isLastPart = i === parts.length - 1
         const node: FileTreeNode = {
           name: part,
           path: currentPath,

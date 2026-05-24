@@ -412,6 +412,10 @@ function createFallbackToolContext(
       jobs: { create: api.jobs.create, updateStatus: api.jobs.updateStatus },
       artifacts: { create: api.artifacts.create },
       memoryBank: { update: api.memoryBank.update },
+      contextChunks: {
+        indexRunOutput: api.contextChunks.indexRunOutput,
+        searchRunOutput: api.contextChunks.searchRunOutput,
+      },
     },
     { webcontainer }
   )

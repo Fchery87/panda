@@ -156,6 +156,61 @@ function buildValidationEvidence(filesWritten: string[], commandsRun: { command:
   }))
 }
 
+function parseContextGuardOutput(output: string | undefined): {
+  classification?: string
+  rawBytes: number
+  returnedBytes: number
+  bytesAvoided: number
+  chunksWritten?: number
+  sourceId?: string
+} | null {
+  if (!output) return null
+  try {
+    const parsed = JSON.parse(output) as { contextGuard?: Record<string, unknown> }
+    const guard = parsed.contextGuard
+    if (!guard || guard.guarded !== true) return null
+    const evidence = guard.evidence as Record<string, unknown> | undefined
+    return {
+      classification: typeof guard.classification === 'string' ? guard.classification : undefined,
+      rawBytes: typeof guard.rawBytes === 'number' ? guard.rawBytes : 0,
+      returnedBytes: typeof guard.returnedBytes === 'number' ? guard.returnedBytes : 0,
+      bytesAvoided: typeof guard.bytesAvoided === 'number' ? guard.bytesAvoided : 0,
+      chunksWritten: typeof evidence?.chunksWritten === 'number' ? evidence.chunksWritten : undefined,
+      sourceId: typeof evidence?.sourceId === 'string' ? evidence.sourceId : undefined,
+    }
+  } catch {
+    return null
+  }
+}
+
+function buildContextGuardSummary(args: BuildExecutionReceiptArgs['runEvents']) {
+  const sources = args.flatMap((event) => {
+    const guard = parseContextGuardOutput(event.output ?? event.outputPreview)
+    if (!guard) return []
+    return {
+      toolName: event.toolName ?? 'unknown',
+      ...(event.toolCallId ? { toolCallId: event.toolCallId } : {}),
+      ...(guard.classification ? { classification: guard.classification } : {}),
+      ...(guard.sourceId ? { sourceId: guard.sourceId } : {}),
+      rawBytes: guard.rawBytes,
+      returnedBytes: guard.returnedBytes,
+      bytesAvoided: guard.bytesAvoided,
+      ...(typeof guard.chunksWritten === 'number' ? { chunksWritten: guard.chunksWritten } : {}),
+    }
+  })
+  const bounded = boundArray(sources)
+  if (sources.length === 0) return null
+  return {
+    guardedToolResults: sources.length,
+    rawBytes: sources.reduce((sum, source) => sum + source.rawBytes, 0),
+    returnedBytes: sources.reduce((sum, source) => sum + source.returnedBytes, 0),
+    bytesAvoided: sources.reduce((sum, source) => sum + source.bytesAvoided, 0),
+    indexedChunks: sources.reduce((sum, source) => sum + (source.chunksWritten ?? 0), 0),
+    sources: bounded.values,
+    truncated: bounded.truncated,
+  }
+}
+
 function buildSubagentRollup(args: BuildExecutionReceiptArgs['runEvents']) {
   const bySubagent = new Map<string, NonNullable<(typeof args)[number]['subagentSummary']>>()
 
@@ -222,6 +277,7 @@ export function buildExecutionReceipt(args: BuildExecutionReceiptArgs): Executio
   })
   const approvalsRequested = boundArray(approvalEvents)
   const validationEvidence = buildValidationEvidence(filesWritten.values, commandsRun)
+  const contextGuard = buildContextGuardSummary(args.runEvents)
   const subagentRollup = buildSubagentRollup(args.runEvents)
 
   return {
@@ -257,6 +313,7 @@ export function buildExecutionReceipt(args: BuildExecutionReceiptArgs): Executio
       cached: args.usage?.cacheRead ?? 0,
     },
     validationEvidence,
+    ...(contextGuard ? { contextGuard } : {}),
     ...(subagentRollup.values.length > 0 ? { subagents: subagentRollup.values } : {}),
     durationMs: Math.max(0, args.completedAt - args.startedAt),
     resultStatus: args.resultStatus,

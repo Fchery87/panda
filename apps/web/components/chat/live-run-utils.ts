@@ -6,6 +6,15 @@ import type { PersistedRunEventInfo, PersistedRunEventSummaryInfo } from '@/comp
 
 export type LiveProgressCategory = 'analysis' | 'rewrite' | 'tool' | 'complete' | 'other'
 
+export interface ContextGuardProgressDetails {
+  classification?: string
+  rawBytes?: number
+  returnedBytes?: number
+  bytesAvoided?: number
+  chunksWritten?: number
+  sourceId?: string
+}
+
 export interface LiveProgressDetails {
   toolName?: string
   toolCallId?: string
@@ -14,6 +23,7 @@ export interface LiveProgressDetails {
   errorExcerpt?: string
   targetFilePaths?: string[]
   hasArtifactTarget?: boolean
+  contextGuard?: ContextGuardProgressDetails
 }
 
 export interface LiveProgressStep {
@@ -193,6 +203,26 @@ function summarizeArgs(args: Record<string, unknown> | undefined): string | unde
   const serialized = JSON.stringify(args)
   if (!serialized) return undefined
   return serialized.length > 140 ? `${serialized.slice(0, 137)}...` : serialized
+}
+
+function parseContextGuardFromOutput(output: string | undefined): ContextGuardProgressDetails | undefined {
+  if (!output) return undefined
+  try {
+    const parsed = JSON.parse(output) as { contextGuard?: Record<string, unknown> }
+    const guard = parsed.contextGuard
+    if (!guard || guard.guarded !== true) return undefined
+    const evidence = guard.evidence as Record<string, unknown> | undefined
+    return {
+      classification: typeof guard.classification === 'string' ? guard.classification : undefined,
+      rawBytes: typeof guard.rawBytes === 'number' ? guard.rawBytes : undefined,
+      returnedBytes: typeof guard.returnedBytes === 'number' ? guard.returnedBytes : undefined,
+      bytesAvoided: typeof guard.bytesAvoided === 'number' ? guard.bytesAvoided : undefined,
+      chunksWritten: typeof evidence?.chunksWritten === 'number' ? evidence.chunksWritten : undefined,
+      sourceId: typeof evidence?.sourceId === 'string' ? evidence.sourceId : undefined,
+    }
+  } catch {
+    return undefined
+  }
 }
 
 function buildErrorDetails(error: string | undefined): LiveProgressDetails | undefined {
@@ -378,6 +408,7 @@ export function mapRunEventsToProgressSteps(events: PersistedRunEventInfo[]): Li
           event.args ||
           event.durationMs !== undefined ||
           event.error ||
+          event.outputPreview ||
           event.targetFilePaths ||
           event.progressHasArtifactTarget !== undefined
             ? {
@@ -388,6 +419,7 @@ export function mapRunEventsToProgressSteps(events: PersistedRunEventInfo[]): Li
                 errorExcerpt: event.error,
                 targetFilePaths: event.targetFilePaths,
                 hasArtifactTarget: event.progressHasArtifactTarget,
+                contextGuard: parseContextGuardFromOutput(event.outputPreview ?? event.output),
               }
             : undefined,
         planStepIndex: event.planStepIndex,
@@ -450,6 +482,7 @@ export function mapRunEventSummariesToProgressSteps(
           event.toolCallId ||
           event.durationMs !== undefined ||
           event.errorPreview ||
+          event.outputPreview ||
           event.targetFilePaths ||
           event.progressHasArtifactTarget !== undefined
             ? {
@@ -459,6 +492,7 @@ export function mapRunEventSummariesToProgressSteps(
                 errorExcerpt: event.errorPreview,
                 targetFilePaths: event.targetFilePaths,
                 hasArtifactTarget: event.progressHasArtifactTarget,
+                contextGuard: parseContextGuardFromOutput(event.outputPreview),
               }
             : undefined,
         planStepIndex: event.planStepIndex,

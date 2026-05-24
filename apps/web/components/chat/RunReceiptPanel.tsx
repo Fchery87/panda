@@ -24,6 +24,12 @@ function pluralize(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? '' : 's'}`
 }
 
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
+
 function validationSummary(receipt: ExecutionReceipt): string {
   const commandCount = receipt.webcontainer.commandsRun.length
   if (commandCount > 0) return pluralize(commandCount, 'command')
@@ -121,6 +127,32 @@ export function RunReceiptPanel({ receipt }: RunReceiptPanelProps) {
           {receipt.routingDecision.rationale}
         </p>
       </ReceiptSection>
+
+      {receipt.contextGuard ? (
+        <ReceiptSection title="Context Guard" tone="primary">
+          <div className="grid gap-2 sm:grid-cols-4">
+            <ReceiptMetric label="Guarded" value={receipt.contextGuard.guardedToolResults} />
+            <ReceiptMetric label="Raw" value={formatBytes(receipt.contextGuard.rawBytes)} />
+            <ReceiptMetric label="Avoided" value={formatBytes(receipt.contextGuard.bytesAvoided)} />
+            <ReceiptMetric label="Indexed" value={`${receipt.contextGuard.indexedChunks} chunks`} />
+          </div>
+          {receipt.contextGuard.sources.length > 0 ? (
+            <div className="mt-2 space-y-1">
+              {receipt.contextGuard.sources.slice(0, 3).map((source, index) => (
+                <div
+                  key={`${source.sourceId ?? source.toolCallId ?? source.toolName}-${index}`}
+                  className="bg-muted/20 border border-border px-2 py-1 font-mono text-xs text-muted-foreground [overflow-wrap:anywhere]"
+                >
+                  {source.toolName} • {source.classification ?? 'guarded'} •{' '}
+                  {formatBytes(source.bytesAvoided)} avoided
+                  {source.chunksWritten ? ` • ${source.chunksWritten} chunks` : ''}
+                  {source.sourceId ? ` • ${source.sourceId}` : ''}
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </ReceiptSection>
+      ) : null}
 
       <ReceiptSection title="Context">
         <div className="grid gap-2 sm:grid-cols-4">

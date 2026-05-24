@@ -106,6 +106,7 @@ function toRunEventSummary(event: Doc<'agentRunEvents'>) {
     subagentSummary: event.subagentSummary,
     createdAt: event.createdAt,
     contentPreview: previewText(event.content),
+    outputPreview: previewText(event.output),
     errorPreview: previewText(event.error),
   }
 }
