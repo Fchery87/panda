@@ -90,6 +90,31 @@ export const ContextChunkSourceType = v.union(
   v.literal('subagent')
 )
 
+export const ResearchSourceKind = v.union(
+  v.literal('web_page'),
+  v.literal('web_search'),
+  v.literal('github_repo'),
+  v.literal('github_directory'),
+  v.literal('github_file'),
+  v.literal('pdf')
+)
+
+export const ResearchProvider = v.union(
+  v.literal('direct_fetch'),
+  v.literal('github'),
+  v.literal('pdf'),
+  v.literal('exa'),
+  v.literal('perplexity'),
+  v.literal('gemini'),
+  v.literal('jina')
+)
+
+export const ResearchCitation = v.object({
+  title: v.string(),
+  url: v.string(),
+  snippet: v.optional(v.string()),
+})
+
 export const HarnessSubagentStatus = v.union(
   v.literal('running'),
   v.literal('completed'),
@@ -982,6 +1007,27 @@ export default defineSchema({
     .index('by_file', ['fileId'])
     .index('by_snapshot', ['fileId', 'snapshotNumber'])
     .index('by_created', ['createdAt']),
+
+  // 4b. ResearchSources table - external web/repo/PDF source evidence
+  researchSources: defineTable({
+    projectId: v.id('projects'),
+    chatId: v.optional(v.id('chats')),
+    runId: v.optional(v.id('agentRuns')),
+    kind: ResearchSourceKind,
+    url: v.string(),
+    title: v.optional(v.string()),
+    provider: v.optional(ResearchProvider),
+    contentHash: v.string(),
+    extractedMarkdown: v.optional(v.string()),
+    summary: v.optional(v.string()),
+    citations: v.optional(v.array(ResearchCitation)),
+    metadata: v.optional(v.record(v.string(), v.any())),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_project_created', ['projectId', 'createdAt'])
+    .index('by_chat_created', ['chatId', 'createdAt'])
+    .index('by_hash', ['projectId', 'contentHash']),
 
   // 5. Chats table - conversation threads per project
   chats: defineTable({

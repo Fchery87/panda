@@ -2664,6 +2664,7 @@ export class Runtime {
     if (toolName === 'task') return 'high'
     if (
       toolName.startsWith('search_') ||
+      toolName.startsWith('research_') ||
       toolName === 'read_files' ||
       toolName === 'list_directory'
     ) {

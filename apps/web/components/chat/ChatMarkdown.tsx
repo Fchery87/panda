@@ -290,6 +290,18 @@ function useMarkdownComponents(resolvedTheme: string | undefined): Components {
       },
 
       a({ href, children }) {
+        const hrefText = typeof href === 'string' ? href : ''
+        if (hrefText.startsWith('source:')) {
+          return (
+            <code
+              title={hrefText}
+              className="border-primary/30 bg-primary/5 mx-0.5 rounded-none border px-1 py-0.5 font-mono text-[11px] text-primary"
+            >
+              {children}
+            </code>
+          )
+        }
+
         return (
           <a
             href={href}

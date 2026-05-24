@@ -416,6 +416,13 @@ function createFallbackToolContext(
         indexRunOutput: api.contextChunks.indexRunOutput,
         searchRunOutput: api.contextChunks.searchRunOutput,
       },
+      researchSources: {
+        create: api.researchSources.create,
+        get: api.researchSources.get,
+        searchWeb: api.researchSources.searchWeb,
+        fetchUrl: api.researchSources.fetchUrl,
+        fetchGithub: api.researchSources.fetchGithub,
+      },
     },
     { webcontainer }
   )

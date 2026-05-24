@@ -40,6 +40,7 @@ import type * as planningSessions from "../planningSessions.js";
 import type * as projectOverview from "../projectOverview.js";
 import type * as projects from "../projects.js";
 import type * as providers from "../providers.js";
+import type * as researchSources from "../researchSources.js";
 import type * as retention from "../retention.js";
 import type * as seed from "../seed.js";
 import type * as sessionSummaries from "../sessionSummaries.js";
@@ -88,6 +89,7 @@ declare const fullApi: ApiFromModules<{
   projectOverview: typeof projectOverview;
   projects: typeof projects;
   providers: typeof providers;
+  researchSources: typeof researchSources;
   retention: typeof retention;
   seed: typeof seed;
   sessionSummaries: typeof sessionSummaries;
