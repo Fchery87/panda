@@ -56,6 +56,7 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
     planningSession,
     onSendMessage,
     onSuggestedAction,
+    onAskUserAnswer,
     onModeChange,
     onStopStreaming,
     onResumeRuntimeSession,
@@ -283,6 +284,7 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
           messages={chatMessages}
           isStreaming={isStreaming}
           onSuggestedAction={onSuggestedAction}
+          onAskUserAnswer={onAskUserAnswer}
           liveSteps={liveSteps}
           runEvents={runEvents}
           latestRunReceipt={latestRunReceipt}

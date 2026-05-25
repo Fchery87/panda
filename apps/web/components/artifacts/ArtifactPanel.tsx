@@ -9,9 +9,12 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { ArtifactCard } from './ArtifactCard'
 import { cn } from '@/lib/utils'
+import { useMutation } from 'convex/react'
+import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { toast } from 'sonner'
 import { getPrimaryArtifactAction, type ArtifactAction } from '@/lib/artifacts/executeArtifact'
+import type { AdvisorPolicy } from '@/lib/agent/workflow'
 import { useArtifactController } from '@/hooks/useArtifactController'
 
 type ArtifactRecord = {
@@ -30,6 +33,7 @@ interface ArtifactPanelProps {
   writeFileToRuntime?: (path: string, content: string) => Promise<unknown>
   onOpenFile?: (path: string) => void
   onReviewDiff?: () => void
+  advisorPolicy?: AdvisorPolicy
 }
 
 type ArtifactCardData = React.ComponentProps<typeof ArtifactCard>['artifact']
@@ -59,8 +63,21 @@ export function ArtifactPanel({
   writeFileToRuntime,
   onOpenFile,
   onReviewDiff,
+  advisorPolicy = {
+    enabled: true,
+    requiredFor: [
+      'large_diff',
+      'destructive_command',
+      'dependency_change',
+      'auth_or_security_change',
+      'database_schema_change',
+      'autopilot_checkpoint',
+    ],
+    reasoningEffort: 'medium',
+  },
 }: ArtifactPanelProps) {
-  const artifactController = useArtifactController({ projectId, chatId, writeFileToRuntime })
+  const artifactController = useArtifactController({ projectId, chatId, writeFileToRuntime, advisorPolicy })
+  const createAdvisorReviewRequest = useMutation(api.advisorReviewRequests.create)
   const records = artifactController.records as ArtifactRecord[] | undefined
 
   const [isApplying, setIsApplying] = useState(false)
@@ -123,6 +140,31 @@ export function ArtifactPanel({
       }
     },
     [pendingArtifacts, artifactController]
+  )
+
+  const handleRequestAdvisorReview = useCallback(
+    async (id: string) => {
+      const request = artifactController.requestAdvisorReview(id)
+      if (!request) {
+        toast.info('Advisor review not required for this artifact')
+        return
+      }
+      if (!chatId) {
+        toast.error('Cannot request advisor review without an active chat')
+        return
+      }
+      await createAdvisorReviewRequest({
+        projectId,
+        chatId,
+        artifactId: asArtifactId(request.artifactId ?? id),
+        gates: request.gates,
+        prompt: request.prompt,
+      })
+      toast.success('Advisor review requested', {
+        description: `Gates: ${request.gates.join(', ')}`,
+      })
+    },
+    [artifactController, chatId, createAdvisorReviewRequest, projectId]
   )
 
   const handleReject = useCallback(
@@ -316,6 +358,7 @@ export function ArtifactPanel({
                           onReject={handleReject}
                           onOpenFile={onOpenFile}
                           onReviewDiff={onReviewDiff}
+                          onRequestAdvisorReview={handleRequestAdvisorReview}
                         />
                       </motion.div>
                     ))}

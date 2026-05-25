@@ -1,6 +1,13 @@
 'use client'
 
 import type { Id } from '@convex/_generated/dataModel'
+import {
+  buildAdvisorPreflight,
+  buildArtifactAdvisorReviewRequest,
+  selectAdvisorReviewForTarget,
+  type AdvisorPolicy,
+  type AdvisorReviewRecord,
+} from '@/lib/agent/workflow'
 import { getPrimaryArtifactAction, type ArtifactAction } from './executeArtifact'
 
 export interface ArtifactControllerRecord {
@@ -16,6 +23,7 @@ type ApplyArtifactFn = (args: {
   artifactId: Id<'artifacts'>
   action: ArtifactAction
   projectId: Id<'projects'>
+  advisorReview?: AdvisorReviewRecord | null
 }) => Promise<ApplyArtifactResult>
 
 interface ArtifactControllerOptions {
@@ -26,6 +34,9 @@ interface ArtifactControllerOptions {
     id: Id<'artifacts'>
     status: ArtifactControllerRecord['status']
   }) => Promise<unknown>
+  advisorReview?: AdvisorReviewRecord | null
+  advisorReviews?: AdvisorReviewRecord[]
+  advisorPolicy?: AdvisorPolicy
 }
 
 export function createArtifactController({
@@ -33,6 +44,9 @@ export function createArtifactController({
   projectId,
   applyArtifact,
   updateArtifactStatus,
+  advisorReview = null,
+  advisorReviews,
+  advisorPolicy,
 }: ArtifactControllerOptions) {
   const allRecords = records ?? []
   const pendingRecords = allRecords.filter(
@@ -47,10 +61,35 @@ export function createArtifactController({
       const action = record ? getPrimaryArtifactAction(record) : null
       if (!record || !action) return null
 
+      const preflight = advisorPolicy
+        ? buildAdvisorPreflight({
+            policy: advisorPolicy,
+            changedFiles: action.type === 'file_write' ? [action.payload.filePath] : [],
+            commands: action.type === 'command_run' ? [action.payload.command] : [],
+          })
+        : null
+      const matchedAdvisorReview =
+        advisorReview ??
+        selectAdvisorReviewForTarget(advisorReviews, {
+          artifactId: String(record._id),
+          gates: preflight?.gates,
+        })
+
       return await applyArtifact({
         artifactId: record._id,
         action,
         projectId,
+        advisorReview: matchedAdvisorReview,
+      })
+    },
+    requestAdvisorReview(artifactId: Id<'artifacts'> | string) {
+      const record = pendingRecords.find((artifact) => artifact._id === artifactId)
+      const action = record ? getPrimaryArtifactAction(record) : null
+      if (!record || !action || !advisorPolicy) return null
+      return buildArtifactAdvisorReviewRequest({
+        artifactId: String(record._id),
+        action,
+        policy: advisorPolicy,
       })
     },
     async rejectOne(artifactId: Id<'artifacts'> | string) {

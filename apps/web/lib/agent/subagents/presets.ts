@@ -46,6 +46,7 @@ export function permissionForPreset(preset: SubagentCapabilityPreset): Permissio
         run_command: 'deny',
         update_memory_bank: 'deny',
         task: 'deny',
+        ask_user: 'allow',
         question: 'deny',
       }
     case 'assistant':
@@ -60,6 +61,7 @@ export function permissionForPreset(preset: SubagentCapabilityPreset): Permissio
         run_command: 'ask',
         update_memory_bank: 'ask',
         task: 'deny',
+        ask_user: 'allow',
         question: 'ask',
       }
     case 'builder':
@@ -74,6 +76,7 @@ export function permissionForPreset(preset: SubagentCapabilityPreset): Permissio
         run_command: 'allow',
         update_memory_bank: 'allow',
         task: 'deny',
+        ask_user: 'allow',
         question: 'ask',
       }
     case 'restricted':
@@ -88,6 +91,7 @@ export function permissionForPreset(preset: SubagentCapabilityPreset): Permissio
         run_command: 'deny',
         update_memory_bank: 'deny',
         task: 'deny',
+        ask_user: 'deny',
         question: 'deny',
       }
   }

@@ -320,6 +320,7 @@ export function applyNonTerminalAgentEvent(args: {
           planStepTitle: step.planStepTitle,
           planTotalSteps: step.planTotalSteps,
           completedPlanStepIndexes: step.completedPlanStepIndexes,
+          workflowStage: event.workflowStage,
         })
       }
       return true
@@ -462,6 +463,7 @@ export function applyNonTerminalAgentEvent(args: {
           error: event.toolResult.error,
           durationMs: event.toolResult.durationMs,
           status: event.toolResult.error ? 'error' : 'completed',
+          workflowStage: event.workflowStage,
         })
       }
       return true

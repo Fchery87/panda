@@ -16,6 +16,7 @@ type ToolResultProgressEvent = {
     toolCallId?: string
     toolName?: string
     args?: Record<string, unknown>
+    output?: string
     error?: string
     durationMs?: number
   }
@@ -39,6 +40,33 @@ export function mapToolCallToProgressStep(event: ToolCallProgressEvent): AgentEv
   }
 }
 
+function targetFilePathsFromToolResult(toolResult: ToolResultProgressEvent['toolResult']): string[] | undefined {
+  if (!toolResult) return undefined
+  if (toolResult.toolName === 'write_files') {
+    try {
+      const parsed = JSON.parse((toolResult as { output?: string }).output ?? '{}') as {
+        files?: Array<{ path?: unknown; success?: unknown }>
+      }
+      const paths = (parsed.files ?? [])
+        .filter((file) => file.success !== false && typeof file.path === 'string')
+        .map((file) => file.path as string)
+      return paths.length > 0 ? paths : undefined
+    } catch {
+      return undefined
+    }
+  }
+  const files = toolResult.args?.files
+  if (Array.isArray(files)) {
+    const paths = files.flatMap((file) => {
+      if (!file || typeof file !== 'object') return []
+      const path = (file as Record<string, unknown>).path
+      return typeof path === 'string' ? [path] : []
+    })
+    return paths.length > 0 ? paths : undefined
+  }
+  return undefined
+}
+
 export function mapToolResultToProgressStep(event: ToolResultProgressEvent): AgentEvent {
   const toolResult = event.toolResult
 
@@ -56,5 +84,6 @@ export function mapToolResultToProgressStep(event: ToolResultProgressEvent): Age
       toolResult?.toolName === 'write_files' ||
       toolResult?.toolName === 'run_command' ||
       toolResult?.toolName === 'apply_patch',
+    targetFilePaths: targetFilePathsFromToolResult(toolResult),
   }
 }

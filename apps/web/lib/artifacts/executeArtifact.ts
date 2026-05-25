@@ -5,6 +5,7 @@ import { api } from '@convex/_generated/api'
 import type { ConvexReactClient } from 'convex/react'
 import { executeQueuedJob } from '@/lib/jobs/executeJob'
 import { normalizeProjectFilePath } from '@/lib/project-files/path'
+import { buildAdvisorPreflight, enforceAdvisorReview, type AdvisorPolicy, type AdvisorReview } from '@/lib/agent/workflow'
 
 export type ArtifactAction =
   | {
@@ -77,6 +78,9 @@ interface ApplyArtifactOptions {
     status: ArtifactRecordStatus
   }) => Promise<unknown>
   writeFileToRuntime?: (path: string, content: string) => Promise<unknown>
+  advisorPolicy?: AdvisorPolicy
+  advisorApproved?: boolean
+  advisorReview?: AdvisorReview | null
 }
 
 export async function applyArtifact({
@@ -89,10 +93,31 @@ export async function applyArtifact({
   updateJobStatus,
   updateArtifactStatus,
   writeFileToRuntime,
+  advisorPolicy,
+  advisorApproved = false,
+  advisorReview = null,
 }: ApplyArtifactOptions): Promise<{ kind: 'file' | 'command'; description: string }> {
   await updateArtifactStatus({ id: artifactId, status: 'in_progress' })
 
   try {
+    if (advisorPolicy) {
+      const preflight = buildAdvisorPreflight({
+        policy: advisorPolicy,
+        changedFiles: action.type === 'file_write' ? [normalizeProjectFilePath(action.payload.filePath)] : [],
+        commands: action.type === 'command_run' ? [action.payload.command] : [],
+      })
+      if (preflight.required && !advisorApproved) {
+        const decision = enforceAdvisorReview({
+          required: true,
+          gates: preflight.gates,
+          review: advisorReview,
+        })
+        if (!decision.canContinue) {
+          throw new Error(decision.message || preflight.message)
+        }
+      }
+    }
+
     if (action.type === 'file_write') {
       const filePath = normalizeProjectFilePath(action.payload.filePath)
       if (!filePath) {
@@ -111,6 +136,14 @@ export async function applyArtifact({
         content: action.payload.content,
         isBinary: false,
       })
+
+      const verified = await convex.query(api.files.getByPath, {
+        projectId,
+        path: filePath,
+      })
+      if (!verified || verified.path !== filePath) {
+        throw new Error(`File artifact was applied but not verified in the project file tree: ${filePath}`)
+      }
 
       await writeFileToRuntime?.(filePath, action.payload.content)
 

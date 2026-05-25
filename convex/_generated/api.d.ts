@@ -9,6 +9,9 @@
  */
 
 import type * as admin from "../admin.js";
+import type * as advisorReviewRequests from "../advisorReviewRequests.js";
+import type * as advisorReviews from "../advisorReviews.js";
+import type * as agentRunQuestions from "../agentRunQuestions.js";
 import type * as agentRuns from "../agentRuns.js";
 import type * as artifacts from "../artifacts.js";
 import type * as auth from "../auth.js";
@@ -49,6 +52,8 @@ import type * as sharing from "../sharing.js";
 import type * as specifications from "../specifications.js";
 import type * as subagents from "../subagents.js";
 import type * as users from "../users.js";
+import type * as workflowArtifacts from "../workflowArtifacts.js";
+import type * as workflowChains from "../workflowChains.js";
 
 import type {
   ApiFromModules,
@@ -58,6 +63,9 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
+  advisorReviewRequests: typeof advisorReviewRequests;
+  advisorReviews: typeof advisorReviews;
+  agentRunQuestions: typeof agentRunQuestions;
   agentRuns: typeof agentRuns;
   artifacts: typeof artifacts;
   auth: typeof auth;
@@ -98,6 +106,8 @@ declare const fullApi: ApiFromModules<{
   specifications: typeof specifications;
   subagents: typeof subagents;
   users: typeof users;
+  workflowArtifacts: typeof workflowArtifacts;
+  workflowChains: typeof workflowChains;
 }>;
 
 /**

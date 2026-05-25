@@ -35,6 +35,8 @@ type SendAgentMessageOptions = {
   variantCount?: number
   manualModeOverride?: boolean
   modeOverride?: ChatMode
+  workflowChainId?: Id<'workflowChains'>
+  workflowChainStepId?: string
 }
 
 export function shouldQueuePendingDirectSend(args: {
@@ -186,6 +188,8 @@ export function useProjectMessageWorkflow(args: {
     attachmentsOnly?: boolean
     manualModeOverride?: boolean
     modeOverride?: ChatMode
+    workflowChainId?: Id<'workflowChains'>
+    workflowChainStepId?: string
   } | null>(null)
   const pendingMessageDispatchRef = useRef<string | null>(null)
 
@@ -203,6 +207,8 @@ export function useProjectMessageWorkflow(args: {
       attachmentsOnly: pendingMessage.attachmentsOnly,
       manualModeOverride: pendingMessage.manualModeOverride,
       modeOverride: pendingMessage.modeOverride ?? pendingMessage.mode,
+      workflowChainId: pendingMessage.workflowChainId,
+      workflowChainStepId: pendingMessage.workflowChainStepId,
     }).finally(() => {
       setPendingMessage((current) => (current?.id === pendingMessage.id ? null : current))
       if (pendingMessageDispatchRef.current === pendingMessage.id) {
@@ -286,6 +292,8 @@ export function useProjectMessageWorkflow(args: {
                     attachmentsOnly: options?.attachmentsOnly,
                     manualModeOverride: options?.manualModeOverride,
                     modeOverride: mode,
+                    workflowChainId: options?.workflowChainId,
+                    workflowChainStepId: options?.workflowChainStepId,
                   })
                 }
               : undefined,
@@ -327,6 +335,8 @@ export function useProjectMessageWorkflow(args: {
         attachmentsOnly: options?.attachmentsOnly,
         manualModeOverride: options?.manualModeOverride,
         modeOverride: mode,
+        workflowChainId: options?.workflowChainId,
+        workflowChainStepId: options?.workflowChainStepId,
       })
     },
     [

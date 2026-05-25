@@ -19,12 +19,17 @@ import type {
 import { PlanningIntakeSurface } from '@/components/plan/PlanningIntakePopup'
 import { PlanPanel } from '@/components/plan/PlanPanel'
 import { ArtifactPanel } from '@/components/artifacts/ArtifactPanel'
+import { WorkflowArtifactsPanel } from '@/components/workbench/WorkflowArtifactsPanel'
+import { WorkflowChainsPanel } from '@/components/workbench/WorkflowChainsPanel'
+import { AdvisorReviewsPanel } from '@/components/workbench/AdvisorReviewsPanel'
+import { AdvisorReviewRequestsPanel } from '@/components/workbench/AdvisorReviewRequestsPanel'
 import { AgentEventsPanel } from '@/components/panels/AgentEventsPanel'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { LiveProgressStep } from '@/components/chat/live-run-utils'
 import type { FormalSpecification } from '@/lib/agent/spec/types'
 import type { PlanStatus } from '@/lib/chat/planDraft'
+import type { ChatMode } from '@/lib/agent/prompt-library'
 import type { TracePersistenceStatus } from '@/hooks/useRunEventBuffer'
 import type { PlanningSessionDebugSummary } from '@/components/plan/PlanningSessionDebugCard'
 import type { GeneratedPlanArtifact, PlanningAnswer, PlanningQuestion } from '@/lib/planning/types'
@@ -984,6 +989,7 @@ export interface InspectorEvalsContentProps {
     expected?: unknown
     mode?: string
     evalMode?: 'read_only' | 'full'
+    subagentName?: string
   }) => Promise<{
     output: string
     error?: string
@@ -1041,6 +1047,11 @@ export interface ProjectChatInspectorProps
     source: 'suggestion' | 'freeform'
   }) => Promise<unknown> | unknown
   onClearPlanningIntake: () => Promise<unknown> | unknown
+  onStartWorkflowChain?: (
+    prompt: string,
+    targetMode?: ChatMode,
+    metadata?: { workflowChainId: Id<'workflowChains'>; workflowChainStepId: string }
+  ) => void
   onOpenChange: (open: boolean) => void
   onTabChange: (tab: InspectorTab) => void
 }
@@ -1056,6 +1067,7 @@ export function ProjectChatInspector({
   onStartPlanningIntake,
   onAnswerPlanningQuestion,
   onClearPlanningIntake,
+  onStartWorkflowChain,
   onOpenChange,
   onTabChange,
   liveSteps,
@@ -1178,6 +1190,22 @@ export function ProjectChatInspector({
         </TabsContent>
 
         <TabsContent value="plan" className="m-0">
+          <div className="mb-3 space-y-3">
+            <div className="border border-border bg-background p-3">
+              <WorkflowChainsPanel
+                projectId={projectId}
+                chatId={chatId}
+                userGoal={lastUserPrompt}
+                onStartChain={onStartWorkflowChain}
+              />
+            </div>
+            <div className="border border-border bg-background p-3">
+              <AdvisorReviewRequestsPanel chatId={chatId} />
+            </div>
+            <div className="border border-border bg-background p-3">
+              <AdvisorReviewsPanel chatId={chatId} />
+            </div>
+          </div>
           <InspectorPlanContent
             planDraft={planDraft}
             generatedPlanArtifact={planningSession?.generatedPlan ?? null}
@@ -1195,8 +1223,11 @@ export function ProjectChatInspector({
         </TabsContent>
 
         <TabsContent value="artifacts" className="m-0">
-          <div className="m-0 h-[420px] border border-border bg-background">
-            <ArtifactPanel projectId={projectId} chatId={chatId} position="right" />
+          <div className="m-0 h-[420px] space-y-3 overflow-y-auto border border-border bg-background p-3">
+            <WorkflowArtifactsPanel chatId={chatId} />
+            <div className="border-t border-border pt-3">
+              <ArtifactPanel projectId={projectId} chatId={chatId} position="right" />
+            </div>
           </div>
         </TabsContent>
 

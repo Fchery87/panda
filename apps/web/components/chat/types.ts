@@ -15,6 +15,7 @@ import type { AppliedSkillSummary } from '@/lib/agent/skills/applied-skills'
 import type { ExecutionReceipt } from '@/lib/agent/receipt'
 import type { HarnessSubagentSummary } from '@/lib/agent/harness'
 import type { ContextWindowSource } from '@/lib/llm/model-metadata'
+import type { WorkflowStage } from '@/lib/agent/workflow'
 
 export type TokenSource = 'exact' | 'estimated'
 
@@ -175,6 +176,7 @@ export interface PersistedRunEventInfo {
     files: string[]
     timestamp: number
   }
+  workflowStage?: WorkflowStage
   createdAt?: number
 }
 
@@ -208,6 +210,7 @@ export interface PersistedRunEventSummaryInfo {
     files: string[]
     timestamp: number
   }
+  workflowStage?: WorkflowStage
   createdAt?: number
 }
 

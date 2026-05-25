@@ -743,6 +743,7 @@ export function WorkspaceRuntimeProvider({
       // Callbacks: message / mode
       onSendMessage: handleSendMessage,
       onSuggestedAction: handleSuggestedAction,
+      onAskUserAnswer: agent.answerAskUser,
       onModeChange: handleModeChange,
       onStopStreaming: agent.stop ?? (() => {}),
       onResumeRuntimeSession: agent.resumeRuntimeSession,

@@ -128,6 +128,7 @@ export const DEFAULT_PERMISSIONS: Record<string, Permission> = {
     search_code_ast: 'allow',
     update_memory_bank: 'allow',
     task: 'allow',
+    ask_user: 'allow',
     question: 'deny',
   },
   plan: {
@@ -140,6 +141,7 @@ export const DEFAULT_PERMISSIONS: Record<string, Permission> = {
     run_command: 'ask',
     update_memory_bank: 'allow',
     task: 'allow',
+    ask_user: 'allow',
   },
   ask: {
     read_files: 'allow',
@@ -150,6 +152,7 @@ export const DEFAULT_PERMISSIONS: Record<string, Permission> = {
     write_files: 'deny',
     run_command: 'deny',
     task: 'deny',
+    ask_user: 'allow',
   },
 }
 

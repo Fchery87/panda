@@ -21,11 +21,13 @@ describe('ArtifactCard navigation actions', () => {
         onReject={() => {}}
         onOpenFile={() => {}}
         onReviewDiff={() => {}}
+        onRequestAdvisorReview={() => {}}
       />
     )
 
     expect(html).toContain('Open File')
     expect(html).toContain('Review Diff')
+    expect(html).toContain('Request Advisor Review')
     expect(html).toContain('src/generated.ts')
   })
 })

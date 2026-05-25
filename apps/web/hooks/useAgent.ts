@@ -59,6 +59,14 @@ import {
   convexChunksToLocalContextChunks,
 } from '../lib/agent/context/convex-adapter'
 import { resolveModeHandoff } from '../lib/agent/context/mode-handoff'
+import {
+  artifactKindForStage,
+  autopilotCheckpointRunEvent,
+  evaluateAutopilotCheckpoint,
+  guardAssistantClaims,
+  resolveWorkflowStage,
+} from '../lib/agent/workflow'
+import type { AskUserQuestionRequest } from '../lib/agent/workflow/questionnaire'
 
 import {
   buildAgentRuntimeConfig,
@@ -150,6 +158,8 @@ type SendMessageOptions = {
   manualModeOverride?: boolean
   modeOverride?: ChatMode
   autoModeSwitchPolicy?: AutoModeSwitchPolicy
+  workflowChainId?: Id<'workflowChains'>
+  workflowChainStepId?: string
 }
 
 function buildExplicitContextItems(args: {
@@ -246,6 +256,8 @@ export function buildPublicSendMessageOptions(
     manualModeOverride: options?.manualModeOverride,
     modeOverride: options?.modeOverride,
     autoModeSwitchPolicy: options?.autoModeSwitchPolicy,
+    workflowChainId: options?.workflowChainId,
+    workflowChainStepId: options?.workflowChainStepId,
   }
 }
 
@@ -526,6 +538,7 @@ interface UseAgentReturn {
     expected?: unknown
     mode?: string
     evalMode?: 'read_only' | 'full'
+    subagentName?: string
   }) => Promise<{
     output: string
     error?: string
@@ -539,6 +552,12 @@ interface UseAgentReturn {
   updatePendingSpecDraft: (spec: FormalSpecification) => void
   cancelPendingSpec: () => void
   resumeRuntimeSession: (sessionID: string) => Promise<void>
+  answerAskUser: (answer: {
+    questionId: string
+    questionPrompt: string
+    optionLabel: string
+    optionValue: string
+  }) => Promise<void>
 
   // Error
   error: string | null
@@ -608,6 +627,11 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const completeRun = useMutation(api.agentRuns.complete)
   const failRun = useMutation(api.agentRuns.fail)
   const stopRun = useMutation(api.agentRuns.stop)
+  const createWorkflowArtifact = useMutation(api.workflowArtifacts.create)
+  const updateWorkflowChainStep = useMutation(api.workflowChains.updateStep)
+  const createAgentRunQuestion = useMutation(api.agentRunQuestions.createPending)
+  const answerAgentRunQuestion = useMutation(api.agentRunQuestions.answer)
+  const createAdvisorReviewRequest = useMutation(api.advisorReviewRequests.create)
 
   // Memory bank hook
   const { memoryBankContent, updateMemoryBank } = useMemoryBank(projectId)
@@ -657,6 +681,14 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
   const abortControllerRef = useRef<AbortController | null>(null)
   const isRunningRef = useRef(false)
   const toolContextRef = useRef<ReturnType<typeof createToolContext> | null>(null)
+  const pendingAskUserRef = useRef<{
+    questionRecordId?: Id<'agentRunQuestions'>
+    resolve: (value: {
+      status: 'answered'
+      answers: Array<{ questionId: string; value: string | string[]; source: 'option' | 'other' }>
+      message?: string
+    }) => void
+  } | null>(null)
   const rafFlushRef = useRef<number | null>(null)
   const runtimeRef = useRef<AgentRuntimeLike | null>(null)
   const localMessagesChatIdRef = useRef<Id<'chats'> | null>(null)
@@ -875,6 +907,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         manualModeOverride?: boolean
         modeOverride?: ChatMode
         autoModeSwitchPolicy?: AutoModeSwitchPolicy
+        workflowChainId?: Id<'workflowChains'>
+        workflowChainStepId?: string
       }
     ) => {
       const userContent = buildSendMessageContent(rawContent, options)
@@ -901,6 +935,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       })
       const requestedMode = routingDecision.requestedMode
       const resolvedMode = routingDecision.resolvedMode
+      const workflowStage = resolveWorkflowStage({ mode: resolvedMode })
       const autoModeSwitch = buildAutoModeSwitchDecision({
         routingDecision,
         policy: options?.autoModeSwitchPolicy ?? autoModeSwitchPolicy,
@@ -962,8 +997,9 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         event: RunEventInput,
         eventOptions?: { forceFlush?: boolean }
       ) => {
-        runEventsForReceipt.push(event)
-        await appendRunEvent(event, eventOptions)
+        const stagedEvent: RunEventInput = event.workflowStage ? event : { ...event, workflowStage }
+        runEventsForReceipt.push(stagedEvent)
+        await appendRunEvent(stagedEvent, eventOptions)
       }
 
       const buildTerminalReceipt = (resultStatus: TerminalReceiptStatus) =>
@@ -1217,6 +1253,15 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         activeChildRunIdsRef.current = new Map()
         childRunSequencesRef.current = new Map()
         terminalChildRunIdsRef.current = new Set()
+        if (options?.workflowChainId && options.workflowChainStepId) {
+          await updateWorkflowChainStep({
+            id: options.workflowChainId,
+            stepId: options.workflowChainStepId,
+            status: 'running',
+            runId,
+          })
+        }
+
         let terminalAgentStatus: 'complete' | 'error' | null = null
         const runLifecycle = createRunLifecycle({
           runIdRef,
@@ -1229,6 +1274,79 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           getCompletedPlanStepIndexes: () => [...completedPlanStepIndexesRef.current],
           getPlanTotalSteps: () => planSteps.length,
         })
+
+        const autopilotCheckpointEnabled =
+          resolvedMode === 'build' &&
+          Boolean(
+            automationPolicy?.autoApplyFiles ||
+              automationPolicy?.autoRunCommands ||
+              automationPolicy?.yoloCommandMode
+          )
+        if (autopilotCheckpointEnabled) {
+          const checkpoint = evaluateAutopilotCheckpoint({
+            enabled: true,
+            policy: {
+              enabled: true,
+              requiredFor: ['autopilot_checkpoint'],
+              reasoningEffort: 'high',
+            },
+          })
+          if (!checkpoint.allowed) {
+            await appendObservedRunEvent(autopilotCheckpointRunEvent(checkpoint), {
+              forceFlush: true,
+            })
+            const advisorRequestId = await createAdvisorReviewRequest({
+              projectId,
+              chatId,
+              runId,
+              gates: checkpoint.preflight.gates,
+              prompt: [
+                'Advisor review requested for an Agent Autopilot checkpoint.',
+                `User request: ${userContent}`,
+                `Mode: ${resolvedMode}`,
+                `Gates: ${checkpoint.preflight.gates.join(', ')}`,
+                'Approve only if Panda should continue this unattended/autopilot transition.',
+              ].join('\n'),
+            })
+            const checkpointMessage =
+              `Autopilot checkpoint is waiting for advisor review before continuing. ` +
+              `Request: ${String(advisorRequestId)}. Gates: ${checkpoint.preflight.gates.join(', ')}.`
+            setMessages((prev) => [
+              ...prev,
+              {
+                id: `msg-${Date.now()}-autopilot-checkpoint`,
+                role: 'assistant',
+                content: checkpointMessage,
+                mode: resolvedMode,
+                createdAt: Date.now(),
+                annotations: { mode: resolvedMode },
+              },
+            ])
+            await addMessage({
+              chatId,
+              role: 'assistant',
+              content: checkpointMessage,
+              annotations: [{ mode: resolvedMode, model, provider: provider?.config?.provider }],
+            })
+            await appendObservedRunEvent(
+              {
+                type: 'assistant_message',
+                content: checkpointMessage,
+                status: 'blocked',
+                workflowStage,
+              },
+              { forceFlush: true }
+            )
+            await runLifecycle.finalizeRunStopped(buildTerminalReceipt('aborted'), {
+              kind: 'preflight-failed',
+              code: 'autopilot_checkpoint',
+            })
+            toast.info('Autopilot checkpoint requested', {
+              description: 'Advisor approval is required before Autopilot continues.',
+            })
+            return
+          }
+        }
 
         const contextPack = await (async () => {
           try {
@@ -1356,7 +1474,55 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           throw new Error('User not authenticated')
         }
 
-        const toolContext = getToolContext(userId)
+        const baseToolContext = getToolContext(userId)
+        const toolContext: typeof baseToolContext = {
+          ...baseToolContext,
+          advisorPolicy: {
+            enabled: true,
+            requiredFor: [
+              'destructive_command',
+              'dependency_change',
+              'auth_or_security_change',
+              'database_schema_change',
+            ],
+            reasoningEffort: 'high',
+          },
+          requestAdvisorReview: async (request) => {
+            const requestId = await createAdvisorReviewRequest({
+              projectId,
+              chatId,
+              runId,
+              gates: request.gates,
+              prompt: request.prompt,
+            })
+            await appendObservedRunEvent(
+              {
+                type: 'advisor_tool_blocked',
+                content: `Advisor review is required before ${request.toolName} can continue: ${request.gates.join(', ')}`,
+                status: 'needs_advisor',
+                progressCategory: 'analysis',
+              },
+              { forceFlush: true }
+            )
+            return { requestId: String(requestId) }
+          },
+          askUser: async (request: AskUserQuestionRequest) => {
+            const questionRecordId = await createAgentRunQuestion({
+              projectId,
+              chatId,
+              runId,
+              harnessSessionID: runtimeConfig.harnessSessionID ?? `harness_run_${runId}`,
+              request,
+            })
+            return await new Promise<{
+              status: 'answered'
+              answers: Array<{ questionId: string; value: string | string[]; source: 'option' | 'other' }>
+              message?: string
+            }>((resolve) => {
+              pendingAskUserRef.current = { questionRecordId, resolve }
+            })
+          },
+        }
 
         // Create agent runtime
         const runtimeSettings = getReasoningRuntimeSettings()
@@ -1573,6 +1739,14 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               runUsage = normalizeExactRunUsage(event.usage, runUsage)
               setCurrentRunUsage(runUsage)
 
+              const guardedAssistant = guardAssistantClaims({
+                content: assistantContent,
+                runEvents: runEventsForReceipt,
+              })
+              if (guardedAssistant.changed) {
+                assistantContent = guardedAssistant.content
+              }
+
               // Persist assistant message to Convex
               try {
                 const annotations: MessageAnnotationInfo = buildAssistantAnnotations({
@@ -1593,6 +1767,19 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                   content: assistantContent,
                   annotations: [annotations],
                 })
+                const artifactKind = artifactKindForStage(workflowStage)
+                if (artifactKind && assistantContent.trim()) {
+                  await createWorkflowArtifact({
+                    projectId,
+                    chatId,
+                    runId,
+                    kind: artifactKind,
+                    title: `${CHAT_MODE_CONFIGS[resolvedMode].surface.label} ${workflowStage}`,
+                    content: assistantContent,
+                    status: 'draft',
+                    sourceStage: workflowStage,
+                  })
+                }
                 const receipt = buildTerminalReceipt('complete')
                 await appendObservedRunEvent(
                   {
@@ -1600,6 +1787,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                     content: assistantContent,
                     usage: event.usage as TokenUsageInfo | undefined,
                     status: 'completed',
+                    workflowStage,
                   },
                   { forceFlush: true }
                 )
@@ -1608,6 +1796,14 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                   event.usage as TokenUsageInfo | undefined,
                   receipt
                 )
+                if (options?.workflowChainId && options.workflowChainStepId) {
+                  await updateWorkflowChainStep({
+                    id: options.workflowChainId,
+                    stepId: options.workflowChainStepId,
+                    status: 'completed',
+                    runId,
+                  })
+                }
               } catch (err) {
                 logUseAgentError('Failed to persist assistant message', err)
               }
@@ -1639,6 +1835,14 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                 buildTerminalReceipt('error'),
                 event.terminationReason ?? inferTerminationReasonFromError(errorMessage)
               )
+              if (options?.workflowChainId && options.workflowChainStepId) {
+                await updateWorkflowChainStep({
+                  id: options.workflowChainId,
+                  stepId: options.workflowChainStepId,
+                  status: 'failed',
+                  runId,
+                })
+              }
               toast.error(userFacing.title, {
                 description: userFacing.description,
               })
@@ -1714,6 +1918,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       beginRun,
       clearRun,
       createRun,
+      createWorkflowArtifact,
+      updateWorkflowChainStep,
+      createAgentRunQuestion,
+      createAdvisorReviewRequest,
       indexContextProjectFiles,
       indexContextSessionSummaries,
       indexContextSpecifications,
@@ -1894,6 +2102,40 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     [sendMessageInternal, sendMessageWithVariants]
   )
 
+  const answerAskUser = useCallback<UseAgentReturn['answerAskUser']>(
+    async (answer) => {
+      const pending = pendingAskUserRef.current
+      if (!pending) {
+        toast.error('No pending Panda decision', {
+          description: 'The runtime is not currently waiting for a structured answer.',
+        })
+        return
+      }
+
+      const answers = [
+        {
+          questionId: answer.questionId,
+          value: answer.optionValue,
+          source: 'option' as const,
+        },
+      ]
+
+      if (pending.questionRecordId) {
+        await answerAgentRunQuestion({ id: pending.questionRecordId, answers })
+      }
+      pending.resolve({
+        status: 'answered',
+        answers,
+        message: `Answered "${answer.questionPrompt}" with "${answer.optionLabel}".`,
+      })
+      pendingAskUserRef.current = null
+      toast.success('Decision submitted', {
+        description: 'Panda is continuing the active run.',
+      })
+    },
+    [answerAgentRunQuestion]
+  )
+
   const resumeRuntimeSession = useCallback(
     async (sessionID: string) => {
       toast.info('Resuming previous run', {
@@ -1948,12 +2190,20 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         typeof scenario.mode === 'string' ? scenario.mode : mode,
         mode
       )
-      const textInput =
+      const rawTextInput =
         typeof scenario.prompt === 'string'
           ? scenario.prompt
           : typeof scenario.input === 'string'
             ? scenario.input
             : JSON.stringify(scenario.input ?? '', null, 2)
+      const textInput =
+        scenario.subagentName === 'advisor-reviewer'
+          ? [
+              'You are running as Panda specialist subagent: advisor-reviewer.',
+              'Follow this specialist instruction: Review risky work before execution or completion. Return status approved, needs_changes, or blocked with concrete risks and recommendations. Do not modify files.',
+              rawTextInput,
+            ].join('\n\n')
+          : rawTextInput
 
       const { promptContext } = buildAgentPromptBundle({
         projectId,
@@ -2040,6 +2290,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     updatePendingSpecDraft,
     cancelPendingSpec,
     resumeRuntimeSession,
+    answerAskUser,
     error,
     tracePersistenceStatus,
   }

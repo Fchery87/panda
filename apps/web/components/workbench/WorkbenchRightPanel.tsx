@@ -10,6 +10,8 @@ import {
   InspectorEvalsContent,
 } from '@/components/projects/ProjectChatInspector'
 import { ArtifactPanel } from '@/components/artifacts/ArtifactPanel'
+import { AdvisorReviewRequestsPanel } from '@/components/workbench/AdvisorReviewRequestsPanel'
+import { AdvisorReviewsPanel } from '@/components/workbench/AdvisorReviewsPanel'
 import { useWorkspaceRuntime } from '@/contexts/WorkspaceRuntimeContext'
 import { useWorkspaceUiStore } from '@/stores/workspaceUiStore'
 import { buildExecutionSessionInspectorViewModel } from '@/lib/workspace/execution-session-inspector-view-model'
@@ -102,6 +104,20 @@ export function WorkbenchRightPanel({ projectId }: WorkbenchRightPanelProps) {
                 pendingDiffEntries={pendingDiffEntries}
                 onReviewDiff={onReviewDiff}
               />
+              <AdvisorReviewRequestsPanel
+                chatId={activeChatId}
+                runAdvisorReviewer={async (prompt) => {
+                  const result = await onRunEvalScenario({
+                    prompt,
+                    mode: 'ask',
+                    evalMode: 'read_only',
+                    subagentName: 'advisor-reviewer',
+                  })
+                  if (result.error) throw new Error(result.error)
+                  return result.output
+                }}
+              />
+              <AdvisorReviewsPanel chatId={activeChatId} />
               <InspectorMemoryContent memoryBank={memoryBank} onSaveMemoryBank={onSaveMemoryBank} />
               <InspectorEvalsContent
                 projectId={projectId}

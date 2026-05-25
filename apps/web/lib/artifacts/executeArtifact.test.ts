@@ -18,8 +18,12 @@ describe('artifact execution helpers', () => {
 
   it('applies file artifacts through the shared execution path', async () => {
     const artifactStatusCalls: Array<{ id: string; status: string }> = []
+    let queryCount = 0
     const convex = {
-      query: async () => ({ _id: 'file_1' }),
+      query: async () => {
+        queryCount += 1
+        return queryCount === 1 ? { _id: 'file_1' } : { _id: 'file_1', path: 'src/app.ts' }
+      },
     }
     const upsertFileCalls: Array<Record<string, unknown>> = []
     const upsertFile = async (args: Record<string, unknown>) => {
@@ -63,6 +67,165 @@ describe('artifact execution helpers', () => {
     })
   })
 
+  it('fails file artifact application when the project file tree cannot verify the write', async () => {
+    const artifactStatusCalls: Array<{ id: string; status: string }> = []
+
+    await expect(
+      applyArtifact({
+        artifactId: 'artifact_1' as never,
+        action: {
+          type: 'file_write',
+          payload: { filePath: 'src/missing.ts', content: 'export {}' },
+        },
+        projectId: 'project_1' as never,
+        convex: { query: async () => null } as never,
+        upsertFile: (async () => undefined) as never,
+        createAndExecuteJob: (async () => ({ jobId: 'job_1' })) as never,
+        updateJobStatus: (async () => undefined) as never,
+        updateArtifactStatus: (async (args: { id: string; status: string }) => {
+          artifactStatusCalls.push(args)
+        }) as never,
+      })
+    ).rejects.toThrow('not verified in the project file tree')
+
+    expect(artifactStatusCalls.map((call) => call.status)).toEqual(['in_progress', 'failed'])
+  })
+
+  it('blocks risky artifact execution when advisor policy requires review', async () => {
+    const statuses: string[] = []
+
+    await expect(
+      applyArtifact({
+        artifactId: 'artifact_1' as never,
+        action: {
+          type: 'command_run',
+          payload: { command: 'rm -rf tmp' },
+        },
+        projectId: 'project_1' as never,
+        convex: { query: async () => null } as never,
+        upsertFile: (async () => undefined) as never,
+        createAndExecuteJob: (async () => ({ jobId: 'job_1' })) as never,
+        updateJobStatus: (async () => undefined) as never,
+        updateArtifactStatus: (async (args: { status: string }) => {
+          statuses.push(args.status)
+        }) as never,
+        advisorPolicy: {
+          enabled: true,
+          requiredFor: ['destructive_command'],
+          reasoningEffort: 'high',
+        },
+      })
+    ).rejects.toThrow('Advisor review is required')
+
+    expect(statuses).toEqual(['in_progress', 'failed'])
+  })
+
+  it('allows risky artifact execution after advisor approval flag is supplied', async () => {
+    const commands: string[] = []
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ stdout: '', stderr: '', exitCode: 0 }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })) as typeof fetch
+
+    try {
+      await applyArtifact({
+      artifactId: 'artifact_1' as never,
+      action: {
+        type: 'command_run',
+        payload: { command: 'rm -rf tmp' },
+      },
+      projectId: 'project_1' as never,
+      convex: { query: async () => null } as never,
+      upsertFile: (async () => undefined) as never,
+      createAndExecuteJob: (async (args: { command: string }) => {
+        commands.push(args.command)
+        return { jobId: 'job_1' as never }
+      }) as never,
+      updateJobStatus: (async () => undefined) as never,
+      updateArtifactStatus: (async () => undefined) as never,
+      advisorPolicy: {
+        enabled: true,
+        requiredFor: ['destructive_command'],
+        reasoningEffort: 'high',
+      },
+        advisorApproved: true,
+      })
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+
+    expect(commands).toEqual(['rm -rf tmp'])
+  })
+
+  it('allows risky artifact execution after persisted advisor review approval', async () => {
+    const commands: string[] = []
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ stdout: '', stderr: '', exitCode: 0 }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })) as typeof fetch
+
+    try {
+      await applyArtifact({
+        artifactId: 'artifact_1' as never,
+        action: {
+          type: 'command_run',
+          payload: { command: 'rm -rf tmp' },
+        },
+        projectId: 'project_1' as never,
+        convex: { query: async () => null } as never,
+        upsertFile: (async () => undefined) as never,
+        createAndExecuteJob: (async (args: { command: string }) => {
+          commands.push(args.command)
+          return { jobId: 'job_1' as never }
+        }) as never,
+        updateJobStatus: (async () => undefined) as never,
+        updateArtifactStatus: (async () => undefined) as never,
+        advisorPolicy: {
+          enabled: true,
+          requiredFor: ['destructive_command'],
+          reasoningEffort: 'high',
+        },
+        advisorReview: { status: 'approved', summary: 'Safe in test fixture.', risks: [] },
+      })
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+
+    expect(commands).toEqual(['rm -rf tmp'])
+  })
+
+  it('blocks risky artifact execution after persisted advisor review requests changes', async () => {
+    await expect(
+      applyArtifact({
+        artifactId: 'artifact_1' as never,
+        action: {
+          type: 'command_run',
+          payload: { command: 'rm -rf tmp' },
+        },
+        projectId: 'project_1' as never,
+        convex: { query: async () => null } as never,
+        upsertFile: (async () => undefined) as never,
+        createAndExecuteJob: (async () => ({ jobId: 'job_1' })) as never,
+        updateJobStatus: (async () => undefined) as never,
+        updateArtifactStatus: (async () => undefined) as never,
+        advisorPolicy: {
+          enabled: true,
+          requiredFor: ['destructive_command'],
+          reasoningEffort: 'high',
+        },
+        advisorReview: {
+          status: 'needs_changes',
+          summary: 'Use a scoped delete instead.',
+          risks: [],
+        },
+      })
+    ).rejects.toThrow('Use a scoped delete instead')
+  })
+
   it('writes file artifacts through to the runtime when provided', async () => {
     const runtimeWrites: Array<{ path: string; content: string }> = []
 
@@ -73,7 +236,9 @@ describe('artifact execution helpers', () => {
         payload: { filePath: 'src/app.ts', content: 'export const value = 1' },
       },
       projectId: 'project_1' as never,
-      convex: { query: async () => null } as never,
+      convex: {
+        query: async () => ({ _id: 'file_1', path: 'src/app.ts' }),
+      } as never,
       upsertFile: (async () => undefined) as never,
       createAndExecuteJob: (async () => ({ jobId: 'job_1' })) as never,
       updateJobStatus: (async () => undefined) as never,
@@ -101,7 +266,7 @@ describe('artifact execution helpers', () => {
       convex: {
         query: async (_api: unknown, args: { path: string }) => {
           queriedPaths.push(args.path)
-          return null
+          return queriedPaths.length === 1 ? null : { _id: 'file_1', path: args.path }
         },
       } as never,
       upsertFile: (async (args: { path: string }) => {
@@ -115,7 +280,7 @@ describe('artifact execution helpers', () => {
       },
     })
 
-    expect(queriedPaths).toEqual(['docs/index.md'])
+    expect(queriedPaths).toEqual(['docs/index.md', 'docs/index.md'])
     expect(upsertedPaths).toEqual(['docs/index.md'])
     expect(runtimeWrites).toEqual([{ path: 'docs/index.md', content: '# Docs\n' }])
   })

@@ -25,6 +25,26 @@ describe('subagent registry', () => {
     expect(custom?.permission.write_files).toBe('deny')
   })
 
+  test('includes rpiv-inspired verification and codebase specialist built-ins as read-only workers', () => {
+    const registry = resolveSubagentRegistry()
+
+    for (const name of [
+      'codebase-locator',
+      'codebase-pattern-finder',
+      'integration-scanner',
+      'claim-verifier',
+      'diff-auditor',
+      'advisor-reviewer',
+    ]) {
+      const agent = registry.find((entry) => entry.name === name)
+      expect(agent).toBeDefined()
+      expect(agent?.source).toBe('built-in')
+      expect(agent?.defaultContextMode).toBe('fresh')
+      expect(agent?.mutatesWorkspace).toBe(false)
+      expect(agent?.permission.write_files).not.toBe('allow')
+    }
+  })
+
   test('filters custom subagents whose capability preset is disabled by policy', () => {
     const registry = resolveSubagentRegistry({
       allowedCapabilityPresets: ['research'],

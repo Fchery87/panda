@@ -20,6 +20,8 @@ import { executeOracleSearch } from './harness/oracle'
 import { repairJSON, safeJSONParse } from './harness/tool-repair'
 import { spawnInContainer } from '@/lib/webcontainer/process-adapter'
 import { normalizeProjectFilePath } from '@/lib/project-files/path'
+import { buildAdvisorPreflight, type AdvisorGate, type AdvisorPolicy } from './workflow'
+import { validateQuestionnaireRequest, type AskUserQuestionRequest } from './workflow/questionnaire'
 import { extractGitHubContent, extractUrlContent, toResearchToolResult } from '@/lib/research/extractors'
 import { hashResearchContent, wrapUntrustedResearchSource } from '@/lib/research/source-guard'
 import type { ResearchSourceKind, ResearchProvider } from '@/lib/research/types'
@@ -149,6 +151,55 @@ export const AGENT_TOOLS: AgentToolDefinition[] = [
           },
         },
         required: ['command'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    capability: 'read',
+    readOnly: true,
+    function: {
+      name: 'ask_user',
+      description:
+        'Ask the user one or more structured multiple-choice questions before making assumptions. Use this when requirements, file paths, architecture direction, or risky actions need explicit user input.',
+      parameters: {
+        type: 'object',
+        properties: {
+          questions: {
+            type: 'array',
+            description: 'Structured questions to ask the user.',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                label: { type: 'string' },
+                prompt: { type: 'string' },
+                multiple: { type: 'boolean' },
+                allowOther: { type: 'boolean' },
+                recommended: {
+                  type: 'string',
+                  description: 'Recommended option value. For multi-select questions, explain recommendations in rationale.',
+                },
+                options: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      value: { type: 'string' },
+                      label: { type: 'string' },
+                      description: { type: 'string' },
+                    },
+                    required: ['value', 'label'],
+                  },
+                },
+              },
+              required: ['id', 'prompt', 'options'],
+            },
+          },
+          rationale: { type: 'string' },
+          blocking: { type: 'boolean' },
+        },
+        required: ['questions'],
       },
     },
   },
@@ -471,6 +522,19 @@ export interface ToolContext {
   writeFiles: (
     files: Array<{ path: string; content: string }>
   ) => Promise<Array<{ path: string; success: boolean; error?: string }>>
+  askUser?: (request: AskUserQuestionRequest) => Promise<{
+    status: 'answered' | 'pending' | 'unavailable'
+    answers?: Array<{ questionId: string; value: string | string[]; source: 'option' | 'other' }>
+    message?: string
+  }>
+  advisorPolicy?: AdvisorPolicy
+  requestAdvisorReview?: (request: {
+    gates: AdvisorGate[]
+    prompt: string
+    changedFiles?: string[]
+    commands?: string[]
+    toolName: string
+  }) => Promise<{ requestId?: string }>
   // Memory bank
   updateMemoryBank: (content: string) => Promise<{ success: boolean; error?: string }>
   // Command execution
@@ -626,6 +690,39 @@ function isDirectoryWriteIntent(item: Record<string, unknown>, rawPath: string):
 function normalizeDirectoryPlaceholderPath(path: string): string {
   const normalized = normalizeProjectFilePath(path.replace(/\/+$/g, ''))
   return normalized ? `${normalized}/.gitkeep` : ''
+}
+
+async function enforceToolAdvisorPreflight(
+  context: ToolContext,
+  args: {
+    toolName: string
+    changedFiles?: string[]
+    commands?: string[]
+  }
+): Promise<string | null> {
+  if (!context.advisorPolicy) return null
+  const preflight = buildAdvisorPreflight({
+    policy: context.advisorPolicy,
+    changedFiles: args.changedFiles,
+    commands: args.commands,
+  })
+  if (!preflight.required) return null
+
+  await context.requestAdvisorReview?.({
+    gates: preflight.gates,
+    toolName: args.toolName,
+    changedFiles: args.changedFiles,
+    commands: args.commands,
+    prompt: [
+      `Advisor review required for direct runtime tool: ${args.toolName}`,
+      args.changedFiles?.length ? `Changed files: ${args.changedFiles.join(', ')}` : '',
+      args.commands?.length ? `Commands: ${args.commands.join(' && ')}` : '',
+      `Gates: ${preflight.gates.join(', ')}`,
+    ]
+      .filter(Boolean)
+      .join('\n'),
+  })
+  return preflight.message
 }
 
 function normalizeWriteFilesInput(input: unknown): WriteFileSpec[] {
@@ -1378,6 +1475,15 @@ export async function executeTool(
             'Invalid write_files arguments. Expected { files: [{ path, content }] } or { file: { path, content } }.'
           )
         }
+        const advisorBlock = await enforceToolAdvisorPreflight(context, {
+          toolName: 'write_files',
+          changedFiles: files.map((file) => file.path),
+        })
+        if (advisorBlock) {
+          error = advisorBlock
+          output = JSON.stringify({ status: 'needs_advisor', message: advisorBlock }, null, 2)
+          break
+        }
         const results = await context.writeFiles(files)
         const placeholderFolders = results
           .filter((result) => result.success && /(?:^|\/)\.gitkeep$/.test(result.path))
@@ -1401,6 +1507,29 @@ export async function executeTool(
         const failures = results.filter((r) => !r.success)
         if (failures.length > 0) {
           error = `Failed to queue ${failures.length} file artifact(s): ${failures.map((f) => f.path).join(', ')}`
+        }
+        break
+      }
+
+      case 'ask_user': {
+        const request = args as AskUserQuestionRequest
+        const validationErrors = validateQuestionnaireRequest(request)
+        if (validationErrors.length > 0) {
+          throw new Error(`Invalid ask_user questionnaire: ${validationErrors.join(' ')}`)
+        }
+        if (context.askUser) {
+          output = JSON.stringify(await context.askUser(request), null, 2)
+        } else {
+          output = JSON.stringify(
+            {
+              status: 'pending',
+              message:
+                'Structured user question requested. UI answer collection is not available in this runtime yet; present the options to the user and wait for their answer before proceeding.',
+              questionnaire: request,
+            },
+            null,
+            2
+          )
         }
         break
       }
@@ -1433,6 +1562,15 @@ export async function executeTool(
             timestamp: Date.now(),
             retryCount: 0,
           }
+        }
+        const advisorBlock = await enforceToolAdvisorPreflight(context, {
+          toolName: 'run_command',
+          commands: [String(command ?? '')],
+        })
+        if (advisorBlock) {
+          error = advisorBlock
+          output = JSON.stringify({ status: 'needs_advisor', message: advisorBlock }, null, 2)
+          break
         }
         const result = await context.runCommand(command, timeout, cwd)
         const guardEnabled = isContextGuardEnabled()
@@ -1682,6 +1820,16 @@ export async function executeTool(
       case 'apply_patch': {
         if (!context.applyPatch) {
           throw new Error('apply_patch is not available in this context')
+        }
+        const patchPath = normalizeProjectFilePath(String(args.path ?? ''))
+        const advisorBlock = await enforceToolAdvisorPreflight(context, {
+          toolName: 'apply_patch',
+          changedFiles: patchPath ? [patchPath] : [],
+        })
+        if (advisorBlock) {
+          error = advisorBlock
+          output = JSON.stringify({ status: 'needs_advisor', message: advisorBlock }, null, 2)
+          break
         }
         const result = await context.applyPatch({
           path: String(args.path ?? ''),

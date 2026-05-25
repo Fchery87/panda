@@ -41,6 +41,7 @@ interface EvalPanelProps {
     expected?: unknown
     mode?: string
     evalMode?: 'read_only' | 'full'
+    subagentName?: string
   }) => Promise<{
     output: string
     error?: string

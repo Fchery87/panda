@@ -18,6 +18,12 @@ interface MessageListProps {
   messages: Message[]
   isStreaming?: boolean
   onSuggestedAction?: (prompt: string, targetMode?: ChatMode) => void
+  onAskUserAnswer?: (answer: {
+    questionId: string
+    questionPrompt: string
+    optionLabel: string
+    optionValue: string
+  }) => void | Promise<void>
   liveSteps?: LiveProgressStep[]
   runEvents?: PersistedRunEventSummaryInfo[]
   latestRunReceipt?: LatestRunReceiptInfo | null
@@ -34,6 +40,7 @@ export function MessageList({
   messages,
   isStreaming = false,
   onSuggestedAction,
+  onAskUserAnswer,
   liveSteps,
   runEvents,
   latestRunReceipt,
@@ -193,6 +200,7 @@ export function MessageList({
                   message={item.message}
                   isStreaming={isStreaming && item.message._id === lastAssistantMessageId}
                   onSuggestedAction={onSuggestedAction}
+                  onAskUserAnswer={onAskUserAnswer}
                   disableActions={isStreaming}
                   failedCriteria={item.message._id === lastAssistantMessageId ? failedCriteria : []}
                 />

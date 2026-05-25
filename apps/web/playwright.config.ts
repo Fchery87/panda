@@ -16,6 +16,9 @@ const mobileChromeProject = {
   },
 }
 
+const playwrightPort = process.env.PLAYWRIGHT_PORT || '3000'
+const playwrightBaseURL = process.env.PLAYWRIGHT_BASE_URL || `http://localhost:${playwrightPort}`
+
 const browserProjects =
   process.env.PW_ALL_BROWSERS === 'true'
     ? [
@@ -63,7 +66,7 @@ export default defineConfig({
   /* Shared settings for all the projects below */
   use: {
     /* Base URL to use in actions like `await page.goto('/')` */
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
+    baseURL: playwrightBaseURL,
 
     /* Collect trace when retrying the failed test */
     trace: 'on-first-retry',
@@ -81,8 +84,8 @@ export default defineConfig({
   /* Run your local dev server before starting the tests */
   webServer: {
     command:
-      'cd ../.. && bunx concurrently "E2E_AUTH_BYPASS_SECRET=playwright-e2e-secret E2E_AUTH_BYPASS_CONTEXT=playwright CONVEX_SITE_URL=http://localhost:3000 NEXT_PUBLIC_APP_URL=http://localhost:3000 bunx convex dev" "cd apps/web && E2E_AUTH_BYPASS_SECRET=playwright-e2e-secret NEXT_PUBLIC_E2E_AUTH_BYPASS_SECRET=playwright-e2e-secret E2E_AUTH_BYPASS_CONTEXT=playwright NEXT_PUBLIC_APP_URL=http://localhost:3000 NEXT_PUBLIC_E2E_AGENT_MODE=spec-approval bun run dev"',
-    url: 'http://localhost:3000',
+      `cd ../.. && bunx concurrently "E2E_AUTH_BYPASS_SECRET=playwright-e2e-secret E2E_AUTH_BYPASS_CONTEXT=playwright CONVEX_SITE_URL=${playwrightBaseURL} NEXT_PUBLIC_APP_URL=${playwrightBaseURL} bunx convex dev" "cd apps/web && E2E_AUTH_BYPASS_SECRET=playwright-e2e-secret NEXT_PUBLIC_E2E_AUTH_BYPASS_SECRET=playwright-e2e-secret E2E_AUTH_BYPASS_CONTEXT=playwright NEXT_PUBLIC_APP_URL=${playwrightBaseURL} NEXT_PUBLIC_E2E_AGENT_MODE=spec-approval bun run dev -- -p ${playwrightPort}"`,
+    url: playwrightBaseURL,
     reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === 'true',
     timeout: 240 * 1000,
   },

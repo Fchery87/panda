@@ -41,6 +41,7 @@ import { mapToolCallToProgressStep, mapToolResultToProgressStep } from './runtim
 import { shouldTriggerRewrite } from './runtime/rewrite-guardrails'
 import type { TerminationReason } from './harness/errors'
 import { resolveSubagentRegistry, type CustomSubagentRecord } from './subagents'
+import type { WorkflowStage } from './workflow'
 
 const isE2ESpecApprovalModeEnabled = process.env.NEXT_PUBLIC_E2E_AGENT_MODE === 'spec-approval'
 
@@ -93,6 +94,8 @@ export interface AgentEvent {
   progressDurationMs?: number
   progressError?: string
   progressHasArtifactTarget?: boolean
+  targetFilePaths?: string[]
+  workflowStage?: WorkflowStage
   snapshot?: {
     hash: string
     step: number
@@ -358,6 +361,7 @@ function createHarnessToolExecutors(toolContext: ToolContext): Map<string, Harne
     'write_files',
     'apply_patch',
     'run_command',
+    'ask_user',
     'search_indexed_output',
     'research_fetch_url',
     'research_fetch_github',

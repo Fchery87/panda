@@ -145,9 +145,17 @@ export interface WorkspaceRuntimeValue {
         size?: number
         url?: string
       }>
+      workflowChainId?: Id<'workflowChains'>
+      workflowChainStepId?: string
     }
   ) => Promise<void>
   onSuggestedAction: (prompt: string, targetMode?: ChatMode) => Promise<void>
+  onAskUserAnswer: (answer: {
+    questionId: string
+    questionPrompt: string
+    optionLabel: string
+    optionValue: string
+  }) => Promise<void>
   onModeChange: (mode: ChatMode) => void
   onStopStreaming: () => void
   onResumeRuntimeSession: (sessionID: string) => Promise<void>
@@ -157,6 +165,7 @@ export interface WorkspaceRuntimeValue {
     expected?: unknown
     mode?: string
     evalMode?: 'read_only' | 'full'
+    subagentName?: string
   }) => Promise<{
     output: string
     error?: string

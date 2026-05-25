@@ -183,6 +183,89 @@ export const PlanStatus = v.union(
   v.literal('failed')
 )
 
+export const WorkflowStage = v.union(
+  v.literal('intake'),
+  v.literal('clarify'),
+  v.literal('research'),
+  v.literal('explore'),
+  v.literal('design'),
+  v.literal('plan'),
+  v.literal('implement'),
+  v.literal('validate'),
+  v.literal('review'),
+  v.literal('handoff')
+)
+
+export const WorkflowArtifactKind = v.union(
+  v.literal('requirements'),
+  v.literal('research'),
+  v.literal('solution_comparison'),
+  v.literal('design'),
+  v.literal('implementation_plan'),
+  v.literal('validation_report'),
+  v.literal('review_report'),
+  v.literal('handoff')
+)
+
+export const WorkflowArtifactStatus = v.union(
+  v.literal('draft'),
+  v.literal('approved'),
+  v.literal('superseded'),
+  v.literal('failed')
+)
+
+export const WorkflowChainStatus = v.union(
+  v.literal('running'),
+  v.literal('paused'),
+  v.literal('completed'),
+  v.literal('failed'),
+  v.literal('cancelled')
+)
+
+export const AdvisorReviewStatus = v.union(
+  v.literal('approved'),
+  v.literal('needs_changes'),
+  v.literal('blocked')
+)
+
+export const AdvisorReviewFinding = v.object({
+  severity: v.union(v.literal('low'), v.literal('medium'), v.literal('high')),
+  file: v.optional(v.string()),
+  finding: v.string(),
+  recommendation: v.string(),
+})
+
+export const AgentRunQuestionStatus = v.union(
+  v.literal('pending'),
+  v.literal('answered'),
+  v.literal('cancelled'),
+  v.literal('expired')
+)
+
+export const AgentRunQuestionAnswer = v.object({
+  questionId: v.string(),
+  value: v.union(v.string(), v.array(v.string())),
+  source: v.union(v.literal('option'), v.literal('other')),
+})
+
+export const WorkflowChainStepState = v.object({
+  id: v.string(),
+  stage: WorkflowStage,
+  mode: ChatMode,
+  label: v.string(),
+  status: v.union(
+    v.literal('pending'),
+    v.literal('running'),
+    v.literal('completed'),
+    v.literal('failed'),
+    v.literal('skipped')
+  ),
+  artifactId: v.optional(v.id('workflowArtifacts')),
+  runId: v.optional(v.id('agentRuns')),
+  startedAt: v.optional(v.number()),
+  completedAt: v.optional(v.number()),
+})
+
 export const PlanningSessionStatus = v.union(
   v.literal('intake'),
   v.literal('generating'),
@@ -292,6 +375,7 @@ export const PersistedRunEvent = v.object({
   snapshot: v.optional(PersistedRunSnapshot),
   appliedSkills: v.optional(v.array(AppliedSkillSummary)),
   subagentSummary: v.optional(HarnessSubagentSummary),
+  workflowStage: v.optional(WorkflowStage),
 })
 
 export const TerminationReason = v.union(
@@ -1096,6 +1180,98 @@ export default defineSchema({
   })
     .index('by_chat', ['chatId'])
     .index('by_message', ['messageId'])
+    .index('by_status', ['chatId', 'status']),
+
+  // 8b. WorkflowArtifacts table - durable workflow outputs linked to runs/receipts
+  workflowArtifacts: defineTable({
+    projectId: v.id('projects'),
+    chatId: v.id('chats'),
+    runId: v.optional(v.id('agentRuns')),
+    parentRunId: v.optional(v.id('agentRuns')),
+    kind: WorkflowArtifactKind,
+    title: v.string(),
+    content: v.string(),
+    status: WorkflowArtifactStatus,
+    sourceStage: WorkflowStage,
+    receiptIds: v.optional(v.array(v.string())),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_project_created', ['projectId', 'createdAt'])
+    .index('by_chat_created', ['chatId', 'createdAt'])
+    .index('by_run', ['runId'])
+    .index('by_status', ['chatId', 'status']),
+
+  // 8c. AdvisorReviewRequests table - queued reviewer prompts for gated workflow actions
+  advisorReviewRequests: defineTable({
+    projectId: v.id('projects'),
+    chatId: v.id('chats'),
+    artifactId: v.optional(v.id('artifacts')),
+    workflowArtifactId: v.optional(v.id('workflowArtifacts')),
+    runId: v.optional(v.id('agentRuns')),
+    reviewerRunId: v.optional(v.id('agentRuns')),
+    gates: v.array(v.string()),
+    prompt: v.string(),
+    status: v.union(v.literal('pending'), v.literal('completed'), v.literal('cancelled')),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_chat_created', ['chatId', 'createdAt'])
+    .index('by_status', ['chatId', 'status'])
+    .index('by_artifact', ['artifactId']),
+
+  // 8d. AgentRunQuestions table - durable structured user decisions for runtime pause/resume
+  agentRunQuestions: defineTable({
+    projectId: v.id('projects'),
+    chatId: v.id('chats'),
+    runId: v.id('agentRuns'),
+    harnessSessionID: v.string(),
+    request: v.any(),
+    status: AgentRunQuestionStatus,
+    answers: v.optional(v.array(AgentRunQuestionAnswer)),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    answeredAt: v.optional(v.number()),
+  })
+    .index('by_chat_created', ['chatId', 'createdAt'])
+    .index('by_run_status_created', ['runId', 'status', 'createdAt'])
+    .index('by_status', ['chatId', 'status']),
+
+  // 8e. AdvisorReviews table - persisted reviewer decisions for gated workflow actions
+  advisorReviews: defineTable({
+    projectId: v.id('projects'),
+    chatId: v.id('chats'),
+    runId: v.optional(v.id('agentRuns')),
+    artifactId: v.optional(v.id('artifacts')),
+    workflowArtifactId: v.optional(v.id('workflowArtifacts')),
+    gates: v.array(v.string()),
+    status: AdvisorReviewStatus,
+    summary: v.string(),
+    risks: v.array(AdvisorReviewFinding),
+    reviewer: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_chat_created', ['chatId', 'createdAt'])
+    .index('by_run_created', ['runId', 'createdAt'])
+    .index('by_status', ['chatId', 'status']),
+
+  // 8f. WorkflowChains table - persistent guided workflow progress
+  workflowChains: defineTable({
+    projectId: v.id('projects'),
+    chatId: v.id('chats'),
+    chainId: v.string(),
+    label: v.string(),
+    userGoal: v.string(),
+    status: WorkflowChainStatus,
+    currentStepId: v.optional(v.string()),
+    steps: v.array(WorkflowChainStepState),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index('by_project_created', ['projectId', 'createdAt'])
+    .index('by_chat_created', ['chatId', 'createdAt'])
     .index('by_status', ['chatId', 'status']),
 
   // 9. Settings table - user preferences and provider configs

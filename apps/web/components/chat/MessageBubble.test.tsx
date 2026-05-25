@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { renderToStaticMarkup } from 'react-dom/server'
 
-import { MessageBubble } from './MessageBubble'
+import { buildAskUserAnswerPrompt, MessageBubble } from './MessageBubble'
 import type { Message } from './types'
 
 function assistantMessage(overrides: Partial<Message> = {}): Message {
@@ -79,6 +79,97 @@ describe('MessageBubble Thinking rendering', () => {
 
     expect(html).toContain('Thinking used')
     expect(html).toContain('summary unavailable')
+  })
+})
+
+describe('MessageBubble ask_user tool cards', () => {
+  const askUserMessage = assistantMessage({
+    content: '',
+    toolCalls: [
+      {
+        id: 'tool-1',
+        name: 'ask_user',
+        args: {},
+        status: 'completed',
+        result: {
+          durationMs: 1,
+          output: JSON.stringify({
+            status: 'pending',
+            questionnaire: {
+              rationale: 'Need direction before editing.',
+              questions: [
+                {
+                  id: 'direction',
+                  prompt: 'Which implementation direction?',
+                  recommended: 'minimal',
+                  options: [
+                    { value: 'minimal', label: 'Minimal patch' },
+                    { value: 'refactor', label: 'Refactor' },
+                  ],
+                },
+              ],
+            },
+          }),
+        },
+      },
+    ],
+  })
+
+  test('renders pending structured user questions from ask_user tool output', () => {
+    const html = renderToStaticMarkup(<MessageBubble message={askUserMessage} />)
+
+    expect(html).toContain('User decision')
+    expect(html).toContain('Need direction before editing.')
+    expect(html).toContain('Which implementation direction?')
+    expect(html).toContain('Minimal patch')
+    expect(html).toContain('Recommended')
+  })
+
+  test('builds a structured follow-up prompt for option clicks', () => {
+    const prompt = buildAskUserAnswerPrompt({
+      prompt: 'Which implementation direction?',
+      optionLabel: 'Minimal patch',
+      optionValue: 'minimal',
+    })
+
+    expect(prompt).toContain('Which implementation direction?')
+    expect(prompt).toContain('Minimal patch')
+    expect(prompt).toContain('minimal')
+  })
+
+  test('renders pending questions from live ask_user tool-call arguments before tool result arrives', () => {
+    const html = renderToStaticMarkup(
+      <MessageBubble
+        message={assistantMessage({
+          content: '',
+          toolCalls: [
+            {
+              id: 'tool-live',
+              name: 'ask_user',
+              args: {
+                rationale: 'Need a live runtime decision.',
+                questions: [
+                  {
+                    id: 'scope',
+                    prompt: 'Which scope?',
+                    recommended: 'small',
+                    options: [{ value: 'small', label: 'Small' }],
+                  },
+                ],
+              },
+              status: 'running',
+            },
+          ],
+        })}
+        isStreaming
+        onAskUserAnswer={() => undefined}
+      />
+    )
+
+    expect(html).toContain('User decision · pending')
+    expect(html).toContain('Need a live runtime decision.')
+    expect(html).toContain('Which scope?')
+    expect(html).toContain('Small')
   })
 })
 

@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
-import { Copy, Download, FileText, User, Bot, Paperclip } from 'lucide-react'
+import { CheckCircle2, Copy, Download, FileText, User, Bot, Paperclip, HelpCircle } from 'lucide-react'
 import type { Message } from './types'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import { ReasoningPanel } from './ReasoningPanel'
@@ -25,6 +25,12 @@ interface MessageBubbleProps {
   message: Message
   isStreaming?: boolean
   onSuggestedAction?: (prompt: string, targetMode?: ChatMode) => void
+  onAskUserAnswer?: (answer: {
+    questionId: string
+    questionPrompt: string
+    optionLabel: string
+    optionValue: string
+  }) => void | Promise<void>
   disableActions?: boolean
   failedCriteria?: Array<{ id: string; description: string }>
 }
@@ -115,6 +121,158 @@ function MessageContextInspector({ message }: { message: Message }) {
           ) : null}
         </div>
       ) : null}
+    </div>
+  )
+}
+
+type AskUserToolPayload = {
+  status?: string
+  message?: string
+  questionnaire?: {
+    questions?: Array<{
+      id: string
+      label?: string
+      prompt: string
+      recommended?: string | string[]
+      options?: Array<{ value: string; label: string; description?: string }>
+    }>
+    rationale?: string
+  }
+  answers?: Array<{ questionId: string; value: string | string[]; source: string }>
+}
+
+function parseAskUserToolPayload(output: string | undefined): AskUserToolPayload | null {
+  if (!output) return null
+  try {
+    const parsed = JSON.parse(output) as AskUserToolPayload
+    if (!parsed || typeof parsed !== 'object') return null
+    if (!parsed.questionnaire?.questions && !parsed.answers) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function parseAskUserToolArgs(args: Record<string, unknown> | undefined): AskUserToolPayload | null {
+  if (!args || !Array.isArray(args.questions)) return null
+  return {
+    status: 'pending',
+    message: 'Panda is waiting for your decision before continuing this run.',
+    questionnaire: args as AskUserToolPayload['questionnaire'],
+  }
+}
+
+export function buildAskUserAnswerPrompt(args: {
+  prompt: string
+  optionLabel: string
+  optionValue: string
+}): string {
+  return `Answer Panda decision question "${args.prompt}" with option "${args.optionLabel}" (${args.optionValue}). Continue using this decision.`
+}
+
+function AskUserToolCard({
+  message,
+  onSuggestedAction,
+  onAskUserAnswer,
+  disabled,
+}: {
+  message: Message
+  onSuggestedAction?: (prompt: string, targetMode?: ChatMode) => void
+  onAskUserAnswer?: (answer: {
+    questionId: string
+    questionPrompt: string
+    optionLabel: string
+    optionValue: string
+  }) => void | Promise<void>
+  disabled?: boolean
+}) {
+  const payloads = (message.toolCalls ?? [])
+    .filter((toolCall) => toolCall.name === 'ask_user')
+    .flatMap((toolCall) => {
+      const payload = parseAskUserToolPayload(toolCall.result?.output) ?? parseAskUserToolArgs(toolCall.args)
+      return payload ? [payload] : []
+    })
+
+  if (payloads.length === 0) return null
+
+  return (
+    <div className="w-full space-y-2">
+      {payloads.map((payload, index) => (
+        <div key={index} className="w-full border border-primary/25 bg-primary/5 p-3 text-xs">
+          <div className="mb-2 flex items-center gap-2 font-mono text-[11px] uppercase tracking-wide text-primary">
+            {payload.status === 'answered' ? (
+              <CheckCircle2 className="h-3.5 w-3.5" />
+            ) : (
+              <HelpCircle className="h-3.5 w-3.5" />
+            )}
+            User decision {payload.status ? `· ${payload.status}` : ''}
+          </div>
+          {payload.questionnaire?.rationale ? (
+            <p className="mb-2 text-muted-foreground">{payload.questionnaire.rationale}</p>
+          ) : payload.message ? (
+            <p className="mb-2 text-muted-foreground">{payload.message}</p>
+          ) : null}
+          <div className="space-y-2">
+            {(payload.questionnaire?.questions ?? []).map((question) => (
+              <div key={question.id} className="border border-border bg-background/80 p-2">
+                <div className="mb-1 font-medium text-foreground">
+                  {question.label ? `${question.label}: ` : ''}{question.prompt}
+                </div>
+                <div className="grid gap-1">
+                  {(question.options ?? []).map((option) => {
+                    const recommended = Array.isArray(question.recommended)
+                      ? question.recommended.includes(option.value)
+                      : question.recommended === option.value
+                    const answerPrompt = buildAskUserAnswerPrompt({
+                      prompt: question.prompt,
+                      optionLabel: option.label,
+                      optionValue: option.value,
+                    })
+                    return (
+                      <button
+                        type="button"
+                        key={option.value}
+                        disabled={payload.status === 'answered' || disabled || (!onAskUserAnswer && !onSuggestedAction)}
+                        onClick={() => {
+                          if (onAskUserAnswer) {
+                            void onAskUserAnswer({
+                              questionId: question.id,
+                              questionPrompt: question.prompt,
+                              optionLabel: option.label,
+                              optionValue: option.value,
+                            })
+                            return
+                          }
+                          onSuggestedAction?.(answerPrompt)
+                        }}
+                        className={cn(
+                          'w-full border px-2 py-1 text-left text-[11px] transition-colors',
+                          recommended
+                            ? 'border-primary/40 bg-primary/10 text-foreground hover:bg-primary/15'
+                            : 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/60',
+                          (payload.status === 'answered' || disabled || (!onAskUserAnswer && !onSuggestedAction)) && 'cursor-default hover:bg-muted/30'
+                        )}
+                      >
+                        <span className="font-medium">{option.label}</span>
+                        {recommended ? <span className="ml-1 text-primary">Recommended</span> : null}
+                        {option.description ? <div>{option.description}</div> : null}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+            {(payload.answers ?? []).map((answer) => (
+              <div key={answer.questionId} className="border border-border bg-background/80 p-2 text-[11px]">
+                <span className="text-muted-foreground">Answer {answer.questionId}: </span>
+                <span className="font-medium text-foreground">
+                  {Array.isArray(answer.value) ? answer.value.join(', ') : answer.value}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
@@ -531,6 +689,7 @@ export function MessageBubble({
   message,
   isStreaming = false,
   onSuggestedAction,
+  onAskUserAnswer,
   disableActions = false,
   failedCriteria = [],
 }: MessageBubbleProps) {
@@ -747,6 +906,15 @@ export function MessageBubble({
               )}
             </div>
           </motion.div>
+        ) : null}
+
+        {isAssistant ? (
+          <AskUserToolCard
+            message={message}
+            onSuggestedAction={onSuggestedAction}
+            onAskUserAnswer={onAskUserAnswer}
+            disabled={false}
+          />
         ) : null}
 
         {isUser ? <MessageContextStrip message={message} /> : null}

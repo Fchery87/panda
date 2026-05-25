@@ -34,6 +34,7 @@ interface ArtifactCardProps {
   onReject: (id: string) => void
   onOpenFile?: (path: string) => void
   onReviewDiff?: () => void
+  onRequestAdvisorReview?: (id: string) => void
   isBatchAction?: boolean
 }
 
@@ -61,6 +62,7 @@ export function ArtifactCard({
   onReject,
   onOpenFile,
   onReviewDiff,
+  onRequestAdvisorReview,
   isBatchAction = false,
 }: ArtifactCardProps) {
   const isFileWrite = artifact.type === 'file_write'
@@ -206,24 +208,36 @@ export function ArtifactCard({
           )}
 
           {isPending && !isBatchAction && (
-            <div className="flex gap-2">
-              <Button
-                onClick={() => onApply(artifact.id)}
-                className="flex-1 rounded-none"
-                size="sm"
-              >
-                <Check className="mr-1.5 h-4 w-4" />
-                Apply
-              </Button>
-              <Button
-                onClick={() => onReject(artifact.id)}
-                variant="outline"
-                className="flex-1 rounded-none"
-                size="sm"
-              >
-                <X className="mr-1.5 h-4 w-4" />
-                Reject
-              </Button>
+            <div className="space-y-2">
+              {onRequestAdvisorReview && (
+                <Button
+                  onClick={() => onRequestAdvisorReview(artifact.id)}
+                  variant="outline"
+                  className="w-full rounded-none font-mono text-[10px] uppercase tracking-wide"
+                  size="sm"
+                >
+                  Request Advisor Review
+                </Button>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => onApply(artifact.id)}
+                  className="flex-1 rounded-none"
+                  size="sm"
+                >
+                  <Check className="mr-1.5 h-4 w-4" />
+                  Apply
+                </Button>
+                <Button
+                  onClick={() => onReject(artifact.id)}
+                  variant="outline"
+                  className="flex-1 rounded-none"
+                  size="sm"
+                >
+                  <X className="mr-1.5 h-4 w-4" />
+                  Reject
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
