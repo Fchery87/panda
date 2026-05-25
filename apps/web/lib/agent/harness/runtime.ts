@@ -2931,6 +2931,10 @@ export class Runtime {
     const state = this.serializeStateForCheckpoint()
     if (!state) return
 
+    // Runtime checkpoints are cold recovery data. Avoid writing a full payload on
+    // every step; keep regular recovery points plus terminal/error checkpoints.
+    if (reason === 'step' && state.step % 3 !== 0 && !state.isLastStep) return
+
     const checkpoint: RuntimeCheckpoint = {
       version: 1,
       sessionID: state.sessionID,

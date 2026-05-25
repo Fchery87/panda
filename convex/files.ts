@@ -3,8 +3,66 @@ import { api } from './_generated/api'
 import { v } from 'convex/values'
 import JSZip from 'jszip'
 import { requireFileOwner, requireProjectOwner } from './lib/authz'
+import type { Id } from './_generated/dataModel'
+import type { MutationCtx } from './_generated/server'
 
-// list (query) - list files by projectId (includes content)
+function hashContent(content: string): string {
+  let hash = 2166136261
+  for (let index = 0; index < content.length; index += 1) {
+    hash ^= content.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0')
+}
+
+type FileMetadataSource = {
+  _id: Id<'files'>
+  projectId: Id<'projects'>
+  path: string
+  content?: string
+  isBinary?: boolean
+  updatedAt: number
+}
+
+function toMetadataPayload(file: FileMetadataSource) {
+  const content = file.content ?? ''
+  return {
+    fileId: file._id,
+    projectId: file.projectId,
+    path: file.path,
+    isBinary: file.isBinary,
+    size: content.length,
+    contentHash: hashContent(content),
+    updatedAt: file.updatedAt,
+  }
+}
+
+async function upsertFileMetadata(ctx: MutationCtx, file: FileMetadataSource) {
+  const payload = toMetadataPayload(file)
+  const existing = await ctx.db
+    .query('fileMetadata')
+    .withIndex('by_file', (q) => q.eq('fileId', file._id))
+    .unique()
+  if (existing) {
+    await ctx.db.patch(existing._id, payload)
+  } else {
+    await ctx.db.insert('fileMetadata', payload)
+  }
+}
+
+async function removeFileMetadata(ctx: MutationCtx, fileId: Id<'files'>) {
+  const existing = await ctx.db
+    .query('fileMetadata')
+    .withIndex('by_file', (q) => q.eq('fileId', fileId))
+    .unique()
+  if (existing) await ctx.db.delete(existing._id)
+}
+
+/**
+ * @deprecated Legacy compatibility query. Returns full file content for up to 2,000
+ * files and must stay off hot UI paths. Prefer listMetadata for project/file-tree
+ * surfaces and get/getByPath/batchGet for explicit lazy content reads.
+ */
 export const list = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
@@ -16,17 +74,34 @@ export const list = query({
   },
 })
 
-// listMetadata (query) - list file metadata without content
+// listMetadata (query) - hot file metadata projection without content reads
 export const listMetadata = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
     await requireProjectOwner(ctx, args.projectId)
+    const metas = await ctx.db
+      .query('fileMetadata')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .take(2000)
+    if (metas.length > 0) {
+      return metas.map(({ _id, fileId, ...meta }) => ({ _id: fileId, ...meta }))
+    }
+
+    // Transitional fallback for projects created before metadata projection backfill.
+    // Keep callers working, but prefer running files.backfillMetadata so hot paths
+    // read only fileMetadata afterwards.
     const files = await ctx.db
       .query('files')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .take(2000)
-    // Exclude content field to reduce payload size
-    return files.map(({ content, ...meta }) => meta)
+    return files.map((file) => {
+      const { content, ...meta } = file
+      return {
+        ...meta,
+        size: content?.length ?? 0,
+        contentHash: hashContent(content ?? ''),
+      }
+    })
   },
 })
 
@@ -135,6 +210,14 @@ export const upsert = mutation({
         isBinary: args.isBinary,
         updatedAt: now,
       })
+      await upsertFileMetadata(ctx, {
+        _id: args.id,
+        projectId: args.projectId,
+        path: args.path,
+        content: args.content ?? existing.content,
+        isBinary: args.isBinary,
+        updatedAt: now,
+      })
 
       return args.id
     } else {
@@ -148,13 +231,22 @@ export const upsert = mutation({
       }
 
       // Create new file
-      return await ctx.db.insert('files', {
+      const fileId = await ctx.db.insert('files', {
         projectId: args.projectId,
         path: args.path,
         content: args.content,
         isBinary: args.isBinary,
         updatedAt: now,
       })
+      await upsertFileMetadata(ctx, {
+        _id: fileId,
+        projectId: args.projectId,
+        path: args.path,
+        content: args.content,
+        isBinary: args.isBinary,
+        updatedAt: now,
+      })
+      return fileId
     }
   },
 })
@@ -181,7 +273,9 @@ export const rename = mutation({
       throw new Error(`File already exists at path: ${args.path}`)
     }
 
-    await ctx.db.patch(args.id, { path: args.path, updatedAt: Date.now() })
+    const now = Date.now()
+    await ctx.db.patch(args.id, { path: args.path, updatedAt: now })
+    await upsertFileMetadata(ctx, { ...existing, path: args.path, updatedAt: now })
     return args.id
   },
 })
@@ -201,6 +295,8 @@ export const remove = mutation({
     for (const snapshot of snapshots) {
       await ctx.db.delete(snapshot._id)
     }
+
+    await removeFileMetadata(ctx, args.id)
 
     // Delete the file
     await ctx.db.delete(args.id)
@@ -250,6 +346,24 @@ export const listSnapshots = query({
       .withIndex('by_file', (q) => q.eq('fileId', args.fileId))
       .order('desc')
       .take(2000)
+  },
+})
+
+// backfillMetadata (mutation) - transitional repair for existing/directly imported files
+export const backfillMetadata = mutation({
+  args: { projectId: v.id('projects'), limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    await requireProjectOwner(ctx, args.projectId)
+    const files = await ctx.db
+      .query('files')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .take(Math.min(Math.max(args.limit ?? 500, 1), 2000))
+    let written = 0
+    for (const file of files) {
+      await upsertFileMetadata(ctx, file)
+      written += 1
+    }
+    return { written, hasMore: files.length === Math.min(Math.max(args.limit ?? 500, 1), 2000) }
   },
 })
 

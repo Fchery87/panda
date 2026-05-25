@@ -4,7 +4,7 @@ import { internalMutation } from './_generated/server'
 import type { Id, TableNames } from './_generated/dataModel'
 
 const DEFAULT_RETENTION_DAYS = 30
-const DEFAULT_BATCH_LIMIT = 100
+const DEFAULT_BATCH_LIMIT = 500
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
 function clampLimit(limit: number | undefined): number {

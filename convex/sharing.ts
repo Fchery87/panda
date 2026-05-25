@@ -146,6 +146,11 @@ export const unshareChat = mutation({
   },
 })
 
+/**
+ * @deprecated Legacy compatibility query. Returns a capped transcript bundle.
+ * Public share UI should use getSharedChatHeader plus listSharedMessagesPaginated
+ * to keep shared routes bounded.
+ */
 export const getSharedChat = query({
   args: {
     shareId: v.string(),

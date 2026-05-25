@@ -1081,6 +1081,21 @@ export default defineSchema({
     .index('by_path', ['projectId', 'path'])
     .index('by_updated', ['projectId', 'updatedAt']),
 
+  // 3b. File metadata projection - hot file tree/project shell data without content
+  fileMetadata: defineTable({
+    fileId: v.id('files'),
+    projectId: v.id('projects'),
+    path: v.string(),
+    isBinary: v.optional(v.boolean()),
+    size: v.number(),
+    contentHash: v.string(),
+    updatedAt: v.number(),
+  })
+    .index('by_project', ['projectId'])
+    .index('by_file', ['fileId'])
+    .index('by_path', ['projectId', 'path'])
+    .index('by_updated', ['projectId', 'updatedAt']),
+
   // 4. FileSnapshots table - versioned file content for diff/restore
   fileSnapshots: defineTable({
     fileId: v.id('files'),
@@ -1378,7 +1393,8 @@ export default defineSchema({
     .index('by_user_started', ['userId', 'startedAt'])
     .index('by_parent_started', ['parentRunId', 'startedAt'])
     .index('by_root_started', ['rootRunId', 'startedAt'])
-    .index('by_project_kind_started', ['projectId', 'runKind', 'startedAt']),
+    .index('by_project_kind_started', ['projectId', 'runKind', 'startedAt'])
+    .index('by_started', ['startedAt']),
 
   // 11. AgentRunEvents table - persisted timeline events for each run
   agentRunEvents: defineTable({
@@ -1645,6 +1661,13 @@ export default defineSchema({
   })
     .index('by_user', ['userId'])
     .index('by_last_active', ['lastActiveAt']),
+
+  // 18b. Admin usage aggregates - small dashboard projections refreshed explicitly
+  adminUsageAggregates: defineTable({
+    key: v.string(),
+    data: v.any(),
+    computedAt: v.number(),
+  }).index('by_key', ['key']),
 
   // 19. Audit Log table - administrative actions
   auditLog: defineTable({

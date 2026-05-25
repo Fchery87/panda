@@ -1,6 +1,6 @@
 # Convex Backend Governance
 
-> Last updated: April 28, 2026
+> Last updated: May 25, 2026
 >
 > Reader: Panda maintainers and future agents changing Convex tables, queries,
 > mutations, actions, payload shape, retention, or backend docs.
@@ -99,6 +99,38 @@ why.
 - Provider catalog hydration should not persist newly discovered providers as
   enabled.
 
+## Usage Budgets
+
+These budgets are guardrails for implementation and review. If a product change
+needs to exceed one, it should add a narrower Interface or document why the
+larger payload is a lazy/detail/admin path rather than hot UI.
+
+| Surface                        | Target budget                                                                                   | Verification signal                                                              |
+| ------------------------------ | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Project shell boot             | Project metadata, chat summaries, and file metadata only; no full file contents                  | Guard tests reject `api.files.list` in shell/runtime boot paths.                 |
+| Active message history         | Cursor-paginated, initial page around 50 messages, attachment metadata only                      | Hot chat hooks use `api.messages.listPaginatedLite`, not legacy transcript APIs. |
+| Run progress live UI           | Summary-shaped status/events only; no full checkpoint payloads or large raw command output       | Progress surfaces avoid full runtime checkpoint queries.                         |
+| Context indexing per prompt    | Zero broad project/message/spec/plan re-indexing by default; only changed explicit sources write | Repeated prompts with unchanged sources should create near-zero chunk writes.    |
+| Runtime checkpoint persistence | Full checkpoints only at recovery boundaries or meaningful state changes; summaries stay hot     | Checkpoint writes per run are capped and unchanged state is skipped.             |
+| Admin dashboards               | Aggregate or paginated reads; no live full-table analytics scans                                 | Admin queries use bounded indexed pages or aggregate documents.                  |
+
+## Measurement Baseline
+
+Before and after high-risk Convex changes, record these values from the Convex
+dashboard or CLI for the target deployment:
+
+- Database bandwidth and function-call usage.
+- Database and file storage usage.
+- Action/compute usage.
+- Search/vector usage when visible.
+- Row counts for `files`, `fileSnapshots`, `messages`, `agentRuns`,
+  `agentRunEvents`, `harnessRuntimeCheckpoints`, `contextChunks`,
+  `permissionAuditLog`, and `specifications`.
+
+For prompt-path work, also record the number of Convex functions invoked and the
+number of `contextChunks` rows written for a repeated prompt with unchanged
+project state.
+
 ## Retention Policy
 
 These are current policy targets. Implementation may require follow-up jobs or
@@ -116,8 +148,14 @@ migrations.
 | Audit logs                                                         | Retain longer than user activity logs                                                     | Audit entries must be redacted.                           |
 | Analytics and eval results                                         | Retain bounded summaries by default; archive detailed results later                       | May contain prompts and responses.                        |
 
-Until retention workers exist, new code must avoid making retention problems
-worse by writing unbounded large data to hot tables.
+Automated retention runs every 6 hours for cold operational detail rows. Admins
+can also trigger `api.admin.cleanupOperationalDataNow` after dev/E2E bursts to
+remove old `agentRunEvents`, `harnessRuntimeCheckpoints`, `evalRunResults`, and
+`fileSnapshots` in bounded batches. This cleanup must not delete source-of-truth
+projects, chats, messages, files, or agent run summary rows.
+
+Until retention workers cover a table, new code must avoid making retention
+problems worse by writing unbounded large data to hot tables.
 
 ## Legacy API Handling
 

@@ -137,8 +137,22 @@ async function upsertChunkBatch(
       ...chunk,
       updatedAt: now,
     }
-    if (existing) await ctx.db.patch(existing._id, patch)
-    else await ctx.db.insert('contextChunks', patch)
+    if (existing) {
+      const unchanged =
+        existing.contentHash === chunk.contentHash &&
+        existing.content === chunk.content &&
+        existing.tokenCount === chunk.tokenCount &&
+        existing.path === chunk.path &&
+        existing.title === chunk.title &&
+        existing.startLine === chunk.startLine &&
+        existing.endLine === chunk.endLine &&
+        existing.chatId === args.chatId &&
+        existing.runId === args.runId
+      if (unchanged) continue
+      await ctx.db.patch(existing._id, patch)
+    } else {
+      await ctx.db.insert('contextChunks', patch)
+    }
     written += 1
   }
   return written
@@ -238,20 +252,28 @@ export const indexSessionSummaries = mutation({
 })
 
 export const indexMessages = mutation({
-  args: { projectId: v.id('projects'), limit: v.optional(v.number()) },
+  args: {
+    projectId: v.id('projects'),
+    chatId: v.optional(v.id('chats')),
+    limit: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
     await requireProjectOwner(ctx, args.projectId)
-    const chats = await ctx.db
-      .query('chats')
-      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
-      .collect()
+    const chats = args.chatId
+      ? [await ctx.db.get(args.chatId)].filter((chat) => chat && chat.projectId === args.projectId)
+      : await ctx.db
+          .query('chats')
+          .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+          .order('desc')
+          .take(10)
     let written = 0
     for (const chat of chats) {
+      if (!chat || chat.projectId !== args.projectId) continue
       const messages = await ctx.db
         .query('messages')
         .withIndex('by_created', (q) => q.eq('chatId', chat._id))
         .order('desc')
-        .take(Math.min(Math.max(args.limit ?? 100, 1), 500))
+        .take(Math.min(Math.max(args.limit ?? 25, 1), 100))
       for (const message of messages) {
         if (message.role !== 'user' && message.role !== 'assistant') continue
         written += await upsertChunkBatch(ctx, {
@@ -271,20 +293,28 @@ export const indexMessages = mutation({
 })
 
 export const indexPlanningSessionPlans = mutation({
-  args: { projectId: v.id('projects'), limit: v.optional(v.number()) },
+  args: {
+    projectId: v.id('projects'),
+    chatId: v.optional(v.id('chats')),
+    limit: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
     await requireProjectOwner(ctx, args.projectId)
-    const chats = await ctx.db
-      .query('chats')
-      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
-      .collect()
+    const chats = args.chatId
+      ? [await ctx.db.get(args.chatId)].filter((chat) => chat && chat.projectId === args.projectId)
+      : await ctx.db
+          .query('chats')
+          .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+          .order('desc')
+          .take(10)
     let written = 0
     for (const chat of chats) {
+      if (!chat || chat.projectId !== args.projectId) continue
       const sessions = await ctx.db
         .query('planningSessions')
         .withIndex('by_updated', (q) => q.eq('chatId', chat._id))
         .order('desc')
-        .take(Math.min(Math.max(args.limit ?? 25, 1), 250))
+        .take(Math.min(Math.max(args.limit ?? 5, 1), 25))
       for (const session of sessions) {
         const plan = session.generatedPlan
         if (!plan) continue

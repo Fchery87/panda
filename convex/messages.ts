@@ -51,7 +51,11 @@ async function enrichMessageWithAttachments(args: {
   }
 }
 
-// list (query) - list messages by chatId, ordered by createdAt
+/**
+ * @deprecated Legacy compatibility query. Loads up to 1,000 messages and resolves
+ * attachment signed URLs for every row. Keep off hot UI paths; use
+ * listPaginatedLite plus lazy attachment URL detail instead.
+ */
 export const list = query({
   args: { chatId: v.id('chats') },
   handler: async (ctx, args) => {
@@ -79,7 +83,11 @@ export const list = query({
   },
 })
 
-// listPaginated (query) - paginated list of messages by chatId
+/**
+ * @deprecated Legacy compatibility query. Although paginated, it resolves signed
+ * attachment URLs for every message in the page. Keep off hot UI paths; use
+ * listPaginatedLite and fetch attachment URLs on demand.
+ */
 export const listPaginated = query({
   args: {
     chatId: v.id('chats'),

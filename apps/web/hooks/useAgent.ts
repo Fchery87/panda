@@ -612,11 +612,6 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     chatId ? { chatId, mode } : 'skip'
   )
   const addMessage = useMutation(api.messages.add)
-  const indexContextProjectFiles = useMutation(api.contextChunks.indexProjectFiles)
-  const indexContextSessionSummaries = useMutation(api.contextChunks.indexSessionSummaries)
-  const indexContextSpecifications = useMutation(api.contextChunks.indexSpecifications)
-  const indexContextMessages = useMutation(api.contextChunks.indexMessages)
-  const indexContextPlanningSessionPlans = useMutation(api.contextChunks.indexPlanningSessionPlans)
   const createChatAttachments = useMutation(api.chatAttachments.createMany)
   const attachVerification = useMutation(api.planningSessions.attachVerification)
   const createRun = useMutation(api.agentRuns.create)
@@ -1350,14 +1345,9 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
 
         const contextPack = await (async () => {
           try {
-            await Promise.allSettled([
-              indexContextProjectFiles({ projectId, limit: 500 }),
-              indexContextSessionSummaries({ projectId, limit: 25 }),
-              indexContextSpecifications({ projectId, limit: 50 }),
-              indexContextMessages({ projectId, limit: 100 }),
-              indexContextPlanningSessionPlans({ projectId, limit: 25 }),
-            ])
-
+            // Context chunks are a retrieval Adapter, not a prompt-time rebuild step.
+            // Search existing chunks and combine them with local/editor context; explicit
+            // rebuild or source-scoped indexing paths own materialization.
             const indexedChunks = await convex.query(api.contextChunks.search, {
               projectId,
               query: userContent,
@@ -1922,11 +1912,6 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       updateWorkflowChainStep,
       createAgentRunQuestion,
       createAdvisorReviewRequest,
-      indexContextProjectFiles,
-      indexContextSessionSummaries,
-      indexContextSpecifications,
-      indexContextMessages,
-      indexContextPlanningSessionPlans,
       appendRunEvent,
       completeRun,
       logHarnessPermissionDecision,

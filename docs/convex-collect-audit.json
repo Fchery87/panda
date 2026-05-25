@@ -1,6 +1,14 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-16",
+  "generatedAt": "2026-05-25",
   "policy": "Production Convex .collect() calls are not allowed. Use bounded .take(...), cursor pagination, targeted .first()/.unique(), or aggregate tables instead. If a future exception is unavoidable, add it here with owner, risk, and next action, then justify it in review docs.",
-  "files": []
+  "files": [
+    {
+      "file": "convex/workflowArtifacts.ts",
+      "maxCollectCalls": 1,
+      "risk": "Medium: supersedeForRun collects all artifacts for a run before patching status. Run-scoped and not a hot project boot path, but can patch many rows after artifact-heavy runs.",
+      "owner": "workflow-artifacts",
+      "nextAction": "Replace with bounded pagination or status-indexed batches when workflow artifact cleanup is revisited."
+    }
+  ]
 }

@@ -74,6 +74,16 @@ function previewText(value: string | undefined): string | undefined {
   return value === undefined ? undefined : value.slice(0, 500)
 }
 
+function stableHash(value: unknown): string {
+  const text = JSON.stringify(value)
+  let hash = 2166136261
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0')
+}
+
 function assertAgentRunTransition(from: AgentRunStatus, to: AgentRunStatus): void {
   if (from === to) return
   if (from !== 'running') {
@@ -101,7 +111,8 @@ function toRunEventSummary(event: Doc<'agentRunEvents'>) {
     planTotalSteps: event.planTotalSteps,
     completedPlanStepIndexes: event.completedPlanStepIndexes,
     usage: event.usage,
-    snapshot: event.snapshot,
+    // Raw snapshots are cold proof/debug data. Keep them out of hot run-event
+    // summaries to reduce live-query payload churn.
     appliedSkills: event.appliedSkills,
     subagentSummary: event.subagentSummary,
     createdAt: event.createdAt,
@@ -129,6 +140,7 @@ const MAX_RUN_EVENT_APPEND_BATCH = 100
 const MAX_RETENTION_DELETE_BATCH = 500
 const DEFAULT_CHILD_RUN_EVENT_RETENTION = 200
 const DEFAULT_CHECKPOINT_RETENTION = 20
+const DEFAULT_HOT_CHECKPOINT_RETENTION = 8
 
 function toProjectRunSummary(run: Doc<'agentRuns'>) {
   const changedFiles = run.receipt?.webcontainer.filesWritten.length ?? 0
@@ -625,8 +637,30 @@ export const saveRuntimeCheckpoint = mutation({
     }
 
     const envelope = parseRuntimeCheckpointEnvelope(args.checkpoint)
+    const checkpointHash = stableHash(args.checkpoint)
 
-    return await ctx.db.insert('harnessRuntimeCheckpoints', {
+    const latestRows = args.runId
+      ? await ctx.db
+          .query('harnessRuntimeCheckpoints')
+          .withIndex('by_run_session_saved', (q) =>
+            q.eq('runId', args.runId).eq('sessionID', envelope.sessionID)
+          )
+          .order('desc')
+          .take(1)
+      : await ctx.db
+          .query('harnessRuntimeCheckpoints')
+          .withIndex('by_chat_session_saved', (q) =>
+            q.eq('chatId', chatId).eq('sessionID', envelope.sessionID)
+          )
+          .order('desc')
+          .take(1)
+
+    const latest = latestRows[0]
+    if (latest && latest.reason === envelope.reason && stableHash(latest.checkpoint) === checkpointHash) {
+      return latest._id
+    }
+
+    const checkpointId = await ctx.db.insert('harnessRuntimeCheckpoints', {
       projectId,
       chatId,
       runId: args.runId,
@@ -637,6 +671,27 @@ export const saveRuntimeCheckpoint = mutation({
       savedAt: envelope.savedAt,
       checkpoint: args.checkpoint,
     })
+
+    const retainedRows = args.runId
+      ? await ctx.db
+          .query('harnessRuntimeCheckpoints')
+          .withIndex('by_run_session_saved', (q) =>
+            q.eq('runId', args.runId).eq('sessionID', envelope.sessionID)
+          )
+          .order('desc')
+          .take(DEFAULT_HOT_CHECKPOINT_RETENTION + 25)
+      : await ctx.db
+          .query('harnessRuntimeCheckpoints')
+          .withIndex('by_chat_session_saved', (q) =>
+            q.eq('chatId', chatId).eq('sessionID', envelope.sessionID)
+          )
+          .order('desc')
+          .take(DEFAULT_HOT_CHECKPOINT_RETENTION + 25)
+    for (const stale of retainedRows.slice(DEFAULT_HOT_CHECKPOINT_RETENTION)) {
+      await ctx.db.delete(stale._id)
+    }
+
+    return checkpointId
   },
 })
 
@@ -693,6 +748,12 @@ export const getLatestRuntimeCheckpoint = query({
   },
 })
 
+/**
+ * @deprecated Legacy compatibility query. Returns full runtime checkpoint payloads,
+ * which are cold recovery data. Keep off hot UI paths; use
+ * listRuntimeCheckpointSummaries for UI and getLatestRuntimeCheckpoint only for
+ * explicit restore flows.
+ */
 export const listRuntimeCheckpoints = query({
   args: {
     runId: v.optional(v.id('agentRuns')),
