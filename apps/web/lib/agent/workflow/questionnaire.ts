@@ -52,6 +52,19 @@ export function validateQuestionnaireRequest(request: AskUserQuestionRequest): s
       }
       optionValues.add(option.value)
     }
+    const recommendedValues = Array.isArray(question.recommended)
+      ? question.recommended
+      : question.recommended
+        ? [question.recommended]
+        : []
+    if (recommendedValues.length === 0) {
+      errors.push(`Question "${question.id}" needs a recommended option.`)
+    }
+    for (const recommendedValue of recommendedValues) {
+      if (!optionValues.has(recommendedValue)) {
+        errors.push(`Question "${question.id}" has recommended option "${recommendedValue}" that is not in options.`)
+      }
+    }
   }
   return errors
 }

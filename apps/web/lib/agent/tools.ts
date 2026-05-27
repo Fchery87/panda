@@ -161,7 +161,7 @@ export const AGENT_TOOLS: AgentToolDefinition[] = [
     function: {
       name: 'ask_user',
       description:
-        'Ask the user one or more structured multiple-choice questions before making assumptions. Use this when requirements, file paths, architecture direction, or risky actions need explicit user input.',
+        'Ask the user one or more structured questions before making assumptions. Every question must include clear options, a recommended option value, and the UI will also allow the user to type a custom answer. Use this when requirements, file paths, architecture direction, or risky actions need explicit user input.',
       parameters: {
         type: 'object',
         properties: {
@@ -178,7 +178,7 @@ export const AGENT_TOOLS: AgentToolDefinition[] = [
                 allowOther: { type: 'boolean' },
                 recommended: {
                   type: 'string',
-                  description: 'Recommended option value. For multi-select questions, explain recommendations in rationale.',
+                  description: 'Required recommended option value matching one of the option values. This is shown to the user as Panda’s recommendation for the question; explain why in rationale or the option description.',
                 },
                 options: {
                   type: 'array',

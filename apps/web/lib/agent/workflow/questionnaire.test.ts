@@ -42,6 +42,7 @@ describe('workflow questionnaire', () => {
     expect(errors.some((error) => error.includes('duplicated'))).toBe(true)
     expect(errors.some((error) => error.includes('missing a prompt'))).toBe(true)
     expect(errors.some((error) => error.includes('at least two options'))).toBe(true)
+    expect(errors.some((error) => error.includes('recommended option'))).toBe(true)
   })
 
   test('detects recommended single and multi-select options', () => {

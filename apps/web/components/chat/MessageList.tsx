@@ -23,6 +23,14 @@ interface MessageListProps {
     questionPrompt: string
     optionLabel: string
     optionValue: string
+    source?: 'option' | 'other'
+    answers?: Array<{
+      questionId: string
+      questionPrompt: string
+      optionLabel: string
+      optionValue: string
+      source?: 'option' | 'other'
+    }>
   }) => void | Promise<void>
   liveSteps?: LiveProgressStep[]
   runEvents?: PersistedRunEventSummaryInfo[]

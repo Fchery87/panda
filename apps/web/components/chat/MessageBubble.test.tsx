@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { renderToStaticMarkup } from 'react-dom/server'
 
-import { buildAskUserAnswerPrompt, MessageBubble } from './MessageBubble'
+import { buildAskUserAnswerPrompt, buildAskUserAnswersPrompt, MessageBubble } from './MessageBubble'
 import type { Message } from './types'
 
 function assistantMessage(overrides: Partial<Message> = {}): Message {
@@ -121,20 +121,42 @@ describe('MessageBubble ask_user tool cards', () => {
     expect(html).toContain('User decision')
     expect(html).toContain('Need direction before editing.')
     expect(html).toContain('Which implementation direction?')
+    expect(html).toContain('Panda recommends:')
     expect(html).toContain('Minimal patch')
     expect(html).toContain('Recommended')
+    expect(html).toContain('Type a custom answer')
+    expect(html).toContain('Submit answers')
   })
 
-  test('builds a structured follow-up prompt for option clicks', () => {
+  test('builds structured follow-up prompts for answer submission', () => {
     const prompt = buildAskUserAnswerPrompt({
       prompt: 'Which implementation direction?',
       optionLabel: 'Minimal patch',
       optionValue: 'minimal',
     })
+    const multiPrompt = buildAskUserAnswersPrompt([
+      {
+        questionId: 'direction',
+        questionPrompt: 'Which implementation direction?',
+        optionLabel: 'Minimal patch',
+        optionValue: 'minimal',
+        source: 'option',
+      },
+      {
+        questionId: 'notes',
+        questionPrompt: 'Any extra constraints?',
+        optionLabel: 'Do not touch auth files',
+        optionValue: 'Do not touch auth files',
+        source: 'other',
+      },
+    ])
 
     expect(prompt).toContain('Which implementation direction?')
     expect(prompt).toContain('Minimal patch')
     expect(prompt).toContain('minimal')
+    expect(multiPrompt).toContain('Which implementation direction?')
+    expect(multiPrompt).toContain('Any extra constraints?')
+    expect(multiPrompt).toContain('Do not touch auth files')
   })
 
   test('renders pending questions from live ask_user tool-call arguments before tool result arrives', () => {

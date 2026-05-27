@@ -557,6 +557,14 @@ interface UseAgentReturn {
     questionPrompt: string
     optionLabel: string
     optionValue: string
+    source?: 'option' | 'other'
+    answers?: Array<{
+      questionId: string
+      questionPrompt: string
+      optionLabel: string
+      optionValue: string
+      source?: 'option' | 'other'
+    }>
   }) => Promise<void>
 
   // Error
@@ -2097,13 +2105,12 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         return
       }
 
-      const answers = [
-        {
-          questionId: answer.questionId,
-          value: answer.optionValue,
-          source: 'option' as const,
-        },
-      ]
+      const submittedAnswers = answer.answers?.length ? answer.answers : [answer]
+      const answers = submittedAnswers.map((submittedAnswer) => ({
+        questionId: submittedAnswer.questionId,
+        value: submittedAnswer.optionValue,
+        source: submittedAnswer.source ?? ('option' as const),
+      }))
 
       if (pending.questionRecordId) {
         await answerAgentRunQuestion({ id: pending.questionRecordId, answers })
@@ -2111,7 +2118,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
       pending.resolve({
         status: 'answered',
         answers,
-        message: `Answered "${answer.questionPrompt}" with "${answer.optionLabel}".`,
+        message:
+          submittedAnswers.length === 1
+            ? `Answered "${submittedAnswers[0].questionPrompt}" with "${submittedAnswers[0].optionLabel}".`
+            : `Answered ${submittedAnswers.length} Panda decision questions.`,
       })
       pendingAskUserRef.current = null
       toast.success('Decision submitted', {

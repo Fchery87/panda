@@ -155,6 +155,14 @@ export interface WorkspaceRuntimeValue {
     questionPrompt: string
     optionLabel: string
     optionValue: string
+    source?: 'option' | 'other'
+    answers?: Array<{
+      questionId: string
+      questionPrompt: string
+      optionLabel: string
+      optionValue: string
+      source?: 'option' | 'other'
+    }>
   }) => Promise<void>
   onModeChange: (mode: ChatMode) => void
   onStopStreaming: () => void

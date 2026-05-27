@@ -25,12 +25,7 @@ interface MessageBubbleProps {
   message: Message
   isStreaming?: boolean
   onSuggestedAction?: (prompt: string, targetMode?: ChatMode) => void
-  onAskUserAnswer?: (answer: {
-    questionId: string
-    questionPrompt: string
-    optionLabel: string
-    optionValue: string
-  }) => void | Promise<void>
+  onAskUserAnswer?: (answer: AskUserAnswerSubmission) => void | Promise<void>
   disableActions?: boolean
   failedCriteria?: Array<{ id: string; description: string }>
 }
@@ -162,12 +157,44 @@ function parseAskUserToolArgs(args: Record<string, unknown> | undefined): AskUse
   }
 }
 
+export type AskUserAnswerSource = 'option' | 'other'
+
+export type AskUserAnswerSubmissionItem = {
+  questionId: string
+  questionPrompt: string
+  optionLabel: string
+  optionValue: string
+  source?: AskUserAnswerSource
+}
+
+export type AskUserAnswerSubmission = AskUserAnswerSubmissionItem & {
+  answers?: AskUserAnswerSubmissionItem[]
+}
+
 export function buildAskUserAnswerPrompt(args: {
   prompt: string
   optionLabel: string
   optionValue: string
 }): string {
   return `Answer Panda decision question "${args.prompt}" with option "${args.optionLabel}" (${args.optionValue}). Continue using this decision.`
+}
+
+export function buildAskUserAnswersPrompt(answers: AskUserAnswerSubmissionItem[]): string {
+  const lines = answers.map(
+    (answer) => `- ${answer.questionPrompt}: ${answer.optionLabel} (${answer.optionValue})`
+  )
+  return `Answer Panda decision questions with these selections:\n${lines.join('\n')}\nContinue using these decisions.`
+}
+
+type AskUserToolQuestion = NonNullable<NonNullable<AskUserToolPayload['questionnaire']>['questions']>[number]
+
+function isQuestionOptionRecommended(
+  question: AskUserToolQuestion,
+  value: string
+): boolean {
+  const recommended = question.recommended
+  if (Array.isArray(recommended)) return recommended.includes(value)
+  return recommended === value
 }
 
 function AskUserToolCard({
@@ -178,14 +205,11 @@ function AskUserToolCard({
 }: {
   message: Message
   onSuggestedAction?: (prompt: string, targetMode?: ChatMode) => void
-  onAskUserAnswer?: (answer: {
-    questionId: string
-    questionPrompt: string
-    optionLabel: string
-    optionValue: string
-  }) => void | Promise<void>
+  onAskUserAnswer?: (answer: AskUserAnswerSubmission) => void | Promise<void>
   disabled?: boolean
 }) {
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, AskUserAnswerSubmissionItem>>({})
+  const [customAnswers, setCustomAnswers] = useState<Record<string, string>>({})
   const payloads = (message.toolCalls ?? [])
     .filter((toolCall) => toolCall.name === 'ask_user')
     .flatMap((toolCall) => {
@@ -197,82 +221,176 @@ function AskUserToolCard({
 
   return (
     <div className="w-full space-y-2">
-      {payloads.map((payload, index) => (
-        <div key={index} className="w-full border border-primary/25 bg-primary/5 p-3 text-xs">
-          <div className="mb-2 flex items-center gap-2 font-mono text-[11px] uppercase tracking-wide text-primary">
-            {payload.status === 'answered' ? (
-              <CheckCircle2 className="h-3.5 w-3.5" />
-            ) : (
-              <HelpCircle className="h-3.5 w-3.5" />
-            )}
-            User decision {payload.status ? `· ${payload.status}` : ''}
-          </div>
-          {payload.questionnaire?.rationale ? (
-            <p className="mb-2 text-muted-foreground">{payload.questionnaire.rationale}</p>
-          ) : payload.message ? (
-            <p className="mb-2 text-muted-foreground">{payload.message}</p>
-          ) : null}
-          <div className="space-y-2">
-            {(payload.questionnaire?.questions ?? []).map((question) => (
-              <div key={question.id} className="border border-border bg-background/80 p-2">
-                <div className="mb-1 font-medium text-foreground">
-                  {question.label ? `${question.label}: ` : ''}{question.prompt}
-                </div>
-                <div className="grid gap-1">
-                  {(question.options ?? []).map((option) => {
-                    const recommended = Array.isArray(question.recommended)
-                      ? question.recommended.includes(option.value)
-                      : question.recommended === option.value
-                    const answerPrompt = buildAskUserAnswerPrompt({
-                      prompt: question.prompt,
-                      optionLabel: option.label,
-                      optionValue: option.value,
-                    })
-                    return (
-                      <button
-                        type="button"
-                        key={option.value}
-                        disabled={payload.status === 'answered' || disabled || (!onAskUserAnswer && !onSuggestedAction)}
-                        onClick={() => {
-                          if (onAskUserAnswer) {
-                            void onAskUserAnswer({
-                              questionId: question.id,
-                              questionPrompt: question.prompt,
-                              optionLabel: option.label,
-                              optionValue: option.value,
+      {payloads.map((payload, index) => {
+        const questions = payload.questionnaire?.questions ?? []
+        const questionKey = (questionId: string) => `${index}:${questionId}`
+        const submittedAnswers = questions
+          .map((question) => selectedAnswers[questionKey(question.id)])
+          .filter((answer): answer is AskUserAnswerSubmissionItem => Boolean(answer?.optionValue?.trim()))
+        const canSubmit =
+          payload.status !== 'answered' &&
+          !disabled &&
+          submittedAnswers.length === questions.length &&
+          submittedAnswers.length > 0 &&
+          Boolean(onAskUserAnswer || onSuggestedAction)
+
+        return (
+          <div key={index} className="w-full border border-primary/25 bg-primary/5 p-3 text-xs">
+            <div className="mb-2 flex items-center gap-2 font-mono text-[11px] uppercase tracking-wide text-primary">
+              {payload.status === 'answered' ? (
+                <CheckCircle2 className="h-3.5 w-3.5" />
+              ) : (
+                <HelpCircle className="h-3.5 w-3.5" />
+              )}
+              User decision {payload.status ? `· ${payload.status}` : ''}
+            </div>
+            {payload.questionnaire?.rationale ? (
+              <p className="mb-2 text-muted-foreground">{payload.questionnaire.rationale}</p>
+            ) : payload.message ? (
+              <p className="mb-2 text-muted-foreground">{payload.message}</p>
+            ) : null}
+            <div className="space-y-2">
+              {questions.map((question) => {
+                const key = questionKey(question.id)
+                const selected = selectedAnswers[key]
+                const recommendedOptions = (question.options ?? []).filter((option) =>
+                  isQuestionOptionRecommended(question, option.value)
+                )
+                return (
+                  <div key={question.id} className="border border-border bg-background/80 p-2">
+                    <div className="mb-1 font-medium text-foreground">
+                      {question.label ? `${question.label}: ` : ''}{question.prompt}
+                    </div>
+                    {recommendedOptions.length > 0 ? (
+                      <div className="mb-2 border border-primary/30 bg-primary/10 px-2 py-1 text-[11px] text-foreground">
+                        <span className="font-medium text-primary">Panda recommends: </span>
+                        {recommendedOptions.map((option, optionIndex) => (
+                          <span key={option.value}>
+                            {optionIndex > 0 ? ', ' : ''}
+                            <span className="font-semibold">{option.label}</span>
+                            {option.description ? <span className="text-muted-foreground"> — {option.description}</span> : null}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="mb-2 border border-amber-500/25 bg-amber-500/10 px-2 py-1 text-[11px] text-muted-foreground">
+                        Panda did not mark a recommended option for this question.
+                      </div>
+                    )}
+                    <div className="grid gap-1">
+                      {(question.options ?? []).map((option) => {
+                        const recommended = isQuestionOptionRecommended(question, option.value)
+                        const selectedOption = selected?.source !== 'other' && selected?.optionValue === option.value
+                        return (
+                          <button
+                            type="button"
+                            key={option.value}
+                            aria-pressed={selectedOption}
+                            disabled={payload.status === 'answered' || disabled}
+                            onClick={() => {
+                              setSelectedAnswers((current) => ({
+                                ...current,
+                                [key]: {
+                                  questionId: question.id,
+                                  questionPrompt: question.prompt,
+                                  optionLabel: option.label,
+                                  optionValue: option.value,
+                                  source: 'option',
+                                },
+                              }))
+                            }}
+                            className={cn(
+                              'w-full border px-2 py-1 text-left text-[11px] transition-colors',
+                              selectedOption
+                                ? 'border-primary bg-primary/15 text-foreground'
+                                : recommended
+                                  ? 'border-primary/40 bg-primary/10 text-foreground hover:bg-primary/15'
+                                  : 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/60',
+                              (payload.status === 'answered' || disabled) && 'cursor-default hover:bg-muted/30'
+                            )}
+                          >
+                            <span className="font-medium">{option.label}</span>
+                            {recommended ? <span className="ml-1 text-primary">Recommended</span> : null}
+                            {selectedOption ? <span className="ml-1 text-primary">Selected</span> : null}
+                            {option.description ? <div>{option.description}</div> : null}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {payload.status !== 'answered' ? (
+                      <label className="mt-2 block text-[11px] text-muted-foreground">
+                        <span className="mb-1 block font-medium text-foreground">Type a custom answer</span>
+                        <textarea
+                          value={customAnswers[key] ?? ''}
+                          disabled={disabled}
+                          rows={2}
+                          aria-label={`Custom answer for ${question.prompt}`}
+                          placeholder="Type your own answer if none of the options fit."
+                          onChange={(event) => {
+                            const value = event.target.value
+                            setCustomAnswers((current) => ({ ...current, [key]: value }))
+                            setSelectedAnswers((current) => {
+                              if (!value.trim()) {
+                                const next = { ...current }
+                                if (next[key]?.source === 'other') delete next[key]
+                                return next
+                              }
+                              return {
+                                ...current,
+                                [key]: {
+                                  questionId: question.id,
+                                  questionPrompt: question.prompt,
+                                  optionLabel: value.trim(),
+                                  optionValue: value.trim(),
+                                  source: 'other',
+                                },
+                              }
                             })
-                            return
-                          }
-                          onSuggestedAction?.(answerPrompt)
-                        }}
-                        className={cn(
-                          'w-full border px-2 py-1 text-left text-[11px] transition-colors',
-                          recommended
-                            ? 'border-primary/40 bg-primary/10 text-foreground hover:bg-primary/15'
-                            : 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/60',
-                          (payload.status === 'answered' || disabled || (!onAskUserAnswer && !onSuggestedAction)) && 'cursor-default hover:bg-muted/30'
-                        )}
-                      >
-                        <span className="font-medium">{option.label}</span>
-                        {recommended ? <span className="ml-1 text-primary">Recommended</span> : null}
-                        {option.description ? <div>{option.description}</div> : null}
-                      </button>
-                    )
-                  })}
+                          }}
+                          className="w-full border border-border bg-background px-2 py-1 text-[11px] text-foreground outline-none focus:border-primary"
+                        />
+                      </label>
+                    ) : null}
+                  </div>
+                )
+              })}
+              {questions.length > 0 && payload.status !== 'answered' ? (
+                <button
+                  type="button"
+                  disabled={!canSubmit}
+                  onClick={() => {
+                    if (!canSubmit) return
+                    if (onAskUserAnswer) {
+                      void onAskUserAnswer({
+                        ...submittedAnswers[0],
+                        answers: submittedAnswers,
+                      })
+                      return
+                    }
+                    onSuggestedAction?.(buildAskUserAnswersPrompt(submittedAnswers))
+                  }}
+                  className={cn(
+                    'w-full border px-2 py-1.5 text-left font-mono text-[11px] uppercase tracking-wide transition-colors',
+                    canSubmit
+                      ? 'border-primary/50 bg-primary/15 text-primary hover:bg-primary/20'
+                      : 'cursor-not-allowed border-border bg-muted/30 text-muted-foreground'
+                  )}
+                >
+                  Submit answers {submittedAnswers.length}/{questions.length}
+                </button>
+              ) : null}
+              {(payload.answers ?? []).map((answer) => (
+                <div key={answer.questionId} className="border border-border bg-background/80 p-2 text-[11px]">
+                  <span className="text-muted-foreground">Answer {answer.questionId}: </span>
+                  <span className="font-medium text-foreground">
+                    {Array.isArray(answer.value) ? answer.value.join(', ') : answer.value}
+                  </span>
                 </div>
-              </div>
-            ))}
-            {(payload.answers ?? []).map((answer) => (
-              <div key={answer.questionId} className="border border-border bg-background/80 p-2 text-[11px]">
-                <span className="text-muted-foreground">Answer {answer.questionId}: </span>
-                <span className="font-medium text-foreground">
-                  {Array.isArray(answer.value) ? answer.value.join(', ') : answer.value}
-                </span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
