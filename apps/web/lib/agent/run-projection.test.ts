@@ -102,7 +102,7 @@ describe('projectRunForSurface', () => {
     expect(projection.items.every((item) => item.detail === undefined)).toBe(true)
   })
 
-  test('allows proof detail while keeping public projections redacted', () => {
+  test('allows run detail while keeping public projections redacted', () => {
     const facts = [
       fact({
         id: 'tool-result',
@@ -124,7 +124,7 @@ describe('projectRunForSurface', () => {
     expect(publicShare.items.every((item) => item.source !== 'tool_call')).toBe(true)
   })
 
-  test('shows bounded subagent summaries in proof but excludes them from public shares', () => {
+  test('shows bounded subagent summaries in run detail but excludes them from public shares', () => {
     const facts = [
       fact({
         id: 'subagent-summary',
@@ -165,7 +165,7 @@ describe('projectRunForSurface', () => {
     expect(JSON.stringify(publicShare)).not.toContain('owner-only risk summary')
   })
 
-  test('curates public share summaries without owner-only proof internals', () => {
+  test('curates public share summaries without owner-only run internals', () => {
     const projection = projectRunForSurface({
       surface: 'public_share',
       facts: [
@@ -206,7 +206,7 @@ describe('projectRunForSurface', () => {
       validation: '1 validation command recorded',
       changedFiles: 1,
       reviewNote:
-        'Public share hides raw tool arguments, command output, and owner-only proof detail.',
+        'Public share hides raw tool arguments, command output, and owner-only run detail.',
     })
     expect(JSON.stringify(projection)).not.toContain('SECRET_TOKEN')
     expect(JSON.stringify(projection)).not.toContain('stack trace')

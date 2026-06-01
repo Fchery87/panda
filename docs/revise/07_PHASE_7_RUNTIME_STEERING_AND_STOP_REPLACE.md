@@ -7,7 +7,8 @@
 
 ## Objective
 
-Add the remaining advanced running-state prompt behaviors that were intentionally deferred from Phase 6:
+Add the remaining advanced running-state prompt behaviors that were
+intentionally deferred from Phase 6:
 
 ```txt
 Stop and send new prompt
@@ -15,7 +16,8 @@ Steer current run
 Persistent queued-message audit records
 ```
 
-Phase 6A shipped the low-risk queue-follow-up path. Phase 7 should handle the higher-risk runtime semantics deliberately.
+Phase 6A shipped the low-risk queue-follow-up path. Phase 7 should handle the
+higher-risk runtime semantics deliberately.
 
 ## Current State After Phase 6A
 
@@ -34,7 +36,8 @@ Cancel queued follow-up
 Stop current run
 ```
 
-Queued follow-ups are local composer state and dispatch through the normal `onSendMessage(...)` path after `isStreaming` becomes false.
+Queued follow-ups are local composer state and dispatch through the normal
+`onSendMessage(...)` path after `isStreaming` becomes false.
 
 ## Target Behavior
 
@@ -53,11 +56,13 @@ Stop
 
 Already implemented in Phase 6A.
 
-The user message waits until the active run completes, then sends through the existing message workflow.
+The user message waits until the active run completes, then sends through the
+existing message workflow.
 
 ### Stop and Send New Prompt
 
-Abort the active run, finalize it as stopped, then submit the new prompt once the stop finalization path completes.
+Abort the active run, finalize it as stopped, then submit the new prompt once
+the stop finalization path completes.
 
 This must not create duplicate assistant messages or orphaned runs.
 
@@ -65,7 +70,8 @@ This must not create duplicate assistant messages or orphaned runs.
 
 Inject a user steering note into the active runtime loop as auditable context.
 
-Steering must be visible in the run trace and should not mutate hidden runtime state silently.
+Steering must be visible in the run trace and should not mutate hidden runtime
+state silently.
 
 ## Non-Goals
 
@@ -216,7 +222,8 @@ Safe boundaries may include:
 - after current tool execution finishes,
 - after current assistant text segment completes.
 
-Do not inject steering in the middle of an active provider stream unless the provider/runtime explicitly supports it.
+Do not inject steering in the middle of an active provider stream unless the
+provider/runtime explicitly supports it.
 
 Acceptance criteria:
 
@@ -235,7 +242,8 @@ Implementation notes:
 - Runtime should check the queue at explicit safe points.
 - Inject steering as a new user/context message in the next model request.
 - Record `steering_note_received` and `steering_note_applied` events.
-- If the run ends before application, record `steering_note_expired` or leave it queued as follow-up depending UX decision.
+- If the run ends before application, record `steering_note_expired` or leave it
+  queued as follow-up depending UX decision.
 
 Acceptance criteria:
 
@@ -253,7 +261,8 @@ Before changing schema, prefer using existing structures:
 - message annotations
 - existing message content for user-visible prompts
 
-Only add schema if current event model cannot represent queue/replacement/steering audit records clearly.
+Only add schema if current event model cannot represent
+queue/replacement/steering audit records clearly.
 
 Potential `agentRunEvents` values:
 
@@ -271,7 +280,8 @@ follow_up_dispatched
 
 ### Duplicate sends
 
-Risk: queued/replacement prompts dispatch more than once due to React effect re-renders.
+Risk: queued/replacement prompts dispatch more than once due to React effect
+re-renders.
 
 Mitigation:
 
@@ -297,7 +307,8 @@ Risk: steering is injected while a tool is actively mutating files.
 Mitigation:
 
 - consume steering only at safe runtime boundaries,
-- never interrupt in-flight tool mutation unless abort semantics already support it.
+- never interrupt in-flight tool mutation unless abort semantics already support
+  it.
 
 ### User confusion
 
@@ -367,4 +378,5 @@ Do not implement steering until stop-replace is stable.
 
 ## Next Step After Completion
 
-Proceed to post-phase QA and polish, or create a dedicated Phase 8 for provider/runtime steering refinements if 7D/7E are split out.
+Proceed to post-phase QA and polish, or create a dedicated Phase 8 for
+provider/runtime steering refinements if 7D/7E are split out.

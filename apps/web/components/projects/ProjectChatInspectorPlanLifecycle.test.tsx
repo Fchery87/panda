@@ -7,7 +7,8 @@ const artifact: GeneratedPlanArtifact = {
   chatId: 'chat-1',
   sessionId: 'session-1',
   title: 'Implement generated file review',
-  summary: 'Update apps/web/components/workbench/FileTree.tsx and apps/web/components/workbench/Workbench.tsx.',
+  summary:
+    'Update apps/web/components/workbench/FileTree.tsx and apps/web/components/workbench/Workbench.tsx.',
   markdown: 'Expected changes in apps/web/components/workbench/FileTree.tsx.',
   sections: [],
   acceptanceChecks: ['Review generated files centrally'],

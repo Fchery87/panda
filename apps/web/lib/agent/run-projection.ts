@@ -166,8 +166,7 @@ function publicSummary(
         ? '1 validation command recorded'
         : `${commandCount} validation commands recorded`,
     changedFiles: receipt.webcontainer.filesWritten.length,
-    reviewNote:
-      'Public share hides raw tool arguments, command output, and owner-only proof detail.',
+    reviewNote: 'Public share hides raw tool arguments, command output, and owner-only run detail.',
   }
 }
 

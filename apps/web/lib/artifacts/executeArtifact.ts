@@ -5,7 +5,12 @@ import { api } from '@convex/_generated/api'
 import type { ConvexReactClient } from 'convex/react'
 import { executeQueuedJob } from '@/lib/jobs/executeJob'
 import { normalizeProjectFilePath } from '@/lib/project-files/path'
-import { buildAdvisorPreflight, enforceAdvisorReview, type AdvisorPolicy, type AdvisorReview } from '@/lib/agent/workflow'
+import {
+  buildAdvisorPreflight,
+  enforceAdvisorReview,
+  type AdvisorPolicy,
+  type AdvisorReview,
+} from '@/lib/agent/workflow'
 
 export type ArtifactAction =
   | {
@@ -103,7 +108,8 @@ export async function applyArtifact({
     if (advisorPolicy) {
       const preflight = buildAdvisorPreflight({
         policy: advisorPolicy,
-        changedFiles: action.type === 'file_write' ? [normalizeProjectFilePath(action.payload.filePath)] : [],
+        changedFiles:
+          action.type === 'file_write' ? [normalizeProjectFilePath(action.payload.filePath)] : [],
         commands: action.type === 'command_run' ? [action.payload.command] : [],
       })
       if (preflight.required && !advisorApproved) {
@@ -142,7 +148,9 @@ export async function applyArtifact({
         path: filePath,
       })
       if (!verified || verified.path !== filePath) {
-        throw new Error(`File artifact was applied but not verified in the project file tree: ${filePath}`)
+        throw new Error(
+          `File artifact was applied but not verified in the project file tree: ${filePath}`
+        )
       }
 
       await writeFileToRuntime?.(filePath, action.payload.content)

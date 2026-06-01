@@ -11,7 +11,16 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
-import { CheckCircle2, Copy, Download, FileText, User, Bot, Paperclip, HelpCircle } from 'lucide-react'
+import {
+  CheckCircle2,
+  Copy,
+  Download,
+  FileText,
+  User,
+  Bot,
+  Paperclip,
+  HelpCircle,
+} from 'lucide-react'
 import type { Message } from './types'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import { ReasoningPanel } from './ReasoningPanel'
@@ -45,7 +54,9 @@ function redactFencedCodeBlocks(content: string): string {
 function MessageContextInspector({ message }: { message: Message }) {
   const items = message.annotations?.contextItems ?? []
   const summary = message.annotations?.retrievalSummary
-  const usedPct = summary?.maxTokens ? Math.round((summary.usedTokens / summary.maxTokens) * 100) : 0
+  const usedPct = summary?.maxTokens
+    ? Math.round((summary.usedTokens / summary.maxTokens) * 100)
+    : 0
 
   return (
     <div className="max-h-[420px] space-y-3 overflow-y-auto text-xs">
@@ -56,13 +67,14 @@ function MessageContextInspector({ message }: { message: Message }) {
         {items.length > 0 ? (
           <div className="space-y-1">
             {items.map((item) => (
-              <div key={item.id} className="border border-border bg-background/70 p-2">
+              <div key={item.id} className="bg-background/70 border border-border p-2">
                 <div className="flex items-center justify-between gap-2 font-mono text-[11px]">
                   <span className="truncate text-foreground">{item.label}</span>
                   <span className="shrink-0 text-muted-foreground">{item.type}</span>
                 </div>
                 <div className="mt-1 text-[11px] text-muted-foreground">
-                  {item.source} · {item.status}{item.reason ? ` · ${item.reason}` : ''}
+                  {item.source} · {item.status}
+                  {item.reason ? ` · ${item.reason}` : ''}
                 </div>
               </div>
             ))}
@@ -77,18 +89,22 @@ function MessageContextInspector({ message }: { message: Message }) {
           <div className="mb-1 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
             Auto-retrieved context
           </div>
-          <div className="mb-2 border border-border bg-background/70 p-2 font-mono text-[11px] text-muted-foreground">
+          <div className="bg-background/70 mb-2 border border-border p-2 font-mono text-[11px] text-muted-foreground">
             {summary.included}/{summary.retrieved} included · {summary.omitted} omitted ·{' '}
             {summary.usedTokens}/{summary.maxTokens} tokens ({usedPct}%)
           </div>
           {summary.includedItems && summary.includedItems.length > 0 ? (
             <div className="space-y-1">
               {summary.includedItems.map((item, index) => (
-                <div key={`${item.label}-${index}`} className="border border-border bg-background/70 p-2">
+                <div
+                  key={`${item.label}-${index}`}
+                  className="bg-background/70 border border-border p-2"
+                >
                   <div className="flex items-center justify-between gap-2 font-mono text-[11px]">
                     <span className="truncate text-foreground">{item.label}</span>
                     <span className="shrink-0 text-muted-foreground">
-                      {item.sourceType}{typeof item.score === 'number' ? ` · ${item.score.toFixed(2)}` : ''}
+                      {item.sourceType}
+                      {typeof item.score === 'number' ? ` · ${item.score.toFixed(2)}` : ''}
                     </span>
                   </div>
                   {item.reasons && item.reasons.length > 0 ? (
@@ -107,7 +123,10 @@ function MessageContextInspector({ message }: { message: Message }) {
               </div>
               <div className="space-y-1">
                 {summary.omittedItems.map((item, index) => (
-                  <div key={`${item.label}-${index}`} className="border border-border bg-muted/30 p-2 font-mono text-[11px] text-muted-foreground">
+                  <div
+                    key={`${item.label}-${index}`}
+                    className="bg-muted/30 border border-border p-2 font-mono text-[11px] text-muted-foreground"
+                  >
                     <span className="text-foreground">{item.label}</span> · {item.reason}
                   </div>
                 ))}
@@ -148,7 +167,9 @@ function parseAskUserToolPayload(output: string | undefined): AskUserToolPayload
   }
 }
 
-function parseAskUserToolArgs(args: Record<string, unknown> | undefined): AskUserToolPayload | null {
+function parseAskUserToolArgs(
+  args: Record<string, unknown> | undefined
+): AskUserToolPayload | null {
   if (!args || !Array.isArray(args.questions)) return null
   return {
     status: 'pending',
@@ -186,12 +207,11 @@ export function buildAskUserAnswersPrompt(answers: AskUserAnswerSubmissionItem[]
   return `Answer Panda decision questions with these selections:\n${lines.join('\n')}\nContinue using these decisions.`
 }
 
-type AskUserToolQuestion = NonNullable<NonNullable<AskUserToolPayload['questionnaire']>['questions']>[number]
+type AskUserToolQuestion = NonNullable<
+  NonNullable<AskUserToolPayload['questionnaire']>['questions']
+>[number]
 
-function isQuestionOptionRecommended(
-  question: AskUserToolQuestion,
-  value: string
-): boolean {
+function isQuestionOptionRecommended(question: AskUserToolQuestion, value: string): boolean {
   const recommended = question.recommended
   if (Array.isArray(recommended)) return recommended.includes(value)
   return recommended === value
@@ -208,12 +228,15 @@ function AskUserToolCard({
   onAskUserAnswer?: (answer: AskUserAnswerSubmission) => void | Promise<void>
   disabled?: boolean
 }) {
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, AskUserAnswerSubmissionItem>>({})
+  const [selectedAnswers, setSelectedAnswers] = useState<
+    Record<string, AskUserAnswerSubmissionItem>
+  >({})
   const [customAnswers, setCustomAnswers] = useState<Record<string, string>>({})
   const payloads = (message.toolCalls ?? [])
     .filter((toolCall) => toolCall.name === 'ask_user')
     .flatMap((toolCall) => {
-      const payload = parseAskUserToolPayload(toolCall.result?.output) ?? parseAskUserToolArgs(toolCall.args)
+      const payload =
+        parseAskUserToolPayload(toolCall.result?.output) ?? parseAskUserToolArgs(toolCall.args)
       return payload ? [payload] : []
     })
 
@@ -226,7 +249,9 @@ function AskUserToolCard({
         const questionKey = (questionId: string) => `${index}:${questionId}`
         const submittedAnswers = questions
           .map((question) => selectedAnswers[questionKey(question.id)])
-          .filter((answer): answer is AskUserAnswerSubmissionItem => Boolean(answer?.optionValue?.trim()))
+          .filter((answer): answer is AskUserAnswerSubmissionItem =>
+            Boolean(answer?.optionValue?.trim())
+          )
         const canSubmit =
           payload.status !== 'answered' &&
           !disabled &&
@@ -235,7 +260,7 @@ function AskUserToolCard({
           Boolean(onAskUserAnswer || onSuggestedAction)
 
         return (
-          <div key={index} className="w-full border border-primary/25 bg-primary/5 p-3 text-xs">
+          <div key={index} className="border-primary/25 bg-primary/5 w-full border p-3 text-xs">
             <div className="mb-2 flex items-center gap-2 font-mono text-[11px] uppercase tracking-wide text-primary">
               {payload.status === 'answered' ? (
                 <CheckCircle2 className="h-3.5 w-3.5" />
@@ -257,18 +282,21 @@ function AskUserToolCard({
                   isQuestionOptionRecommended(question, option.value)
                 )
                 return (
-                  <div key={question.id} className="border border-border bg-background/80 p-2">
+                  <div key={question.id} className="bg-background/80 border border-border p-2">
                     <div className="mb-1 font-medium text-foreground">
-                      {question.label ? `${question.label}: ` : ''}{question.prompt}
+                      {question.label ? `${question.label}: ` : ''}
+                      {question.prompt}
                     </div>
                     {recommendedOptions.length > 0 ? (
-                      <div className="mb-2 border border-primary/30 bg-primary/10 px-2 py-1 text-[11px] text-foreground">
+                      <div className="border-primary/30 bg-primary/10 mb-2 border px-2 py-1 text-[11px] text-foreground">
                         <span className="font-medium text-primary">Panda recommends: </span>
                         {recommendedOptions.map((option, optionIndex) => (
                           <span key={option.value}>
                             {optionIndex > 0 ? ', ' : ''}
                             <span className="font-semibold">{option.label}</span>
-                            {option.description ? <span className="text-muted-foreground"> — {option.description}</span> : null}
+                            {option.description ? (
+                              <span className="text-muted-foreground"> — {option.description}</span>
+                            ) : null}
                           </span>
                         ))}
                       </div>
@@ -280,7 +308,8 @@ function AskUserToolCard({
                     <div className="grid gap-1">
                       {(question.options ?? []).map((option) => {
                         const recommended = isQuestionOptionRecommended(question, option.value)
-                        const selectedOption = selected?.source !== 'other' && selected?.optionValue === option.value
+                        const selectedOption =
+                          selected?.source !== 'other' && selected?.optionValue === option.value
                         return (
                           <button
                             type="button"
@@ -302,16 +331,21 @@ function AskUserToolCard({
                             className={cn(
                               'w-full border px-2 py-1 text-left text-[11px] transition-colors',
                               selectedOption
-                                ? 'border-primary bg-primary/15 text-foreground'
+                                ? 'bg-primary/15 border-primary text-foreground'
                                 : recommended
-                                  ? 'border-primary/40 bg-primary/10 text-foreground hover:bg-primary/15'
-                                  : 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/60',
-                              (payload.status === 'answered' || disabled) && 'cursor-default hover:bg-muted/30'
+                                  ? 'border-primary/40 bg-primary/10 hover:bg-primary/15 text-foreground'
+                                  : 'bg-muted/30 hover:bg-muted/60 border-border text-muted-foreground',
+                              (payload.status === 'answered' || disabled) &&
+                                'hover:bg-muted/30 cursor-default'
                             )}
                           >
                             <span className="font-medium">{option.label}</span>
-                            {recommended ? <span className="ml-1 text-primary">Recommended</span> : null}
-                            {selectedOption ? <span className="ml-1 text-primary">Selected</span> : null}
+                            {recommended ? (
+                              <span className="ml-1 text-primary">Recommended</span>
+                            ) : null}
+                            {selectedOption ? (
+                              <span className="ml-1 text-primary">Selected</span>
+                            ) : null}
                             {option.description ? <div>{option.description}</div> : null}
                           </button>
                         )
@@ -319,7 +353,9 @@ function AskUserToolCard({
                     </div>
                     {payload.status !== 'answered' ? (
                       <label className="mt-2 block text-[11px] text-muted-foreground">
-                        <span className="mb-1 block font-medium text-foreground">Type a custom answer</span>
+                        <span className="mb-1 block font-medium text-foreground">
+                          Type a custom answer
+                        </span>
                         <textarea
                           value={customAnswers[key] ?? ''}
                           disabled={disabled}
@@ -372,15 +408,18 @@ function AskUserToolCard({
                   className={cn(
                     'w-full border px-2 py-1.5 text-left font-mono text-[11px] uppercase tracking-wide transition-colors',
                     canSubmit
-                      ? 'border-primary/50 bg-primary/15 text-primary hover:bg-primary/20'
-                      : 'cursor-not-allowed border-border bg-muted/30 text-muted-foreground'
+                      ? 'border-primary/50 bg-primary/15 hover:bg-primary/20 text-primary'
+                      : 'bg-muted/30 cursor-not-allowed border-border text-muted-foreground'
                   )}
                 >
                   Submit answers {submittedAnswers.length}/{questions.length}
                 </button>
               ) : null}
               {(payload.answers ?? []).map((answer) => (
-                <div key={answer.questionId} className="border border-border bg-background/80 p-2 text-[11px]">
+                <div
+                  key={answer.questionId}
+                  className="bg-background/80 border border-border p-2 text-[11px]"
+                >
                   <span className="text-muted-foreground">Answer {answer.questionId}: </span>
                   <span className="font-medium text-foreground">
                     {Array.isArray(answer.value) ? answer.value.join(', ') : answer.value}
@@ -414,7 +453,7 @@ function MessageContextStrip({ message }: { message: Message }) {
           {visibleItems.map((item) => (
             <span
               key={item.id}
-              className="inline-flex max-w-[180px] items-center gap-1 border border-primary/25 bg-primary/5 px-2 py-1 font-mono text-primary/90"
+              className="border-primary/25 bg-primary/5 text-primary/90 inline-flex max-w-[180px] items-center gap-1 border px-2 py-1 font-mono"
               title={item.reason ? `${item.label} — ${item.reason}` : item.label}
             >
               <Paperclip className="h-3 w-3 shrink-0" />
@@ -422,13 +461,13 @@ function MessageContextStrip({ message }: { message: Message }) {
             </span>
           ))}
           {hiddenCount > 0 ? (
-            <span className="border border-border bg-background/70 px-2 py-1 font-mono">
+            <span className="bg-background/70 border border-border px-2 py-1 font-mono">
               +{hiddenCount} more
             </span>
           ) : null}
           {summary ? (
             <span
-              className="border border-border bg-background/70 px-2 py-1 font-mono"
+              className="bg-background/70 border border-border px-2 py-1 font-mono"
               title={`${summary.included}/${summary.retrieved} retrieved, ${summary.omitted} omitted`}
             >
               Auto context · {summary.included} snippets
@@ -788,7 +827,7 @@ function AutoModeSwitchReceipt({
   const boundaryLabel = autoModeSwitch.boundary === 'write-capable' ? 'write-capable' : 'read-only'
 
   return (
-    <div className="w-full max-w-[78%] self-end border border-primary/25 bg-primary/[0.06] px-2.5 py-2 text-left font-mono text-[10px] text-primary/90 shadow-sm">
+    <div className="border-primary/25 bg-primary/[0.06] text-primary/90 w-full max-w-[78%] self-end border px-2.5 py-2 text-left font-mono text-[10px] shadow-sm">
       <div className="flex flex-wrap items-center gap-1.5 uppercase tracking-[0.16em]">
         <span>Routed by Panda</span>
         <span className="text-primary/50">·</span>

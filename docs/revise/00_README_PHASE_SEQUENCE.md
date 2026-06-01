@@ -2,7 +2,10 @@
 
 Status: planning documents created for review.
 
-Purpose: this directory contains the ordered implementation plans for modernizing Panda's chat, runtime, reasoning, tool-event, and workspace layout systems. Each phase has an explicit prerequisite and next phase so implementation can proceed sequentially.
+Purpose: this directory contains the ordered implementation plans for
+modernizing Panda's chat, runtime, reasoning, tool-event, and workspace layout
+systems. Each phase has an explicit prerequisite and next phase so
+implementation can proceed sequentially.
 
 ## Phase Order
 
@@ -13,7 +16,8 @@ Purpose: this directory contains the ordered implementation plans for modernizin
 
 2. **Phase 1 — Surface Ownership Cleanup**
    - File: `01_PHASE_1_SURFACE_OWNERSHIP.md`
-   - Outcome: clearer separation between Chat, Proof, Changes, Context, Workbench, and Terminal.
+   - Outcome: clearer separation between Chat, Proof, Changes, Context,
+     Workbench, and Terminal.
    - Next: Phase 2.
 
 3. **Phase 2 — Message Lifecycle Contract**
@@ -23,7 +27,8 @@ Purpose: this directory contains the ordered implementation plans for modernizin
 
 4. **Phase 3 — Structured Message Blocks**
    - File: `03_PHASE_3_STRUCTURED_MESSAGE_BLOCKS.md`
-   - Outcome: additive durable block model while preserving existing string content.
+   - Outcome: additive durable block model while preserving existing string
+     content.
    - Next: Phase 4.
 
 5. **Phase 4 — Reasoning Metadata Upgrade**
@@ -43,7 +48,8 @@ Purpose: this directory contains the ordered implementation plans for modernizin
 
 8. **Phase 7 — Runtime Steering and Stop-Replace**
    - File: `07_PHASE_7_RUNTIME_STEERING_AND_STOP_REPLACE.md`
-   - Outcome: stop-and-send replacement flow, typed steering contract, and auditable runtime steering.
+   - Outcome: stop-and-send replacement flow, typed steering contract, and
+     auditable runtime steering.
    - Next: post-phase QA / polish.
 
 9. **Implementation Checklist**

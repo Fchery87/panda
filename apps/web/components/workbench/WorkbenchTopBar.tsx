@@ -210,7 +210,7 @@ export function WorkbenchTopBar({
             aria-label="Open command palette"
           >
             <span className="font-medium text-primary">Search</span>
-            <span className="min-w-0 flex-1 truncate">Files, commands, proof, runtime</span>
+            <span className="min-w-0 flex-1 truncate">Files, commands, run evidence, runtime</span>
             <span className="shrink-0 rounded border border-border bg-card px-1.5 py-0.5 text-[10px] text-muted-foreground">
               Ctrl+K
             </span>
@@ -283,17 +283,11 @@ export function WorkbenchTopBar({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="rounded-md border-border">
-              <DropdownMenuItem
-                onClick={onResetWorkspace}
-                className="rounded-md text-xs"
-              >
+              <DropdownMenuItem onClick={onResetWorkspace} className="rounded-md text-xs">
                 <RotateCcw className="mr-2 h-3.5 w-3.5" />
                 Clear Workspace State
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={onOpenShareDialog}
-                className="rounded-md text-xs"
-              >
+              <DropdownMenuItem onClick={onOpenShareDialog} className="rounded-md text-xs">
                 Share
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -304,9 +298,7 @@ export function WorkbenchTopBar({
       {focusState && focusTone ? (
         <div className="border-border/80 flex h-8 items-center justify-between border-t bg-background px-3">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="text-[10px] text-muted-foreground">
-              {focusState.kicker}
-            </span>
+            <span className="text-[10px] text-muted-foreground">{focusState.kicker}</span>
             <div className="min-w-0">
               <div className="flex min-w-0 items-center gap-2">
                 <span className="truncate text-sm font-medium text-foreground">
@@ -360,9 +352,7 @@ export function WorkbenchTopBar({
       {showYoloConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="shadow-sharp-lg mx-4 w-full max-w-sm rounded-lg border border-border bg-card p-6">
-            <p className="mb-1 text-[10px] text-muted-foreground">
-              Enable YOLO mode
-            </p>
+            <p className="mb-1 text-[10px] text-muted-foreground">Enable YOLO mode</p>
             <p className="mb-4 text-sm text-foreground">
               All commands and file writes will be automatically approved — no confirmation dialogs.
               Best for sandboxed (WebContainer) projects. You can turn it off anytime in Settings →

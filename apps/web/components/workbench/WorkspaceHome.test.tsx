@@ -11,7 +11,7 @@ describe('WorkspaceHome first-run guidance', () => {
     expect(html).toContain('1. Project')
     expect(html).toContain('2. Mode')
     expect(html).toContain('3. Plan')
-    expect(html).toContain('4. Proof')
+    expect(html).toContain('4. Run')
     expect(html).toContain('5. Changes')
     expect(html).toContain('6. Next Action')
     expect(html).toContain('Choose Ask / Plan / Agent')
@@ -43,7 +43,7 @@ describe('WorkspaceHome resume guidance', () => {
         nextStep: 'Inspect changed work before continuing.',
         changedWork: { count: 2, label: '2 changed files ready for review.', needsReview: true },
         proof: {
-          label: 'Proof ready',
+          label: 'Run evidence ready',
           detail: 'Review run evidence, receipts, and validation before continuing.',
           hasActiveRun: false,
         },

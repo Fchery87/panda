@@ -492,6 +492,42 @@ export default function SettingsPage() {
 
                 <Card className="rounded-none">
                   <CardHeader>
+                    <CardTitle>User Hooks</CardTitle>
+                    <CardDescription>
+                      Checked-in declarative hooks let a project observe, ask, block, or transform
+                      agent-loop actions without adding a second hook engine.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="rounded-none border border-border bg-surface-2 p-3">
+                      <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                        Source: .panda/hooks.json
+                      </p>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        Hooks run under the admin Harness Policy ceiling. They may make behavior
+                        stricter, but cannot loosen admin command-family policy. Optional commands
+                        are browser/WebContainer-only and never execute in the host shell.
+                      </p>
+                      <pre className="mt-3 overflow-x-auto border border-border bg-background p-3 text-xs text-muted-foreground">
+                        {`{
+  "version": 1,
+  "hooks": [
+    {
+      "id": "ask-before-destructive-command",
+      "hook": "tool.execute.before",
+      "match": { "toolName": "run_command", "commandFamily": "destructive" },
+      "action": "ask",
+      "reason": "Destructive commands require owner review."
+    }
+  ]
+}`}
+                      </pre>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="rounded-none">
+                  <CardHeader>
                     <CardTitle>Custom Subagents</CardTitle>
                     <CardDescription>
                       Define specialized agents for repetitive or domain-specific tasks.

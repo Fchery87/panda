@@ -937,7 +937,8 @@ gates before merging. Merge contract defined in `PLAN.md` upfront.
 ### Chat Panel Components
 
 - **RunProgressPanel** — Unified live/historical run progress
-- **AgentSelector** — Dropdown for parent-run mode/autonomy selection; subagents are delegated separately
+- **AgentSelector** — Dropdown for parent-run mode/autonomy selection; subagents
+  are delegated separately
 - **MemoryBankEditor** — Project memory management
 - **ReasoningPanel** — Model thinking display
 

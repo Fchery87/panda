@@ -29,7 +29,12 @@ Introduce or document lifecycle events:
 type AssistantMessageLifecycleEvent =
   | { type: 'assistant_message_started'; messageId: string; runId?: string }
   | { type: 'assistant_message_delta'; messageId: string; delta: MessageDelta }
-  | { type: 'assistant_message_completed'; messageId: string; content: string; usage?: TokenUsage }
+  | {
+      type: 'assistant_message_completed'
+      messageId: string
+      content: string
+      usage?: TokenUsage
+    }
   | { type: 'assistant_message_failed'; messageId: string; error: string }
 ```
 

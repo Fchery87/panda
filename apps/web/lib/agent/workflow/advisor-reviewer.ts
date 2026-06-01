@@ -38,7 +38,8 @@ export function parseAdvisorReviewerOutput(output: string): AdvisorReview {
   try {
     const jsonStart = output.indexOf('{')
     const jsonEnd = output.lastIndexOf('}')
-    const jsonText = jsonStart >= 0 && jsonEnd >= jsonStart ? output.slice(jsonStart, jsonEnd + 1) : output
+    const jsonText =
+      jsonStart >= 0 && jsonEnd >= jsonStart ? output.slice(jsonStart, jsonEnd + 1) : output
     const parsed = JSON.parse(jsonText)
     if (isValidAdvisorReview(parsed)) return parsed
   } catch {
@@ -48,7 +49,8 @@ export function parseAdvisorReviewerOutput(output: string): AdvisorReview {
   return buildAdvisorReview({
     gates: [],
     status: 'needs_changes',
-    summary: 'Advisor reviewer output could not be parsed. Manual review is required before continuing.',
+    summary:
+      'Advisor reviewer output could not be parsed. Manual review is required before continuing.',
     risks: [
       {
         severity: 'medium',

@@ -54,16 +54,16 @@ export const landingFeatures: LandingFeature[] = [
   {
     id: 'artifacts',
     number: '02',
-    title: 'Workbench-Owned Files',
+    title: 'Editor-Owned Files',
     description:
-      'Open, edit, generate, and review files in the central workbench while chat stays focused on direction.',
+      'Open, edit, generate, and review files in the central Editor while chat stays focused on direction.',
     iconKey: 'fileCode',
     size: 'large',
   },
   {
     id: 'runs',
     number: '03',
-    title: 'Recoverable Agent Runs',
+    title: 'Recoverable Runs',
     description:
       'Run Agent in Guided or Autopilot mode with bounded receipts, command summaries, checkpoints, and recovery state.',
     iconKey: 'terminal',
@@ -90,20 +90,20 @@ export const interfaceMap: EducationSurfaceSection[] = [
     bullets: [
       'Project-aware file tree navigation',
       'Search when structure is not enough',
-      'Selected files open in Work and attach to chat context',
+      'Selected files open in Editor and attach to chat context',
     ],
   },
   {
     id: 'work',
     label: '02',
-    title: 'Work',
+    title: 'Editor',
     iconKey: 'work',
     summary:
       'Keep editing, Review Diff, terminal output, changed work, and the current objective in one canvas.',
     bullets: [
       'Tabbed editor and changed-work review',
       'Browser runtime with server fallback',
-      'Terminal output and proof beside the task thread',
+      'Terminal output and run evidence beside the task thread',
     ],
   },
   {
@@ -122,10 +122,10 @@ export const interfaceMap: EducationSurfaceSection[] = [
   {
     id: 'inspector',
     label: '04',
-    title: 'Support Rail',
+    title: 'Inspector Rail',
     iconKey: 'inspector',
     summary:
-      'Inspect proof, plans, changed work, memory, delegated work, and recovery state without leaving the session.',
+      'Inspect run evidence, plans, changed work, memory, delegated work, and recovery state without leaving the session.',
     bullets: [
       'Run events, receipts, and checkpoints',
       'Plans, changes, memory, delegated work, and recovery state',
@@ -164,7 +164,7 @@ export const workspaceDetails: EducationDetail[] = [
   },
   {
     name: 'Timeline',
-    role: 'Change, run, and proof context tied to the active work thread.',
+    role: 'Change, run, and evidence context tied to the active work thread.',
     userValue: 'Understand what changed, why it changed, and what still needs review.',
   },
   {
@@ -209,7 +209,7 @@ export const chatDetails: EducationDetail[] = [
 
 export const specDetails: EducationDetail[] = [
   {
-    name: 'Proof Tab',
+    name: 'Run Evidence',
     role: 'Shows persisted run progress, event summaries, receipts, approvals, and recovery signals.',
     userValue: 'Inspect what happened, what passed, and where a paused run can resume.',
   },
@@ -257,7 +257,7 @@ export const workflowSteps: EducationWorkflowStep[] = [
   },
   {
     id: 'inspect-or-resume',
-    title: 'Watch proof as it runs',
+    title: 'Watch run evidence as it runs',
     description:
       'Run events, changed work, command output, receipts, and checkpoints stay attached to the active session for inspection.',
   },

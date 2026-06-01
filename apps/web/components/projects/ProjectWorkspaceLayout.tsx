@@ -25,7 +25,7 @@ import type { WorkspaceOpenTab } from '@/contexts/WorkspaceContext'
 import type { SidebarSection } from '@/components/sidebar/SidebarRail'
 import { cn } from '@/lib/utils'
 import type { FormalSpecification } from '@/lib/agent/spec/types'
-import type { ChatMode } from '@/lib/agent/prompt-library'
+import { CHAT_MODE_CONFIGS, type ChatMode } from '@/lib/agent/chat-modes'
 import type { WorkspaceArtifactPreview } from '@/components/workbench/artifact-preview'
 import type { WorkspaceFocusState } from '@/components/workbench/workspace-focus'
 import type { RuntimeProviderStatus } from '@/lib/workspace/runtime-availability'
@@ -38,7 +38,7 @@ type FileRecord = {
   updatedAt: number
 }
 
-interface ProjectWorkspaceLayoutProps {
+export interface ProjectWorkspaceLayoutProps {
   projectId: Id<'projects'>
   activeChatId?: Id<'chats'>
   activeSection: SidebarSection
@@ -181,7 +181,7 @@ export function ProjectWorkspaceLayoutView({
   pendingDiffEntries,
   onApplyPendingArtifact,
   onRejectPendingArtifact,
-  chatMode: _chatMode,
+  chatMode,
   onModeChange: _onModeChange,
   cursorPosition,
   isStreaming,
@@ -226,6 +226,7 @@ export function ProjectWorkspaceLayoutView({
   const openRightPanelTab = useWorkspaceUiStore((state) => state.openRightPanelTab)
   const workspaceFocusMode = useWorkspaceUiStore((state) => state.workspaceFocusMode)
   const setWorkspaceFocusMode = useWorkspaceUiStore((state) => state.setWorkspaceFocusMode)
+  const isChatDockOpen = useWorkspaceUiStore((state) => state.isChatDockOpen)
   const isMobileProofActive = mobilePrimaryPanel === 'proof'
   const isMobileChangesActive = mobilePrimaryPanel === 'changes'
   const openMobileProof = () => {
@@ -242,12 +243,20 @@ export function ProjectWorkspaceLayoutView({
   // Dock tab definitions with badge counts
   const dockTabs = useMemo(() => [{ id: 'terminal' as BottomDockTab, label: 'Terminal' }], [])
 
-  const shouldRenderRightPanel = Boolean(isRightPanelOpen && workspaceFocusMode !== 'chat')
+  const modeLayout = CHAT_MODE_CONFIGS[chatMode].layout
+  const shouldRenderChatDock = isChatDockOpen || ['ask', 'plan', 'code'].includes(chatMode)
+  const shouldRenderRightPanel = Boolean(isRightPanelOpen)
   const isInspectorFocus = workspaceFocusMode === 'proof' || workspaceFocusMode === 'changes'
-  const rightPanelDefaultSize = isInspectorFocus ? 38 : isCompactDesktopLayout ? 30 : 26
-  const centerDefaultSize = shouldRenderRightPanel ? 100 - rightPanelDefaultSize : 100
-  const rightPanelMaxSize = isInspectorFocus ? 50 : 34
-  const outerLayoutPersistenceKey = `panda-workspace-${shouldRenderRightPanel ? 'right-open' : 'right-closed'}-${workspaceFocusMode}`
+  const rightPanelDefaultSize = isInspectorFocus ? 34 : isCompactDesktopLayout ? 28 : 24
+  const rightPanelMaxSize = isInspectorFocus ? 46 : 34
+  const availableWorkspaceSize = shouldRenderRightPanel ? 100 - rightPanelDefaultSize : 100
+  const centerDefaultSize = shouldRenderChatDock
+    ? Math.round((availableWorkspaceSize * modeLayout.editorDefaultSize) / 100)
+    : availableWorkspaceSize
+  const chatDockDefaultSize = shouldRenderChatDock
+    ? Math.max(22, availableWorkspaceSize - centerDefaultSize)
+    : 0
+  const outerLayoutPersistenceKey = `panda-workspace-${chatMode}-${shouldRenderChatDock ? 'chat-open' : 'chat-closed'}-${shouldRenderRightPanel ? 'right-open' : 'right-closed'}-${workspaceFocusMode}`
 
   const pendingFileStatuses = useMemo(() => {
     const statuses: Record<string, WorkspaceFileStatus> = {}
@@ -410,7 +419,7 @@ export function ProjectWorkspaceLayoutView({
                 : mobilePrimaryPanel === 'chat'
                   ? chatPanel
                   : mobilePrimaryPanel === 'proof' || mobilePrimaryPanel === 'changes'
-                    ? rightPanelContent ?? <WorkbenchRightPanel projectId={projectId} />
+                    ? (rightPanelContent ?? <WorkbenchRightPanel projectId={projectId} />)
                     : null}
             </div>
             {!isMobileKeyboardOpen && (
@@ -424,7 +433,7 @@ export function ProjectWorkspaceLayoutView({
                   onClick={() => onMobilePrimaryPanelChange('work')}
                   role="tab"
                   aria-selected={mobilePrimaryPanel === 'work'}
-                  aria-label="Show workspace"
+                  aria-label="Show editor"
                   className={cn(
                     'min-h-12 border-r border-border px-1 transition-colors focus-visible:-outline-offset-2 active:scale-[0.96]',
                     mobilePrimaryPanel === 'work'
@@ -432,7 +441,7 @@ export function ProjectWorkspaceLayoutView({
                       : 'bg-card text-muted-foreground hover:bg-accent hover:text-foreground'
                   )}
                 >
-                  Work
+                  Editor
                 </button>
                 <button
                   type="button"
@@ -459,7 +468,7 @@ export function ProjectWorkspaceLayoutView({
                   onClick={openMobileProof}
                   role="tab"
                   aria-selected={isMobileProofActive}
-                  aria-label="Show run proof"
+                  aria-label="Show run evidence"
                   className={cn(
                     'relative min-h-12 border-r border-border px-1 transition-colors focus-visible:-outline-offset-2 active:scale-[0.96]',
                     isMobileProofActive
@@ -467,7 +476,7 @@ export function ProjectWorkspaceLayoutView({
                       : 'bg-card text-muted-foreground hover:bg-accent hover:text-foreground'
                   )}
                 >
-                  Proof
+                  Run
                 </button>
                 <button
                   type="button"
@@ -491,23 +500,10 @@ export function ProjectWorkspaceLayoutView({
           <>
             <div className="flex h-full min-h-0 min-w-0 flex-col bg-card">
               <div
-                className="grid shrink-0 border-b border-border bg-card text-[10px] text-muted-foreground sm:grid-cols-5"
+                className="grid shrink-0 border-b border-border bg-card text-[10px] text-muted-foreground sm:grid-cols-4"
                 aria-label="Workspace focus modes"
                 data-workspace-focus-mode={workspaceFocusMode}
               >
-                <button
-                  type="button"
-                  onClick={() => {
-                    onSidebarSectionChange('tasks')
-                    if (!isFlyoutOpen) onToggleFlyout()
-                  }}
-                  className={cn(
-                    'flex h-7 items-center border-b border-border px-3 text-left transition-colors hover:bg-accent hover:text-foreground sm:border-b-0 sm:border-r',
-                    isFlyoutOpen && activeSection === 'tasks' && 'bg-primary/10 text-primary'
-                  )}
-                >
-                  Sessions
-                </button>
                 <button
                   type="button"
                   onClick={() => activateWorkspaceFocus('chat')}
@@ -528,7 +524,7 @@ export function ProjectWorkspaceLayoutView({
                     workspaceFocusMode === 'workbench' && 'bg-primary/10 text-primary'
                   )}
                 >
-                  Focus Workbench
+                  Focus Editor
                 </button>
                 <button
                   type="button"
@@ -539,7 +535,7 @@ export function ProjectWorkspaceLayoutView({
                     workspaceFocusMode === 'proof' && 'bg-primary/10 text-primary'
                   )}
                 >
-                  Focus Proof
+                  Focus Run
                 </button>
                 <button
                   type="button"
@@ -585,7 +581,7 @@ export function ProjectWorkspaceLayoutView({
                       minSize={40}
                     >
                       <PanelGroup
-                        key={`layout-${shouldRenderRightPanel ? 'right-open' : 'right-closed'}-${workspaceFocusMode}`}
+                        key={`layout-${chatMode}-${shouldRenderChatDock ? 'chat-open' : 'chat-closed'}-${shouldRenderRightPanel ? 'right-open' : 'right-closed'}-${workspaceFocusMode}`}
                         direction="horizontal"
                         className="h-full min-h-0 min-w-0"
                         autoSaveId={outerLayoutPersistenceKey}
@@ -593,24 +589,46 @@ export function ProjectWorkspaceLayoutView({
                         {/* Legacy contract marker retained for source-based integration tests:
                           id="review-panel" order={1}
                       */}
-                        {/* Primary workspace surface: files/workbench or chat focus */}
+                        {/* Primary editor/workbench surface. Focus mode changes emphasis, not ownership. */}
                         <Panel
-                          data-testid="execution-session-timeline-region"
-                          aria-label={
-                            workspaceFocusMode === 'chat'
-                              ? 'Execution session timeline and composer'
-                              : 'Workspace workbench'
-                          }
+                          data-testid="workspace-editor-region"
+                          aria-label="Workspace editor and workbench"
                           id="workspace-panel"
-                          order={2}
+                          order={1}
                           defaultSize={centerDefaultSize}
-                          minSize={52}
+                          minSize={36}
                           className="flex min-h-0 min-w-0 flex-col"
                         >
-                          {workspaceFocusMode === 'chat' ? chatPanel : workbench}
+                          {workbench}
                         </Panel>
 
-                        {/* Right support rail: proof, changes, and context */}
+                        {shouldRenderChatDock && (
+                          <>
+                            <PanelResizeHandle
+                              data-testid="workspace-chat-resize-handle"
+                              className="h-full w-px bg-border transition-colors hover:bg-primary"
+                            />
+                            <Panel
+                              data-testid="workspace-chat-dock"
+                              aria-label="Workspace chat dock"
+                              id="chat-dock-panel"
+                              order={2}
+                              defaultSize={chatDockDefaultSize}
+                              minSize={22}
+                              maxSize={62}
+                              className="flex min-h-0 min-w-0 flex-col"
+                            >
+                              <div
+                                data-testid="execution-session-timeline-region"
+                                className="flex h-full min-h-0 flex-col"
+                              >
+                                {chatPanel}
+                              </div>
+                            </Panel>
+                          </>
+                        )}
+
+                        {/* Inspector rail: Run, Changes, and Context */}
                         {shouldRenderRightPanel && (
                           <>
                             <PanelResizeHandle
@@ -619,7 +637,7 @@ export function ProjectWorkspaceLayoutView({
                             />
                             <Panel
                               data-testid="execution-session-work-tray-region"
-                              aria-label="Workspace support rail"
+                              aria-label="Workspace inspector rail"
                               id="work-tray-panel"
                               order={3}
                               defaultSize={rightPanelDefaultSize}

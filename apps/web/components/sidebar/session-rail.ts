@@ -136,8 +136,12 @@ export function buildSessionRailSummary(args: {
         id: String(child._id),
         name: child.subagentName ?? 'subagent',
         status: subagentState(child),
-        summary: child.delegatedTaskSummary ?? child.summary ?? child.userMessage ?? 'Delegated task',
-        lastActivity: formatRelativeTime(child.lastActivityAt ?? child.completedAt ?? child.startedAt, now),
+        summary:
+          child.delegatedTaskSummary ?? child.summary ?? child.userMessage ?? 'Delegated task',
+        lastActivity: formatRelativeTime(
+          child.lastActivityAt ?? child.completedAt ?? child.startedAt,
+          now
+        ),
         artifactCount: child.artifactCount,
       })
     )

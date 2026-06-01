@@ -33,10 +33,13 @@ export interface AdvisorGateInput {
   diffFileCount?: number
 }
 
-const SECURITY_PATTERN = /(^|\/)(auth|security|proxy)|oauth|token|secret|password|permission|policy/i
+const SECURITY_PATTERN =
+  /(^|\/)(auth|security|proxy)|oauth|token|secret|password|permission|policy/i
 const CONVEX_SCHEMA_PATTERN = /^convex\/schema\.ts$|^convex\/.*\.(ts|tsx)$/i
-const DEPENDENCY_PATTERN = /(^|\/)(package\.json|bun\.lock|package-lock\.json|pnpm-lock\.yaml|yarn\.lock)$/i
-const DESTRUCTIVE_COMMAND_PATTERN = /\b(rm\s+-rf|git\s+reset\s+--hard|drop\s+table|truncate\s+table|delete\s+from|chmod\s+-R|chown\s+-R)\b/i
+const DEPENDENCY_PATTERN =
+  /(^|\/)(package\.json|bun\.lock|package-lock\.json|pnpm-lock\.yaml|yarn\.lock)$/i
+const DESTRUCTIVE_COMMAND_PATTERN =
+  /\b(rm\s+-rf|git\s+reset\s+--hard|drop\s+table|truncate\s+table|delete\s+from|chmod\s+-R|chown\s+-R)\b/i
 
 export function resolveAdvisorGates(input: AdvisorGateInput): AdvisorGate[] {
   const gates = new Set<AdvisorGate>()
@@ -47,7 +50,8 @@ export function resolveAdvisorGates(input: AdvisorGateInput): AdvisorGate[] {
   if (files.some((file) => DEPENDENCY_PATTERN.test(file))) gates.add('dependency_change')
   if (files.some((file) => SECURITY_PATTERN.test(file))) gates.add('auth_or_security_change')
   if (files.some((file) => CONVEX_SCHEMA_PATTERN.test(file))) gates.add('database_schema_change')
-  if (commands.some((command) => DESTRUCTIVE_COMMAND_PATTERN.test(command))) gates.add('destructive_command')
+  if (commands.some((command) => DESTRUCTIVE_COMMAND_PATTERN.test(command)))
+    gates.add('destructive_command')
   if (input.autonomy === 'autopilot') gates.add('autopilot_checkpoint')
 
   return [...gates]
@@ -59,7 +63,10 @@ export function isAdvisorRequired(policy: AdvisorPolicy, gates: AdvisorGate[]): 
   return gates.some((gate) => required.has(gate))
 }
 
-export function summarizeAdvisorRequirement(policy: AdvisorPolicy, input: AdvisorGateInput): {
+export function summarizeAdvisorRequirement(
+  policy: AdvisorPolicy,
+  input: AdvisorGateInput
+): {
   required: boolean
   gates: AdvisorGate[]
 } {

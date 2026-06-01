@@ -321,9 +321,7 @@ describe('transcript blocks', () => {
         makeToolStep('s1', 'Wrote MessageList.tsx', 'write_files', [
           'apps/web/components/chat/MessageList.tsx',
         ]),
-        makeToolStep('s2', 'Wrote types.ts', 'write_files', [
-          'apps/web/components/chat/types.ts',
-        ]),
+        makeToolStep('s2', 'Wrote types.ts', 'write_files', ['apps/web/components/chat/types.ts']),
         makeToolStep('s3', 'Ran tests', 'run_command', []),
       ],
     })
@@ -364,9 +362,7 @@ describe('transcript blocks', () => {
     const items = buildTranscriptFeedItems({
       messages,
       chatMode: 'plan',
-      liveSteps: [
-        makeToolStep('s1', 'Read file', 'read_files', ['src/app.ts']),
-      ],
+      liveSteps: [makeToolStep('s1', 'Read file', 'read_files', ['src/app.ts'])],
     })
 
     const blockItems = items.filter((item) => item.type === 'block')
@@ -418,7 +414,8 @@ describe('transcript blocks', () => {
 
     const blockItems = items.filter((item) => item.type === 'block')
     const checklistItem = blockItems.find(
-      (item) => item.type === 'block' && 'kind' in item.block && item.block.kind === 'plan_checklist'
+      (item) =>
+        item.type === 'block' && 'kind' in item.block && item.block.kind === 'plan_checklist'
     )
     expect(checklistItem).toBeDefined()
 
@@ -451,7 +448,8 @@ describe('transcript blocks', () => {
 
     const blockItems = items.filter((item) => item.type === 'block')
     const hasChecklist = blockItems.some(
-      (item) => item.type === 'block' && 'kind' in item.block && item.block.kind === 'plan_checklist'
+      (item) =>
+        item.type === 'block' && 'kind' in item.block && item.block.kind === 'plan_checklist'
     )
     expect(hasChecklist).toBe(false)
   })

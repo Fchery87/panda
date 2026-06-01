@@ -1,8 +1,9 @@
 import {
   CHAT_MODE_CONFIGS,
   getAdvancedChatModes,
-  getPrimaryChatModes,
+  getPrimaryModeSurfaces,
   type ChatMode,
+  type PrimaryMode,
 } from '@/lib/agent/chat-modes'
 
 export type ChatModeSurfacePresentation = {
@@ -11,6 +12,16 @@ export type ChatModeSurfacePresentation = {
   shortLabel: string
   description: string
   advanced: boolean
+}
+
+export type PrimaryModeSurfacePresentation = {
+  id: PrimaryMode
+  mode: ChatMode
+  label: string
+  shortLabel: string
+  description: string
+  advanced: false
+  primaryShortcut?: string
 }
 
 const SURFACE_PRESENTATIONS: Record<ChatMode, ChatModeSurfacePresentation> = Object.fromEntries(
@@ -38,8 +49,16 @@ export function getChatModeSurfacePresentation(mode: ChatMode): ChatModeSurfaceP
   return cloneSurfacePresentation(SURFACE_PRESENTATIONS[mode])
 }
 
-export function getPrimaryChatModeSurfaceOptions(): ChatModeSurfacePresentation[] {
-  return getPrimaryChatModes().map((mode) => cloneSurfacePresentation(SURFACE_PRESENTATIONS[mode]))
+export function getPrimaryChatModeSurfaceOptions(): PrimaryModeSurfacePresentation[] {
+  return getPrimaryModeSurfaces().map((surface) => ({
+    id: surface.id,
+    mode: surface.defaultRuntimeMode,
+    label: surface.label,
+    shortLabel: surface.shortLabel,
+    description: surface.description,
+    advanced: false,
+    primaryShortcut: surface.primaryShortcut,
+  }))
 }
 
 export function getAdvancedChatModeSurfaceOptions(): ChatModeSurfacePresentation[] {

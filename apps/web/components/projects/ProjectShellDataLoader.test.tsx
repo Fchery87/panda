@@ -11,6 +11,14 @@ async function readProvider() {
   return fs.readFileSync(path.resolve(import.meta.dir, 'WorkspaceRuntimeProvider.tsx'), 'utf-8')
 }
 
+async function readShellUiHook() {
+  const fs = await import('node:fs')
+  return fs.readFileSync(
+    path.resolve(import.meta.dir, '../../hooks/useProjectShellUiState.ts'),
+    'utf-8'
+  )
+}
+
 async function readWorkbench() {
   const fs = await import('node:fs')
   return fs.readFileSync(path.resolve(import.meta.dir, '../workbench/Workbench.tsx'), 'utf-8')
@@ -97,13 +105,16 @@ describe('ProjectShellDataLoader structure', () => {
     expect(content).toContain('<AgentRuntimeProvider')
   })
 
-  test('reads UI state from workspaceUiStore instead of prop drilling', async () => {
-    const content = await readProvider()
-    expect(content).toContain("from '@/stores/workspaceUiStore'")
-    expect(content).toContain('useWorkspaceUiStore()')
-    expect(content).not.toContain("from '@/hooks/buildWorkspaceContextValue'")
-    expect(content).not.toContain("from '@/hooks/buildProjectChatPanelProps'")
-    expect(content).not.toContain("from '@/hooks/buildWorkbenchRightPanelProps'")
+  test('reads UI state from workspaceUiStore through the shell UI seam instead of prop drilling', async () => {
+    const providerContent = await readProvider()
+    const shellUiHookContent = await readShellUiHook()
+    expect(providerContent).toContain("from '@/hooks/useProjectShellUiState'")
+    expect(providerContent).toContain('useProjectShellUiState()')
+    expect(shellUiHookContent).toContain("from '@/stores/workspaceUiStore'")
+    expect(shellUiHookContent).toContain('useWorkspaceUiStore()')
+    expect(providerContent).not.toContain("from '@/hooks/buildWorkspaceContextValue'")
+    expect(providerContent).not.toContain("from '@/hooks/buildProjectChatPanelProps'")
+    expect(providerContent).not.toContain("from '@/hooks/buildWorkbenchRightPanelProps'")
   })
 
   test('reads chat session state from chatSessionStore', async () => {

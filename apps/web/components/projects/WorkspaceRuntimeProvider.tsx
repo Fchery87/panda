@@ -1,16 +1,14 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, type SetStateAction } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { useConvex, useMutation, useQuery } from 'convex/react'
+import { useMutation, useQuery } from 'convex/react'
 import { toast } from 'sonner'
-import { useHotkeys } from 'react-hotkeys-hook'
 
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 
 import { ProjectWorkspaceShell } from '@/components/projects/ProjectWorkspaceShell'
-import { ProjectChatPanel } from '@/components/projects/ProjectChatPanel'
 import { derivePlanningSessionDebugSummary } from '@/components/plan/PlanningSessionDebugCard'
 import {
   findLatestRecoverableCheckpoint,
@@ -21,7 +19,7 @@ import { WorkspaceRuntimeProvider as WorkspaceRuntimeContextProvider } from '@/c
 import { useCommandPaletteStore } from '@/stores/commandPaletteStore'
 import { useChatSessionStore } from '@/stores/chatSessionStore'
 import { useEditorContextStore } from '@/stores/editorContextStore'
-import { useWorkspaceUiStore, type RightPanelTab } from '@/stores/workspaceUiStore'
+
 import { useGit } from '@/hooks/useGit'
 import { useJobs } from '@/hooks/useJobs'
 import { useAgent } from '@/hooks/useAgent'
@@ -42,22 +40,24 @@ import { useProjectRequestedFileSync } from '@/hooks/useProjectRequestedFileSync
 import { useProjectWorkspaceActions } from '@/hooks/useProjectWorkspaceActions'
 import { useProjectAgentRunCallbacks } from '@/hooks/useProjectAgentRunCallbacks'
 import { useProjectShellWiring } from '@/hooks/useProjectShellWiring'
+import { useProjectShellUiState } from '@/hooks/useProjectShellUiState'
+import { useExecutionSessionFocusState } from '@/hooks/useExecutionSessionFocusState'
+import { useProjectRuntimeFileMount } from '@/hooks/useProjectRuntimeFileMount'
+import { useImportLocalWorkspace } from '@/hooks/useImportLocalWorkspace'
+import { useWorkspaceShellHotkeys } from '@/hooks/useWorkspaceShellHotkeys'
+import { useProjectWorkspaceLayoutProps } from '@/hooks/useProjectWorkspaceLayoutProps'
+import { useWorkspaceRuntimeValue } from '@/hooks/useWorkspaceRuntimeValue'
 import { useWebcontainer } from '@/lib/webcontainer/WebcontainerProvider'
-import { mountProjectFiles, writeFileToContainer } from '@/lib/webcontainer/fs-sync'
+import { writeFileToContainer } from '@/lib/webcontainer/fs-sync'
 import type { PlanStatus } from '@/lib/chat/planDraft'
 import { resolveAgentPolicy } from '@/lib/chat/agentPolicy'
 import type { AgentPolicy } from '@/lib/agent/automationPolicy'
 import type { ChatMode } from '@/lib/agent/prompt-library'
 import type { LLMProvider } from '@/lib/llm/types'
-import { resolveExplorerRevealTarget } from '@/lib/workbench-navigation'
 import { buildDefaultPlanningQuestions } from '@/lib/planning/question-engine'
-import type { WorkspaceFocusState } from '@/components/workbench/workspace-focus'
 import type { Message } from '@/components/chat/types'
 import { resolveRuntimeAvailability } from '@/lib/workspace/runtime-availability'
-import {
-  buildExecutionSessionViewModel,
-  type ExecutionSessionNextActionId,
-} from '@/lib/workspace/execution-session-view-model'
+import { buildExecutionSessionViewModel } from '@/lib/workspace/execution-session-view-model'
 
 interface ProjectFileMetadata {
   _id: Id<'files'>
@@ -124,9 +124,7 @@ export function WorkspaceRuntimeProvider({
   chats,
 }: WorkspaceRuntimeProviderProps) {
   const searchParams = useSearchParams()
-  const convex = useConvex()
   const webcontainer = useWebcontainer()
-  const mountedRuntimeProjectRef = useRef<string | null>(null)
 
   const openCommandPalette = useCommandPaletteStore((state) => state.open)
   const { status: gitStatus, refreshStatus: refreshGitStatus } = useGit()
@@ -136,11 +134,8 @@ export function WorkspaceRuntimeProvider({
     isMobileLayout,
     isCompactDesktopLayout,
     mobilePrimaryPanel,
-    setMobilePrimaryPanel,
     mobileUnreadCount,
-    setMobileUnreadCount,
     isMobileKeyboardOpen,
-    setIsMobileKeyboardOpen,
     setSpecSurfaceMode,
     isShareDialogOpen,
     setShareDialogOpen,
@@ -149,16 +144,20 @@ export function WorkspaceRuntimeProvider({
     isShortcutHelpOpen,
     setShortcutHelpOpen,
     isBottomDockOpen: _isBottomDockOpen,
-    setBottomDockOpen,
     activeBottomDockTab,
     setActiveBottomDockTab,
     activeCenterTab,
     setActiveCenterTab,
     isRightPanelOpen,
-    setRightPanelOpen,
     setRightPanelTab,
+    setRightPanelTabFromAction: handleSetRightPanelTab,
+    setRightPanelOpenFromAction: handleSetRightPanelOpen,
+    setBottomDockOpenFromAction: handleSetBottomDockOpen,
+    setMobilePrimaryPanelFromAction: handleSetMobilePrimaryPanel,
+    setMobileKeyboardOpenFromAction: handleSetMobileKeyboardOpen,
+    setMobileUnreadCountFromAction: handleSetMobileUnreadCount,
     setWorkspaceFocusMode,
-  } = useWorkspaceUiStore()
+  } = useProjectShellUiState()
 
   const { oversightLevel, setContextualPrompt } = useChatSessionStore()
 
@@ -172,55 +171,6 @@ export function WorkspaceRuntimeProvider({
     setOpenTabs,
     setCursorPosition,
   } = useEditorContextStore()
-
-  const handleSetRightPanelTab = useCallback(
-    (tab: SetStateAction<RightPanelTab>) => {
-      const next =
-        typeof tab === 'function' ? tab(useWorkspaceUiStore.getState().rightPanelTab) : tab
-      if (next !== useWorkspaceUiStore.getState().rightPanelTab) setRightPanelTab(next)
-    },
-    [setRightPanelTab]
-  )
-  const handleSetRightPanelOpen = useCallback(
-    (open: boolean | ((prev: boolean) => boolean)) => {
-      const prev = useWorkspaceUiStore.getState().isRightPanelOpen
-      const next = typeof open === 'function' ? open(prev) : open
-      if (next !== prev) setRightPanelOpen(next)
-    },
-    [setRightPanelOpen]
-  )
-  const handleSetBottomDockOpen = useCallback(
-    (open: boolean | ((prev: boolean) => boolean)) => {
-      const prev = useWorkspaceUiStore.getState().isBottomDockOpen
-      const next = typeof open === 'function' ? open(prev) : open
-      if (next !== prev) setBottomDockOpen(next)
-    },
-    [setBottomDockOpen]
-  )
-  const handleSetMobilePrimaryPanel = useCallback(
-    (panel: SetStateAction<typeof mobilePrimaryPanel>) => {
-      const prev = useWorkspaceUiStore.getState().mobilePrimaryPanel
-      const next = typeof panel === 'function' ? panel(prev) : panel
-      if (next !== prev) setMobilePrimaryPanel(next)
-    },
-    [setMobilePrimaryPanel]
-  )
-  const handleSetMobileKeyboardOpen = useCallback(
-    (open: SetStateAction<boolean>) => {
-      const prev = useWorkspaceUiStore.getState().isMobileKeyboardOpen
-      const next = typeof open === 'function' ? open(prev) : open
-      if (next !== prev) setIsMobileKeyboardOpen(next)
-    },
-    [setIsMobileKeyboardOpen]
-  )
-  const handleSetMobileUnreadCount = useCallback(
-    (count: SetStateAction<number>) => {
-      const prev = useWorkspaceUiStore.getState().mobileUnreadCount
-      const next = typeof count === 'function' ? count(prev) : count
-      if (next !== prev) setMobileUnreadCount(next)
-    },
-    [setMobileUnreadCount]
-  )
 
   const { openRightPanelTab } = useWorkbenchPanelState({
     isMobileLayout,
@@ -248,24 +198,7 @@ export function WorkspaceRuntimeProvider({
     [webcontainer.error, webcontainer.status]
   )
 
-  useHotkeys(
-    'mod+i',
-    (e) => {
-      e.preventDefault()
-      const state = useWorkspaceUiStore.getState()
-      state.setComposerOpen(!state.isComposerOpen)
-    },
-    { enableOnFormTags: ['INPUT', 'TEXTAREA'] }
-  )
-  useHotkeys(
-    'mod+/',
-    (e) => {
-      e.preventDefault()
-      const state = useWorkspaceUiStore.getState()
-      state.setShortcutHelpOpen(!state.isShortcutHelpOpen)
-    },
-    { enableOnFormTags: ['INPUT', 'TEXTAREA'] }
-  )
+  useWorkspaceShellHotkeys()
 
   const projectAgentPolicy = readAgentPolicyField(project, 'agentPolicy')
   const createChatMutation = useMutation(api.chats.create)
@@ -316,7 +249,14 @@ export function WorkspaceRuntimeProvider({
   })
 
   const handleAutoModeSwitch = useCallback(
-    async ({ toMode }: { fromMode: ChatMode; toMode: ChatMode; confidence: string; rationale: string }) => {
+    async ({
+      toMode,
+    }: {
+      fromMode: ChatMode
+      toMode: ChatMode
+      confidence: string
+      rationale: string
+    }) => {
       setChatMode(toMode)
       if (activeChat && activeChat.mode !== toMode) {
         await updateChatMutation({ id: activeChat._id, mode: toMode })
@@ -448,7 +388,7 @@ export function WorkspaceRuntimeProvider({
     setSelectedFilePath,
     setSelectedFileLocation,
     setCursorPosition,
-    setMobilePrimaryPanel,
+    setMobilePrimaryPanel: handleSetMobilePrimaryPanel,
     setWorkspaceFocusMode,
     setActiveCenterTab,
   })
@@ -549,30 +489,12 @@ export function WorkspaceRuntimeProvider({
       toast,
     })
 
-  useEffect(() => {
-    if (webcontainer.status !== 'ready' || !webcontainer.instance) return
-    if (mountedRuntimeProjectRef.current === projectId) return
-
-    mountedRuntimeProjectRef.current = projectId
-    const instance = webcontainer.instance
-    const filePaths = files.map((file) => file.path)
-
-    void convex
-      .query(api.files.batchGet, { projectId, paths: filePaths })
-      .then((runtimeFiles) => {
-        const filesToMount = runtimeFiles
-          .filter((file) => file.exists && file.content !== null)
-          .map((file) => ({ path: file.path, content: file.content }))
-
-        return mountProjectFiles(instance, filesToMount)
-      })
-      .catch((error) => {
-        mountedRuntimeProjectRef.current = null
-        toast.error('Failed to mount project files', {
-          description: error instanceof Error ? error.message : 'Unknown error',
-        })
-      })
-  }, [convex, files, projectId, webcontainer.instance, webcontainer.status])
+  useProjectRuntimeFileMount({
+    projectId,
+    files,
+    webcontainerStatus: webcontainer.status,
+    webcontainerInstance: webcontainer.instance,
+  })
 
   const { handleContextualChat, handleInlineChat } = useProjectInlineEditing({
     projectId: String(projectId),
@@ -655,354 +577,122 @@ export function WorkspaceRuntimeProvider({
     }
   }, [effectiveAutomationPolicy, projectAgentPolicy, projectId, updateProjectMutation])
 
-  const runtimeValue = useMemo(
-    () => ({
-      // Identity
-      projectId,
-      projectName: project.name,
+  const runtimeValue = useWorkspaceRuntimeValue({
+    projectId,
+    projectName: project.name,
+    activeChatId: activeChat?._id,
+    activeChatTitle: activeChat?.title,
+    activeChatExists: Boolean(activeChat?._id),
+    activeChatPlanStatus: normalizedPlanStatus,
+    activeChatPlanUpdatedAt: activePlanningSession?.updatedAt,
+    activeChatPlanLastGeneratedAt: activePlanningSession?.generatedPlan?.generatedAt,
+    executionSession,
+    chatMessages,
+    runEvents,
+    latestRunReceipt,
+    liveSteps: liveRunSteps,
+    snapshotEvents: snapshotRunEvents,
+    subagentToolCalls,
+    inlineRateLimitError,
+    lastUserPrompt: latestUserPrompt,
+    lastAssistantReply: latestAssistantReply,
+    isStreaming: agent.isLoading,
+    workspaceReady: agent.workspaceReady,
+    currentSpec: agent.currentSpec,
+    memoryBank: agent.memoryBank,
+    tracePersistenceStatus: agent.tracePersistenceStatus,
+    runtimeCheckpoints,
+    model: selectedChatModel,
+    selectedModel,
+    availableModels,
+    supportsReasoning,
+    hasProvider: provider !== null,
+    yoloCommandMode: effectiveAutomationPolicy.yoloCommandMode ?? true,
+    onToggleYolo: handleToggleYolo,
+    files,
+    pendingDiffEntries,
+    planDraft,
+    isSavingPlanDraft,
+    planApproveDisabled: !canApproveCurrentPlan || agent.isLoading,
+    planBuildDisabled: !canBuildCurrentPlan || agent.isLoading,
+    showInlinePlanReview: agentPolicy.showPlanReview,
+    planStatus: normalizedPlanStatus,
+    canApprovePlan: canApproveCurrentPlan,
+    canBuildPlan: canBuildCurrentPlan,
+    lastSavedAt: activePlanningSession?.updatedAt,
+    lastGeneratedAt: activePlanningSession?.generatedPlan?.generatedAt,
+    planningDebug,
+    planningSession: activePlanningSession ?? null,
+    planningCurrentQuestion: planningSession.currentQuestion,
+    isAnyJobRunning,
+    isRuntimeRunning,
+    isAgentRunning: agent.isLoading,
+    gitStatus,
+    githubShellSummary,
+    healthStatus,
+    healthDetail,
+    composerOpen: isComposerOpen,
+    shortcutHelpOpen: isShortcutHelpOpen,
+    isFlyoutOpen,
+    activeSection,
+    openRightPanelTab,
+    onSendMessage: handleSendMessage,
+    onSuggestedAction: handleSuggestedAction,
+    onAskUserAnswer: agent.answerAskUser,
+    onModeChange: handleModeChange,
+    stopStreaming: agent.stop,
+    onResumeRuntimeSession: agent.resumeRuntimeSession,
+    onRunEvalScenario: agent.runEvalScenario,
+    onSaveMemoryBank: agent.updateMemoryBank,
+    onPlanApprove: handleApprovePlan,
+    onBuildFromPlan: handleBuildFromPlan,
+    onPlanDraftChange: setPlanDraft,
+    savePlanDraft: handleSavePlanDraft,
+    onStartPlanningIntake: handleStartPlanningIntake,
+    onAnswerPlanningQuestion: planningSession.answerQuestion,
+    hasActivePlanningSession: Boolean(activePlanningSession?.sessionId),
+    clearPlanningIntake: planningSession.clearIntake,
+    onOpenFile: handleFileSelect,
+    onResetWorkspace: handleResetWorkspace,
+    newChat: handleNewChat,
+    sendComposerMessage: handleSendMessage,
+    onToggleFlyout: toggleFlyout,
+    startRuntime: handleStartRuntime,
+    stopRuntime: handleStopRuntime,
+    isMobileLayout,
+    onOpenCommandPalette: openCommandPalette,
+    onSidebarSectionChange: handleSectionChange,
+    onComposerOpenChange: setComposerOpen,
+    onShortcutHelpOpenChange: setShortcutHelpOpen,
+    writeFileToRuntime,
+    setSelectedFilePath,
+    setSelectedFileLocation,
+    setCursorPosition,
+  })
 
-      // Active chat
-      activeChatId: activeChat?._id,
-      activeChatTitle: activeChat?.title,
-      activeChatExists: Boolean(activeChat?._id),
-      activeChatPlanStatus: normalizedPlanStatus,
-      activeChatPlanUpdatedAt: activePlanningSession?.updatedAt,
-      activeChatPlanLastGeneratedAt: activePlanningSession?.generatedPlan?.generatedAt,
+  const { workspaceFocusState, handleFocusPrimaryAction, handleFocusSecondaryAction } =
+    useExecutionSessionFocusState({
       executionSession,
-
-      // Chat state
-      chatMessages,
-      runEvents,
-      latestRunReceipt,
-      liveSteps: liveRunSteps,
-      snapshotEvents: snapshotRunEvents,
-      subagentToolCalls,
-      inlineRateLimitError,
-      lastUserPrompt: latestUserPrompt,
-      lastAssistantReply: latestAssistantReply,
-
-      // Agent state
-      isStreaming: agent.isLoading,
-      workspaceReady: agent.workspaceReady,
-      currentSpec: agent.currentSpec,
-      memoryBank: agent.memoryBank,
-      tracePersistenceStatus: agent.tracePersistenceStatus,
-      runtimeCheckpoints,
-
-      // Model / provider
-      model: selectedChatModel,
-      selectedModel,
-      availableModels,
-      supportsReasoning,
-      hasProvider: provider !== null,
-
-      // YOLO mode
-      yoloCommandMode: effectiveAutomationPolicy.yoloCommandMode ?? true,
-      onToggleYolo: handleToggleYolo,
-
-      // Files
-      filePaths: files.map((f) => f.path),
-      filesForPalette: files.map((f) => ({ path: f.path })),
-      pendingDiffEntries,
-
-      // Plan state
-      planDraft,
-      isSavingPlanDraft,
-      planApproveDisabled: !canApproveCurrentPlan || agent.isLoading,
-      planBuildDisabled: !canBuildCurrentPlan || agent.isLoading,
-      showInlinePlanReview: agentPolicy.showPlanReview,
-      planStatus: normalizedPlanStatus,
-      canApprovePlan: canApproveCurrentPlan,
-      canBuildPlan: canBuildCurrentPlan,
-      lastSavedAt: activePlanningSession?.updatedAt,
-      lastGeneratedAt: activePlanningSession?.generatedPlan?.generatedAt,
-      planningDebug,
-
-      // Planning session
-      planningSession: activePlanningSession ?? null,
-      planningCurrentQuestion: planningSession.currentQuestion,
-
-      // Runtime / system
-      isAnyJobRunning,
-      isRuntimeRunning,
-      isAgentRunning: agent.isLoading,
-      gitStatus,
-      githubShellSummary,
-      healthStatus,
-      healthDetail,
-
-      // Shell UI state
-      composerOpen: isComposerOpen,
-      shortcutHelpOpen: isShortcutHelpOpen,
-      isFlyoutOpen,
-      activeSection,
-
-      // Navigation helper
-      openRightPanelTab,
-
-      // Callbacks: message / mode
-      onSendMessage: handleSendMessage,
-      onSuggestedAction: handleSuggestedAction,
-      onAskUserAnswer: agent.answerAskUser,
-      onModeChange: handleModeChange,
-      onStopStreaming: agent.stop ?? (() => {}),
-      onResumeRuntimeSession: agent.resumeRuntimeSession,
-      onRunEvalScenario: agent.runEvalScenario,
-      onSaveMemoryBank: agent.updateMemoryBank,
-
-      // Callbacks: plan
-      onPlanApprove: handleApprovePlan,
-      onBuildFromPlan: handleBuildFromPlan,
-      onPlanDraftChange: setPlanDraft,
-      onSavePlanDraft: () => {
-        void handleSavePlanDraft()
-      },
-
-      // Callbacks: planning session
-      onStartPlanningIntake: handleStartPlanningIntake,
-      onAnswerPlanningQuestion: planningSession.answerQuestion,
-      onClearPlanningIntake: () =>
-        activePlanningSession?.sessionId ? planningSession.clearIntake() : Promise.resolve(null),
-
-      // Callbacks: navigation / workspace
-      onOpenFile: handleFileSelect,
-      onResetWorkspace: handleResetWorkspace,
-      onNewChat: () => {
-        void handleNewChat()
-      },
-      onToggleInspector: () => openRightPanelTab('proof'),
-      onOpenHistory: () => openRightPanelTab('proof'),
-      onComposerSubmit: (prompt: string, contextFiles?: string[]) =>
-        handleSendMessage(prompt, 'build', contextFiles),
-
-      // Callbacks: shell
-      onToggleFlyout: toggleFlyout,
-      onToggleRightPanel: () => {
-        const s = useWorkspaceUiStore.getState()
-        if (!s.isRightPanelOpen) {
-          s.setRightPanelTab('proof')
-          if (isMobileLayout) s.setMobilePrimaryPanel('proof')
-        } else if (isMobileLayout && s.mobilePrimaryPanel === 'chat') {
-          s.setMobilePrimaryPanel('work')
-        }
-        s.setRightPanelOpen(!s.isRightPanelOpen)
-      },
-      onNewTask: () => {
-        void handleNewChat()
-      },
-      onStartRuntime: () => {
-        void handleStartRuntime()
-      },
-      onStopRuntime: () => {
-        void handleStopRuntime()
-      },
-      onRevealInExplorer: (folderPath: string) => {
-        const revealTarget = resolveExplorerRevealTarget({ folderPath, files })
-        if (!revealTarget) return
-        handleSectionChange('files')
-        if (!isFlyoutOpen) toggleFlyout()
-        setSelectedFilePath(revealTarget)
-        setSelectedFileLocation(null)
-        setCursorPosition(null)
-      },
-      onOpenCommandPalette: openCommandPalette,
-      onSidebarSectionChange: handleSectionChange,
-      onComposerOpenChange: setComposerOpen,
-      onShortcutHelpOpenChange: setShortcutHelpOpen,
-      writeFileToRuntime,
-    }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      projectId,
-      project.name,
-      activeChat,
-      chatMessages,
-      runEvents,
-      latestRunReceipt,
-      liveRunSteps,
-      snapshotRunEvents,
-      subagentToolCalls,
-      inlineRateLimitError,
-      latestUserPrompt,
-      latestAssistantReply,
-      executionSession,
-      agent.isLoading,
-      agent.currentSpec,
-      agent.memoryBank,
-      agent.tracePersistenceStatus,
-      agent.stop,
-      agent.resumeRuntimeSession,
-      agent.runEvalScenario,
-      agent.updateMemoryBank,
-      runtimeCheckpoints,
-      selectedChatModel,
-      selectedModel,
-      availableModels,
-      supportsReasoning,
-      provider,
-      files,
-      pendingDiffEntries,
-      planDraft,
-      isSavingPlanDraft,
-      canApproveCurrentPlan,
-      canBuildCurrentPlan,
-      agentPolicy.showPlanReview,
-      planningDebug,
-      activePlanningSession,
-      planningSession.currentQuestion,
-      planningSession.answerQuestion,
-      planningSession.clearIntake,
-      isAnyJobRunning,
-      isRuntimeRunning,
-      gitStatus,
-      healthStatus,
-      healthDetail,
-      isComposerOpen,
-      isShortcutHelpOpen,
-      isFlyoutOpen,
-      activeSection,
-      openRightPanelTab,
-      handleSendMessage,
-      handleSuggestedAction,
-      handleModeChange,
-      handleApprovePlan,
       handleBuildFromPlan,
-      setPlanDraft,
-      handleSavePlanDraft,
-      handleStartPlanningIntake,
-      handleFileSelect,
-      handleResetWorkspace,
-      handleNewChat,
-      toggleFlyout,
-      handleStartRuntime,
-      handleStopRuntime,
-      handleSectionChange,
-      openCommandPalette,
-      setSelectedFilePath,
-      setSelectedFileLocation,
-      setCursorPosition,
-      writeFileToRuntime,
-    ]
-  )
+      openRightPanelTab,
+      setActiveCenterTab,
+    })
 
-  const workspaceFocusState = useMemo<WorkspaceFocusState | null>(() => {
-    if (!executionSession) return null
+  const handleImportLocalWorkspace = useImportLocalWorkspace({
+    projectId,
+    importWorkspaceFile: importWorkspaceFileMutation,
+  })
 
-    return {
-      kind: 'execution-session',
-      kicker: 'Execution Session',
-      objective: executionSession.title,
-      statusLabel: executionSession.statusLabel,
-      tone: executionSession.tone,
-      detail: executionSession.summary,
-      nextStep: executionSession.nextStep,
-      primaryAction: mapExecutionSessionAction(executionSession.primaryAction),
-      secondaryAction: mapExecutionSessionAction(executionSession.secondaryAction),
-      executionSession,
-    }
-  }, [executionSession])
-
-  const handleFocusPrimaryAction = useCallback(() => {
-    const actionId = workspaceFocusState?.primaryAction?.id
-    if (!actionId) return
-
-    switch (actionId) {
-      case 'continue_planning':
-      case 'open_plan':
-        openRightPanelTab('context')
-        break
-      case 'build_from_plan':
-        void handleBuildFromPlan()
-        break
-      case 'open_run':
-        openRightPanelTab('proof')
-        break
-      case 'review_changes':
-        setActiveCenterTab('diff')
-        openRightPanelTab('changes')
-        break
-    }
-  }, [handleBuildFromPlan, openRightPanelTab, setActiveCenterTab, workspaceFocusState])
-
-  const handleFocusSecondaryAction = useCallback(() => {
-    const actionId = workspaceFocusState?.secondaryAction?.id
-    if (!actionId) return
-
-    switch (actionId) {
-      case 'continue_planning':
-      case 'open_plan':
-        openRightPanelTab('context')
-        break
-      case 'review_changes':
-        setActiveCenterTab('diff')
-        openRightPanelTab('changes')
-        break
-      case 'open_run':
-        openRightPanelTab('proof')
-        break
-      case 'build_from_plan':
-        void handleBuildFromPlan()
-        break
-    }
-  }, [handleBuildFromPlan, openRightPanelTab, setActiveCenterTab, workspaceFocusState])
-
-  const handleImportLocalWorkspace = useCallback(async () => {
-    try {
-      const response = await fetch('/api/local-workspace/files?maxFiles=500')
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as { error?: string } | null
-        throw new Error(payload?.error ?? 'Local workspace import is unavailable')
-      }
-
-      const payload = (await response.json()) as {
-        files?: Array<{ path: string; content?: string; isBinary: boolean }>
-        truncated?: boolean
-      }
-      const importableFiles = (payload.files ?? []).filter(
-        (file) => !file.isBinary && typeof file.content === 'string'
-      )
-
-      if (importableFiles.length === 0) {
-        toast.info('No importable local files found')
-        return
-      }
-
-      await Promise.all(
-        importableFiles.map((file) =>
-          importWorkspaceFileMutation({
-            projectId,
-            path: file.path,
-            content: file.content ?? '',
-            isBinary: false,
-          })
-        )
-      )
-
-      toast.success('Imported local workspace files', {
-        description: `${importableFiles.length} file${importableFiles.length === 1 ? '' : 's'} imported${
-          payload.truncated ? ' (scan truncated)' : ''
-        }`,
-      })
-    } catch (error) {
-      toast.error('Failed to import local workspace', {
-        description: error instanceof Error ? error.message : String(error),
-      })
-    }
-  }, [importWorkspaceFileMutation, projectId])
-
-  // --- Assemble layout props ---
-
-  const layoutProps = {
+  const layoutProps = useProjectWorkspaceLayoutProps({
     projectId,
     activeChatId: activeChat?._id,
+    activeChatTitle: activeChat?.title,
     activeSection,
     isFlyoutOpen,
     onSidebarSectionChange: handleSectionChange,
     onToggleFlyout: toggleFlyout,
     onSelectChat: handleSelectChat,
-    onNewChat: () => {
-      void handleNewChat()
-    },
+    onNewChat: handleNewChat,
     files,
     selectedFileContent,
     selectedFileContentLoaded,
@@ -1020,12 +710,10 @@ export function WorkspaceRuntimeProvider({
     isMobileLayout,
     isCompactDesktopLayout,
     mobilePrimaryPanel,
-    onMobilePrimaryPanelChange: setMobilePrimaryPanel,
+    onMobilePrimaryPanelChange: handleSetMobilePrimaryPanel,
     onMobileReviewTabChange: setRightPanelTab,
     mobileUnreadCount,
     isMobileKeyboardOpen,
-    // Chat renders in the central shell; the work tray is assembled by the layout.
-    chatPanel: <ProjectChatPanel projectId={projectId} />,
     pendingArtifactPreview,
     pendingDiffEntries,
     onApplyPendingArtifact: handleApplyPendingArtifact,
@@ -1048,29 +736,26 @@ export function WorkspaceRuntimeProvider({
     planApproveDisabled: !canApproveCurrentPlan || agent.isLoading,
     planBuildDisabled: !canBuildCurrentPlan || agent.isLoading,
     isBottomDockOpen: _isBottomDockOpen,
-    onBottomDockOpenChange: setBottomDockOpen,
+    onBottomDockOpenChange: handleSetBottomDockOpen,
     activeBottomDockTab,
     onBottomDockTabChange: setActiveBottomDockTab,
     activeCenterTab,
     onCenterTabChange: setActiveCenterTab,
     isRightPanelOpen,
-    activeTaskTitle: agent.isLoading ? (activeChat?.title ?? 'Active Task') : undefined,
-    activeTaskStatus: agent.isLoading ? ('running' as const) : undefined,
+    activeTaskStatus: agent.isLoading ? 'running' : undefined,
     changedFilesCount: pendingChangedFilesCount,
     onReviewChanges: () => {
       setActiveCenterTab('diff')
       openRightPanelTab('changes')
     },
     onStopAgent: () => agent.stop?.(),
-    onStartAgent: () => {
-      void handleNewChat()
-    },
+    onStartAgent: handleNewChat,
     onOpenTerminal: handleOpenTerminal,
     focusState: workspaceFocusState,
     onFocusPrimaryAction: handleFocusPrimaryAction,
     onFocusSecondaryAction: handleFocusSecondaryAction,
     webcontainerStatus: runtimeAvailability.providerStatus,
-  }
+  })
 
   return (
     <WorkspaceRuntimeContextProvider value={runtimeValue}>
@@ -1093,28 +778,4 @@ export function WorkspaceRuntimeProvider({
       </AgentRuntimeProvider>
     </WorkspaceRuntimeContextProvider>
   )
-}
-
-function mapExecutionSessionAction(action?: {
-  id: ExecutionSessionNextActionId
-  label: string
-}): WorkspaceFocusState['primaryAction'] {
-  if (!action) return undefined
-
-  switch (action.id) {
-    case 'continue_planning':
-      return { id: 'continue_planning', label: action.label }
-    case 'review_plan':
-      return { id: 'open_plan', label: action.label }
-    case 'build_from_plan':
-      return { id: 'build_from_plan', label: action.label }
-    case 'open_run':
-      return { id: 'open_run', label: action.label }
-    case 'review_changes':
-      return { id: 'review_changes', label: action.label }
-    case 'open_preview':
-      return { id: 'open_preview', label: action.label }
-    case 'start_session':
-      return { id: 'open_run', label: action.label }
-  }
 }

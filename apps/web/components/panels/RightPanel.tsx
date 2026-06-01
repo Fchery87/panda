@@ -23,7 +23,7 @@ export function RightPanel({
   onInspectorTabChange,
   inspectorTitle = 'Evidence Surface',
   inspectorSummary:
-    _inspectorSummary = 'Run proof, receipts, snapshots, subagents, specs, and validation.',
+    _inspectorSummary = 'Run evidence, receipts, snapshots, subagents, specs, and validation.',
   inspectorEyebrow = 'Evidence Surface',
 }: RightPanelProps) {
   const activeTab = activeInspectorTab
@@ -31,7 +31,7 @@ export function RightPanel({
     ...tab,
     label:
       tab.id === 'proof'
-        ? 'Proof'
+        ? 'Run'
         : tab.id === 'changes'
           ? 'Changes'
           : tab.id === 'context'
@@ -45,9 +45,7 @@ export function RightPanel({
         <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
           {inspectorEyebrow}
         </div>
-        <h2 className="truncate text-[13px] font-medium text-foreground">
-          {inspectorTitle}
-        </h2>
+        <h2 className="truncate text-[13px] font-medium text-foreground">{inspectorTitle}</h2>
       </div>
 
       <TabBar
@@ -59,9 +57,7 @@ export function RightPanel({
         tabClassName="whitespace-nowrap px-2.5 text-[10px]"
       />
 
-      <div className="min-h-0 min-w-0 flex-1 overflow-hidden bg-card">
-        {inspectorContent}
-      </div>
+      <div className="min-h-0 min-w-0 flex-1 overflow-hidden bg-card">{inspectorContent}</div>
     </div>
   )
 }

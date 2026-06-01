@@ -140,7 +140,7 @@ export function buildExecutionSessionViewModel(
       statusLabel: 'Executing',
       tone: 'progress',
       summary: input.latestRunStep?.trim() || 'Panda is working through this execution session.',
-      nextStep: 'Monitor progress, inspect proof, or stop the run if it needs intervention.',
+      nextStep: 'Monitor progress, inspect run evidence, or stop the run if it needs intervention.',
       primaryAction: { id: 'open_run', label: 'Open Run' },
       changedWork,
       proof,
@@ -209,7 +209,8 @@ export function buildExecutionSessionViewModel(
       statusLabel: 'Changes ready',
       tone: 'success',
       summary: changedWork.label,
-      nextStep: 'Inspect the changed work and proof before continuing or finishing this session.',
+      nextStep:
+        'Inspect the changed work and run evidence before continuing or finishing this session.',
       primaryAction: { id: 'review_changes', label: 'Inspect Changes' },
       changedWork,
       proof,
@@ -251,7 +252,7 @@ function summarizeResume(
     branches: session.branches.label,
     trace:
       session.tracePersistenceStatus === 'degraded'
-        ? 'Trace degraded: persisted run events may be partial; use receipt and checkpoint proof.'
+        ? 'Trace degraded: persisted run events may be partial; use receipt and checkpoint evidence.'
         : 'Trace live: run events are available for review.',
     checkpoint: checkpointLabel,
     nextAction: session.nextStep,
@@ -336,15 +337,15 @@ function summarizeProof(input: ExecutionSessionViewModelInput): ExecutionSession
 
   if (input.changedFilesCount > 0) {
     return {
-      label: 'Proof ready',
+      label: 'Run evidence ready',
       detail: 'Review run evidence, receipts, and validation before continuing.',
       hasActiveRun: false,
     }
   }
 
   return {
-    label: 'No run proof yet',
-    detail: 'Proof appears after Panda executes work in this session.',
+    label: 'No run evidence yet',
+    detail: 'Run evidence appears after Panda executes work in this session.',
     hasActiveRun: false,
   }
 }

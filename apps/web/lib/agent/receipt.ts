@@ -175,7 +175,8 @@ function parseContextGuardOutput(output: string | undefined): {
       rawBytes: typeof guard.rawBytes === 'number' ? guard.rawBytes : 0,
       returnedBytes: typeof guard.returnedBytes === 'number' ? guard.returnedBytes : 0,
       bytesAvoided: typeof guard.bytesAvoided === 'number' ? guard.bytesAvoided : 0,
-      chunksWritten: typeof evidence?.chunksWritten === 'number' ? evidence.chunksWritten : undefined,
+      chunksWritten:
+        typeof evidence?.chunksWritten === 'number' ? evidence.chunksWritten : undefined,
       sourceId: typeof evidence?.sourceId === 'string' ? evidence.sourceId : undefined,
     }
   } catch {

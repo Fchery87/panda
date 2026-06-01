@@ -26,6 +26,7 @@ import {
   type AgentRuntimeLike,
   type ConvexClient as AgentConvexClient,
 } from '../lib/agent'
+import { createWebContainerSubagentIsolationAdapter } from '../lib/webcontainer/subagent-isolation'
 import type { FormalSpecification } from '../lib/agent/spec/types'
 import { getUserFacingAgentError } from '../lib/chat/error-messages'
 import { buildHarnessSessionPermissions, type AgentPolicy } from '../lib/agent/automationPolicy'
@@ -36,6 +37,13 @@ import {
 import { normalizeChatMode, type ChatMode } from '../lib/agent/prompt-library'
 import { CHAT_MODE_CONFIGS, type AutoModeSwitchPolicy } from '../lib/agent/chat-modes'
 import { buildExecutionReceipt, type ContextAuditRecord } from '../lib/agent/receipt'
+import {
+  isProjectRulePath,
+  MAX_PROJECT_RULES,
+  parseProjectRuleFile,
+  resolveProjectRulesForPrompt,
+} from '../lib/agent/project-rules'
+import { parseUserHooksConfig, USER_HOOKS_FILE_PATH } from '../lib/agent/harness/user-hooks'
 import {
   createInitialRoutingInput,
   decideRouting,
@@ -648,6 +656,34 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
     projectName,
     projectDescription
   )
+  const projectRulePaths = useMemo(
+    () =>
+      (projectFiles ?? [])
+        .map((file) => file.path)
+        .filter(isProjectRulePath)
+        .slice(0, MAX_PROJECT_RULES),
+    [projectFiles]
+  )
+  const projectRuleFiles = useQuery(
+    api.files.batchGet,
+    projectRulePaths.length > 0 ? { projectId, paths: projectRulePaths } : 'skip'
+  )
+  const parsedProjectRules = useMemo(
+    () =>
+      (projectRuleFiles ?? [])
+        .filter((file) => file.exists && typeof file.content === 'string')
+        .map((file) => parseProjectRuleFile({ path: file.path, content: file.content ?? '' })),
+    [projectRuleFiles]
+  )
+  const userHookFiles = useQuery(api.files.batchGet, {
+    projectId,
+    paths: [USER_HOOKS_FILE_PATH],
+  })
+  const userHooksResolution = useMemo(() => {
+    const hookFile = userHookFiles?.find((file) => file.path === USER_HOOKS_FILE_PATH)
+    return parseUserHooksConfig(hookFile?.exists ? hookFile.content : null)
+  }, [userHookFiles])
+  const activeUserHooks = userHooksResolution.config
 
   // Artifact store
   const pendingArtifactRecords = useQuery(api.artifacts.list, chatId ? { chatId } : 'skip')
@@ -989,7 +1025,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             rationale: autoModeSwitch.rationale,
           })
         } catch (autoSwitchError) {
-          appLog.warn('[useAgent] Failed to persist automatic mode switch; continuing with resolved mode', autoSwitchError)
+          appLog.warn(
+            '[useAgent] Failed to persist automatic mode switch; continuing with resolved mode',
+            autoSwitchError
+          )
         }
       }
       const runEventsForReceipt: RunEventInput[] = []
@@ -1073,9 +1112,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               {
                 sequence: nextSequence,
                 type: 'subagent_summary',
-                content:
-                  summary.outputSummary ??
-                  `Subagent ${summary.status}: ${summary.name}`,
+                content: summary.outputSummary ?? `Subagent ${summary.status}: ${summary.name}`,
                 status: summary.status,
                 progressCategory: 'analysis',
                 progressToolName: 'task',
@@ -1282,8 +1319,8 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           resolvedMode === 'build' &&
           Boolean(
             automationPolicy?.autoApplyFiles ||
-              automationPolicy?.autoRunCommands ||
-              automationPolicy?.yoloCommandMode
+            automationPolicy?.autoRunCommands ||
+            automationPolicy?.yoloCommandMode
           )
         if (autopilotCheckpointEnabled) {
           const checkpoint = evaluateAutopilotCheckpoint({
@@ -1373,9 +1410,19 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               openTabs: editorState.openTabs.map((tab) => tab.path),
               maxChunks: explicitContextItems.length > 0 ? 6 : 16,
               minScore: explicitContextItems.length > 0 ? 0.55 : 0,
-              sourceTypeCaps: explicitContextItems.length > 0
-                ? { file: 4, message: 1, summary: 1, plan: resolvedMode === 'build' ? 1 : 0, spec: 1, run_event: 0, skill: 1, subagent: 0 }
-                : { run_event: 2, message: 4, summary: 2 },
+              sourceTypeCaps:
+                explicitContextItems.length > 0
+                  ? {
+                      file: 4,
+                      message: 1,
+                      summary: 1,
+                      plan: resolvedMode === 'build' ? 1 : 0,
+                      spec: 1,
+                      run_event: 0,
+                      skill: 1,
+                      subagent: 0,
+                    }
+                  : { run_event: 2, message: 4, summary: 2 },
             })
           } catch (contextError) {
             appLog.warn(
@@ -1445,6 +1492,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           projectOverviewContent,
           projectFiles,
           memoryBankContent,
+          projectRules: resolveProjectRulesForPrompt({
+            rules: parsedProjectRules,
+            activePaths: contextFiles,
+          }),
           userContent,
           contextFiles,
           architectBrainstormEnabled,
@@ -1465,6 +1516,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           mode: resolvedMode,
           harnessSessionID: options?.harnessSessionID,
           specApprovalMode,
+          userHooks: activeUserHooks,
         })
 
         // Get tool context
@@ -1514,7 +1566,11 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             })
             return await new Promise<{
               status: 'answered'
-              answers: Array<{ questionId: string; value: string | string[]; source: 'option' | 'other' }>
+              answers: Array<{
+                questionId: string
+                value: string | string[]
+                source: 'option' | 'other'
+              }>
               message?: string
             }>((resolve) => {
               pendingAskUserRef.current = { questionRecordId, resolve }
@@ -1542,6 +1598,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
             maxIterations: runtimeConfig.maxIterations,
             harnessCheckpointStore: checkpointStore,
             harnessCustomSubagents: customSubagents,
+            harnessSubagentIsolationAdapter: webcontainer
+              ? createWebContainerSubagentIsolationAdapter(webcontainer)
+              : undefined,
+            harnessUserHooks: activeUserHooks,
             // Enable risk interrupts - PermissionDialog handles the UI
             harnessEnableRiskInterrupts: true,
             harnessYoloMode: automationPolicy?.yoloCommandMode ?? false,
@@ -1726,7 +1786,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           }
 
           switch (event.type) {
-            case 'complete':
+            case 'complete': {
               if (!shouldProcessTerminalEvent('complete')) {
                 break
               }
@@ -1794,6 +1854,31 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                   event.usage as TokenUsageInfo | undefined,
                   receipt
                 )
+                try {
+                  const { generateStructuredSummary, formatSummaryForHandoff } =
+                    await import('../lib/agent/context/session-summary')
+                  const summary = generateStructuredSummary({
+                    messages: [
+                      ...messages.slice(-8).map((message) => ({
+                        role: message.role,
+                        content: message.content.slice(0, 4000),
+                        toolCalls: message.toolCalls,
+                      })),
+                      { role: 'user' as const, content: userContent.slice(0, 4000) },
+                      { role: 'assistant' as const, content: assistantContent.slice(0, 4000) },
+                    ],
+                  })
+                  const formattedSummary = formatSummaryForHandoff(summary).slice(0, 8000)
+                  await saveSessionSummaryMutation({
+                    projectId,
+                    chatId,
+                    summary: formattedSummary,
+                    structured: summary as unknown as Record<string, unknown>,
+                    tokenCount: formattedSummary.length / 4,
+                  })
+                } catch (summaryError) {
+                  appLog.warn('[useAgent] Failed to save completed run summary:', summaryError)
+                }
                 if (options?.workflowChainId && options.workflowChainStepId) {
                   await updateWorkflowChainStep({
                     id: options.workflowChainId,
@@ -1806,6 +1891,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
                 logUseAgentError('Failed to persist assistant message', err)
               }
               break
+            }
 
             case 'error': {
               if (!shouldProcessTerminalEvent('error')) {
@@ -1974,6 +2060,10 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         projectOverviewContent,
         projectFiles,
         memoryBankContent,
+        projectRules: resolveProjectRulesForPrompt({
+          rules: parsedProjectRules,
+          activePaths: contextFiles,
+        }),
         userContent,
         contextFiles,
         architectBrainstormEnabled,
@@ -2011,6 +2101,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           runId: `variant-${Date.now()}`,
           mode,
           specApprovalMode,
+          userHooks: activeUserHooks,
         }),
         makeRuntime: (index) =>
           createAgentRuntime(
@@ -2022,6 +2113,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
               harnessEnableRiskInterrupts: true,
               harnessYoloMode: automationPolicy?.yoloCommandMode ?? false,
               harnessCustomSubagents: customSubagents,
+              harnessUserHooks: activeUserHooks,
               harnessSessionPermissions: automationPolicy
                 ? buildHarnessSessionPermissions(automationPolicy)
                 : undefined,
@@ -2172,6 +2264,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
           harnessEvalMode: scenario.evalMode ?? 'read_only',
           harnessYoloMode: automationPolicy?.yoloCommandMode ?? false,
           harnessCustomSubagents: customSubagents,
+          harnessUserHooks: activeUserHooks,
           harnessSessionPermissions: automationPolicy
             ? buildHarnessSessionPermissions(automationPolicy)
             : undefined,
@@ -2212,6 +2305,7 @@ export function useAgent(options: UseAgentOptions): UseAgentReturn {
         projectOverviewContent,
         projectFiles,
         memoryBankContent,
+        projectRules: resolveProjectRulesForPrompt({ rules: parsedProjectRules }),
         userContent: textInput,
         architectBrainstormEnabled,
       })

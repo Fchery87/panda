@@ -28,17 +28,20 @@ describe('project chat wiring', () => {
     expect(content).toContain('projectId={projectId}')
   })
 
-  test('ProjectWorkspaceLayout renders workbench in the central workspace region with chat as a focus surface', async () => {
+  test('ProjectWorkspaceLayout renders workbench and chat as simultaneous mode-aware surfaces', async () => {
     const content = await readProjectComponent('ProjectWorkspaceLayout.tsx')
 
-    expect(content).toContain("workspaceFocusMode === 'chat' ? chatPanel : workbench")
-    expect(content).toContain('data-testid="execution-session-timeline-region"')
+    expect(content).toContain('CHAT_MODE_CONFIGS[chatMode].layout')
+    expect(content).toContain('data-testid="workspace-editor-region"')
+    expect(content).toContain('data-testid="workspace-chat-dock"')
+    expect(content).toContain('Focus mode changes emphasis, not ownership')
+    expect(content).not.toContain("workspaceFocusMode === 'chat' ? chatPanel : workbench")
     expect(content).not.toContain(
       '<RightPanel\n                              chatContent={chatPanel}'
     )
   })
 
-  test('ProjectChatPanel routes planning and review actions into the support rail instead of mounting an inline inspector', async () => {
+  test('ProjectChatPanel routes planning and review actions into the inspector rail instead of mounting an inline inspector', async () => {
     const content = await readProjectComponent('ProjectChatPanel.tsx')
 
     expect(content).not.toContain('const inspectorPanel = (')
@@ -46,29 +49,83 @@ describe('project chat wiring', () => {
     expect(content).not.toContain('ProjectChatInspector')
   })
 
+  test('ProjectChatInspector delegates heavy inspector content to focused child modules', async () => {
+    const content = await readProjectComponent('ProjectChatInspector.tsx')
+    const researchContent = await readProjectComponent(
+      '../chat/inspector/InspectorResearchContent.tsx'
+    )
+    const contextContent = await readProjectComponent(
+      '../chat/inspector/InspectorContextContent.tsx'
+    )
+
+    expect(content).toContain('import { InspectorResearchContent }')
+    expect(content).toContain('import { InspectorContextContent }')
+    expect(content).not.toContain('api.researchSources.listByProject')
+    expect(content).not.toContain('api.contextChunks.rebuildProject')
+    expect(researchContent).toContain('api.researchSources.listByProject')
+    expect(contextContent).toContain('api.contextChunks.rebuildProject')
+    expect(contextContent).toContain('.panda/rules/*.md')
+  })
+
+  test('ProjectChatInspector delegates plan lifecycle content to a focused child module', async () => {
+    const content = await readProjectComponent('ProjectChatInspector.tsx')
+    const planContent = await readProjectComponent('../chat/inspector/InspectorPlanContent.tsx')
+
+    expect(content).toContain('import {\n  InspectorPlanContent')
+    expect(content).toContain('export { InspectorPlanContent }')
+    expect(content).not.toContain('function getPlanLifecycleSteps')
+    expect(content).not.toContain('function extractPlanFilePaths')
+    expect(planContent).toContain('function getPlanLifecycleSteps')
+    expect(planContent).toContain('function extractPlanFilePaths')
+    expect(planContent).toContain('<PlanPanel')
+  })
+
   test('ProjectChatInspector passes the active generated plan artifact into PlanPanel', async () => {
     const content = await readProjectComponent('ProjectChatInspector.tsx')
+    const planContent = await readProjectComponent('../chat/inspector/InspectorPlanContent.tsx')
 
-    expect(content).toContain('generatedPlanArtifact?: GeneratedPlanArtifact | null')
-    expect(content).toContain('generatedPlanArtifact={generatedPlanArtifact}')
+    expect(planContent).toContain('generatedPlanArtifact?: GeneratedPlanArtifact | null')
+    expect(planContent).toContain('generatedPlanArtifact={generatedPlanArtifact}')
     expect(content).toContain('generatedPlanArtifact={planningSession?.generatedPlan ?? null}')
   })
 
-  test('ProjectChatInspector keeps agent events in the proof surface', async () => {
+  test('ProjectChatInspector delegates run evidence content to a focused child module', async () => {
     const content = await readProjectComponent('ProjectChatInspector.tsx')
+    const runContent = await readProjectComponent('../chat/inspector/InspectorRunContent.tsx')
 
-    expect(content).toContain(
+    expect(content).toContain('import {\n  InspectorRunContent')
+    expect(content).toContain('export { InspectorRunContent }')
+    expect(content).not.toContain('api.agentRuns.listRunTree')
+    expect(content).not.toContain('<AgentEventsPanel />')
+    expect(runContent).toContain('api.agentRuns.listRunTree')
+    expect(runContent).toContain(
       "import { AgentEventsPanel } from '@/components/panels/AgentEventsPanel'"
     )
-    expect(content).toContain('Agent events')
-    expect(content).toContain('<AgentEventsPanel />')
+    expect(runContent).toContain('Agent events')
+    expect(runContent).toContain('<AgentEventsPanel />')
   })
 
-  test('project page routes review/open actions directly into the shared support rail', async () => {
-    const providerContent = await readProvider()
+  test('ProjectChatInspector delegates memory and evals content to focused child modules', async () => {
+    const content = await readProjectComponent('ProjectChatInspector.tsx')
+    const memoryContent = await readProjectComponent('../chat/inspector/InspectorMemoryContent.tsx')
+    const evalsContent = await readProjectComponent('../chat/inspector/InspectorEvalsContent.tsx')
 
-    expect(providerContent).toContain("onToggleInspector: () => openRightPanelTab('proof')")
-    expect(providerContent).toContain("onOpenHistory: () => openRightPanelTab('proof')")
+    expect(content).toContain('import {\n  InspectorMemoryContent')
+    expect(content).toContain('import {\n  InspectorEvalsContent')
+    expect(content).toContain('export { InspectorMemoryContent }')
+    expect(content).toContain('export { InspectorEvalsContent }')
+    expect(content).not.toContain('MemoryBankEditor')
+    expect(content).not.toContain('EvalPanel')
+    expect(memoryContent).toContain('MemoryBankEditor')
+    expect(evalsContent).toContain('EvalPanel')
+  })
+
+  test('project page routes review/open actions directly into the shared inspector rail', async () => {
+    const providerContent = await readProvider()
+    const runtimeValueHook = await readHook('useWorkspaceRuntimeValue.ts')
+
+    expect(runtimeValueHook).toContain("onToggleInspector: () => openRightPanelTab('proof')")
+    expect(runtimeValueHook).toContain("onOpenHistory: () => openRightPanelTab('proof')")
     expect(providerContent).toContain("openRightPanelTab('changes')")
     expect(providerContent).not.toContain('onOpenPreviewPanel')
   })
@@ -95,6 +152,90 @@ describe('project chat wiring', () => {
       'if (!agent.isLoading && agent.messages.length === 0 && persistedChatMessages.length)'
     )
     expect(content).toContain('attachments: msg.attachments')
+  })
+
+  test('WorkspaceRuntimeProvider delegates shell UI state wiring to a focused hook', async () => {
+    const providerContent = await readProvider()
+    const shellUiHook = await readHook('useProjectShellUiState.ts')
+
+    expect(providerContent).toContain('import { useProjectShellUiState }')
+    expect(providerContent).toContain('} = useProjectShellUiState()')
+    expect(providerContent).not.toContain('const handleSetRightPanelTab = useCallback')
+    expect(shellUiHook).toContain('setRightPanelTabFromAction')
+    expect(shellUiHook).toContain('setBottomDockOpenFromAction')
+    expect(shellUiHook).toContain('setMobilePrimaryPanelFromAction')
+  })
+
+  test('WorkspaceRuntimeProvider delegates execution-session focus actions to a focused hook', async () => {
+    const providerContent = await readProvider()
+    const focusHook = await readHook('useExecutionSessionFocusState.ts')
+
+    expect(providerContent).toContain('import { useExecutionSessionFocusState }')
+    expect(providerContent).toContain('useExecutionSessionFocusState({')
+    expect(providerContent).not.toContain('function mapExecutionSessionAction')
+    expect(providerContent).not.toContain('const handleFocusPrimaryAction = useCallback')
+    expect(focusHook).toContain('function mapExecutionSessionAction')
+    expect(focusHook).toContain("openRightPanelTab('proof')")
+    expect(focusHook).toContain("setActiveCenterTab('diff')")
+  })
+
+  test('WorkspaceRuntimeProvider delegates browser runtime file mounting to a focused hook', async () => {
+    const providerContent = await readProvider()
+    const runtimeMountHook = await readHook('useProjectRuntimeFileMount.ts')
+
+    expect(providerContent).toContain('import { useProjectRuntimeFileMount }')
+    expect(providerContent).toContain('useProjectRuntimeFileMount({')
+    expect(providerContent).not.toContain('const mountedRuntimeProjectRef = useRef')
+    expect(providerContent).not.toContain('mountProjectFiles(instance')
+    expect(runtimeMountHook).toContain('const mountedRuntimeProjectRef = useRef')
+    expect(runtimeMountHook).toContain('api.files.batchGet')
+    expect(runtimeMountHook).toContain('mountProjectFiles(instance')
+  })
+
+  test('WorkspaceRuntimeProvider delegates local import and shell hotkeys to focused hooks', async () => {
+    const providerContent = await readProvider()
+    const importHook = await readHook('useImportLocalWorkspace.ts')
+    const hotkeysHook = await readHook('useWorkspaceShellHotkeys.ts')
+
+    expect(providerContent).toContain('import { useImportLocalWorkspace }')
+    expect(providerContent).toContain(
+      'const handleImportLocalWorkspace = useImportLocalWorkspace({'
+    )
+    expect(providerContent).toContain('import { useWorkspaceShellHotkeys }')
+    expect(providerContent).toContain('useWorkspaceShellHotkeys()')
+    expect(providerContent).not.toContain("fetch('/api/local-workspace/files?maxFiles=500')")
+    expect(providerContent).not.toContain("useHotkeys(\n    'mod+i'")
+    expect(importHook).toContain("fetch('/api/local-workspace/files?maxFiles=500')")
+    expect(importHook).toContain('importWorkspaceFile({')
+    expect(hotkeysHook).toContain("useHotkeys(\n    'mod+i'")
+    expect(hotkeysHook).toContain("useHotkeys(\n    'mod+/'")
+  })
+
+  test('WorkspaceRuntimeProvider delegates workspace layout prop assembly to a focused hook', async () => {
+    const providerContent = await readProvider()
+    const layoutPropsHook = await readHook('useProjectWorkspaceLayoutProps.tsx')
+    const layoutContent = await readProjectComponent('ProjectWorkspaceLayout.tsx')
+
+    expect(providerContent).toContain('import { useProjectWorkspaceLayoutProps }')
+    expect(providerContent).toContain('const layoutProps = useProjectWorkspaceLayoutProps({')
+    expect(providerContent).not.toContain('chatPanel: <ProjectChatPanel')
+    expect(providerContent).not.toContain('activeTaskTitle: agent.isLoading')
+    expect(layoutPropsHook).toContain('chatPanel: <ProjectChatPanel projectId={projectId} />')
+    expect(layoutPropsHook).toContain('activeTaskTitle: isStreaming')
+    expect(layoutContent).toContain('export interface ProjectWorkspaceLayoutProps')
+  })
+
+  test('WorkspaceRuntimeProvider delegates WorkspaceRuntimeContext value assembly to a focused hook', async () => {
+    const providerContent = await readProvider()
+    const runtimeValueHook = await readHook('useWorkspaceRuntimeValue.ts')
+
+    expect(providerContent).toContain('import { useWorkspaceRuntimeValue }')
+    expect(providerContent).toContain('const runtimeValue = useWorkspaceRuntimeValue({')
+    expect(providerContent).not.toContain('const runtimeValue = useMemo(')
+    expect(providerContent).not.toContain('onRevealInExplorer: (folderPath: string) =>')
+    expect(runtimeValueHook).toContain('export function useWorkspaceRuntimeValue')
+    expect(runtimeValueHook).toContain('onRevealInExplorer: (folderPath: string) =>')
+    expect(runtimeValueHook).toContain('onToggleRightPanel: () =>')
   })
 
   test('workspace disables useAgent persisted message hydration', async () => {

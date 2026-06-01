@@ -48,11 +48,7 @@ export function BottomDock({
           <span className="text-muted-foreground">▲</span>
           {tabs.map((tab) => (
             <span key={tab.id} className="flex items-center gap-1">
-              <span
-                className={cn(
-                  tab.id === activeTab ? 'text-primary' : 'text-muted-foreground'
-                )}
-              >
+              <span className={cn(tab.id === activeTab ? 'text-primary' : 'text-muted-foreground')}>
                 {tab.label}
               </span>
               {tab.badge != null && tab.badge > 0 && (

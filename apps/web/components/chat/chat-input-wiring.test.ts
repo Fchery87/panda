@@ -48,7 +48,9 @@ describe('chat input wiring', () => {
     expect(content).toContain('Queue')
     expect(content).toContain('Enter to queue')
     expect(content).toContain('Cancel queued follow-up')
-    expect(content).toContain('onSendMessage?.(next.content, next.mode, next.contextFiles, next.options)')
+    expect(content).toContain(
+      'onSendMessage?.(next.content, next.mode, next.contextFiles, next.options)'
+    )
   })
 
   test('ChatInput lets natural-language routing reconcile selected mode by default', async () => {

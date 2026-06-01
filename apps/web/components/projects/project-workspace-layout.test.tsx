@@ -18,7 +18,7 @@ mock.module('@/components/workbench/Terminal', () => ({
 }))
 
 describe('ProjectWorkspaceLayout desktop shell', () => {
-  test('renders workbench as the desktop center by default with support rail alongside it', () => {
+  test('renders workbench and chat dock simultaneously in code mode with inspector alongside it', () => {
     useWorkspaceUiStore.setState({ workspaceFocusMode: 'workbench' })
     const html = renderToStaticMarkup(
       <ProjectWorkspaceLayoutView
@@ -41,7 +41,7 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
         onEditorDirtyChange={() => {}}
         isMobileLayout={false}
         isCompactDesktopLayout={false}
-        mobilePrimaryPanel='work'
+        mobilePrimaryPanel="work"
         onMobilePrimaryPanelChange={() => {}}
         mobileUnreadCount={0}
         isMobileKeyboardOpen={false}
@@ -60,9 +60,11 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
       />
     )
 
+    expect(html).toContain('data-testid="workspace-editor-region"')
+    expect(html).toContain('data-testid="workspace-chat-dock"')
     expect(html).toContain('panda-workbench-inner')
+    expect(html).toContain('chat-panel')
     expect(html).toContain('right-panel')
-    expect(html).not.toContain('chat-panel')
   })
 
   test('renders named execution session shell regions without moving surfaces', () => {
@@ -87,7 +89,7 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
         onEditorDirtyChange={() => {}}
         isMobileLayout={false}
         isCompactDesktopLayout={false}
-        mobilePrimaryPanel='work'
+        mobilePrimaryPanel="work"
         onMobilePrimaryPanelChange={() => {}}
         mobileUnreadCount={0}
         isMobileKeyboardOpen={false}
@@ -108,6 +110,8 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
     )
 
     expect(html).toContain('data-testid="execution-session-rail-region"')
+    expect(html).toContain('data-testid="workspace-editor-region"')
+    expect(html).toContain('data-testid="workspace-chat-dock"')
     expect(html).toContain('data-testid="execution-session-timeline-region"')
     expect(html).toContain('data-testid="execution-session-work-tray-region"')
     expect(html).toContain('data-testid="execution-session-terminal-drawer-region"')
@@ -116,7 +120,7 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
     expect(html).not.toContain('Agent Events')
   })
 
-  test('renders the workbench as the primary session canvas', () => {
+  test('renders the workbench as the primary session canvas while keeping chat dock available', () => {
     useWorkspaceUiStore.setState({ workspaceFocusMode: 'workbench' })
     const html = renderToStaticMarkup(
       <ProjectWorkspaceLayoutView
@@ -139,7 +143,7 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
         onEditorDirtyChange={() => {}}
         isMobileLayout={false}
         isCompactDesktopLayout={false}
-        mobilePrimaryPanel='work'
+        mobilePrimaryPanel="work"
         onMobilePrimaryPanelChange={() => {}}
         mobileUnreadCount={0}
         isMobileKeyboardOpen={false}
@@ -158,9 +162,11 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
       />
     )
 
+    expect(html).toContain('data-testid="workspace-editor-region"')
+    expect(html).toContain('data-testid="workspace-chat-dock"')
     expect(html).toContain('data-testid="execution-session-timeline-region"')
     expect(html).toContain('panda-workbench-inner')
-    expect(html).not.toContain('chat-panel')
+    expect(html).toContain('chat-panel')
   })
 
   test('renders session-centered rail language', () => {
@@ -185,7 +191,7 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
         onEditorDirtyChange={() => {}}
         isMobileLayout={false}
         isCompactDesktopLayout={false}
-        mobilePrimaryPanel='work'
+        mobilePrimaryPanel="work"
         onMobilePrimaryPanelChange={() => {}}
         mobileUnreadCount={0}
         isMobileKeyboardOpen={false}
@@ -230,7 +236,7 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
         onEditorDirtyChange={() => {}}
         isMobileLayout={false}
         isCompactDesktopLayout={false}
-        mobilePrimaryPanel='work'
+        mobilePrimaryPanel="work"
         onMobilePrimaryPanelChange={() => {}}
         mobileUnreadCount={0}
         isMobileKeyboardOpen={false}
@@ -251,11 +257,11 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
 
     expect(html).toContain('aria-label="Sessions"')
     expect(html).toContain('Focus Chat')
-    expect(html).toContain('Focus Workbench')
-    expect(html).toContain('Focus Proof')
+    expect(html).toContain('Focus Editor')
+    expect(html).toContain('Focus Run')
     expect(html).toContain('Focus Changes')
-    expect(html).toContain('aria-label="Project Files"')
-    expect(html).toContain('aria-label="Source Review"')
+    expect(html).toContain('aria-label="Explorer"')
+    expect(html).toContain('aria-label="Source Control"')
   })
 
   test('renders desktop focus mode switcher without changing mobile panels', () => {
@@ -280,7 +286,7 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
         onEditorDirtyChange={() => {}}
         isMobileLayout={false}
         isCompactDesktopLayout={false}
-        mobilePrimaryPanel='work'
+        mobilePrimaryPanel="work"
         onMobilePrimaryPanelChange={() => {}}
         mobileUnreadCount={0}
         isMobileKeyboardOpen={false}
@@ -304,7 +310,7 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
     expect(html).toContain('aria-pressed="true"')
   })
 
-  test('renders chat-first mobile navigation with proof access', () => {
+  test('renders chat-first mobile navigation with run access', () => {
     const html = renderToStaticMarkup(
       <ProjectWorkspaceLayoutView
         projectId={'project' as never}
@@ -346,12 +352,12 @@ describe('ProjectWorkspaceLayout desktop shell', () => {
     )
 
     expect(html).toContain('role="tablist"')
-    expect(html).toContain('aria-label="Show workspace"')
+    expect(html).toContain('aria-label="Show editor"')
     expect(html).toContain('aria-label="Show chat timeline"')
-    expect(html).toContain('aria-label="Show run proof"')
-    expect(html).toContain('Work')
+    expect(html).toContain('aria-label="Show run evidence"')
+    expect(html).toContain('Editor')
     expect(html).toContain('Chat')
-    expect(html).toContain('Proof')
+    expect(html).toContain('Run')
     expect(html).toContain('Changes')
     expect(html).toContain('chat-panel')
   })

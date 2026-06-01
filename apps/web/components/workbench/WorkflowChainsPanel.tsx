@@ -47,7 +47,10 @@ export function WorkflowChainsList({
 }: {
   userGoal?: string
   onStartChain?: WorkflowChainAction
-  onPersistChain?: (template: WorkflowChainTemplate, userGoal: string) => Promise<Id<'workflowChains'> | unknown> | Id<'workflowChains'> | unknown
+  onPersistChain?: (
+    template: WorkflowChainTemplate,
+    userGoal: string
+  ) => Promise<Id<'workflowChains'> | unknown> | Id<'workflowChains'> | unknown
 }) {
   return (
     <div className="space-y-2">
@@ -61,7 +64,7 @@ export function WorkflowChainsList({
             })
           : userGoal
         return (
-          <article key={chain.id} className="border border-border bg-background/80 p-3 text-xs">
+          <article key={chain.id} className="bg-background/80 border border-border p-3 text-xs">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <h4 className="font-medium text-foreground">{chain.label}</h4>
@@ -70,7 +73,7 @@ export function WorkflowChainsList({
                   {chain.steps.map((step) => (
                     <span
                       key={step.id}
-                      className="border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground"
+                      className="bg-muted/40 border border-border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground"
                     >
                       {step.label}
                     </span>
@@ -109,7 +112,9 @@ export function WorkflowChainsList({
 }
 
 export function ActiveWorkflowChains({ chains }: { chains: PersistedWorkflowChain[] }) {
-  const activeChains = chains.filter((chain) => chain.status === 'running' || chain.status === 'paused')
+  const activeChains = chains.filter(
+    (chain) => chain.status === 'running' || chain.status === 'paused'
+  )
   if (activeChains.length === 0) return null
 
   return (
@@ -118,7 +123,7 @@ export function ActiveWorkflowChains({ chains }: { chains: PersistedWorkflowChai
         Active chains
       </div>
       {activeChains.map((chain) => (
-        <div key={chain._id} className="border border-primary/20 bg-primary/5 p-2 text-xs">
+        <div key={chain._id} className="border-primary/20 bg-primary/5 border p-2 text-xs">
           <div className="flex items-center justify-between gap-2">
             <span className="font-medium text-foreground">{chain.label}</span>
             <span className="font-mono text-[10px] uppercase tracking-wide text-primary">
@@ -129,7 +134,7 @@ export function ActiveWorkflowChains({ chains }: { chains: PersistedWorkflowChai
             {chain.steps.map((step) => (
               <span
                 key={step.id}
-                className="border border-border bg-background/80 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground"
+                className="bg-background/80 border border-border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground"
               >
                 {step.label} · {step.status}
               </span>

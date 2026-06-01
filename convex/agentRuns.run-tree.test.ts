@@ -29,7 +29,7 @@ describe('agentRuns first-class child run foundation', () => {
     const source = agentRunsSource()
 
     expect(source).toContain('export const createChild = mutation')
-    expect(source).toContain('parentRunId: v.id(\'agentRuns\')')
+    expect(source).toContain("parentRunId: v.id('agentRuns')")
     expect(source).toContain("runKind: 'subagent'")
     expect(source).toContain('rootRunId: parentRun.rootRunId ?? parentRun._id')
     expect(source).toContain('export const touchActivity = mutation')

@@ -125,7 +125,7 @@ function MermaidBlock({ chart }: { chart: string }) {
 
   if (error) {
     return (
-      <pre className="overflow-auto border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+      <pre className="bg-muted/30 overflow-auto border border-border p-3 text-xs text-muted-foreground">
         <code>{chart}</code>
       </pre>
     )
@@ -133,7 +133,7 @@ function MermaidBlock({ chart }: { chart: string }) {
 
   if (!svg) {
     return (
-      <div className="flex min-h-32 items-center justify-center border border-border bg-muted/20 font-mono text-xs uppercase tracking-widest text-muted-foreground">
+      <div className="bg-muted/20 flex min-h-32 items-center justify-center border border-border font-mono text-xs uppercase tracking-widest text-muted-foreground">
         Rendering diagram…
       </div>
     )
@@ -153,7 +153,7 @@ function PlanMarkdownView({ markdown }: { markdown: string }) {
   return (
     <div className="space-y-4">
       {(parsed.fields.name || parsed.fields.overview || parsed.todos.length > 0) && (
-        <div className="grid gap-3 border border-border bg-muted/10 p-3 md:grid-cols-[1fr_auto]">
+        <div className="bg-muted/10 grid gap-3 border border-border p-3 md:grid-cols-[1fr_auto]">
           <div className="min-w-0">
             {parsed.fields.name ? (
               <div className="truncate font-mono text-sm uppercase tracking-[0.16em] text-foreground">
@@ -211,7 +211,7 @@ function PlanMarkdownView({ markdown }: { markdown: string }) {
             </div>
           ),
           th: ({ children }) => (
-            <th className="border-b border-border bg-muted/30 px-3 py-2 text-left font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+            <th className="bg-muted/30 border-b border-border px-3 py-2 text-left font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
               {children}
             </th>
           ),
@@ -223,7 +223,9 @@ function PlanMarkdownView({ markdown }: { markdown: string }) {
             return <code className={className}>{children}</code>
           },
           pre: ({ children }) => (
-            <pre className="overflow-auto border border-border bg-muted/30 p-3 text-xs">{children}</pre>
+            <pre className="bg-muted/30 overflow-auto border border-border p-3 text-xs">
+              {children}
+            </pre>
           ),
         }}
       >
@@ -313,49 +315,53 @@ export function PlanArtifactTab({
         </div>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{artifact.summary}</p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setMode((current) => (current === 'review' ? 'edit' : 'review'))}
+            className="h-7 rounded-none px-3 font-mono text-xs"
+          >
+            {mode === 'review' ? (
+              <Pencil className="mr-1.5 h-3 w-3" />
+            ) : (
+              <Eye className="mr-1.5 h-3 w-3" />
+            )}
+            {mode === 'review' ? 'Edit' : 'Review'}
+          </Button>
+          {mode === 'edit' ? (
             <Button
               size="sm"
               variant="outline"
-              onClick={() => setMode((current) => (current === 'review' ? 'edit' : 'review'))}
+              onClick={handleSaveDraft}
+              disabled={!isDirty || isSavingPlanDraft}
               className="h-7 rounded-none px-3 font-mono text-xs"
             >
-              {mode === 'review' ? <Pencil className="mr-1.5 h-3 w-3" /> : <Eye className="mr-1.5 h-3 w-3" />}
-              {mode === 'review' ? 'Edit' : 'Review'}
+              <Save className="mr-1.5 h-3 w-3" />
+              {isSavingPlanDraft ? 'Saving' : 'Save Draft'}
             </Button>
-            {mode === 'edit' ? (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleSaveDraft}
-                disabled={!isDirty || isSavingPlanDraft}
-                className="h-7 rounded-none px-3 font-mono text-xs"
-              >
-                <Save className="mr-1.5 h-3 w-3" />
-                {isSavingPlanDraft ? 'Saving' : 'Save Draft'}
-              </Button>
-            ) : null}
-            {canApprove ? (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={onApprove}
-                disabled={approveDisabled}
-                className="h-7 rounded-none px-3 font-mono text-xs"
-              >
-                Approve
-              </Button>
-            ) : null}
-            {canBuild ? (
-              <Button
-                size="sm"
-                onClick={onBuildFromPlan}
-                disabled={buildDisabled}
-                className="h-7 rounded-none px-3 font-mono text-xs"
-              >
-                Build
-              </Button>
-            ) : null}
-          </div>
+          ) : null}
+          {canApprove ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onApprove}
+              disabled={approveDisabled}
+              className="h-7 rounded-none px-3 font-mono text-xs"
+            >
+              Approve
+            </Button>
+          ) : null}
+          {canBuild ? (
+            <Button
+              size="sm"
+              onClick={onBuildFromPlan}
+              disabled={buildDisabled}
+              className="h-7 rounded-none px-3 font-mono text-xs"
+            >
+              Build
+            </Button>
+          ) : null}
+        </div>
       </header>
 
       <div className="min-h-0 flex-1 overflow-auto">

@@ -113,7 +113,7 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
         isMobileLayout ? 'border-t border-border' : ''
       )}
     >
-      <div className="relative flex h-8 shrink-0 items-center justify-between border-b border-border bg-secondary/50 px-3">
+      <div className="bg-secondary/50 relative flex h-8 shrink-0 items-center justify-between border-b border-border px-3">
         <div className="flex min-w-0 items-center gap-2">
           <span className="shrink-0 text-[11px] font-medium text-foreground">
             Thread · {sessionStatusLabel}
@@ -138,37 +138,22 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="rounded-md border-border">
-              <DropdownMenuItem
-                onClick={onNewChat}
-                className="rounded-md text-xs"
-              >
+              <DropdownMenuItem onClick={onNewChat} className="rounded-md text-xs">
                 <IconNewChat className="mr-2 h-3.5 w-3.5" />
                 New Chat
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={onToggleInspector}
-                className="rounded-md text-xs"
-              >
+              <DropdownMenuItem onClick={onToggleInspector} className="rounded-md text-xs">
                 Review
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={onOpenShare}
-                className="rounded-md text-xs"
-              >
+              <DropdownMenuItem onClick={onOpenShare} className="rounded-md text-xs">
                 Share
               </DropdownMenuItem>
               {activeChatExists && (
-                <DropdownMenuItem
-                  onClick={onOpenHistory}
-                  className="rounded-md text-xs"
-                >
+                <DropdownMenuItem onClick={onOpenHistory} className="rounded-md text-xs">
                   Run History ({runHistoryCount})
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem
-                onClick={onResetWorkspace}
-                className="rounded-md text-xs"
-              >
+              <DropdownMenuItem onClick={onResetWorkspace} className="rounded-md text-xs">
                 Clear Local Workspace
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -232,18 +217,11 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
       {!hasProvider && chatMessages.length === 0 ? (
         <div className="px-3 pb-2">
           <Alert className="border-primary/40 bg-primary/5 rounded-md">
-            <AlertTitle className="text-xs">
-              No LLM Provider Configured
-            </AlertTitle>
+            <AlertTitle className="text-xs">No LLM Provider Configured</AlertTitle>
             <AlertDescription className="space-y-2 text-xs">
               <p>Configure an API key in Settings to start chatting with Panda.</p>
               <div className="flex items-center gap-2">
-                <Button
-                  asChild
-                  size="sm"
-                  variant="outline"
-                  className="h-7 rounded-md text-xs"
-                >
+                <Button asChild size="sm" variant="outline" className="h-7 rounded-md text-xs">
                   <Link href="/settings">Open Settings</Link>
                 </Button>
               </div>
@@ -259,18 +237,11 @@ export function ProjectChatPanel({ projectId }: ProjectChatPanelProps) {
             className="border-destructive/70 bg-destructive/5 rounded-md"
           >
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle className="text-xs">
-              {inlineRateLimitError.title}
-            </AlertTitle>
+            <AlertTitle className="text-xs">{inlineRateLimitError.title}</AlertTitle>
             <AlertDescription className="space-y-2 text-xs">
               <p>{inlineRateLimitError.description}</p>
               <div className="flex items-center gap-2">
-                <Button
-                  asChild
-                  size="sm"
-                  variant="outline"
-                  className="h-7 rounded-md text-xs"
-                >
+                <Button asChild size="sm" variant="outline" className="h-7 rounded-md text-xs">
                   <Link href="/settings">Open LLM Settings</Link>
                 </Button>
               </div>

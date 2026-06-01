@@ -22,7 +22,11 @@ import { spawnInContainer } from '@/lib/webcontainer/process-adapter'
 import { normalizeProjectFilePath } from '@/lib/project-files/path'
 import { buildAdvisorPreflight, type AdvisorGate, type AdvisorPolicy } from './workflow'
 import { validateQuestionnaireRequest, type AskUserQuestionRequest } from './workflow/questionnaire'
-import { extractGitHubContent, extractUrlContent, toResearchToolResult } from '@/lib/research/extractors'
+import {
+  extractGitHubContent,
+  extractUrlContent,
+  toResearchToolResult,
+} from '@/lib/research/extractors'
 import { hashResearchContent, wrapUntrustedResearchSource } from '@/lib/research/source-guard'
 import type { ResearchSourceKind, ResearchProvider } from '@/lib/research/types'
 
@@ -178,7 +182,8 @@ export const AGENT_TOOLS: AgentToolDefinition[] = [
                 allowOther: { type: 'boolean' },
                 recommended: {
                   type: 'string',
-                  description: 'Required recommended option value matching one of the option values. This is shown to the user as Panda’s recommendation for the question; explain why in rationale or the option description.',
+                  description:
+                    'Required recommended option value matching one of the option values. This is shown to the user as Panda’s recommendation for the question; explain why in rationale or the option description.',
                 },
                 options: {
                   type: 'array',
@@ -262,7 +267,11 @@ export const AGENT_TOOLS: AgentToolDefinition[] = [
         type: 'object',
         properties: {
           url: { type: 'string', description: 'github.com repo, tree, or blob URL' },
-          forceClone: { type: 'boolean', description: 'Reserved for future large-repo clone support; ignored in this browser-safe implementation.' },
+          forceClone: {
+            type: 'boolean',
+            description:
+              'Reserved for future large-repo clone support; ignored in this browser-safe implementation.',
+          },
         },
         required: ['url'],
       },
@@ -279,8 +288,15 @@ export const AGENT_TOOLS: AgentToolDefinition[] = [
       parameters: {
         type: 'object',
         properties: {
-          sourceId: { type: 'string', description: 'Research source id returned by a research tool' },
-          format: { type: 'string', enum: ['summary', 'preview', 'full'], description: 'Amount of source content to retrieve' },
+          sourceId: {
+            type: 'string',
+            description: 'Research source id returned by a research tool',
+          },
+          format: {
+            type: 'string',
+            enum: ['summary', 'preview', 'full'],
+            description: 'Amount of source content to retrieve',
+          },
         },
         required: ['sourceId'],
       },
@@ -298,7 +314,11 @@ export const AGENT_TOOLS: AgentToolDefinition[] = [
         type: 'object',
         properties: {
           query: { type: 'string', description: 'Single search query' },
-          queries: { type: 'array', items: { type: 'string' }, description: 'Multiple search queries' },
+          queries: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Multiple search queries',
+          },
           provider: { type: 'string', enum: ['auto', 'exa', 'perplexity', 'gemini'] },
           numResults: { type: 'number' },
         },
@@ -556,11 +576,7 @@ export interface ToolContext {
     stderr: string
     exitCode: number
   }) => Promise<{ sourceType: 'run_event'; sourceId: string; chunksWritten: number } | null>
-  searchIndexedOutput?: (params: {
-    sourceId: string
-    query?: string
-    limit?: number
-  }) => Promise<{
+  searchIndexedOutput?: (params: { sourceId: string; query?: string; limit?: number }) => Promise<{
     sourceType: 'run_event'
     sourceId: string
     query?: string
@@ -728,9 +744,7 @@ async function enforceToolAdvisorPreflight(
 function normalizeWriteFilesInput(input: unknown): WriteFileSpec[] {
   if (Array.isArray(input)) {
     return input
-      .filter(
-        (item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object'
-      )
+      .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
       .map((item) => {
         const rawPath = String(item.path ?? '')
         const path = isDirectoryWriteIntent(item, rawPath)
@@ -838,18 +852,23 @@ export function createToolContext(
 
     getResearchSource: async (sourceId) => {
       if (!api.researchSources?.get) return null
-      const row = (await convexClient.query(api.researchSources.get, { sourceId })) as
-        | {
-            _id: string
-            kind: ResearchSourceKind
-            url: string
-            title?: string
-            extractedMarkdown?: string
-            summary?: string
-          }
-        | null
+      const row = (await convexClient.query(api.researchSources.get, { sourceId })) as {
+        _id: string
+        kind: ResearchSourceKind
+        url: string
+        title?: string
+        extractedMarkdown?: string
+        summary?: string
+      } | null
       if (!row) return null
-      return { sourceId: row._id, kind: row.kind, url: row.url, title: row.title, extractedMarkdown: row.extractedMarkdown, summary: row.summary }
+      return {
+        sourceId: row._id,
+        kind: row.kind,
+        url: row.url,
+        title: row.title,
+        extractedMarkdown: row.extractedMarkdown,
+        summary: row.summary,
+      }
     },
 
     searchResearchWeb: async (params) => {
@@ -871,14 +890,22 @@ export function createToolContext(
       if (!api.researchSources?.fetchUrl || !convexClient.action) {
         throw new Error('Research URL fetch action is not available in this runtime')
       }
-      return await convexClient.action(api.researchSources.fetchUrl, { projectId, chatId, ...params })
+      return await convexClient.action(api.researchSources.fetchUrl, {
+        projectId,
+        chatId,
+        ...params,
+      })
     },
 
     fetchResearchGithub: async (params) => {
       if (!api.researchSources?.fetchGithub || !convexClient.action) {
         throw new Error('Research GitHub fetch action is not available in this runtime')
       }
-      return await convexClient.action(api.researchSources.fetchGithub, { projectId, chatId, ...params })
+      return await convexClient.action(api.researchSources.fetchGithub, {
+        projectId,
+        chatId,
+        ...params,
+      })
     },
 
     // Read files using Convex batchGet query
@@ -1586,7 +1613,12 @@ export async function executeTool(
             exitCode: result.exitCode,
           })
           let evidence:
-            | { sourceType: 'run_event'; sourceId: string; chunksWritten: number; retrievalHint?: string }
+            | {
+                sourceType: 'run_event'
+                sourceId: string
+                chunksWritten: number
+                retrievalHint?: string
+              }
             | undefined
           if (
             initialGuard.metadata.guarded &&
@@ -1676,7 +1708,10 @@ export async function executeTool(
           throw new Error('research source store is not available in this context')
         }
         const url = String(args.url ?? '')
-        const extracted = await extractUrlContent(url, typeof args.timeoutMs === 'number' ? args.timeoutMs : undefined)
+        const extracted = await extractUrlContent(
+          url,
+          typeof args.timeoutMs === 'number' ? args.timeoutMs : undefined
+        )
         const stored = await context.storeResearchSource({
           kind: extracted.kind,
           url: extracted.url,
@@ -1740,8 +1775,12 @@ export async function executeTool(
         const source = await context.getResearchSource(String(args.sourceId ?? ''))
         if (!source) throw new Error('Research source not found')
         const format = args.format === 'full' || args.format === 'preview' ? args.format : 'summary'
-        const rawContent = format === 'summary' ? (source.summary ?? '') : (source.extractedMarkdown ?? source.summary ?? '')
-        const content = format === 'full' ? rawContent : rawContent.slice(0, format === 'preview' ? 6000 : 1200)
+        const rawContent =
+          format === 'summary'
+            ? (source.summary ?? '')
+            : (source.extractedMarkdown ?? source.summary ?? '')
+        const content =
+          format === 'full' ? rawContent : rawContent.slice(0, format === 'preview' ? 6000 : 1200)
         output = wrapUntrustedResearchSource({
           sourceId: source.sourceId,
           kind: source.kind,
@@ -1771,7 +1810,9 @@ export async function executeTool(
             args.recencyFilter === 'year'
               ? args.recencyFilter
               : undefined,
-          domainFilter: Array.isArray(args.domainFilter) ? args.domainFilter.map(String) : undefined,
+          domainFilter: Array.isArray(args.domainFilter)
+            ? args.domainFilter.map(String)
+            : undefined,
         })
         output = JSON.stringify(result, null, 2)
         break

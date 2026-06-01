@@ -74,7 +74,9 @@ export const create = mutation({
       })
       if (!advanced) continue
       const next = steps.find((step) => step.status === 'pending')
-      const allDone = steps.every((step) => step.status === 'completed' || step.status === 'skipped')
+      const allDone = steps.every(
+        (step) => step.status === 'completed' || step.status === 'skipped'
+      )
       await ctx.db.patch(chain._id, {
         steps,
         currentStepId: next?.id,

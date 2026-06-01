@@ -71,7 +71,7 @@ export function WorkbenchRightPanel({ projectId }: WorkbenchRightPanelProps) {
   const activeInspectorTab = activeTab
 
   const inspectorTabs: InspectorTabDef[] = [
-    { id: 'proof', label: 'Proof' },
+    { id: 'proof', label: 'Run' },
     { id: 'changes', label: 'Changes' },
     { id: 'context', label: 'Context' },
   ]
@@ -118,7 +118,11 @@ export function WorkbenchRightPanel({ projectId }: WorkbenchRightPanelProps) {
                 }}
               />
               <AdvisorReviewsPanel chatId={activeChatId} />
-              <InspectorMemoryContent memoryBank={memoryBank} onSaveMemoryBank={onSaveMemoryBank} />
+              <InspectorMemoryContent
+                projectId={projectId}
+                memoryBank={memoryBank}
+                onSaveMemoryBank={onSaveMemoryBank}
+              />
               <InspectorEvalsContent
                 projectId={projectId}
                 chatId={activeChatId}

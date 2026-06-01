@@ -8,24 +8,33 @@ Panda now uses a workbench-owned file model:
 
 - The central workbench owns file viewing, editing, and Review Diff.
 - Explicit file clicks route to the workbench and editor tab.
-- Generated non-plan files appear in the file tree, Changes, and Review Diff without auto-opening or stealing focus.
+- Generated non-plan files appear in the file tree, Changes, and Review Diff
+  without auto-opening or stealing focus.
 - Generated Plan Mode artifacts continue to auto-open in the workbench.
 - The right rail is support-only: `Proof`, `Changes`, and `Context`.
-- Mobile navigation is `Work`, `Chat`, `Proof`, and `Changes`; product-level live `Preview` navigation has been removed.
-- Plan documents now render with `.plan.md`-style frontmatter, clean metadata/task cards, styled Markdown, and Mermaid diagram support.
-- Plan generation now prefers shallow headings, Mermaid architecture diagrams, tables, checklists, and fewer visible heading markers.
+- Mobile navigation is `Work`, `Chat`, `Proof`, and `Changes`; product-level
+  live `Preview` navigation has been removed.
+- Plan documents now render with `.plan.md`-style frontmatter, clean
+  metadata/task cards, styled Markdown, and Mermaid diagram support.
+- Plan generation now prefers shallow headings, Mermaid architecture diagrams,
+  tables, checklists, and fewer visible heading markers.
 
-Verified with targeted ESLint, TypeScript, Convex planning-session tests, and targeted component/hook tests.
+Verified with targeted ESLint, TypeScript, Convex planning-session tests, and
+targeted component/hook tests.
 
 ## Goal
 
-Configure Panda so the central workbench is the canonical place where files are viewed, edited, and reviewed.
+Configure Panda so the central workbench is the canonical place where files are
+viewed, edited, and reviewed.
 
 Product rule:
 
-> Every file is a workbench file. Every file click opens in the workbench. Only generated Plan Mode documents auto-open. Diffs are reviewed centrally. The right rail is for navigation, proof, and context — not work/editing.
+> Every file is a workbench file. Every file click opens in the workbench. Only
+> generated Plan Mode documents auto-open. Diffs are reviewed centrally. The
+> right rail is for navigation, proof, and context — not work/editing.
 
-This plan is based on a Panda codebase review plus 2026 Cursor and Google Antigravity behavior.
+This plan is based on a Panda codebase review plus 2026 Cursor and Google
+Antigravity behavior.
 
 ## 2026 Product References
 
@@ -36,22 +45,28 @@ Cursor's 2026 Plan Mode and Agents Window patterns imply:
 - Plan Mode produces a reviewable plan before coding.
 - Plans open as editable virtual/Markdown-like documents.
 - Plans can be saved to workspace, commonly under `.cursor/plans/`.
-- A plan is not just a random Markdown file: registered plans retain special behavior such as Build, progress, plan preview, dirty tracking, save/copy/export, and plan revision.
+- A plan is not just a random Markdown file: registered plans retain special
+  behavior such as Build, progress, plan preview, dirty tracking,
+  save/copy/export, and plan revision.
 - Files and diffs belong in the editor/workbench.
-- Cursor 3.1 specifically improved diff-to-file navigation: users can jump from a diff to the exact line in the editor.
-- Users dislike fragmented file/diff navigation or file links opening inside an agent side area instead of the editor.
+- Cursor 3.1 specifically improved diff-to-file navigation: users can jump from
+  a diff to the exact line in the editor.
+- Users dislike fragmented file/diff navigation or file links opening inside an
+  agent side area instead of the editor.
 - Users dislike whole-file replacement diffs when only small regions changed.
 
 ### Antigravity takeaways
 
 Google Antigravity's 2026 model implies:
 
-- Agent Manager / artifact surfaces are for orchestration, artifacts, review, comments, and approvals.
+- Agent Manager / artifact surfaces are for orchestration, artifacts, review,
+  comments, and approvals.
 - Editor View is for generated files, direct editing, and Review Changes.
 - Planning Mode produces Task and Implementation Plan artifacts before code.
 - Review-driven development can pause after plans before file generation.
 - Walkthrough artifacts summarize changes, verification commands, and results.
-- Generated files are visible in the editor/workspace, not trapped in the artifact manager.
+- Generated files are visible in the editor/workspace, not trapped in the
+  artifact manager.
 
 ### Panda adaptation
 
@@ -62,7 +77,8 @@ Panda should combine these patterns while respecting project constraints:
 - Right rail stays support-oriented.
 - Central workbench owns files and diffs.
 - Plans auto-open because they are the user approval handoff.
-- Normal generated files do not auto-open because tab spam and focus stealing hurt review.
+- Normal generated files do not auto-open because tab spam and focus stealing
+  hurt review.
 
 ---
 
@@ -72,12 +88,14 @@ Panda already has many required primitives:
 
 - `FileTree` opens selected files through `onSelectFile`.
 - `useProjectWorkbenchFiles` opens selected files in central workbench tabs.
-- Pending generated files are merged into the file tree through `pendingDiffEntries`.
+- Pending generated files are merged into the file tree through
+  `pendingDiffEntries`.
 - `ArtifactCard` has an `Open File` action that routes through `onOpenFile`.
 - `Review Diff` is a central workbench tab.
 - `usePlanArtifactSync` auto-opens generated plan artifacts.
 - Right rail already has support surfaces: `Proof`, `Changes`, and `Context`.
-- Proof already includes walkthrough, recovery, validation, and checkpoint surfaces.
+- Proof already includes walkthrough, recovery, validation, and checkpoint
+  surfaces.
 
 However, the deep dive found key mismatches:
 
@@ -85,52 +103,66 @@ However, the deep dive found key mismatches:
    - `ProjectWorkspaceLayout` renders `chatPanel` in the center.
    - `workbench` is passed as `workContent` to `WorkbenchRightPanel`.
    - `RightPanel` renders `workContent` when active tab is `work`.
-   - Therefore, removing `Work` before relocating the workbench would break file viewing.
+   - Therefore, removing `Work` before relocating the workbench would break file
+     viewing.
 
 2. **Normal generated file artifacts currently auto-open/select.**
-   - `useArtifactLifecycle` watches `pendingArtifactPreviews` and may call `setOpenTabs`, `setSelectedFilePath`, and `setMobilePrimaryPanel('work')`.
+   - `useArtifactLifecycle` watches `pendingArtifactPreviews` and may call
+     `setOpenTabs`, `setSelectedFilePath`, and `setMobilePrimaryPanel('work')`.
    - This violates the new rule that only plans auto-open.
 
-3. **Plan auto-open exists, but may not always make the workbench visible on desktop.**
-   - `usePlanArtifactSync` sets selected file and mobile panel, but does not explicitly set desktop focus after the workbench is decoupled.
+3. **Plan auto-open exists, but may not always make the workbench visible on
+   desktop.**
+   - `usePlanArtifactSync` sets selected file and mobile panel, but does not
+     explicitly set desktop focus after the workbench is decoupled.
 
 4. **Plan artifact tabs are mostly read-only.**
-   - `PlanArtifactTab` renders Markdown and offers Approve/Build, but does not yet support direct editing, save, dirty tracking, or file-like plan behaviors.
+   - `PlanArtifactTab` renders Markdown and offers Approve/Build, but does not
+     yet support direct editing, save, dirty tracking, or file-like plan
+     behaviors.
 
 5. **Plans are synthetic tabs, not real workspace files.**
    - Current paths use `plan:<sessionId>`.
-   - Cursor-like behavior eventually wants `.panda/plans/*.md`, but the plan must remain a registered plan artifact, not a random Markdown file.
+   - Cursor-like behavior eventually wants `.panda/plans/*.md`, but the plan
+     must remain a registered plan artifact, not a random Markdown file.
 
 6. **Diff hunks are too coarse.**
-   - `derivePreviewDiffEntries` currently treats modified files like whole-file replace hunks.
-   - Cursor-quality review needs real hunks with context and diff-to-file navigation.
+   - `derivePreviewDiffEntries` currently treats modified files like whole-file
+     replace hunks.
+   - Cursor-quality review needs real hunks with context and diff-to-file
+     navigation.
 
 7. **Changes cleanup must preserve command/action approval flows.**
    - `ArtifactPanel` handles both `file_write` and `command_run` artifacts.
-   - Simplifying Changes must not remove pending command review/execution unless another surface owns it.
+   - Simplifying Changes must not remove pending command review/execution unless
+     another surface owns it.
 
 8. **Preview language must be removed selectively.**
    - Product-level live preview/mobile preview should be removed or renamed.
-   - Generic preview concepts such as Markdown preview, image attachment preview, and internal artifact preview can remain.
+   - Generic preview concepts such as Markdown preview, image attachment
+     preview, and internal artifact preview can remain.
 
 ---
 
 ## User Review Required
 
-> [!IMPORTANT]
-> The first implementation step must decouple the Workbench from the right panel's `Work` tab. Do **not** remove the `Work` tab before the Workbench has a new primary home.
+> [!IMPORTANT] The first implementation step must decouple the Workbench from
+> the right panel's `Work` tab. Do **not** remove the `Work` tab before the
+> Workbench has a new primary home.
 
-> [!IMPORTANT]
-> Non-plan generated files should no longer auto-open or steal focus. They should appear in the file tree, Changes, and Review Diff, and open only when clicked.
+> [!IMPORTANT] Non-plan generated files should no longer auto-open or steal
+> focus. They should appear in the file tree, Changes, and Review Diff, and open
+> only when clicked.
 
-> [!IMPORTANT]
-> Generated Plan Mode documents should continue to auto-open when completed. This is the approval handoff from LLM to user.
+> [!IMPORTANT] Generated Plan Mode documents should continue to auto-open when
+> completed. This is the approval handoff from LLM to user.
 
-> [!IMPORTANT]
-> If plans later become real `.panda/plans/*.md` files, they must remain linked to registered plan metadata so Approve/Build behavior is preserved.
+> [!IMPORTANT] If plans later become real `.panda/plans/*.md` files, they must
+> remain linked to registered plan metadata so Approve/Build behavior is
+> preserved.
 
-> [!CAUTION]
-> Simplifying the Changes panel must not accidentally remove command approval or command execution review flows.
+> [!CAUTION] Simplifying the Changes panel must not accidentally remove command
+> approval or command execution review flows.
 
 ---
 
@@ -141,7 +173,8 @@ However, the deep dive found key mismatches:
 - No screenshot/DOM/visual validation workflow.
 - No duplicate code editor inside the right rail.
 - No automatic tab opening for every generated file.
-- No removal of generic Markdown/image preview features that are not live-browser preview.
+- No removal of generic Markdown/image preview features that are not
+  live-browser preview.
 
 ---
 
@@ -151,7 +184,8 @@ However, the deep dive found key mismatches:
 
 ### Summary
 
-Before removing the right rail `Work` tab, move the Workbench out of `RightPanel.workContent` and into a primary workspace area.
+Before removing the right rail `Work` tab, move the Workbench out of
+`RightPanel.workContent` and into a primary workspace area.
 
 Current desktop layout is effectively:
 
@@ -201,7 +235,8 @@ Required behavior:
 - Render `chatPanel` as its own primary/focus surface.
 - `workspaceFocusMode === 'workbench'` should show/focus the workbench.
 - `workspaceFocusMode === 'chat'` should show/focus chat.
-- `workspaceFocusMode === 'proof' | 'changes'` can keep the workbench visible while opening the right rail support tab, unless intentionally focusing chat.
+- `workspaceFocusMode === 'proof' | 'changes'` can keep the workbench visible
+  while opening the right rail support tab, unless intentionally focusing chat.
 
 Potential transition layout:
 
@@ -234,7 +269,8 @@ workContent: ReactNode
 
 Required behavior:
 
-- Remove `workContent` dependency once `ProjectWorkspaceLayout` owns Workbench rendering.
+- Remove `workContent` dependency once `ProjectWorkspaceLayout` owns Workbench
+  rendering.
 - `WorkbenchRightPanel` should only provide inspector/support content.
 
 #### [MODIFY] `apps/web/components/panels/RightPanel.tsx`
@@ -268,7 +304,9 @@ interface RightPanelProps {
 
 ### Summary
 
-Generated file artifacts should appear in the file tree, Changes, and Review Diff, but should not automatically open/select in the workbench unless they are plan documents.
+Generated file artifacts should appear in the file tree, Changes, and Review
+Diff, but should not automatically open/select in the workbench unless they are
+plan documents.
 
 ### Files
 
@@ -287,7 +325,8 @@ Required behavior:
 
 - Continue deriving `pendingArtifactPreviews`.
 - Continue deriving `pendingDiffEntries`.
-- Continue exposing `pendingArtifactPreview` when the selected file matches a pending artifact.
+- Continue exposing `pendingArtifactPreview` when the selected file matches a
+  pending artifact.
 - Continue supporting apply/reject.
 - Stop automatically opening/selecting normal generated file artifacts.
 
@@ -321,11 +360,13 @@ resolveArtifactPreviewNavigation(...)
 Required behavior:
 
 - Remove it if unused.
-- Or replace it with an explicit policy helper that returns auto-open only for registered plan artifacts.
+- Or replace it with an explicit policy helper that returns auto-open only for
+  registered plan artifacts.
 
 Preferred direction:
 
-- Delete `resolveArtifactPreviewNavigation` after removing non-plan artifact auto-navigation.
+- Delete `resolveArtifactPreviewNavigation` after removing non-plan artifact
+  auto-navigation.
 
 #### [MODIFY] `apps/web/components/workbench/artifact-preview.test.ts`
 
@@ -339,7 +380,8 @@ Recommended tests:
 
 ### Acceptance Criteria
 
-- Agent generates `src/new.ts` → file appears in file tree with generated/pending status.
+- Agent generates `src/new.ts` → file appears in file tree with
+  generated/pending status.
 - File appears in Changes.
 - File appears in Review Diff.
 - Current selected workbench tab does not change.
@@ -352,7 +394,8 @@ Recommended tests:
 
 ### Summary
 
-Generated Plan Mode documents should continue to auto-open, and the workbench should be visibly focused when they do.
+Generated Plan Mode documents should continue to auto-open, and the workbench
+should be visibly focused when they do.
 
 ### Files
 
@@ -436,8 +479,10 @@ setOpenTabs((prev) => {
 
 Required additions after Phase 0:
 
-- Ensure file selection sets `workspaceFocusMode('workbench')` on desktop, or calls a unified navigation helper that does.
-- Ensure it sets `activeCenterTab('editor')` so file clicks do not leave the user in Diff/Logs/Tests when they intended to view source.
+- Ensure file selection sets `workspaceFocusMode('workbench')` on desktop, or
+  calls a unified navigation helper that does.
+- Ensure it sets `activeCenterTab('editor')` so file clicks do not leave the
+  user in Diff/Logs/Tests when they intended to view source.
 
 Possible helper:
 
@@ -473,7 +518,8 @@ onOpenFile(payload.filePath)
 
 #### [VERIFY/MODIFY] `apps/web/components/workbench/ProjectSearchPanel.tsx`
 
-- Search results should continue opening files in the workbench with line/column.
+- Search results should continue opening files in the workbench with
+  line/column.
 
 ### Acceptance Criteria
 
@@ -495,7 +541,8 @@ Clicking a file from any of these surfaces opens it in the workbench:
 
 ### Summary
 
-Panda's auto-open plan tab should behave more like an editable plan document, while retaining registered plan metadata and Approve/Build actions.
+Panda's auto-open plan tab should behave more like an editable plan document,
+while retaining registered plan metadata and Approve/Build actions.
 
 ### Files
 
@@ -527,11 +574,13 @@ PlanArtifactTab
 
 #### [MODIFY] `apps/web/hooks/useProjectPlanningSession.ts`
 
-If plan edits should update the registered generated plan, add/update mutation pathways here.
+If plan edits should update the registered generated plan, add/update mutation
+pathways here.
 
 #### [MODIFY] `apps/web/components/plan/PlanPanel.tsx`
 
-Avoid duplicating plan edit behavior between right rail context and workbench plan tab. Either:
+Avoid duplicating plan edit behavior between right rail context and workbench
+plan tab. Either:
 
 - share an editable plan component, or
 - route Context plan editing to the same plan state used by the workbench tab.
@@ -549,7 +598,8 @@ Avoid duplicating plan edit behavior between right rail context and workbench pl
 
 ### Summary
 
-Cursor-quality review requires focused hunks and easy navigation from diff to source file.
+Cursor-quality review requires focused hunks and easy navigation from diff to
+source file.
 
 ### Files
 
@@ -575,7 +625,8 @@ Implementation options:
 
 - Add a small internal line diff helper.
 - Use an existing dependency only if already present and acceptable.
-- Keep initial implementation simple but avoid whole-file replacement for common line edits.
+- Keep initial implementation simple but avoid whole-file replacement for common
+  line edits.
 
 #### [MODIFY] `apps/web/components/workbench/DiffTab.tsx`
 
@@ -609,7 +660,8 @@ Thread `onOpenFile` into `DiffTab`.
 
 ### Summary
 
-After Phase 0, remove visible `Work` from the right rail. The right rail should be support-only.
+After Phase 0, remove visible `Work` from the right rail. The right rail should
+be support-only.
 
 ### Files
 
@@ -618,7 +670,12 @@ After Phase 0, remove visible `Work` from the right rail. The right rail should 
 Current type:
 
 ```ts
-export type RightPanelTabId = 'work' | 'proof' | 'changes' | 'context' | 'preview'
+export type RightPanelTabId =
+  | 'work'
+  | 'proof'
+  | 'changes'
+  | 'context'
+  | 'preview'
 ```
 
 Recommended type:
@@ -642,7 +699,8 @@ Required behavior:
 Proof | Changes | Context
 ```
 
-- Use `isRightPanelOpen` to control closed/open state instead of falling back to `work`.
+- Use `isRightPanelOpen` to control closed/open state instead of falling back to
+  `work`.
 
 #### [MODIFY] `apps/web/components/workbench/WorkbenchRightPanel.tsx`
 
@@ -662,7 +720,8 @@ rightPanelTab: 'work'
 Required behavior:
 
 - Remove `work` and product-level `preview` from `RightPanelTab`.
-- Default to a support tab such as `proof` or `changes` while `isRightPanelOpen` controls visibility.
+- Default to a support tab such as `proof` or `changes` while `isRightPanelOpen`
+  controls visibility.
 - Add migration from old persisted values:
 
 ```ts
@@ -683,7 +742,8 @@ type RightPanelTab = 'work' | 'proof' | 'changes' | 'context' | 'preview'
 Required behavior:
 
 - Support only Proof/Changes/Context for right rail.
-- Opening right rail on mobile should route to the corresponding mobile support panel, not always `proof`.
+- Opening right rail on mobile should route to the corresponding mobile support
+  panel, not always `proof`.
 
 #### [MODIFY] `apps/web/components/projects/ProjectWorkspaceLayout.tsx`
 
@@ -711,7 +771,9 @@ Required behavior:
 
 ### Summary
 
-`Changes` should summarize generated work and route users to files or central Review Diff. It should not duplicate the editor or become the primary diff surface.
+`Changes` should summarize generated work and route users to files or central
+Review Diff. It should not duplicate the editor or become the primary diff
+surface.
 
 However, it must not remove command/action review flows.
 
@@ -733,7 +795,8 @@ Required behavior:
 - Reduce file-write artifacts into compact changed-file rows.
 - Keep `Open Review Diff` prominent.
 - Clicking a file opens it in the workbench.
-- Keep command/action artifacts visible in a separate section if no other approval UI owns them.
+- Keep command/action artifacts visible in a separate section if no other
+  approval UI owns them.
 
 Recommended layout:
 
@@ -754,7 +817,8 @@ Pending actions
 
 #### [MODIFY] `apps/web/components/artifacts/ArtifactCard.tsx`
 
-- Either simplify file-write cards into rows, or keep cards but remove editor-like preview emphasis.
+- Either simplify file-write cards into rows, or keep cards but remove
+  editor-like preview emphasis.
 - Keep `Open File` and `Review Diff` navigation.
 - Preserve command run details/actions where needed.
 
@@ -771,9 +835,11 @@ Pending actions
 
 ### Summary
 
-Panda does not plan live preview/browser proof, so product-level `Preview` navigation should be renamed or removed.
+Panda does not plan live preview/browser proof, so product-level `Preview`
+navigation should be renamed or removed.
 
-Do **not** remove generic preview concepts like Markdown preview or image attachment preview.
+Do **not** remove generic preview concepts like Markdown preview or image
+attachment preview.
 
 ### Files
 
@@ -840,9 +906,11 @@ Keep these concepts unless separately redesigned:
 
 ### Summary
 
-Eventually, Panda should save Plan Mode documents as real workspace files while preserving plan metadata.
+Eventually, Panda should save Plan Mode documents as real workspace files while
+preserving plan metadata.
 
-Cursor's lesson: do not let plan documents become random Markdown files that lose Build/Approve behavior.
+Cursor's lesson: do not let plan documents become random Markdown files that
+lose Build/Approve behavior.
 
 ### Proposed Location
 
@@ -948,17 +1016,21 @@ bun test \
 
 - Click existing `.tsx` file in file tree → opens in workbench.
 - Click existing `.md` file in file tree → opens in workbench.
-- Click pending generated file in file tree → opens in workbench and shows pending overlay/diff affordance.
+- Click pending generated file in file tree → opens in workbench and shows
+  pending overlay/diff affordance.
 - Click file in Changes → opens in workbench.
 - Click file in Proof/Walkthrough → opens in workbench.
 - Click file in Context/Plan lifecycle → opens in workbench where applicable.
-- Click file from Review Diff → opens source file in workbench, ideally at selected hunk line.
+- Click file from Review Diff → opens source file in workbench, ideally at
+  selected hunk line.
 
 ### Auto-Open
 
 - Complete Plan Mode → generated plan auto-opens in visible workbench.
-- Generate source file → file appears in tree/Changes/Diff but does not auto-open.
-- Generate Markdown doc that is not the plan → appears in tree/Changes/Diff but does not auto-open.
+- Generate source file → file appears in tree/Changes/Diff but does not
+  auto-open.
+- Generate Markdown doc that is not the plan → appears in tree/Changes/Diff but
+  does not auto-open.
 - Generate multiple files → no tab spam.
 
 ### Review Diff
@@ -996,10 +1068,13 @@ bun test \
 If behavior regresses:
 
 1. Keep plan auto-open via `usePlanArtifactSync.ts` throughout rollback.
-2. Temporarily keep `RightPanel` `workContent` until Workbench relocation is stable.
-3. Re-enable old generated artifact auto-navigation only as a temporary fallback if file visibility breaks.
+2. Temporarily keep `RightPanel` `workContent` until Workbench relocation is
+   stable.
+3. Re-enable old generated artifact auto-navigation only as a temporary fallback
+   if file visibility breaks.
 4. Restore `work` tab migration if persisted UI state causes crashes.
-5. Use existing checkpoint/snapshot restore UI from Proof if runtime-generated changes need recovery.
+5. Use existing checkpoint/snapshot restore UI from Proof if runtime-generated
+   changes need recovery.
 
 ---
 

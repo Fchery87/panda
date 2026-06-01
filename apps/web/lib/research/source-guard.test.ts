@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'bun:test'
-import { previewResearchContent, summarizeResearchContent, wrapUntrustedResearchSource } from './source-guard'
+import {
+  previewResearchContent,
+  summarizeResearchContent,
+  wrapUntrustedResearchSource,
+} from './source-guard'
 
 // These tests cover the security/size boundary for external research content.
 describe('research source guard', () => {

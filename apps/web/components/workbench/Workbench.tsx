@@ -74,7 +74,7 @@ interface WorkbenchProps {
 }
 
 const CENTER_TABS: CenterTabBarTab[] = [
-  { id: 'editor', label: 'Work Surface' },
+  { id: 'editor', label: 'Editor' },
   { id: 'diff', label: 'Review Diff' },
 ]
 

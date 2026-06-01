@@ -36,9 +36,9 @@ describe('Panda design system CSS contract', () => {
   })
 
   test('keeps mobile workbench navigation as focused views', () => {
-    expect(workspaceLayout).toContain('aria-label="Show workspace"')
+    expect(workspaceLayout).toContain('aria-label="Show editor"')
     expect(workspaceLayout).toContain('aria-label="Show chat timeline"')
-    expect(workspaceLayout).toContain('aria-label="Show run proof"')
+    expect(workspaceLayout).toContain('aria-label="Show run evidence"')
     expect(workspaceLayout).toContain('aria-label="Show generated changes"')
   })
 })

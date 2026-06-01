@@ -2,7 +2,8 @@ import { verifyClaim } from './claim-verifier'
 
 const FILE_CLAIM_PATTERN = /\b(?:created|added|updated|modified|wrote)\s+`([^`]+)`/giu
 const COMMAND_CLAIM_PATTERN = /\b(?:ran|executed)\s+`([^`]+)`/giu
-const TEST_PASS_PATTERN = /\b(?:tests?|checks?|build)\s+(?:passed|succeeded|completed successfully)\b/iu
+const TEST_PASS_PATTERN =
+  /\b(?:tests?|checks?|build)\s+(?:passed|succeeded|completed successfully)\b/iu
 
 export interface GuardAssistantClaimsArgs {
   content: string
@@ -52,7 +53,9 @@ export function guardAssistantClaims(args: GuardAssistantClaimsArgs): GuardAssis
   for (const command of commandClaims) {
     const result = verifyClaim({ kind: 'command_run', target: command, runEvents: args.runEvents })
     if (result.status !== 'verified') {
-      warnings.push(`Command claim for \`${command}\` is ${result.status}; ${result.errors.join('; ')}`)
+      warnings.push(
+        `Command claim for \`${command}\` is ${result.status}; ${result.errors.join('; ')}`
+      )
     }
   }
 
@@ -69,14 +72,16 @@ export function guardAssistantClaims(args: GuardAssistantClaimsArgs): GuardAssis
       }
     })
     if (!hasVerifiedCommand) {
-      warnings.push('Validation success claim is unverified; no successful test/lint/typecheck/build command receipt was found.')
+      warnings.push(
+        'Validation success claim is unverified; no successful test/lint/typecheck/build command receipt was found.'
+      )
     }
   }
 
   if (warnings.length === 0) return { content: args.content, changed: false, warnings }
 
   return {
-    content: `${args.content.trim()}\n\n> Panda verification note: Some success claims could not be fully verified from execution receipts. Treat them as attempted until the Proof/Changes surfaces confirm them.\n> ${warnings.join('\n> ')}`,
+    content: `${args.content.trim()}\n\n> Panda verification note: Some success claims could not be fully verified from execution receipts. Treat them as attempted until the Run/Changes surfaces confirm them.\n> ${warnings.join('\n> ')}`,
     changed: true,
     warnings,
   }

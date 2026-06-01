@@ -475,6 +475,42 @@ Own:
 4. Reduce callback surface exposed from the runtime provider
 5. Update consumers incrementally and delete old context shape after migration
 
+### 2026-05-31 realignment status
+
+Completed incremental Phase E seams:
+
+- `ProjectChatInspector.tsx` was reduced into a shell/orchestrator, with
+  inspector content moved under `apps/web/components/chat/inspector/*`:
+  - `InspectorResearchContent.tsx`
+  - `InspectorContextContent.tsx`
+  - `InspectorPlanContent.tsx`
+  - `InspectorRunContent.tsx`
+  - `InspectorMemoryContent.tsx`
+  - `InspectorEvalsContent.tsx`
+- `WorkspaceRuntimeProvider.tsx` now delegates focused ownership seams to:
+  - `useProjectShellUiState`
+  - `useExecutionSessionFocusState`
+  - `useProjectRuntimeFileMount`
+  - `useImportLocalWorkspace`
+  - `useWorkspaceShellHotkeys`
+  - `useProjectWorkspaceLayoutProps`
+  - `useWorkspaceRuntimeValue`
+- Compatibility exports from `ProjectChatInspector.tsx` are intentionally
+  preserved while consumers migrate.
+- Shell UI setter wrappers, WebContainer file mounting, local workspace import,
+  shell hotkeys, execution-session focus actions, layout prop assembly, and
+  `WorkspaceRuntimeContext` value assembly no longer live inline in the
+  provider.
+
+Remaining deeper cleanup that is intentionally separate from the IDE realignment
+seam pass:
+
+- A future context split can replace the broad `WorkspaceRuntimeContext` with
+  narrower workspace/runtime/plan contexts once consumers have migrated.
+- `useAgent` still needs the Phase 7 runtime decomposition into stream handling,
+  run persistence, progress derivation, spec lifecycle, and variant
+  orchestration.
+
 ### Exit criteria
 
 - Contexts have narrow purpose

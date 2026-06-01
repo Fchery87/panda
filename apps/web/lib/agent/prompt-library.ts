@@ -29,6 +29,7 @@ import {
 } from './prompt-modules'
 import { resolveAgentSkillsForPromptContext } from './skills/resolver'
 import type { CustomSkillForMatching, CustomSkillPolicy } from './skills/types'
+import { formatProjectRulesForPrompt, type ProjectRulePromptContext } from './project-rules'
 import type { FormalSpecification } from './spec/types'
 import { formatAgentContextPackForPrompt, type AgentContextPack } from './context/context-pack'
 import { formatModeHandoffForPrompt, type ModeHandoffPacket } from './context/mode-handoff'
@@ -105,6 +106,8 @@ export interface PromptContext {
   agentContextPack?: AgentContextPack
   /** Optional workflow skill profile */
   skillProfile?: 'off' | 'soft_guidance' | 'strict_workflow'
+  /** Checked-in project rules resolved upstream from .panda/rules/*.md */
+  projectRules?: ProjectRulePromptContext[]
   /** User-scoped custom skills available for prompt matching */
   customSkills?: CustomSkillForMatching[]
   /** Admin and user policy for custom skill activation */
@@ -280,11 +283,17 @@ export function getPromptForMode(context: PromptContext): CompletionMessage[] {
     if (budgetedContent.projectContext) {
       parts.push(budgetedContent.projectContext)
     }
+    const projectRulesContent = formatProjectRulesForPrompt(context.projectRules ?? [])
+    if (projectRulesContent) {
+      parts.push(projectRulesContent)
+    }
     if (context.sessionSummary) {
       parts.push(`\n## Previous Session Context\n${context.sessionSummary}`)
     }
     if (context.contextAssets?.length) {
-      parts.push(`\n## User-Attached Context Assets\n${context.contextAssets.map((asset) => `- ${asset}`).join('\n')}`)
+      parts.push(
+        `\n## User-Attached Context Assets\n${context.contextAssets.map((asset) => `- ${asset}`).join('\n')}`
+      )
     }
     if (context.agentContextPack) {
       parts.push(formatAgentContextPackForPrompt(context.agentContextPack))
@@ -312,6 +321,10 @@ export function getPromptForMode(context: PromptContext): CompletionMessage[] {
     }
     if (context.memoryBank) {
       contextContent += `\n## Project Memory Bank\n${context.memoryBank}\n`
+    }
+    const projectRulesContent = formatProjectRulesForPrompt(context.projectRules ?? [])
+    if (projectRulesContent) {
+      contextContent += `\n${projectRulesContent}\n`
     }
     if (context.sessionSummary) {
       contextContent += `\n## Previous Session Context\n${context.sessionSummary}\n`

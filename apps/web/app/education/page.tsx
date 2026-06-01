@@ -86,7 +86,7 @@ const faqItems = [
   {
     question: 'Can I review code changes before they are applied?',
     answer:
-      'Yes. Plan mode produces a reviewable execution contract before larger work begins. During Agent runs, Guided mode prompts for more review, Autopilot can apply safe changes, and risky commands or sensitive actions pause for explicit approval. Changed work remains inspectable through the workbench and Review Diff.',
+      'Yes. Plan mode produces a reviewable execution contract before larger work begins. During Agent runs, Guided mode prompts for more review, Autopilot can apply safe changes, and risky commands or sensitive actions pause for explicit approval. Changed work remains inspectable through the Editor and Review Diff.',
   },
   {
     question: 'Does Panda remember context between sessions?',
@@ -96,17 +96,17 @@ const faqItems = [
   {
     question: 'Which AI providers does Panda support?',
     answer:
-      'Panda supports multiple hosted model providers and OpenAI-compatible endpoints. You bring your own API key, and available models are shown through the model catalog in the workbench.',
+      'Panda supports multiple hosted model providers and OpenAI-compatible endpoints. You bring your own API key, and available models are shown through the model catalog in the IDE.',
   },
   {
-    question: 'Can I share my workbench session with someone else?',
+    question: 'Can I share my project session with someone else?',
     answer:
       'Yes. Panda creates a public projection of the active chat so collaborators can inspect the thread without exposing private workspace data.',
   },
   {
     question: 'Are custom subagents separate modes?',
     answer:
-      'No. Ask, Plan, and Agent are the primary user-facing modes. Custom subagents are delegated workers inside Agent runs; they use capability presets and attached Skills while reporting back through the parent run proof and review surfaces.',
+      'No. Ask, Plan, and Agent are the primary user-facing modes. Custom subagents are delegated workers inside Agent runs; they use capability presets and attached Skills while reporting back through the parent run evidence and review surfaces.',
   },
 ]
 
@@ -135,20 +135,20 @@ export default function EducationPage() {
                   </div>
 
                   <h1 className="text-display text-4xl sm:text-5xl lg:text-6xl">
-                    Ask, plan, and run agents from one reviewable browser workbench.
+                    Ask, plan, and run agents from one reviewable browser IDE.
                   </h1>
 
                   <p className="max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-                    Panda is a browser-first AI coding workbench with server fallback. Ask for
+                    Panda is a browser-first AI coding IDE with server fallback. Ask for
                     understanding, create reviewable plans, then run Agent in Guided or Autopilot
-                    mode while workbench-owned files, approvals, receipts, changed work, and
+                    mode while editor-owned files, approvals, receipts, changed work, and
                     checkpoints stay attached to one project session.
                   </p>
 
                   <div className="flex flex-wrap gap-3">
                     <Link href="/projects">
                       <Button className="shadow-sharp-md rounded-none font-mono tracking-wide">
-                        Open the Workbench
+                        Open Panda IDE
                         <ArrowRight size={16} className="ml-2" />
                       </Button>
                     </Link>
@@ -187,7 +187,7 @@ export default function EducationPage() {
                       <Wrench size={16} className="mt-0.5 shrink-0 text-primary" />
                       <div>
                         <p className="font-mono text-xs uppercase tracking-wide">
-                          Workspace holds the active work
+                          Editor holds the active work
                         </p>
                         <p className="text-sm text-muted-foreground">
                           Edit files, inspect diffs, review changed work, and run commands beside
@@ -211,7 +211,7 @@ export default function EducationPage() {
                       <Shield size={16} className="mt-0.5 shrink-0 text-primary" />
                       <div>
                         <p className="font-mono text-xs uppercase tracking-wide">
-                          Proof rail reviews state
+                          Inspector rail reviews state
                         </p>
                         <p className="text-sm text-muted-foreground">
                           Inspect run events, receipts, plans, changes, memory, delegated work, and
@@ -288,11 +288,11 @@ export default function EducationPage() {
                   </span>
                 </div>
                 <h2 className="text-4xl font-bold leading-[1.1] -tracking-[0.025em]">
-                  The operating surfaces of the Panda workbench
+                  The operating surfaces of the Panda IDE
                 </h2>
               </div>
               <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                Explorer {'->'} Work {'->'} Chat {'->'} Proof / Changes / Context
+                Explorer {'->'} Editor {'->'} Chat {'->'} Run / Changes / Context
               </div>
             </div>
 
@@ -358,8 +358,8 @@ export default function EducationPage() {
               </h2>
               <p className="mt-4 max-w-2xl text-muted-foreground">
                 Panda&apos;s default workflow is simple: orient the project, choose the right mode,
-                review the execution contract, approve gated work, inspect proof, then verify or
-                resume without losing the active thread.
+                review the execution contract, approve gated work, inspect run evidence, then verify
+                or resume without losing the active thread.
               </p>
             </div>
 
@@ -437,7 +437,7 @@ export default function EducationPage() {
                       <FileSearch size={14} className="text-primary" /> Route
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Route selected files into the workspace and the next agent turn.
+                      Route selected files into the Editor and the next agent turn.
                     </p>
                   </div>
                 </div>
@@ -452,7 +452,7 @@ export default function EducationPage() {
           </div>
         </section>
 
-        {/* Workspace */}
+        {/* Editor */}
         <section id="work" className="border-y border-border py-20 lg:py-24">
           <div className="container">
             <div className="mb-8 grid gap-6 lg:grid-cols-12">
@@ -460,7 +460,7 @@ export default function EducationPage() {
                 <div className="mb-4 flex items-center gap-3">
                   <Monitor size={16} className="text-primary" />
                   <span className="font-mono text-xs uppercase tracking-[0.06em] text-muted-foreground">
-                    Work
+                    Editor
                   </span>
                 </div>
                 <h2 className="text-4xl font-bold leading-[1.1] -tracking-[0.025em]">
@@ -469,8 +469,8 @@ export default function EducationPage() {
               </div>
               <div className="lg:col-span-8">
                 <p className="text-base leading-relaxed text-muted-foreground">
-                  The Work surface combines file tabs, editor state, generated-file review, Review
-                  Diff, terminal execution, run proof, and timeline context. Browser execution is
+                  The Editor surface combines file tabs, editor state, generated-file review, Review
+                  Diff, terminal execution, run evidence, and timeline context. Browser execution is
                   preferred when available, and server fallback keeps command work unblocked.
                 </p>
                 <div className="mt-4 border border-border bg-background p-4">
@@ -478,8 +478,9 @@ export default function EducationPage() {
                     Responsive layout
                   </div>
                   <p className="text-sm leading-relaxed text-muted-foreground">
-                    Desktop uses resizable panels. Smaller screens preserve the same Explorer, Work,
-                    Chat, and Support Rail model without forcing you out of the project session.
+                    Desktop uses resizable panels. Smaller screens preserve the same Explorer,
+                    Editor, Chat, and Inspector Rail model without forcing you out of the project
+                    session.
                   </p>
                 </div>
               </div>
@@ -557,7 +558,7 @@ export default function EducationPage() {
           </div>
         </section>
 
-        {/* Support Rail */}
+        {/* Inspector Rail */}
         <section id="inspector" className="border-y border-border py-20 lg:py-24">
           <div className="container">
             <div className="mb-8 grid gap-6 lg:grid-cols-12">
@@ -565,23 +566,23 @@ export default function EducationPage() {
                 <div className="mb-4 flex items-center gap-3">
                   <Shield size={16} className="text-primary" />
                   <span className="font-mono text-xs uppercase tracking-[0.06em] text-muted-foreground">
-                    Support Rail
+                    Inspector Rail
                   </span>
                 </div>
                 <h2 className="text-4xl font-bold leading-[1.1] -tracking-[0.025em]">
-                  Review proof, changes, context, and next steps
+                  Review run evidence, changes, context, and next steps
                 </h2>
               </div>
               <div className="lg:col-span-8">
                 <p className="text-base leading-relaxed text-muted-foreground">
-                  Panda&apos;s support rail keeps Proof, Changes, and Context close to the active
+                  Panda&apos;s inspector rail keeps Run, Changes, and Context close to the active
                   chat. Inspect run events, receipts, checkpoints, saved plans, changed work,
                   project memory, delegated work, and recovery signals without leaving the project
                   session.
                 </p>
                 <div className="mt-6 grid gap-4 sm:grid-cols-3">
                   <div className="border border-border bg-background p-4">
-                    <div className="mb-2 font-mono text-xs font-bold text-primary">PROOF</div>
+                    <div className="mb-2 font-mono text-xs font-bold text-primary">RUN</div>
                     <p className="text-sm text-muted-foreground">
                       Inspect run events, receipts, approvals, checkpoints, and recovery state.
                     </p>
@@ -691,7 +692,7 @@ export default function EducationPage() {
                       Use the chat actions menu to open run history or share the active thread.
                     </li>
                     <li>
-                      Open the support rail when you need Proof, Changes, Context, receipts,
+                      Open the inspector rail when you need Run, Changes, Context, receipts,
                       checkpoints, delegated work, or memory without leaving the project page.
                     </li>
                     <li>Review the plan before starting a larger Agent run.</li>
@@ -708,13 +709,13 @@ export default function EducationPage() {
                 <div className="shadow-sharp-md surface-1 border border-border p-5">
                   <h2 className="mb-3 text-xl font-semibold">Ready to try it?</h2>
                   <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
-                    Panda keeps navigation, editing, execution, approval, proof, and changed-work
-                    review in one synchronized browser workbench. The objective stays visible while
-                    the work moves.
+                    Panda keeps navigation, editing, execution, approval, run evidence, and
+                    changed-work review in one synchronized browser IDE. The objective stays visible
+                    while the work moves.
                   </p>
                   <Link href="/projects">
                     <Button className="rounded-none font-mono tracking-wide">
-                      Open the Workbench
+                      Open Panda IDE
                       <ArrowRight size={16} className="ml-2" />
                     </Button>
                   </Link>
@@ -769,7 +770,7 @@ export default function EducationPage() {
             </p>
             <Link href="/projects">
               <Button className="shadow-sharp-md rounded-none font-mono tracking-wide">
-                Launch the Workbench
+                Launch Panda IDE
                 <ArrowRight size={16} className="ml-2" />
               </Button>
             </Link>

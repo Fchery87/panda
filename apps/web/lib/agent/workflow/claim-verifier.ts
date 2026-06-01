@@ -31,7 +31,9 @@ function parseOutput(output: string | undefined): Record<string, unknown> | null
   return safeJSONParse<Record<string, unknown>>(output, null)
 }
 
-function getWriteFilePaths(payload: Record<string, unknown> | null): Array<{ path: string; success: boolean }> {
+function getWriteFilePaths(
+  payload: Record<string, unknown> | null
+): Array<{ path: string; success: boolean }> {
   const files = payload?.files
   if (!Array.isArray(files)) return []
   return files.flatMap((file) => {
@@ -69,7 +71,9 @@ export function verifyClaim(input: ClaimVerificationInput): ClaimVerificationRes
 
   if (input.kind === 'command_run' || input.kind === 'test_result') {
     const commandEvents = input.runEvents.filter((event) => event.toolName === 'run_command')
-    const matching = commandEvents.find((event) => String(event.args?.command ?? '') === input.target)
+    const matching = commandEvents.find(
+      (event) => String(event.args?.command ?? '') === input.target
+    )
     if (!matching) {
       errors.push(`no run_command receipt for ${input.target}`)
       return { kind: input.kind, target: input.target, status: 'unverified', evidence, errors }
@@ -89,7 +93,9 @@ export function verifyClaim(input: ClaimVerificationInput): ClaimVerificationRes
   return { kind: input.kind, target: input.target, status: 'unverified', evidence, errors }
 }
 
-export function successVerbForClaim(result: ClaimVerificationResult): 'created' | 'attempted' | 'unverified' | 'failed' {
+export function successVerbForClaim(
+  result: ClaimVerificationResult
+): 'created' | 'attempted' | 'unverified' | 'failed' {
   if (result.status === 'verified') return 'created'
   if (result.status === 'attempted') return 'attempted'
   if (result.status === 'failed') return 'failed'

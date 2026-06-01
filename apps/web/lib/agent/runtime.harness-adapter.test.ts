@@ -223,8 +223,7 @@ describe('Harness adapter guardrail parity', () => {
     expect(taskResult?.toolResult?.output).toContain('Custom design review complete')
     expect(
       events.some(
-        (e) =>
-          e.type === 'subagent_summary' && e.subagentSummary?.name === 'design-reviewer-custom'
+        (e) => e.type === 'subagent_summary' && e.subagentSummary?.name === 'design-reviewer-custom'
       )
     ).toBe(true)
   })

@@ -8,7 +8,7 @@ const baseSession: ExecutionSessionViewModel = {
   statusLabel: 'Executing',
   tone: 'progress',
   summary: 'Editing workspace shell',
-  nextStep: 'Monitor progress and inspect proof.',
+  nextStep: 'Monitor progress and inspect run evidence.',
   primaryAction: { id: 'open_run', label: 'Open Run' },
   changedWork: { count: 2, label: '2 changed files ready for review.', needsReview: true },
   proof: { label: 'Run active', detail: 'Editing workspace shell', hasActiveRun: true },
@@ -42,7 +42,7 @@ const baseSession: ExecutionSessionViewModel = {
     branches: '1 running, 0 blocked, 1 complete.',
     trace: 'Trace live: run events are available for review.',
     checkpoint: 'Checkpoint: no recoverable runtime checkpoint attached.',
-    nextAction: 'Monitor progress and inspect proof.',
+    nextAction: 'Monitor progress and inspect run evidence.',
   },
 }
 
@@ -76,7 +76,7 @@ describe('buildExecutionSessionTimelineRows', () => {
     expect(rows.at(-1)).toEqual(
       expect.objectContaining({
         title: 'Next Action',
-        summary: 'Monitor progress and inspect proof.',
+        summary: 'Monitor progress and inspect run evidence.',
       })
     )
     expect(rows.find((row) => row.kind === 'branches')?.items).toEqual([
@@ -120,8 +120,8 @@ describe('buildExecutionSessionTimelineRows', () => {
       tone: 'attention',
       summary: 'Which billing provider should Panda integrate?',
       proof: {
-        label: 'No run proof yet',
-        detail: 'Proof appears after execution.',
+        label: 'No run evidence yet',
+        detail: 'Run evidence appears after execution.',
         hasActiveRun: false,
       },
       changedWork: { count: 0, label: 'No changed files in this session yet.', needsReview: false },

@@ -430,5 +430,4 @@ describe('buildExecutionReceipt', () => {
     expect(receipt.contextGuard?.indexedChunks).toBe(5)
     expect(receipt.contextGuard?.sources[0]?.sourceId).toBe('tool:tool-1:command-output')
   })
-
 })

@@ -9,7 +9,9 @@ describe('useAgent cleanup wiring', () => {
     expect(content).toContain('const stopRef = useRef(stop)')
     expect(content).toContain('stopRef.current = stop')
     expect(content).toContain('stopRef.current()')
-    expect(content).toContain('aborting the active Panda run even though the component is still mounted')
+    expect(content).toContain(
+      'aborting the active Panda run even though the component is still mounted'
+    )
     expect(content).not.toContain('}, [stop, runEventBufferCleanup])')
   })
 })

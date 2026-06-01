@@ -54,7 +54,10 @@ async function assertCapabilityPresetAllowed(
   }
 }
 
-async function assertCustomSubagentLimit(ctx: QueryCtx | MutationCtx, userId: Awaited<ReturnType<typeof resolveUserId>>) {
+async function assertCustomSubagentLimit(
+  ctx: QueryCtx | MutationCtx,
+  userId: Awaited<ReturnType<typeof resolveUserId>>
+) {
   const adminSettings = await assertSubagentsEnabled(ctx)
   const limit = adminSettings?.maxCustomSubagentsPerUser
   if (typeof limit !== 'number' || limit <= 0) return

@@ -40,7 +40,7 @@ describe('Convex bandwidth guards', () => {
     )
 
     expect(listMetadataBody).toContain("query('fileMetadata')")
-    expect(listMetadataBody).not.toContain("api.files.list")
+    expect(listMetadataBody).not.toContain('api.files.list')
   })
 
   test('keeps UI progress surfaces off full runtime checkpoint queries', () => {
@@ -83,11 +83,30 @@ describe('Convex bandwidth guards', () => {
     const agentRuns = readFileSync(join(repoRoot, 'convex/agentRuns.ts'), 'utf8')
     const sharing = readFileSync(join(repoRoot, 'convex/sharing.ts'), 'utf8')
 
-    expect(files.slice(files.indexOf('@deprecated'), files.indexOf('export const list'))).toContain('Legacy compatibility query')
-    expect(messages.slice(messages.indexOf('@deprecated'), messages.indexOf('export const list'))).toContain('listPaginatedLite')
-    expect(messages.slice(messages.indexOf('export const listPaginated') - 250, messages.indexOf('export const listPaginated'))).toContain('@deprecated')
-    expect(agentRuns.slice(agentRuns.indexOf('export const listRuntimeCheckpoints') - 350, agentRuns.indexOf('export const listRuntimeCheckpoints'))).toContain('@deprecated')
-    expect(sharing.slice(sharing.indexOf('export const getSharedChat') - 300, sharing.indexOf('export const getSharedChat'))).toContain('@deprecated')
+    expect(files.slice(files.indexOf('@deprecated'), files.indexOf('export const list'))).toContain(
+      'Legacy compatibility query'
+    )
+    expect(
+      messages.slice(messages.indexOf('@deprecated'), messages.indexOf('export const list'))
+    ).toContain('listPaginatedLite')
+    expect(
+      messages.slice(
+        messages.indexOf('export const listPaginated') - 250,
+        messages.indexOf('export const listPaginated')
+      )
+    ).toContain('@deprecated')
+    expect(
+      agentRuns.slice(
+        agentRuns.indexOf('export const listRuntimeCheckpoints') - 350,
+        agentRuns.indexOf('export const listRuntimeCheckpoints')
+      )
+    ).toContain('@deprecated')
+    expect(
+      sharing.slice(
+        sharing.indexOf('export const getSharedChat') - 300,
+        sharing.indexOf('export const getSharedChat')
+      )
+    ).toContain('@deprecated')
   })
 
   test('keeps admin operational cleanup bounded and source-of-truth safe', () => {

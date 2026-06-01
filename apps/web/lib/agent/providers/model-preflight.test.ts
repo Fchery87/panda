@@ -49,7 +49,9 @@ describe('buildModelPreflight', () => {
     })
 
     expect(preflight.tone).toBe('warning')
-    expect(preflight.modeSupport).toBe('Agent · Guided mode needs tool support; this model is unverified.')
+    expect(preflight.modeSupport).toBe(
+      'Agent · Guided mode needs tool support; this model is unverified.'
+    )
     expect(preflight.toolGrammar).toBe('Tool grammar: no verified grammar')
     expect(preflight.context).toBe('Context: 32000 tokens from fallback estimate')
     expect(preflight.cost).toBe('Cost visibility: pricing unavailable')

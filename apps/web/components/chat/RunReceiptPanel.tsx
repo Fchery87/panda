@@ -91,7 +91,7 @@ export function RunReceiptPanel({ receipt }: RunReceiptPanelProps) {
 
   return (
     <div className="space-y-2">
-      <ReceiptSection title="Owner proof summary" tone="primary">
+      <ReceiptSection title="Owner run summary" tone="primary">
         <div className="grid gap-2 sm:grid-cols-3">
           <ReceiptMetric label="Outcome" value={receipt.resultStatus} />
           <ReceiptMetric label="Validation" value={validationSummary(receipt)} />

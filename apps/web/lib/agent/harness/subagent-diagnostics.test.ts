@@ -5,7 +5,7 @@ import { join } from 'node:path'
 const runtimeSource = readFileSync(join(import.meta.dir, 'runtime.ts'), 'utf8')
 const typesSource = readFileSync(join(import.meta.dir, 'types.ts'), 'utf8')
 const inspectorSource = readFileSync(
-  join(import.meta.dir, '../../../components/projects/ProjectChatInspector.tsx'),
+  join(import.meta.dir, '../../../components/chat/inspector/InspectorRunContent.tsx'),
   'utf8'
 )
 const panelSource = readFileSync(
@@ -16,7 +16,14 @@ const panelSource = readFileSync(
 describe('subagent structured diagnostics', () => {
   test('defines and emits structured subagent error categories', () => {
     expect(typesSource).toContain('export type HarnessSubagentErrorCategory')
-    for (const category of ['registry', 'policy', 'isolation', 'runtime', 'persistence', 'unknown']) {
+    for (const category of [
+      'registry',
+      'policy',
+      'isolation',
+      'runtime',
+      'persistence',
+      'unknown',
+    ]) {
       expect(typesSource).toContain(`'${category}'`)
     }
     expect(typesSource).toContain('errorCategory?: HarnessSubagentErrorCategory')

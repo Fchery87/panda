@@ -20,9 +20,7 @@ describe('advisor reviewer automation helpers', () => {
 
   test('parses valid reviewer JSON and conservatively handles malformed output', () => {
     expect(
-      parseAdvisorReviewerOutput(
-        '{"status":"approved","summary":"Safe.","risks":[]}'
-      )
+      parseAdvisorReviewerOutput('{"status":"approved","summary":"Safe.","risks":[]}')
     ).toEqual({ status: 'approved', summary: 'Safe.', risks: [] })
 
     const fallback = parseAdvisorReviewerOutput('not json')

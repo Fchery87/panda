@@ -22,7 +22,10 @@ export function buildAdvisorPreflight(input: AdvisorPreflightInput): AdvisorPref
       required: false,
       gates,
       status: 'clear',
-      message: gates.length > 0 ? `Advisor gates detected but not required by policy: ${gates.join(', ')}` : 'No advisor gates detected.',
+      message:
+        gates.length > 0
+          ? `Advisor gates detected but not required by policy: ${gates.join(', ')}`
+          : 'No advisor gates detected.',
     }
   }
 

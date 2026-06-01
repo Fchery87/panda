@@ -5,10 +5,10 @@ import type { ReactNode } from 'react'
 import type { SidebarSection } from './SidebarRail'
 
 const SECTION_LABELS: Record<SidebarSection, string> = {
-  files: 'Project Files',
-  agents: 'Agent Runs',
-  search: 'Find Context',
-  git: 'Source Review',
+  files: 'Explorer',
+  agents: 'Runs',
+  search: 'Search',
+  git: 'Source Control',
   tasks: 'Sessions',
 }
 
@@ -35,7 +35,7 @@ export function SidebarFlyout({ isOpen, activeSection, children }: SidebarFlyout
           animate={{ width: 240, opacity: 1 }}
           exit={{ width: 0, opacity: 0 }}
           transition={{ duration: 0.18, ease: 'easeOut' }}
-          className="bg-card h-full flex-shrink-0 overflow-hidden border-r border-border"
+          className="h-full flex-shrink-0 overflow-hidden border-r border-border bg-card"
         >
           <div className="flex h-full flex-col" style={{ width: 240 }}>
             <div className="shrink-0 border-b border-border bg-card px-3 py-2.5">

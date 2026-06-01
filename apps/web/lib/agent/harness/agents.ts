@@ -773,14 +773,16 @@ When exploring code, ensure your generated documentation strictly matches the ac
 function inferDefaultContextMode(config: AgentConfig): 'fresh' | 'fork' | undefined {
   if (config.defaultContextMode) return config.defaultContextMode
   if (config.mode !== 'subagent' && config.mode !== 'all') return undefined
-  const canMutate = config.permission.write_files === 'allow' || config.permission.run_command === 'allow'
+  const canMutate =
+    config.permission.write_files === 'allow' || config.permission.run_command === 'allow'
   return canMutate ? 'fork' : 'fresh'
 }
 
 function inferDefaultIsolationMode(config: AgentConfig): AgentConfig['defaultIsolationMode'] {
   if (config.defaultIsolationMode) return config.defaultIsolationMode
   if (config.mode !== 'subagent' && config.mode !== 'all') return undefined
-  const canMutate = config.permission.write_files === 'allow' || config.permission.run_command === 'allow'
+  const canMutate =
+    config.permission.write_files === 'allow' || config.permission.run_command === 'allow'
   return canMutate ? 'patch-proposal' : 'shared-readonly'
 }
 

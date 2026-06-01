@@ -19,7 +19,10 @@ function slugify(value: string): string {
 }
 
 export function buildWorkflowArtifactMaterializedPath(
-  artifact: Pick<WorkflowArtifactMaterializationInput, 'chatId' | 'artifactId' | 'kind' | 'title' | 'createdAt'>
+  artifact: Pick<
+    WorkflowArtifactMaterializationInput,
+    'chatId' | 'artifactId' | 'kind' | 'title' | 'createdAt'
+  >
 ): string {
   const timestamp = new Date(artifact.createdAt ?? Date.now()).toISOString().replace(/[:.]/g, '-')
   return `.panda/artifacts/${artifact.chatId}/${artifact.kind}/${timestamp}-${slugify(artifact.title)}-${artifact.artifactId.slice(-8)}.md`

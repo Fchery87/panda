@@ -7,13 +7,16 @@
 
 ## Objective
 
-Create a shared architecture contract for Panda's runtime, chat, provider streaming, reasoning, tool execution, persistence, and workspace surfaces before changing behavior.
+Create a shared architecture contract for Panda's runtime, chat, provider
+streaming, reasoning, tool execution, persistence, and workspace surfaces before
+changing behavior.
 
 This phase is documentation-first. It should not alter runtime behavior.
 
 ## Why This Phase Comes First
 
-Panda already has many mature pieces, but their responsibilities are spread across several layers:
+Panda already has many mature pieces, but their responsibilities are spread
+across several layers:
 
 - `ChatInput.tsx`
 - `useProjectMessageWorkflow.ts`
@@ -100,7 +103,8 @@ Provider chunk
 
 ## Acceptance Criteria
 
-- [x] Architecture document exists: `docs/PANDA_RUNTIME_AND_WORKSPACE_MODERNIZATION_PLAN.md`.
+- [x] Architecture document exists:
+      `docs/PANDA_RUNTIME_AND_WORKSPACE_MODERNIZATION_PLAN.md`.
 - [x] It clearly defines current and target lifecycle.
 - [x] It states surface ownership rules.
 - [x] It states reasoning safety rules.

@@ -7,7 +7,8 @@
 
 ## Objective
 
-Reduce visual and conceptual crowding by enforcing clear ownership between Panda's major surfaces.
+Reduce visual and conceptual crowding by enforcing clear ownership between
+Panda's major surfaces.
 
 ## Surface Ownership Policy
 

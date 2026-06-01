@@ -131,25 +131,25 @@ describe('artifact execution helpers', () => {
 
     try {
       await applyArtifact({
-      artifactId: 'artifact_1' as never,
-      action: {
-        type: 'command_run',
-        payload: { command: 'rm -rf tmp' },
-      },
-      projectId: 'project_1' as never,
-      convex: { query: async () => null } as never,
-      upsertFile: (async () => undefined) as never,
-      createAndExecuteJob: (async (args: { command: string }) => {
-        commands.push(args.command)
-        return { jobId: 'job_1' as never }
-      }) as never,
-      updateJobStatus: (async () => undefined) as never,
-      updateArtifactStatus: (async () => undefined) as never,
-      advisorPolicy: {
-        enabled: true,
-        requiredFor: ['destructive_command'],
-        reasoningEffort: 'high',
-      },
+        artifactId: 'artifact_1' as never,
+        action: {
+          type: 'command_run',
+          payload: { command: 'rm -rf tmp' },
+        },
+        projectId: 'project_1' as never,
+        convex: { query: async () => null } as never,
+        upsertFile: (async () => undefined) as never,
+        createAndExecuteJob: (async (args: { command: string }) => {
+          commands.push(args.command)
+          return { jobId: 'job_1' as never }
+        }) as never,
+        updateJobStatus: (async () => undefined) as never,
+        updateArtifactStatus: (async () => undefined) as never,
+        advisorPolicy: {
+          enabled: true,
+          requiredFor: ['destructive_command'],
+          reasoningEffort: 'high',
+        },
         advisorApproved: true,
       })
     } finally {

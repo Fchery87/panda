@@ -6,7 +6,10 @@ import { useMutation, useQuery } from 'convex/react'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { Button } from '@/components/ui/button'
-import { buildAdvisorReviewRequestCompletion, executeAdvisorReviewRequest } from '@/lib/agent/workflow'
+import {
+  buildAdvisorReviewRequestCompletion,
+  executeAdvisorReviewRequest,
+} from '@/lib/agent/workflow'
 
 type AdvisorReviewRequestRecord = {
   _id: string
@@ -42,7 +45,7 @@ export function AdvisorReviewRequestsList({
   const pending = requests.filter((request) => request.status === 'pending')
   if (pending.length === 0) {
     return (
-      <div className="border border-dashed border-border bg-muted/20 p-3 text-xs text-muted-foreground">
+      <div className="bg-muted/20 border border-dashed border-border p-3 text-xs text-muted-foreground">
         No pending advisor review requests.
       </div>
     )
@@ -55,7 +58,7 @@ export function AdvisorReviewRequestsList({
         const isPromptExpanded = expandedPromptId === request._id
         const isRunning = runningRequestIds.has(request._id)
         return (
-          <article key={request._id} className="border border-border bg-background/80 p-3 text-xs">
+          <article key={request._id} className="bg-background/80 border border-border p-3 text-xs">
             <div className="flex items-center justify-between gap-2">
               <span className="font-medium text-foreground">Pending advisor request</span>
               <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -64,12 +67,17 @@ export function AdvisorReviewRequestsList({
             </div>
             <div className="mt-2 flex flex-wrap gap-1">
               {request.gates.map((gate) => (
-                <span key={gate} className="border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+                <span
+                  key={gate}
+                  className="bg-muted/40 border border-border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground"
+                >
                   {gate}
                 </span>
               ))}
             </div>
-            <p className={`mt-2 font-mono text-[10px] text-muted-foreground ${isPromptExpanded ? '' : 'line-clamp-3'}`}>
+            <p
+              className={`mt-2 font-mono text-[10px] text-muted-foreground ${isPromptExpanded ? '' : 'line-clamp-3'}`}
+            >
               {request.prompt}
             </p>
             <div className="mt-2 flex gap-2">
@@ -140,7 +148,7 @@ export function AdvisorReviewRequestsList({
                   <>
                     <textarea
                       className="min-h-24 w-full border border-border bg-background p-2 font-mono text-[10px] text-foreground outline-none"
-                      placeholder='Paste advisor-reviewer JSON output here...'
+                      placeholder="Paste advisor-reviewer JSON output here..."
                       value={reviewerOutput}
                       onChange={(event) => setReviewerOutput(event.target.value)}
                     />

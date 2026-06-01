@@ -8,11 +8,11 @@ const session: ExecutionSessionViewModel = {
   statusLabel: 'Changes ready',
   tone: 'success',
   summary: '2 changed files ready for review.',
-  nextStep: 'Inspect the changed work and proof before continuing.',
+  nextStep: 'Inspect the changed work and run evidence before continuing.',
   primaryAction: { id: 'review_changes', label: 'Inspect Changes' },
   changedWork: { count: 2, label: '2 changed files ready for review.', needsReview: true },
   proof: {
-    label: 'Proof ready',
+    label: 'Run evidence ready',
     detail: 'Review run evidence, receipts, and validation before continuing.',
     hasActiveRun: false,
   },
@@ -29,7 +29,7 @@ const session: ExecutionSessionViewModel = {
     outcomes: [],
   },
   scanSignals: [
-    { label: 'Run', value: 'Proof ready', tone: 'success' },
+    { label: 'Run', value: 'Run evidence ready', tone: 'success' },
     { label: 'Approval', value: 'Clear', tone: 'neutral' },
     { label: 'Changes', value: '2', tone: 'success' },
     { label: 'Branches', value: 'No parallel branches active.', tone: 'neutral' },
@@ -43,19 +43,19 @@ const session: ExecutionSessionViewModel = {
     branches: 'No parallel branches active.',
     trace: 'Trace live: run events are available for review.',
     checkpoint: 'Checkpoint: no recoverable runtime checkpoint attached.',
-    nextAction: 'Inspect the changed work and proof before continuing.',
+    nextAction: 'Inspect the changed work and run evidence before continuing.',
   },
 }
 
 describe('buildExecutionSessionInspectorViewModel', () => {
-  test('labels proof as a session inspector surface', () => {
+  test('labels run evidence as a session inspector surface', () => {
     expect(buildExecutionSessionInspectorViewModel('proof', session)).toEqual({
       eyebrow: 'Execution Session Inspector',
-      title: 'Session Proof',
+      title: 'Session Run',
       summary:
         'Ship the transcript policy update: Review run evidence, receipts, and validation before continuing.',
-      emptyTitle: 'No run proof yet',
-      emptyDetail: 'Proof appears after Panda executes work in this session.',
+      emptyTitle: 'No run evidence yet',
+      emptyDetail: 'Run evidence appears after Panda executes work in this session.',
     })
   })
 

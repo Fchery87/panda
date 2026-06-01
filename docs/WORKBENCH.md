@@ -1,44 +1,56 @@
 # Panda Workbench
 
-> Status: current guide  
-> Last updated: 2026-05-22  
-> Scope: project workspace layout, file opening, generated-file review, right support rail, mobile workspace destinations
+> Status: current guide Last updated: 2026-05-30 Scope: project workspace
+> layout, file opening, generated-file review, inspector rail, mobile workspace
+> destinations
 
-Panda uses a workbench-owned file model. The central workbench is the canonical place to view, edit, and review files. Chat captures intent and the narrative record. The right rail supports review and recovery; it does not own file work.
+Panda uses a workbench-owned file model. The editor/workbench region is the
+canonical place to view, edit, and review files. Chat captures intent and the
+narrative record. The inspector rail supports run evidence, review, context, and
+recovery; it does not own file work.
 
 ## Current Product Contract
 
-- Every explicit file click opens in the central workbench.
+- Every explicit file click opens in the central editor/workbench region.
 - Plan Mode documents may auto-open after planning completes.
 - Non-plan generated files do not auto-open and do not steal focus.
-- Generated files appear in the file tree, Changes, and Review Diff.
+- Generated files appear in Explorer, Changes, and Review Diff.
 - Diffs are reviewed centrally in Review Diff.
-- The right support rail is `Proof`, `Changes`, and `Context`.
-- Mobile workspace destinations are `Work`, `Chat`, `Proof`, and `Changes`.
-- Panda does not currently require a live-preview/browser-proof destination.
+- Desktop Agent · Guided (`code`) keeps editor and chat visible together; mode
+  changes adjust emphasis, not ownership.
+- The inspector rail is `Run`, `Changes`, and `Context` and is collapsed by
+  default unless opened by the user or a review-needed event.
+- Mobile workspace destinations are `Editor`, `Chat`, `Run`, and `Changes`.
+- Panda does not currently require a live-preview/browser-validation
+  destination.
 
 ## Surface Ownership
 
-| Surface | Owns | Does not own |
-|---|---|---|
-| Workbench | File tabs, editing, plan review, central Review Diff | Run proof, context inventory, recovery timeline |
-| Chat | User intent, mode selection, session narrative, compact run summaries | Full tool logs, full receipts, full file review |
-| Proof | Validation evidence, walkthrough, checkpoints, recovery affordances | Editing files or replacing Review Diff |
-| Changes | Compact generated-change navigation and status | Per-file editing or full diff review |
-| Context | Plan/context/spec/memory inputs and audit state | Generated-file editing |
-| File tree | Project file source of truth and generated/change badges | Applying or rejecting generated artifacts directly |
+| Surface            | Owns                                                                                         | Does not own                                       |
+| ------------------ | -------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Editor / Workbench | File tabs, editing, plan review, central Review Diff                                         | Run evidence, context inventory, recovery timeline |
+| Chat               | User intent, mode selection, session narrative, compact run summaries                        | Full tool logs, full receipts, full file review    |
+| Run                | Validation evidence, walkthrough, checkpoints, recovery affordances                          | Editing files or replacing Review Diff             |
+| Changes            | Compact generated-change navigation and status                                               | Per-file editing or full diff review               |
+| Context            | Plan/context/spec/memory/eval inputs, `.panda/rules/*`, `.panda/hooks.json`, and audit state | Generated-file editing                             |
+| Explorer           | Project file source of truth and generated/change badges                                     | Applying or rejecting generated artifacts directly |
 
 ## File Opening Rules
 
-File-opening entry points should route through the same workbench selection behavior:
+File-opening entry points should route through the same workbench selection
+behavior:
 
-1. Set the workspace focus to `workbench`.
+1. Set workspace emphasis/focus compatibility state to `workbench`.
 2. Set the center tab to `editor`.
-3. Set the mobile primary panel to `work`.
+3. Set the mobile primary panel to `work` until the internal mobile ID is
+   migrated.
 4. Select the file path.
 5. Add or focus the file tab.
 
-This applies to source files, Markdown files, generated files, artifact links, Changes links, Proof links, Context links, and diff-to-file navigation.
+This applies to source files, Markdown files, generated files, artifact links,
+Changes links, Run links, Context links, and diff-to-file navigation. On
+desktop, this must not hide the chat dock during normal Agent · Guided work; it
+only adjusts emphasis/default sizing.
 
 ## Generated Files
 
@@ -46,13 +58,15 @@ Generated non-plan files should be discoverable without causing tab spam.
 
 Expected behavior:
 
-- file tree shows pending/generated/modified state
+- Explorer shows pending/generated/modified state
 - Changes shows compact status and navigation
 - Review Diff shows the central diff and accept/reject actions
 - explicit `Open File` opens the file in the workbench
 - generated non-plan files do not auto-open when artifacts arrive
 
-Plan documents are the exception because they are the approval handoff. When Plan Mode completes, the generated plan document should open in the workbench and focus the editor surface.
+Plan documents are the exception because they are the approval handoff. When
+Plan Mode completes, the generated plan document should open in the workbench
+and focus the editor surface.
 
 ## Review Diff
 
@@ -65,11 +79,12 @@ It should support:
 - per-file open navigation
 - hunk-to-file navigation
 - accept/reject wiring through artifact IDs when available
-- recovery affordance that routes to Proof/checkpoints instead of duplicating restore logic
+- recovery affordance that routes to Run/checkpoints instead of duplicating
+  restore logic
 
-## Proof And Recovery
+## Run Evidence And Recovery
 
-Proof should summarize what happened and how to recover:
+Run should summarize what happened and how to recover:
 
 - latest run receipt
 - files written
@@ -79,11 +94,15 @@ Proof should summarize what happened and how to recover:
 - runtime/checkpoint state
 - snapshot timeline and restore actions
 
-Proof is the correct place for recovery and walkthrough evidence. Browser screenshots, DOM checks, console/network checks, and visual live-preview proof are intentionally out of scope unless Panda reintroduces a browser preview feature.
+Run is the correct place for recovery and walkthrough evidence. Browser
+screenshots, DOM checks, console/network checks, and visual live-preview
+validation are intentionally out of scope unless Panda reintroduces a browser
+preview feature.
 
 ## Plan Documents
 
-Plan documents render with `.plan.md` conventions documented in [PLAN_DOCUMENT_FORMAT.md](./PLAN_DOCUMENT_FORMAT.md):
+Plan documents render with `.plan.md` conventions documented in
+[PLAN_DOCUMENT_FORMAT.md](./PLAN_DOCUMENT_FORMAT.md):
 
 - YAML frontmatter for metadata and task state
 - readable Markdown body
@@ -92,22 +111,25 @@ Plan documents render with `.plan.md` conventions documented in [PLAN_DOCUMENT_F
 - Review/Edit mode with Save Draft
 - Approve/Build behavior for registered plan artifacts
 
-Current implementation still uses synthetic `plan:<sessionId>` workbench paths for plan tabs. The intended follow-up is to persist registered plans as real `.panda/plans/*.plan.md` workspace files while preserving Approve/Build behavior.
+Current implementation still uses synthetic `plan:<sessionId>` workbench paths
+for plan tabs. The intended follow-up is to persist registered plans as real
+`.panda/plans/*.plan.md` workspace files while preserving Approve/Build
+behavior.
 
 ## Relevant Implementation Areas
 
-| Area | Files |
-|---|---|
-| Workspace shell | `apps/web/components/projects/ProjectWorkspaceLayout.tsx` |
-| Workbench | `apps/web/components/workbench/Workbench.tsx` |
-| Right rail | `apps/web/components/panels/RightPanel.tsx`, `apps/web/components/workbench/WorkbenchRightPanel.tsx` |
-| File tree | `apps/web/components/workbench/FileTree.tsx` |
-| File opening | `apps/web/hooks/useProjectWorkbenchFiles.ts` |
-| Plan auto-open | `apps/web/hooks/usePlanArtifactSync.ts` |
-| Generated artifact lifecycle | `apps/web/hooks/useArtifactLifecycle.ts` |
-| Diff review | `apps/web/components/workbench/DiffTab.tsx`, `apps/web/components/workbench/artifact-preview.ts` |
-| Plan rendering | `apps/web/components/workbench/PlanArtifactTab.tsx`, `apps/web/lib/planning/types.ts` |
-| Proof/walkthrough | `apps/web/components/projects/ProjectChatInspector.tsx` |
+| Area                         | Files                                                                                                |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Workspace shell              | `apps/web/components/projects/ProjectWorkspaceLayout.tsx`                                            |
+| Workbench                    | `apps/web/components/workbench/Workbench.tsx`                                                        |
+| Inspector rail               | `apps/web/components/panels/RightPanel.tsx`, `apps/web/components/workbench/WorkbenchRightPanel.tsx` |
+| Explorer                     | `apps/web/components/workbench/FileTree.tsx`                                                         |
+| File opening                 | `apps/web/hooks/useProjectWorkbenchFiles.ts`                                                         |
+| Plan auto-open               | `apps/web/hooks/usePlanArtifactSync.ts`                                                              |
+| Generated artifact lifecycle | `apps/web/hooks/useArtifactLifecycle.ts`                                                             |
+| Diff review                  | `apps/web/components/workbench/DiffTab.tsx`, `apps/web/components/workbench/artifact-preview.ts`     |
+| Plan rendering               | `apps/web/components/workbench/PlanArtifactTab.tsx`, `apps/web/lib/planning/types.ts`                |
+| Run/walkthrough              | `apps/web/components/projects/ProjectChatInspector.tsx`                                              |
 
 ## Validation Checklist
 

@@ -6,11 +6,15 @@
 
 ## 1. Purpose
 
-This document is the shared architecture contract for modernizing Panda's browser IDE, agent runtime, chat transcript, reasoning handling, tool execution visibility, persistence, and workspace layout.
+This document is the shared architecture contract for modernizing Panda's
+browser IDE, agent runtime, chat transcript, reasoning handling, tool execution
+visibility, persistence, and workspace layout.
 
-Phase 0 is documentation-only. It intentionally does not change runtime behavior.
+Phase 0 is documentation-only. It intentionally does not change runtime
+behavior.
 
-The implementation strategy follows the Karpathy guidelines requested for this work:
+The implementation strategy follows the Karpathy guidelines requested for this
+work:
 
 - make the smallest useful change for the current phase,
 - avoid speculative abstractions,
@@ -63,11 +67,15 @@ Current behavior summary:
 1. `ChatInput` collects text, mentions, and attachments.
 2. `ProjectChatPanel` wires chat UI to the workspace runtime.
 3. `WorkspaceRuntimeProvider` exposes the active runtime/session state.
-4. `useProjectMessageWorkflow` handles chat selection, mode checks, provider checks, and send orchestration.
-5. `useAgent.sendMessage` creates local user/assistant state and starts the runtime.
+4. `useProjectMessageWorkflow` handles chat selection, mode checks, provider
+   checks, and send orchestration.
+5. `useAgent.sendMessage` creates local user/assistant state and starts the
+   runtime.
 6. `Runtime.run()` builds completion options and streams provider output.
-7. `useAgent-event-applier` applies runtime events to UI state and run-event persistence.
-8. Convex persists messages, run events, receipts, artifacts, and related execution metadata.
+7. `useAgent-event-applier` applies runtime events to UI state and run-event
+   persistence.
+8. Convex persists messages, run events, receipts, artifacts, and related
+   execution metadata.
 
 ## 3. Current Runtime Streaming Lifecycle
 
@@ -101,11 +109,14 @@ Current runtime behavior summary:
 
 Known improvement target:
 
-Panda's stream chunks work, but the assistant message lifecycle is still implicit. Later phases should introduce an explicit message lifecycle without breaking current provider adapters.
+Panda's stream chunks work, but the assistant message lifecycle is still
+implicit. Later phases should introduce an explicit message lifecycle without
+breaking current provider adapters.
 
 ## 4. Current Provider Chunk Contract
 
-The provider contract currently normalizes provider-specific behavior into shared chunks.
+The provider contract currently normalizes provider-specific behavior into
+shared chunks.
 
 Example target mapping:
 
@@ -118,9 +129,12 @@ provider completion       → StreamChunk: finish
 provider error            → StreamChunk: error
 ```
 
-The OpenAI-compatible provider uses the Vercel AI SDK stream path and maps streaming parts into this contract.
+The OpenAI-compatible provider uses the Vercel AI SDK stream path and maps
+streaming parts into this contract.
 
-The contract should remain stable during early modernization phases. Later work should layer lifecycle events above this contract rather than replacing it immediately.
+The contract should remain stable during early modernization phases. Later work
+should layer lifecycle events above this contract rather than replacing it
+immediately.
 
 ## 5. Current Run-Event Persistence Path
 
@@ -162,7 +176,8 @@ Important files:
 - `convex/files.ts`
 - `apps/web/hooks/useAgent-event-applier.ts`
 
-Current persistence is already strong. Modernization should be additive and compatibility-preserving.
+Current persistence is already strong. Modernization should be additive and
+compatibility-preserving.
 
 ## 6. Target Lifecycle Contract
 
@@ -188,14 +203,14 @@ assistant_message_failed
 
 Target event responsibility:
 
-| Layer | Responsibility |
-| --- | --- |
-| Provider chunk | Normalize provider-specific stream output. |
-| Runtime event | Represent agent/runtime activity. |
-| Message lifecycle event | Represent assistant message construction. |
-| UI state update | Keep local transcript/workspace responsive. |
-| Persisted event/block | Store durable evidence and transcript data. |
-| Transcript block | Render user-facing chat story. |
+| Layer                   | Responsibility                              |
+| ----------------------- | ------------------------------------------- |
+| Provider chunk          | Normalize provider-specific stream output.  |
+| Runtime event           | Represent agent/runtime activity.           |
+| Message lifecycle event | Represent assistant message construction.   |
+| UI state update         | Keep local transcript/workspace responsive. |
+| Persisted event/block   | Store durable evidence and transcript data. |
+| Transcript block        | Render user-facing chat story.              |
 
 This lifecycle should be introduced incrementally in later phases.
 
@@ -221,7 +236,8 @@ Workbench = files
 Terminal = commands
 ```
 
-Chat may show compact tool chips and run summaries, but detailed tool output belongs in Proof or the appropriate inspector surface.
+Chat may show compact tool chips and run summaries, but detailed tool output
+belongs in Proof or the appropriate inspector surface.
 
 ## 8. Reasoning Safety Policy
 
@@ -236,7 +252,8 @@ Allowed user-facing reasoning surfaces:
 - provider/model metadata,
 - progress/status labels.
 
-Provider-opaque reasoning metadata should be preserved where available, but not rendered as raw reasoning text by default.
+Provider-opaque reasoning metadata should be preserved where available, but not
+rendered as raw reasoning text by default.
 
 Target reasoning model for later phases:
 
@@ -261,7 +278,8 @@ This model is a target contract, not a Phase 0 code change.
 
 ## 9. Tool Output Display Policy
 
-Tool data should remain durable and inspectable, but chat should not become a raw log stream.
+Tool data should remain durable and inspectable, but chat should not become a
+raw log stream.
 
 Chat should show:
 

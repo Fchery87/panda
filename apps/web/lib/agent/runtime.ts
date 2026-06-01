@@ -35,7 +35,8 @@ import {
   InMemoryCheckpointStore,
   type CheckpointStore as HarnessCheckpointStore,
 } from './harness/checkpoint-store'
-import type { Permission as HarnessPermission } from './harness/types'
+import type { Permission as HarnessPermission, SubagentIsolationAdapter } from './harness/types'
+import type { UserHooksConfig } from './harness/user-hooks'
 import type { FormalSpecification, SpecTier } from './spec/types'
 import { mapToolCallToProgressStep, mapToolResultToProgressStep } from './runtime-progress'
 import { shouldTriggerRewrite } from './runtime/rewrite-guardrails'
@@ -62,6 +63,10 @@ export interface RuntimeOptions {
   harnessPermissionAudit?: (entry: HarnessPermissionAuditEntry) => void | Promise<void>
   /** User-scoped custom subagents available for delegated task execution. */
   harnessCustomSubagents?: CustomSubagentRecord[]
+  /** Optional snapshot/worktree isolation adapter for delegated child runtimes. */
+  harnessSubagentIsolationAdapter?: SubagentIsolationAdapter
+  /** Run-scoped declarative owner hooks loaded from .panda/hooks.json. */
+  harnessUserHooks?: UserHooksConfig
 }
 
 export type AgentEventType =
@@ -168,6 +173,7 @@ export interface RuntimeConfig {
   harnessEvalMode?: 'read_only' | 'full'
   harnessSpecApprovalMode?: 'interactive' | 'auto_approve'
   harnessRunId?: string
+  harnessUserHooks?: UserHooksConfig
 }
 
 function logRuntimeError(message: string, error?: unknown): void {
@@ -567,6 +573,8 @@ class HarnessAgentRuntimeAdapter implements AgentRuntimeLike {
         : {}),
       maxToolExecutionRetries: 1,
       toolRetryBackoffMs: 200,
+      subagentIsolationAdapter: this.options.harnessSubagentIsolationAdapter,
+      userHooks: this.options.harnessUserHooks,
       // Wire chat mode into the harness for capability-based tool filtering
       chatMode: promptContext.chatMode,
       runId: config?.harnessRunId,

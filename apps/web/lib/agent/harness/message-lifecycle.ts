@@ -4,7 +4,12 @@ export type AssistantMessageDelta =
   | { kind: 'text'; content: string }
   | { kind: 'reasoning'; content: string }
   | { kind: 'tool_call_ref'; toolCallId: string; toolName?: string }
-  | { kind: 'tool_result_ref'; toolCallId: string; toolName?: string; status: 'completed' | 'error' }
+  | {
+      kind: 'tool_result_ref'
+      toolCallId: string
+      toolName?: string
+      status: 'completed' | 'error'
+    }
 
 export type AssistantMessageUsage = {
   promptTokens?: number

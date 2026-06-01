@@ -1,6 +1,6 @@
 # Panda Architecture Contract
 
-> Last updated: May 22, 2026
+> Last updated: May 30, 2026
 >
 > Reader: Panda maintainers and future agents making architecture or
 > implementation decisions.
@@ -11,8 +11,8 @@
 
 ## Purpose
 
-Panda is a browser-first AI coding workbench with server-backed fallback. The
-product uses a workbench-owned file model, chat-based intent capture,
+Panda is a browser-first AI coding IDE with server-backed fallback. The product
+uses an editor-centric, workbench-owned file model, chat-based intent capture,
 Convex-backed persistence, and a provider-agnostic agent runtime. This document
 defines the canonical terms and ownership rules that keep those systems aligned.
 
@@ -31,36 +31,64 @@ Panda is browser-first:
 Use the phrase `browser-first with server fallback` in product, architecture,
 and setup docs.
 
-## Canonical Modes
+## Canonical Mode Surface
 
-The user-facing workflow has exactly four canonical modes:
+The user-facing workflow has exactly three primary surfaces:
 
-| Mode    | Meaning               | Tool posture                                     | Primary use                    |
-| ------- | --------------------- | ------------------------------------------------ | ------------------------------ |
-| `ask`   | Read-only Q&A         | No write or command execution                    | Explain, answer, inspect       |
-| `plan`  | Planning and review   | Read-only by default                             | Clarify, scope, produce a plan |
-| `code`  | Direct implementation | Write and command capable                        | Make focused code changes      |
-| `build` | Full execution        | Strongest write, command, and proof expectations | Execute larger approved work   |
+| Surface             | Runtime mapping | Meaning               | Tool posture                                            | Primary use                                    |
+| ------------------- | --------------- | --------------------- | ------------------------------------------------------- | ---------------------------------------------- |
+| `Ask`               | `ask`           | Read-only Q&A         | No write or command execution                           | Explain, answer, inspect                       |
+| `Plan`              | `plan`          | Planning and review   | Read-only by default                                    | Clarify, scope, produce a plan                 |
+| `Agent · Guided`    | `code`          | Direct implementation | Write and command capable                               | Make focused code changes with the user nearby |
+| `Agent · Autopilot` | `build`         | Full execution        | Strongest write, command, and run-evidence expectations | Execute larger approved work                   |
+
+`Agent` is the primary surface; `Guided` and `Autopilot` are its autonomy
+levels. Runtime compatibility values remain `ask`, `plan`, `code`, and `build`.
+Use those values in storage, routing, permission checks, and tests when runtime
+compatibility matters.
 
 Legacy labels such as `Architect`, `Builder`, or role names must not replace
-these mode values in current user-facing docs. They may appear only when
-documenting historical plans or internal agent roles.
+these surfaces or runtime values in current user-facing docs. They may appear
+only when documenting historical plans or internal agent roles.
 
 Compatibility references to legacy stored values or internal agent names must be
 explicitly described as compatibility-only. Do not present `architect`,
 `discuss`, `debug`, or `review` as current top-level user-facing modes.
 
+## Canonical Workspace Layout
+
+Panda is editor-centric. Desktop project routes should present a persistent
+editor/workbench region and a chat dock together, with mode-aware emphasis
+rather than mutually exclusive focus-mode screens. The current canonical mapping
+is:
+
+| Runtime mode | Layout emphasis                                                                                   |
+| ------------ | ------------------------------------------------------------------------------------------------- |
+| `ask`        | Chat dominant; editor remains available for referenced files.                                     |
+| `plan`       | Plan and context dominant; editor remains the review surface for plan artifacts.                  |
+| `code`       | Editor + chat split; Guided implementation keeps both visible.                                    |
+| `build`      | Workbench dominant with chat available; Autopilot still exposes run state and review affordances. |
+
+`workspaceFocusMode` and related UI state may remain as compatibility/emphasis
+state for maximize, mobile, and file-opening flows. They must not be the primary
+desktop rule that hides chat or the editor for normal Agent work.
+
+The inspector rail is `Run`, `Changes`, and `Context`. It is collapsed by
+default on desktop and opens through explicit user action or event-driven review
+needs such as failed runs, blocked permissions, validation failures, or pending
+changes. This supersedes the completed Phase 5 focus-mode-primary direction.
+
 ## Agents, Roles, And Modes
 
 Do not use `mode`, `agent`, and `role` interchangeably.
 
-| Term     | Canonical meaning                                                                                       |
-| -------- | ------------------------------------------------------------------------------------------------------- |
-| Mode     | The user-visible workflow contract: `ask`, `plan`, `code`, or `build`.                                  |
-| Agent    | A configured runtime persona or executor selected by the harness.                                       |
-| Role     | A delivery-control responsibility such as manager, builder, executive reviewer, QA, or ship gatekeeper. |
-| Subagent | A delegated specialist invoked by the main runtime for bounded work.                                    |
-| Skill    | Reusable workflow guidance that shapes how an agent or Subagent works without owning an execution lane. |
+| Term     | Canonical meaning                                                                                                                                           |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Mode     | The user-visible workflow contract: `Ask`, `Plan`, or `Agent` with `Guided`/`Autopilot` autonomy. Runtime values remain `ask`, `plan`, `code`, and `build`. |
+| Agent    | A configured runtime persona or executor selected by the harness.                                                                                           |
+| Role     | A delivery-control responsibility such as manager, builder, executive reviewer, QA, or ship gatekeeper.                                                     |
+| Subagent | A delegated specialist invoked by the main runtime for bounded work.                                                                                        |
+| Skill    | Reusable workflow guidance that shapes how an agent or Subagent works without owning an execution lane.                                                     |
 
 Modes define user intent and tool posture. Agents execute. Roles govern delivery
 state and review responsibility.
@@ -94,38 +122,39 @@ approval or execution decisions.
 | Context Guard        | Panda's runtime boundary that prevents large raw tool data from flooding chat/model context while preserving and indexing full evidence.                              |
 | Tool Output Guard    | The Context Guard component that measures/classifies tool output and returns a bounded model-facing result.                                                           |
 | Indexed Evidence     | Full or chunked tool/run evidence persisted into Panda-owned storage, especially `contextChunks`, and referenced by retrieval handles.                                |
-| Model-facing summary | The bounded payload returned to the model after guarding; it must be explicit when output was guarded and must include evidence handles when available.                |
+| Model-facing summary | The bounded payload returned to the model after guarding; it must be explicit when output was guarded and must include evidence handles when available.               |
 
 Execution Session is the product projection the user navigates. It is not a
-dedicated persisted table today. Receipts summarize proof. Run events explain
-progress. Checkpoints support recovery. They must remain separate because they
-have different payload, retention, and display rules.
+dedicated persisted table today. Receipts summarize run evidence. Run events
+explain progress. Checkpoints support recovery. They must remain separate
+because they have different payload, retention, and display rules.
 
 Context Guard is Panda-native. It is not a vendored or hosted exposure of any
-third-party context-management package. Full evidence belongs in Proof,
-Terminal, run events, receipts, jobs, artifacts, or indexed context storage; the
-model loop receives bounded summaries and retrieval handles.
+third-party context-management package. Full evidence belongs in the Run
+inspector, Terminal, run events, receipts, jobs, artifacts, or indexed context
+storage; the model loop receives bounded summaries and retrieval handles.
 
 ## Source-Of-Truth Map
 
-| Concern                     | Canonical owner                                                                                                                    | Mirrors or derived views                                        | Rule                                                                                                                      |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Chat mode                   | Chat state in Convex plus runtime mode contract                                                                                    | UI selector, receipt routing fields                             | Manual mode selection is authoritative for composer sends.                                                                |
-| Execution session           | Derived projection over chat, planning session, run summaries, receipts, changed work, runtime availability, and branch summaries | Execution Session Shell, session rail, workbench, support rail | Do not add a dedicated table until cross-chat continuity, stable session URLs, branch selection, or analytics require it. |
-| Mode labels and permissions | Mode contract                                                                                                                      | Buttons, prompts, proof rendering                               | Do not scatter mode conditionals across UI or runtime code.                                                               |
-| Planning lifecycle          | Planning session state                                                                                                             | Chat badges, run progress, plan tabs                            | Plan approval and execution read from planning state first.                                                               |
-| Approved plan content       | Generated plan artifact                                                                                                            | Prompt injection, proof surface                                 | Build-from-plan uses the accepted artifact as primary context.                                                            |
-| Active spec                 | Spec records                                                                                                                       | Runtime prompt summary, context surface                         | Specs constrain execution and verification, not chat memory alone.                                                        |
-| Run lifecycle               | Agent run state                                                                                                                    | Session rail, run panel, chat summaries                         | UI reads summaries by default, not full event streams.                                                                    |
-| Run proof                   | Receipt plus bounded event summaries, including Applied Skill summaries                                                            | Chat timeline, proof surface                                    | Full event details are lazy inspection data. Skill bodies are not copied into public or compact summaries.                |
-| Custom Skills               | User-scoped Convex `customSkills` records plus admin policy                                                                        | Prompt composition, settings UI                                 | Custom Skills are workflow documents, not executable plugins. Admin policy is enforced at storage and runtime matching.   |
-| Custom Subagents            | User-scoped Convex `subagents` records                                                                                             | Settings UI, task tool registry                                 | Subagents do delegated work. Capability presets and attached Skills shape their execution contract.                       |
-| Runtime availability        | WebContainer provider and server execution path                                                                                    | Runtime badges, terminal state, Proof evidence                  | Browser failure falls back to server execution.                                                                           |
-| Share state                 | Shared-chat records                                                                                                                | Public share page                                               | Share output is a redacted public projection, not the owner transcript.                                                   |
-| Attachments                 | Attachment metadata and authorized storage URL lookup                                                                              | Message previews                                                | Signed URLs are resolved lazily and only for authorized contexts.                                                         |
-| Provider config             | User/admin settings plus live catalog hydration                                                                                    | Model selectors                                                 | Catalog data can hydrate UI but must not auto-enable credentials.                                                         |
-| Provider tokens             | Token records scoped to owner                                                                                                      | Provider connection badges                                      | Never expose raw token values to client or shared surfaces.                                                               |
-| Delivery state              | Current run, planning, spec, permission, and receipt records; future dedicated delivery records when implemented                   | Rail, reports, QA/ship views                                    | Do not document dedicated delivery tables as current schema until they exist.                                             |
+| Concern                              | Canonical owner                                                                                                                   | Mirrors or derived views                                         | Rule                                                                                                                      |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Chat mode                            | Chat state in Convex plus runtime mode contract                                                                                   | UI selector, receipt routing fields                              | Manual mode selection is authoritative for composer sends.                                                                |
+| Execution session                    | Derived projection over chat, planning session, run summaries, receipts, changed work, runtime availability, and branch summaries | Execution Session Shell, session rail, workbench, inspector rail | Do not add a dedicated table until cross-chat continuity, stable session URLs, branch selection, or analytics require it. |
+| Mode labels, layout, and permissions | Mode contract                                                                                                                     | Buttons, prompts, run rendering, panel emphasis                  | Do not scatter mode or layout conditionals across UI or runtime code.                                                     |
+| Planning lifecycle                   | Planning session state                                                                                                            | Chat badges, run progress, plan tabs                             | Plan approval and execution read from planning state first.                                                               |
+| Approved plan content                | Generated plan artifact                                                                                                           | Prompt injection, Run inspector                                  | Build-from-plan uses the accepted artifact as primary context.                                                            |
+| Active spec                          | Spec records                                                                                                                      | Runtime prompt summary, context surface                          | Specs constrain execution and verification, not chat memory alone.                                                        |
+| Run lifecycle                        | Agent run state                                                                                                                   | Session rail, run panel, chat summaries                          | UI reads summaries by default, not full event streams.                                                                    |
+| Run evidence                         | Receipt plus bounded event summaries, including Applied Skill summaries                                                           | Chat timeline, Run inspector                                     | Full event details are lazy inspection data. Skill bodies are not copied into public or compact summaries.                |
+| Custom Skills                        | User-scoped Convex `customSkills` records plus admin policy                                                                       | Prompt composition, settings UI                                  | Custom Skills are workflow documents, not executable plugins. Admin policy is enforced at storage and runtime matching.   |
+| Project Rules                        | Checked-in `.panda/rules/*.md` files, with metadata hot and content read lazily                                                   | Context inspector, prompt composition                            | Rules are always-on/path-scoped constraints. They are not Skills and must be bounded before prompt injection.             |
+| Custom Subagents                     | User-scoped Convex `subagents` records                                                                                            | Settings UI, task tool registry                                  | Subagents do delegated work. Capability presets and attached Skills shape their execution contract.                       |
+| Runtime availability                 | WebContainer provider and server execution path                                                                                   | Runtime badges, terminal state, Run evidence                     | Browser failure falls back to server execution.                                                                           |
+| Share state                          | Shared-chat records                                                                                                               | Public share page                                                | Share output is a redacted public projection, not the owner transcript.                                                   |
+| Attachments                          | Attachment metadata and authorized storage URL lookup                                                                             | Message previews                                                 | Signed URLs are resolved lazily and only for authorized contexts.                                                         |
+| Provider config                      | User/admin settings plus live catalog hydration                                                                                   | Model selectors                                                  | Catalog data can hydrate UI but must not auto-enable credentials.                                                         |
+| Provider tokens                      | Token records scoped to owner                                                                                                     | Provider connection badges                                       | Never expose raw token values to client or shared surfaces.                                                               |
+| Delivery state                       | Current run, planning, spec, permission, and receipt records; future dedicated delivery records when implemented                  | Rail, reports, QA/ship views                                     | Do not document dedicated delivery tables as current schema until they exist.                                             |
 
 ## State Machine Inventory
 

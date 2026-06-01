@@ -17,13 +17,16 @@ describe('implementation-first guardrails', () => {
     const contract = readRepoFile('docs/ARCHITECTURE_CONTRACT.md')
     const compactContract = compactMarkdown(contract)
 
-    expect(contract).toContain('The user-facing workflow has exactly four canonical modes')
-    expect(contract).toContain('| `ask`')
-    expect(contract).toContain('| `plan`')
-    expect(contract).toContain('| `code`')
-    expect(contract).toContain('| `build`')
+    expect(contract).toContain('The user-facing workflow has exactly three primary surfaces')
+    expect(contract).toContain('| `Ask`')
+    expect(contract).toContain('| `Plan`')
+    expect(contract).toContain('| `Agent · Guided`')
+    expect(contract).toContain('| `Agent · Autopilot`')
+    expect(contract).toContain(
+      'Runtime compatibility values remain `ask`, `plan`, `code`, and `build`'
+    )
     expect(compactContract).toContain(
-      'must not replace these mode values in current user-facing docs'
+      'must not replace these surfaces or runtime values in current user-facing docs'
     )
     expect(compactContract).toContain('legacy stored values or internal agent names')
   })

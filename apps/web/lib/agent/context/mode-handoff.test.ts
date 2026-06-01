@@ -21,7 +21,9 @@ describe('mode handoff resolver', () => {
   })
 
   test('finds latest assistant message by mode', () => {
-    expect(findLatestAssistantMessageByMode(messages, 'plan')?.content).toContain('Context Fix Plan')
+    expect(findLatestAssistantMessageByMode(messages, 'plan')?.content).toContain(
+      'Context Fix Plan'
+    )
   })
 
   test('resolves latest plan for Agent Guided runtime', () => {

@@ -7,7 +7,9 @@ export interface BuildAdvisorReviewInput {
   status?: AdvisorReview['status']
 }
 
-export function inferAdvisorReviewStatus(risks: AdvisorReviewFinding[] = []): AdvisorReview['status'] {
+export function inferAdvisorReviewStatus(
+  risks: AdvisorReviewFinding[] = []
+): AdvisorReview['status'] {
   if (risks.some((risk) => risk.severity === 'high')) return 'blocked'
   if (risks.some((risk) => risk.severity === 'medium')) return 'needs_changes'
   return 'approved'

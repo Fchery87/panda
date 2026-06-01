@@ -6,7 +6,11 @@ import { toast } from 'sonner'
 import { api } from '@convex/_generated/api'
 import type { Id } from '@convex/_generated/dataModel'
 import { shouldAutoApplyArtifact, type AgentPolicy } from '@/lib/agent/automationPolicy'
-import { buildAdvisorPreflight, selectAdvisorReviewForTarget, type AdvisorReviewRecord } from '@/lib/agent/workflow'
+import {
+  buildAdvisorPreflight,
+  selectAdvisorReviewForTarget,
+  type AdvisorReviewRecord,
+} from '@/lib/agent/workflow'
 import {
   applyArtifact,
   getPrimaryArtifactAction,
@@ -34,9 +38,10 @@ export function useAutoApplyArtifacts(args: {
     args.chatId ? { chatId: args.chatId } : 'skip'
   ) as ArtifactRecord[] | undefined
 
-  const advisorReviews = useQuery(api.advisorReviews.listByChat, args.chatId ? { chatId: args.chatId } : 'skip') as
-    | Array<AdvisorReviewRecord>
-    | undefined
+  const advisorReviews = useQuery(
+    api.advisorReviews.listByChat,
+    args.chatId ? { chatId: args.chatId } : 'skip'
+  ) as Array<AdvisorReviewRecord> | undefined
   const pendingArtifacts = useMemo(() => {
     return (artifactRecords || [])
       .filter((a) => a.status === 'pending')
@@ -97,26 +102,26 @@ export function useAutoApplyArtifacts(args: {
               }),
             updateArtifactStatus,
             advisorReview: selectAdvisorReviewForTarget(advisorReviews, {
-                artifactId: String(artifact.id),
-                gates: buildAdvisorPreflight({
-                  policy: {
-                    enabled: true,
-                    requiredFor: [
-                      'large_diff',
-                      'destructive_command',
-                      'dependency_change',
-                      'auth_or_security_change',
-                      'database_schema_change',
-                      'autopilot_checkpoint',
-                    ],
-                    reasoningEffort: 'medium',
-                  },
-                  changedFiles:
-                    artifact.action.type === 'file_write' ? [artifact.action.payload.filePath] : [],
-                  commands:
-                    artifact.action.type === 'command_run' ? [artifact.action.payload.command] : [],
-                }).gates,
-              }),
+              artifactId: String(artifact.id),
+              gates: buildAdvisorPreflight({
+                policy: {
+                  enabled: true,
+                  requiredFor: [
+                    'large_diff',
+                    'destructive_command',
+                    'dependency_change',
+                    'auth_or_security_change',
+                    'database_schema_change',
+                    'autopilot_checkpoint',
+                  ],
+                  reasoningEffort: 'medium',
+                },
+                changedFiles:
+                  artifact.action.type === 'file_write' ? [artifact.action.payload.filePath] : [],
+                commands:
+                  artifact.action.type === 'command_run' ? [artifact.action.payload.command] : [],
+              }).gates,
+            }),
           })
 
           if (result.kind === 'file') {

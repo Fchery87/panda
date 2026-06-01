@@ -527,12 +527,7 @@ export const searchRunOutput = query({
   handler: async (ctx, args) => {
     await requireProjectOwner(ctx, args.projectId)
     const limit = Math.min(Math.max(args.limit ?? 8, 1), 25)
-    const terms = (args.query ?? '')
-      .trim()
-      .toLowerCase()
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 8)
+    const terms = (args.query ?? '').trim().toLowerCase().split(/\s+/).filter(Boolean).slice(0, 8)
 
     const chunks = await ctx.db
       .query('contextChunks')

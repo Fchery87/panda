@@ -20,10 +20,10 @@ export function buildExecutionSessionInspectorViewModel(
     case 'proof':
       return {
         eyebrow,
-        title: 'Session Proof',
+        title: 'Session Run',
         summary: `${sessionTitle}: ${session?.proof.detail ?? 'Track progress, receipts, recovery, and validation evidence.'}`,
-        emptyTitle: 'No run proof yet',
-        emptyDetail: 'Proof appears after Panda executes work in this session.',
+        emptyTitle: 'No run evidence yet',
+        emptyDetail: 'Run evidence appears after Panda executes work in this session.',
       }
     case 'changes':
       return {
@@ -46,10 +46,10 @@ export function buildExecutionSessionInspectorViewModel(
     default:
       return {
         eyebrow,
-        title: 'Session Proof',
+        title: 'Session Run',
         summary: 'Track progress, receipts, recovery, and validation evidence.',
-        emptyTitle: 'No run proof yet',
-        emptyDetail: 'Proof appears after Panda executes work in this session.',
+        emptyTitle: 'No run evidence yet',
+        emptyDetail: 'Run evidence appears after Panda executes work in this session.',
       }
   }
 }

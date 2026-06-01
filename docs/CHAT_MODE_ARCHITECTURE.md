@@ -31,9 +31,9 @@ Guided, with Agent Autopilot as an autonomy option that maps to `build`. Older
 notes used labels such as `Architect` and `Builder`; those labels are historical
 or internal-role terminology and should not define current product vocabulary.
 Subagents are not top-level modes in this selector; they are delegated child
-workers controlled by the selected parent run. In practice the mode-switching flow has several
-classes of defect that together can make implementation modes unreliable. The
-goal of this document is to define a target architecture that:
+workers controlled by the selected parent run. In practice the mode-switching
+flow has several classes of defect that together can make implementation modes
+unreliable. The goal of this document is to define a target architecture that:
 
 1. Makes the Plan → Build handoff atomic and correct.
 2. Guarantees tool-call grammar safety across **any** provider and **any** model
@@ -519,14 +519,15 @@ Ask      Plan      Agent
 
 Runtime compatibility is intentionally preserved:
 
-| User-facing selection | Runtime chat mode | Purpose |
-| --- | --- | --- |
-| Ask | `ask` | Read-only explanation, audit, research, and codebase inspection. |
-| Plan | `plan` | Read-only planning and durable implementation-plan creation. |
-| Agent · Guided | `code` | Implementation with approval prompts for edits/commands. |
-| Agent · Autopilot | `build` | Implementation that can apply safe changes and interrupts for risky actions. |
+| User-facing selection | Runtime chat mode | Purpose                                                                      |
+| --------------------- | ----------------- | ---------------------------------------------------------------------------- |
+| Ask                   | `ask`             | Read-only explanation, audit, research, and codebase inspection.             |
+| Plan                  | `plan`            | Read-only planning and durable implementation-plan creation.                 |
+| Agent · Guided        | `code`            | Implementation with approval prompts for edits/commands.                     |
+| Agent · Autopilot     | `build`           | Implementation that can apply safe changes and interrupts for risky actions. |
 
-`code` and `build` remain valid persisted/runtime values, but should no longer be presented as two peer primary modes. They are autonomy levels inside Agent.
+`code` and `build` remain valid persisted/runtime values, but should no longer
+be presented as two peer primary modes. They are autonomy levels inside Agent.
 
 Secondary actions are modeled as task templates rather than primary modes:
 
@@ -534,11 +535,15 @@ Secondary actions are modeled as task templates rather than primary modes:
 - Review — review a diff, plan, implementation, or selected files.
 - Docs — create/update documentation and implementation notes.
 
-Future mode work may add Background/Worktree Agent as another Agent autonomy/environment option.
+Future mode work may add Background/Worktree Agent as another Agent
+autonomy/environment option.
 
 ## Cross-Mode Handoff Contract
 
-Mode switches are permission/behavior changes, not memory resets. When users move from Ask or Plan into Agent Guided/Autopilot and use referential language like “this plan,” “implement it,” or “your audit findings,” the prompt system resolves a `ModeHandoffPacket` and injects it as system context.
+Mode switches are permission/behavior changes, not memory resets. When users
+move from Ask or Plan into Agent Guided/Autopilot and use referential language
+like “this plan,” “implement it,” or “your audit findings,” the prompt system
+resolves a `ModeHandoffPacket` and injects it as system context.
 
 Priority order:
 
@@ -549,44 +554,57 @@ Priority order:
 5. Cross-mode summary.
 6. Clarification if the referent cannot be resolved.
 
-Handoff context must not be appended as a synthetic user message. It belongs in system/developer context so the transcript remains user-authored.
+Handoff context must not be appended as a synthetic user message. It belongs in
+system/developer context so the transcript remains user-authored.
 
 ## Automatic Mode Switching
 
-Panda can automatically switch the active runtime mode when deterministic routing identifies a stronger intent than the currently selected mode. This keeps the UI, persisted chat mode, prompt mode, run mode, and message annotations aligned.
+Panda can automatically switch the active runtime mode when deterministic
+routing identifies a stronger intent than the currently selected mode. This
+keeps the UI, persisted chat mode, prompt mode, run mode, and message
+annotations aligned.
 
 Examples:
 
-| User is in | User says | Auto-resolved runtime mode |
-| --- | --- | --- |
-| Ask | “fix the failing login test” | `code` / Agent · Guided |
-| Ask | “create a comprehensive implementation plan” | `plan` / Plan |
-| Plan | “implement this plan” | `build` / Agent · Autopilot |
-| Agent · Guided | “explain why this is failing” | `ask` / Ask |
+| User is in     | User says                                    | Auto-resolved runtime mode  |
+| -------------- | -------------------------------------------- | --------------------------- |
+| Ask            | “fix the failing login test”                 | `code` / Agent · Guided     |
+| Ask            | “create a comprehensive implementation plan” | `plan` / Plan               |
+| Plan           | “implement this plan”                        | `build` / Agent · Autopilot |
+| Agent · Guided | “explain why this is failing”                | `ask` / Ask                 |
 
 Rules:
 
 - Explicit/manual mode overrides still win and do not auto-switch.
-- If deterministic routing resolves a different mode, `useAgent` calls the workspace auto-switch callback before run orchestration.
-- The callback updates local mode state and persists the chat mode when an active chat exists.
-- The run still uses the resolved mode even if persistence fails; persistence failure is logged and execution continues.
-- User messages are annotated with the resolved runtime mode so transcript, receipts, and retrieval history reflect the actual behavior used.
+- If deterministic routing resolves a different mode, `useAgent` calls the
+  workspace auto-switch callback before run orchestration.
+- The callback updates local mode state and persists the chat mode when an
+  active chat exists.
+- The run still uses the resolved mode even if persistence fails; persistence
+  failure is logged and execution continues.
+- User messages are annotated with the resolved runtime mode so transcript,
+  receipts, and retrieval history reflect the actual behavior used.
 
 ## Auto-Switch Hardening Policy
 
 Automatic mode switching follows a confidence and preference policy:
 
-| Policy | Behavior |
-| --- | --- |
-| Auto-switch | High-confidence mode changes switch automatically; medium confidence asks first; low confidence stays put. |
-| Suggest first | Panda proposes the target mode and waits for the user to confirm before running. |
-| Manual only | Panda never changes modes automatically. Deterministic routing can still resolve internally only when explicitly requested by the send path. |
+| Policy        | Behavior                                                                                                                                     |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Auto-switch   | High-confidence mode changes switch automatically; medium confidence asks first; low confidence stays put.                                   |
+| Suggest first | Panda proposes the target mode and waits for the user to confirm before running.                                                             |
+| Manual only   | Panda never changes modes automatically. Deterministic routing can still resolve internally only when explicitly requested by the send path. |
 
 Permission boundaries are labeled on auto-switches:
 
 - `read-only` — switching into Ask or Plan.
 - `write-capable` — switching into Agent · Guided or Agent · Autopilot.
 
-When Panda auto-switches, user messages carry an `autoModeSwitch` annotation. The transcript renders this as a visible chip so users can see that Panda changed modes and why. When Panda suggests instead of switching, it creates a confirmation message with an action to continue in the recommended mode.
+When Panda auto-switches, user messages carry an `autoModeSwitch` annotation.
+The transcript renders this as a visible chip so users can see that Panda
+changed modes and why. When Panda suggests instead of switching, it creates a
+confirmation message with an action to continue in the recommended mode.
 
-Debug, Review, and Docs remain secondary actions, but routing now emits suggested skills for debug/review/docs language so future prompts and UI can attach the right workflow addendum without creating more primary modes.
+Debug, Review, and Docs remain secondary actions, but routing now emits
+suggested skills for debug/review/docs language so future prompts and UI can
+attach the right workflow addendum without creating more primary modes.

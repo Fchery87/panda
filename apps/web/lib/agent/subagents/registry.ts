@@ -54,7 +54,8 @@ const RPIV_INSPIRED_BUILT_INS: AgentConfig[] = [
   },
   {
     name: 'integration-scanner',
-    description: 'Maps imports, routes, schema, config, events, and side effects for a component or change.',
+    description:
+      'Maps imports, routes, schema, config, events, and side effects for a component or change.',
     mode: 'subagent',
     hidden: true,
     permission: permissionForPreset('research'),
@@ -65,7 +66,8 @@ const RPIV_INSPIRED_BUILT_INS: AgentConfig[] = [
   },
   {
     name: 'claim-verifier',
-    description: 'Verifies file, command, and test claims against Panda receipts and workspace state.',
+    description:
+      'Verifies file, command, and test claims against Panda receipts and workspace state.',
     mode: 'subagent',
     hidden: true,
     permission: permissionForPreset('restricted'),
@@ -87,7 +89,8 @@ const RPIV_INSPIRED_BUILT_INS: AgentConfig[] = [
   },
   {
     name: 'advisor-reviewer',
-    description: 'Provides escalated review for risky plans, diffs, commands, and Autopilot checkpoints.',
+    description:
+      'Provides escalated review for risky plans, diffs, commands, and Autopilot checkpoints.',
     mode: 'subagent',
     hidden: true,
     permission: permissionForPreset('research'),
@@ -114,7 +117,8 @@ function toResolvedBuiltIn(agent: AgentConfig): ResolvedSubagentDefinition {
     capabilityPreset,
     defaultContextMode: DEFAULT_CONTEXT_BY_AGENT[agent.name] ?? 'fresh',
     mutatesWorkspace,
-    outputKind: agent.name === 'diff-auditor' || agent.name === 'claim-verifier' ? 'rows' : 'summary',
+    outputKind:
+      agent.name === 'diff-auditor' || agent.name === 'claim-verifier' ? 'rows' : 'summary',
   }
 }
 

@@ -9,7 +9,12 @@ describe('AgentSelector mode picker boundaries', () => {
     expect(source).toContain('Primary modes')
     expect(source).toContain('Agent autonomy')
     expect(source).toContain('Mode routing')
+    expect(source).toContain('getPrimaryModeSurfaces')
+    expect(source).toContain('resolveRuntimeMode')
+    expect(source).toContain('modeSelectionFromRuntimeMode')
 
+    expect(source).not.toContain('getPrimaryChatModeSurfaceOptions')
+    expect(source).toContain('value={currentSelection.primaryMode}')
     expect(source).not.toContain('agents.listSubagents')
     expect(source).not.toContain('Subagents (use @mention)')
     expect(source).not.toContain('@{agent.name}')

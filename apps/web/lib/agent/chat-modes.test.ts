@@ -35,6 +35,16 @@ describe('ModeContract', () => {
     }
   })
 
+  test('each mode declares a workspace layout hint', () => {
+    const valid = new Set(['chat-dominant', 'plan-context', 'editor-chat', 'workbench-dominant'])
+    for (const [id, cfg] of Object.entries(CHAT_MODE_CONFIGS)) {
+      expect(valid.has(cfg.layout.emphasis)).toBe(true)
+      expect(cfg.layout.editorDefaultSize + cfg.layout.chatDefaultSize).toBe(100)
+      expect(typeof cfg.layout.inspectorDefaultOpen).toBe('boolean')
+      void `${id} has invalid layout hint`
+    }
+  })
+
   test('build mode has a handoff ritual', () => {
     expect(CHAT_MODE_CONFIGS.code.handoffRitual).toBeDefined()
     expect(CHAT_MODE_CONFIGS.build.handoffRitual).toBeDefined()
@@ -74,7 +84,10 @@ describe('modern Panda mode surface', () => {
   test('maps Agent autonomy to legacy runtime modes', () => {
     expect(resolveRuntimeMode({ primaryMode: 'agent', autonomy: 'guided' })).toBe('code')
     expect(resolveRuntimeMode({ primaryMode: 'agent', autonomy: 'autopilot' })).toBe('build')
-    expect(modeSelectionFromRuntimeMode('code')).toEqual({ primaryMode: 'agent', autonomy: 'guided' })
+    expect(modeSelectionFromRuntimeMode('code')).toEqual({
+      primaryMode: 'agent',
+      autonomy: 'guided',
+    })
     expect(modeSelectionFromRuntimeMode('build')).toEqual({
       primaryMode: 'agent',
       autonomy: 'autopilot',

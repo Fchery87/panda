@@ -35,7 +35,9 @@ export function selectAdvisorReviewForTarget(
   }
 
   if (target.workflowArtifactId) {
-    const match = candidates.find((review) => review.workflowArtifactId === target.workflowArtifactId)
+    const match = candidates.find(
+      (review) => review.workflowArtifactId === target.workflowArtifactId
+    )
     if (match) return match
   }
 

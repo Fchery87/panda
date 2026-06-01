@@ -5,11 +5,7 @@ export type SubagentCapabilityPreset = 'research' | 'assistant' | 'builder' | 'r
 
 export type SubagentContextMode = 'fresh' | 'fork'
 
-export type SubagentIsolationMode =
-  | 'shared-readonly'
-  | 'snapshot'
-  | 'worktree'
-  | 'patch-proposal'
+export type SubagentIsolationMode = 'shared-readonly' | 'snapshot' | 'worktree' | 'patch-proposal'
 
 export interface CustomSubagentRecord {
   _id: Id<'subagents'> | string

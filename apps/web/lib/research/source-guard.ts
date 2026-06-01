@@ -2,7 +2,11 @@ const MAX_INLINE_CHARS = 6000
 const MAX_SUMMARY_CHARS = 1200
 
 export function normalizeWhitespace(input: string): string {
-  return input.replace(/\r\n/g, '\n').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim()
+  return input
+    .replace(/\r\n/g, '\n')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
 }
 
 export async function hashResearchContent(input: string): Promise<string> {
@@ -21,7 +25,10 @@ export function summarizeResearchContent(input: string, maxChars = MAX_SUMMARY_C
   return `${normalized.slice(0, cut).trim()}…`
 }
 
-export function previewResearchContent(input: string, maxChars = MAX_INLINE_CHARS): { preview: string; truncated: boolean } {
+export function previewResearchContent(
+  input: string,
+  maxChars = MAX_INLINE_CHARS
+): { preview: string; truncated: boolean } {
   const normalized = normalizeWhitespace(input)
   return {
     preview: normalized.length > maxChars ? `${normalized.slice(0, maxChars).trim()}…` : normalized,

@@ -90,7 +90,7 @@ describe('buildExecutionSessionViewModel', () => {
     expect(model?.secondaryAction).toEqual({ id: 'review_plan', label: 'Open Plan' })
   })
 
-  test('models active execution with proof and browser preview readiness', () => {
+  test('models active execution with run evidence and browser preview readiness', () => {
     const model = buildExecutionSessionViewModel({
       chatTitle: 'Active work',
       latestUserPrompt: 'Build a session rail',
@@ -147,7 +147,7 @@ describe('buildExecutionSessionViewModel', () => {
     })
     expect(model?.primaryAction).toEqual({ id: 'review_changes', label: 'Inspect Changes' })
     expect(model?.scanSignals).toEqual([
-      { label: 'Run', value: 'Proof ready', tone: 'success' },
+      { label: 'Run', value: 'Run evidence ready', tone: 'success' },
       { label: 'Approval', value: 'Clear', tone: 'neutral' },
       { label: 'Changes', value: '3', tone: 'success' },
       { label: 'Branches', value: 'No parallel branches active.', tone: 'neutral' },
@@ -204,9 +204,10 @@ describe('buildExecutionSessionViewModel', () => {
       proof: 'Review run evidence, receipts, and validation before continuing.',
       branches: '0 running, 0 blocked, 1 complete.',
       trace:
-        'Trace degraded: persisted run events may be partial; use receipt and checkpoint proof.',
+        'Trace degraded: persisted run events may be partial; use receipt and checkpoint evidence.',
       checkpoint: 'Checkpoint ready: recover session session_123 from 2026-02-02T02:40:00.000Z.',
-      nextAction: 'Inspect the changed work and proof before continuing or finishing this session.',
+      nextAction:
+        'Inspect the changed work and run evidence before continuing or finishing this session.',
     })
   })
 })

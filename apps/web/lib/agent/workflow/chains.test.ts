@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'bun:test'
-import { buildWorkflowChainPrompt, getNextWorkflowChainStep, getWorkflowChainTemplate } from './chains'
+import {
+  buildWorkflowChainPrompt,
+  getNextWorkflowChainStep,
+  getWorkflowChainTemplate,
+} from './chains'
 
 describe('workflow chains', () => {
   test('defines the research-to-plan chain in mode-safe stages', () => {
@@ -11,7 +15,10 @@ describe('workflow chains', () => {
 
   test('returns the next incomplete chain step', () => {
     expect(
-      getNextWorkflowChainStep({ chainId: 'full-feature-build', completedStepIds: ['clarify', 'research'] })?.id
+      getNextWorkflowChainStep({
+        chainId: 'full-feature-build',
+        completedStepIds: ['clarify', 'research'],
+      })?.id
     ).toBe('design')
     expect(
       getNextWorkflowChainStep({

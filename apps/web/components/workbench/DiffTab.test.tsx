@@ -29,7 +29,7 @@ describe('DiffTab recovery affordance', () => {
       />
     )
 
-    expect(html).toContain('Restore in Proof')
+    expect(html).toContain('Restore in Run')
     expect(html).toContain('src/generated.ts')
   })
 })

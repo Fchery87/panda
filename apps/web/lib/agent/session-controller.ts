@@ -1,6 +1,8 @@
 import { ConvexCheckpointStore } from './harness/convex-checkpoint-store'
 import type { CheckpointStore as HarnessCheckpointStore } from './harness/checkpoint-store'
 import type { PromptContext, ChatMode } from './prompt-library'
+import type { ProjectRulePromptContext } from './project-rules'
+import type { UserHooksConfig } from './harness/user-hooks'
 import type { AgentContextPack } from './context/context-pack'
 import type { ModeHandoffPacket } from './context/mode-handoff'
 import type { RuntimeConfig } from './runtime'
@@ -33,6 +35,7 @@ export function buildAgentPromptContext(args: {
   projectOverviewContent?: string | null
   projectFiles?: ProjectFileContext[]
   memoryBankContent?: string | null
+  projectRules?: ProjectRulePromptContext[]
   userContent: string
   contextFiles?: string[]
   architectBrainstormEnabled?: boolean
@@ -78,6 +81,7 @@ export function buildAgentPromptContext(args: {
       ? args.projectFiles.map((f) => ({ path: f.path, content: f.content ?? '', score: 0.5 }))
       : undefined,
     memoryBank: args.memoryBankContent ?? undefined,
+    projectRules: args.projectRules,
     contextAssets: args.contextFiles?.map((asset) => {
       if (asset.startsWith('folder:')) return `Folder: ${asset.replace('folder:', '')}`
       if (/^https?:\/\//i.test(asset)) return `URL: ${asset}`
@@ -120,6 +124,7 @@ export function buildAgentRuntimeConfig(args: {
   mode: ChatMode
   harnessSessionID?: string
   specApprovalMode?: 'interactive' | 'auto_approve'
+  userHooks?: UserHooksConfig
 }): RuntimeConfig {
   return {
     maxIterations: 10,
@@ -130,6 +135,7 @@ export function buildAgentRuntimeConfig(args: {
     harnessRunId: args.runId,
     harnessAutoResume: true,
     harnessSpecApprovalMode: args.specApprovalMode ?? 'interactive',
+    ...(args.userHooks ? { harnessUserHooks: args.userHooks } : {}),
   }
 }
 

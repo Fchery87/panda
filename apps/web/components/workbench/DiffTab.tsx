@@ -15,6 +15,7 @@ import {
   ExternalLink as IconExternalLink,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { buildDiffCanvasGroups } from './diff-canvas'
 
 export type DiffHunkAction = 'accept' | 'reject' | 'revert'
 export type FileReviewStatus = 'pending' | 'accepted' | 'rejected'
@@ -83,6 +84,7 @@ export function DiffTab({
 }: DiffTabProps) {
   const [selectedFileIndex, setSelectedFileIndex] = useState(0)
   const [expandedHunks, setExpandedHunks] = useState<Set<string>>(new Set())
+  const [viewMode, setViewMode] = useState<'diff' | 'canvas'>('diff')
 
   const selectedFile = files[selectedFileIndex] ?? null
 
@@ -90,6 +92,7 @@ export function DiffTab({
     () => files.filter((f) => f.reviewStatus === 'pending').length,
     [files]
   )
+  const canvasGroups = useMemo(() => buildDiffCanvasGroups(files), [files])
 
   const toggleHunk = (hunkId: string) => {
     setExpandedHunks((prev) => {
@@ -136,6 +139,14 @@ export function DiffTab({
           </span>
         </div>
         <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-6 rounded-none font-mono text-[10px] uppercase tracking-widest"
+            onClick={() => setViewMode((current) => (current === 'diff' ? 'canvas' : 'diff'))}
+          >
+            {viewMode === 'diff' ? 'Canvas' : 'Diff'}
+          </Button>
           {onOpenProof && (
             <Button
               variant="outline"
@@ -144,7 +155,7 @@ export function DiffTab({
               onClick={onOpenProof}
             >
               <IconRevert className="h-3 w-3" />
-              Restore in Proof
+              Restore in Run
             </Button>
           )}
           <Button
@@ -216,7 +227,82 @@ export function DiffTab({
 
         {/* Diff content */}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          {selectedFile && (
+          {viewMode === 'canvas' && (
+            <ScrollArea className="flex-1">
+              <div className="space-y-3 p-3">
+                <div className="surface-1 border border-border p-3">
+                  <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                    Review Canvas
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Changes are grouped by review importance using file metadata and churn before
+                    full-content inspection.
+                  </p>
+                </div>
+                <div className="grid gap-2 lg:grid-cols-3">
+                  {canvasGroups.map((group) => (
+                    <a
+                      key={group.id}
+                      href={`#diff-canvas-${group.id}`}
+                      className="border border-border bg-background px-3 py-2 font-mono text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      {group.label}: {group.files.length}
+                    </a>
+                  ))}
+                </div>
+                {canvasGroups.map((group) => (
+                  <section key={group.id} id={`diff-canvas-${group.id}`} className="space-y-2">
+                    <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                      {group.label}
+                    </div>
+                    {group.files.map((item) => (
+                      <div key={item.file.path} className="border border-border bg-background p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <button
+                            type="button"
+                            className="min-w-0 text-left"
+                            onClick={() => {
+                              setSelectedFileIndex(item.fileIndex)
+                              setViewMode('diff')
+                            }}
+                          >
+                            <div className="truncate font-mono text-xs text-foreground">
+                              {item.file.path}
+                            </div>
+                            <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                              {item.reason}
+                            </div>
+                          </button>
+                          <div className="flex shrink-0 gap-1">
+                            {onOpenFile && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 rounded-none font-mono text-[10px]"
+                                onClick={() => onOpenFile(item.file.path)}
+                              >
+                                Open
+                              </Button>
+                            )}
+                            {item.file.reviewStatus === 'pending' && onAcceptFile && (
+                              <Button
+                                size="sm"
+                                className="h-6 rounded-none font-mono text-[10px]"
+                                onClick={() => onAcceptFile(item.fileIndex)}
+                              >
+                                Accept
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </section>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+          {viewMode === 'diff' && selectedFile && (
             <>
               {/* File header */}
               <div className="surface-1 flex items-center justify-between border-b border-border px-4 py-2">

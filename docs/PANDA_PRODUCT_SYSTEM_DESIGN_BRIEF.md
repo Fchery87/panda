@@ -605,9 +605,11 @@ Project workbench navigation:
 2. Left rail for files, search, source control, agents, history/tasks, deploy.
 3. Center workbench tabs for Work Surface and Review Diff.
 4. File tabs inside the Work Surface; every explicit file click opens here.
-5. Right support rail for Proof, Changes, and Context. Changes navigates to Review Diff; it is not a competing editor.
+5. Right support rail for Proof, Changes, and Context. Changes navigates to
+   Review Diff; it is not a competing editor.
 6. Bottom dock for Terminal and Agent Events.
-7. Mobile bottom nav for Work, Chat, Proof, and Changes. Panda does not rely on a live-preview destination.
+7. Mobile bottom nav for Work, Chat, Proof, and Changes. Panda does not rely on
+   a live-preview destination.
 
 Admin navigation:
 

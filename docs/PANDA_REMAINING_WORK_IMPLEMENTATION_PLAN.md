@@ -1,36 +1,57 @@
 # Panda Remaining Workflow Orchestration Implementation Plan
 
-> **Date:** 2026-05-25  
-> **Status:** Remaining implementation plan after rpiv-inspired workflow/advisor/chain foundation  
-> **Scope:** Complete the remaining Panda-native orchestration work without replacing Panda Harness Runtime or Convex Control Plane.  
-> **Primary rule:** Panda Harness Runtime + Convex remain the only execution authority. Do not embed `rpiv-pi` as a second runtime.
+> - **Date:** 2026-05-25
+> - **Status:** Remaining implementation plan after rpiv-inspired
+>   workflow/advisor/chain foundation
+> - **Scope:** Complete the remaining Panda-native orchestration work without
+>   replacing Panda Harness Runtime or Convex Control Plane.
+> - **Primary rule:** Panda Harness Runtime + Convex remain the only execution
+>   authority. Do not embed `rpiv-pi` as a second runtime.
 
 ## 2026-05-25 Implementation Update
 
 Completed implementation slices in recommended order:
 
-1. **True `ask_user` live pause/resume** — active runs now await a structured user decision, persist pending/answered question records in Convex, render live question cards from tool-call args, and resolve the active tool call from the selected answer.
-2. **Direct runtime advisor enforcement** — `write_files`, `run_command`, and `apply_patch` now run advisor preflight before execution and create advisor requests instead of executing high-risk work immediately.
-3. **Autopilot checkpoint integration** — Agent Autopilot transitions are blocked behind an `autopilot_checkpoint` advisor request before unattended continuation.
-4. **Workflow chain runtime linkage** — chain steps can link to `agentRuns` via `runId`; useAgent marks linked steps running/completed/failed.
-5. **Browser proof coverage** — added Playwright coverage for file artifact apply → file tree/editor visibility and advisor-gated artifact requirement surfacing.
-6. **Advisor reviewer polish** — added prompt view/copy, request cancel, running state, disabled empty manual completion, and success/error toasts.
-7. **Workflow artifact materialization** — added `.panda/artifacts/...` markdown path/content draft helpers and UI copy affordances while keeping Convex canonical.
+1. **True `ask_user` live pause/resume** — active runs now await a structured
+   user decision, persist pending/answered question records in Convex, render
+   live question cards from tool-call args, and resolve the active tool call
+   from the selected answer.
+2. **Direct runtime advisor enforcement** — `write_files`, `run_command`, and
+   `apply_patch` now run advisor preflight before execution and create advisor
+   requests instead of executing high-risk work immediately.
+3. **Autopilot checkpoint integration** — Agent Autopilot transitions are
+   blocked behind an `autopilot_checkpoint` advisor request before unattended
+   continuation.
+4. **Workflow chain runtime linkage** — chain steps can link to `agentRuns` via
+   `runId`; useAgent marks linked steps running/completed/failed.
+5. **Browser proof coverage** — added Playwright coverage for file artifact
+   apply → file tree/editor visibility and advisor-gated artifact requirement
+   surfacing.
+6. **Advisor reviewer polish** — added prompt view/copy, request cancel, running
+   state, disabled empty manual completion, and success/error toasts.
+7. **Workflow artifact materialization** — added `.panda/artifacts/...` markdown
+   path/content draft helpers and UI copy affordances while keeping Convex
+   canonical.
 
 Known follow-up hardening:
 
-- `ask_user` survives live same-run pauses, but browser reload recovery of an in-flight resolver still needs deeper checkpoint rehydration.
-- Direct tool advisor blocks are persisted and safe, but automatic replay of the exact blocked tool after approval remains a future hardening step.
-- New Playwright specs are added and discoverable; full browser execution should be run in an environment with the Convex/Next webServer budget available.
+- `ask_user` survives live same-run pauses, but browser reload recovery of an
+  in-flight resolver still needs deeper checkpoint rehydration.
+- Direct tool advisor blocks are persisted and safe, but automatic replay of the
+  exact blocked tool after approval remains a future hardening step.
+- New Playwright specs are added and discoverable; full browser execution should
+  be run in an environment with the Convex/Next webServer budget available.
 
 ## 0. Current Baseline
 
-The following foundation is already implemented and should be treated as the starting point:
+The following foundation is already implemented and should be treated as the
+starting point:
 
 - Workflow stages under existing Ask / Plan / Code / Build modes.
 - Convex-backed workflow artifacts.
 - Workflow artifact panel.
-- Workflow chains, templates, persistence, launcher, active progress, and artifact-driven step advancement.
+- Workflow chains, templates, persistence, launcher, active progress, and
+  artifact-driven step advancement.
 - `ask_user` tool, card rendering, and suggested-action continuation.
 - Claim verifier and final assistant claim guard.
 - File artifact apply verification against Convex file-tree source of truth.
@@ -48,13 +69,15 @@ The following foundation is already implemented and should be treated as the sta
 Complete the remaining work in dependency order:
 
 1. Stabilize interactive runtime continuation (`ask_user` true pause/resume).
-2. Enforce advisor gates in the actual runtime tool path, not only artifact apply.
+2. Enforce advisor gates in the actual runtime tool path, not only artifact
+   apply.
 3. Integrate Autopilot checkpoints into real Autopilot transitions.
 4. Harden workflow chain runtime linkage.
 5. Add browser E2E coverage around the file tree and advisor proof chain.
 6. Polish UI, docs, and final regression coverage.
 
-Do **not** start with broad UI polish. The remaining reliability-critical gaps are runtime continuation, direct tool-call enforcement, and browser proof tests.
+Do **not** start with broad UI polish. The remaining reliability-critical gaps
+are runtime continuation, direct tool-call enforcement, and browser proof tests.
 
 ---
 
@@ -62,13 +85,15 @@ Do **not** start with broad UI polish. The remaining reliability-critical gaps a
 
 ## Goal
 
-Turn `ask_user` from a follow-up-message UX into a real same-run pause/resume primitive.
+Turn `ask_user` from a follow-up-message UX into a real same-run pause/resume
+primitive.
 
 ## Current State
 
 - `ask_user` tool exists.
 - Question cards render in chat.
-- Option clicks send a structured follow-up message through the existing suggested-action path.
+- Option clicks send a structured follow-up message through the existing
+  suggested-action path.
 - The original run does not truly pause and resume.
 
 ## Work Items
@@ -110,7 +135,8 @@ When the runtime emits `ask_user`:
 - mark run status as paused or equivalent checkpoint state,
 - stop executing further tool calls until answer arrives.
 
-If `agentRuns.status` should not gain `paused`, store paused state in a separate checkpoint/session table instead.
+If `agentRuns.status` should not gain `paused`, store paused state in a separate
+checkpoint/session table instead.
 
 ### 1.3 Resume same run with answer
 
@@ -150,7 +176,9 @@ On answer:
 
 ## Goal
 
-Extend advisor gating beyond artifact application into direct runtime tools such as file writes, patches, commands, dependency changes, and destructive operations.
+Extend advisor gating beyond artifact application into direct runtime tools such
+as file writes, patches, commands, dependency changes, and destructive
+operations.
 
 ## Current State
 
@@ -209,7 +237,9 @@ When matching review is approved:
 
 ## Acceptance Criteria
 
-- `rm -rf`, dependency file edits, Convex schema changes, and auth/security edits cannot execute directly without advisor approval when policy requires it.
+- `rm -rf`, dependency file edits, Convex schema changes, and auth/security
+  edits cannot execute directly without advisor approval when policy requires
+  it.
 - Approved reviews unblock execution.
 - `needs_changes` and `blocked` reviews keep execution blocked.
 - Assistant cannot claim execution success for blocked tools.
@@ -228,7 +258,8 @@ When matching review is approved:
 
 ## Goal
 
-Integrate the existing Autopilot checkpoint helper into actual Autopilot transitions.
+Integrate the existing Autopilot checkpoint helper into actual Autopilot
+transitions.
 
 ## Current State
 
@@ -319,7 +350,8 @@ Make workflow chains track actual run execution, not only artifact progression.
 
 When launching a chain step:
 
-- pass `workflowChainId` and `workflowChainStepId` into outgoing agent run context,
+- pass `workflowChainId` and `workflowChainStepId` into outgoing agent run
+  context,
 - persist on `agentRuns` or a join table.
 
 ### 4.2 Mark step running on run start
@@ -431,7 +463,8 @@ Same as above, but reviewer returns `blocked` or `needs_changes`.
 
 ## Goal
 
-Improve the already-functional advisor-reviewer path into a polished product experience.
+Improve the already-functional advisor-reviewer path into a polished product
+experience.
 
 ## Work Items
 
@@ -481,7 +514,8 @@ Add:
 
 ## Goal
 
-Optionally materialize Convex workflow artifacts into workspace files for portability and auditability.
+Optionally materialize Convex workflow artifacts into workspace files for
+portability and auditability.
 
 ## Work Items
 
@@ -520,17 +554,20 @@ Document the completed architecture and remaining operational rules.
 
 ## Work Items
 
-1. Update `docs/PANDA_RPIV_INSPIRED_WORKFLOW_ORCHESTRATION_PLAN.md` with completed status.
+1. Update `docs/PANDA_RPIV_INSPIRED_WORKFLOW_ORCHESTRATION_PLAN.md` with
+   completed status.
 2. Add architecture doc for workflow stages/artifacts/chains.
 3. Add architecture doc for advisor requests/reviews.
 4. Add architecture doc for claim verification/file-tree proof.
-5. Update `PLAN.md` / `STATUS.md` if those are the current project-level trackers.
+5. Update `PLAN.md` / `STATUS.md` if those are the current project-level
+   trackers.
 6. Add developer notes for true `ask_user` pause/resume.
 7. Add user-facing notes for advisor review flow.
 
 ## Acceptance Criteria
 
-- A new developer can understand the orchestration layer without reading the full conversation history.
+- A new developer can understand the orchestration layer without reading the
+  full conversation history.
 - Docs explain what is implemented versus planned.
 
 ---
@@ -595,14 +632,14 @@ Stabilize before considering the rpiv-inspired orchestration work complete.
 
 # Risk Register
 
-| Risk | Impact | Mitigation |
-|---|---:|---|
-| True runtime pause/resume requires deeper harness changes | High | Implement with explicit checkpoint/session state and focused tests first. |
-| Advisor enforcement blocks legitimate work too often | Medium | Keep policy-driven gates configurable. |
-| Stale advisor review approves wrong action | High | Add artifact/action hash and strict matching for destructive gates. |
-| Autopilot checkpoint integration creates deadlocks | High | Add clear blocked/resume state machine and tests. |
-| Browser E2E is flaky | Medium | Seed data directly through Convex where possible and assert stable DOM labels. |
-| Chain state diverges from run state | Medium | Make run ID linkage explicit and update chain from run lifecycle events. |
+| Risk                                                      | Impact | Mitigation                                                                     |
+| --------------------------------------------------------- | -----: | ------------------------------------------------------------------------------ |
+| True runtime pause/resume requires deeper harness changes |   High | Implement with explicit checkpoint/session state and focused tests first.      |
+| Advisor enforcement blocks legitimate work too often      | Medium | Keep policy-driven gates configurable.                                         |
+| Stale advisor review approves wrong action                |   High | Add artifact/action hash and strict matching for destructive gates.            |
+| Autopilot checkpoint integration creates deadlocks        |   High | Add clear blocked/resume state machine and tests.                              |
+| Browser E2E is flaky                                      | Medium | Seed data directly through Convex where possible and assert stable DOM labels. |
+| Chain state diverges from run state                       | Medium | Make run ID linkage explicit and update chain from run lifecycle events.       |
 
 ---
 

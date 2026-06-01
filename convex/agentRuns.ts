@@ -325,9 +325,18 @@ export const pruneRunRetention = mutation({
   },
   handler: async (ctx, args) => {
     await requireAgentRunOwner(ctx, args.runId)
-    const keepEvents = Math.max(0, Math.min(args.keepEvents ?? DEFAULT_CHILD_RUN_EVENT_RETENTION, 1000))
-    const keepCheckpoints = Math.max(0, Math.min(args.keepCheckpoints ?? DEFAULT_CHECKPOINT_RETENTION, 200))
-    const deleteBatchSize = Math.max(1, Math.min(args.deleteBatchSize ?? MAX_RETENTION_DELETE_BATCH, MAX_RETENTION_DELETE_BATCH))
+    const keepEvents = Math.max(
+      0,
+      Math.min(args.keepEvents ?? DEFAULT_CHILD_RUN_EVENT_RETENTION, 1000)
+    )
+    const keepCheckpoints = Math.max(
+      0,
+      Math.min(args.keepCheckpoints ?? DEFAULT_CHECKPOINT_RETENTION, 200)
+    )
+    const deleteBatchSize = Math.max(
+      1,
+      Math.min(args.deleteBatchSize ?? MAX_RETENTION_DELETE_BATCH, MAX_RETENTION_DELETE_BATCH)
+    )
 
     const events = await ctx.db
       .query('agentRunEvents')
@@ -344,7 +353,9 @@ export const pruneRunRetention = mutation({
       .withIndex('by_run_saved', (q) => q.eq('runId', args.runId))
       .order('desc')
       .take(keepCheckpoints + deleteBatchSize)
-    const checkpointIdsToDelete = checkpoints.slice(keepCheckpoints).map((checkpoint) => checkpoint._id)
+    const checkpointIdsToDelete = checkpoints
+      .slice(keepCheckpoints)
+      .map((checkpoint) => checkpoint._id)
     for (const checkpointId of checkpointIdsToDelete) {
       await ctx.db.delete(checkpointId)
     }
@@ -353,7 +364,8 @@ export const pruneRunRetention = mutation({
       deletedEvents: eventIdsToDelete.length,
       deletedCheckpoints: checkpointIdsToDelete.length,
       hasMore:
-        eventIdsToDelete.length === deleteBatchSize || checkpointIdsToDelete.length === deleteBatchSize,
+        eventIdsToDelete.length === deleteBatchSize ||
+        checkpointIdsToDelete.length === deleteBatchSize,
     }
   },
 })
@@ -656,7 +668,11 @@ export const saveRuntimeCheckpoint = mutation({
           .take(1)
 
     const latest = latestRows[0]
-    if (latest && latest.reason === envelope.reason && stableHash(latest.checkpoint) === checkpointHash) {
+    if (
+      latest &&
+      latest.reason === envelope.reason &&
+      stableHash(latest.checkpoint) === checkpointHash
+    ) {
       return latest._id
     }
 

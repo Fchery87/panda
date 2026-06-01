@@ -57,6 +57,7 @@ import { ascending } from './identifier'
 import { agents } from './agents'
 import { PermissionManager, checkPermission } from './permissions'
 import { plugins } from './plugins'
+import { createUserHooksPlugin, getUserHookDecision } from './user-hooks'
 import { repairJSON, fuzzyMatchToolName, safeJSONParse } from './tool-repair'
 import { compaction, needsCompaction, SUMMARIZATION_PROMPT } from './compaction'
 import { withTimeoutAndRetry, isContextOverflowError } from '../../llm/stream-resilience'
@@ -107,7 +108,12 @@ import {
   summarizeAppliedSkills,
 } from '../skills/applied-skills'
 import { resolveAgentSkills } from '../skills/resolver'
-import { isMutatingPermissionSet } from '../subagents/presets'
+import {
+  createSubagentIsolationSession,
+  isSubagentMutating,
+  resolveMutatingSubagentConcurrency,
+  selectSubagentIsolationMode,
+} from './isolation'
 
 export { buildActiveSpecSystemContent } from './runtime-active-spec'
 export type {
@@ -223,22 +229,34 @@ export class Runtime {
     this.state = this.createInitialState(sessionID, [...initialMessages, userMessage])
     this.resolvedHarnessPolicy = this.createRuntimePolicySnapshot(agent)
 
-    // SpecNative: Generate spec before execution if enabled
-    if (this.specLifecycleManager.isEnabled()) {
-      const userText = this.extractUserText(userMessage)
-      if (userText) {
-        const shouldProceed = yield* this.generateAndHandleSpec(userText, agent, sessionID)
-        if (shouldProceed === false) {
-          yield {
-            type: 'error',
-            error: 'Specification approval cancelled',
-          }
-          return
-        }
-      }
+    const userHookPluginName = `user-hooks:${sessionID}`
+    const hasUserHooks = (this.config.userHooks?.hooks.length ?? 0) > 0
+    if (hasUserHooks && this.config.userHooks) {
+      plugins.register(createUserHooksPlugin(this.config.userHooks, userHookPluginName))
     }
 
-    yield* this.runLoop(agent, maxSteps, { emitSessionStart: true })
+    try {
+      // SpecNative: Generate spec before execution if enabled
+      if (this.specLifecycleManager.isEnabled()) {
+        const userText = this.extractUserText(userMessage)
+        if (userText) {
+          const shouldProceed = yield* this.generateAndHandleSpec(userText, agent, sessionID)
+          if (shouldProceed === false) {
+            yield {
+              type: 'error',
+              error: 'Specification approval cancelled',
+            }
+            return
+          }
+        }
+      }
+
+      yield* this.runLoop(agent, maxSteps, { emitSessionStart: true })
+    } finally {
+      if (hasUserHooks) {
+        plugins.unregister(userHookPluginName)
+      }
+    }
   }
 
   /**
@@ -402,7 +420,19 @@ export class Runtime {
 
     this.state = this.restoreStateFromCheckpoint(checkpoint.state)
 
-    yield* this.runLoop(agent, maxSteps, { emitSessionStart: false })
+    const userHookPluginName = `user-hooks:${sessionID}`
+    const hasUserHooks = (this.config.userHooks?.hooks.length ?? 0) > 0
+    if (hasUserHooks && this.config.userHooks) {
+      plugins.register(createUserHooksPlugin(this.config.userHooks, userHookPluginName))
+    }
+
+    try {
+      yield* this.runLoop(agent, maxSteps, { emitSessionStart: false })
+    } finally {
+      if (hasUserHooks) {
+        plugins.unregister(userHookPluginName)
+      }
+    }
   }
 
   private createInitialState(sessionID: Identifier, messages: Message[]): RuntimeState {
@@ -1245,7 +1275,7 @@ export class Runtime {
       })
       return { output: '', error }
     }
-    const patterns = this.extractPatterns(toolName, args)
+    let patterns = this.extractPatterns(toolName, args)
 
     // Phase 5 — execution-time capability guard (defense-in-depth, second layer)
     // Catches tools that slipped through tool-list filtering and enforces
@@ -1363,7 +1393,80 @@ export class Runtime {
       messageID,
     }
 
-    await this.executeHook('tool.execute.before', hookContext, { toolName, args })
+    const beforeToolResult = await this.executeHook('tool.execute.before', hookContext, {
+      toolName,
+      args,
+    })
+    if (
+      beforeToolResult &&
+      typeof beforeToolResult === 'object' &&
+      'args' in beforeToolResult &&
+      beforeToolResult.args &&
+      typeof beforeToolResult.args === 'object' &&
+      !Array.isArray(beforeToolResult.args)
+    ) {
+      args = beforeToolResult.args as Record<string, unknown>
+      patterns = this.extractPatterns(toolName, args)
+    }
+    const userHookDecision = getUserHookDecision(beforeToolResult)
+    if (userHookDecision?.action === 'deny') {
+      const error = `User hook '${userHookDecision.hookId}' denied ${toolName}: ${userHookDecision.reason}`
+      const agentTool = AGENT_TOOLS.find((tool) => tool.function.name === toolName)
+      const commandClassification =
+        toolName === 'run_command' ? classifyCommandFamily(String(args.command ?? '')) : null
+      if (agentTool?.capability) {
+        const auditWarning = await this.persistPermissionAudit({
+          sessionID: this.state.sessionID,
+          ...(this.config.runId ? { runId: this.config.runId } : {}),
+          ...(this.config.chatId ? { chatId: this.config.chatId } : {}),
+          ...(this.config.projectId ? { projectId: this.config.projectId } : {}),
+          agentId: agent.name,
+          toolName,
+          capability: agentTool.capability,
+          ...(commandClassification ? { commandFamily: commandClassification.family } : {}),
+          decision: 'deny',
+          ruleId: userHookDecision.hookId,
+          ruleSource: 'project',
+          reason: userHookDecision.reason,
+          target: this.createPermissionAuditTarget(toolName, patterns[0], args),
+          unattended: !this.isApprovalChannelAvailable(),
+          createdAt: Date.now(),
+          metadata: { source: 'user-hook' },
+        })
+        if (auditWarning) yield auditWarning
+      }
+      yield {
+        type: 'interrupt_decision',
+        content: error,
+        interrupt: { toolName, riskTier, decision: 'reject', reason: userHookDecision.reason },
+      }
+      yield createToolResultEvent({
+        toolCallId: toolCall.id,
+        toolName,
+        args,
+        output: '',
+        error,
+        startedAt,
+      })
+      return { output: '', error, argsUsed: args }
+    }
+
+    if (userHookDecision?.action === 'ask') {
+      const interruptResult = yield* this.requestToolInterrupt({
+        sessionID: this.state.sessionID,
+        messageID,
+        toolCallId: toolCall.id,
+        toolName,
+        args,
+        patterns,
+        riskTier,
+        reason: `User hook '${userHookDecision.hookId}' requires approval: ${userHookDecision.reason}`,
+      })
+      if (!interruptResult.approved) {
+        return { output: '', error: interruptResult.error ?? 'Tool interrupted', argsUsed: args }
+      }
+      args = interruptResult.args
+    }
 
     if (riskPolicyDecision === 'deny') {
       const error =
@@ -1652,6 +1755,13 @@ export class Runtime {
           args,
           result,
         })
+        if (!result.error && (toolName === 'write_files' || toolName === 'apply_patch')) {
+          await this.executeHook('validation.post-write', hookContext, {
+            toolName,
+            args,
+            result,
+          })
+        }
         log.debug('Tool executed', {
           tool: toolName,
           step: this.state.step,
@@ -1871,7 +1981,9 @@ export class Runtime {
     return [...risks]
   }
 
-  private classifySubagentError(error?: string): NonNullable<HarnessSubagentSummary['errorCategory']> | undefined {
+  private classifySubagentError(
+    error?: string
+  ): NonNullable<HarnessSubagentSummary['errorCategory']> | undefined {
     if (!error) return undefined
     if (/unknown subagent|not found|registry/i.test(error)) return 'registry'
     if (/permission|denied|policy|capability/i.test(error)) return 'policy'
@@ -1881,14 +1993,10 @@ export class Runtime {
     return 'unknown'
   }
 
-  private selectSubagentIsolationMode(agent?: AgentConfig): NonNullable<AgentConfig['defaultIsolationMode']> {
-    const requested = agent?.defaultIsolationMode ?? this.config.defaultSubagentIsolationMode ?? 'shared-readonly'
-    const available = new Set(this.config.availableSubagentIsolationModes ?? ['shared-readonly'])
-    if (available.has(requested)) return requested
-    if (agent && isMutatingPermissionSet(agent.permission)) {
-      return available.has('patch-proposal') ? 'patch-proposal' : 'shared-readonly'
-    }
-    return 'shared-readonly'
+  private selectSubagentIsolationMode(
+    agent?: AgentConfig
+  ): NonNullable<AgentConfig['defaultIsolationMode']> {
+    return selectSubagentIsolationMode({ agent, config: this.config })
   }
 
   private createSubagentSummary(args: {
@@ -1980,34 +2088,45 @@ export class Runtime {
       }
 
       try {
-        const taskResult = await executeTaskTool(
-          {
-            subagent_type: subtask.agent,
-            prompt: subtask.prompt,
-            description: pending.description,
-          },
-          {
-            sessionID: this.state!.sessionID,
-            messageID: subtask.messageID,
-            parentAgent: pending.parentAgent,
-            runSubagent: async (childAgent, prompt, childSessionID) =>
-              this.runSubagent(childAgent, prompt, childSessionID),
-          }
+        const isolationMode = this.selectSubagentIsolationMode(subagentConfig)
+        const isolationSession = await createSubagentIsolationSession({
+          mode: isolationMode,
+          adapter: this.config.subagentIsolationAdapter,
+          parentSessionID: this.state!.sessionID,
+          childSessionID: ascending('session_'),
+          agentName: subtask.agent,
+        })
+        const taskResult = await isolationSession.run(() =>
+          executeTaskTool(
+            {
+              subagent_type: subtask.agent,
+              prompt: subtask.prompt,
+              description: pending.description,
+            },
+            {
+              sessionID: this.state!.sessionID,
+              messageID: subtask.messageID,
+              parentAgent: pending.parentAgent,
+              runSubagent: async (childAgent, prompt, childSessionID) =>
+                this.runSubagent(childAgent, prompt, childSessionID),
+            }
+          )
         )
         return { pending, success: true, errorMessage: taskResult.error, taskResult }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown subagent execution error'
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown subagent execution error'
         return { pending, success: false, errorMessage, taskResult: null }
       }
     }
 
     const readonlySubtasks = subtasksToProcess.filter((pending) => {
       const subagentConfig = agents.get(pending.part.agent)
-      return !subagentConfig || !isMutatingPermissionSet(subagentConfig.permission)
+      return !isSubagentMutating(subagentConfig)
     })
     const mutatingSubtasks = subtasksToProcess.filter((pending) => {
       const subagentConfig = agents.get(pending.part.agent)
-      return Boolean(subagentConfig && isMutatingPermissionSet(subagentConfig.permission))
+      return isSubagentMutating(subagentConfig)
     })
 
     if (mutatingSubtasks.length > 1) {
@@ -2021,18 +2140,22 @@ export class Runtime {
     const runWithConcurrency = async (items: PendingSubtask[], concurrency: number) => {
       const output: Awaited<ReturnType<typeof runPendingSubtask>>[] = []
       for (let index = 0; index < items.length; index += concurrency) {
-        output.push(...(await Promise.all(items.slice(index, index + concurrency).map(runPendingSubtask))))
+        output.push(
+          ...(await Promise.all(items.slice(index, index + concurrency).map(runPendingSubtask)))
+        )
       }
       return output
     }
 
     const readonlyConcurrency = Math.max(1, this.config.maxConcurrentSubagents ?? 4)
-    const mutatingIsolationReady = mutatingSubtasks.every((pending) => {
+    const mutatingIsolationModes = mutatingSubtasks.map((pending) => {
       const subagentConfig = agents.get(pending.part.agent)
-      return this.selectSubagentIsolationMode(subagentConfig) !== 'shared-readonly'
+      return this.selectSubagentIsolationMode(subagentConfig)
     })
-    const requestedMutatingConcurrency = Math.max(1, this.config.maxConcurrentMutatingSubagents ?? 1)
-    const mutatingConcurrency = mutatingIsolationReady ? requestedMutatingConcurrency : 1
+    const mutatingConcurrency = resolveMutatingSubagentConcurrency({
+      isolationModes: mutatingIsolationModes,
+      requestedConcurrency: this.config.maxConcurrentMutatingSubagents,
+    })
     const results = await runWithConcurrency(readonlySubtasks, readonlyConcurrency)
     results.push(...(await runWithConcurrency(mutatingSubtasks, mutatingConcurrency)))
 
@@ -2289,7 +2412,11 @@ export class Runtime {
     const subagentSummaries: HarnessSubagentSummary[] = []
 
     try {
-      for await (const event of childRuntime.run(childSessionID, childUserMessage, childInitialMessages)) {
+      for await (const event of childRuntime.run(
+        childSessionID,
+        childUserMessage,
+        childInitialMessages
+      )) {
         if (event.type === 'text' && event.content) {
           output += event.content
         }
@@ -2326,6 +2453,12 @@ export class Runtime {
    */
   private async *performCompaction(_agent: AgentConfig): AsyncGenerator<RuntimeEvent, boolean> {
     if (!this.state) return false
+
+    await this.executeHook(
+      'compaction.before',
+      { sessionID: this.state.sessionID, step: this.state.step, agent: _agent, messageID: '' },
+      { messageCount: this.state.messages.length }
+    )
 
     yield {
       type: 'compaction',
@@ -2401,6 +2534,12 @@ export class Runtime {
         compaction: { phase: 'complete' },
       }
     }
+
+    await this.executeHook(
+      'compaction.after',
+      { sessionID: this.state.sessionID, step: this.state.step, agent: _agent, messageID: '' },
+      result
+    )
 
     return true
   }
@@ -2713,6 +2852,22 @@ export class Runtime {
     RuntimeEvent,
     { approved: boolean; args: Record<string, unknown>; error?: string }
   > {
+    if (this.state) {
+      const agent = agents.get(this.state.messages.at(-1)?.agent ?? '') ?? agents.get('build')
+      if (agent) {
+        await this.executeHook(
+          'permission.ask',
+          {
+            sessionID: request.sessionID,
+            step: this.state.step,
+            agent,
+            messageID: request.messageID,
+          },
+          request
+        )
+      }
+    }
+
     yield {
       type: 'interrupt_request',
       content: request.reason,
@@ -2743,6 +2898,7 @@ export class Runtime {
         output: '',
         error,
       })
+      await this.emitPermissionDecisionHook(request, { decision: 'reject', reason: error })
       return { approved: false, args: request.args, error }
     }
 
@@ -2770,6 +2926,10 @@ export class Runtime {
           error: `Interrupted: ${errorMessage}`,
         }),
       }
+      await this.emitPermissionDecisionHook(request, {
+        decision: 'reject',
+        reason: errorMessage,
+      })
       return { approved: false, args: request.args, error: `Interrupted: ${errorMessage}` }
     }
 
@@ -2793,6 +2953,7 @@ export class Runtime {
         output: '',
         error,
       })
+      await this.emitPermissionDecisionHook(request, result)
       return { approved: false, args: request.args, error }
     }
 
@@ -2810,7 +2971,22 @@ export class Runtime {
         reason: result.reason,
       },
     }
+    await this.emitPermissionDecisionHook(request, result)
     return { approved: true, args: nextArgs }
+  }
+
+  private async emitPermissionDecisionHook(
+    request: ToolInterruptRequest,
+    result: ToolInterruptResult
+  ): Promise<void> {
+    if (!this.state) return
+    const agent = agents.get(this.state.messages.at(-1)?.agent ?? '') ?? agents.get('build')
+    if (!agent) return
+    await this.executeHook(
+      'permission.decision',
+      { sessionID: request.sessionID, step: this.state.step, agent, messageID: request.messageID },
+      { request, result }
+    )
   }
 
   private applyToolLoopGuard(toolKeysForStep: string[]): { triggered: boolean; warned: boolean } {
@@ -2932,8 +3108,9 @@ export class Runtime {
     if (!state) return
 
     // Runtime checkpoints are cold recovery data. Avoid writing a full payload on
-    // every step; keep regular recovery points plus terminal/error checkpoints.
-    if (reason === 'step' && state.step % 3 !== 0 && !state.isLastStep) return
+    // every step; keep the first recovery point, periodic recovery points, plus
+    // terminal/error checkpoints.
+    if (reason === 'step' && state.step !== 1 && state.step % 3 !== 0 && !state.isLastStep) return
 
     const checkpoint: RuntimeCheckpoint = {
       version: 1,

@@ -27,15 +27,15 @@
     },
     {
       "command": "bun test",
-      "label": "Unit proof",
+      "label": "Unit evidence",
       "detail": "Exercise app, Convex, hooks, components, and runtime behavior with Bun.",
       "proof": "Runs Bun unit and component coverage across the repo."
     },
     {
       "command": "bun run test:e2e",
       "label": "Browser acceptance",
-      "detail": "Validate the workbench, agent run, permissions, and sharing flows in Playwright.",
-      "proof": "Runs focused Playwright acceptance for workbench, agent-run, permissions, and sharing flows."
+      "detail": "Validate the editor, agent run, permissions, and sharing flows in Playwright.",
+      "proof": "Runs focused Playwright acceptance for editor, agent-run, permissions, and sharing flows."
     },
     {
       "command": "bun run build",

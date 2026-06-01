@@ -76,7 +76,12 @@ export function ArtifactPanel({
     reasoningEffort: 'medium',
   },
 }: ArtifactPanelProps) {
-  const artifactController = useArtifactController({ projectId, chatId, writeFileToRuntime, advisorPolicy })
+  const artifactController = useArtifactController({
+    projectId,
+    chatId,
+    writeFileToRuntime,
+    advisorPolicy,
+  })
   const createAdvisorReviewRequest = useMutation(api.advisorReviewRequests.create)
   const records = artifactController.records as ArtifactRecord[] | undefined
 
@@ -259,7 +264,7 @@ export function ArtifactPanel({
           animate={{ opacity: 1, height: 'auto' }}
           className="space-y-3 border-b px-4 py-3"
         >
-          <div className="border border-border bg-background/70 p-3">
+          <div className="bg-background/70 border border-border p-3">
             <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
               Session changed work
             </div>

@@ -1,7 +1,7 @@
 # Panda Design System
 
-> **Last updated: 2026-05-20** — "Neutral Precision" refresh aligned with
-> Cursor 2.0 / Antigravity 2.0 / 2026 IDE standards. Source of truth is
+> **Last updated: 2026-05-30** — "Neutral Precision" refresh aligned with Cursor
+> 2.0 / Antigravity 2.0 / 2026 IDE standards. Source of truth is
 > `apps/web/app/globals.css`.
 
 ## Reader And Action
@@ -13,22 +13,22 @@ copying a previous mockup.
 
 ## Design Thesis
 
-Panda is a premium operational workbench for AI-assisted code work. It should
-feel calm, exact, recoverable, and technically serious. The interface is not a
-chatbot, not a project dashboard, and not an IDE clone. It is a session-first
-command surface where context, chat direction, plan review, execution proof,
-changed work, and recovery stay visible in one browser workspace.
+Panda is a premium operational IDE for AI-assisted code work. It should feel
+calm, exact, recoverable, and technically serious. The interface is not a
+chatbot and not a project dashboard. It is an editor-centric command surface
+where context, chat direction, plan review, run evidence, changed work, and
+recovery stay visible in one browser workspace.
 
 The visual direction is **neutral precision**: clean chromatic-neutral surfaces
 (not warm cream, not cold blue-gray), subtle elevation hierarchy, restrained
-orange accent reserved for active states and proof markers, and a professional
+orange accent reserved for active states and run markers, and a professional
 clarity that prioritizes usability over decoration.
 
 ## Core Principles
 
 1. Keep the work in one place: every screen should clarify the relationship
-   between context, current objective, agent direction, proof, changed work, and
-   next action.
+   between context, current objective, agent direction, run evidence, changed
+   work, and next action.
 2. Make trust visible: mode, model, runtime, permission boundary, share
    boundary, and recovery state must be surfaced near the actions they affect.
 3. Prefer bounded transparency: show useful summaries by default and reveal
@@ -52,25 +52,25 @@ Use OKLCH tokens as the source of truth. All tokens live in
 ```css
 :root {
   /* Core palette — clean neutral with faint cool undertone */
-  --background: 99.07% 0.003 270;      /* Off-white canvas */
-  --foreground: 14.5% 0.005 270;       /* Near-black text */
+  --background: 99.07% 0.003 270; /* Off-white canvas */
+  --foreground: 14.5% 0.005 270; /* Near-black text */
 
   /* Surfaces — barely-there elevation */
-  --card: 97.5% 0.003 270;             /* Cards, panels */
-  --surface-0: 99.07% 0.003 270;       /* Canvas */
-  --surface-1: 97.5% 0.003 270;        /* Panels */
-  --surface-2: 95.5% 0.004 270;        /* Hover, flyout */
-  --surface-3: 93.5% 0.005 270;        /* Popovers, overlays */
+  --card: 97.5% 0.003 270; /* Cards, panels */
+  --surface-0: 99.07% 0.003 270; /* Canvas */
+  --surface-1: 97.5% 0.003 270; /* Panels */
+  --surface-2: 95.5% 0.004 270; /* Hover, flyout */
+  --surface-3: 93.5% 0.005 270; /* Popovers, overlays */
 
   /* Brand accent — orange, used sparingly */
-  --primary: 63.5% 0.17 40;            /* Active state, primary CTA */
+  --primary: 63.5% 0.17 40; /* Active state, primary CTA */
   --primary-foreground: 99.07% 0.003 270;
 
   /* Structural */
-  --muted: 95.5% 0.004 270;            /* Quiet backgrounds */
-  --muted-foreground: 50% 0.008 270;   /* Secondary text */
-  --border: 91.5% 0.004 270;           /* Subtle dividers */
-  --accent: 93.5% 0.005 270;           /* Hover tint */
+  --muted: 95.5% 0.004 270; /* Quiet backgrounds */
+  --muted-foreground: 50% 0.008 270; /* Secondary text */
+  --border: 91.5% 0.004 270; /* Subtle dividers */
+  --accent: 93.5% 0.005 270; /* Hover tint */
 
   /* Sidebar — slightly recessed */
   --sidebar-background: 96.5% 0.003 270;
@@ -84,8 +84,8 @@ Use OKLCH tokens as the source of truth. All tokens live in
 ```css
 .dark {
   /* Core palette — deep charcoal with dimension */
-  --background: 13% 0.005 270;         /* Canvas */
-  --foreground: 93% 0.004 270;         /* Text */
+  --background: 13% 0.005 270; /* Canvas */
+  --foreground: 93% 0.004 270; /* Text */
 
   /* Surfaces — progressive lift */
   --card: 16.5% 0.005 270;
@@ -133,10 +133,11 @@ and low-priority text.
 separators, card borders, and inspector sections. Subtle but visible.
 
 `--primary` is Panda's orange accent. Use it ONLY for:
+
 - Selected/active navigation items
 - Primary action buttons
 - Live runtime state indicators
-- Proof markers and progress
+- Run markers and progress
 - Focus ring outlines
 
 Do not use it as general decoration, background fills, or decorative borders.
@@ -148,32 +149,32 @@ natural visual hierarchy without inverting the color scheme.
 ## Color Behavior
 
 The system is chromatic-neutral by default. Accent should appear in at most two
-major roles per screen: active navigation and one proof/status family. If a
-screen already uses accent for active rail selection, use subtle opacity tints
-for chips rather than new accent blocks.
+major roles per screen: active navigation and one run/status family. If a screen
+already uses accent for active rail selection, use subtle opacity tints for
+chips rather than new accent blocks.
 
 ### Status Colors
 
 Status colors are refined — clear but not garish. They signal without shouting.
 
-| Status    | Light Mode             | Dark Mode              | Use                         |
-| --------- | ---------------------- | ---------------------- | --------------------------- |
-| Success   | `55% 0.12 155`         | `62% 0.14 155`         | Completed, online, healthy  |
-| Error     | `52% 0.16 25`          | `58% 0.18 25`          | Failed, destructive         |
-| Warning   | `68% 0.13 75`          | `72% 0.14 75`          | Review required, blocked    |
-| Info      | `58% 0.1 230`          | `64% 0.11 230`         | Waiting, neutral status     |
+| Status  | Light Mode     | Dark Mode      | Use                        |
+| ------- | -------------- | -------------- | -------------------------- |
+| Success | `55% 0.12 155` | `62% 0.14 155` | Completed, online, healthy |
+| Error   | `52% 0.16 25`  | `58% 0.18 25`  | Failed, destructive        |
+| Warning | `68% 0.13 75`  | `72% 0.14 75`  | Review required, blocked   |
+| Info    | `58% 0.1 230`  | `64% 0.11 230` | Waiting, neutral status    |
 
 ### Diff Colors
 
 Diff colors use semantic tints with proper opacity layers for background
 highlighting.
 
-| Role          | Use                                    |
-| ------------- | -------------------------------------- |
-| `--diff-added-fg`    | Added line text                        |
-| `--diff-added-bg`    | Added line background                  |
-| `--diff-removed-fg`  | Removed line text                      |
-| `--diff-removed-bg`  | Removed line background                |
+| Role                | Use                     |
+| ------------------- | ----------------------- |
+| `--diff-added-fg`   | Added line text         |
+| `--diff-added-bg`   | Added line background   |
+| `--diff-removed-fg` | Removed line text       |
+| `--diff-removed-bg` | Removed line background |
 
 ### Terminal Colors
 
@@ -183,6 +184,7 @@ saturation — designed for scanning logs at speed.
 ### Forbidden Colors
 
 Do not introduce:
+
 - Cool gray canvases (blue-gray `#f0f4f8` style)
 - Blue or cyan brand accents
 - Purple AI gradients
@@ -211,20 +213,20 @@ Body text is concise and operational. Avoid soft onboarding prose. A paragraph
 should explain state, consequence, or next action.
 
 Monospace is used for code, file paths, labels, badges, command output, file
-metadata, mode names, runtime states, model names, counters, and audit/proof
-rows. Do NOT use monospace for non-code UI text like section headings, button
-labels, or descriptions.
+metadata, mode names, runtime states, model names, counters, and audit/run rows.
+Do NOT use monospace for non-code UI text like section headings, button labels,
+or descriptions.
 
 Recommended scale:
 
-| Role            |            Size |  Weight | Notes                                  |
-| --------------- | --------------: | ------: | -------------------------------------- |
-| Hero/objective  | 56-76px desktop | 740-780 | Tight tracking, one idea only          |
-| Artifact title  |         32-42px | 720-760 | Used for plan and proof surfaces       |
-| Section heading |         18-26px | 680-720 | Short nouns, not marketing lines       |
-| Body            |         13-16px | 400-500 | Dense but readable                     |
-| Metadata        |         10-12px | 500-700 | Monospace, for data and file paths     |
-| Terminal/proof  |            12px | 400-600 | Monospace, tabular numerics            |
+| Role            |            Size |  Weight | Notes                              |
+| --------------- | --------------: | ------: | ---------------------------------- |
+| Hero/objective  | 56-76px desktop | 740-780 | Tight tracking, one idea only      |
+| Artifact title  |         32-42px | 720-760 | Used for plan and run surfaces     |
+| Section heading |         18-26px | 680-720 | Short nouns, not marketing lines   |
+| Body            |         13-16px | 400-500 | Dense but readable                 |
+| Metadata        |         10-12px | 500-700 | Monospace, for data and file paths |
+| Terminal/run    |            12px | 400-600 | Monospace, tabular numerics        |
 
 ## Spatial System
 
@@ -267,7 +269,9 @@ Public landing and education surfaces use a restrained dot-grid pattern:
       transparent 0.8px
     ),
     oklch(var(--background));
-  background-size: 24px 24px, auto;
+  background-size:
+    24px 24px,
+    auto;
 }
 ```
 
@@ -278,12 +282,12 @@ surface elevation to create visual hierarchy, not patterns.
 
 The elevation system creates depth without shadows:
 
-| Level  | Light                      | Dark                       | Use                          |
-| ------ | -------------------------- | -------------------------- | ---------------------------- |
-| 0      | `99.07% 0.003 270` (canvas) | `13% 0.005 270` (canvas)   | App background               |
-| 1      | `97.5% 0.003 270`          | `16.5% 0.005 270`          | Cards, panels, editors       |
-| 2      | `95.5% 0.004 270`          | `18% 0.005 270`            | Hover states, flyouts        |
-| 3      | `93.5% 0.005 270`          | `22% 0.006 270`            | Popovers, overlays           |
+| Level | Light                       | Dark                     | Use                    |
+| ----- | --------------------------- | ------------------------ | ---------------------- |
+| 0     | `99.07% 0.003 270` (canvas) | `13% 0.005 270` (canvas) | App background         |
+| 1     | `97.5% 0.003 270`           | `16.5% 0.005 270`        | Cards, panels, editors |
+| 2     | `95.5% 0.004 270`           | `18% 0.005 270`          | Hover states, flyouts  |
+| 3     | `93.5% 0.005 270`           | `22% 0.006 270`          | Popovers, overlays     |
 
 Each level is a barely perceptible step. The hierarchy works because of
 consistent layering, not dramatic contrast.
@@ -297,23 +301,23 @@ Required regions:
 1. **Top bar**: project identity, selected mode, search/command entry, model,
    runtime, share state, and global actions.
 2. **Left rail** (`SidebarRail`): icon-only navigation using `sidebar-*` tokens.
-   Icons: Home, Projects (Folder), Sessions (History), Project Files (FolderTree),
-   Agent Runs (Bot), Find Context (Search), Source Review (GitBranch), Settings.
-3. **Left flyout** (`SidebarFlyout`): expandable section detail — file tree,
-   search results, agent runs, git status, or session history. Uses `bg-card`
-   and slides to 240px width.
+   Icons: Home, Projects (Folder), Sessions (History), Explorer (FolderTree),
+   Runs (Bot), Search (Search), Source Control (GitBranch), Settings.
+3. **Left flyout** (`SidebarFlyout`): expandable section detail — Explorer,
+   search results, runs, git status, or session history. Uses `bg-card` and
+   slides to 240px width.
 4. **Center canvas** (`Workbench`): session home, file editor, plan artifact,
    diff review, or preview. Uses `bg-card` as background.
-5. **Right panel** (`RightPanel`): chat by default, with Proof, Changes, and
-   Context available as inspector tabs. Uses `bg-background` for header and
-   `bg-card` for content.
+5. **Chat dock + inspector**: chat remains available beside the editor in Agent
+   · Guided; the inspector rail exposes Run, Changes, and Context as on-demand
+   tabs. Uses `bg-background` for header and `bg-card` for content.
 6. **Bottom dock** (`BottomDock`): terminal and agent events with collapsed and
    expanded states. Uses token-based `bg-surface-1` (works in both themes).
 7. **Status bar** (`StatusBar`): selected file, cursor/path, connection,
    streaming, spec, and runtime state. Uses `surface-1` background.
 
 Do not squeeze all regions onto small screens. Mobile should switch between
-Session, Chat, Proof, and Preview as focused views.
+Editor, Chat, Run, and Changes as focused views.
 
 ### Sidebar Rail Rules
 
@@ -345,8 +349,9 @@ Apply this system across these Panda surfaces:
    unsaved changes, and provider testing.
 5. **Admin**: dashboard, users, analytics, system controls, security audit,
    access denied, and maintenance-sensitive confirmations.
-6. **Mobile**: Work, Chat, Proof, and Changes as focused views rather than a
-   compressed desktop shell. Panda does not depend on a live-preview destination.
+6. **Mobile**: Editor, Chat, Run, and Changes as focused views rather than a
+   compressed desktop shell. Panda does not depend on a live-preview
+   destination.
 
 The visual language stays consistent across all surfaces. Density changes by
 context: public pages are more typographic, workbench pages are dense and
@@ -358,8 +363,8 @@ operational, settings and admin pages are precise configuration surfaces.
 
 Use this for idle/home workbench states. The center canvas should have one large
 objective card, a clear next action, and three operational signal cards: mode,
-runtime, and proof. The side stack should summarize session timeline and next
-move. This screen orients the user before work begins.
+runtime, and run evidence. The side stack should summarize session timeline and
+next move. This screen orients the user before work begins.
 
 ### Plan Review
 
@@ -369,10 +374,10 @@ status chips. Approval, edit, risk, permission, and share boundaries belong in a
 right-side approval rail. The shell should clearly indicate that execution has
 not begun.
 
-### Build Proof
+### Build Run Evidence
 
 Use this when Build mode is executing or has produced changed work. The center
-canvas should privilege diff review and bounded proof. The right inspector
+canvas should privilege diff review and bounded run evidence. The inspector
 should show live run events, receipt state, checkpoint state, and stop/retry
 actions. Terminal output remains visible but should not dominate the screen.
 
@@ -412,6 +417,7 @@ decorative tags.
 Two sizes: `badge-sm` (9px text, compact) and `badge-md` (10px text, with icon).
 
 Status variants use data attributes:
+
 - `data-status="running"` — accent tint
 - `data-status="waiting"` — info tint
 - `data-status="review"` — warning tint
@@ -450,11 +456,12 @@ Plan artifacts should look like contracts. Include a title, status, short
 rationale, numbered steps, acceptance checks, risk notes, and owner actions.
 Make the current permission boundary obvious.
 
-### Run Proof
+### Run Evidence
 
-Run proof should show step progress, receipt summary, checkpoint state, changed
-files, and stop/retry/inspect actions. Raw logs, raw tool arguments, and private
-file content belong behind explicit inspection, never in public projection.
+Run evidence should show step progress, receipt summary, checkpoint state,
+changed files, and stop/retry/inspect actions. Raw logs, raw tool arguments, and
+private file content belong behind explicit inspection, never in public
+projection.
 
 ### Diff Review
 
@@ -476,7 +483,7 @@ Use motion for:
 
 1. Revealing or collapsing inspectors, terminal, and permission panels.
 2. Streaming assistant text or run-event updates.
-3. Switching between Session, Plan, Diff, Proof, and Preview states.
+3. Switching between Session, Plan, Diff, Run, and Preview states.
 4. Showing progress for runtime boot, tests, file writes, and checkpoint save.
 
 Avoid decorative parallax, bouncing mascots, gradient animation, and theatrical
@@ -535,8 +542,8 @@ Below desktop width, collapse in this order:
 
 1. Hide the right inspector behind a bottom or side tab.
 2. Hide the left flyout behind the rail.
-3. Collapse terminal and agent events into a single Proof panel.
-4. Switch the workbench to focused mobile tabs: Session, Chat, Proof, Preview.
+3. Collapse terminal and agent events into a single Run panel.
+4. Switch the workbench to focused mobile tabs: Editor, Chat, Run, Changes.
 
 Do not compress the desktop workbench into four unreadable columns on mobile.
 Each mobile view should have one main job.
@@ -575,7 +582,7 @@ Before shipping a Panda screen, check:
    fallback.
 3. Plan, approval, execution, changed work, and recovery states have distinct
    treatments.
-4. The accent is restrained and tied to active/proof state.
+4. The accent is restrained and tied to active/run state.
 5. At least one clear next action is visible.
 6. Sensitive detail is hidden behind explicit inspection unless the screen is
    owner-only and the user has chosen to inspect it.

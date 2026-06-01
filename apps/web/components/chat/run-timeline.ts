@@ -319,8 +319,8 @@ function stageMessage(
   kind: RunTimelineStageKind,
   status: RunTimelineStageStatus
 ): string | undefined {
-  if (kind === 'next_action') return 'Review the proof, inspect changes, or continue from chat.'
-  if (kind === 'receipt' && status === 'complete') return 'Proof is available for this run.'
+  if (kind === 'next_action') return 'Review run evidence, inspect changes, or continue from chat.'
+  if (kind === 'receipt' && status === 'complete') return 'Run evidence is available for this run.'
   if (kind === 'validation' && status === 'pending') return 'No validation evidence recorded yet.'
   return undefined
 }
@@ -399,7 +399,7 @@ export function getRunTimeline(
   } else if (source.receipt || steps.length > 0) {
     addEntry('next_action', {
       id: 'next-action-review',
-      label: 'Review proof and continue from chat',
+      label: 'Review run evidence and continue from chat',
       status: 'pending',
       source: 'derived',
     })

@@ -12,11 +12,11 @@ import { cn } from '@/lib/utils'
 
 const heroSignals = ['ASK', 'PLAN', 'AGENT'] as const
 
-const proofRows = [
+const trustRows = [
   ['MODE', 'Ask / Plan / Agent', 'Guided and Autopilot define the Agent trust boundary.'],
   ['RUNTIME', 'Browser first', 'Server fallback keeps command work available when needed.'],
   [
-    'PROOF',
+    'RUN',
     'Receipts + checkpoints',
     'Changed files, approvals, commands, and recovery state stay inspectable.',
   ],
@@ -25,9 +25,9 @@ const proofRows = [
 const featureRows = [
   {
     icon: Shield,
-    title: 'Files stay workbench-owned',
+    title: 'Files stay editor-owned',
     detail:
-      'The central workbench owns file opening, editing, generated files, and Review Diff. Chat directs the work without becoming the file system.',
+      'The central Editor owns file opening, editing, generated files, and Review Diff. Chat directs the work without becoming the file system.',
   },
   {
     icon: GitBranch,
@@ -44,7 +44,7 @@ const featureRows = [
 ]
 
 const workflowRows = [
-  ['01', 'Orient', 'Select files, objective, memory, and project context in the workbench.'],
+  ['01', 'Orient', 'Select files, objective, memory, and project context in the IDE.'],
   [
     '02',
     'Choose',
@@ -58,7 +58,7 @@ const workflowRows = [
   [
     '04',
     'Review',
-    'Move through Review Diff, proof, receipts, checkpoints, and next action without losing the thread.',
+    'Move through Review Diff, Run evidence, receipts, checkpoints, and next action without losing the thread.',
   ],
 ]
 
@@ -102,18 +102,18 @@ export default function Home() {
                   Calm under load. Exact during risk.
                 </p>
                 <h2 className="text-[clamp(3rem,8vw,5.5rem)] font-extrabold leading-[0.92] tracking-tight text-foreground">
-                  Ask, plan, and run agents from one workbench.
+                  Ask, plan, and run agents from one browser IDE.
                 </h2>
                 <p className="mt-6 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-                  Panda is a browser-first AI coding workbench for technically fluent users. Ask for
+                  Panda is a browser-first AI coding IDE for technically fluent users. Ask for
                   understanding, draft reviewable plans, then run Agent in Guided or Autopilot mode
-                  while files, approvals, receipts, checkpoints, and changed work stay attached to
-                  the same project session.
+                  while the Editor, approvals, receipts, checkpoints, and changed work stay attached
+                  to the same project session.
                 </p>
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                   <Link href="/projects">
                     <Button className="h-11 rounded-none border border-border px-5 font-mono text-xs uppercase tracking-[0.16em] shadow-none">
-                      {isAuthenticated ? 'Open Workbench' : 'Start Workbench'}
+                      {isAuthenticated ? 'Open Panda IDE' : 'Start Panda IDE'}
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </Link>
@@ -122,14 +122,14 @@ export default function Home() {
                       variant="outline"
                       className="h-11 rounded-none border-border bg-card px-5 font-mono text-xs uppercase tracking-[0.16em]"
                     >
-                      Read Workflow
+                      Read operating model
                     </Button>
                   </Link>
                 </div>
               </div>
 
               <div className="mt-10 grid gap-px bg-border sm:grid-cols-3">
-                {proofRows.map(([label, value, detail]) => (
+                {trustRows.map(([label, value, detail]) => (
                   <div key={label} className="bg-card p-4">
                     <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                       {label}
@@ -218,7 +218,7 @@ function WorkbenchPreview() {
         <div className="flex gap-2 py-3 sm:py-0">
           <span className="border border-border bg-card px-2 py-1">Agent · Guided</span>
           <span className="bg-primary/10 border border-primary px-2 py-1 text-foreground">
-            proof ready
+            run evidence ready
           </span>
         </div>
       </div>
@@ -239,7 +239,7 @@ function WorkbenchPreview() {
         </div>
 
         <div className="bg-secondary/70 hidden border-r border-border md:block">
-          <PanelHeader label="Files" />
+          <PanelHeader label="Explorer" />
           {['app/page.tsx', 'components/workbench', 'convex/runs.ts', 'docs/DESIGN.md'].map(
             (file, index) => (
               <div
@@ -266,7 +266,7 @@ function WorkbenchPreview() {
             </h3>
             <div className="mt-5 grid gap-px bg-border">
               {[
-                ['01', 'Update the affected workbench-owned files'],
+                ['01', 'Update the affected editor-owned files'],
                 ['02', 'Keep Ask / Plan / Agent copy consistent'],
                 ['03', 'Verify Review Diff, receipts, and checkpoint state'],
               ].map(([step, text]) => (
@@ -282,7 +282,7 @@ function WorkbenchPreview() {
         </div>
 
         <div className="hidden border-l border-border bg-background md:block">
-          <PanelHeader label="Proof rail" />
+          <PanelHeader label="Inspector rail" />
           <div className="grid gap-px bg-border">
             {[
               ['RUN', '3 steps ready'],
@@ -299,10 +299,10 @@ function WorkbenchPreview() {
           <div className="bg-primary/10 m-3 border border-primary p-3">
             <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.16em]">
               <Check className="h-3.5 w-3.5 text-primary" />
-              Proof saved
+              Run evidence saved
             </div>
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              Raw logs stay behind inspection. The default surface shows bounded proof.
+              Raw logs stay behind inspection. The default surface shows bounded run evidence.
             </p>
           </div>
         </div>

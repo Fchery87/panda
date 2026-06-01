@@ -14,7 +14,9 @@ export interface AutopilotCheckpointResult {
   preflight: AdvisorPreflightResult
 }
 
-export function evaluateAutopilotCheckpoint(input: AutopilotCheckpointInput): AutopilotCheckpointResult {
+export function evaluateAutopilotCheckpoint(
+  input: AutopilotCheckpointInput
+): AutopilotCheckpointResult {
   const preflight = buildAdvisorPreflight({
     policy: input.policy,
     changedFiles: input.changedFiles,

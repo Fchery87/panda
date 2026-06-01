@@ -409,8 +409,11 @@ export function RunProgressPanel({
                                       Context Guard
                                     </div>
                                     <div className="text-muted-foreground [overflow-wrap:anywhere]">
-                                      {step.details.contextGuard.classification ?? 'guarded'} output •{' '}
-                                      {step.details.contextGuard.bytesAvoided?.toLocaleString() ?? 'some'} bytes avoided
+                                      {step.details.contextGuard.classification ?? 'guarded'} output
+                                      •{' '}
+                                      {step.details.contextGuard.bytesAvoided?.toLocaleString() ??
+                                        'some'}{' '}
+                                      bytes avoided
                                       {typeof step.details.contextGuard.rawBytes === 'number'
                                         ? ` • ${step.details.contextGuard.rawBytes.toLocaleString()} raw bytes`
                                         : ''}

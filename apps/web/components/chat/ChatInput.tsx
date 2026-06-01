@@ -39,7 +39,10 @@ type EnhanceState = 'idle' | 'enhancing' | 'enhanced'
  * Parse @-mention tokens from the message text.
  * Returns the cleaned message (tokens removed) and extracted file paths.
  */
-function parseMentions(text: string, filePaths: string[] = []): { message: string; contextFiles: string[] } {
+function parseMentions(
+  text: string,
+  filePaths: string[] = []
+): { message: string; contextFiles: string[] } {
   const knownFiles = new Set(filePaths)
   const contextFiles: string[] = []
   const message = text
@@ -638,15 +641,13 @@ export function ChatInput({
   return (
     <div className="surface-2 shrink-0 border-t border-border p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
       <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2 px-1">
-        <div className="text-[10px] text-muted-foreground">
-          Direct Panda
-        </div>
+        <div className="text-[10px] text-muted-foreground">Direct Panda</div>
         <div className="flex items-center gap-2">
-          <span className="rounded-sm border border-border bg-background/70 px-2 py-1 text-[10px] text-muted-foreground">
+          <span className="bg-background/70 rounded-sm border border-border px-2 py-1 text-[10px] text-muted-foreground">
             @{filePaths.length} files
           </span>
           {attachments.length > 0 ? (
-            <span className="rounded-sm border border-border bg-background/70 px-2 py-1 text-[10px] text-muted-foreground">
+            <span className="bg-background/70 rounded-sm border border-border px-2 py-1 text-[10px] text-muted-foreground">
               {attachments.length} attachments
             </span>
           ) : null}
@@ -667,18 +668,18 @@ export function ChatInput({
         )}
 
         {pendingMentionContextFiles.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5 border-b border-border bg-primary/[0.03] px-2 py-1.5">
+          <div className="bg-primary/[0.03] flex flex-wrap gap-1.5 border-b border-border px-2 py-1.5">
             {pendingMentionContextFiles.slice(0, 4).map((path) => (
               <span
                 key={path}
-                className="max-w-[180px] truncate border border-primary/25 bg-primary/5 px-2 py-1 font-mono text-[10px] text-primary/90"
+                className="border-primary/25 bg-primary/5 text-primary/90 max-w-[180px] truncate border px-2 py-1 font-mono text-[10px]"
                 title={path}
               >
                 @{path}
               </span>
             ))}
             {pendingMentionContextFiles.length > 4 ? (
-              <span className="border border-border bg-background/70 px-2 py-1 font-mono text-[10px] text-muted-foreground">
+              <span className="bg-background/70 border border-border px-2 py-1 font-mono text-[10px] text-muted-foreground">
                 +{pendingMentionContextFiles.length - 4} more
               </span>
             ) : null}
@@ -686,7 +687,7 @@ export function ChatInput({
         ) : null}
 
         {queuedFollowUps.length > 0 && (
-          <div className="border-b border-border bg-primary/[0.04] px-2 py-1.5">
+          <div className="bg-primary/[0.04] border-b border-border px-2 py-1.5">
             <div className="mb-1 font-mono text-[10px] uppercase tracking-[0.16em] text-primary">
               Queued follow-up{queuedFollowUps.length === 1 ? '' : 's'}
             </div>
@@ -694,7 +695,7 @@ export function ChatInput({
               {queuedFollowUps.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center gap-2 border border-border bg-background/70 px-2 py-1 text-[11px] text-muted-foreground"
+                  className="bg-background/70 flex items-center gap-2 border border-border px-2 py-1 text-[11px] text-muted-foreground"
                 >
                   <span className="min-w-0 flex-1 truncate">{item.content}</span>
                   <button

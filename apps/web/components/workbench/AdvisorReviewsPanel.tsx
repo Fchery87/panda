@@ -9,7 +9,12 @@ type AdvisorReviewRecord = {
   gates: string[]
   status: 'approved' | 'needs_changes' | 'blocked'
   summary: string
-  risks: Array<{ severity: 'low' | 'medium' | 'high'; file?: string; finding: string; recommendation: string }>
+  risks: Array<{
+    severity: 'low' | 'medium' | 'high'
+    file?: string
+    finding: string
+    recommendation: string
+  }>
   reviewer?: string
   createdAt: number
 }
@@ -17,7 +22,7 @@ type AdvisorReviewRecord = {
 export function AdvisorReviewsList({ reviews }: { reviews: AdvisorReviewRecord[] }) {
   if (reviews.length === 0) {
     return (
-      <div className="border border-dashed border-border bg-muted/20 p-3 text-xs text-muted-foreground">
+      <div className="bg-muted/20 border border-dashed border-border p-3 text-xs text-muted-foreground">
         No advisor reviews yet. Risky changes will appear here after review.
       </div>
     )
@@ -26,7 +31,7 @@ export function AdvisorReviewsList({ reviews }: { reviews: AdvisorReviewRecord[]
   return (
     <div className="space-y-2">
       {reviews.map((review) => (
-        <article key={review._id} className="border border-border bg-background/80 p-3 text-xs">
+        <article key={review._id} className="bg-background/80 border border-border p-3 text-xs">
           <div className="flex items-center justify-between gap-2">
             <span className="font-medium text-foreground">Advisor review</span>
             <span className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -37,7 +42,10 @@ export function AdvisorReviewsList({ reviews }: { reviews: AdvisorReviewRecord[]
           {review.gates.length > 0 ? (
             <div className="mt-2 flex flex-wrap gap-1">
               {review.gates.map((gate) => (
-                <span key={gate} className="border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+                <span
+                  key={gate}
+                  className="bg-muted/40 border border-border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground"
+                >
                   {gate}
                 </span>
               ))}
@@ -47,7 +55,8 @@ export function AdvisorReviewsList({ reviews }: { reviews: AdvisorReviewRecord[]
             <ul className="mt-2 space-y-1 text-muted-foreground">
               {review.risks.map((risk, index) => (
                 <li key={`${risk.severity}-${index}`}>
-                  <span className="font-mono uppercase">{risk.severity}</span>: {risk.finding} → {risk.recommendation}
+                  <span className="font-mono uppercase">{risk.severity}</span>: {risk.finding} →{' '}
+                  {risk.recommendation}
                 </li>
               ))}
             </ul>

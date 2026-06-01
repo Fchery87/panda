@@ -43,10 +43,10 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { id: 'tasks', icon: IconHistory, label: 'Sessions', shortcut: 'Ctrl+Shift+H' },
-  { id: 'files', icon: IconFiles, label: 'Project Files', shortcut: 'Ctrl+Shift+E' },
-  { id: 'agents', icon: IconAgents, label: 'Agent Runs', shortcut: 'Ctrl+Shift+A' },
-  { id: 'search', icon: IconSearch, label: 'Find Context', shortcut: 'Ctrl+Shift+F' },
-  { id: 'git', icon: IconGit, label: 'Source Review', shortcut: 'Ctrl+Shift+G' },
+  { id: 'files', icon: IconFiles, label: 'Explorer', shortcut: 'Ctrl+Shift+E' },
+  { id: 'agents', icon: IconAgents, label: 'Runs', shortcut: 'Ctrl+Shift+A' },
+  { id: 'search', icon: IconSearch, label: 'Search', shortcut: 'Ctrl+Shift+F' },
+  { id: 'git', icon: IconGit, label: 'Source Control', shortcut: 'Ctrl+Shift+G' },
 ]
 
 export function SidebarRail({
@@ -74,7 +74,7 @@ export function SidebarRail({
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="flex h-full w-12 flex-shrink-0 flex-col items-center border-r border-border bg-sidebar-background">
+      <div className="bg-sidebar-background flex h-full w-12 flex-shrink-0 flex-col items-center border-r border-border">
         {/* Projects link at top */}
         <div className="flex flex-col border-b border-border">
           <Tooltip>
@@ -82,7 +82,7 @@ export function SidebarRail({
               <button
                 type="button"
                 onClick={onHomeClick}
-                className="flex h-11 items-center justify-center text-sidebar-foreground/70 transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground flex h-11 items-center justify-center transition-colors duration-150"
                 aria-label="Home"
               >
                 <IconHome className="h-4.5 w-4.5" />
@@ -97,7 +97,7 @@ export function SidebarRail({
             <TooltipTrigger asChild>
               <Link
                 href="/projects"
-                className="flex h-11 items-center justify-center border-t border-sidebar-border text-sidebar-foreground/70 transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                className="border-sidebar-border text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground flex h-11 items-center justify-center border-t transition-colors duration-150"
                 aria-label="Projects"
               >
                 <IconProjects className="h-4.5 w-4.5" />
@@ -172,7 +172,7 @@ export function SidebarRail({
             <TooltipTrigger asChild>
               <Link
                 href="/settings"
-                className="flex h-11 items-center justify-center text-sidebar-foreground/60 transition-colors duration-100 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                className="text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground flex h-11 items-center justify-center transition-colors duration-100"
                 aria-label="Settings"
               >
                 <IconSettings className="h-[18px] w-[18px]" />

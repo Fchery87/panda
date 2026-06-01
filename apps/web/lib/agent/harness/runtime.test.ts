@@ -1559,6 +1559,7 @@ describe('harness Runtime', () => {
       new Map(),
       {
         checkpointStore,
+        maxSteps: 2,
       }
     )
     const sessionID = 'session-checkpoints'
@@ -1648,7 +1649,7 @@ describe('harness Runtime', () => {
           },
         ],
       ]),
-      { checkpointStore, maxSteps: 5 }
+      { checkpointStore, maxSteps: 2 }
     )
 
     const firstRunEvents = []
@@ -1749,6 +1750,7 @@ describe('harness Runtime', () => {
     // --- First runtime: run one step then simulate crash by breaking ---
     const runtime1 = new Runtime(crashRecoveryProvider, toolMap, {
       checkpointStore: store,
+      maxSteps: 2,
       skipSpecVerification: true,
       onToolInterrupt: async () => ({ decision: 'approve' as const }),
     })

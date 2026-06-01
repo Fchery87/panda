@@ -59,7 +59,10 @@ export function isContextGuardEnabled(env: Pick<NodeJS.ProcessEnv, string> = pro
   return env.PANDA_CONTEXT_GUARD_ENABLED === '1'
 }
 
-export function classifyOutput(bytes: number, thresholds = DEFAULT_CONTEXT_GUARD_THRESHOLDS): ContextGuardClass {
+export function classifyOutput(
+  bytes: number,
+  thresholds = DEFAULT_CONTEXT_GUARD_THRESHOLDS
+): ContextGuardClass {
   if (bytes <= thresholds.smallBytes) return 'small'
   if (bytes <= thresholds.mediumBytes) return 'medium'
   if (bytes <= thresholds.largeBytes) return 'large'
@@ -70,7 +73,11 @@ export function safeTruncate(value: string, maxChars: number): string {
   if (value.length <= maxChars) return value
   if (maxChars <= 0) return ''
 
-  const segmenterCtor = (Intl as unknown as { Segmenter?: new (locale?: string, options?: { granularity: 'grapheme' }) => Intl.Segmenter }).Segmenter
+  const segmenterCtor = (
+    Intl as unknown as {
+      Segmenter?: new (locale?: string, options?: { granularity: 'grapheme' }) => Intl.Segmenter
+    }
+  ).Segmenter
   if (segmenterCtor) {
     const segmenter = new segmenterCtor(undefined, { granularity: 'grapheme' })
     let out = ''

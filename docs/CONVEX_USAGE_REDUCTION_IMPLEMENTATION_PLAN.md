@@ -1,31 +1,51 @@
 # Convex Usage Reduction Implementation Plan
 
-> Status: proposed implementation plan  
-> Scope: reduce Convex reads, writes, storage, bandwidth, and live-query churn in Panda  
-> Created: 2026-05-25  
-> Source audit: read-only top-to-bottom architecture/usage review of the current Panda repo
+> - Status: proposed implementation plan
+> - Scope: reduce Convex reads, writes, storage, bandwidth, and live-query churn
+>   in Panda
+> - Created: 2026-05-25
+> - Source audit: read-only top-to-bottom architecture/usage review of the
+>   current Panda repo
 
 ## Executive Summary
 
-Panda's current Convex usage risk is less about one obviously broken query and more about several high-leverage Modules whose Interfaces look bounded but whose Implementations still read, duplicate, or live-subscribe to large/changing data.
+Panda's current Convex usage risk is less about one obviously broken query and
+more about several high-leverage Modules whose Interfaces look bounded but whose
+Implementations still read, duplicate, or live-subscribe to large/changing data.
 
 The strongest recommendations are:
 
-1. **Stop prompt-time broad context re-indexing.** `apps/web/hooks/useAgent.ts` currently invokes multiple `contextChunks` indexing mutations before building an agent context pack. This can turn one prompt into many Convex reads/writes/search-index updates.
-2. **Deepen the `files` Module into a true metadata/content seam.** `api.files.listMetadata` strips `content` after reading full file documents, reducing client payload but not fully reducing Convex read cost or invalidation pressure.
-3. **Split hot run progress from cold raw trace/checkpoint data.** `agentRunEvents` and `harnessRuntimeCheckpoints` are useful but can become high-write, high-storage, and live-query-sensitive operational data.
-4. **Replace raw admin scans with aggregate or paginated Interfaces.** Admin pages are not the main hot path, but open dashboards can repeatedly read large slices of raw tables.
-5. **Retire or quarantine legacy heavyweight message/file Interfaces.** Keep `listPaginatedLite` and metadata-first paths canonical.
+1. **Stop prompt-time broad context re-indexing.** `apps/web/hooks/useAgent.ts`
+   currently invokes multiple `contextChunks` indexing mutations before building
+   an agent context pack. This can turn one prompt into many Convex
+   reads/writes/search-index updates.
+2. **Deepen the `files` Module into a true metadata/content seam.**
+   `api.files.listMetadata` strips `content` after reading full file documents,
+   reducing client payload but not fully reducing Convex read cost or
+   invalidation pressure.
+3. **Split hot run progress from cold raw trace/checkpoint data.**
+   `agentRunEvents` and `harnessRuntimeCheckpoints` are useful but can become
+   high-write, high-storage, and live-query-sensitive operational data.
+4. **Replace raw admin scans with aggregate or paginated Interfaces.** Admin
+   pages are not the main hot path, but open dashboards can repeatedly read
+   large slices of raw tables.
+5. **Retire or quarantine legacy heavyweight message/file Interfaces.** Keep
+   `listPaginatedLite` and metadata-first paths canonical.
 
-This plan uses the architecture vocabulary from `improve-codebase-architecture`: **Module**, **Interface**, **Implementation**, **Depth**, **Shallow**, **Seam**, **Adapter**, **Leverage**, **Locality**, and **deletion test**.
+This plan uses the architecture vocabulary from `improve-codebase-architecture`:
+**Module**, **Interface**, **Implementation**, **Depth**, **Shallow**, **Seam**,
+**Adapter**, **Leverage**, **Locality**, and **deletion test**.
 
 ## Current Evidence
 
 ### Convex health/usage context
 
-- Convex dev/prod insights showed no resource-limit or OCC incidents over the last 72 hours during the audit.
-- Convex AI files status showed only **Agent skills** out of date; project guidelines and AGENTS/CLAUDE Convex sections were up to date.
-- The usage warning is likely plan quota / accumulated usage / usage-rate related rather than one currently failing function.
+- Convex dev/prod insights showed no resource-limit or OCC incidents over the
+  last 72 hours during the audit.
+- Convex AI files status showed only **Agent skills** out of date; project
+  guidelines and AGENTS/CLAUDE Convex sections were up to date.
+- The usage warning is likely plan quota / accumulated usage / usage-rate
+  related rather than one currently failing function.
 
 ### High-signal sample data
 
@@ -42,29 +62,37 @@ Dev deployment samples from the audit:
 - `contextChunks`: 104 rows
 - `specifications`: 57 rows; sampled rows often several KB
 
-Prod deployment samples were smaller, but still showed runtime checkpoints and event rows present.
+Prod deployment samples were smaller, but still showed runtime checkpoints and
+event rows present.
 
 ## Design Principles
 
 ### Hot data must be small
 
-Hot live queries should return bounded summaries and metadata only. Avoid full file contents, full checkpoint payloads, signed URLs, raw command output, and full transcript bodies unless the user explicitly opens that detail.
+Hot live queries should return bounded summaries and metadata only. Avoid full
+file contents, full checkpoint payloads, signed URLs, raw command output, and
+full transcript bodies unless the user explicitly opens that detail.
 
 ### Deep Interfaces should hide expensive Implementation details
 
-A Module has useful **Depth** when callers get a small, stable Interface while expensive or complex Implementation details are hidden and localized.
+A Module has useful **Depth** when callers get a small, stable Interface while
+expensive or complex Implementation details are hidden and localized.
 
 Examples of desired Depth:
 
 - File tree asks for file metadata and never touches file content.
-- Run progress asks for a compact status summary and never touches raw trace output.
-- Agent context retrieval asks for a budgeted context pack and does not trigger broad re-indexing.
+- Run progress asks for a compact status summary and never touches raw trace
+  output.
+- Agent context retrieval asks for a budgeted context pack and does not trigger
+  broad re-indexing.
 
 ### Materialized Adapters must not become hidden sources of truth
 
-`contextChunks` should be an Adapter for retrieval, not a duplicate source of truth for project files, chats, plans, specs, and run outputs.
+`contextChunks` should be an Adapter for retrieval, not a duplicate source of
+truth for project files, chats, plans, specs, and run outputs.
 
-Deletion test: deleting `contextChunks` should not break core project/files/chat behavior. It should only degrade semantic retrieval until rebuilt lazily.
+Deletion test: deleting `contextChunks` should not break core project/files/chat
+behavior. It should only degrade semantic retrieval until rebuilt lazily.
 
 ### Write amplification is as important as read volume
 
@@ -131,7 +159,8 @@ Make usage changes measurable before altering behavior.
 
 ### Why this is first
 
-This is the highest-leverage recommendation. Today one agent prompt can trigger broad reads and writes before the agent does useful work.
+This is the highest-leverage recommendation. Today one agent prompt can trigger
+broad reads and writes before the agent does useful work.
 
 ### Current hot path
 
@@ -146,7 +175,10 @@ This is the highest-leverage recommendation. Today one agent prompt can trigger 
 
 ### Problem
 
-The `contextChunks` Module has a useful retrieval Interface, but its Implementation is too broad. It duplicates files, messages, plans, specs, summaries, and run output into searchable chunks. Prompt-time indexing causes write amplification and search-index churn.
+The `contextChunks` Module has a useful retrieval Interface, but its
+Implementation is too broad. It duplicates files, messages, plans, specs,
+summaries, and run output into searchable chunks. Prompt-time indexing causes
+write amplification and search-index churn.
 
 ### Desired architecture
 
@@ -160,7 +192,8 @@ Deepen `contextChunks` into a narrow **Adapter**:
 
 #### 1.1 Add a context freshness decision Module
 
-Create a small Module responsible for deciding whether a source should be indexed.
+Create a small Module responsible for deciding whether a source should be
+indexed.
 
 Interface shape conceptually:
 
@@ -221,10 +254,13 @@ Caps should be policy-level, not scattered constants:
 ### Acceptance criteria
 
 - A normal Ask/Plan/Agent prompt does not call all five indexing mutations.
-- Repeating the same prompt without content changes creates zero or near-zero `contextChunks` writes.
+- Repeating the same prompt without content changes creates zero or near-zero
+  `contextChunks` writes.
 - Existing context search still works when chunks exist.
-- Agent still receives useful local context without requiring full project indexing.
-- `contextChunks` can be deleted and rebuilt without breaking core project/chat/file behavior.
+- Agent still receives useful local context without requiring full project
+  indexing.
+- `contextChunks` can be deleted and rebuilt without breaking core
+  project/chat/file behavior.
 
 ### Expected usage reduction
 
@@ -240,19 +276,25 @@ High reduction in:
 
 ### Why this is second
 
-File metadata powers the project shell, file tree, workbench, project overview, and agent tools. It should be cheap and hot. File content should be cold and lazy.
+File metadata powers the project shell, file tree, workbench, project overview,
+and agent tools. It should be cheap and hot. File content should be cold and
+lazy.
 
 ### Current state
 
-`convex/files.ts:listMetadata` reads full `files` documents and strips `content` afterward. This reduces client payload but does not fully reduce Convex read cost or live invalidation cost.
+`convex/files.ts:listMetadata` reads full `files` documents and strips `content`
+afterward. This reduces client payload but does not fully reduce Convex read
+cost or live invalidation cost.
 
 ### Desired architecture
 
 Deepen the `files` Module:
 
 - **Hot Interface:** file metadata by project/path.
-- **Cold Interface:** file content by id/path, fetched only when opened or needed by an agent.
-- **Snapshot Interface:** bounded recovery/version history, not hot project state.
+- **Cold Interface:** file content by id/path, fetched only when opened or
+  needed by an agent.
+- **Snapshot Interface:** bounded recovery/version history, not hot project
+  state.
 
 ### Implementation options
 
@@ -287,7 +329,8 @@ Cons:
 
 #### Option B — Storage-backed content
 
-Keep metadata in Convex documents and move larger content to storage or external workspace source.
+Keep metadata in Convex documents and move larger content to storage or external
+workspace source.
 
 Pros:
 
@@ -402,7 +445,9 @@ Current behavior:
 
 ### Problem
 
-The run/proof Module has good product Depth, but raw trace and recovery data are too close to live progress Interfaces. That creates write/storage/live-query churn.
+The run/proof Module has good product Depth, but raw trace and recovery data are
+too close to live progress Interfaces. That creates write/storage/live-query
+churn.
 
 ### Desired architecture
 
@@ -474,7 +519,8 @@ Current `convex/retention.ts` is a good cleanup seam. Extend policy targets:
 - Active run UI uses summary-shaped data.
 - Full checkpoint payload is not part of hot live query payloads.
 - A normal run writes fewer full checkpoint rows.
-- Completed runs preserve enough proof without retaining every raw event forever.
+- Completed runs preserve enough proof without retaining every raw event
+  forever.
 - Restore still works from the latest valid checkpoint.
 
 ### Expected usage reduction
@@ -533,7 +579,8 @@ Prefer scheduled jobs for lower risk at first:
 
 #### 4.3 Paginate audit logs
 
-`getAuditLog` should use pagination and indexed filters rather than `take(1000)` + in-memory filtering.
+`getAuditLog` should use pagination and indexed filters rather than
+`take(1000)` + in-memory filtering.
 
 #### 4.4 Make admin pages opt-in refresh
 
@@ -545,7 +592,8 @@ For heavy admin dashboards, prefer:
 
 ### Acceptance criteria
 
-- Admin overview no longer reads users/projects/chats/messages/agentRuns directly on every live query.
+- Admin overview no longer reads users/projects/chats/messages/agentRuns
+  directly on every live query.
 - Provider analytics does not scan 1,000 recent runs for each dashboard render.
 - Audit logs are paginated.
 
@@ -561,8 +609,10 @@ Some good deep Interfaces already exist, but legacy heavy paths remain.
 
 Examples:
 
-- Prefer `messages.listPaginatedLite`; avoid `messages.list` and heavyweight `listPaginated` in hot UI.
-- Prefer metadata-only file paths; avoid `files.list` except export/download or explicit full project operations.
+- Prefer `messages.listPaginatedLite`; avoid `messages.list` and heavyweight
+  `listPaginated` in hot UI.
+- Prefer metadata-only file paths; avoid `files.list` except export/download or
+  explicit full project operations.
 - Prefer checkpoint summaries; avoid full checkpoint list in UI.
 
 ### Implementation slices
@@ -586,31 +636,39 @@ Guard against accidental hot usage of:
 
 #### 5.3 Build smaller detail Interfaces
 
-Where old callers still need data, add narrower Interfaces rather than reusing broad ones.
+Where old callers still need data, add narrower Interfaces rather than reusing
+broad ones.
 
 ### Acceptance criteria
 
-- Hot UI cannot regress to full file/message/checkpoint payloads without failing tests.
+- Hot UI cannot regress to full file/message/checkpoint payloads without failing
+  tests.
 - Legacy functions have known callers or are removed.
 
 ## Phase 6 — Operational Cleanup for Dev/Test Usage
 
 ### Why this matters
 
-The dev deployment has many E2E/dev fixture projects and operational rows. Even if each row count is modest, repeated tests and agent runs can exceed Free plan limits.
+The dev deployment has many E2E/dev fixture projects and operational rows. Even
+if each row count is modest, repeated tests and agent runs can exceed Free plan
+limits.
 
 ### Tasks
 
 1. Decide what dev/test data can be deleted.
-2. Delete old fixture projects/chats/runs from the Convex dashboard or via a maintainer-approved cleanup mutation.
+2. Delete old fixture projects/chats/runs from the Convex dashboard or via a
+   maintainer-approved cleanup mutation.
 3. Prefer local Convex for high-volume E2E tests.
 4. Stop cloud dev servers when not actively testing.
-5. Consider separate test deployment or local-only policy for Playwright fixture runs.
+5. Consider separate test deployment or local-only policy for Playwright fixture
+   runs.
 
 ### Acceptance criteria
 
-- Old fixture projects are not accumulating indefinitely in the shared dev deployment.
-- E2E tests do not routinely create cloud Convex data unless explicitly requested.
+- Old fixture projects are not accumulating indefinitely in the shared dev
+  deployment.
+- E2E tests do not routinely create cloud Convex data unless explicitly
+  requested.
 
 ## Testing Strategy
 
@@ -636,7 +694,8 @@ Scenarios:
 3. Send Ask prompt twice with no file/message changes.
    - Expected: second prompt does not re-index broad project context.
 4. Run agent with several tool steps.
-   - Expected: run progress stays live; raw event/checkpoint rows are capped/compacted.
+   - Expected: run progress stays live; raw event/checkpoint rows are
+     capped/compacted.
 5. Open admin analytics.
    - Expected: aggregate reads, not raw table scans.
 
@@ -712,7 +771,8 @@ Mitigation:
 
 ### Prompt path
 
-- Repeated prompt with unchanged project creates near-zero context indexing writes.
+- Repeated prompt with unchanged project creates near-zero context indexing
+  writes.
 - Context pack construction performs bounded reads only.
 
 ### Project shell
@@ -728,7 +788,8 @@ Mitigation:
 
 ### Storage
 
-- `contextChunks`, `agentRunEvents`, `harnessRuntimeCheckpoints`, and `fileSnapshots` stop growing unbounded.
+- `contextChunks`, `agentRunEvents`, `harnessRuntimeCheckpoints`, and
+  `fileSnapshots` stop growing unbounded.
 
 ### Product behavior
 
@@ -740,14 +801,21 @@ Mitigation:
 These can reduce usage while implementation is pending:
 
 1. Close admin dashboard pages when not actively using them.
-2. Stop local `convex dev`, Next dev, and Playwright sessions when not actively testing.
-3. Delete disposable dev/E2E fixture projects from Convex dashboard after review.
+2. Stop local `convex dev`, Next dev, and Playwright sessions when not actively
+   testing.
+3. Delete disposable dev/E2E fixture projects from Convex dashboard after
+   review.
 4. Prefer local Convex for high-volume E2E testing.
-5. Avoid repeated agent runs on large projects until prompt-time context re-indexing is fixed.
-6. Run `npx convex ai-files update` only when file writes are acceptable; current status says only Agent skills are out of date.
+5. Avoid repeated agent runs on large projects until prompt-time context
+   re-indexing is fixed.
+6. Run `npx convex ai-files update` only when file writes are acceptable;
+   current status says only Agent skills are out of date.
 
 ## Final Recommendation
 
 Start with **Phase 1: Stop Prompt-Time Broad Context Re-indexing**.
 
-It has the strongest Leverage because it reduces Convex reads, writes, storage duplication, search index churn, and prompt latency without first requiring a risky data migration. After that, deepen the `files` Module so hot project/workbench UI has a true metadata-only Interface.
+It has the strongest Leverage because it reduces Convex reads, writes, storage
+duplication, search index churn, and prompt latency without first requiring a
+risky data migration. After that, deepen the `files` Module so hot
+project/workbench UI has a true metadata-only Interface.

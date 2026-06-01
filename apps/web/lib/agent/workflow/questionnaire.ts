@@ -45,8 +45,10 @@ export function validateQuestionnaireRequest(request: AskUserQuestionRequest): s
     }
     const optionValues = new Set<string>()
     for (const option of question.options ?? []) {
-      if (!option.value.trim()) errors.push(`Question "${question.id}" has an option without a value.`)
-      if (!option.label.trim()) errors.push(`Question "${question.id}" has an option without a label.`)
+      if (!option.value.trim())
+        errors.push(`Question "${question.id}" has an option without a value.`)
+      if (!option.label.trim())
+        errors.push(`Question "${question.id}" has an option without a label.`)
       if (optionValues.has(option.value)) {
         errors.push(`Question "${question.id}" has duplicate option value "${option.value}".`)
       }
@@ -62,7 +64,9 @@ export function validateQuestionnaireRequest(request: AskUserQuestionRequest): s
     }
     for (const recommendedValue of recommendedValues) {
       if (!optionValues.has(recommendedValue)) {
-        errors.push(`Question "${question.id}" has recommended option "${recommendedValue}" that is not in options.`)
+        errors.push(
+          `Question "${question.id}" has recommended option "${recommendedValue}" that is not in options.`
+        )
       }
     }
   }

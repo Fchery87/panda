@@ -2,7 +2,8 @@
 
 Date: 2026-05-23  
 Status: Draft for implementation  
-Scope: Panda chat/agent runtime mode UX and context continuity across Ask, Plan, Agent Guided, Agent Autopilot, and secondary Debug/Review/Docs actions
+Scope: Panda chat/agent runtime mode UX and context continuity across Ask, Plan,
+Agent Guided, Agent Autopilot, and secondary Debug/Review/Docs actions
 
 ## 1. Executive Decision
 
@@ -39,47 +40,65 @@ Agent · Guided     → internal mode: code
 Agent · Autopilot  → internal mode: build
 ```
 
-This keeps the first implementation safer: modernize the UX and contracts first, preserve existing runtime behavior, then progressively rename/refactor internals later.
+This keeps the first implementation safer: modernize the UX and contracts first,
+preserve existing runtime behavior, then progressively rename/refactor internals
+later.
 
 ## 2. Problem Statement
 
-Panda currently exposes four user-facing chat modes: `ask`, `plan`, `code`, and `build`.
+Panda currently exposes four user-facing chat modes: `ask`, `plan`, `code`, and
+`build`.
 
 The current model has two issues:
 
 1. **Mode taxonomy feels dated and ambiguous.**
    - `Code` and `Build` both sound like implementation modes.
-   - Users cannot easily infer whether `Code` means “small edit,” “write code,” “approval-gated agent,” or “normal agent.”
+   - Users cannot easily infer whether `Code` means “small edit,” “write code,”
+     “approval-gated agent,” or “normal agent.”
    - `Build` can be confused with compiling/running a production build.
 
 2. **Mode transitions can lose task context.**
    - User asks in **Ask** mode for an audit/review.
-   - User switches to **Plan** mode and asks Panda to create a plan from the audit.
-   - User switches to **Code** or **Build** and asks Panda to save/implement “this plan.”
-   - Panda may lose the previous plan/audit and ask to search the codebase again.
+   - User switches to **Plan** mode and asks Panda to create a plan from the
+     audit.
+   - User switches to **Code** or **Build** and asks Panda to save/implement
+     “this plan.”
+   - Panda may lose the previous plan/audit and ask to search the codebase
+     again.
 
-This is not primarily an LLM reasoning failure. It is an application-level mode taxonomy and handoff failure.
+This is not primarily an LLM reasoning failure. It is an application-level mode
+taxonomy and handoff failure.
 
 ## 3. May 2026 Standards Summary
 
-Current AI coding tools increasingly separate three concepts that Panda currently collapses into one mode selector:
+Current AI coding tools increasingly separate three concepts that Panda
+currently collapses into one mode selector:
 
 1. **Task phase** — ask, plan, act, debug, review, docs.
 2. **Autonomy level** — manual, guided, autopilot, background/cloud.
-3. **Execution environment** — current workspace, worktree, cloud sandbox, PR/issue workflow.
+3. **Execution environment** — current workspace, worktree, cloud sandbox,
+   PR/issue workflow.
 
 Observed 2026 patterns:
 
-- Cursor-style systems commonly present **Ask / Plan / Agent / Debug**, with background/cloud agents as execution environments.
-- Claude Code emphasizes **Plan mode** as structural read-only planning, then normal/accept-edits/high-autonomy execution through permission levels.
-- GitHub Copilot and VS Code agents emphasize a default **Agent mode**, plus a dedicated **Plan agent** that creates reviewable plans.
-- OpenCode exposes **Build** and **Plan** primary agents, plus configurable subagents like review/debug/docs.
-- Gemini Code Assist centers on **Agent mode** with plans and tool approvals inside the agent loop.
-- Windsurf/Cascade-style systems emphasize one agentic surface, workflows, memory, and task orchestration more than many top-level modes.
+- Cursor-style systems commonly present **Ask / Plan / Agent / Debug**, with
+  background/cloud agents as execution environments.
+- Claude Code emphasizes **Plan mode** as structural read-only planning, then
+  normal/accept-edits/high-autonomy execution through permission levels.
+- GitHub Copilot and VS Code agents emphasize a default **Agent mode**, plus a
+  dedicated **Plan agent** that creates reviewable plans.
+- OpenCode exposes **Build** and **Plan** primary agents, plus configurable
+  subagents like review/debug/docs.
+- Gemini Code Assist centers on **Agent mode** with plans and tool approvals
+  inside the agent loop.
+- Windsurf/Cascade-style systems emphasize one agentic surface, workflows,
+  memory, and task orchestration more than many top-level modes.
 
 Conclusion:
 
-> Ask and Plan are still current. The outdated part is presenting Code and Build as two peer primary modes. Panda should present one Agent mode with an autonomy selector.
+> Ask and Plan are still current. The outdated part is presenting Code and Build
+> as two peer primary modes. Panda should present one Agent mode with an
+> autonomy selector.
 
 ## 4. Target Product Model
 
@@ -89,7 +108,8 @@ Conclusion:
 
 Purpose:
 
-> Understand, explain, inspect, audit, and answer without changing project files.
+> Understand, explain, inspect, audit, and answer without changing project
+> files.
 
 Default permissions:
 
@@ -110,7 +130,8 @@ Examples:
 
 Purpose:
 
-> Turn intent, findings, and constraints into a durable, reviewable implementation plan.
+> Turn intent, findings, and constraints into a durable, reviewable
+> implementation plan.
 
 Default permissions:
 
@@ -163,7 +184,9 @@ Behavior:
 
 ### 4.2 Secondary actions
 
-Secondary actions should not be equal top-level primary modes at first. They should be task templates, subagents, or command-style actions available inside Ask/Plan/Agent.
+Secondary actions should not be equal top-level primary modes at first. They
+should be task templates, subagents, or command-style actions available inside
+Ask/Plan/Agent.
 
 #### Debug
 
@@ -199,7 +222,8 @@ Initial placement:
 
 Purpose:
 
-> Generate or update documentation, changelogs, implementation notes, and plan files.
+> Generate or update documentation, changelogs, implementation notes, and plan
+> files.
 
 Initial placement:
 
@@ -223,7 +247,8 @@ Behavior:
 - returns diff/PR/artifacts
 - user continues working in current workspace
 
-This is explicitly future scope, not part of the immediate implementation unless the team chooses to accelerate worktree support.
+This is explicitly future scope, not part of the immediate implementation unless
+the team chooses to accelerate worktree support.
 
 ## 5. Confirmed Codebase Findings
 
@@ -249,31 +274,47 @@ apps/web/lib/agent/permission/mode-rulesets.ts
 
 ### 5.2 Cross-mode history is intentionally filtered
 
-`apps/web/lib/agent/context/session-summary.ts` contains `buildPromptMessagesWithModeSummary()`, which keeps same-mode messages directly and compresses other-mode messages into a heuristic summary.
+`apps/web/lib/agent/context/session-summary.ts` contains
+`buildPromptMessagesWithModeSummary()`, which keeps same-mode messages directly
+and compresses other-mode messages into a heuristic summary.
 
-For target implementation modes, prior `ask` and `plan` messages are not included verbatim. If summary extraction does not detect a decision/key-context/user-constraint pattern, the implementation mode can receive no useful prior context.
+For target implementation modes, prior `ask` and `plan` messages are not
+included verbatim. If summary extraction does not detect a
+decision/key-context/user-constraint pattern, the implementation mode can
+receive no useful prior context.
 
-A simulated Ask → Plan → Code/Build sequence produced an empty previous-message snapshot for both current internal `code` and `build`.
+A simulated Ask → Plan → Code/Build sequence produced an empty previous-message
+snapshot for both current internal `code` and `build`.
 
 ### 5.3 Structured approved-plan handoff exists but only covers one path
 
-`apps/web/hooks/useProjectMessageWorkflow.ts` can pass `approvedPlanExecutionContext` into current Code/Build when there is an executable `GeneratedPlanArtifact`.
+`apps/web/hooks/useProjectMessageWorkflow.ts` can pass
+`approvedPlanExecutionContext` into current Code/Build when there is an
+executable `GeneratedPlanArtifact`.
 
-`apps/web/lib/agent/prompt-modules.ts` then injects `## Approved Plan Execution Context` for both current internal `code` and `build`.
+`apps/web/lib/agent/prompt-modules.ts` then injects
+`## Approved Plan Execution Context` for both current internal `code` and
+`build`.
 
-This works for approved structured plans, but not for normal Plan-mode assistant output.
+This works for approved structured plans, but not for normal Plan-mode assistant
+output.
 
 ### 5.4 Plan source type exists but is underused
 
-`convex/schema.ts` defines `ContextChunkSourceType` values including `message` and `plan`.
+`convex/schema.ts` defines `ContextChunkSourceType` values including `message`
+and `plan`.
 
-`apps/web/lib/agent/context/context-pack.ts` knows how to format `plan` context sections.
+`apps/web/lib/agent/context/context-pack.ts` knows how to format `plan` context
+sections.
 
-However, `convex/contextChunks.ts` currently indexes files, session summaries, and specifications. It does not currently index chat messages or planning-session generated plans as `message`/`plan` chunks.
+However, `convex/contextChunks.ts` currently indexes files, session summaries,
+and specifications. It does not currently index chat messages or
+planning-session generated plans as `message`/`plan` chunks.
 
 ### 5.5 Code mode must be treated as implementation mode
 
-The previous review initially emphasized Build mode, but Code mode has the same context-awareness risk.
+The previous review initially emphasized Build mode, but Code mode has the same
+context-awareness risk.
 
 Current internal `code` mode:
 
@@ -295,7 +336,8 @@ Agent · Autopilot current internal build
 
 ## 6.1 Mode contract modernization
 
-Update Panda’s mode contract layer to separate user-facing mode, internal runtime mode, autonomy, and task type.
+Update Panda’s mode contract layer to separate user-facing mode, internal
+runtime mode, autonomy, and task type.
 
 Suggested types:
 
@@ -359,7 +401,8 @@ Guided | Autopilot
 Recommended labels:
 
 - **Guided** — “Review edits and commands before they run.”
-- **Autopilot** — “Let Panda apply safe changes and interrupt for risky actions.”
+- **Autopilot** — “Let Panda apply safe changes and interrupt for risky
+  actions.”
 
 Secondary actions should appear as smaller commands/actions:
 
@@ -380,12 +423,12 @@ No immediate backend rewrite is required.
 
 Initial mapping:
 
-| User-facing selection | Runtime mode | Prompt | Permissions |
-|---|---|---|---|
-| Ask | `ask` | `ASK_SYSTEM_PROMPT` | read/search only |
-| Plan | `plan` | `ARCHITECT_SYSTEM_PROMPT` | read/search/plan artifact only |
-| Agent · Guided | `code` | `CODE_SYSTEM_PROMPT` | ask for edit/exec |
-| Agent · Autopilot | `build` | `BUILD_SYSTEM_PROMPT` | allow safe actions; ask risky |
+| User-facing selection | Runtime mode | Prompt                    | Permissions                    |
+| --------------------- | ------------ | ------------------------- | ------------------------------ |
+| Ask                   | `ask`        | `ASK_SYSTEM_PROMPT`       | read/search only               |
+| Plan                  | `plan`       | `ARCHITECT_SYSTEM_PROMPT` | read/search/plan artifact only |
+| Agent · Guided        | `code`       | `CODE_SYSTEM_PROMPT`      | ask for edit/exec              |
+| Agent · Autopilot     | `build`      | `BUILD_SYSTEM_PROMPT`     | allow safe actions; ask risky  |
 
 Later refactor target:
 
@@ -428,7 +471,8 @@ apps/web/lib/agent/context/mode-handoff.ts
 
 ## 6.5 Handoff resolver
 
-Create a resolver that examines the current user request, target runtime mode, previous messages, and active planning session.
+Create a resolver that examines the current user request, target runtime mode,
+previous messages, and active planning session.
 
 Inputs:
 
@@ -445,10 +489,16 @@ resolveModeHandoff({
 Resolution rules:
 
 1. If `approvedPlanExecutionContext` exists, prefer it as `approved_plan`.
-2. If target mode is current internal `code` or `build` and the user refers to “this plan,” “the plan,” “above plan,” or “implement it,” use the latest Plan-mode assistant message or generated plan artifact.
-3. If target mode is current internal `code` or `build` and the user refers to “your audit,” “the audit,” “findings,” or “recommendations,” use the latest Ask-mode assistant message.
-4. If no referent language is present, include only a concise cross-mode summary.
-5. If referent language is present but no source can be found, return an unresolved handoff result that can drive a user-facing clarification.
+2. If target mode is current internal `code` or `build` and the user refers to
+   “this plan,” “the plan,” “above plan,” or “implement it,” use the latest
+   Plan-mode assistant message or generated plan artifact.
+3. If target mode is current internal `code` or `build` and the user refers to
+   “your audit,” “the audit,” “findings,” or “recommendations,” use the latest
+   Ask-mode assistant message.
+4. If no referent language is present, include only a concise cross-mode
+   summary.
+5. If referent language is present but no source can be found, return an
+   unresolved handoff result that can drive a user-facing clarification.
 
 ## 6.6 Prompt injection
 
@@ -458,21 +508,21 @@ Extend `PromptContext` with:
 modeHandoff?: ModeHandoffPacket
 ```
 
-Inject it in `apps/web/lib/agent/prompt-library.ts` as system context, not as a synthetic user message.
+Inject it in `apps/web/lib/agent/prompt-library.ts` as system context, not as a
+synthetic user message.
 
 Example:
 
 ```md
 ## Mode Handoff Context
-Previous mode: plan
-Current mode: agent-guided
-Runtime mode: code
-Handoff kind: latest_plan
-Confidence: high
-Reason: User referred to “this plan.”
+
+Previous mode: plan Current mode: agent-guided Runtime mode: code Handoff kind:
+latest_plan Confidence: high Reason: User referred to “this plan.”
 
 ### Handoff Content
+
 # Context Awareness Fix Plan
+
 ...
 ```
 
@@ -503,11 +553,13 @@ indexMessages({ projectId, limit })
 indexPlanningSessionPlans({ projectId, limit })
 ```
 
-Then update the context-pack assembly in `useAgent.ts` to call these indexers alongside existing file/summary/spec indexers.
+Then update the context-pack assembly in `useAgent.ts` to call these indexers
+alongside existing file/summary/spec indexers.
 
 ## 6.9 Explicit runtime mode override
 
-Prevent stale-mode sends by allowing send paths to carry the resolved runtime mode immediately.
+Prevent stale-mode sends by allowing send paths to carry the resolved runtime
+mode immediately.
 
 Proposed option:
 
@@ -534,11 +586,13 @@ Use `effectiveMode` for:
 - runtime config;
 - assistant annotations.
 
-`useProjectMessageWorkflow.handleSendMessage()` should pass the requested target runtime mode directly.
+`useProjectMessageWorkflow.handleSendMessage()` should pass the requested target
+runtime mode directly.
 
 ## 6.10 Clarifying preflight for unresolved references
 
-If the user says “this plan” or “the audit” and the resolver cannot find a source, Panda should not proceed with a vague Agent run.
+If the user says “this plan” or “the audit” and the resolver cannot find a
+source, Panda should not proceed with a vague Agent run.
 
 Instead, fail fast with a clear clarification:
 
@@ -557,11 +611,16 @@ Add focused tests before changing behavior.
 
 Tests:
 
-1. Ask → Plan → Agent Guided: “save this plan as markdown” includes latest Plan-mode assistant output in the runtime `code` prompt.
-2. Ask → Plan → Agent Autopilot: “save this plan as markdown” includes latest Plan-mode assistant output in the runtime `build` prompt.
-3. Ask → Agent Guided: “use your audit findings” includes latest Ask-mode assistant output.
-4. Ask → Agent Autopilot: “use your audit findings” includes latest Ask-mode assistant output.
-5. Approved structured plan takes precedence over inferred latest Plan-mode text.
+1. Ask → Plan → Agent Guided: “save this plan as markdown” includes latest
+   Plan-mode assistant output in the runtime `code` prompt.
+2. Ask → Plan → Agent Autopilot: “save this plan as markdown” includes latest
+   Plan-mode assistant output in the runtime `build` prompt.
+3. Ask → Agent Guided: “use your audit findings” includes latest Ask-mode
+   assistant output.
+4. Ask → Agent Autopilot: “use your audit findings” includes latest Ask-mode
+   assistant output.
+5. Approved structured plan takes precedence over inferred latest Plan-mode
+   text.
 6. If “this plan” is referenced and no plan exists, resolver returns unresolved.
 7. Same-mode history remains preserved.
 8. Cross-mode summaries still exist for non-referential context.
@@ -580,7 +639,8 @@ Implement the new user-facing model while preserving runtime compatibility.
 
 Tasks:
 
-1. Add `PrimaryMode`, `AgentAutonomy`, `ModeSelection`, and runtime mapping helpers.
+1. Add `PrimaryMode`, `AgentAutonomy`, `ModeSelection`, and runtime mapping
+   helpers.
 2. Update mode surface labels to show `Ask | Plan | Agent`.
 3. Add Agent autonomy selector: `Guided | Autopilot`.
 4. Map Agent Guided to internal `code`.
@@ -649,7 +709,8 @@ apps/web/lib/agent/prompt-library.ts
 
 Flow:
 
-1. `buildAgentPromptBundle()` receives mode selection/runtime mode, messages, and planning context.
+1. `buildAgentPromptBundle()` receives mode selection/runtime mode, messages,
+   and planning context.
 2. It resolves `modeHandoff`.
 3. `buildAgentPromptContext()` stores it on `PromptContext`.
 4. `getPromptForMode()` injects the formatted handoff as system context.
@@ -663,7 +724,8 @@ apps/web/hooks/useProjectMessageWorkflow.ts
 apps/web/hooks/useAgent.ts
 ```
 
-Ensure the requested target runtime mode is used immediately for runtime construction instead of waiting for React state to re-render.
+Ensure the requested target runtime mode is used immediately for runtime
+construction instead of waiting for React state to re-render.
 
 ### Phase 6 — Index messages and plans
 
@@ -680,11 +742,13 @@ Add indexing for:
 - `message` source type;
 - `plan` source type.
 
-Start conservative: index user/assistant text and generated plan artifacts, not arbitrary attachments or large tool output.
+Start conservative: index user/assistant text and generated plan artifacts, not
+arbitrary attachments or large tool output.
 
 ### Phase 7 — Unresolved-handoff UX
 
-Add a typed unresolved-handoff result and render it as an actionable in-chat system message.
+Add a typed unresolved-handoff result and render it as an actionable in-chat
+system message.
 
 Example:
 
@@ -725,10 +789,13 @@ The implementation is complete when:
 5. Code and Build are no longer presented as peer primary modes in the main UX.
 6. Debug, Review, and Docs exist as secondary actions/commands/templates.
 7. Ask → Plan → Agent Guided preserves the latest relevant plan/audit context.
-8. Ask → Plan → Agent Autopilot preserves the latest relevant plan/audit context.
-9. “Save this plan as `.md`” causes Agent Guided/Autopilot to write the actual latest plan, not ask to rediscover it.
+8. Ask → Plan → Agent Autopilot preserves the latest relevant plan/audit
+   context.
+9. “Save this plan as `.md`” causes Agent Guided/Autopilot to write the actual
+   latest plan, not ask to rediscover it.
 10. Approved structured plans remain the highest-priority handoff source.
-11. Context handoff is injected as system/developer context, not as user transcript pollution.
+11. Context handoff is injected as system/developer context, not as user
+    transcript pollution.
 12. Explicit mode override prevents stale-mode sends.
 13. `contextChunks` can retrieve indexed plan/message chunks.
 14. Regression tests cover Guided and Autopilot paths.
@@ -742,7 +809,8 @@ Mitigation:
 
 - Keep internal modes stable during first pass.
 - Add tooltips explaining Guided and Autopilot.
-- Optionally show legacy names in small helper text during migration: “Guided formerly Code,” “Autopilot formerly Build.”
+- Optionally show legacy names in small helper text during migration: “Guided
+  formerly Code,” “Autopilot formerly Build.”
 
 ### Risk: Token bloat from verbatim handoff content
 
@@ -846,4 +914,6 @@ This plan does not attempt to:
 - replace the planning-session system;
 - solve all long-term memory concerns.
 
-The immediate goal is to modernize Panda’s mode UX and make mode transitions context-aware and durable enough for reliable Ask/Plan → Agent Guided/Autopilot workflows.
+The immediate goal is to modernize Panda’s mode UX and make mode transitions
+context-aware and durable enough for reliable Ask/Plan → Agent Guided/Autopilot
+workflows.

@@ -17,10 +17,7 @@ interface AdminSubNavProps {
 
 export function AdminSubNav({ items, activeId, onSelect }: AdminSubNavProps) {
   return (
-    <nav
-      className="w-52 shrink-0 border border-border bg-card p-3"
-      aria-label="Section navigation"
-    >
+    <nav className="w-52 shrink-0 border border-border bg-card p-3" aria-label="Section navigation">
       <div className="mb-4 border-b border-border pb-3">
         <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
           Admin navigation

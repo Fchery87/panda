@@ -13,7 +13,9 @@ describe('subagent fresh/fork context filtering', () => {
     expect(agentsSource).toContain("return canMutate ? 'fork' : 'fresh'")
     expect(agentsSource).toContain('normalizeAgentConfig(config)')
     expect(runtimeSource).toContain('buildSubagentInitialMessages(agent: AgentConfig')
-    expect(runtimeSource).toContain("if ((agent.defaultContextMode ?? 'fresh') !== 'fork') return []")
+    expect(runtimeSource).toContain(
+      "if ((agent.defaultContextMode ?? 'fresh') !== 'fork') return []"
+    )
   })
 
   test('filters status/control/subagent artifacts out of forked child context', () => {
@@ -29,12 +31,19 @@ describe('subagent fresh/fork context filtering', () => {
     ]) {
       expect(runtimeSource).toContain(`'${partType}'`)
     }
-    expect(runtimeSource).toContain('parts: message.parts.filter((part) => !blockedPartTypes.has(part.type))')
+    expect(runtimeSource).toContain(
+      'parts: message.parts.filter((part) => !blockedPartTypes.has(part.type))'
+    )
     expect(runtimeSource).toContain('filter((message) => message.parts.length > 0)')
   })
 
   test('passes filtered fork messages into the child runtime', () => {
-    expect(runtimeSource).toContain('const childInitialMessages = this.buildSubagentInitialMessages(agent, childSessionID)')
-    expect(runtimeSource).toContain('childRuntime.run(childSessionID, childUserMessage, childInitialMessages)')
+    expect(runtimeSource).toContain(
+      'const childInitialMessages = this.buildSubagentInitialMessages(agent, childSessionID)'
+    )
+    expect(runtimeSource).toContain('childRuntime.run(')
+    expect(runtimeSource).toContain('childSessionID,')
+    expect(runtimeSource).toContain('childUserMessage,')
+    expect(runtimeSource).toContain('childInitialMessages')
   })
 })

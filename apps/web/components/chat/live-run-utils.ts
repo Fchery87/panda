@@ -205,7 +205,9 @@ function summarizeArgs(args: Record<string, unknown> | undefined): string | unde
   return serialized.length > 140 ? `${serialized.slice(0, 137)}...` : serialized
 }
 
-function parseContextGuardFromOutput(output: string | undefined): ContextGuardProgressDetails | undefined {
+function parseContextGuardFromOutput(
+  output: string | undefined
+): ContextGuardProgressDetails | undefined {
   if (!output) return undefined
   try {
     const parsed = JSON.parse(output) as { contextGuard?: Record<string, unknown> }
@@ -217,7 +219,8 @@ function parseContextGuardFromOutput(output: string | undefined): ContextGuardPr
       rawBytes: typeof guard.rawBytes === 'number' ? guard.rawBytes : undefined,
       returnedBytes: typeof guard.returnedBytes === 'number' ? guard.returnedBytes : undefined,
       bytesAvoided: typeof guard.bytesAvoided === 'number' ? guard.bytesAvoided : undefined,
-      chunksWritten: typeof evidence?.chunksWritten === 'number' ? evidence.chunksWritten : undefined,
+      chunksWritten:
+        typeof evidence?.chunksWritten === 'number' ? evidence.chunksWritten : undefined,
       sourceId: typeof evidence?.sourceId === 'string' ? evidence.sourceId : undefined,
     }
   } catch {

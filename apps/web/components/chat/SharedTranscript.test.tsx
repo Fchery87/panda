@@ -20,7 +20,7 @@ describe('SharedTranscript', () => {
     expect(html).toContain('Assistant')
   })
 
-  test('renders a public review summary before the transcript without owner proof details', () => {
+  test('renders a public review summary before the transcript without owner run details', () => {
     const html = renderToString(
       <SharedTranscript
         publicReviewSummary={{
@@ -28,7 +28,7 @@ describe('SharedTranscript', () => {
           validation: '1 validation command recorded',
           changedFiles: 2,
           reviewNote:
-            'Public share hides raw tool arguments, command output, and owner-only proof detail.',
+            'Public share hides raw tool arguments, command output, and owner-only run detail.',
         }}
         messages={[{ role: 'assistant', content: 'Public transcript starts here' }]}
       />

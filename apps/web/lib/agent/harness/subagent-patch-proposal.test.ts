@@ -6,7 +6,7 @@ const runtimeSource = readFileSync(join(import.meta.dir, 'runtime.ts'), 'utf8')
 const typesSource = readFileSync(join(import.meta.dir, 'types.ts'), 'utf8')
 const useAgentSource = readFileSync(join(import.meta.dir, '../../../hooks/useAgent.ts'), 'utf8')
 const inspectorSource = readFileSync(
-  join(import.meta.dir, '../../../components/projects/ProjectChatInspector.tsx'),
+  join(import.meta.dir, '../../../components/chat/inspector/InspectorRunContent.tsx'),
   'utf8'
 )
 const panelSource = readFileSync(
@@ -24,7 +24,9 @@ describe('subagent patch-proposal artifact flow', () => {
   test('extracts fenced diff/patch blocks only for patch-proposal isolation children', () => {
     expect(runtimeSource).toContain('private extractSubagentPatchProposals')
     expect(runtimeSource).toContain('matchAll(/```(?:diff|patch)')
-    expect(runtimeSource).toContain("this.selectSubagentIsolationMode(subagentConfig) === 'patch-proposal'")
+    expect(runtimeSource).toContain(
+      "this.selectSubagentIsolationMode(subagentConfig) === 'patch-proposal'"
+    )
     expect(runtimeSource).toContain('patchProposals.length > 0 ? { patchProposals } : {}')
   })
 

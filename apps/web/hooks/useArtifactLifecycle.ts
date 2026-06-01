@@ -85,9 +85,7 @@ export function useArtifactLifecycle({
 
     // Non-plan generated files intentionally do not auto-open or steal focus.
     // They surface through pendingDiffEntries, FileTree badges, Changes, and Review Diff.
-  }, [
-    pendingArtifactPreviews,
-  ])
+  }, [pendingArtifactPreviews])
 
   const handleApplyPendingArtifact = useCallback(
     async (artifactId: string) => {

@@ -105,8 +105,8 @@ These budgets are guardrails for implementation and review. If a product change
 needs to exceed one, it should add a narrower Interface or document why the
 larger payload is a lazy/detail/admin path rather than hot UI.
 
-| Surface                        | Target budget                                                                                   | Verification signal                                                              |
-| ------------------------------ | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Surface                        | Target budget                                                                                    | Verification signal                                                              |
+| ------------------------------ | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
 | Project shell boot             | Project metadata, chat summaries, and file metadata only; no full file contents                  | Guard tests reject `api.files.list` in shell/runtime boot paths.                 |
 | Active message history         | Cursor-paginated, initial page around 50 messages, attachment metadata only                      | Hot chat hooks use `api.messages.listPaginatedLite`, not legacy transcript APIs. |
 | Run progress live UI           | Summary-shaped status/events only; no full checkpoint payloads or large raw command output       | Progress surfaces avoid full runtime checkpoint queries.                         |

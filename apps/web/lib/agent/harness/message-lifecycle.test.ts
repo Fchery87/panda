@@ -95,7 +95,12 @@ describe('assistant message lifecycle contract', () => {
       type: 'assistant_message_delta',
       messageId: 'assistant-1',
       runId: 'run-1',
-      delta: { kind: 'tool_result_ref', toolCallId: 'call-1', toolName: 'read_file', status: 'completed' },
+      delta: {
+        kind: 'tool_result_ref',
+        toolCallId: 'call-1',
+        toolName: 'read_file',
+        status: 'completed',
+      },
     })
   })
 

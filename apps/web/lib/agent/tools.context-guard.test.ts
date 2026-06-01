@@ -40,7 +40,11 @@ describe('search_indexed_output tool', () => {
         type: 'function',
         function: {
           name: 'search_indexed_output',
-          arguments: JSON.stringify({ sourceId: 'tool:abc:command-output', query: 'failure', limit: 2 }),
+          arguments: JSON.stringify({
+            sourceId: 'tool:abc:command-output',
+            query: 'failure',
+            limit: 2,
+          }),
         },
       },
       createContext({
@@ -129,7 +133,11 @@ describe('run_command Context Guard integration', () => {
           runCommand: async () => ({ stdout, stderr: '', exitCode: 0, durationMs: 1 }),
           indexCommandOutput: async (args) => {
             indexedPayloads.push(args)
-            return { sourceType: 'run_event', sourceId: 'tool:call-run-command:command-output', chunksWritten: 3 }
+            return {
+              sourceType: 'run_event',
+              sourceId: 'tool:call-run-command:command-output',
+              chunksWritten: 3,
+            }
           },
         })
       )

@@ -7,7 +7,8 @@
 
 ## Objective
 
-Modernize Panda's reasoning model to support safe summaries, redaction, token accounting, and provider-opaque continuity metadata.
+Modernize Panda's reasoning model to support safe summaries, redaction, token
+accounting, and provider-opaque continuity metadata.
 
 ## Safety Rule
 

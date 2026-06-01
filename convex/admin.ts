@@ -719,7 +719,14 @@ export const getSystemOverview = query({
     const aggregate = await readAdminAggregate(ctx, ADMIN_AGGREGATE_SYSTEM_OVERVIEW_KEY)
     return (
       aggregate?.data ?? {
-        users: { total: 0, active: 0, admins: 0, banned: 0, recentRegistrations: 0, recentlyActive: 0 },
+        users: {
+          total: 0,
+          active: 0,
+          admins: 0,
+          banned: 0,
+          recentRegistrations: 0,
+          recentlyActive: 0,
+        },
         projects: { total: 0 },
         chats: { total: 0 },
         messages: { total: 0 },
@@ -854,7 +861,11 @@ export const getAuditLog = query({
             .withIndex('by_resource', (q) => q.eq('resource', resourceFilter))
             .order('desc')
             .take(Math.min(limit * 3, 250))
-        : await ctx.db.query('auditLog').withIndex('by_created').order('desc').take(Math.min(limit * 3, 250))
+        : await ctx.db
+            .query('auditLog')
+            .withIndex('by_created')
+            .order('desc')
+            .take(Math.min(limit * 3, 250))
 
     const filteredLogs = logs.filter((log) => {
       if (args.action && log.action !== args.action) return false
@@ -912,10 +923,7 @@ export const cleanupOperationalDataNow = mutation({
     let deleted = 0
     const byTable: Record<string, number> = {}
 
-    const deleteRows = async <T extends TableNames>(
-      table: T,
-      rows: Array<{ _id: Id<T> }>
-    ) => {
+    const deleteRows = async <T extends TableNames>(table: T, rows: Array<{ _id: Id<T> }>) => {
       const remaining = limit - deleted
       const selected = rows.slice(0, remaining)
       for (const row of selected) await ctx.db.delete(row._id as Id<TableNames>)

@@ -7,6 +7,13 @@ export type RightPanelTab = 'proof' | 'changes' | 'context'
 export type CenterTab = 'editor' | 'diff' | 'logs' | 'tests'
 export type MobilePrimaryPanel = 'work' | 'chat' | 'changes' | 'proof'
 export type WorkspaceFocusMode = 'chat' | 'workbench' | 'proof' | 'changes'
+export type ChatDockSide = 'right' | 'left'
+export type InspectorRailEvent =
+  | 'pending-changes'
+  | 'run-failed'
+  | 'permission-blocked'
+  | 'validation-failed'
+  | 'plan-review'
 
 export type ChatInspectorTab =
   | 'run'
@@ -34,6 +41,7 @@ export interface WorkspaceUiState {
   setRightPanelOpen: (open: boolean) => void
   setRightPanelTab: (tab: RightPanelTab) => void
   openRightPanelTab: (tab: RightPanelTab) => void
+  openInspectorForEvent: (event: InspectorRailEvent) => void
 
   isBottomDockOpen: boolean
   activeBottomDockTab: BottomDockTab
@@ -45,6 +53,10 @@ export interface WorkspaceUiState {
 
   workspaceFocusMode: WorkspaceFocusMode
   setWorkspaceFocusMode: (mode: WorkspaceFocusMode) => void
+  isChatDockOpen: boolean
+  chatDockSide: ChatDockSide
+  setChatDockOpen: (open: boolean) => void
+  setChatDockSide: (side: ChatDockSide) => void
 
   mobilePrimaryPanel: MobilePrimaryPanel
   setMobilePrimaryPanel: (panel: MobilePrimaryPanel) => void
@@ -87,6 +99,8 @@ const DEFAULTS = {
   activeBottomDockTab: 'terminal' as BottomDockTab,
   activeCenterTab: 'editor' as CenterTab,
   workspaceFocusMode: 'workbench' as WorkspaceFocusMode,
+  isChatDockOpen: true,
+  chatDockSide: 'right' as ChatDockSide,
   mobilePrimaryPanel: 'chat' as MobilePrimaryPanel,
   mobileUnreadCount: 0,
   isMobileKeyboardOpen: false,
@@ -111,6 +125,12 @@ export const useWorkspaceUiStore = create<WorkspaceUiState>()(
       setRightPanelOpen: (open) => set({ isRightPanelOpen: open }),
       setRightPanelTab: (tab) => set({ rightPanelTab: tab }),
       openRightPanelTab: (tab) => set({ rightPanelTab: tab, isRightPanelOpen: true }),
+      openInspectorForEvent: (event) =>
+        set({
+          isRightPanelOpen: true,
+          rightPanelTab:
+            event === 'pending-changes' ? 'changes' : event === 'plan-review' ? 'context' : 'proof',
+        }),
 
       setBottomDockOpen: (open) => set({ isBottomDockOpen: open }),
       setActiveBottomDockTab: (tab) => set({ activeBottomDockTab: tab }),
@@ -118,6 +138,8 @@ export const useWorkspaceUiStore = create<WorkspaceUiState>()(
       setActiveCenterTab: (tab) => set({ activeCenterTab: tab }),
 
       setWorkspaceFocusMode: (mode) => set({ workspaceFocusMode: mode }),
+      setChatDockOpen: (open) => set({ isChatDockOpen: open }),
+      setChatDockSide: (side) => set({ chatDockSide: side }),
 
       setMobilePrimaryPanel: (panel) => set({ mobilePrimaryPanel: panel }),
       setMobileUnreadCount: (count) => set({ mobileUnreadCount: count }),
@@ -145,7 +167,7 @@ export const useWorkspaceUiStore = create<WorkspaceUiState>()(
     }),
     {
       name: 'panda:workspaceUi',
-      version: 5,
+      version: 6,
       migrate: (persistedState) => {
         if (!persistedState || typeof persistedState !== 'object') return persistedState
         const state = persistedState as Record<string, unknown>
@@ -159,11 +181,17 @@ export const useWorkspaceUiStore = create<WorkspaceUiState>()(
             : mobilePanel === 'review' || mobilePanel === 'preview'
               ? 'proof'
               : mobilePanel
+        const priorFocusMode = state.workspaceFocusMode
         return {
           ...state,
           rightPanelTab,
           mobilePrimaryPanel,
-          workspaceFocusMode: state.workspaceFocusMode ?? DEFAULTS.workspaceFocusMode,
+          workspaceFocusMode:
+            priorFocusMode === 'chat'
+              ? DEFAULTS.workspaceFocusMode
+              : (priorFocusMode ?? DEFAULTS.workspaceFocusMode),
+          isChatDockOpen: typeof state.isChatDockOpen === 'boolean' ? state.isChatDockOpen : true,
+          chatDockSide: state.chatDockSide === 'left' ? 'left' : DEFAULTS.chatDockSide,
         }
       },
       partialize: (state) => ({
@@ -172,6 +200,8 @@ export const useWorkspaceUiStore = create<WorkspaceUiState>()(
         isBottomDockOpen: state.isBottomDockOpen,
         activeBottomDockTab: state.activeBottomDockTab,
         workspaceFocusMode: state.workspaceFocusMode,
+        isChatDockOpen: state.isChatDockOpen,
+        chatDockSide: state.chatDockSide,
       }),
     }
   )

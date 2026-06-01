@@ -24,7 +24,13 @@ describe('WorkflowChainsList', () => {
             status: 'running',
             currentStepId: 'research',
             steps: [
-              { id: 'research', label: 'Research', stage: 'research', mode: 'ask', status: 'running' },
+              {
+                id: 'research',
+                label: 'Research',
+                stage: 'research',
+                mode: 'ask',
+                status: 'running',
+              },
               { id: 'plan', label: 'Plan', stage: 'plan', mode: 'plan', status: 'pending' },
             ],
           },

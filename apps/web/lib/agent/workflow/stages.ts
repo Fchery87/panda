@@ -41,7 +41,10 @@ export function resolveWorkflowStage(args: {
   mode: ChatMode
   requestedStage?: WorkflowStage | string | null
 }): WorkflowStage {
-  if (isWorkflowStage(args.requestedStage) && isStageAllowedForMode(args.mode, args.requestedStage)) {
+  if (
+    isWorkflowStage(args.requestedStage) &&
+    isStageAllowedForMode(args.mode, args.requestedStage)
+  ) {
     return args.requestedStage
   }
   return DEFAULT_STAGE_BY_MODE[args.mode]

@@ -39,8 +39,10 @@ export interface ReferentialRequest {
   refersToPriorContext: boolean
 }
 
-const PLAN_RE = /\b(this|the|that|above|latest|previous|approved)\s+(plan|proposal|implementation plan|markdown)|\b(plan)\s+(above|we created|you created)|\bimplement\s+(it|this|the plan)|\bsave\s+(this|the|that)\s+plan/i
-const AUDIT_RE = /\b(this|the|that|your|latest|previous)\s+(audit|review|findings|recommendations|analysis)|\b(use|based on|from)\s+(your\s+)?(audit|review|findings|recommendations)/i
+const PLAN_RE =
+  /\b(this|the|that|above|latest|previous|approved)\s+(plan|proposal|implementation plan|markdown)|\b(plan)\s+(above|we created|you created)|\bimplement\s+(it|this|the plan)|\bsave\s+(this|the|that)\s+plan/i
+const AUDIT_RE =
+  /\b(this|the|that|your|latest|previous)\s+(audit|review|findings|recommendations|analysis)|\b(use|based on|from)\s+(your\s+)?(audit|review|findings|recommendations)/i
 const PRIOR_RE = /\b(this|that|it|above|previous|earlier|what you just|as discussed)\b/i
 
 export function detectReferentialRequest(content: string): ReferentialRequest {
@@ -64,7 +66,10 @@ export function findLatestAssistantMessageByMode(
     const messageMode = message?.mode
     if (
       message?.role === 'assistant' &&
-      (messageMode === 'ask' || messageMode === 'plan' || messageMode === 'code' || messageMode === 'build') &&
+      (messageMode === 'ask' ||
+        messageMode === 'plan' ||
+        messageMode === 'code' ||
+        messageMode === 'build') &&
       modes.includes(messageMode) &&
       message.content?.trim()
     ) {
@@ -79,7 +84,14 @@ function formatApprovedPlan(plan: GeneratedPlanArtifact): string {
     .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id))
     .map((section) => `## ${section.title}\n${section.content}`)
     .join('\n\n')
-  return [`# ${plan.title}`, plan.summary, sections, plan.acceptanceChecks?.length ? `## Acceptance Checks\n${plan.acceptanceChecks.map((check) => `- ${check}`).join('\n')}` : '']
+  return [
+    `# ${plan.title}`,
+    plan.summary,
+    sections,
+    plan.acceptanceChecks?.length
+      ? `## Acceptance Checks\n${plan.acceptanceChecks.map((check) => `- ${check}`).join('\n')}`
+      : '',
+  ]
     .filter((part) => part?.trim())
     .join('\n\n')
 }
@@ -112,7 +124,8 @@ export function resolveModeHandoff(args: {
         content: trimHandoffContent(formatApprovedPlan(args.approvedPlanExecutionContext.plan)),
         planningSessionId: args.approvedPlanExecutionContext.sessionId,
         confidence: 'high',
-        reason: 'An approved structured plan is available and takes precedence over inferred chat context.',
+        reason:
+          'An approved structured plan is available and takes precedence over inferred chat context.',
       },
     }
   }
@@ -146,7 +159,8 @@ export function resolveModeHandoff(args: {
       return {
         unresolved: true,
         referent: 'audit',
-        reason: 'The request refers to an audit/review/findings, but no prior Ask-mode assistant output was found.',
+        reason:
+          'The request refers to an audit/review/findings, but no prior Ask-mode assistant output was found.',
       }
     }
     return {

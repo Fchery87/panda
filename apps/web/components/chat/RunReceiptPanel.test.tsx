@@ -53,14 +53,14 @@ describe('RunReceiptPanel', () => {
   test('renders routing, context, execution, token, and result receipt sections', () => {
     const html = renderToStaticMarkup(<RunReceiptPanel receipt={receipt} />)
 
-    expect(html).toContain('Owner proof summary')
+    expect(html).toContain('Owner run summary')
     expect(html).toContain('Outcome')
     expect(html).toContain('Validation')
     expect(html).toContain('Changed files')
     expect(html).toContain('Approvals')
     expect(html).toContain('Receipt')
     expect(html).toContain('Recovery')
-    expect(html.indexOf('Owner proof summary')).toBeLessThan(html.indexOf('Routing'))
+    expect(html.indexOf('Owner run summary')).toBeLessThan(html.indexOf('Routing'))
     expect(html).toContain('Execution receipt')
     expect(html).toContain('ask -&gt; code')
     expect(html).toContain('high confidence')

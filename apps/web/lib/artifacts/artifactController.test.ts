@@ -41,7 +41,11 @@ describe('artifact controller', () => {
       projectId: 'project_1' as never,
       applyArtifact: async () => ({ kind: 'command', description: 'rm -rf tmp' }),
       updateArtifactStatus: async () => undefined,
-      advisorPolicy: { enabled: true, requiredFor: ['destructive_command'], reasoningEffort: 'high' },
+      advisorPolicy: {
+        enabled: true,
+        requiredFor: ['destructive_command'],
+        reasoningEffort: 'high',
+      },
     })
 
     const request = controller.requestAdvisorReview('artifact_1')
@@ -62,12 +66,27 @@ describe('artifact controller', () => {
       records: [record],
       projectId: 'project_1' as never,
       advisorReviews: [
-        { status: 'blocked', summary: 'Wrong artifact.', risks: [], artifactId: 'artifact_2', createdAt: 2 },
-        { status: 'approved', summary: 'Approved.', risks: [], artifactId: 'artifact_1', createdAt: 1 },
+        {
+          status: 'blocked',
+          summary: 'Wrong artifact.',
+          risks: [],
+          artifactId: 'artifact_2',
+          createdAt: 2,
+        },
+        {
+          status: 'approved',
+          summary: 'Approved.',
+          risks: [],
+          artifactId: 'artifact_1',
+          createdAt: 1,
+        },
       ],
       applyArtifact: async (args) => {
         reviews.push(args.advisorReview)
-        return { kind: 'command', description: args.action.type === 'command_run' ? args.action.payload.command : '' }
+        return {
+          kind: 'command',
+          description: args.action.type === 'command_run' ? args.action.payload.command : '',
+        }
       },
       updateArtifactStatus: async () => undefined,
     })
@@ -75,7 +94,13 @@ describe('artifact controller', () => {
     await controller.applyOne('artifact_1')
 
     expect(reviews).toEqual([
-      { status: 'approved', summary: 'Approved.', risks: [], artifactId: 'artifact_1', createdAt: 1 },
+      {
+        status: 'approved',
+        summary: 'Approved.',
+        risks: [],
+        artifactId: 'artifact_1',
+        createdAt: 1,
+      },
     ])
   })
 })

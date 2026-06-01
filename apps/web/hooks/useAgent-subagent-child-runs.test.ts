@@ -40,10 +40,14 @@ describe('useAgent subagent child run persistence bridge', () => {
 
   test('propagates parent stop to active non-terminal child runs', () => {
     expect(source).toContain('const activeChildRuns = [...activeChildRunIdsRef.current.entries()]')
-    expect(source).toContain('activeChildRunIdsRef.current.set(summary.subagentId, childRunPromise)')
+    expect(source).toContain(
+      'activeChildRunIdsRef.current.set(summary.subagentId, childRunPromise)'
+    )
     expect(source).toContain('if (terminalChildRunIdsRef.current.has(terminalKey)) return')
     expect(source).toContain('activeChildRunIdsRef.current.delete(subagentId)')
-    expect(source).toContain("await stopRun({ runId: childRunId, terminationReason: { kind: 'user-abort' } })")
+    expect(source).toContain(
+      "await stopRun({ runId: childRunId, terminationReason: { kind: 'user-abort' } })"
+    )
     expect(source).toContain('activeChildRunIdsRef.current.delete(summary.subagentId)')
   })
 

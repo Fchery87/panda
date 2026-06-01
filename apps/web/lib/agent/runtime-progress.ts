@@ -40,7 +40,9 @@ export function mapToolCallToProgressStep(event: ToolCallProgressEvent): AgentEv
   }
 }
 
-function targetFilePathsFromToolResult(toolResult: ToolResultProgressEvent['toolResult']): string[] | undefined {
+function targetFilePathsFromToolResult(
+  toolResult: ToolResultProgressEvent['toolResult']
+): string[] | undefined {
   if (!toolResult) return undefined
   if (toolResult.toolName === 'write_files') {
     try {

@@ -83,8 +83,7 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command:
-      `cd ../.. && bunx concurrently "E2E_AUTH_BYPASS_SECRET=playwright-e2e-secret E2E_AUTH_BYPASS_CONTEXT=playwright CONVEX_SITE_URL=${playwrightBaseURL} NEXT_PUBLIC_APP_URL=${playwrightBaseURL} bunx convex dev" "cd apps/web && E2E_AUTH_BYPASS_SECRET=playwright-e2e-secret NEXT_PUBLIC_E2E_AUTH_BYPASS_SECRET=playwright-e2e-secret E2E_AUTH_BYPASS_CONTEXT=playwright NEXT_PUBLIC_APP_URL=${playwrightBaseURL} NEXT_PUBLIC_E2E_AGENT_MODE=spec-approval bun run dev -- -p ${playwrightPort}"`,
+    command: `cd ../.. && bunx concurrently "E2E_AUTH_BYPASS_SECRET=playwright-e2e-secret E2E_AUTH_BYPASS_CONTEXT=playwright CONVEX_SITE_URL=${playwrightBaseURL} NEXT_PUBLIC_APP_URL=${playwrightBaseURL} bunx convex dev" "cd apps/web && E2E_AUTH_BYPASS_SECRET=playwright-e2e-secret NEXT_PUBLIC_E2E_AUTH_BYPASS_SECRET=playwright-e2e-secret E2E_AUTH_BYPASS_CONTEXT=playwright NEXT_PUBLIC_APP_URL=${playwrightBaseURL} NEXT_PUBLIC_E2E_AGENT_MODE=spec-approval bun run dev -- -p ${playwrightPort}"`,
     url: playwrightBaseURL,
     reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === 'true',
     timeout: 240 * 1000,

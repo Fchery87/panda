@@ -5,20 +5,30 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { Brain, ChevronDown, ChevronUp, Save, X } from 'lucide-react'
+import { Brain, ChevronDown, ChevronUp, Save, Sparkles, X } from 'lucide-react'
+import type { MemoryProposal } from '@/lib/agent/continual-learning'
 
 interface MemoryBankEditorProps {
   /** Current memory bank content — null/undefined if none exists yet */
   memoryBank: string | null | undefined
   /** Called when the user saves edits */
   onSave: (content: string) => Promise<void>
+  proposals?: MemoryProposal[]
+  onApproveProposal?: (proposal: MemoryProposal) => Promise<void>
   className?: string
 }
 
-export function MemoryBankEditor({ memoryBank, onSave, className }: MemoryBankEditorProps) {
+export function MemoryBankEditor({
+  memoryBank,
+  onSave,
+  proposals = [],
+  onApproveProposal,
+  className,
+}: MemoryBankEditorProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [draft, setDraft] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [approvingProposalId, setApprovingProposalId] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Sync draft when external value changes (e.g. first load)
@@ -52,6 +62,19 @@ export function MemoryBankEditor({ memoryBank, onSave, className }: MemoryBankEd
     setDraft(memoryBank ?? '')
     setIsOpen(false)
   }, [memoryBank])
+
+  const handleApproveProposal = useCallback(
+    async (proposal: MemoryProposal) => {
+      if (!onApproveProposal) return
+      setApprovingProposalId(proposal.id)
+      try {
+        await onApproveProposal(proposal)
+      } finally {
+        setApprovingProposalId(null)
+      }
+    },
+    [onApproveProposal]
+  )
 
   const hasContent = Boolean(memoryBank?.trim())
 
@@ -90,6 +113,35 @@ export function MemoryBankEditor({ memoryBank, onSave, className }: MemoryBankEd
           <ChevronDown className="h-3 w-3 text-muted-foreground" />
         )}
       </button>
+
+      {proposals.length > 0 && (
+        <div className="bg-primary/5 space-y-2 border-b border-border p-3">
+          <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-primary">
+            <Sparkles className="h-3 w-3" />
+            Learning proposals
+          </div>
+          {proposals.map((proposal) => (
+            <div key={proposal.id} className="border border-border bg-background p-2">
+              <p className="text-xs leading-relaxed text-foreground">{proposal.text}</p>
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                  {proposal.confidence} confidence
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={!onApproveProposal || approvingProposalId === proposal.id}
+                  onClick={() => void handleApproveProposal(proposal)}
+                  className="h-6 rounded-none font-mono text-[10px]"
+                >
+                  {approvingProposalId === proposal.id ? 'Saving…' : 'Approve'}
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Expandable editor */}
       <AnimatePresence>

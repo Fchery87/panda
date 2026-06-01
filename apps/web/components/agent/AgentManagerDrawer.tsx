@@ -216,7 +216,10 @@ export function AgentManagerDrawer({
                         <div className="max-h-36 space-y-1 overflow-y-auto">
                           {activeChildRuns.map((child) => {
                             const childSummary =
-                              child.delegatedTaskSummary || child.summary || child.userMessage || 'Delegated task'
+                              child.delegatedTaskSummary ||
+                              child.summary ||
+                              child.userMessage ||
+                              'Delegated task'
                             return (
                               <div
                                 key={child._id}
@@ -234,11 +237,20 @@ export function AgentManagerDrawer({
                                       </span>
                                     )}
                                   </div>
-                                  <div className="truncate text-muted-foreground">{childSummary}</div>
+                                  <div className="truncate text-muted-foreground">
+                                    {childSummary}
+                                  </div>
                                   <div className="mt-0.5 flex gap-2 text-[9px] text-muted-foreground">
-                                    <span>{formatDuration(child.startedAt, child.completedAt)}</span>
-                                    <span>active {formatRelativeTime(child.lastActivityAt || child.startedAt)}</span>
-                                    {child.artifactCount ? <span>{child.artifactCount} artifacts</span> : null}
+                                    <span>
+                                      {formatDuration(child.startedAt, child.completedAt)}
+                                    </span>
+                                    <span>
+                                      active{' '}
+                                      {formatRelativeTime(child.lastActivityAt || child.startedAt)}
+                                    </span>
+                                    {child.artifactCount ? (
+                                      <span>{child.artifactCount} artifacts</span>
+                                    ) : null}
                                   </div>
                                 </div>
                               </div>

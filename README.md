@@ -1,8 +1,8 @@
 # Panda.ai
 
-> Panda is a browser-first AI coding workbench with server fallback for
-> planning, approving, building, resuming, and sharing software work from one
-> workspace.
+> Panda is a browser-first AI coding IDE with server fallback for asking,
+> planning, running agents, reviewing changes, resuming work, and sharing
+> software sessions from one project workspace.
 
 [![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org)
 [![Convex](https://img.shields.io/badge/Convex-Realtime-orange)](https://convex.dev)
@@ -11,11 +11,11 @@
 
 ## Overview
 
-Panda is a browser-first coding workspace built for AI-assisted development. It
-combines a workbench-owned file surface, modern Ask / Plan / Agent workflow,
-Agent autonomy levels (`Guided` and `Autopilot`), structured plan approval,
-build execution, central file editing and diff review, runtime checkpoints,
-shared chat history, and admin controls. Browser execution is preferred when
+Panda is a browser-first AI coding IDE built for AI-assisted development. It
+combines an editor-owned file surface, modern Ask / Plan / Agent workflow, Agent
+autonomy levels (`Guided` and `Autopilot`), structured plan approval, build
+execution, central file editing and diff review, runtime checkpoints, shared
+chat history, and admin controls. Browser execution is preferred when
 WebContainer is available; server-backed execution remains the fallback when
 browser-side execution is unavailable.
 
@@ -23,25 +23,26 @@ Panda also supports user-scoped Custom Skills and Custom Subagents. Skills are
 reusable workflow guidance that can auto-activate by intent; Subagents are
 delegated workers with capability presets and optional attached Skills.
 
-The current workspace is organized around a central workbench with supporting
-chat and right-rail review surfaces. User intent enters through chat, Panda
-routes it, plans can auto-open in the workbench, generated files appear in the
-file tree and central Review Diff, proof accumulates, and the user reviews the
-result through `Proof`, `Changes`, and `Context`. Mobile keeps the same contract
-through `Work`, `Chat`, `Proof`, and `Changes` destinations.
+The current IDE is organized around Explorer/Search/Source Control/Runs
+navigation, a central Editor, a Chat dock, and an on-demand inspector rail. User
+intent enters through chat, Panda routes it through Ask / Plan / Agent, plans
+and files open in the Editor, generated work appears in Review Diff, and run
+evidence stays inspectable through `Run`, `Changes`, and `Context`. Mobile keeps
+the same contract through `Editor`, `Chat`, `Run`, and `Changes` destinations.
 
 The current agent runtime includes deterministic routing, automatic mode
 switching, cross-mode handoff context, bounded session summaries, and typed
 execution receipts. Routing records both the user-requested mode and the
 resolved execution mode. When intent clearly changes, Panda can switch or
-suggest switching modes according to the user's mode-routing preference. Receipts
-provide a bounded audit trail for context, tools, commands, approvals, token
-usage, execution duration, and result status.
+suggest switching modes according to the user's mode-routing preference.
+Receipts provide a bounded audit trail for context, tools, commands, approvals,
+token usage, execution duration, and result status.
 
 ## Current Product Surface
 
-- Landing page plus an education page that explains the workbench workflow
-- Project list and per-project workbench routes
+- Landing page plus an education page that explains the editor-centric IDE
+  workflow
+- Project list and per-project IDE routes
 - Structured planning sessions with approved build-from-plan runs and clean
   `.plan.md`-style documents
 - Browser-native file editing, central diffs, generated-file review, artifacts,
@@ -51,7 +52,7 @@ usage, execution duration, and result status.
   confidence-aware auto-switching, visible auto-switch transcript chips, and a
   user preference for `Auto-switch`, `Suggest first`, or `Manual only`
 - Run timeline summaries in chat with collapsed tool-chip and plan-checklist
-  surfaces, and structured execution receipts in Proof surfaces
+  surfaces, and structured execution receipts in Run surfaces
 - Custom Skills that shape agent workflow and strict Skill preflight metadata
 - Custom Subagents with capability presets, attached Skills, and delegated task
   Skill matching
@@ -64,20 +65,20 @@ usage, execution duration, and result status.
 
 ## Tech Stack
 
-| Layer           | Technology                         |
-| --------------- | ---------------------------------- |
-| Framework       | Next.js 16 (App Router)            |
-| Runtime         | React 19 + TypeScript 5.9          |
-| Backend         | Convex                             |
-| Authentication  | Convex Auth + Google OAuth         |
+| Layer           | Technology                          |
+| --------------- | ----------------------------------- |
+| Framework       | Next.js 16 (App Router)             |
+| Runtime         | React 19 + TypeScript 5.9           |
+| Backend         | Convex                              |
+| Authentication  | Convex Auth + Google OAuth          |
 | UI              | shadcn/ui + Neutral Precision theme |
-| Animation       | Framer Motion                      |
-| Editor          | CodeMirror 6                       |
-| Browser Runtime | WebContainer API                   |
-| Model Catalog   | models.dev                         |
-| Testing         | Bun test + Playwright              |
-| Package Manager | Bun                                |
-| Monorepo        | Turborepo                          |
+| Animation       | Framer Motion                       |
+| Editor          | CodeMirror 6                        |
+| Browser Runtime | WebContainer API                    |
+| Model Catalog   | models.dev                          |
+| Testing         | Bun test + Playwright               |
+| Package Manager | Bun                                 |
+| Monorepo        | Turborepo                           |
 
 ## Quick Start
 
@@ -142,7 +143,7 @@ For repository-backed projects, create and install a GitHub App using
 | `bun run lint`         | Before review                                     | Enforces the shared ESLint rules across the monorepo.                                                             |
 | `bun run format:check` | Before PR/CI                                      | Confirms Prettier formatting without mutating files.                                                              |
 | `bun test`             | After runtime, Convex, hook, or component changes | Runs Bun unit and component coverage across the repo.                                                             |
-| `bun run test:e2e`     | Before shipping workspace UX changes              | Runs focused Playwright acceptance for workbench, agent-run, permissions, and sharing flows.                      |
+| `bun run test:e2e`     | Before shipping IDE UX changes                    | Runs focused Playwright acceptance for editor, agent-run, permissions, and sharing flows.                         |
 | `bun run build`        | Release gate                                      | Compiles the production app.                                                                                      |
 | `bun run validate:web` | Full local web gate                               | Runs command drift checks, Convex collect audit, typecheck, lint, format check, web tests, and build in sequence. |
 
@@ -151,7 +152,7 @@ The command catalog source of truth is
 `bun run docs:commands:check` guards the README and workspace command deck
 against drift.
 
-Recommended proof loop:
+Recommended verification loop:
 
 ```bash
 bun run typecheck && bun run lint && bun run format:check && bun test
@@ -161,23 +162,23 @@ bun run typecheck && bun run lint && bun run format:check && bun test
 
 Panda is optimized for this flow:
 
-1. Direct the AI
-2. Review the generated plan
-3. Approve the plan
-4. Watch execution happen
-5. Inspect what changed
+1. Orient context in Explorer and Search
+2. Ask for understanding or draft a Plan
+3. Approve the plan when structured work needs a contract
+4. Run Agent in Guided or Autopilot
+5. Inspect Review Diff, Run evidence, receipts, and checkpoints
 
 Workspace surfaces:
 
-- `Work` is the primary file/editing surface. Every explicit file click opens in
-  the central workbench.
+- `Editor` is the primary file/editing surface. Every explicit file click opens
+  in the central Editor.
 - `Chat` is the session timeline and composer surface.
-- `Proof` shows progress, validation evidence, recovery state, receipts,
+- `Run` shows progress, validation evidence, recovery state, receipts,
   walkthroughs, and checkpoints.
 - `Changes` summarizes generated files and actions, then routes review into the
   central `Review Diff` surface.
 - `Context` shows planning, memory, specifications, and context audit state.
-- Mobile navigation exposes `Work`, `Chat`, `Proof`, and `Changes` without
+- Mobile navigation exposes `Editor`, `Chat`, `Run`, and `Changes` without
   relying on a live-preview destination.
 
 Modes:
@@ -192,7 +193,8 @@ Runtime compatibility is preserved internally:
 
 - `ask` - Ask: read-only Q&A, review, research, and codebase inspection
 - `plan` - Plan: read-only planning, clarification, and durable plan drafting
-- `code` - Agent · Guided: implementation with review prompts for edits and commands
+- `code` - Agent · Guided: implementation with review prompts for edits and
+  commands
 - `build` - Agent · Autopilot: broader execution that applies safe changes and
   interrupts for risky actions
 
@@ -230,16 +232,17 @@ state. Receipts are designed for auditability and Convex bandwidth safety:
 - WebContainer and native/server execution are reported separately
 - approval decisions are captured when present in the run event stream
 
-Run timeline rows in chat are derived from the same bounded run model as the
-proof surfaces. The chat shows two collapsed inline elements:
+Run timeline rows in chat are derived from the same bounded run model as the Run
+surfaces. The chat shows two collapsed inline elements:
 
-- **Tool chips** (code + build): grouped tool-call summaries like `Edited 3 · Ran 2`
-  that expand to per-tool details (file paths, durations, errors).
+- **Tool chips** (code + build): grouped tool-call summaries like
+  `Edited 3 · Ran 2` that expand to per-tool details (file paths, durations,
+  errors).
 - **Plan checklist** (all modes when a plan exists): a progress badge like
   `Plan 2/4 · in progress` that expands to a step-by-step checklist.
 
-Low-level tool events, full receipts, and snapshot data remain in the support
-rail and Proof surface, not in the chat transcript.
+Low-level tool events, full receipts, and snapshot data remain in the inspector
+rail and Run surface, not in the chat transcript.
 
 ## Custom Skills And Subagents
 
@@ -255,18 +258,18 @@ Custom Skills and Custom Subagents are separate extension points:
 - Admin settings can disable user Skills, Skill auto-activation, strict user
   Skills, import/export policy, user Subagents, and available Subagent
   capability presets.
-- Runs persist bounded Applied Skill summaries so proof surfaces can explain
-  which Skills shaped execution without storing full Skill bodies in compact
-  progress rows or public projections.
+- Runs persist bounded Applied Skill summaries so Run surfaces can explain which
+  Skills shaped execution without storing full Skill bodies in compact progress
+  rows or public projections.
 
 The implemented foundation supports create/delete settings flows, deterministic
 Skill matching, prompt composition, strict Skill preflight events, delegated
 Subagent Skill composition, first-class child run persistence, run-tree UI,
-parent stop propagation, fresh/fork child context filtering, structured
-Subagent diagnostics, patch-proposal previews, and bounded retention cleanup.
-Edit, duplicate, import/export, richer proof detail, parent-reviewed patch apply,
-true snapshot/worktree isolation, saved chains, and full browser acceptance
-coverage remain planned follow-up work.
+parent stop propagation, fresh/fork child context filtering, structured Subagent
+diagnostics, patch-proposal previews, and bounded retention cleanup. Edit,
+duplicate, import/export, richer Run detail, parent-reviewed patch apply, true
+snapshot/worktree isolation, saved chains, and full browser acceptance coverage
+remain planned follow-up work.
 
 ## Repository Shape
 
@@ -291,9 +294,9 @@ panda/
   audit, and approved-plan handoffs as system/developer context.
 - Keep execution receipt fields typed, bounded, and redacted before they enter
   Convex.
-- Keep the workspace workbench-owned: the central workbench owns file opening,
+- Keep the workspace editor-owned: the central Editor owns file opening,
   editing, and Review Diff; chat remains the session timeline and composer.
-- Keep the right support rail consolidated as `Proof`, `Changes`, and `Context`.
+- Keep the right inspector rail consolidated as `Run`, `Changes`, and `Context`.
   Do not reintroduce a product-level live `Preview` destination unless the
   feature is intentionally rebuilt.
 - Use Zustand for local shell/chat-session state and Convex for persisted
@@ -328,10 +331,11 @@ panda/
   boundaries, handoff transcript policy, and redaction rules
 - [docs/PLAN_DOCUMENT_FORMAT.md](./docs/PLAN_DOCUMENT_FORMAT.md) - `.plan.md`
   frontmatter, Mermaid, and clean generated-plan document format
-- [docs/WORKBENCH.md](./docs/WORKBENCH.md) - current workbench-owned file
-  opening, generated-file review, support rail, and mobile workspace contract
-- [docs/plans/2026-05-22-workbench-owned-file-opening-plan.md](./docs/plans/2026-05-22-workbench-owned-file-opening-plan.md) -
-  current workbench-owned file opening, plan rendering, and support-rail implementation record
+- [docs/WORKBENCH.md](./docs/WORKBENCH.md) - current editor-owned file opening,
+  generated-file review, inspector rail, and mobile workspace contract
+- [2026-05-22 editor-owned file-opening implementation record](./docs/plans/2026-05-22-workbench-owned-file-opening-plan.md) -
+  current editor-owned file opening, plan rendering, and inspector-rail
+  implementation record
 - [docs/LLM_PROVIDER_CATALOG.md](./docs/LLM_PROVIDER_CATALOG.md) - live LLM
   provider and model catalog behavior
 - [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) - deployment guide
@@ -345,7 +349,7 @@ Historical verification snapshots may exist in
 [VALIDATION_TASKS.md](./VALIDATION_TASKS.md). Treat the current CI output and
 the latest task-local validation notes as authoritative when they differ.
 
-The workbench-owned workspace redesign should be verified with:
+The editor-centric IDE redesign should be verified with:
 
 - `bun run typecheck && bun run lint && bun run format:check && bun test`
 - `npx convex dev --once`

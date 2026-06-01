@@ -64,15 +64,15 @@ const SIGNAL_TONE_STYLES: Record<NonNullable<WorkspaceHomeProps['focusState']>['
 
 const WORKSPACE_AREAS = [
   ['Session Thread', 'Intent → plan → execution'],
-  ['Review Proof', 'Run, changes, context, preview'],
-  ['Work Tray', 'Files, diffs, artifacts'],
+  ['Review Run', 'Run evidence, changes, context, preview'],
+  ['Editor', 'Files, diffs, artifacts'],
   ['Runtime Dock', 'Terminal + execution bridge'],
 ]
 
 const REVIEW_CHECKPOINTS = [
   'Confirm the plan matches the requested scope before Agent execution.',
   'Read validation evidence and receipts before accepting generated work.',
-  'Inspect changed files and diffs from the Work Tray, not the chat transcript.',
+  'Inspect changed files and diffs from the Editor, not the chat transcript.',
   'Keep broad Convex queries bounded and redact command output before persistence.',
 ]
 
@@ -90,7 +90,7 @@ const FIRST_RUN_STEPS = [
     detail: 'Review scope before execution when work needs structure.',
   },
   {
-    label: '4. Proof',
+    label: '4. Run',
     detail: 'Watch run evidence, validation, receipts, and recovery state.',
   },
   {
@@ -122,7 +122,7 @@ export function WorkspaceHome({
   const scanSignals = focusState?.executionSession?.scanSignals ?? []
   const primarySummary = focusState
     ? focusState.detail
-    : 'Direct the agent from the desk, inspect proof before accepting work, and open files only when implementation detail matters.'
+    : 'Direct the agent from the desk, inspect run evidence before accepting work, and open files only when implementation detail matters.'
   const workspaceVitals = [
     ['Recent files', recentFiles.length > 0 ? String(recentFiles.length) : 'Clean'],
     ['Pending diffs', String(pendingDiffs)],
@@ -178,7 +178,7 @@ export function WorkspaceHome({
               <h1 className="text-base font-bold tracking-tight text-foreground">
                 {focusState
                   ? focusState.objective
-                  : 'Run the workspace from intent, proof, and context.'}
+                  : 'Run the workspace from intent, run evidence, and context.'}
               </h1>
               <p className="text-xs leading-relaxed text-muted-foreground">{primarySummary}</p>
               <div
@@ -325,7 +325,7 @@ export function WorkspaceHome({
                 ['Summary', focusState.executionSession.resume.summary],
                 ['Checkpoint', focusState.executionSession.resume.checkpoint],
                 ['Trace', focusState.executionSession.resume.trace],
-                ['Proof', focusState.executionSession.resume.proof],
+                ['Run', focusState.executionSession.resume.proof],
                 ['Branches', focusState.executionSession.resume.branches],
                 ['Next', focusState.executionSession.resume.nextAction],
               ].map(([label, value]) => (

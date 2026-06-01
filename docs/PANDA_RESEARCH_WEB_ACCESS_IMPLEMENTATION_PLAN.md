@@ -1,15 +1,18 @@
 # Panda Research and Web Access Implementation Plan
 
-> Last updated: May 24, 2026  
-> Status: Proposed — not yet implemented  
-> Source review: `nicobailon/pi-web-access` repository review against Panda architecture  
-> Owner: Panda runtime/workspace maintainers
+> - Last updated: May 24, 2026
+> - Status: Proposed — not yet implemented
+> - Source review: `nicobailon/pi-web-access` repository review against Panda
+>   architecture
+> - Owner: Panda runtime/workspace maintainers
 
 ## 1. Purpose
 
-This document converts the `pi-web-access` review into a Panda-native implementation plan.
+This document converts the `pi-web-access` review into a Panda-native
+implementation plan.
 
-The goal is **not** to vendor or directly embed `pi-web-access` as-is. The goal is to implement the useful product capability natively in Panda:
+The goal is **not** to vendor or directly embed `pi-web-access` as-is. The goal
+is to implement the useful product capability natively in Panda:
 
 ```txt
 Panda should be able to research the web, fetch external source content, inspect GitHub repositories, and attach trusted provenance to Ask / Plan / Agent work without creating a second runtime architecture.
@@ -50,24 +53,35 @@ Workbench = project files and editor state
 
 ### Do Not Adopt Directly
 
-- Do not import `@mariozechner/pi-coding-agent` extension APIs into Panda's app runtime.
+- Do not import `@mariozechner/pi-coding-agent` extension APIs into Panda's app
+  runtime.
 - Do not use `pi.registerTool` as Panda's product tool contract.
 - Do not reuse the `pi-web-access` curator server/browser UI directly.
-- Do not keep a separate opaque search-result store outside Panda's Convex/project/session model.
+- Do not keep a separate opaque search-result store outside Panda's
+  Convex/project/session model.
 - Do not enable browser profile/cookie access by default.
 
 ### Rationale
 
-`pi-web-access` is a strong reference implementation for agent web research, but it is built for the Pi local agent extension runtime. Panda is a browser-first, Convex-backed workspace product with its own runtime events, mode policy, file tree, workbench, and persistence model. The capability fits; the runtime integration should be Panda-native.
+`pi-web-access` is a strong reference implementation for agent web research, but
+it is built for the Pi local agent extension runtime. Panda is a browser-first,
+Convex-backed workspace product with its own runtime events, mode policy, file
+tree, workbench, and persistence model. The capability fits; the runtime
+integration should be Panda-native.
 
 ## 3. Product Goals
 
 1. Allow users to ask Panda to research public web content and cite sources.
-2. Allow Plan mode to gather external evidence before producing implementation plans.
-3. Allow Agent mode to fetch docs/examples while keeping external content separate from trusted instructions.
-4. Allow Panda to review external GitHub repositories against the current workspace.
-5. Store research artifacts in a project/chat/run-scoped way so they are visible, reusable, and auditable.
-6. Keep web access separate from live preview/browser automation. Panda does not need live preview to benefit from research tools.
+2. Allow Plan mode to gather external evidence before producing implementation
+   plans.
+3. Allow Agent mode to fetch docs/examples while keeping external content
+   separate from trusted instructions.
+4. Allow Panda to review external GitHub repositories against the current
+   workspace.
+5. Store research artifacts in a project/chat/run-scoped way so they are
+   visible, reusable, and auditable.
+6. Keep web access separate from live preview/browser automation. Panda does not
+   need live preview to benefit from research tools.
 
 ## 4. Non-Goals For V1
 
@@ -79,7 +93,8 @@ Workbench = project files and editor state
 - No YouTube visual understanding.
 - No direct Pi extension dependency.
 - No automatic trust of fetched web/repo/PDF content.
-- No silent external network access in modes where the user or project policy disables it.
+- No silent external network access in modes where the user or project policy
+  disables it.
 
 ## 5. Target User Flows
 
@@ -148,23 +163,24 @@ Panda:
 
 ## 6. Mode Policy
 
-| Capability | Ask | Plan | Agent Guided | Agent Autonomous |
-| --- | --- | --- | --- | --- |
-| Web search | Allow | Allow | Allow | Allow if project policy enables network |
-| Fetch public URL | Allow | Allow | Allow | Allow if project policy enables network |
-| Fetch GitHub repo/file | Allow | Allow | Allow | Require size/domain policy; approval for large repos |
-| Fetch PDF | Allow | Allow | Allow | Allow if project policy enables network |
-| Store source record | Allow | Allow | Allow | Allow |
-| Attach source to plan | N/A | Allow | Allow | Allow |
-| Write fetched content into workspace | No | No | Approval required | Approval/policy required |
-| Browser-cookie Gemini Web | No by default | No by default | Explicit opt-in only | Explicit opt-in only |
-| Browser automation/live preview | No | No | No | No |
+| Capability                           | Ask           | Plan          | Agent Guided         | Agent Autonomous                                     |
+| ------------------------------------ | ------------- | ------------- | -------------------- | ---------------------------------------------------- |
+| Web search                           | Allow         | Allow         | Allow                | Allow if project policy enables network              |
+| Fetch public URL                     | Allow         | Allow         | Allow                | Allow if project policy enables network              |
+| Fetch GitHub repo/file               | Allow         | Allow         | Allow                | Require size/domain policy; approval for large repos |
+| Fetch PDF                            | Allow         | Allow         | Allow                | Allow if project policy enables network              |
+| Store source record                  | Allow         | Allow         | Allow                | Allow                                                |
+| Attach source to plan                | N/A           | Allow         | Allow                | Allow                                                |
+| Write fetched content into workspace | No            | No            | Approval required    | Approval/policy required                             |
+| Browser-cookie Gemini Web            | No by default | No by default | Explicit opt-in only | Explicit opt-in only                                 |
+| Browser automation/live preview      | No            | No            | No                   | No                                                   |
 
 ## 7. Security And Trust Boundaries
 
 ### 7.1 External Content Is Data, Not Instruction
 
-Fetched web pages, GitHub files, PDFs, transcripts, and search summaries must be treated as untrusted data.
+Fetched web pages, GitHub files, PDFs, transcripts, and search summaries must be
+treated as untrusted data.
 
 The runtime prompt boundary should state:
 
@@ -189,7 +205,8 @@ Every research source should include:
 
 ### 7.3 Network Visibility
 
-Network/tool activity should be visible in runtime events and Proof. Users should be able to answer:
+Network/tool activity should be visible in runtime events and Proof. Users
+should be able to answer:
 
 - What did Panda search?
 - Which URLs did Panda fetch?
@@ -219,7 +236,8 @@ CONTENT:
 ...
 ```
 
-Large content should be summarized/indexed instead of dumped directly into chat/model context.
+Large content should be summarized/indexed instead of dumped directly into
+chat/model context.
 
 ## 8. Target Architecture
 
@@ -281,7 +299,9 @@ apps/web/components/research/
   ResearchSourceList.tsx
 ```
 
-Final paths may change to match the existing runtime/tool registry, but ownership should remain clear: research tools belong to Panda's runtime, not a separate extension runtime.
+Final paths may change to match the existing runtime/tool registry, but
+ownership should remain clear: research tools belong to Panda's runtime, not a
+separate extension runtime.
 
 ## 9. Data Model Draft
 
@@ -304,7 +324,14 @@ type ResearchSource = {
   kind: ResearchSourceKind
   url: string
   title?: string
-  provider?: 'exa' | 'perplexity' | 'gemini' | 'direct_fetch' | 'jina' | 'github' | 'pdf'
+  provider?:
+    | 'exa'
+    | 'perplexity'
+    | 'gemini'
+    | 'direct_fetch'
+    | 'jina'
+    | 'github'
+    | 'pdf'
   contentHash: string
   extractedMarkdown?: string
   summary?: string
@@ -321,7 +348,8 @@ type ResearchSource = {
 
 ### 9.2 Search Run
 
-V1 may store search results as `researchSources` with kind `web_search`, or introduce a separate table later if needed.
+V1 may store search results as `researchSources` with kind `web_search`, or
+introduce a separate table later if needed.
 
 ```ts
 type ResearchSearchRun = {
@@ -337,7 +365,8 @@ type ResearchSearchRun = {
 }
 ```
 
-For the first implementation, prefer the smallest schema that supports retrieval and auditability.
+For the first implementation, prefer the smallest schema that supports retrieval
+and auditability.
 
 ## 10. Tool Contracts
 
@@ -509,21 +538,24 @@ Recommended V1 behavior:
 - GitHub file URL returns file content.
 - GitHub directory URL returns directory listing and selected file previews.
 - Large repositories use API/tree fallback unless user approves clone.
-- Private repo access is out of V1 unless using explicit GitHub integration policy.
+- Private repo access is out of V1 unless using explicit GitHub integration
+  policy.
 
 ### 11.4 PDF Extraction
 
 Recommended V1 behavior:
 
 - Support public PDF URL extraction.
-- Support uploaded PDF extraction later if it fits existing file upload handling.
+- Support uploaded PDF extraction later if it fits existing file upload
+  handling.
 - Store extracted text/markdown as research source content.
 
 ## 12. UI Integration
 
 ### 12.1 V1 Minimal UI
 
-For V1, avoid a large new UI surface. Show research activity through existing surfaces:
+For V1, avoid a large new UI surface. Show research activity through existing
+surfaces:
 
 - chat tool call/result rows,
 - Proof panel entries,
@@ -554,7 +586,8 @@ Source cards should support:
 
 ## 13. Runtime Event Integration
 
-Research tools should emit normalized runtime events so the UI and persistence layers can display them consistently.
+Research tools should emit normalized runtime events so the UI and persistence
+layers can display them consistently.
 
 Suggested event types:
 
@@ -762,12 +795,17 @@ Focused tests should be added per phase before broad validation.
 
 ## 17. Open Questions
 
-1. Which search provider should Panda support first: Exa, Perplexity, Gemini API, or user-selectable provider catalog?
+1. Which search provider should Panda support first: Exa, Perplexity, Gemini
+   API, or user-selectable provider catalog?
 2. Should research sources be global per project, scoped per chat, or both?
-3. Should source content live fully in Convex, object storage, or a hybrid model?
-4. Should large GitHub repo snapshots be stored, cached locally, or summarized only?
-5. Should Research become its own right-panel tab immediately or start inside Proof?
-6. How should research provider API keys be configured in hosted Panda vs local/self-hosted Panda?
+3. Should source content live fully in Convex, object storage, or a hybrid
+   model?
+4. Should large GitHub repo snapshots be stored, cached locally, or summarized
+   only?
+5. Should Research become its own right-panel tab immediately or start inside
+   Proof?
+6. How should research provider API keys be configured in hosted Panda vs
+   local/self-hosted Panda?
 7. Should Plan artifacts store immutable source snapshots for reproducibility?
 
 ## 18. Recommended Starting Slice
@@ -783,13 +821,15 @@ ResearchSource schema
   + Ask/Plan mode access
 ```
 
-This provides immediate value without taking on search provider complexity, GitHub clone complexity, video processing, or new panel design.
+This provides immediate value without taking on search provider complexity,
+GitHub clone complexity, video processing, or new panel design.
 
 After that is stable, add `research.web_search`, then `research.fetch_github`.
 
 ## 19. Final Recommendation
 
-Panda should incorporate the `pi-web-access` capability pattern, but as a Panda-native research system.
+Panda should incorporate the `pi-web-access` capability pattern, but as a
+Panda-native research system.
 
 The right product direction is:
 
@@ -799,4 +839,6 @@ Adapt the architecture.
 Do not import the runtime wholesale.
 ```
 
-This gives Panda a modern research and external-source ingestion layer while preserving the integrity of Panda's own Ask / Plan / Agent modes, runtime events, Convex persistence, workbench, file tree, and security model.
+This gives Panda a modern research and external-source ingestion layer while
+preserving the integrity of Panda's own Ask / Plan / Agent modes, runtime
+events, Convex persistence, workbench, file tree, and security model.

@@ -24,6 +24,7 @@ import type {
 import type { PermissionManager } from './permissions'
 import type { SpecLifecycleManager } from '../spec/lifecycle-manager'
 import type { CustomSkillForMatching, CustomSkillPolicy } from '../skills/types'
+import type { UserHooksConfig } from './user-hooks'
 
 export type { ToolDefinition } from '../../llm/types'
 export type { Decision } from './permission/types'
@@ -488,6 +489,8 @@ export interface RuntimeConfig {
   maxConcurrentSubagents?: number
   /** Maximum mutating subagents that may execute concurrently. Defaults to 1 until isolation lands. */
   maxConcurrentMutatingSubagents?: number
+  /** Optional adapter that prepares snapshot/worktree execution scopes for delegated children. */
+  subagentIsolationAdapter?: SubagentIsolationAdapter
   /** Default isolation mode used for delegated children when the agent has no preference. */
   defaultSubagentIsolationMode?: SubagentIsolationMode
   /** Isolation strategies available in this runtime environment. */
@@ -550,6 +553,31 @@ export interface RuntimeConfig {
   customSkillPolicy?: CustomSkillPolicy
   /** Optional lifecycle manager wrapper around the specification engine */
   specLifecycleManager?: SpecLifecycleManager
+  /** Run-scoped declarative owner hooks loaded from .panda/hooks.json. */
+  userHooks?: UserHooksConfig
+}
+
+export interface SubagentIsolationScope {
+  id: string
+  mode: SubagentIsolationMode
+  worktreePath?: string
+  diff?: () => Promise<string | undefined>
+  complete?: (args?: { autoMerge?: boolean }) => Promise<void>
+  restore?: () => Promise<void>
+  cleanup?: () => Promise<void>
+}
+
+export interface SubagentIsolationAdapter {
+  createSnapshotScope?: (args: {
+    parentSessionID: Identifier
+    childSessionID: Identifier
+    agentName: string
+  }) => Promise<SubagentIsolationScope>
+  createWorktreeScope?: (args: {
+    parentSessionID: Identifier
+    childSessionID: Identifier
+    agentName: string
+  }) => Promise<SubagentIsolationScope>
 }
 
 export interface RuntimeSnapshotEvent {

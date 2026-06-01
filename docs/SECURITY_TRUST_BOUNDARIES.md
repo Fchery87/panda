@@ -121,6 +121,19 @@ If policy resolves to `ask` during Unattended Execution, the action must be
 denied unless the exact operation was explicitly preapproved by policy or an
 execution contract. Server fallback alone is not Unattended Execution.
 
+User-configurable hooks are project-owned, checked-in declarative rules loaded
+from `.panda/hooks.json`. They map onto the existing harness `HookType` stages
+and `PluginManager`; Panda must not introduce a parallel hook engine. Supported
+actions are `allow`, `deny`, `ask`, and `transform`, with matches bounded to
+safe metadata such as tool name, command family, path glob, and agent name.
+`allow` is observational only and must never loosen admin or system policy.
+`deny` and `ask` reuse the normal permission/interrupt path, and decisions must
+be audit-visible through the same bounded permission audit surfaces. Optional
+commands declared by a hook are browser/WebContainer-only; they must never run
+in the host shell and remain disabled unless permitted by the admin ceiling.
+User hooks compose under the admin Harness Policy ceiling and may only make
+behavior stricter.
+
 ## MCP Policy
 
 MCP servers are user-controlled execution configuration.

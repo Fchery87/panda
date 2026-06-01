@@ -28,6 +28,29 @@ describe('workspaceUiStore', () => {
     expect(next.rightPanelTab).toBe('context')
   })
 
+  test('opens the inspector rail from review-needed events', () => {
+    resetStore()
+    const state = useWorkspaceUiStore.getState()
+
+    state.openInspectorForEvent('pending-changes')
+    expect(useWorkspaceUiStore.getState()).toMatchObject({
+      isRightPanelOpen: true,
+      rightPanelTab: 'changes',
+    })
+
+    state.openInspectorForEvent('plan-review')
+    expect(useWorkspaceUiStore.getState()).toMatchObject({
+      isRightPanelOpen: true,
+      rightPanelTab: 'context',
+    })
+
+    state.openInspectorForEvent('validation-failed')
+    expect(useWorkspaceUiStore.getState()).toMatchObject({
+      isRightPanelOpen: true,
+      rightPanelTab: 'proof',
+    })
+  })
+
   test('bottom dock toggle is independent of right panel', () => {
     resetStore()
     const state = useWorkspaceUiStore.getState()
@@ -52,6 +75,8 @@ describe('workspaceUiStore', () => {
     expect(resetState.isBottomDockOpen).toBe(false)
     expect(resetState.activeCenterTab).toBe('editor')
     expect(resetState.rightPanelTab).toBe('proof')
+    expect(resetState.isChatDockOpen).toBe(true)
+    expect(resetState.chatDockSide).toBe('right')
   })
 
   test('defaults mobile workspace to chat-first', () => {

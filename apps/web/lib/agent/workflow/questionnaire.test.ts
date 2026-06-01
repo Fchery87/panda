@@ -48,13 +48,29 @@ describe('workflow questionnaire', () => {
   test('detects recommended single and multi-select options', () => {
     expect(
       isRecommendedOption(
-        { id: 'q', prompt: 'Pick', recommended: 'a', options: [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }] },
+        {
+          id: 'q',
+          prompt: 'Pick',
+          recommended: 'a',
+          options: [
+            { value: 'a', label: 'A' },
+            { value: 'b', label: 'B' },
+          ],
+        },
         'a'
       )
     ).toBe(true)
     expect(
       isRecommendedOption(
-        { id: 'q', prompt: 'Pick', recommended: ['a', 'b'], options: [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }] },
+        {
+          id: 'q',
+          prompt: 'Pick',
+          recommended: ['a', 'b'],
+          options: [
+            { value: 'a', label: 'A' },
+            { value: 'b', label: 'B' },
+          ],
+        },
         'b'
       )
     ).toBe(true)

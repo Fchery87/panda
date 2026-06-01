@@ -4,7 +4,6 @@ import {
   mapLatestRunSummaryProgressSteps,
   parsePlanSteps,
   type LiveProgressStep,
-  type PlanProgressSummary,
 } from '@/components/chat/live-run-utils'
 import type { PersistedRunEventSummaryInfo } from '@/components/chat/types'
 import type { ExecutionReceipt } from '@/lib/agent/receipt'
@@ -343,8 +342,7 @@ function summarizeToolEntry(step: LiveProgressStep): string | undefined {
 
 function buildToolChipsFromSteps(steps: LiveProgressStep[]): TranscriptBlock | null {
   const toolSteps = steps.filter(
-    (step) =>
-      step.category === 'tool' && (step.status === 'completed' || step.status === 'error')
+    (step) => step.category === 'tool' && (step.status === 'completed' || step.status === 'error')
   )
 
   if (toolSteps.length === 0) return null
@@ -454,7 +452,7 @@ export function buildTranscriptFeedItems(args: {
       ? args.liveSteps
       : mapLatestRunSummaryProgressSteps(args.runEvents ?? [])
 
-  // Chat owns only compact tool summaries; full tool details belong in the Proof inspector.
+  // Chat owns only compact tool summaries; full tool details belong in the Run inspector.
   if (policy.chatAllows.includes('compact_tool_chips')) {
     const toolChipBlock = buildToolChipsFromSteps(steps)
     if (toolChipBlock) {

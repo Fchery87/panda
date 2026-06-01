@@ -57,7 +57,9 @@ export function artifactKindForStage(stage: WorkflowStage): WorkflowArtifactKind
   }
 }
 
-export function buildWorkflowArtifactDraft(args: Omit<WorkflowArtifactDraft, 'createdAt' | 'updatedAt'> & { now?: number }): WorkflowArtifactDraft {
+export function buildWorkflowArtifactDraft(
+  args: Omit<WorkflowArtifactDraft, 'createdAt' | 'updatedAt'> & { now?: number }
+): WorkflowArtifactDraft {
   const now = args.now ?? Date.now()
   return {
     ...args,

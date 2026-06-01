@@ -159,8 +159,12 @@ function SubagentLane({ entry }: { entry: PanelSubagentEntry }) {
         {'lastActivity' in entry && entry.lastActivity ? (
           <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
             active {entry.lastActivity}
-            {'artifactCount' in entry && entry.artifactCount ? ` · ${entry.artifactCount} artifacts` : ''}
-            {'patchProposalCount' in entry && entry.patchProposalCount ? ` · ${entry.patchProposalCount} patch proposals` : ''}
+            {'artifactCount' in entry && entry.artifactCount
+              ? ` · ${entry.artifactCount} artifacts`
+              : ''}
+            {'patchProposalCount' in entry && entry.patchProposalCount
+              ? ` · ${entry.patchProposalCount} patch proposals`
+              : ''}
           </p>
         ) : null}
         {entry.errorCategory ? (
@@ -182,11 +186,14 @@ function SubagentLane({ entry }: { entry: PanelSubagentEntry }) {
             ) : null}
             {entry.patchProposals?.length ? (
               <div className="space-y-1.5">
-                <div className="border border-warning/40 bg-warning/5 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+                <div className="border-warning/40 bg-warning/5 border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
                   Patch proposal — parent review required. Preview only; not applied automatically.
                 </div>
                 {entry.patchProposals.map((proposal) => (
-                  <div key={`${proposal.title}-${proposal.files.join(',')}`} className="border border-border bg-background/80 p-2">
+                  <div
+                    key={`${proposal.title}-${proposal.files.join(',')}`}
+                    className="bg-background/80 border border-border p-2"
+                  >
                     <div className="font-mono text-[11px] font-medium text-foreground">
                       {proposal.title}
                     </div>

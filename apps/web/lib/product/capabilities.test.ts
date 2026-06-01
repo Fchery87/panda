@@ -32,12 +32,12 @@ describe('educationSections', () => {
       [
         'Project-aware file tree navigation',
         'Search when structure is not enough',
-        'Selected files open in Work and attach to chat context',
+        'Selected files open in Editor and attach to chat context',
       ],
       [
         'Tabbed editor and changed-work review',
         'Browser runtime with server fallback',
-        'Terminal output and proof beside the task thread',
+        'Terminal output and run evidence beside the task thread',
       ],
       [
         'Ask / Plan / Agent mode controls',

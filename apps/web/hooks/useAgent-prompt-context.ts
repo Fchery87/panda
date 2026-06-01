@@ -12,6 +12,7 @@ import {
 import type { GeneratedPlanArtifact } from '@/lib/planning/types'
 import type { FormalSpecification } from '@/lib/agent/spec/types'
 import type { ContextAuditRecord } from '@/lib/agent/receipt'
+import type { ProjectRulePromptContext } from '@/lib/agent/project-rules'
 import { resolveModeHandoff, type UnresolvedModeHandoff } from '@/lib/agent/context/mode-handoff'
 
 interface ProjectFileMetadata {
@@ -31,6 +32,7 @@ export interface BuildAgentPromptBundleArgs {
   projectOverviewContent?: string | null
   projectFiles?: ProjectFileMetadata[]
   memoryBankContent?: string | null
+  projectRules?: ProjectRulePromptContext[]
   userContent: string
   contextFiles?: string[]
   architectBrainstormEnabled?: boolean
@@ -103,6 +105,7 @@ export function buildAgentPromptBundle(args: BuildAgentPromptBundleArgs): AgentP
     projectOverviewContent: args.projectOverviewContent,
     projectFiles: args.projectFiles?.map(toPromptContextFile),
     memoryBankContent: args.memoryBankContent,
+    projectRules: args.projectRules,
     userContent: args.userContent,
     contextFiles: args.contextFiles,
     architectBrainstormEnabled: args.architectBrainstormEnabled,
@@ -124,7 +127,12 @@ export function buildAgentPromptBundle(args: BuildAgentPromptBundleArgs): AgentP
     filesExcluded: [],
     memoryBankIncluded: Boolean(args.memoryBankContent),
     specIncluded: Boolean(args.activeSpec),
-    planIncluded: Boolean(args.planDraft || args.approvedPlanExecutionContext || modeHandoff?.kind === 'latest_plan' || modeHandoff?.kind === 'approved_plan'),
+    planIncluded: Boolean(
+      args.planDraft ||
+      args.approvedPlanExecutionContext ||
+      modeHandoff?.kind === 'latest_plan' ||
+      modeHandoff?.kind === 'approved_plan'
+    ),
     sessionSummaryIncluded: Boolean(promptContext.sessionSummary),
     compactionOccurred: false,
     truncated: false,

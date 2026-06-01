@@ -207,7 +207,11 @@ function collectContextSignals(input: RoutingInput, message: string): IntentSign
 
 function collectSuggestedSkills(message: string): string[] {
   const skills = new Set<string>()
-  if (/\b(debug|stack trace|traceback|crash|exception|reproduce|logs?|not working|fails?|failing|failure|runtime error)\b/iu.test(message)) {
+  if (
+    /\b(debug|stack trace|traceback|crash|exception|reproduce|logs?|not working|fails?|failing|failure|runtime error)\b/iu.test(
+      message
+    )
+  ) {
     skills.add('debug')
   }
   if (/\b(review|audit|diff|recommendations?)\b/iu.test(message)) {

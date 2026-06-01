@@ -1,17 +1,21 @@
 # Phase 5 — Layout Focus Modes
 
-**Phase ID:** 5  
-**Status:** Completed  
-**Prerequisite:** Phase 4 complete  
-**Next Phase:** Phase 6 — Mid-Stream Queue / Steer UX
+**Phase ID:** 5 **Status:** Completed; superseded for desktop primary layout by
+`docs/plans/2026-05-30-panda-ide-realignment.md` and
+`docs/ARCHITECTURE_CONTRACT.md` **Prerequisite:** Phase 4 complete **Next
+Phase:** Phase 6 — Mid-Stream Queue / Steer UX
 
 ## Objective
 
-Reduce workspace crowding by adding clearer focus modes for Chat, Workbench, Proof, and Changes.
+Reduce workspace crowding by adding clearer focus modes for Chat, Workbench,
+Proof, and Changes. This historical milestone introduced the compatibility focus
+state; current desktop policy treats that state as an emphasis/maximize
+affordance rather than the primary navigation model.
 
 ## Current Issue
 
-Panda has many powerful surfaces, but users can feel overwhelmed by simultaneous context:
+Panda has many powerful surfaces, but users can feel overwhelmed by simultaneous
+context:
 
 - Thread
 - Proof
@@ -40,7 +44,7 @@ Focus Proof     → inspector/run evidence dominant
 Focus Changes   → artifacts/diffs dominant
 ```
 
-## Later Mode-Aware Mapping
+## Later Mode-Aware Mapping Now Canonical
 
 ```txt
 Ask mode   → Chat dominant
@@ -59,11 +63,19 @@ Build mode → Workbench dominant
 
 ## Implementation Direction
 
+Historical implementation direction:
+
 1. Add focus-mode state to workspace UI store.
 2. Add unobtrusive focus switcher in top bar or workspace strip.
 3. Reuse existing panels; do not build new surfaces.
 4. Adjust panel sizes/default visibility based on focus.
 5. Preserve mobile panel behavior.
+
+Current contract after the 2026-05-30 realignment: keep this state for
+compatibility, file-opening emphasis, maximize, and mobile behavior, but do not
+use it to hide chat or editor on normal desktop Agent work. The inspector rail
+is now `Run`, `Changes`, and `Context` and is collapsed by default until
+explicitly opened or triggered by review-needed events.
 
 ## Acceptance Criteria
 

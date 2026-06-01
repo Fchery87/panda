@@ -16,9 +16,14 @@
 
 ## Known hardening follow-ups
 
-- `ask_user` live pause/resume works in the active browser session, but full browser reload recovery of an in-flight `ask_user` resolver still needs runtime checkpoint rehydration.
-- Direct runtime tool advisor enforcement blocks risky work and creates review requests before execution; automatic replay of the exact blocked tool after approval remains a future hardening step.
-- New Playwright specs are present/discoverable; full browser execution should be run where Convex + Next webServer startup has enough time budget.
+- `ask_user` live pause/resume works in the active browser session, but full
+  browser reload recovery of an in-flight `ask_user` resolver still needs
+  runtime checkpoint rehydration.
+- Direct runtime tool advisor enforcement blocks risky work and creates review
+  requests before execution; automatic replay of the exact blocked tool after
+  approval remains a future hardening step.
+- New Playwright specs are present/discoverable; full browser execution should
+  be run where Convex + Next webServer startup has enough time budget.
 
 ## Validation evidence
 
@@ -31,4 +36,5 @@
   - workflow chain runtime linkage,
   - workflow artifact materialization,
   - advisor request panel polish.
-- Playwright discovery passed for `e2e/file-tree-advisor-proof.e2e-spec.ts` with 2 tests listed.
+- Playwright discovery passed for `e2e/file-tree-advisor-proof.e2e-spec.ts` with
+  2 tests listed.

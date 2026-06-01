@@ -42,9 +42,23 @@ export interface ModeTransitionRitual {
   systemMessage: string
 }
 
+export type ModeLayoutEmphasis =
+  | 'chat-dominant'
+  | 'plan-context'
+  | 'editor-chat'
+  | 'workbench-dominant'
+
+export interface ModeLayoutHint {
+  emphasis: ModeLayoutEmphasis
+  editorDefaultSize: number
+  chatDefaultSize: number
+  inspectorDefaultOpen: boolean
+}
+
 export interface ChatModeConfig {
   description: string
   fileAccess: 'read-only' | 'read-write'
+  layout: ModeLayoutHint
   surface: {
     label: string
     shortLabel: string
@@ -97,21 +111,24 @@ export const SECONDARY_ACTION_CONFIGS: Record<SecondaryAction, SecondaryActionCo
     label: 'Debug',
     description: 'Investigate, reproduce, patch, and verify a bug.',
     defaultModeSelection: { primaryMode: 'agent', autonomy: 'guided', secondaryAction: 'debug' },
-    promptHint: 'Use a hypothesis-driven debug loop: hypothesize, inspect/reproduce, instrument if needed, patch, then verify.',
+    promptHint:
+      'Use a hypothesis-driven debug loop: hypothesize, inspect/reproduce, instrument if needed, patch, then verify.',
   },
   review: {
     id: 'review',
     label: 'Review',
     description: 'Review a diff, plan, implementation, or selected files.',
     defaultModeSelection: { primaryMode: 'ask', secondaryAction: 'review' },
-    promptHint: 'Review the target carefully, separate blockers from suggestions, and cite concrete files or plan sections.',
+    promptHint:
+      'Review the target carefully, separate blockers from suggestions, and cite concrete files or plan sections.',
   },
   docs: {
     id: 'docs',
     label: 'Docs',
     description: 'Create or update documentation and implementation notes.',
     defaultModeSelection: { primaryMode: 'agent', autonomy: 'guided', secondaryAction: 'docs' },
-    promptHint: 'Focus on documentation changes and keep code edits out of scope unless explicitly requested.',
+    promptHint:
+      'Focus on documentation changes and keep code edits out of scope unless explicitly requested.',
   },
 }
 
@@ -119,6 +136,12 @@ export const CHAT_MODE_CONFIGS: Record<ChatMode, ChatModeConfig> = {
   ask: {
     description: 'Research and answer without changing files',
     fileAccess: 'read-only',
+    layout: {
+      emphasis: 'chat-dominant',
+      editorDefaultSize: 38,
+      chatDefaultSize: 62,
+      inspectorDefaultOpen: false,
+    },
     surface: {
       label: 'Ask',
       shortLabel: 'Ask',
@@ -135,6 +158,12 @@ export const CHAT_MODE_CONFIGS: Record<ChatMode, ChatModeConfig> = {
   plan: {
     description: 'Turn intent and findings into an implementation plan',
     fileAccess: 'read-only',
+    layout: {
+      emphasis: 'plan-context',
+      editorDefaultSize: 52,
+      chatDefaultSize: 48,
+      inspectorDefaultOpen: false,
+    },
     surface: {
       label: 'Plan',
       shortLabel: 'Plan',
@@ -151,6 +180,12 @@ export const CHAT_MODE_CONFIGS: Record<ChatMode, ChatModeConfig> = {
   code: {
     description: 'Make focused code changes and verify them',
     fileAccess: 'read-write',
+    layout: {
+      emphasis: 'editor-chat',
+      editorDefaultSize: 60,
+      chatDefaultSize: 40,
+      inspectorDefaultOpen: false,
+    },
     surface: {
       label: 'Agent · Guided',
       shortLabel: 'Guided',
@@ -171,6 +206,12 @@ export const CHAT_MODE_CONFIGS: Record<ChatMode, ChatModeConfig> = {
   build: {
     description: 'Execute broad changes end-to-end',
     fileAccess: 'read-write',
+    layout: {
+      emphasis: 'workbench-dominant',
+      editorDefaultSize: 70,
+      chatDefaultSize: 30,
+      inspectorDefaultOpen: false,
+    },
     surface: {
       label: 'Agent · Autopilot',
       shortLabel: 'Autopilot',
@@ -230,7 +271,11 @@ export function getAgentAutonomyOptions(): Array<{
 }
 
 export function getSecondaryActions(): SecondaryActionConfig[] {
-  return [SECONDARY_ACTION_CONFIGS.debug, SECONDARY_ACTION_CONFIGS.review, SECONDARY_ACTION_CONFIGS.docs]
+  return [
+    SECONDARY_ACTION_CONFIGS.debug,
+    SECONDARY_ACTION_CONFIGS.review,
+    SECONDARY_ACTION_CONFIGS.docs,
+  ]
 }
 
 /**

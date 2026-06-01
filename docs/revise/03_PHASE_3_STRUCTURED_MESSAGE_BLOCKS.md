@@ -7,7 +7,8 @@
 
 ## Objective
 
-Add an optional durable structured message block model while preserving existing `content: string` compatibility.
+Add an optional durable structured message block model while preserving existing
+`content: string` compatibility.
 
 ## Current Issue
 
@@ -32,11 +33,20 @@ Add optional blocks, not a breaking replacement:
 ```ts
 type MessageBlock =
   | { type: 'text'; text: string }
-  | { type: 'reasoning_summary'; text?: string; redacted?: boolean; tokenCount?: number }
+  | {
+      type: 'reasoning_summary'
+      text?: string
+      redacted?: boolean
+      tokenCount?: number
+    }
   | { type: 'tool_call_ref'; toolCallId: string; toolName?: string }
   | { type: 'tool_result_ref'; toolCallId: string; eventId?: string }
   | { type: 'artifact_ref'; artifactId: string }
-  | { type: 'file_change_ref'; path: string; action: 'created' | 'updated' | 'deleted' }
+  | {
+      type: 'file_change_ref'
+      path: string
+      action: 'created' | 'updated' | 'deleted'
+    }
   | { type: 'error'; message: string }
 ```
 

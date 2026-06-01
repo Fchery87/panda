@@ -120,12 +120,12 @@ function ToolChipsRow({ block }: { block: Extract<TranscriptBlock, { kind: 'tool
             </span>
           ))}
         </div>
-        <span className="ml-auto shrink-0 font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground/70">
+        <span className="text-muted-foreground/70 ml-auto shrink-0 font-mono text-[10px] uppercase tracking-[0.15em]">
           {runningCount > 0
-            ? `${runningCount} running · details in Proof`
+            ? `${runningCount} running · details in Run`
             : errorCount > 0
-              ? `${errorCount} issue${errorCount === 1 ? '' : 's'} · details in Proof`
-              : 'Details in Proof'}
+              ? `${errorCount} issue${errorCount === 1 ? '' : 's'} · details in Run`
+              : 'Details in Run'}
         </span>
       </div>
     </div>
@@ -155,11 +155,7 @@ function PlanChecklistRow({
         <ListChecks
           className={cn(
             'h-3.5 w-3.5 shrink-0',
-            isComplete
-              ? 'text-emerald-500'
-              : hasActive
-                ? 'text-primary'
-                : 'text-muted-foreground'
+            isComplete ? 'text-emerald-500' : hasActive ? 'text-primary' : 'text-muted-foreground'
           )}
         />
         <div
@@ -169,7 +165,7 @@ function PlanChecklistRow({
               ? 'border-emerald-500/40 bg-emerald-500/[0.04] text-emerald-600'
               : hasActive
                 ? 'border-primary/40 bg-primary/[0.04] text-primary'
-                : 'border-border bg-muted/25 text-muted-foreground'
+                : 'bg-muted/25 border-border text-muted-foreground'
           )}
         >
           <span>Plan</span>
@@ -179,7 +175,7 @@ function PlanChecklistRow({
           {hasActive && <span>• in progress</span>}
           {isComplete && <span>• done</span>}
         </div>
-        <span className="ml-auto shrink-0 text-muted-foreground/70">
+        <span className="text-muted-foreground/70 ml-auto shrink-0">
           {expanded ? (
             <ChevronDown className="h-3.5 w-3.5" />
           ) : (
@@ -205,7 +201,7 @@ function PlanChecklistItem({ step }: { step: PlanChecklistStep }) {
       className={cn(
         'shadow-sharp-sm flex items-start gap-2 border px-2.5 py-1.5 font-mono text-[11px]',
         step.status === 'active' && 'border-primary/30 bg-primary/[0.03]',
-        step.status === 'completed' && 'border-border bg-background/70',
+        step.status === 'completed' && 'bg-background/70 border-border',
         step.status === 'pending' && 'border-border/60 bg-muted/15'
       )}
     >
@@ -214,7 +210,7 @@ function PlanChecklistItem({ step }: { step: PlanChecklistStep }) {
       ) : step.status === 'active' ? (
         <Loader2 className="mt-0.5 h-3 w-3 shrink-0 animate-spin text-primary" />
       ) : (
-        <CircleDashed className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground/50" />
+        <CircleDashed className="text-muted-foreground/50 mt-0.5 h-3 w-3 shrink-0" />
       )}
       <span
         className={cn(

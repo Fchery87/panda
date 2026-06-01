@@ -175,7 +175,9 @@ function deriveFocusedHunks(preview: WorkspaceArtifactPreview): DiffFileEntry['h
       id: `${preview.artifactId}:${rangeIndex}`,
       startLine: firstChanged?.newLine ?? slice[0]?.newLine ?? 1,
       endLine: lastChanged?.newLine ?? slice.at(-1)?.newLine ?? 1,
-      added: slice.filter((operation) => operation.type === 'add').map((operation) => operation.line),
+      added: slice
+        .filter((operation) => operation.type === 'add')
+        .map((operation) => operation.line),
       removed: slice
         .filter((operation) => operation.type === 'remove')
         .map((operation) => operation.line),

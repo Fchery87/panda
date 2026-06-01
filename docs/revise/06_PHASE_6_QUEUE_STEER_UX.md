@@ -7,7 +7,8 @@
 
 ## Objective
 
-Add advanced prompt behavior while the agent is already running, inspired by Pi's steer/follow-up queue model.
+Add advanced prompt behavior while the agent is already running, inspired by
+Pi's steer/follow-up queue model.
 
 ## Current Behavior
 
@@ -38,7 +39,8 @@ The user message is appended after the current run completes.
 
 ### Steer Current Run
 
-The user message becomes steering context for the active runtime loop as soon as safely possible.
+The user message becomes steering context for the active runtime loop as soon as
+safely possible.
 
 ### Stop and Replace
 
@@ -80,7 +82,8 @@ Highest risk. Requires runtime loop support for injecting steering context.
 - [x] Running-state composer behavior is explicit.
 - [x] Queued messages are visible and cancellable.
 - [x] Stopped runs finalize correctly. Existing stop path was preserved.
-- [x] Steer behavior, if implemented, is auditable. Steer was intentionally deferred; Phase 6A shipped queue follow-up only.
+- [x] Steer behavior, if implemented, is auditable. Steer was intentionally
+      deferred; Phase 6A shipped queue follow-up only.
 - [x] No duplicate assistant messages or orphaned runs.
 
 ## Verification

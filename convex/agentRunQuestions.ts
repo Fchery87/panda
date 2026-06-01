@@ -27,14 +27,16 @@ export const latestPendingByRun = query({
     if (!run) throw new Error('Agent run not found')
     await requireChatOwner(ctx, run.chatId)
     return (
-      await ctx.db
-        .query('agentRunQuestions')
-        .withIndex('by_run_status_created', (q) =>
-          q.eq('runId', args.runId).eq('status', 'pending')
-        )
-        .order('desc')
-        .take(1)
-    )[0] ?? null
+      (
+        await ctx.db
+          .query('agentRunQuestions')
+          .withIndex('by_run_status_created', (q) =>
+            q.eq('runId', args.runId).eq('status', 'pending')
+          )
+          .order('desc')
+          .take(1)
+      )[0] ?? null
+    )
   },
 })
 
@@ -57,9 +59,7 @@ export const createPending = mutation({
     const now = Date.now()
     const existing = await ctx.db
       .query('agentRunQuestions')
-      .withIndex('by_run_status_created', (q) =>
-        q.eq('runId', args.runId).eq('status', 'pending')
-      )
+      .withIndex('by_run_status_created', (q) => q.eq('runId', args.runId).eq('status', 'pending'))
       .order('desc')
       .first()
     if (existing) return existing._id

@@ -1,7 +1,6 @@
 import { describe, expect, mock, test } from 'bun:test'
 import type { ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { ProjectChatInspector } from './ProjectChatInspector'
 import type { GeneratedPlanArtifact } from '@/lib/planning/types'
 
 mock.module('framer-motion', () => ({
@@ -30,12 +29,21 @@ mock.module('@/components/chat/RunProgressPanel', () => ({
   RunProgressPanel: () => <div>run-progress-panel</div>,
 }))
 
-mock.module('@/components/chat/SnapshotTimeline', () => ({
-  SnapshotTimeline: () => <div>snapshot-timeline</div>,
+mock.module('convex/react', () => ({
+  useMutation: () => async () => undefined,
+  useQuery: () => undefined,
 }))
 
-mock.module('@/components/chat/SubagentPanel', () => ({
-  SubagentPanel: () => <div>subagent-panel</div>,
+mock.module('@/components/chat/inspector/InspectorContextContent', () => ({
+  InspectorContextContent: () => <div>context-inspector</div>,
+}))
+
+mock.module('@/components/chat/inspector/InspectorResearchContent', () => ({
+  InspectorResearchContent: () => <div>research-inspector</div>,
+}))
+
+mock.module('@/components/chat/SnapshotTimeline', () => ({
+  SnapshotTimeline: () => <div>snapshot-timeline</div>,
 }))
 
 mock.module('@/components/artifacts/ArtifactPanel', () => ({
@@ -55,7 +63,8 @@ const generatedPlanArtifact: GeneratedPlanArtifact = {
 }
 
 describe('ProjectChatInspector', () => {
-  test('renders structured review content from planningSession.generatedPlan on the plan tab', () => {
+  test('renders structured review content from planningSession.generatedPlan on the plan tab', async () => {
+    const { ProjectChatInspector } = await import('./ProjectChatInspector')
     const html = renderToStaticMarkup(
       <ProjectChatInspector
         projectId={'project-1' as never}

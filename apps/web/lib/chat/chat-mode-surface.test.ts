@@ -39,11 +39,16 @@ describe('chat mode surface presentation', () => {
     })
   })
 
-  test('exposes Ask, Plan, and Agent Guided as primary picker options with no advanced section', () => {
+  test('exposes Ask, Plan, and Agent as primary picker options with no advanced section', () => {
     expect(getPrimaryChatModeSurfaceOptions().map((option) => option.label)).toEqual([
       'Ask',
       'Plan',
-      'Agent · Guided',
+      'Agent',
+    ])
+    expect(getPrimaryChatModeSurfaceOptions().map((option) => option.mode)).toEqual([
+      'ask',
+      'plan',
+      'code',
     ])
     expect(getAdvancedChatModeSurfaceOptions()).toEqual([])
   })
@@ -63,7 +68,7 @@ describe('chat mode surface presentation', () => {
     expect(getPrimaryChatModeSurfaceOptions().map((option) => option.label)).toEqual([
       'Ask',
       'Plan',
-      'Agent · Guided',
+      'Agent',
     ])
   })
 })

@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'bun:test'
-import { buildAdvisorReview, inferAdvisorReviewStatus, isValidAdvisorReview } from './advisor-review-builder'
+import {
+  buildAdvisorReview,
+  inferAdvisorReviewStatus,
+  isValidAdvisorReview,
+} from './advisor-review-builder'
 
 describe('advisor review builder', () => {
   test('approves when no risks are present', () => {

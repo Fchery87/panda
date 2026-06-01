@@ -6,7 +6,10 @@ describe('advisor review enforcement', () => {
     const result = enforceAdvisorReview({ required: true, gates: ['dependency_change'] })
     expect(result.canContinue).toBe(false)
     expect(result.status).toBe('blocked')
-    expect(advisorReviewRunEvent(result)).toMatchObject({ type: 'advisor_review', status: 'blocked' })
+    expect(advisorReviewRunEvent(result)).toMatchObject({
+      type: 'advisor_review',
+      status: 'blocked',
+    })
   })
 
   test('allows continuation when advisor approves', () => {

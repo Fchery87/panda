@@ -7,7 +7,7 @@ describe('runtime subagent mutation guard', () => {
     const runtimePath = path.resolve(import.meta.dir, 'runtime.ts')
     const source = fs.readFileSync(runtimePath, 'utf8')
 
-    expect(source).toContain('isMutatingPermissionSet')
+    expect(source).toContain('isSubagentMutating')
     expect(source).toContain('const readonlySubtasks = subtasksToProcess.filter')
     expect(source).toContain('const mutatingSubtasks = subtasksToProcess.filter')
     expect(source).toContain('Multiple mutating subagents were requested')
