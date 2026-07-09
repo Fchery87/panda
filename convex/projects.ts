@@ -3,6 +3,11 @@ import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
 import type { MutationCtx } from './_generated/server'
 import { requireAuth, getCurrentUserId } from './lib/auth'
+import {
+  buildContentFieldsForOptionalContent,
+  deleteProjectFileContents,
+  upsertFileMetadataProjection,
+} from './lib/fileContentStore'
 import { trackUserAnalytics } from './lib/userAnalytics'
 
 const MAX_INITIAL_GITHUB_FILES = 100
@@ -17,21 +22,60 @@ async function deleteByIndex<TableName extends Parameters<MutationCtx['db']['que
   indexName: string,
   buildQuery: (q: IndexQueryBuilder) => unknown
 ): Promise<number> {
-  const rows = await ctx.db
-    .query(table)
-    .withIndex(indexName as never, buildQuery as never)
-    .take(1000)
+  const batchSize = 1000
+  const maxRows = 5000
+  let deleted = 0
 
-  for (const row of rows) {
-    await ctx.db.delete(row._id)
+  while (true) {
+    const rows = await ctx.db
+      .query(table)
+      .withIndex(indexName as never, buildQuery as never)
+      .take(batchSize)
+
+    if (rows.length === 0) return deleted
+    if (deleted + rows.length > maxRows) {
+      throw new Error(`Cascade delete for ${String(table)} exceeded ${maxRows} rows`)
+    }
+
+    for (const row of rows) {
+      await ctx.db.delete(row._id)
+    }
+
+    deleted += rows.length
+    if (rows.length < batchSize) return deleted
   }
-
-  return rows.length
 }
 
 async function deleteFileWithSnapshots(ctx: MutationCtx, fileId: Id<'files'>): Promise<void> {
   await deleteByIndex(ctx, 'fileSnapshots', 'by_file', (q) => q.eq('fileId', fileId))
+  await deleteByIndex(ctx, 'fileMetadata', 'by_file', (q) => q.eq('fileId', fileId))
   await ctx.db.delete(fileId)
+}
+
+async function deleteProjectFilesWithSnapshots(
+  ctx: MutationCtx,
+  projectId: Id<'projects'>
+): Promise<number> {
+  const batchSize = 1000
+  const maxRows = 5000
+  let deleted = 0
+
+  while (true) {
+    const files = await ctx.db
+      .query('files')
+      .withIndex('by_project', (q) => q.eq('projectId', projectId))
+      .take(batchSize)
+
+    if (files.length === 0) return deleted
+    if (deleted + files.length > maxRows) {
+      throw new Error(`Refusing to delete more than ${maxRows} files in one project cascade`)
+    }
+
+    for (const file of files) {
+      await deleteFileWithSnapshots(ctx, file._id)
+      deleted += 1
+    }
+  }
 }
 
 async function assertProjectLimitAvailable(ctx: MutationCtx, userId: Id<'users'>): Promise<void> {
@@ -56,6 +100,10 @@ async function deleteChatChildren(ctx: MutationCtx, chatId: Id<'chats'>): Promis
     .withIndex('by_chat', (q) => q.eq('chatId', chatId))
     .take(1000)
 
+  const trackedMessageCount = messages.filter(
+    (message) => message.analyticsTracked !== false
+  ).length
+
   for (const message of messages) {
     await deleteByIndex(ctx, 'chatAttachments', 'by_message', (q) => q.eq('messageId', message._id))
     await deleteByIndex(ctx, 'artifacts', 'by_message', (q) => q.eq('messageId', message._id))
@@ -66,14 +114,19 @@ async function deleteChatChildren(ctx: MutationCtx, chatId: Id<'chats'>): Promis
   await deleteByIndex(ctx, 'planningSessions', 'by_chat', (q) => q.eq('chatId', chatId))
   await deleteByIndex(ctx, 'checkpoints', 'by_chat', (q) => q.eq('chatId', chatId))
   await deleteByIndex(ctx, 'sharedChats', 'by_chat', (q) => q.eq('chatId', chatId))
+  await deleteByIndex(ctx, 'agentRunEventBodies', 'by_chat_created', (q) => q.eq('chatId', chatId))
   await deleteByIndex(ctx, 'agentRunEvents', 'by_chat_created', (q) => q.eq('chatId', chatId))
+  await deleteByIndex(ctx, 'harnessRuntimeCheckpointBodies', 'by_chat_created', (q) =>
+    q.eq('chatId', chatId)
+  )
   await deleteByIndex(ctx, 'harnessRuntimeCheckpoints', 'by_chat_saved', (q) =>
     q.eq('chatId', chatId)
   )
+  await deleteByIndex(ctx, 'agentRuns', 'by_chat_started', (q) => q.eq('chatId', chatId))
   await deleteByIndex(ctx, 'sessionSummaries', 'by_chat', (q) => q.eq('chatId', chatId))
   await deleteByIndex(ctx, 'specifications', 'by_chat', (q) => q.eq('chatId', chatId))
 
-  return messages.length
+  return trackedMessageCount
 }
 
 // list (query) - list all projects for current user
@@ -144,6 +197,7 @@ export const create = mutation({
       createdAt: now,
       lastOpenedAt: now,
       repoUrl: args.repoUrl,
+      fileMetadataBackfilledAt: now,
       githubRepository: args.githubRepository,
       githubSyncState: args.githubRepository
         ? {
@@ -212,6 +266,7 @@ export const createFromGitHubRepository = mutation({
       createdAt: now,
       lastOpenedAt: now,
       repoUrl: args.repository.htmlUrl,
+      fileMetadataBackfilledAt: now,
       githubRepository: {
         connectionId: args.repository.connectionId,
         repositoryId: args.repository.repositoryId,
@@ -235,10 +290,30 @@ export const createFromGitHubRepository = mutation({
     })
 
     for (const file of initialFiles) {
-      await ctx.db.insert('files', {
+      if (file.content === undefined) {
+        throw new Error(`Cannot create GitHub project file without content: ${file.path}`)
+      }
+
+      const contentFields = await buildContentFieldsForOptionalContent(ctx, {
+        projectId,
+        content: file.content,
+        isBinary: file.isBinary ?? false,
+      })
+      const fileId = await ctx.db.insert('files', {
         projectId,
         path: file.path,
         content: file.content,
+        ...contentFields,
+        isBinary: file.isBinary ?? false,
+        updatedAt: now,
+      })
+      await upsertFileMetadataProjection(ctx, {
+        fileId,
+        projectId,
+        path: file.path,
+        content: file.content,
+        contentHash: contentFields.contentHash,
+        contentSize: contentFields.contentSize,
         isBinary: file.isBinary ?? false,
         updatedAt: now,
       })
@@ -321,14 +396,7 @@ export const remove = mutation({
       throw new Error('Project not found or access denied')
     }
 
-    const files = await ctx.db
-      .query('files')
-      .withIndex('by_project', (q) => q.eq('projectId', args.id))
-      .take(1000)
-
-    for (const file of files) {
-      await deleteFileWithSnapshots(ctx, file._id)
-    }
+    await deleteProjectFilesWithSnapshots(ctx, args.id)
 
     const chats = await ctx.db
       .query('chats')
@@ -344,6 +412,9 @@ export const remove = mutation({
 
     await deleteByIndex(ctx, 'jobs', 'by_project', (q) => q.eq('projectId', args.id))
     await deleteByIndex(ctx, 'agentRuns', 'by_project_started', (q) => q.eq('projectId', args.id))
+    await deleteByIndex(ctx, 'harnessRuntimeCheckpointBodies', 'by_project_created', (q) =>
+      q.eq('projectId', args.id)
+    )
     await deleteByIndex(ctx, 'harnessRuntimeCheckpoints', 'by_project_session_saved', (q) =>
       q.eq('projectId', args.id)
     )
@@ -370,6 +441,8 @@ export const remove = mutation({
       q.eq('projectId', args.id)
     )
     await deleteByIndex(ctx, 'evalSuites', 'by_project_updated', (q) => q.eq('projectId', args.id))
+
+    await deleteProjectFileContents(ctx, args.id)
 
     await ctx.db.delete(args.id)
 

@@ -93,7 +93,7 @@ export function AgentDefaultsEditor({ value, onChange, className }: AgentDefault
             update({ allowedCommandPrefixes: textToPrefixes(event.target.value) })
           }
           placeholder={'bun test\nbun run lint\nbunx eslint'}
-          className="min-h-[120px] rounded-none font-mono text-xs"
+          className="min-h-[120px] font-mono text-xs"
           disabled={!effectiveValue.autoRunCommands || (effectiveValue.yoloCommandMode ?? false)}
         />
         <p className="text-xs text-muted-foreground">

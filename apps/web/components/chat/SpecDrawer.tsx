@@ -216,7 +216,7 @@ export function SpecDrawer({ spec, isOpen, onClose }: SpecDrawerProps) {
           <div className="flex items-center gap-3">
             <span
               className={cn(
-                'flex h-8 w-8 items-center justify-center rounded-none border',
+                'flex h-8 w-8 items-center justify-center border',
                 status.borderClass,
                 status.bgClass,
                 status.colorClass
@@ -229,7 +229,7 @@ export function SpecDrawer({ spec, isOpen, onClose }: SpecDrawerProps) {
               <p className={cn('font-mono text-xs', status.colorClass)}>{status.label}</p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none" onClick={onClose}>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}>
             <X className="h-4 w-4" />
             <span className="sr-only">Close</span>
           </Button>
@@ -400,7 +400,7 @@ export function SpecDrawer({ spec, isOpen, onClose }: SpecDrawerProps) {
         <div className="border-t border-border p-4">
           <Button
             variant="outline"
-            className="w-full rounded-none font-mono text-xs"
+            className="w-full font-mono text-xs"
             onClick={onClose}
           >
             Close

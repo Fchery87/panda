@@ -301,7 +301,7 @@ function AskUserToolCard({
                         ))}
                       </div>
                     ) : (
-                      <div className="mb-2 border border-amber-500/25 bg-amber-500/10 px-2 py-1 text-[11px] text-muted-foreground">
+                      <div className="mb-2 border border-warning/25 bg-warning/10 px-2 py-1 text-[11px] text-muted-foreground">
                         Panda did not mark a recommended option for this question.
                       </div>
                     )}
@@ -1003,7 +1003,7 @@ export function MessageBubble({
               delay: shouldReduceMotion ? 0 : 0.05,
             }}
             className={cn(
-              'relative min-w-0 rounded-none border text-sm leading-relaxed',
+              'relative min-w-0 border text-sm leading-relaxed',
               'px-3 py-2 text-[13px] xl:px-4 xl:py-2.5 xl:text-sm',
               isUser
                 ? 'max-w-[78%] self-end bg-primary text-primary-foreground'

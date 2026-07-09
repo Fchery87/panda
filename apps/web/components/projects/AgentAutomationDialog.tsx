@@ -94,7 +94,7 @@ export function AgentAutomationDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-2 rounded-none font-mono text-xs">
+        <Button variant="ghost" size="sm" className="gap-2 font-mono text-xs">
           Automation
         </Button>
       </DialogTrigger>
@@ -167,7 +167,7 @@ export function AgentAutomationDialog({
               value={allowedPrefixesText}
               onChange={(e) => setAllowedPrefixesText(e.target.value)}
               placeholder={'bun test\nbunx eslint\nbun run lint'}
-              className="min-h-[120px] rounded-none font-mono text-xs"
+              className="min-h-[120px] font-mono text-xs"
               disabled={inheritDefaults || !autoRunCommands || yoloCommandMode}
             />
           </div>

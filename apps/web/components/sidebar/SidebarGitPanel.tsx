@@ -158,7 +158,7 @@ export function SidebarGitPanel({ projectId: _projectId }: SidebarGitPanelProps)
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 flex-1 gap-1 rounded-none border border-border font-mono text-[10px] uppercase tracking-widest"
+              className="h-6 flex-1 gap-1 border border-border font-mono text-[10px] uppercase tracking-widest"
               onClick={handleCommit}
               disabled={!commitMessage.trim()}
             >
@@ -174,7 +174,7 @@ export function SidebarGitPanel({ projectId: _projectId }: SidebarGitPanelProps)
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 w-full gap-1 rounded-none border border-border font-mono text-[10px] uppercase tracking-widest"
+            className="h-6 w-full gap-1 border border-border font-mono text-[10px] uppercase tracking-widest"
             onClick={handleStageAll}
           >
             <Plus className="h-3 w-3" />

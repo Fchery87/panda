@@ -109,7 +109,7 @@ export function UserLLMConfig({
   return (
     <div className="space-y-6">
       {/* Admin Defaults Info */}
-      <Card className="rounded-none border-l-4 border-l-primary">
+      <Card className="border-l-4 border-l-primary">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -117,11 +117,11 @@ export function UserLLMConfig({
               <CardTitle className="text-base">System Defaults</CardTitle>
             </div>
             {allowOverrides ? (
-              <Badge variant="outline" className="rounded-none">
+              <Badge variant="outline" className="">
                 Override Allowed
               </Badge>
             ) : (
-              <Badge variant="secondary" className="rounded-none">
+              <Badge variant="secondary" className="">
                 Locked
               </Badge>
             )}
@@ -132,7 +132,7 @@ export function UserLLMConfig({
         </CardHeader>
         <CardContent className="space-y-4">
           {!hasAdminDefaults ? (
-            <Alert className="rounded-none">
+            <Alert className="">
               <AlertDescription>
                 No system-wide defaults configured. You can set your own preferences below.
               </AlertDescription>
@@ -162,7 +162,7 @@ export function UserLLMConfig({
               </div>
 
               {!allowOverrides && (
-                <Alert variant="destructive" className="rounded-none">
+                <Alert variant="destructive" className="">
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
                     Your administrator has disabled user overrides. You must use the system
@@ -177,7 +177,7 @@ export function UserLLMConfig({
 
       {/* User Override Section */}
       {allowOverrides && (
-        <Card className="rounded-none">
+        <Card className="">
           <CardHeader>
             <div className="flex items-center gap-2">
               <Bot className="h-5 w-5" />
@@ -189,7 +189,7 @@ export function UserLLMConfig({
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Provider Override Toggle */}
-            <div className="bg-muted/30 flex items-center justify-between rounded-none border border-border p-4">
+            <div className="bg-muted/30 flex items-center justify-between border border-border p-4">
               <div className="space-y-0.5">
                 <Label className="font-mono text-sm">Override Provider</Label>
                 <p className="text-sm text-muted-foreground">
@@ -212,7 +212,7 @@ export function UserLLMConfig({
                     value={userSettings.defaultProvider || ''}
                     onValueChange={handleProviderChange}
                   >
-                    <SelectTrigger id="user-provider" className="rounded-none">
+                    <SelectTrigger id="user-provider" className="">
                       <SelectValue placeholder="Select a provider..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -232,7 +232,7 @@ export function UserLLMConfig({
             <Separator />
 
             {/* Model Override Toggle */}
-            <div className="bg-muted/30 flex items-center justify-between rounded-none border border-border p-4">
+            <div className="bg-muted/30 flex items-center justify-between border border-border p-4">
               <div className="space-y-0.5">
                 <Label className="font-mono text-sm">Override Model</Label>
                 <p className="text-sm text-muted-foreground">
@@ -256,7 +256,7 @@ export function UserLLMConfig({
                     onValueChange={handleModelChange}
                     disabled={availableModels.length === 0}
                   >
-                    <SelectTrigger id="user-model" className="rounded-none">
+                    <SelectTrigger id="user-model" className="">
                       <SelectValue
                         placeholder={
                           availableModels.length === 0
@@ -280,7 +280,7 @@ export function UserLLMConfig({
             <Separator />
 
             {/* Effective Settings Summary */}
-            <div className="rounded-none bg-muted p-4">
+            <div className="bg-muted p-4">
               <p className="mb-3 font-mono text-xs uppercase tracking-wider text-muted-foreground">
                 Effective Settings (What will be used)
               </p>

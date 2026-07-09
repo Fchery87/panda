@@ -36,14 +36,14 @@ export function RunStatus({ reason, onRetry, onSwitchModel, onViewTranscript }: 
   const detail = DETAILS[reason.kind]?.(reason)
 
   return (
-    <div className="rounded-none border border-yellow-200 bg-yellow-50 p-3 text-sm dark:border-yellow-900 dark:bg-yellow-950">
-      <p className="font-mono font-medium text-yellow-900 dark:text-yellow-100">{label}</p>
-      {detail && <p className="mt-0.5 text-yellow-800 dark:text-yellow-200">{detail}</p>}
+    <div className="border border-warning/30 bg-warning/10 p-3 text-sm">
+      <p className="font-mono font-medium text-foreground">{label}</p>
+      {detail && <p className="mt-0.5 text-muted-foreground">{detail}</p>}
       <div className="mt-2 flex gap-2">
         {onRetry && (
           <button
             onClick={onRetry}
-            className="rounded-none bg-yellow-100 px-3 py-1 font-mono text-xs font-medium text-yellow-900 hover:bg-yellow-200 dark:bg-yellow-900 dark:text-yellow-100"
+            className="bg-warning/15 px-3 py-1 font-mono text-xs font-medium text-foreground hover:bg-warning/25"
           >
             Re-run
           </button>
@@ -51,7 +51,7 @@ export function RunStatus({ reason, onRetry, onSwitchModel, onViewTranscript }: 
         {onSwitchModel && (
           <button
             onClick={onSwitchModel}
-            className="rounded-none bg-yellow-100 px-3 py-1 font-mono text-xs font-medium text-yellow-900 hover:bg-yellow-200 dark:bg-yellow-900 dark:text-yellow-100"
+            className="bg-warning/15 px-3 py-1 font-mono text-xs font-medium text-foreground hover:bg-warning/25"
           >
             Switch model
           </button>
@@ -59,7 +59,7 @@ export function RunStatus({ reason, onRetry, onSwitchModel, onViewTranscript }: 
         {onViewTranscript && (
           <button
             onClick={onViewTranscript}
-            className="rounded-none bg-transparent px-3 py-1 font-mono text-xs font-medium text-yellow-700 hover:bg-yellow-100 dark:text-yellow-300"
+            className="bg-transparent px-3 py-1 font-mono text-xs font-medium text-foreground hover:bg-warning/15"
           >
             View transcript
           </button>

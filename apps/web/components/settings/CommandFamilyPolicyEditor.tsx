@@ -86,7 +86,7 @@ export function CommandFamilyPolicyEditor({
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">
-        <div className="rounded-none border border-border bg-surface-2 p-3">
+        <div className="border border-border bg-surface-2 p-3">
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-foreground">
             Admin ceiling
           </p>
@@ -94,7 +94,7 @@ export function CommandFamilyPolicyEditor({
             These defaults come from system policy and apply before user preferences.
           </p>
         </div>
-        <div className="rounded-none border border-border bg-surface-2 p-3">
+        <div className="border border-border bg-surface-2 p-3">
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-foreground">
             Effective policy
           </p>
@@ -128,7 +128,7 @@ export function CommandFamilyPolicyEditor({
                 value={effectiveDecision}
                 onValueChange={(value) => updatePreference(family, value as CommandFamilyDecision)}
               >
-                <SelectTrigger className="rounded-none font-mono text-xs">
+                <SelectTrigger className="font-mono text-xs">
                   <SelectValue placeholder="Choose behavior" />
                 </SelectTrigger>
                 <SelectContent>

@@ -51,7 +51,7 @@ export function ReviewChangesBanner({
           </div>
           <Button
             size="sm"
-            className="hover:bg-primary/90 h-7 gap-1.5 rounded-none bg-primary px-4 font-mono text-[10px] uppercase tracking-widest text-primary-foreground"
+            className="hover:bg-primary/90 h-7 gap-1.5 bg-primary px-4 font-mono text-[10px] uppercase tracking-widest text-primary-foreground"
             onClick={onReviewChanges}
           >
             <IconDiff className="h-3 w-3" />

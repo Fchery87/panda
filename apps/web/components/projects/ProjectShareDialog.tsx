@@ -26,7 +26,7 @@ export function ProjectShareDialog({
 }: ProjectShareDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="rounded-none border-border sm:max-w-md">
+      <DialogContent className="border-border sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-mono text-sm uppercase tracking-wide">
             <Share2 className="h-4 w-4" />

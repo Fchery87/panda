@@ -12,7 +12,10 @@ interface TimelineProps {
 }
 
 export function Timeline({ chatId }: TimelineProps) {
-  const events = useQuery(api.agentRuns.listEventsByChat, chatId ? { chatId, limit: 100 } : 'skip')
+  const events = useQuery(
+    api.agentRuns.listEventSummariesByChat,
+    chatId ? { chatId, limit: 100 } : 'skip'
+  )
 
   if (!chatId) {
     return (
@@ -60,6 +63,8 @@ export function Timeline({ chatId }: TimelineProps) {
           {timeline.items.map((item, index) => {
             const { event, isError, isSnapshot, isSpec, specStatus, label, fileCount } = item
             const isLatest = index === timeline.items.length - 1
+            const eventPreview =
+              event.contentPreview ?? event.content ?? event.outputPreview ?? event.errorPreview
 
             return (
               <div
@@ -103,7 +108,7 @@ export function Timeline({ chatId }: TimelineProps) {
 
                 {/* Event Card */}
                 <div className="w-[calc(100%-2rem)] md:w-[calc(50%-2rem)]">
-                  <div className="flex flex-col gap-1 rounded-none border border-border bg-surface-1 p-3 transition-colors hover:bg-surface-2">
+                  <div className="flex flex-col gap-1 border border-border bg-surface-1 p-3 transition-colors hover:bg-surface-2">
                     <div className="flex items-center justify-between gap-4">
                       <span className="font-mono text-xs font-medium">{label}</span>
                       <span className="font-mono text-[10px] text-muted-foreground">
@@ -111,8 +116,8 @@ export function Timeline({ chatId }: TimelineProps) {
                       </span>
                     </div>
 
-                    {event.content && (
-                      <p className="line-clamp-2 text-xs text-muted-foreground">{event.content}</p>
+                    {eventPreview && (
+                      <p className="line-clamp-2 text-xs text-muted-foreground">{eventPreview}</p>
                     )}
 
                     {isSpec && (

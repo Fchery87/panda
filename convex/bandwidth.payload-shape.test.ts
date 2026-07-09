@@ -71,6 +71,10 @@ describe('Convex bandwidth payload contracts', () => {
       savedAt: 123,
       agentName: 'code',
       version: 1,
+      checkpointHash: 'abc123',
+      messageCount: 50,
+      step: 9,
+      hasBody: true,
       checkpoint: { state: { messages: [{ content: 'large transcript' }] } },
     }
 
@@ -83,6 +87,10 @@ describe('Convex bandwidth payload contracts', () => {
       savedAt: row.savedAt,
       agentName: row.agentName,
       version: row.version,
+      checkpointHash: row.checkpointHash,
+      messageCount: row.messageCount,
+      step: row.step,
+      hasBody: row.hasBody,
     }
 
     expect(summary).not.toHaveProperty('checkpoint')
@@ -95,6 +103,10 @@ describe('Convex bandwidth payload contracts', () => {
       savedAt: 123,
       agentName: 'code',
       version: 1,
+      checkpointHash: 'abc123',
+      messageCount: 50,
+      step: 9,
+      hasBody: true,
     })
   })
 
@@ -192,9 +204,9 @@ describe('Convex bandwidth payload contracts', () => {
       planTotalSteps: event.planTotalSteps,
       completedPlanStepIndexes: event.completedPlanStepIndexes,
       usage: event.usage,
-      snapshot: event.snapshot,
       createdAt: event.createdAt,
       contentPreview: event.content.slice(0, 500),
+      outputPreview: event.output.slice(0, 500),
       errorPreview: event.error.slice(0, 500),
     }
 
@@ -202,9 +214,12 @@ describe('Convex bandwidth payload contracts', () => {
     expect(summary).not.toHaveProperty('error')
     expect(summary).not.toHaveProperty('args')
     expect(summary).not.toHaveProperty('output')
+    expect(summary).not.toHaveProperty('snapshot')
     expect(summary.contentPreview).toHaveLength(500)
+    expect(summary.outputPreview).toHaveLength(17)
     expect(summary.errorPreview).toHaveLength(500)
     expect(summary.contentPreview).toBe(event.content.slice(0, 500))
+    expect(summary.outputPreview).toBe(event.output.slice(0, 500))
     expect(summary.errorPreview).toBe(event.error.slice(0, 500))
   })
 })

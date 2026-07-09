@@ -112,7 +112,7 @@ export function InspectorResearchContent({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-7 rounded-none px-2 font-mono text-[10px] uppercase tracking-[0.14em]"
+                    className="h-7 px-2 font-mono text-[10px] uppercase tracking-[0.14em]"
                     onClick={(event) => {
                       event.stopPropagation()
                       copyText(
@@ -181,7 +181,7 @@ export function InspectorResearchContent({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-7 rounded-none px-2 font-mono text-[10px] uppercase tracking-[0.14em]"
+                  className="h-7 px-2 font-mono text-[10px] uppercase tracking-[0.14em]"
                   onClick={() =>
                     copyText(
                       selectedSource._id,
@@ -195,7 +195,7 @@ export function InspectorResearchContent({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-7 rounded-none px-2 font-mono text-[10px] uppercase tracking-[0.14em]"
+                  className="h-7 px-2 font-mono text-[10px] uppercase tracking-[0.14em]"
                   onClick={() =>
                     copyText(
                       selectedSource._id,

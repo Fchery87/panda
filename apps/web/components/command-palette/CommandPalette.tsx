@@ -242,7 +242,7 @@ export function CommandPalette({
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && closePalette()}>
       <DialogContent
-        className="max-w-2xl gap-0 rounded-none border-border p-0"
+        className="max-w-2xl gap-0 border-border p-0"
         aria-describedby="command-palette-description"
       >
         <DialogTitle className="sr-only">Command Palette</DialogTitle>
@@ -293,7 +293,7 @@ export function CommandPalette({
                     )}
                   </div>
                   {command.shortcut && (
-                    <kbd className="rounded-none bg-muted px-2 py-1 font-mono text-xs">
+                    <kbd className="bg-muted px-2 py-1 font-mono text-xs">
                       {command.shortcut}
                     </kbd>
                   )}
@@ -307,17 +307,17 @@ export function CommandPalette({
         <div className="flex items-center justify-between border-t border-border p-3 text-xs text-muted-foreground">
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1">
-              <kbd className="rounded-none bg-muted px-1.5 py-0.5 font-mono">↑</kbd>
-              <kbd className="rounded-none bg-muted px-1.5 py-0.5 font-mono">↓</kbd>
+              <kbd className="bg-muted px-1.5 py-0.5 font-mono">↑</kbd>
+              <kbd className="bg-muted px-1.5 py-0.5 font-mono">↓</kbd>
               <span className="ml-1">Navigate</span>
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="rounded-none bg-muted px-1.5 py-0.5 font-mono">↵</kbd>
+              <kbd className="bg-muted px-1.5 py-0.5 font-mono">↵</kbd>
               <span className="ml-1">Select</span>
             </span>
           </div>
           <span className="flex items-center gap-1">
-            <kbd className="rounded-none bg-muted px-1.5 py-0.5 font-mono">esc</kbd>
+            <kbd className="bg-muted px-1.5 py-0.5 font-mono">esc</kbd>
             <span className="ml-1">Close</span>
           </span>
         </div>

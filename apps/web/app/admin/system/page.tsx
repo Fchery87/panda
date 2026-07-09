@@ -238,7 +238,7 @@ export default function AdminSystemPage() {
           <Button
             onClick={handleSave}
             disabled={isSaving || !isDirty}
-            className="rounded-none font-mono"
+            className="font-mono"
           >
             {isSaving ? (
               'Saving...'
@@ -253,7 +253,7 @@ export default function AdminSystemPage() {
       />
 
       {controls.systemMaintenance && (
-        <Alert variant="destructive" className="mb-6 rounded-none">
+        <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="font-medium">
             System is in maintenance mode. Only admins can access the application.
@@ -270,7 +270,7 @@ export default function AdminSystemPage() {
 
         <div className="min-w-0 flex-1 space-y-6">
           {activeTab === 'features' && (
-            <Card className="rounded-none">
+            <Card className="">
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Bot className="h-5 w-5" />
@@ -279,7 +279,7 @@ export default function AdminSystemPage() {
                 <CardDescription>Enable or disable features for all users</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="flex items-center justify-between rounded-none border border-border p-4">
+                <div className="flex items-center justify-between border border-border p-4">
                   <div className="space-y-0.5">
                     <Label className="font-mono text-sm">User Registration</Label>
                     <p className="text-sm text-muted-foreground">
@@ -296,7 +296,7 @@ export default function AdminSystemPage() {
 
                 <Separator />
 
-                <div className="flex items-center justify-between rounded-none border border-border p-4">
+                <div className="flex items-center justify-between border border-border p-4">
                   <div className="space-y-0.5">
                     <Label className="font-mono text-sm">MCP Servers</Label>
                     <p className="text-sm text-muted-foreground">
@@ -311,7 +311,7 @@ export default function AdminSystemPage() {
                   />
                 </div>
 
-                <div className="rounded-none border border-border p-4">
+                <div className="border border-border p-4">
                   <div className="mb-4 space-y-0.5">
                     <Label className="font-mono text-sm">Allowed MCP Transports</Label>
                     <p className="text-sm text-muted-foreground">
@@ -342,7 +342,7 @@ export default function AdminSystemPage() {
                   </div>
                 </div>
 
-                <div className="rounded-none border border-border p-4">
+                <div className="border border-border p-4">
                   <div className="mb-4 space-y-0.5">
                     <Label className="font-mono text-sm">Command-Family Defaults</Label>
                     <p className="text-sm text-muted-foreground">
@@ -383,7 +383,7 @@ export default function AdminSystemPage() {
                                 })),
                               }))
                             }}
-                            className="w-full rounded-none border border-border bg-background px-2 py-1 font-mono text-xs"
+                            className="w-full border border-border bg-background px-2 py-1 font-mono text-xs"
                           >
                             {COMMAND_FAMILY_DECISIONS.map((decision) => (
                               <option key={decision} value={decision}>
@@ -399,7 +399,7 @@ export default function AdminSystemPage() {
 
                 <Separator />
 
-                <div className="flex items-center justify-between rounded-none border border-border p-4">
+                <div className="flex items-center justify-between border border-border p-4">
                   <div className="space-y-0.5">
                     <Label className="font-mono text-sm">Custom Subagents</Label>
                     <p className="text-sm text-muted-foreground">
@@ -416,7 +416,7 @@ export default function AdminSystemPage() {
 
                 <Separator />
 
-                <div className="rounded-none border border-border p-4">
+                <div className="border border-border p-4">
                   <div className="mb-4 flex items-center justify-between gap-4">
                     <div className="space-y-0.5">
                       <Label className="font-mono text-sm">Skills</Label>
@@ -478,7 +478,7 @@ export default function AdminSystemPage() {
 
                 <Separator />
 
-                <div className="rounded-none border border-border p-4">
+                <div className="border border-border p-4">
                   <div className="space-y-0.5">
                     <Label className="font-mono text-sm">Allowed Subagent Presets</Label>
                     <p className="text-sm text-muted-foreground">
@@ -494,7 +494,7 @@ export default function AdminSystemPage() {
                           key={preset}
                           type="button"
                           variant={checked ? 'default' : 'outline'}
-                          className="h-7 rounded-none px-2.5 font-mono text-[10px] uppercase tracking-[0.18em]"
+                          className="h-7 px-2.5 font-mono text-[10px] uppercase tracking-[0.18em]"
                           onClick={() =>
                             setControls((prev) => ({
                               ...prev,
@@ -515,7 +515,7 @@ export default function AdminSystemPage() {
 
                 <Separator />
 
-                <div className="flex items-center justify-between rounded-none border border-border p-4">
+                <div className="flex items-center justify-between border border-border p-4">
                   <div className="space-y-0.5">
                     <Label className="font-mono text-sm">LLM Provider Overrides</Label>
                     <p className="text-sm text-muted-foreground">
@@ -535,7 +535,7 @@ export default function AdminSystemPage() {
 
           {activeTab === 'llm' && (
             <>
-              <Card className="rounded-none">
+              <Card className="">
                 <CardHeader>
                   <div className="flex items-center gap-2">
                     <Sparkles className="h-5 w-5" />
@@ -547,7 +547,7 @@ export default function AdminSystemPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <Alert className="rounded-none border-l-4 border-l-primary">
+                  <Alert className="border-l-4 border-l-primary">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
                       These settings apply to all users unless they have permission to override
@@ -571,7 +571,7 @@ export default function AdminSystemPage() {
                             }))
                           }
                         >
-                          <SelectTrigger id="global-provider" className="flex-1 rounded-none">
+                          <SelectTrigger id="global-provider" className="flex-1">
                             <SelectValue placeholder="No default set (users must configure)" />
                           </SelectTrigger>
                           <SelectContent>
@@ -589,7 +589,7 @@ export default function AdminSystemPage() {
                           <Button
                             variant="outline"
                             size="icon"
-                            className="rounded-none"
+                            className=""
                             onClick={() =>
                               setGlobalLLMConfig((prev) => ({
                                 ...prev,
@@ -619,7 +619,7 @@ export default function AdminSystemPage() {
                             }))
                           }
                         >
-                          <SelectTrigger id="global-model" className="rounded-none">
+                          <SelectTrigger id="global-model" className="">
                             <SelectValue placeholder="Select model..." />
                           </SelectTrigger>
                           <SelectContent>
@@ -639,7 +639,7 @@ export default function AdminSystemPage() {
 
                   {(!globalLLMConfig.globalDefaultProvider ||
                     !globalLLMConfig.globalDefaultModel) && (
-                    <div className="rounded-none bg-muted p-4">
+                    <div className="bg-muted p-4">
                       <p className="text-sm text-muted-foreground">
                         <strong>Note:</strong> No global default is set. Users must configure their
                         own provider and model in settings.
@@ -648,7 +648,7 @@ export default function AdminSystemPage() {
                   )}
 
                   {globalLLMConfig.globalDefaultProvider && globalLLMConfig.globalDefaultModel && (
-                    <div className="bg-muted/30 rounded-none border border-border p-4">
+                    <div className="bg-muted/30 border border-border p-4">
                       <p className="mb-3 font-mono text-xs uppercase tracking-wider text-muted-foreground">
                         Active Configuration
                       </p>
@@ -691,7 +691,7 @@ export default function AdminSystemPage() {
 
           {activeTab === 'access' && (
             <>
-              <Card className="rounded-none border-destructive">
+              <Card className="border-destructive">
                 <CardHeader>
                   <div className="flex items-center gap-2">
                     <AlertCircle className="h-5 w-5 text-destructive" />
@@ -700,7 +700,7 @@ export default function AdminSystemPage() {
                   <CardDescription>Restrict access to administrators only</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="border-destructive/20 bg-destructive/5 flex items-center justify-between rounded-none border p-4">
+                  <div className="border-destructive/20 bg-destructive/5 flex items-center justify-between border p-4">
                     <div className="space-y-0.5">
                       <Label className="font-mono text-sm text-destructive">
                         Enable Maintenance Mode
@@ -722,7 +722,7 @@ export default function AdminSystemPage() {
                   </div>
 
                   {controls.systemMaintenance && (
-                    <Alert className="rounded-none">
+                    <Alert className="">
                       <AlertDescription>
                         When maintenance mode is active, all non-admin users will be redirected to a
                         maintenance page. Be careful with this setting.
@@ -732,7 +732,7 @@ export default function AdminSystemPage() {
                 </CardContent>
               </Card>
 
-              <Card className="rounded-none">
+              <Card className="">
                 <CardHeader>
                   <div className="flex items-center gap-2">
                     <Lock className="h-5 w-5" />
@@ -742,10 +742,10 @@ export default function AdminSystemPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-4 md:grid-cols-2">
-                    <div className="rounded-none border border-border p-4">
+                    <div className="border border-border p-4">
                       <p className="mb-1 text-sm text-muted-foreground">Registration Status</p>
                       <div
-                        className={`inline-block rounded-none px-2.5 py-0.5 text-xs font-medium ${
+                        className={`inline-block px-2.5 py-0.5 text-xs font-medium ${
                           controls.registrationEnabled
                             ? 'bg-primary/10 text-primary'
                             : 'bg-destructive/10 text-destructive'
@@ -755,10 +755,10 @@ export default function AdminSystemPage() {
                       </div>
                     </div>
 
-                    <div className="rounded-none border border-border p-4">
+                    <div className="border border-border p-4">
                       <p className="mb-1 text-sm text-muted-foreground">System Status</p>
                       <div
-                        className={`inline-block rounded-none px-2.5 py-0.5 text-xs font-medium ${
+                        className={`inline-block px-2.5 py-0.5 text-xs font-medium ${
                           controls.systemMaintenance
                             ? 'bg-destructive/10 text-destructive'
                             : 'bg-primary/10 text-primary'
@@ -774,7 +774,7 @@ export default function AdminSystemPage() {
           )}
 
           {activeTab === 'limits' && (
-            <Card className="rounded-none">
+            <Card className="">
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Server className="h-5 w-5" />
@@ -802,7 +802,7 @@ export default function AdminSystemPage() {
                           maxProjectsPerUser: parseInt(e.target.value) || 100,
                         }))
                       }
-                      className="rounded-none"
+                      className=""
                     />
                     <p className="text-xs text-muted-foreground">
                       Maximum number of projects a user can create
@@ -825,7 +825,7 @@ export default function AdminSystemPage() {
                           maxChatsPerProject: parseInt(e.target.value) || 50,
                         }))
                       }
-                      className="rounded-none"
+                      className=""
                     />
                     <p className="text-xs text-muted-foreground">
                       Maximum number of chats per project
@@ -848,7 +848,7 @@ export default function AdminSystemPage() {
                           maxCustomSubagentsPerUser: parseInt(e.target.value) || 0,
                         }))
                       }
-                      className="rounded-none"
+                      className=""
                     />
                     <p className="text-xs text-muted-foreground">
                       Maximum number of custom subagents a user can create
@@ -871,7 +871,7 @@ export default function AdminSystemPage() {
                           maxCustomSkillsPerUser: parseInt(e.target.value) || 0,
                         }))
                       }
-                      className="rounded-none"
+                      className=""
                     />
                     <p className="text-xs text-muted-foreground">
                       Maximum number of custom Skills a user can create
@@ -881,7 +881,7 @@ export default function AdminSystemPage() {
 
                 <Separator />
 
-                <div className="rounded-none bg-muted p-4">
+                <div className="bg-muted p-4">
                   <p className="text-sm text-muted-foreground">
                     <strong>Note:</strong> These limits are enforced when users create new projects
                     and chats. Existing projects and chats are not retroactively trimmed.
@@ -899,7 +899,7 @@ export default function AdminSystemPage() {
           if (!open) setPendingMaintenance(null)
         }}
       >
-        <DialogContent className="rounded-none font-mono">
+        <DialogContent className="font-mono">
           <DialogHeader>
             <DialogTitle>Enable Maintenance Mode?</DialogTitle>
             <DialogDescription>
@@ -910,14 +910,14 @@ export default function AdminSystemPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              className="rounded-none"
+              className=""
               onClick={() => setPendingMaintenance(null)}
             >
               Cancel
             </Button>
             <Button
               variant="destructive"
-              className="rounded-none"
+              className=""
               onClick={() => {
                 setControls((prev) => ({ ...prev, systemMaintenance: true }))
                 setPendingMaintenance(null)

@@ -127,15 +127,15 @@ export function PermissionsEditor({ value, onChange, className }: PermissionsEdi
     <Select value={level} onValueChange={onChangeLevel}>
       <SelectTrigger
         className={cn(
-          'h-7 w-24 rounded-none font-mono text-xs',
-          level === 'allow' && 'border-green-500/50 bg-green-500/10',
-          level === 'deny' && 'border-red-500/50 bg-red-500/10',
-          level === 'ask' && 'border-yellow-500/50 bg-yellow-500/10'
+          'h-7 w-24 font-mono text-xs',
+          level === 'allow' && 'border-success/50 bg-success/10',
+          level === 'deny' && 'border-destructive/50 bg-destructive/10',
+          level === 'ask' && 'border-warning/50 bg-warning/10'
         )}
       >
         <SelectValue />
       </SelectTrigger>
-      <SelectContent className="rounded-none">
+      <SelectContent className="">
         <SelectItem value="allow" className="font-mono text-xs">
           Allow
         </SelectItem>
@@ -162,7 +162,7 @@ export function PermissionsEditor({ value, onChange, className }: PermissionsEdi
           variant="outline"
           size="sm"
           onClick={resetToDefault}
-          className="rounded-none font-mono text-xs"
+          className="font-mono text-xs"
         >
           <RotateCcw className="mr-1 h-3 w-3" />
           Reset
@@ -178,7 +178,7 @@ export function PermissionsEditor({ value, onChange, className }: PermissionsEdi
               variant="outline"
               size="sm"
               onClick={() => applyPreset(preset.config)}
-              className="rounded-none font-mono text-xs"
+              className="font-mono text-xs"
             >
               {preset.name}
             </Button>
@@ -188,7 +188,7 @@ export function PermissionsEditor({ value, onChange, className }: PermissionsEdi
 
       <div className="space-y-3">
         <Label className="font-mono text-xs">Tool Permissions</Label>
-        <div className="rounded-none border border-border">
+        <div className="border border-border">
           <div className="grid grid-cols-[1fr_auto] gap-2 border-b border-border bg-surface-2 p-2">
             <span className="font-mono text-xs font-medium">Tool</span>
             <span className="font-mono text-xs font-medium">Permission</span>
@@ -203,7 +203,7 @@ export function PermissionsEditor({ value, onChange, className }: PermissionsEdi
                       <TooltipTrigger>
                         <Info className="h-3 w-3 text-muted-foreground" />
                       </TooltipTrigger>
-                      <TooltipContent className="rounded-none font-mono text-xs">
+                      <TooltipContent className="font-mono text-xs">
                         {tool.description}
                       </TooltipContent>
                     </Tooltip>
@@ -220,7 +220,7 @@ export function PermissionsEditor({ value, onChange, className }: PermissionsEdi
 
       <div className="space-y-3">
         <Label className="font-mono text-xs">Bash Command Permissions</Label>
-        <div className="rounded-none border border-border">
+        <div className="border border-border">
           <div className="grid grid-cols-[1fr_auto] gap-2 border-b border-border bg-surface-2 p-2">
             <span className="font-mono text-xs font-medium">Pattern</span>
             <span className="font-mono text-xs font-medium">Permission</span>
@@ -231,7 +231,7 @@ export function PermissionsEditor({ value, onChange, className }: PermissionsEdi
                 <div className="flex items-center gap-2">
                   <code className="font-mono text-xs">{cmd.pattern}</code>
                   {cmd.pattern === '*' && (
-                    <Badge variant="outline" className="rounded-none font-mono text-xs">
+                    <Badge variant="outline" className="font-mono text-xs">
                       catch-all
                     </Badge>
                   )}
@@ -240,7 +240,7 @@ export function PermissionsEditor({ value, onChange, className }: PermissionsEdi
                       <TooltipTrigger>
                         <Info className="h-3 w-3 text-muted-foreground" />
                       </TooltipTrigger>
-                      <TooltipContent className="rounded-none font-mono text-xs">
+                      <TooltipContent className="font-mono text-xs">
                         {cmd.description}
                       </TooltipContent>
                     </Tooltip>
@@ -255,7 +255,7 @@ export function PermissionsEditor({ value, onChange, className }: PermissionsEdi
         </div>
       </div>
 
-      <div className="rounded-none border border-border bg-surface-2 p-3">
+      <div className="border border-border bg-surface-2 p-3">
         <div className="flex items-start gap-2">
           <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
           <div className="space-y-1 text-xs text-muted-foreground">

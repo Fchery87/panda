@@ -77,7 +77,7 @@ export function SubagentEditor({ className }: SubagentEditorProps) {
           variant="outline"
           size="sm"
           onClick={() => setShowAddForm(!showAddForm)}
-          className="rounded-none font-mono text-xs"
+          className="font-mono text-xs"
         >
           <Plus className="mr-1 h-3 w-3" />
           Add Agent
@@ -93,7 +93,7 @@ export function SubagentEditor({ className }: SubagentEditorProps) {
                 value={newAgent.name}
                 onChange={(e) => setNewAgent((prev) => ({ ...prev, name: e.target.value }))}
                 placeholder="my-agent"
-                className="rounded-none font-mono text-xs"
+                className="font-mono text-xs"
               />
             </div>
 
@@ -103,7 +103,7 @@ export function SubagentEditor({ className }: SubagentEditorProps) {
                 value={newAgent.description}
                 onChange={(e) => setNewAgent((prev) => ({ ...prev, description: e.target.value }))}
                 placeholder="Analyzes code and suggests improvements"
-                className="rounded-none font-mono text-xs"
+                className="font-mono text-xs"
               />
             </div>
 
@@ -113,7 +113,7 @@ export function SubagentEditor({ className }: SubagentEditorProps) {
                 value={newAgent.prompt}
                 onChange={(e) => setNewAgent((prev) => ({ ...prev, prompt: e.target.value }))}
                 placeholder="You are a specialized agent that..."
-                className="min-h-[80px] w-full rounded-none border border-border bg-background px-3 py-2 font-mono text-xs"
+                className="min-h-[80px] w-full border border-border bg-background px-3 py-2 font-mono text-xs"
               />
             </div>
 
@@ -127,7 +127,7 @@ export function SubagentEditor({ className }: SubagentEditorProps) {
                     capabilityPreset: e.target.value as typeof newAgent.capabilityPreset,
                   }))
                 }
-                className="w-full rounded-none border border-border bg-background px-3 py-2 font-mono text-xs"
+                className="w-full border border-border bg-background px-3 py-2 font-mono text-xs"
               >
                 <option value="research">Research - Read and search only</option>
                 <option value="assistant">Assistant - Ask before writes and commands</option>
@@ -193,7 +193,7 @@ export function SubagentEditor({ className }: SubagentEditorProps) {
                   skillAutoMatchingEnabled: true,
                 })
               }}
-              className="rounded-none font-mono text-xs"
+              className="font-mono text-xs"
             >
               Cancel
             </Button>
@@ -201,7 +201,7 @@ export function SubagentEditor({ className }: SubagentEditorProps) {
               size="sm"
               onClick={handleAdd}
               disabled={!newAgent.name.trim() || !newAgent.description.trim()}
-              className="rounded-none font-mono text-xs"
+              className="font-mono text-xs"
             >
               Create Agent
             </Button>
@@ -233,7 +233,7 @@ export function SubagentEditor({ className }: SubagentEditorProps) {
                 variant="ghost"
                 size="sm"
                 onClick={() => handleRemove(agent._id)}
-                className="h-7 rounded-none text-muted-foreground hover:text-destructive"
+                className="h-7 text-muted-foreground hover:text-destructive"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>
@@ -250,7 +250,7 @@ export function SubagentEditor({ className }: SubagentEditorProps) {
         </div>
       )}
 
-      <div className="rounded-none border border-border bg-surface-2 p-3">
+      <div className="border border-border bg-surface-2 p-3">
         <p className="font-mono text-xs text-muted-foreground">
           Subagents are specialized AI assistants you can invoke during chat. Use @agent-name to
           delegate tasks.

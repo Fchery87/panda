@@ -1,8 +1,42 @@
-import { query, mutation } from './_generated/server'
+import { query, mutation, type MutationCtx } from './_generated/server'
 import { v } from 'convex/values'
 import { requireChatOwner, requireProjectOwner } from './lib/authz'
 import { ChatMode } from './schema'
 import { trackUserAnalytics } from './lib/userAnalytics'
+
+type IndexQueryBuilder = {
+  eq: (fieldName: string, value: unknown) => IndexQueryBuilder
+}
+
+async function deleteByIndex<TableName extends Parameters<MutationCtx['db']['query']>[0]>(
+  ctx: MutationCtx,
+  table: TableName,
+  indexName: string,
+  buildQuery: (q: IndexQueryBuilder) => unknown
+): Promise<number> {
+  const batchSize = 1000
+  const maxRows = 5000
+  let deleted = 0
+
+  while (true) {
+    const rows = await ctx.db
+      .query(table)
+      .withIndex(indexName as never, buildQuery as never)
+      .take(batchSize)
+
+    if (rows.length === 0) return deleted
+    if (deleted + rows.length > maxRows) {
+      throw new Error(`Cascade delete for ${String(table)} exceeded ${maxRows} rows`)
+    }
+
+    for (const row of rows) {
+      await ctx.db.delete(row._id)
+    }
+
+    deleted += rows.length
+    if (rows.length < batchSize) return deleted
+  }
+}
 
 // list (query) - list chats by projectId, ordered by updatedAt
 export const list = query({
@@ -133,6 +167,10 @@ export const remove = mutation({
       .withIndex('by_chat', (q) => q.eq('chatId', args.id))
       .take(1000)
 
+    const trackedMessageCount = messages.filter(
+      (message) => message.analyticsTracked !== false
+    ).length
+
     for (const message of messages) {
       // Delete artifacts associated with this message
       const artifacts = await ctx.db
@@ -177,12 +215,27 @@ export const remove = mutation({
       await ctx.db.delete(checkpoint._id)
     }
 
+    await deleteByIndex(ctx, 'sharedChats', 'by_chat', (q) => q.eq('chatId', args.id))
+    await deleteByIndex(ctx, 'agentRunEventBodies', 'by_chat_created', (q) =>
+      q.eq('chatId', args.id)
+    )
+    await deleteByIndex(ctx, 'agentRunEvents', 'by_chat_created', (q) => q.eq('chatId', args.id))
+    await deleteByIndex(ctx, 'harnessRuntimeCheckpointBodies', 'by_chat_created', (q) =>
+      q.eq('chatId', args.id)
+    )
+    await deleteByIndex(ctx, 'harnessRuntimeCheckpoints', 'by_chat_saved', (q) =>
+      q.eq('chatId', args.id)
+    )
+    await deleteByIndex(ctx, 'agentRuns', 'by_chat_started', (q) => q.eq('chatId', args.id))
+    await deleteByIndex(ctx, 'sessionSummaries', 'by_chat', (q) => q.eq('chatId', args.id))
+    await deleteByIndex(ctx, 'specifications', 'by_chat', (q) => q.eq('chatId', args.id))
+
     // Delete the chat
     await ctx.db.delete(args.id)
 
     await trackUserAnalytics(ctx, project.createdBy, {
       totalChats: -1,
-      totalMessages: -messages.length,
+      totalMessages: -trackedMessageCount,
     })
 
     return args.id

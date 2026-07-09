@@ -36,6 +36,7 @@ describe('startRunOrchestration', () => {
       approvedPlanExecution: true,
       addMessage: async (args) => {
         calls.push(`addMessage:${args.role}:${args.content}`)
+        expect(args.skipAnalytics).toBe(true)
         expect(args.annotations[0]).toMatchObject({
           mode: 'code',
           attachmentsOnly: false,
@@ -70,6 +71,7 @@ describe('startRunOrchestration', () => {
       },
       createRun: async (args) => {
         calls.push(`createRun:${args.mode}:${args.userMessage}`)
+        expect(args.analyticsPendingMessageId).toBe(userMessageId)
         return runId
       },
       beginRun: (createdRunId) => {

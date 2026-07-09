@@ -46,7 +46,7 @@ function CodeBlock({ lang, code, resolvedTheme }: CodeBlockProps) {
 
   if (highlighted) {
     return (
-      <div className="my-3 overflow-x-auto rounded-none border border-border text-[12px] leading-5 [&_pre]:p-3">
+      <div className="my-3 overflow-x-auto border border-border text-[12px] leading-5 [&_pre]:p-3">
         {highlighted}
       </div>
     )
@@ -54,7 +54,7 @@ function CodeBlock({ lang, code, resolvedTheme }: CodeBlockProps) {
 
   // Fallback while Shiki loads
   return (
-    <pre className="bg-muted/40 my-3 overflow-x-auto rounded-none border border-border p-3 font-mono text-[12px] leading-5">
+    <pre className="bg-muted/40 my-3 overflow-x-auto border border-border p-3 font-mono text-[12px] leading-5">
       <code>{code}</code>
     </pre>
   )
@@ -65,7 +65,7 @@ const MARKDOWN_ROOT_CLASS =
   'min-w-0 break-words text-[13px] leading-relaxed [overflow-wrap:anywhere] xl:text-sm'
 const LIST_CLASS = 'mb-2 min-w-0 space-y-1 pl-4 text-[13px] leading-6 last:mb-0 xl:text-sm'
 const BLOCKQUOTE_CLASS = 'my-2 border-l-2 border-primary/40 pl-3 text-muted-foreground'
-const TABLE_WRAPPER_CLASS = 'my-3 overflow-x-auto rounded-none border border-border bg-muted/20'
+const TABLE_WRAPPER_CLASS = 'my-3 overflow-x-auto border border-border bg-muted/20'
 const TABLE_CLASS = 'min-w-full border-collapse text-left text-[13px] xl:text-sm'
 
 function renderMarkdownList(
@@ -295,7 +295,7 @@ function useMarkdownComponents(resolvedTheme: string | undefined): Components {
           return (
             <code
               title={hrefText}
-              className="border-primary/30 bg-primary/5 mx-0.5 rounded-none border px-1 py-0.5 font-mono text-[11px] text-primary"
+              className="border-primary/30 bg-primary/5 mx-0.5 border px-1 py-0.5 font-mono text-[11px] text-primary"
             >
               {children}
             </code>

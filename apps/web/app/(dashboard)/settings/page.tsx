@@ -167,7 +167,7 @@ export default function SettingsPage() {
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
                     className={cn(
-                      'flex w-full items-center gap-2.5 rounded-none border px-3 py-2 text-left font-mono text-sm transition-colors',
+                      'flex w-full items-center gap-2.5 border px-3 py-2 text-left font-mono text-sm transition-colors',
                       isActive
                         ? 'border-primary/40 bg-primary/10 text-primary'
                         : 'border-transparent text-muted-foreground hover:border-border hover:bg-accent hover:text-foreground'
@@ -235,7 +235,7 @@ export default function SettingsPage() {
             {/* General Section */}
             {activeTab === 'general' && (
               <div className="space-y-6">
-                <Card className="rounded-none">
+                <Card className="">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <User size={20} />
@@ -252,7 +252,7 @@ export default function SettingsPage() {
                         value={formState.language}
                         onValueChange={(value) => updateFormState({ language: value })}
                       >
-                        <SelectTrigger id="language" className="w-full max-w-sm rounded-none">
+                        <SelectTrigger id="language" className="w-full max-w-sm">
                           <SelectValue placeholder="Select language" />
                         </SelectTrigger>
                         <SelectContent>
@@ -293,7 +293,7 @@ export default function SettingsPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="rounded-none">
+                <Card className="">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Palette size={20} />
@@ -333,7 +333,7 @@ export default function SettingsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="shrink-0 rounded-none font-mono"
+                    className="shrink-0 font-mono"
                     onClick={() => setCatalogModalOpen(true)}
                   >
                     <Plus size={16} className="mr-1.5" />
@@ -401,7 +401,7 @@ export default function SettingsPage() {
                   })}
                 </div>
 
-                <Card className="rounded-none">
+                <Card className="">
                   <CardHeader>
                     <CardTitle>OAuth Connections</CardTitle>
                     <CardDescription>
@@ -419,7 +419,7 @@ export default function SettingsPage() {
             {/* Automation Section */}
             {activeTab === 'automation' && (
               <div className="space-y-6">
-                <Card className="rounded-none">
+                <Card className="">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Cpu size={20} />
@@ -447,7 +447,7 @@ export default function SettingsPage() {
             {/* Advanced Section */}
             {activeTab === 'advanced' && (
               <div className="space-y-6">
-                <Card className="rounded-none">
+                <Card className="">
                   <CardHeader>
                     <CardTitle>MCP Servers</CardTitle>
                     <CardDescription>
@@ -458,7 +458,7 @@ export default function SettingsPage() {
                     {allowUserMcp ? (
                       <MCPServerEditor allowedTransports={allowedMcpTransports} />
                     ) : (
-                      <div className="rounded-none border border-border bg-surface-2 p-3">
+                      <div className="border border-border bg-surface-2 p-3">
                         <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">
                           Admin policy blocks user-managed MCP servers
                         </p>
@@ -472,7 +472,7 @@ export default function SettingsPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="rounded-none">
+                <Card className="">
                   <CardHeader>
                     <CardTitle>Custom Skills</CardTitle>
                     <CardDescription>
@@ -490,7 +490,7 @@ export default function SettingsPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="rounded-none">
+                <Card className="">
                   <CardHeader>
                     <CardTitle>User Hooks</CardTitle>
                     <CardDescription>
@@ -499,7 +499,7 @@ export default function SettingsPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="rounded-none border border-border bg-surface-2 p-3">
+                    <div className="border border-border bg-surface-2 p-3">
                       <p className="font-mono text-xs uppercase tracking-[0.18em] text-muted-foreground">
                         Source: .panda/hooks.json
                       </p>
@@ -526,7 +526,7 @@ export default function SettingsPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="rounded-none">
+                <Card className="">
                   <CardHeader>
                     <CardTitle>Custom Subagents</CardTitle>
                     <CardDescription>
@@ -555,10 +555,10 @@ export default function SettingsPage() {
           <div className="mx-auto flex max-w-6xl items-center justify-between">
             <p className="font-mono text-sm text-muted-foreground">You have unsaved changes</p>
             <div className="flex gap-3">
-              <Button variant="outline" className="rounded-none font-mono" onClick={handleDiscard}>
+              <Button variant="outline" className="font-mono" onClick={handleDiscard}>
                 Discard
               </Button>
-              <Button className="rounded-none font-mono" onClick={handleSave} disabled={isSaving}>
+              <Button className="font-mono" onClick={handleSave} disabled={isSaving}>
                 {isSaving ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
@@ -567,7 +567,7 @@ export default function SettingsPage() {
       )}
 
       <Dialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
-        <DialogContent className="rounded-none font-mono">
+        <DialogContent className="font-mono">
           <DialogHeader>
             <DialogTitle>Unsaved Changes</DialogTitle>
             <DialogDescription>
@@ -577,14 +577,14 @@ export default function SettingsPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              className="rounded-none"
+              className=""
               onClick={() => setShowLeaveDialog(false)}
             >
               Stay
             </Button>
             <Button
               variant="destructive"
-              className="rounded-none"
+              className=""
               onClick={() => router.push('/projects')}
             >
               Leave Without Saving

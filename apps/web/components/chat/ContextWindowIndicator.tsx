@@ -56,7 +56,7 @@ export function ContextWindowIndicator({
         <Tooltip>
           <TooltipTrigger asChild>
             <div className="flex items-center gap-2">
-              <div className="relative h-2 w-20 overflow-hidden rounded-none bg-muted">
+              <div className="relative h-2 w-20 overflow-hidden bg-muted">
                 <div
                   className={cn(
                     'absolute inset-y-0 left-0 transition-all duration-300',
@@ -136,7 +136,7 @@ export function ContextWindowIndicator({
 
       {/* Session Reset Dialog */}
       <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
-        <DialogContent className="rounded-none sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle
@@ -151,7 +151,7 @@ export function ContextWindowIndicator({
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="rounded-none bg-muted p-3">
+            <div className="bg-muted p-3">
               <div className="mb-2 flex items-center justify-between">
                 <span className="font-mono text-xs font-medium">Session Summary</span>
                 <Button
@@ -167,7 +167,7 @@ export function ContextWindowIndicator({
                 </Button>
               </div>
 
-              <ScrollArea className="h-[150px] rounded-none border border-border bg-background">
+              <ScrollArea className="h-[150px] border border-border bg-background">
                 <div className="p-3 font-mono text-xs text-muted-foreground">
                   {generateSummary(chatHistory)}
                 </div>

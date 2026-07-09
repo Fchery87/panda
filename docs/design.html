@@ -1,0 +1,1043 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Panda — Ink & Paper (Red Ink) · Design System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&family=Schibsted+Grotesk:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* ════════════════════════════════════════════════════════════
+         TOKENS — mirror of docs/DESIGN.md, in OKLCH channel triples.
+         The page chrome reads ONLY from these variables, so flipping
+         a value here updates the whole guide. design.md is the truth;
+         this file renders it.
+         ════════════════════════════════════════════════════════════ */
+      :root,
+      [data-theme='light'] {
+        --bg: 98.5% 0.002 255;
+        --card: 99.7% 0.001 255;
+        --fg: 25% 0.005 255;
+        --muted: 52% 0.006 255;
+        --border: 91% 0.004 255;
+        --input: 88.5% 0.005 255;
+        --surface-0: 98.5% 0.002 255;
+        --surface-1: 99.7% 0.001 255;
+        --surface-2: 96.5% 0.003 255;
+        --surface-3: 94% 0.004 255;
+        --accent-wash: 95.5% 0.014 25;
+
+        --oxblood: 40% 0.155 25; /* #880B16 · AA+ white-on-fill & text-on-white */
+        --oxblood-bright: 62% 0.16 26; /* #D55851 */
+        --oxblood-deep: 34% 0.14 24; /* #6F000E · hover */
+        --ink-deep: 18% 0.006 255; /* #101214 */
+        --teal: 45% 0.08 190; /* #00635F */
+        --teal-bright: 70% 0.09 185; /* #54B1A6 */
+        --warning: 72% 0.14 75; /* #D79628 */
+        --error: 58% 0.21 27; /* #DB2C2B */
+        --on-primary: 99.7% 0.001 255;
+
+        /* shadows — neutral, one light source (NO color glow) */
+        --shadow-sm: 0 1px 2px oklch(20% 0.005 255 / 0.06),
+          0 2px 6px oklch(20% 0.005 255 / 0.05);
+        --shadow-md: 0 2px 4px oklch(20% 0.005 255 / 0.06),
+          0 8px 20px oklch(20% 0.005 255 / 0.07);
+        --shadow-lg: 0 4px 10px oklch(20% 0.005 255 / 0.07),
+          0 18px 44px oklch(20% 0.005 255 / 0.1);
+        --grid-dot: oklch(25% 0.005 255 / 0.05);
+      }
+      [data-theme='dark'] {
+        --bg: 13.5% 0.005 255;
+        --card: 16.5% 0.006 255;
+        --fg: 93% 0.003 255;
+        --muted: 68% 0.006 255;
+        --border: 27% 0.006 255;
+        --input: 30% 0.006 255;
+        --surface-0: 13.5% 0.005 255;
+        --surface-1: 16.5% 0.006 255;
+        --surface-2: 20% 0.006 255;
+        --surface-3: 24% 0.007 255;
+        --accent-wash: 26.5% 0.05 25;
+
+        --oxblood: 62% 0.16 26; /* lifted garnet reads on black */
+        --oxblood-bright: 62% 0.16 26;
+        --oxblood-deep: 44% 0.155 25;
+        --ink-deep: 13.5% 0.005 255;
+        --teal: 70% 0.09 185;
+        --teal-bright: 70% 0.09 185;
+        --warning: 76% 0.13 78;
+        --error: 64% 0.19 27;
+        --on-primary: 13.5% 0.005 255;
+
+        --shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.3), 0 2px 6px oklch(0% 0 0 / 0.2);
+        --shadow-md: 0 2px 4px oklch(0% 0 0 / 0.35), 0 8px 20px oklch(0% 0 0 / 0.25);
+        --shadow-lg: 0 4px 10px oklch(0% 0 0 / 0.4), 0 18px 44px oklch(0% 0 0 / 0.3);
+        --grid-dot: oklch(100% 0 0 / 0.04);
+      }
+
+      :root {
+        --r-sm: 8px;
+        --r-md: 12px;
+        --r-lg: 16px;
+        --r-pill: 9999px;
+        --s1: 4px;
+        --s2: 8px;
+        --s3: 12px;
+        --s4: 16px;
+        --s5: 20px;
+        --s6: 24px;
+        --s8: 32px;
+        --s10: 40px;
+        --s12: 48px;
+        --s16: 64px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        background-color: oklch(var(--bg));
+        color: oklch(var(--fg));
+        font-family: 'Schibsted Grotesk', system-ui, sans-serif;
+        font-size: 16px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        transition:
+          background-color 0.25s ease,
+          color 0.25s ease;
+      }
+      .display {
+        font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        line-height: 1.04;
+      }
+      .mono {
+        font-family: 'Geist Mono', 'SF Mono', monospace;
+      }
+
+      /* ── Layout chrome ── */
+      .wrap {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+      header.site {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        backdrop-filter: blur(12px);
+        background: oklch(var(--bg) / 0.8);
+        border-bottom: 1px solid oklch(var(--border));
+      }
+      header.site .wrap {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding-top: 14px;
+        padding-bottom: 14px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .logo-mark {
+        width: 36px;
+        height: 36px;
+        border-radius: var(--r-md);
+        background: oklch(var(--primary));
+        display: grid;
+        place-items: center;
+        color: oklch(var(--on-primary));
+        font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+        font-weight: 700;
+        font-size: 18px;
+        position: relative;
+      }
+      .logo-mark::after {
+        content: '';
+        position: absolute;
+        bottom: 5px;
+        right: 5px;
+        width: 8px;
+        height: 8px;
+        border-radius: var(--r-pill);
+        background: oklch(var(--on-primary) / 0.4);
+      }
+      .brand-name {
+        font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+        font-weight: 600;
+        font-size: 18px;
+        letter-spacing: -0.01em;
+      }
+      .brand-name span {
+        color: oklch(var(--oxblood));
+      }
+      .toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: var(--r-pill);
+        border: 1px solid oklch(var(--border));
+        background: oklch(var(--card));
+        color: oklch(var(--fg));
+        font: inherit;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: border-color 0.15s ease;
+      }
+      .toggle:hover {
+        border-color: oklch(var(--oxblood) / 0.6);
+      }
+      .toggle .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: var(--r-pill);
+        background: oklch(var(--oxblood));
+      }
+
+      /* ── Hero ── */
+      .hero {
+        padding: 88px 0 56px;
+        border-bottom: 1px solid oklch(var(--border));
+      }
+      .eyebrow {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: oklch(var(--oxblood));
+        margin: 0 0 16px;
+      }
+      .hero h1 {
+        font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+        font-weight: 600;
+        font-size: clamp(2.4rem, 5.5vw, 3.6rem);
+        line-height: 1.04;
+        letter-spacing: -0.02em;
+        margin: 0 0 20px;
+        max-width: 16ch;
+      }
+      .hero h1 em {
+        font-style: normal;
+        color: oklch(var(--oxblood));
+      }
+      .hero p.lede {
+        font-size: 18px;
+        color: oklch(var(--muted));
+        max-width: 60ch;
+        margin: 0 0 28px;
+      }
+      .hero .cta-row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      .mirror-note {
+        margin-top: 36px;
+        padding: 14px 16px;
+        border-radius: var(--r-md);
+        background: oklch(var(--accent-wash));
+        border: 1px solid oklch(var(--oxblood) / 0.18);
+        font-size: 13px;
+        color: oklch(var(--oxblood-deep));
+      }
+      [data-theme='dark'] .mirror-note {
+        color: oklch(var(--oxblood-bright));
+      }
+
+      /* ── Section scaffolding ── */
+      section.block {
+        padding: 64px 0;
+        border-bottom: 1px solid oklch(var(--border));
+      }
+      .block-head {
+        display: flex;
+        align-items: baseline;
+        gap: 14px;
+        margin-bottom: 8px;
+      }
+      .block-head .num {
+        font-family: 'Geist Mono', monospace;
+        font-size: 13px;
+        color: oklch(var(--oxblood));
+      }
+      .block h2 {
+        font-family: 'Bricolage Grotesque', system-ui, sans-serif;
+        font-weight: 600;
+        font-size: 1.6rem;
+        letter-spacing: -0.015em;
+        margin: 0;
+      }
+      .block .blurb {
+        color: oklch(var(--muted));
+        max-width: 68ch;
+        margin: 0 0 32px;
+        font-size: 15px;
+      }
+
+      /* ── Color swatches ── */
+      .swatch-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 16px;
+      }
+      .swatch {
+        border: 1px solid oklch(var(--border));
+        border-radius: var(--r-md);
+        overflow: hidden;
+        background: oklch(var(--card));
+      }
+      .swatch .chip {
+        height: 84px;
+        display: flex;
+        align-items: flex-end;
+        padding: 10px 12px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .swatch .meta {
+        padding: 10px 12px;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      .swatch .meta strong {
+        display: block;
+        color: oklch(var(--fg));
+        font-weight: 600;
+        font-size: 13px;
+      }
+      .swatch .meta .oklch,
+      .swatch .meta .hex {
+        font-family: 'Geist Mono', monospace;
+        color: oklch(var(--muted));
+        font-size: 11px;
+      }
+      .sw-group-label {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: oklch(var(--muted));
+        margin: 28px 0 12px;
+      }
+      .sw-group-label:first-child {
+        margin-top: 0;
+      }
+
+      /* ── Type specimens ── */
+      .type-row {
+        display: grid;
+        grid-template-columns: 1fr 220px;
+        gap: 24px;
+        align-items: baseline;
+        padding: 22px 0;
+        border-top: 1px solid oklch(var(--border));
+      }
+      .type-row .spec {
+        font-family: 'Geist Mono', monospace;
+        font-size: 11px;
+        color: oklch(var(--muted));
+        line-height: 1.6;
+      }
+      .type-row .spec strong {
+        display: block;
+        color: oklch(var(--fg));
+        font-size: 12px;
+        margin-bottom: 4px;
+      }
+
+      /* ── Spacing ── */
+      .space-row {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 10px 0;
+      }
+      .space-bar {
+        height: 18px;
+        border-radius: 4px;
+        background: oklch(var(--oxblood) / 0.85);
+      }
+      .space-label {
+        font-family: 'Geist Mono', monospace;
+        font-size: 12px;
+        color: oklch(var(--muted));
+        min-width: 120px;
+      }
+
+      /* ── Radius ── */
+      .radius-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 16px;
+      }
+      .radius-box {
+        height: 96px;
+        background: oklch(var(--accent-wash));
+        border: 1px solid oklch(var(--oxblood) / 0.25);
+        display: grid;
+        place-items: center;
+        font-family: 'Geist Mono', monospace;
+        font-size: 12px;
+        color: oklch(var(--oxblood-deep));
+      }
+      [data-theme='dark'] .radius-box {
+        color: oklch(var(--oxblood-bright));
+      }
+
+      /* ── Elevation ── */
+      .elev-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 24px;
+      }
+      .elev-card {
+        background: oklch(var(--card));
+        border: 1px solid oklch(var(--border));
+        border-radius: var(--r-lg);
+        padding: 24px;
+        min-height: 120px;
+      }
+      .elev-card .name {
+        font-weight: 600;
+        font-size: 14px;
+        margin-bottom: 6px;
+      }
+      .elev-card .desc {
+        font-size: 12px;
+        color: oklch(var(--muted));
+      }
+
+      /* ── Components ── */
+      .comp-block {
+        margin-bottom: 36px;
+      }
+      .comp-label {
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: oklch(var(--muted));
+        margin: 0 0 14px;
+      }
+      .comp-stage {
+        background: oklch(var(--surface-0));
+        border: 1px solid oklch(var(--border));
+        border-radius: var(--r-lg);
+        padding: 28px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        align-items: center;
+      }
+
+      /* buttons */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 18px;
+        border-radius: var(--r-pill);
+        font-family: 'Schibsted Grotesk', sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition:
+          background-color 0.15s ease,
+          border-color 0.15s ease,
+          color 0.15s ease;
+        white-space: nowrap;
+      }
+      .btn-primary {
+        background: oklch(var(--oxblood));
+        color: oklch(var(--on-primary));
+      }
+      .btn-primary.is-hover {
+        background: oklch(var(--oxblood-deep));
+      }
+      .btn-secondary {
+        background: oklch(var(--surface-2));
+        color: oklch(var(--fg));
+      }
+      .btn-ghost {
+        background: transparent;
+        color: oklch(var(--muted));
+        border-color: oklch(var(--border));
+      }
+      .btn:disabled,
+      .btn.is-disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      .state-tag {
+        font-family: 'Geist Mono', monospace;
+        font-size: 10px;
+        color: oklch(var(--muted));
+        margin-left: -6px;
+      }
+
+      /* input */
+      .inp {
+        background: oklch(var(--card));
+        border: 1px solid oklch(var(--input));
+        border-radius: var(--r-md);
+        color: oklch(var(--fg));
+        font: inherit;
+        font-size: 14px;
+        padding: 9px 12px;
+        width: 240px;
+      }
+      .inp::placeholder {
+        color: oklch(var(--muted));
+      }
+      .inp.is-focus {
+        outline: 2px solid oklch(var(--oxblood));
+        outline-offset: 2px;
+        border-color: oklch(var(--oxblood));
+      }
+
+      /* chip + badge */
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: var(--r-pill);
+        background: oklch(var(--accent-wash));
+        color: oklch(var(--oxblood));
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 9px;
+        border-radius: var(--r-pill);
+        background: oklch(var(--card));
+        color: oklch(var(--teal));
+        font-size: 11px;
+        font-weight: 600;
+        border: 1px solid oklch(var(--border));
+      }
+      .badge .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: var(--r-pill);
+        background: oklch(var(--teal));
+      }
+
+      /* card demo */
+      .demo-card {
+        background: oklch(var(--card));
+        border: 1px solid oklch(var(--border));
+        border-radius: var(--r-lg);
+        padding: 24px;
+        max-width: 320px;
+        box-shadow: var(--shadow-md);
+      }
+      .demo-card .dc-title {
+        font-family: 'Bricolage Grotesque', sans-serif;
+        font-weight: 600;
+        font-size: 18px;
+        margin: 0 0 6px;
+      }
+      .demo-card .dc-sub {
+        font-size: 13px;
+        color: oklch(var(--muted));
+        margin: 0 0 16px;
+      }
+
+      /* ink panel demo — the agent's dark island */
+      .ink-panel-demo {
+        background: oklch(var(--ink-deep));
+        border-radius: var(--r-lg);
+        padding: 24px;
+        max-width: 360px;
+        box-shadow: var(--shadow-lg);
+        color: oklch(90% 0.004 255);
+      }
+      .ink-panel-demo .ip-label {
+        font-size: 11px;
+        color: oklch(60% 0.006 255);
+        font-family: 'Geist Mono', monospace;
+        margin: 0 0 4px;
+      }
+      .ink-panel-demo .ip-title {
+        font-family: 'Geist Mono', monospace;
+        font-size: 14px;
+        color: oklch(93% 0.003 255);
+        margin: 0 0 14px;
+      }
+      .ink-panel-demo .ip-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        padding: 6px 0;
+        color: oklch(80% 0.004 255);
+      }
+      .ink-panel-demo .ip-row .d {
+        width: 8px;
+        height: 8px;
+        border-radius: var(--r-pill);
+        flex: none;
+      }
+
+      /* ── Do / Don't ── */
+      .dodont {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+      @media (max-width: 680px) {
+        .dodont {
+          grid-template-columns: 1fr;
+        }
+        .type-row {
+          grid-template-columns: 1fr;
+        }
+      }
+      .dodont-col {
+        border: 1px solid oklch(var(--border));
+        border-radius: var(--r-lg);
+        padding: 24px;
+        background: oklch(var(--card));
+      }
+      .dodont-col h3 {
+        font-family: 'Bricolage Grotesk', sans-serif;
+        font-size: 15px;
+        margin: 0 0 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .dodont-col.do h3 {
+        color: oklch(var(--teal));
+      }
+      .dodont-col.dont h3 {
+        color: oklch(var(--oxblood));
+      }
+      .dodont-col ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .dodont-col li {
+        font-size: 14px;
+        padding: 9px 0;
+        border-top: 1px solid oklch(var(--border));
+        line-height: 1.5;
+      }
+      .dodont-col li:first-child {
+        border-top: none;
+      }
+
+      footer.site {
+        padding: 48px 0 72px;
+        color: oklch(var(--muted));
+        font-size: 13px;
+      }
+      footer.site code {
+        font-family: 'Geist Mono', monospace;
+        color: oklch(var(--oxblood));
+      }
+    </style>
+  </head>
+  <body>
+    <header class="site">
+      <div class="wrap">
+        <div class="brand">
+          <div class="logo-mark">p</div>
+          <div class="brand-name">panda<span>.ai</span></div>
+        </div>
+        <button class="toggle" id="themeToggle" type="button">
+          <span class="dot"></span><span id="toggleLabel">Light</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="hero">
+      <div class="wrap">
+        <p class="eyebrow">Ink &amp; Paper · Red Ink</p>
+        <h1>Every agent run, on&nbsp;the&nbsp;<em>record.</em></h1>
+        <p class="lede">
+          An editorial, anti-vibe-coded system: near-pure neutrals with a whisper of cool, a
+          single signature oxblood accent (red ink — the color of edits), and teal reserved for
+          verified evidence. No blue, no purple, no glow shadows.
+        </p>
+        <div class="cta-row">
+          <button class="btn btn-primary" type="button">Start building →</button>
+          <button class="btn btn-ghost" type="button">See how a run works</button>
+        </div>
+        <p class="mirror-note">
+          This page is the human-readable mirror of <code>docs/DESIGN.md</code>. Every swatch,
+          specimen, and component below is styled directly from the same OKLCH token values that
+          live in the markdown source of truth. Toggle the theme (top-right) to see both modes.
+        </p>
+      </div>
+    </div>
+
+    <!-- ════ COLORS ════ -->
+    <section class="block" id="colors">
+      <div class="wrap">
+        <div class="block-head">
+          <span class="num">01</span>
+          <h2>Colors</h2>
+        </div>
+        <p class="blurb">
+          Near-pure neutrals with a whisper of cool (hue ≈ 255, low chroma). Oxblood is the only
+          brand accent; teal is the only secondary, for verified evidence only. All values are
+          OKLCH channel triples; hex shown for reference.
+        </p>
+
+        <div class="sw-group-label">Signature · Oxblood (red ink)</div>
+        <div class="swatch-grid">
+          <div class="swatch">
+            <div class="chip" style="background: oklch(40% 0.155 25); color: #fff">Aa</div>
+            <div class="meta">
+              <strong>oxblood</strong>
+              <div class="oklch">40% 0.155 25</div>
+              <div class="hex">#880B16 · AA+ on white</div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: oklch(62% 0.16 26); color: #07080a">Aa</div>
+            <div class="meta">
+              <strong>oxblood-bright</strong>
+              <div class="oklch">62% 0.16 26</div>
+              <div class="hex">#D55851 · dark-mode primary</div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: oklch(34% 0.14 24); color: #fff">Aa</div>
+            <div class="meta">
+              <strong>oxblood-deep</strong>
+              <div class="oklch">34% 0.14 24</div>
+              <div class="hex">#6F000E · hover / depth</div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: oklch(95.5% 0.014 25); color: #951e22">Aa</div>
+            <div class="meta">
+              <strong>accent-wash</strong>
+              <div class="oklch">95.5% 0.014 25</div>
+              <div class="hex">#FAEDEB · chip fills</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sw-group-label">Secondary · Teal (verified evidence only)</div>
+        <div class="swatch-grid">
+          <div class="swatch">
+            <div class="chip" style="background: oklch(45% 0.08 190); color: #fff">Aa</div>
+            <div class="meta">
+              <strong>teal</strong>
+              <div class="oklch">45% 0.08 190</div>
+              <div class="hex">#00635F · receipts, passing checks</div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: oklch(70% 0.09 185); color: #07080a">Aa</div>
+            <div class="meta">
+              <strong>teal-bright</strong>
+              <div class="oklch">70% 0.09 185</div>
+              <div class="hex">#54B1A6 · dark mode</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sw-group-label">Neutrals · <span id="modeLabel">light</span> mode</div>
+        <div class="swatch-grid">
+          <div class="swatch">
+            <div class="chip" style="background: oklch(var(--bg)); color: oklch(var(--fg))">Aa</div>
+            <div class="meta">
+              <strong>background</strong>
+              <div class="hex" id="n-bg">canvas</div>
+            </div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: oklch(var(--card)); color: oklch(var(--fg))">Aa</div>
+            <div class="meta"><strong>card</strong><div class="hex">raised surface</div></div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: oklch(var(--surface-2)); color: oklch(var(--fg))">Aa</div>
+            <div class="meta"><strong>surface-2</strong><div class="hex">inset / muted</div></div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: oklch(var(--fg)); color: oklch(var(--bg))">Aa</div>
+            <div class="meta"><strong>foreground</strong><div class="hex">primary text</div></div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: oklch(var(--muted)); color: oklch(var(--bg))">Aa</div>
+            <div class="meta"><strong>muted-foreground</strong><div class="hex">secondary text</div></div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: oklch(var(--border)); color: oklch(var(--fg))">Aa</div>
+            <div class="meta"><strong>border</strong><div class="hex">hairline</div></div>
+          </div>
+        </div>
+
+        <div class="sw-group-label">Semantic</div>
+        <div class="swatch-grid">
+          <div class="swatch">
+            <div class="chip" style="background: oklch(var(--teal)); color: #fff">Aa</div>
+            <div class="meta"><strong>success</strong><div class="hex">= teal</div></div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: oklch(var(--warning)); color: #07080a">Aa</div>
+            <div class="meta"><strong>warning</strong><div class="hex">#D79628</div></div>
+          </div>
+          <div class="swatch">
+            <div class="chip" style="background: oklch(var(--error)); color: #fff">Aa</div>
+            <div class="meta"><strong>error</strong><div class="hex">#DB2C2B · alarm ≠ signature</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════ TYPOGRAPHY ════ -->
+    <section class="block" id="type">
+      <div class="wrap">
+        <div class="block-head"><span class="num">02</span><h2>Typography</h2></div>
+        <p class="blurb">
+          Bricolage Grotesque (display) · Schibsted Grotesk (body/UI) · Geist Mono (machine text
+          only). Inter-as-display is forbidden — it is the loudest AI typography tell.
+        </p>
+
+        <div class="type-row">
+          <div class="display" style="font-size: 3.5rem">Every run, on the record.</div>
+          <div class="spec"><strong>display</strong>Bricolage Grotesque · 600 · 3.5rem / 1.04 · -0.02em</div>
+        </div>
+        <div class="type-row">
+          <div class="display" style="font-size: 2.25rem">Plans become contracts</div>
+          <div class="spec"><strong>h1</strong>Bricolage Grotesque · 600 · 2.25rem / 1.1 · -0.015em</div>
+        </div>
+        <div class="type-row">
+          <div class="display" style="font-size: 1.5rem">Files stay editor-owned</div>
+          <div class="spec"><strong>h2</strong>Bricolage Grotesque · 600 · 1.5rem / 1.15 · -0.01em</div>
+        </div>
+        <div class="type-row">
+          <div style="font-family: 'Schibsted Grotesk'; font-size: 1.125rem; font-weight: 600">A plan captures scope before the agent touches a file.</div>
+          <div class="spec"><strong>h3 / body-lg</strong>Schibsted Grotesk · 600 · 1.125rem / 1.3</div>
+        </div>
+        <div class="type-row">
+          <div>Panda is a browser IDE where you set the spec and the agent plans in the open.</div>
+          <div class="spec"><strong>body</strong>Schibsted Grotesk · 400 · 1rem / 1.6</div>
+        </div>
+        <div class="type-row">
+          <div style="font-size: 0.75rem">Browser-first runtime · Plans you approve</div>
+          <div class="spec"><strong>caption</strong>Schibsted Grotesk · 400 · 0.75rem / 1.4</div>
+        </div>
+        <div class="type-row">
+          <div style="font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase">The spec-native IDE</div>
+          <div class="spec"><strong>label</strong>Schibsted Grotesk · 600 · 0.6875rem · 0.07em</div>
+        </div>
+        <div class="type-row">
+          <div class="mono">bun test — 14 pass, 0 fail</div>
+          <div class="spec"><strong>mono</strong>Geist Mono · 400 · 0.8125rem / 1.5</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════ SPACING ════ -->
+    <section class="block" id="spacing">
+      <div class="wrap">
+        <div class="block-head"><span class="num">03</span><h2>Spacing</h2></div>
+        <p class="blurb">A 4px base rhythm. Comfortable density — Panda is a workspace people inhabit for long sessions.</p>
+        <div id="spaceList"></div>
+      </div>
+    </section>
+
+    <!-- ════ RADIUS ════ -->
+    <section class="block" id="radius">
+      <div class="wrap">
+        <div class="block-head"><span class="num">04</span><h2>Shapes</h2></div>
+        <p class="blurb">
+          A 12px base anchors the system. Pill (9999px) is constrained to buttons, chips, badges,
+          avatars — never cards or inputs.
+        </p>
+        <div class="radius-grid">
+          <div class="radius-box" style="border-radius: 0">none · 0</div>
+          <div class="radius-box" style="border-radius: 8px">sm · 8px</div>
+          <div class="radius-box" style="border-radius: 12px">md · 12px</div>
+          <div class="radius-box" style="border-radius: 16px">lg · 16px</div>
+          <div class="radius-box" style="border-radius: 9999px">pill · 9999</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════ ELEVATION ════ -->
+    <section class="block" id="elevation">
+      <div class="wrap">
+        <div class="block-head"><span class="num">05</span><h2>Elevation &amp; Depth</h2></div>
+        <p class="blurb">
+          Shadows are <strong>neutral, never color-tinted</strong> — purple card glows are the
+          second-strongest vibe-coded tell and are banned. One light source; borders structure.
+        </p>
+        <div class="elev-grid">
+          <div class="elev-card" style="box-shadow: var(--shadow-sm)">
+            <div class="name">shadow-sm</div>
+            <div class="desc">Resting cards, list rows. Hairline-border + faint neutral lift.</div>
+          </div>
+          <div class="elev-card" style="box-shadow: var(--shadow-md)">
+            <div class="name">shadow-md</div>
+            <div class="desc">Raised cards, the run receipt. Genuinely floating surfaces.</div>
+          </div>
+          <div class="elev-card" style="box-shadow: var(--shadow-lg)">
+            <div class="name">shadow-lg</div>
+            <div class="desc">Popovers, dialogs, modals. Maximum neutral diffusion.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════ COMPONENTS ════ -->
+    <section class="block" id="components">
+      <div class="wrap">
+        <div class="block-head"><span class="num">06</span><h2>Components</h2></div>
+        <p class="blurb">
+          The primary button is a solid oxblood pill — oxblood is *the* action color, so the
+          primary control is unmistakably Panda. Hover states shown statically so they're visible
+          without interaction.
+        </p>
+
+        <div class="comp-block">
+          <p class="comp-label">Buttons</p>
+          <div class="comp-stage">
+            <button class="btn btn-primary" type="button">Start building</button>
+            <button class="btn btn-primary is-hover" type="button">Start building<span class="state-tag">:hover</span></button>
+            <button class="btn btn-primary is-disabled" type="button" disabled>Disabled</button>
+            <button class="btn btn-secondary" type="button">Secondary</button>
+            <button class="btn btn-ghost" type="button">Ghost</button>
+          </div>
+        </div>
+
+        <div class="comp-block">
+          <p class="comp-label">Input &amp; focus ring</p>
+          <div class="comp-stage">
+            <input class="inp" type="text" placeholder="Describe the change…" />
+            <input class="inp is-focus" type="text" placeholder="Focused" value="fix the auth redir" />
+          </div>
+        </div>
+
+        <div class="comp-block">
+          <p class="comp-label">Chips &amp; badges</p>
+          <div class="comp-stage">
+            <span class="chip">Agent attention</span>
+            <span class="badge"><span class="dot"></span>Verified</span>
+            <span class="badge" style="color: oklch(var(--warning))"><span class="dot" style="background: oklch(var(--warning))"></span>Review</span>
+            <span class="badge" style="color: oklch(var(--error))"><span class="dot" style="background: oklch(var(--error))"></span>Failed</span>
+          </div>
+        </div>
+
+        <div class="comp-block">
+          <p class="comp-label">Card &amp; the ink-panel signature</p>
+          <div class="comp-stage" style="gap: 28px; align-items: flex-start">
+            <div class="demo-card">
+              <p class="dc-title">Plan reviewed</p>
+              <p class="dc-sub">3 steps · 2 acceptance checks. The editor owns every file.</p>
+              <button class="btn btn-primary" type="button" style="padding: 8px 14px; font-size: 13px">Approve plan</button>
+            </div>
+            <div class="ink-panel-demo">
+              <p class="ip-label">Agent run</p>
+              <p class="ip-title">fix-auth-redirect</p>
+              <div class="ip-row"><span class="d" style="background: oklch(var(--teal-bright))"></span>Checks passed — 14 pass, 0 fail</div>
+              <div class="ip-row"><span class="d" style="background: oklch(62% 0.16 26)"></span>Checkpoint saved — replayable</div>
+              <div class="ip-row"><span class="d" style="background: oklch(60% 0.006 255)"></span>Files changed — middleware.ts · +2</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════ DO / DON'T ════ -->
+    <section class="block" id="dodont">
+      <div class="wrap">
+        <div class="block-head"><span class="num">07</span><h2>Do's &amp; Don'ts</h2></div>
+        <p class="blurb">The rules that keep the system from drifting back into the AI palette over time.</p>
+        <div class="dodont">
+          <div class="dodont-col do">
+            <h3>✓ Do</h3>
+            <ul>
+              <li>Use semantic tokens — never raw hex or raw oklch in a component.</li>
+              <li>Reserve oxblood for one primary action per region.</li>
+              <li>Use teal <em>only</em> for verified evidence.</li>
+              <li>Keep shadows neutral; let hairline borders structure layout.</li>
+              <li>Write sentence-case copy with plain verbs.</li>
+              <li>Test text contrast in both themes (AA min, AAA body where feasible).</li>
+            </ul>
+          </div>
+          <div class="dodont-col dont">
+            <h3>✗ Don't</h3>
+            <ul>
+              <li>No blue, purple, indigo, violet, fuchsia, or pink — the AI palette.</li>
+              <li>No color-tinted glow shadows (purple card glows banned).</li>
+              <li>No gradients on text or heroes.</li>
+              <li>No rounded-full on cards, inputs, or panels.</li>
+              <li>No warm beige neutrals; canvas is near-pure white/black.</li>
+              <li>No Inter as display; no emoji as icons (inline SVG, currentColor).</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="site">
+      <div class="wrap">
+        <p>
+          <strong>Panda — Ink &amp; Paper (Red Ink).</strong> Source of truth:
+          <code>docs/DESIGN.md</code>. This file is its rendered mirror — same tokens, two
+          audiences. When tokens change, both update together.
+        </p>
+      </div>
+    </footer>
+
+    <script>
+      // Theme toggle
+      const root = document.documentElement;
+      const btn = document.getElementById('themeToggle');
+      const label = document.getElementById('toggleLabel');
+      const modeLabel = document.getElementById('modeLabel');
+      function setTheme(t) {
+        root.setAttribute('data-theme', t);
+        label.textContent = t === 'dark' ? 'Dark' : 'Light';
+        if (modeLabel) modeLabel.textContent = t;
+      }
+      btn.addEventListener('click', () =>
+        setTheme(root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'),
+      );
+
+      // Spacing scale render
+      const steps = [
+        ['--s1', 4], ['--s2', 8], ['--s3', 12], ['--s4', 16], ['--s5', 20],
+        ['--s6', 24], ['--s8', 32], ['--s10', 40], ['--s12', 48], ['--s16', 64],
+      ];
+      const list = document.getElementById('spaceList');
+      steps.forEach(([tok, px], i) => {
+        const row = document.createElement('div');
+        row.className = 'space-row';
+        row.innerHTML =
+          '<span class="space-label">' + tok + ' · ' + px + 'px</span>' +
+          '<span class="space-bar" style="width:' + px + 'px; opacity:' + (0.45 + i * 0.055) + '"></span>';
+        list.appendChild(row);
+      });
+    </script>
+  </body>
+</html>

@@ -147,13 +147,13 @@ export default function EducationPage() {
 
                   <div className="flex flex-wrap gap-3">
                     <Link href="/projects">
-                      <Button className="shadow-sharp-md rounded-none font-mono tracking-wide">
+                      <Button className="shadow-sharp-md font-mono tracking-wide">
                         Open Panda IDE
                         <ArrowRight size={16} className="ml-2" />
                       </Button>
                     </Link>
                     <a href="#interface-map">
-                      <Button variant="outline" className="rounded-none font-mono tracking-wide">
+                      <Button variant="outline" className="font-mono tracking-wide">
                         Read the operating model
                       </Button>
                     </a>
@@ -714,7 +714,7 @@ export default function EducationPage() {
                     while the work moves.
                   </p>
                   <Link href="/projects">
-                    <Button className="rounded-none font-mono tracking-wide">
+                    <Button className="font-mono tracking-wide">
                       Open Panda IDE
                       <ArrowRight size={16} className="ml-2" />
                     </Button>
@@ -769,7 +769,7 @@ export default function EducationPage() {
               inspect receipts and changed work, then keep moving. No desktop install required.
             </p>
             <Link href="/projects">
-              <Button className="shadow-sharp-md rounded-none font-mono tracking-wide">
+              <Button className="shadow-sharp-md font-mono tracking-wide">
                 Launch Panda IDE
                 <ArrowRight size={16} className="ml-2" />
               </Button>

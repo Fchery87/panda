@@ -12,7 +12,7 @@ export default function SharedChatNotFound() {
           This shared chat doesn't exist or has been removed.
         </p>
       </div>
-      <Button asChild className="rounded-none font-mono">
+      <Button asChild className="font-mono">
         <Link href="/">Go to Panda.ai</Link>
       </Button>
     </div>

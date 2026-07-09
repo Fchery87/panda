@@ -47,8 +47,22 @@ describe('Convex bandwidth guards', () => {
     const progressPanel = source('components/chat/RunProgressPanel.tsx')
     const chatPanel = source('components/projects/ProjectChatPanel.tsx')
 
+    expect(progressPanel).toMatch(propertyAccess('api.agentRuns.listRuntimeCheckpointSummaries'))
     expect(progressPanel).not.toMatch(propertyAccess('api.agentRuns.listRuntimeCheckpoints'))
     expect(chatPanel).not.toMatch(propertyAccess('api.agentRuns.listRuntimeCheckpoints'))
+  })
+
+  test('keeps full runtime checkpoint loads behind ConvexCheckpointStore', () => {
+    const checkpointStore = source('lib/agent/harness/convex-checkpoint-store.ts')
+    const sessionController = source('lib/agent/session-controller.ts')
+    const useAgent = source('hooks/useAgent.ts')
+    const runtimeProvider = source('components/projects/WorkspaceRuntimeProvider.tsx')
+
+    expect(checkpointStore).toContain('typedHarnessApi.agentRuns.getLatestRuntimeCheckpoint')
+    expect(sessionController).toContain('createAgentCheckpointStore')
+    expect(useAgent).toContain('createAgentCheckpointStore')
+    expect(useAgent).not.toMatch(propertyAccess('api.agentRuns.getLatestRuntimeCheckpoint'))
+    expect(runtimeProvider).not.toMatch(propertyAccess('api.agentRuns.getLatestRuntimeCheckpoint'))
   })
 
   test('keeps run event summaries free of cold snapshot payloads', () => {
@@ -58,9 +72,21 @@ describe('Convex bandwidth guards', () => {
       agentRuns.indexOf('function toRuntimeCheckpointSummary')
     )
 
+    expect(summaryBody).not.toContain('content: event.content')
+    expect(summaryBody).not.toContain('output: event.output')
+    expect(summaryBody).not.toContain('error: event.error')
+    expect(summaryBody).not.toContain('args: event.args')
     expect(summaryBody).not.toContain('snapshot: event.snapshot')
     expect(summaryBody).toContain('contentPreview')
     expect(summaryBody).toContain('outputPreview')
+    expect(summaryBody).toContain('errorPreview')
+  })
+
+  test('keeps workbench timeline on run event summaries', () => {
+    const timeline = source('components/workbench/Timeline.tsx')
+
+    expect(timeline).toMatch(propertyAccess('api.agentRuns.listEventSummariesByChat'))
+    expect(timeline).not.toMatch(propertyAccess('api.agentRuns.listEventsByChat'))
   })
 
   test('caps and deduplicates cold runtime checkpoint writes', () => {
@@ -121,7 +147,7 @@ describe('Convex bandwidth guards', () => {
     expect(cleanupBody).toContain("'agentRunEvents'")
     expect(cleanupBody).toContain("'harnessRuntimeCheckpoints'")
     expect(cleanupBody).toContain("'evalRunResults'")
-    expect(cleanupBody).toContain("'fileSnapshots'")
+    expect(cleanupBody).not.toContain("'fileSnapshots'")
     expect(cleanupBody).not.toContain("'projects'")
     expect(cleanupBody).not.toContain("'messages'")
     expect(cleanupBody).not.toContain("'files'")
@@ -152,12 +178,25 @@ describe('Convex bandwidth guards', () => {
     expect(auditBody).toContain('Math.min(limit * 3, 250)')
   })
 
-  test('keeps the workspace session rail on bounded summary queries', () => {
+  test('keeps recent-run UI surfaces on bounded summary queries', () => {
     const sessionRailHook = source('components/sidebar/useSessionRailSummary.ts')
+    const activityFeed = source('components/chat/ActivityFeed.tsx')
+    const agentManagerDrawer = source('components/agent/AgentManagerDrawer.tsx')
     const historyPanel = source('components/sidebar/SidebarHistoryPanel.tsx')
 
-    expect(sessionRailHook).toMatch(propertyAccess('api.agentRuns.listRecentSummariesByProject'))
-    expect(sessionRailHook).not.toMatch(propertyAccess('api.agentRuns.listRecentByProject'))
+    for (const runSurface of [sessionRailHook, activityFeed, agentManagerDrawer]) {
+      expect(runSurface).toMatch(propertyAccess('api.agentRuns.listRecentSummariesByProject'))
+      expect(runSurface).not.toMatch(propertyAccess('api.agentRuns.listRecentByProject'))
+    }
+    const agentRuns = readFileSync(join(repoRoot, 'convex/agentRuns.ts'), 'utf8')
+    const summaryBody = agentRuns.slice(
+      agentRuns.indexOf('function toProjectRunSummary'),
+      agentRuns.indexOf('export const create = mutation')
+    )
+    expect(summaryBody).toContain('provider: run.provider')
+    expect(summaryBody).toContain('model: run.model')
+    expect(summaryBody).not.toContain('receipt: run.receipt')
+
     expect(historyPanel).toMatch(propertyAccess('api.chats.listRecent'))
     expect(historyPanel).not.toMatch(propertyAccess('api.chats.list'))
   })

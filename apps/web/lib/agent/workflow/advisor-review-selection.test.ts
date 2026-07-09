@@ -37,7 +37,24 @@ describe('advisor review selection', () => {
     ).toBe('run_1')
   })
 
-  test('uses latest review as final fallback', () => {
+  test('does not use unrelated gate-only reviews for a targeted artifact', () => {
+    expect(
+      selectAdvisorReviewForTarget(
+        [
+          {
+            ...approved,
+            artifactId: 'artifact_2',
+            gates: ['dependency_change'],
+            createdAt: 2,
+          },
+          { ...approved, createdAt: 1 },
+        ],
+        { artifactId: 'artifact_1', gates: ['dependency_change'] }
+      )
+    ).toBeNull()
+  })
+
+  test('uses latest review as final fallback only for untargeted callers', () => {
     expect(
       selectAdvisorReviewForTarget(
         [

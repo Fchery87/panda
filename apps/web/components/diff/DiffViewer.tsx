@@ -39,7 +39,7 @@ export function DiffViewer({
   const removedCount = diff.filter((l) => l.type === 'removed').length
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-none border border-border bg-background">
+    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden border border-border bg-background">
       {/* Header */}
       <div className="bg-muted/50 flex flex-wrap items-start justify-between gap-3 border-b border-border px-4 py-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -52,7 +52,7 @@ export function DiffViewer({
         </div>
 
         <div className="flex w-full flex-wrap items-center justify-end gap-2 lg:w-auto">
-          <div className="flex items-center overflow-hidden rounded-none border border-border">
+          <div className="flex items-center overflow-hidden border border-border">
             <button
               onClick={() => setViewMode('side-by-side')}
               className={cn(
@@ -76,11 +76,11 @@ export function DiffViewer({
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <Button variant="outline" size="sm" className="h-8 rounded-none" onClick={onReject}>
+            <Button variant="outline" size="sm" className="h-8" onClick={onReject}>
               <X className="mr-1 h-3.5 w-3.5" />
               Reject
             </Button>
-            <Button size="sm" className="h-8 rounded-none" onClick={onApply}>
+            <Button size="sm" className="h-8" onClick={onApply}>
               <Check className="mr-1 h-3.5 w-3.5" />
               Apply
             </Button>

@@ -29,6 +29,7 @@ type CenterTab = 'editor' | 'diff' | 'logs' | 'tests'
 interface UsePlanArtifactSyncArgs {
   activePlanArtifact: GeneratedPlanArtifact | null | undefined
   openTabs: OpenTab[]
+  resetGeneration: number
   setOpenTabs: React.Dispatch<React.SetStateAction<OpenTab[]>>
   setSelectedFilePath: (path: string | null) => void
   setSelectedFileLocation: (loc: FileLocation) => void
@@ -40,7 +41,8 @@ interface UsePlanArtifactSyncArgs {
 
 export function usePlanArtifactSync({
   activePlanArtifact,
-  openTabs: _openTabs,
+  openTabs,
+  resetGeneration,
   setOpenTabs,
   setSelectedFilePath,
   setSelectedFileLocation,
@@ -51,6 +53,7 @@ export function usePlanArtifactSync({
 }: UsePlanArtifactSyncArgs) {
   const lastOpenedPlanArtifactRef = useRef<string | null>(null)
   const lastSyncedPlanArtifactRef = useRef<string | null>(null)
+  const lastHandledResetGenerationRef = useRef(resetGeneration)
 
   const activePlanArtifactOpenKey = activePlanArtifact
     ? `${activePlanArtifact.sessionId}:${activePlanArtifact.generatedAt}`
@@ -61,14 +64,28 @@ export function usePlanArtifactSync({
 
   useEffect(() => {
     if (!activePlanArtifact || !activePlanArtifactOpenKey || !activePlanArtifactRevisionKey) return
-    if (lastSyncedPlanArtifactRef.current === activePlanArtifactRevisionKey) return
 
     const nextPlanTab = createPlanArtifactWorkspaceTab(activePlanArtifact)
+    const isPlanTabOpen = openTabs.some((tab) => tab.path === nextPlanTab.path)
+    const isPlanArtifactRevisionSynced =
+      lastSyncedPlanArtifactRef.current === activePlanArtifactRevisionKey
+    const resetGenerationChanged = lastHandledResetGenerationRef.current !== resetGeneration
+
+    if (isPlanArtifactRevisionSynced && isPlanTabOpen) {
+      lastHandledResetGenerationRef.current = resetGeneration
+      return
+    }
+
+    if (isPlanArtifactRevisionSynced && !resetGenerationChanged) return
 
     setOpenTabs((prev) => upsertPlanArtifactWorkspaceTab(prev, activePlanArtifact))
     lastSyncedPlanArtifactRef.current = activePlanArtifactRevisionKey
+    lastHandledResetGenerationRef.current = resetGeneration
 
-    if (lastOpenedPlanArtifactRef.current !== activePlanArtifactOpenKey) {
+    if (
+      lastOpenedPlanArtifactRef.current !== activePlanArtifactOpenKey ||
+      (resetGenerationChanged && !isPlanTabOpen)
+    ) {
       setSelectedFilePath(nextPlanTab.path)
       setSelectedFileLocation(null)
       setCursorPosition(null)
@@ -81,6 +98,8 @@ export function usePlanArtifactSync({
     activePlanArtifact,
     activePlanArtifactOpenKey,
     activePlanArtifactRevisionKey,
+    openTabs,
+    resetGeneration,
     setCursorPosition,
     setMobilePrimaryPanel,
     setOpenTabs,

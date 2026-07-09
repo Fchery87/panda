@@ -99,7 +99,7 @@ export function WorkflowChainsList({
                       : undefined
                   )
                 }}
-                className="h-7 shrink-0 rounded-none px-2 font-mono text-[10px] uppercase tracking-wide"
+                className="h-7 shrink-0 px-2 font-mono text-[10px] uppercase tracking-wide"
               >
                 Start
               </Button>

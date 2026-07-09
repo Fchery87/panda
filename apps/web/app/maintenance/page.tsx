@@ -34,7 +34,7 @@ export default async function MaintenancePage({ searchParams }: MaintenancePageP
       </div>
       <div className="flex items-center gap-4">
         <Link href="/">
-          <Button className="rounded-none font-mono">Return Home</Button>
+          <Button className="font-mono">Return Home</Button>
         </Link>
         <Link
           href="/education"

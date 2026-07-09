@@ -104,7 +104,7 @@ export function CustomSkillEditor({ className }: CustomSkillEditorProps) {
           variant="outline"
           size="sm"
           onClick={() => setShowAddForm(!showAddForm)}
-          className="rounded-none font-mono text-xs"
+          className="font-mono text-xs"
         >
           <Plus className="mr-1 h-3 w-3" />
           Add Skill
@@ -120,7 +120,7 @@ export function CustomSkillEditor({ className }: CustomSkillEditorProps) {
                 value={newSkill.name}
                 onChange={(event) => setNewSkill((prev) => ({ ...prev, name: event.target.value }))}
                 placeholder="tdd-bugfix"
-                className="rounded-none font-mono text-xs"
+                className="font-mono text-xs"
               />
             </div>
             <div>
@@ -131,7 +131,7 @@ export function CustomSkillEditor({ className }: CustomSkillEditorProps) {
                   setNewSkill((prev) => ({ ...prev, description: event.target.value }))
                 }
                 placeholder="Requires a failing regression test before bug fixes"
-                className="rounded-none font-mono text-xs"
+                className="font-mono text-xs"
               />
             </div>
             <div>
@@ -142,7 +142,7 @@ export function CustomSkillEditor({ className }: CustomSkillEditorProps) {
                   setNewSkill((prev) => ({ ...prev, triggerPhrases: event.target.value }))
                 }
                 placeholder="tdd workflow&#10;test first"
-                className="min-h-[64px] w-full rounded-none border border-border bg-background px-3 py-2 font-mono text-xs"
+                className="min-h-[64px] w-full border border-border bg-background px-3 py-2 font-mono text-xs"
               />
             </div>
             <div className="grid gap-2">
@@ -175,7 +175,7 @@ export function CustomSkillEditor({ className }: CustomSkillEditorProps) {
                     profile: event.target.value as 'soft_guidance' | 'strict_workflow',
                   }))
                 }
-                className="w-full rounded-none border border-border bg-background px-3 py-2 font-mono text-xs"
+                className="w-full border border-border bg-background px-3 py-2 font-mono text-xs"
               >
                 <option value="soft_guidance">Soft guidance</option>
                 <option value="strict_workflow">Strict workflow</option>
@@ -189,7 +189,7 @@ export function CustomSkillEditor({ className }: CustomSkillEditorProps) {
                   setNewSkill((prev) => ({ ...prev, instructions: event.target.value }))
                 }
                 placeholder="Follow this workflow when the skill applies..."
-                className="min-h-[96px] w-full rounded-none border border-border bg-background px-3 py-2 font-mono text-xs"
+                className="min-h-[96px] w-full border border-border bg-background px-3 py-2 font-mono text-xs"
               />
             </div>
             <div className="grid gap-3 md:grid-cols-3">
@@ -200,7 +200,7 @@ export function CustomSkillEditor({ className }: CustomSkillEditorProps) {
                   setNewSkill((prev) => ({ ...prev, checklist: event.target.value }))
                 }
                 placeholder="Checklist items"
-                className="min-h-[72px] rounded-none border border-border bg-background px-3 py-2 font-mono text-xs"
+                className="min-h-[72px] border border-border bg-background px-3 py-2 font-mono text-xs"
               />
               <textarea
                 aria-label="Required validation"
@@ -209,7 +209,7 @@ export function CustomSkillEditor({ className }: CustomSkillEditorProps) {
                   setNewSkill((prev) => ({ ...prev, requiredValidation: event.target.value }))
                 }
                 placeholder="Required validation"
-                className="min-h-[72px] rounded-none border border-border bg-background px-3 py-2 font-mono text-xs"
+                className="min-h-[72px] border border-border bg-background px-3 py-2 font-mono text-xs"
               />
               <textarea
                 aria-label="Suggested Subagents"
@@ -218,7 +218,7 @@ export function CustomSkillEditor({ className }: CustomSkillEditorProps) {
                   setNewSkill((prev) => ({ ...prev, suggestedSubagents: event.target.value }))
                 }
                 placeholder="Suggested Subagents"
-                className="min-h-[72px] rounded-none border border-border bg-background px-3 py-2 font-mono text-xs"
+                className="min-h-[72px] border border-border bg-background px-3 py-2 font-mono text-xs"
               />
             </div>
             <label className="flex items-center gap-2 font-mono text-xs">
@@ -241,7 +241,7 @@ export function CustomSkillEditor({ className }: CustomSkillEditorProps) {
                 setShowAddForm(false)
                 resetForm()
               }}
-              className="rounded-none font-mono text-xs"
+              className="font-mono text-xs"
             >
               Cancel
             </Button>
@@ -253,7 +253,7 @@ export function CustomSkillEditor({ className }: CustomSkillEditorProps) {
                 !newSkill.description.trim() ||
                 !newSkill.instructions.trim()
               }
-              className="rounded-none font-mono text-xs"
+              className="font-mono text-xs"
             >
               Create Skill
             </Button>
@@ -279,7 +279,7 @@ export function CustomSkillEditor({ className }: CustomSkillEditorProps) {
                 variant="ghost"
                 size="sm"
                 onClick={() => handleRemove(skill._id)}
-                className="h-7 rounded-none text-muted-foreground hover:text-destructive"
+                className="h-7 text-muted-foreground hover:text-destructive"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>

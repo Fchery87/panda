@@ -32,7 +32,7 @@ export function AdminSubNav({ items, activeId, onSelect }: AdminSubNavProps) {
               key={item.id}
               onClick={() => onSelect(item.id)}
               className={cn(
-                'flex w-full items-center gap-2 rounded-none border px-3 py-2 text-left font-mono text-sm transition-colors',
+                'flex w-full items-center gap-2 border px-3 py-2 text-left font-mono text-sm transition-colors',
                 isActive
                   ? 'border-primary/40 bg-primary/10 text-primary'
                   : 'border-transparent text-muted-foreground hover:border-border hover:bg-muted hover:text-foreground'

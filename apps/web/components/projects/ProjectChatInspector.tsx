@@ -144,46 +144,46 @@ export function ProjectChatInspector({
         className="gap-2"
       >
         <div className="overflow-x-auto pb-1">
-          <TabsList className="shadow-sharp-sm bg-background/90 h-9 min-w-max justify-start rounded-none border border-border p-0 font-mono text-xs">
+          <TabsList className="shadow-sharp-sm bg-background/90 h-9 min-w-max justify-start border border-border p-0 font-mono text-xs">
             <TabsTrigger
               value="run"
-              className="h-full rounded-none border-r border-border px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              className="h-full border-r border-border px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
             >
               Run
             </TabsTrigger>
             <TabsTrigger
               value="context"
-              className="h-full rounded-none border-r border-border px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              className="h-full border-r border-border px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
             >
               Context
             </TabsTrigger>
             <TabsTrigger
               value="plan"
-              className="h-full rounded-none border-r border-border px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              className="h-full border-r border-border px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
             >
               Plan
             </TabsTrigger>
             <TabsTrigger
               value="artifacts"
-              className="h-full rounded-none border-r border-border px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              className="h-full border-r border-border px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
             >
               Artifacts
             </TabsTrigger>
             <TabsTrigger
               value="research"
-              className="h-full rounded-none border-r border-border px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              className="h-full border-r border-border px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
             >
               Research
             </TabsTrigger>
             <TabsTrigger
               value="memory"
-              className="h-full rounded-none border-r border-border px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              className="h-full border-r border-border px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
             >
               Memory
             </TabsTrigger>
             <TabsTrigger
               value="evals"
-              className="h-full rounded-none px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              className="h-full px-3 font-mono text-[11px] uppercase tracking-[0.18em] data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
             >
               Evals
             </TabsTrigger>
@@ -315,7 +315,7 @@ export function ProjectChatInspector({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 rounded-none"
+                className="h-7 w-7"
                 onClick={() => onOpenChange(false)}
                 aria-label="Close inspector"
               >
@@ -356,7 +356,7 @@ export function ProjectChatInspector({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 rounded-none"
+                className="h-7 w-7"
                 onClick={() => onOpenChange(false)}
                 aria-label="Close inspector"
               >

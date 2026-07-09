@@ -2,12 +2,76 @@ import { query, mutation, type MutationCtx, type QueryCtx } from './_generated/s
 import { v } from 'convex/values'
 import type { Id, TableNames } from './_generated/dataModel'
 import { getCurrentUserId } from './lib/auth'
+import { deleteProjectFileContents } from './lib/fileContentStore'
+import { deleteRunEventWithBody } from './lib/runEvents'
 import { HarnessCommandFamilyPolicyEntry } from './schema'
 
 /**
  * Check if the current user is an admin
  */
 type AdminCtx = QueryCtx | MutationCtx
+
+type IndexQueryBuilder = {
+  eq: (fieldName: string, value: unknown) => IndexQueryBuilder
+}
+
+async function deleteByIndex<TableName extends Parameters<MutationCtx['db']['query']>[0]>(
+  ctx: MutationCtx,
+  table: TableName,
+  indexName: string,
+  buildQuery: (q: IndexQueryBuilder) => unknown
+): Promise<number> {
+  const batchSize = 1000
+  const maxRows = 5000
+  let deleted = 0
+
+  while (true) {
+    const rows = await ctx.db
+      .query(table)
+      .withIndex(indexName as never, buildQuery as never)
+      .take(batchSize)
+
+    if (rows.length === 0) return deleted
+    if (deleted + rows.length > maxRows) {
+      throw new Error(`Cascade delete for ${String(table)} exceeded ${maxRows} rows`)
+    }
+
+    for (const row of rows) {
+      await ctx.db.delete(row._id)
+    }
+
+    deleted += rows.length
+    if (rows.length < batchSize) return deleted
+  }
+}
+
+async function deleteProjectFilesWithSnapshots(
+  ctx: MutationCtx,
+  projectId: Id<'projects'>
+): Promise<number> {
+  const batchSize = 1000
+  const maxRows = 5000
+  let deleted = 0
+
+  while (true) {
+    const files = await ctx.db
+      .query('files')
+      .withIndex('by_project', (q) => q.eq('projectId', projectId))
+      .take(batchSize)
+
+    if (files.length === 0) return deleted
+    if (deleted + files.length > maxRows) {
+      throw new Error(`Refusing to delete more than ${maxRows} files in one admin project cascade`)
+    }
+
+    for (const file of files) {
+      await deleteByIndex(ctx, 'fileSnapshots', 'by_file', (q) => q.eq('fileId', file._id))
+      await deleteByIndex(ctx, 'fileMetadata', 'by_file', (q) => q.eq('fileId', file._id))
+      await ctx.db.delete(file._id)
+      deleted += 1
+    }
+  }
+}
 
 type CommandFamilyPolicyEntry = {
   family:
@@ -302,30 +366,29 @@ export const listUsers = query({
     await requireAdmin(ctx)
 
     const limit = Math.max(1, Math.min(args.limit ?? 50, 100))
+    const paginationOpts = { numItems: limit, cursor: args.cursor ?? null }
 
-    let allUsers = await ctx.db.query('users').order('desc').take(250)
-    if (args.cursor) {
-      const cursorUser = await ctx.db.get(args.cursor as Id<'users'>)
-      if (cursorUser) {
-        allUsers = allUsers.filter(
-          (user) =>
-            user._creationTime < cursorUser._creationTime ||
-            (user._creationTime === cursorUser._creationTime && user._id < cursorUser._id)
-        )
-      }
-    }
+    const page =
+      args.filter === 'admins'
+        ? await ctx.db
+            .query('users')
+            .withIndex('by_admin', (q) => q.eq('isAdmin', true))
+            .order('desc')
+            .paginate(paginationOpts)
+        : args.filter === 'banned'
+          ? await ctx.db
+              .query('users')
+              .withIndex('by_banned', (q) => q.eq('isBanned', true))
+              .order('desc')
+              .paginate(paginationOpts)
+          : await ctx.db.query('users').order('desc').paginate(paginationOpts)
 
-    // Apply filters in memory
-    let users = allUsers
-    if (args.filter === 'admins') {
-      users = users.filter((u) => u.isAdmin === true)
-    } else if (args.filter === 'banned') {
-      users = users.filter((u) => u.isBanned === true)
-    } else if (args.filter === 'active') {
-      users = users.filter((u) => !u.isBanned)
-    }
+    // Active users include legacy rows where isBanned is undefined, so this filter
+    // remains bounded on the current page instead of querying by_banned=false only.
+    let users = args.filter === 'active' ? page.page.filter((u) => !u.isBanned) : page.page
 
-    // Apply search filter in memory (Convex doesn't support full-text search yet)
+    // Apply search filter to a bounded page. Convex does not support full-text search here;
+    // callers can continue from nextCursor to scan additional bounded pages.
     if (args.search) {
       const searchLower = args.search.toLowerCase()
       users = users.filter(
@@ -335,9 +398,7 @@ export const listUsers = query({
       )
     }
 
-    // Check if there are more results
-    const hasMore = users.length > limit
-    const results = hasMore ? users.slice(0, limit) : users
+    const results = users
 
     const projectCountByUser = new Map<string, number>()
     const usersWithAnalytics = await Promise.all(
@@ -366,8 +427,8 @@ export const listUsers = query({
 
     return {
       users: usersWithAnalytics,
-      hasMore,
-      nextCursor: hasMore ? results[results.length - 1]._id : null,
+      hasMore: !page.isDone,
+      nextCursor: page.isDone ? null : page.continueCursor,
     }
   },
 })
@@ -538,22 +599,7 @@ export const deleteUser = mutation({
     // Delete projects and associated data
     for (const project of projects) {
       // Delete files
-      const files = await ctx.db
-        .query('files')
-        .withIndex('by_project', (q) => q.eq('projectId', project._id))
-        .take(1000)
-
-      for (const file of files) {
-        // Delete file snapshots
-        const snapshots = await ctx.db
-          .query('fileSnapshots')
-          .withIndex('by_file', (q) => q.eq('fileId', file._id))
-          .take(1000)
-        for (const snapshot of snapshots) {
-          await ctx.db.delete(snapshot._id)
-        }
-        await ctx.db.delete(file._id)
-      }
+      await deleteProjectFilesWithSnapshots(ctx, project._id)
 
       // Delete chats and messages
       const chats = await ctx.db
@@ -569,8 +615,23 @@ export const deleteUser = mutation({
         for (const message of messages) {
           await ctx.db.delete(message._id)
         }
+        await deleteByIndex(ctx, 'agentRunEventBodies', 'by_chat_created', (q) =>
+          q.eq('chatId', chat._id)
+        )
+        await deleteByIndex(ctx, 'agentRunEvents', 'by_chat_created', (q) =>
+          q.eq('chatId', chat._id)
+        )
+        await deleteByIndex(ctx, 'harnessRuntimeCheckpointBodies', 'by_chat_created', (q) =>
+          q.eq('chatId', chat._id)
+        )
+        await deleteByIndex(ctx, 'harnessRuntimeCheckpoints', 'by_chat_saved', (q) =>
+          q.eq('chatId', chat._id)
+        )
+        await deleteByIndex(ctx, 'agentRuns', 'by_chat_started', (q) => q.eq('chatId', chat._id))
         await ctx.db.delete(chat._id)
       }
+
+      await deleteProjectFileContents(ctx, project._id)
 
       await ctx.db.delete(project._id)
     }
@@ -858,7 +919,7 @@ export const getAuditLog = query({
       : resourceFilter
         ? await ctx.db
             .query('auditLog')
-            .withIndex('by_resource', (q) => q.eq('resource', resourceFilter))
+            .withIndex('by_resource_created', (q) => q.eq('resource', resourceFilter))
             .order('desc')
             .take(Math.min(limit * 3, 250))
         : await ctx.db
@@ -932,24 +993,36 @@ export const cleanupOperationalDataNow = mutation({
     }
 
     if (deleted < limit) {
-      await deleteRows(
-        'agentRunEvents',
-        await ctx.db
-          .query('agentRunEvents')
-          .withIndex('by_created', (q) => q.lt('createdAt', olderThanMs))
-          .order('asc')
-          .take(limit - deleted)
-      )
+      const rows = await ctx.db
+        .query('agentRunEvents')
+        .withIndex('by_created', (q) => q.lt('createdAt', olderThanMs))
+        .order('asc')
+        .take(limit - deleted)
+      for (const row of rows) {
+        await deleteRunEventWithBody(ctx, row._id)
+      }
+      deleted += rows.length
+      byTable['agentRunEvents'] = (byTable['agentRunEvents'] ?? 0) + rows.length
     }
     if (deleted < limit) {
-      await deleteRows(
-        'harnessRuntimeCheckpoints',
-        await ctx.db
-          .query('harnessRuntimeCheckpoints')
-          .withIndex('by_saved', (q) => q.lt('savedAt', olderThanMs))
-          .order('asc')
-          .take(limit - deleted)
-      )
+      const rows = await ctx.db
+        .query('harnessRuntimeCheckpoints')
+        .withIndex('by_saved', (q) => q.lt('savedAt', olderThanMs))
+        .order('asc')
+        .take(limit - deleted)
+      for (const row of rows) {
+        const bodies = await ctx.db
+          .query('harnessRuntimeCheckpointBodies')
+          .withIndex('by_checkpoint', (q) => q.eq('checkpointId', row._id))
+          .take(10)
+        for (const body of bodies) {
+          await ctx.db.delete(body._id)
+        }
+        await ctx.db.delete(row._id)
+      }
+      deleted += rows.length
+      byTable['harnessRuntimeCheckpoints'] =
+        (byTable['harnessRuntimeCheckpoints'] ?? 0) + rows.length
     }
     if (deleted < limit) {
       await deleteRows(
@@ -961,17 +1034,6 @@ export const cleanupOperationalDataNow = mutation({
           .take(limit - deleted)
       )
     }
-    if (deleted < limit) {
-      await deleteRows(
-        'fileSnapshots',
-        await ctx.db
-          .query('fileSnapshots')
-          .withIndex('by_created', (q) => q.lt('createdAt', olderThanMs))
-          .order('asc')
-          .take(limit - deleted)
-      )
-    }
-
     await ctx.db.insert('auditLog', {
       action: 'CLEANUP_OPERATIONAL_DATA',
       resource: 'system',

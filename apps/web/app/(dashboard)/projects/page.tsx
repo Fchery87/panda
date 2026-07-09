@@ -7,12 +7,9 @@ import type { Id } from '@convex/_generated/dataModel'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { FolderGit2, Plus, Trash2, Clock, Search, ArrowRight } from 'lucide-react'
+import { FolderGit2, Plus, Trash2, Search, ArrowRight } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import {
-  AuthenticatedModeStrip,
-  AuthenticatedPageShell,
-} from '@/components/layout/AuthenticatedPageShell'
+import { AuthenticatedPageShell } from '@/components/layout/AuthenticatedPageShell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -29,7 +26,6 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
 import {
   getCreateProjectErrorDisplay,
   type CreateProjectErrorDisplay,
@@ -92,7 +88,7 @@ function CreateProjectDialog({
       setDescription('')
       setRepository(null)
       setSubmitError(null)
-      toast.success('Project created successfully')
+      toast.success('Project created')
     } catch (error) {
       const display = getCreateProjectErrorDisplay(error)
       setSubmitError(display)
@@ -116,36 +112,33 @@ function CreateProjectDialog({
     >
       {showTrigger ? (
         <DialogTrigger asChild>
-          <Button className="gap-2 rounded-none font-mono">
+          <Button className="gap-2">
             <Plus size={16} />
-            New Project
+            New project
           </Button>
         </DialogTrigger>
       ) : null}
-      <DialogContent className="rounded-none sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="font-mono">Create New Project</DialogTitle>
-          <DialogDescription>Start a new coding project with AI assistance.</DialogDescription>
+          <DialogTitle className="font-display">Create a project</DialogTitle>
+          <DialogDescription>
+            A project is a recoverable workspace: files, chats, plans, and runs stay together.
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             {submitError ? (
-              <Alert variant="destructive" className="rounded-none border">
-                <AlertTitle className="font-mono text-xs uppercase tracking-[0.06em]">
-                  {submitError.title}
-                </AlertTitle>
-                <AlertDescription className="space-y-1 font-mono text-xs">
+              <Alert variant="destructive" className="border">
+                <AlertTitle className="text-sm font-medium">{submitError.title}</AlertTitle>
+                <AlertDescription className="space-y-1 text-xs">
                   <p>{submitError.description}</p>
                   {submitError.recoveryHint ? <p>{submitError.recoveryHint}</p> : null}
                 </AlertDescription>
               </Alert>
             ) : null}
             <div className="grid gap-2">
-              <label
-                htmlFor="name"
-                className="font-mono text-xs uppercase tracking-[0.06em] text-muted-foreground"
-              >
-                Project Name
+              <label htmlFor="name" className="text-sm font-medium text-foreground">
+                Name
               </label>
               <Input
                 id="name"
@@ -156,25 +149,22 @@ function CreateProjectDialog({
                   if (submitError) setSubmitError(null)
                 }}
                 autoFocus
-                className="rounded-none font-mono"
+                className="rounded-lg font-mono"
               />
             </div>
             <div className="grid gap-2">
-              <label
-                htmlFor="description"
-                className="font-mono text-xs uppercase tracking-[0.06em] text-muted-foreground"
-              >
-                Description (optional)
+              <label htmlFor="description" className="text-sm font-medium text-foreground">
+                Description <span className="font-normal text-muted-foreground">(optional)</span>
               </label>
               <Input
                 id="description"
-                placeholder="A brief description of your project"
+                placeholder="What are you building?"
                 value={description}
                 onChange={(e) => {
                   setDescription(e.target.value)
                   if (submitError) setSubmitError(null)
                 }}
-                className="rounded-none"
+                className="rounded-lg"
               />
             </div>
             <GitHubRepositoryPicker
@@ -184,16 +174,11 @@ function CreateProjectDialog({
             />
           </div>
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-              className="rounded-none"
-            >
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={!name.trim() || isCreating} className="rounded-none">
-              {isCreating ? 'Creating...' : 'Create'}
+            <Button type="submit" disabled={!name.trim() || isCreating}>
+              {isCreating ? 'Creating...' : 'Create project'}
             </Button>
           </DialogFooter>
         </form>
@@ -300,78 +285,66 @@ function ProjectRow({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.2, delay: index * 0.05 }}
+      transition={{ duration: 0.2, delay: index * 0.04 }}
     >
-      <div
-        className={cn(
-          'group flex items-center justify-between px-5 py-5',
-          'border-b border-border',
-          'transition-sharp hover:bg-secondary/50'
-        )}
-      >
+      <div className="group shadow-sharp-sm hover:shadow-sharp-md relative rounded-xl border border-border bg-card transition-all duration-200 hover:border-oxblood/60">
         <Link
           href={projectHref}
           onClick={handleOpen}
           onMouseDownCapture={handleMouseDownCapture}
-          className="flex min-w-0 flex-1 items-center gap-4"
+          className="flex items-center gap-5 rounded-xl px-6 py-5"
         >
-          {/* Number */}
-          <span className="w-8 shrink-0 font-mono text-xs font-medium tracking-[0.06em] text-primary">
-            {String(index + 1).padStart(2, '0')}
-          </span>
-
-          {/* Icon */}
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center border border-border">
-            <FolderGit2 size={16} className="text-primary" />
+          {/* Ink chop */}
+          <div className="bg-primary flex h-11 w-11 shrink-0 items-center justify-center rounded-lg">
+            <FolderGit2 size={18} className="text-primary-foreground" />
           </div>
 
-          {/* Name & Description */}
+          {/* Name & description */}
           <div className="min-w-0 flex-1">
-            <h3 className="truncate font-mono font-medium text-foreground">{project.name}</h3>
-            {project.description && (
-              <p className="truncate text-sm text-muted-foreground">{project.description}</p>
-            )}
+            <h3 className="font-display truncate text-base font-semibold tracking-tight text-foreground">
+              {project.name}
+            </h3>
+            <p className="truncate text-sm text-muted-foreground">
+              {project.description || `Opened ${formatRelativeTime(project.lastOpenedAt)}`}
+            </p>
+          </div>
+
+          {/* Meta */}
+          <div className="flex shrink-0 items-center gap-4">
+            <span className="hidden text-xs text-muted-foreground sm:block">
+              {formatRelativeTime(project.lastOpenedAt)}
+            </span>
+            <ArrowRight
+              size={16}
+              className="text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-oxblood"
+            />
           </div>
         </Link>
 
-        {/* Meta */}
-        <div className="flex shrink-0 items-center gap-6">
-          <div className="flex items-center gap-2 font-mono text-xs tracking-[0.04em] text-muted-foreground">
-            <Clock size={12} />
-            <span>{formatRelativeTime(project.lastOpenedAt)}</span>
-          </div>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="hover:bg-destructive/10 h-7 w-7 rounded-none text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-            aria-label={`Delete ${project.name}`}
-            onClick={handleDeleteRequest}
-            disabled={isDeleting}
-          >
-            <Trash2 size={14} />
-          </Button>
-
-          <ArrowRight
-            size={16}
-            className="text-muted-foreground transition-colors group-hover:text-primary"
-          />
-        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="hover:bg-destructive/10 absolute right-14 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground opacity-0 transition-opacity hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+          aria-label={`Delete ${project.name}`}
+          onClick={handleDeleteRequest}
+          disabled={isDeleting}
+        >
+          <Trash2 size={14} />
+        </Button>
       </div>
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="rounded-none sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle className="font-mono">Delete project?</DialogTitle>
+            <DialogTitle className="font-display">Delete project?</DialogTitle>
             <DialogDescription>
-              Delete <span className="font-mono text-foreground">{project.name}</span>? This action
-              cannot be undone.
+              Delete <span className="font-mono text-foreground">{project.name}</span>? This
+              removes its files, chats, and run history. It can&apos;t be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
-              className="rounded-none"
               onClick={() => setIsDeleteDialogOpen(false)}
               disabled={isDeleting}
             >
@@ -380,7 +353,6 @@ function ProjectRow({
             <Button
               type="button"
               variant="destructive"
-              className="rounded-none"
               onClick={handleDelete}
               disabled={isDeleting}
             >
@@ -473,146 +445,90 @@ export default function ProjectsPage() {
 
   return (
     <AuthenticatedPageShell
-      hideHeader
-      eyebrow="Project command center"
+      eyebrow="Workspace"
       title="Projects"
-      description="Each project is a recoverable workspace with files, chat direction, plan review, runs, and changed work kept in one browser shell."
+      description="Pick up where a run left off, or start something new. Every project keeps its files, plans, and receipts together."
       action={<CreateProjectDialog onCreate={handleCreateProject} />}
       status={
         <span className="flex items-center gap-2">
-          <span className="h-2 w-2 border border-foreground bg-primary" />
-          {isLoading ? 'Loading' : `${projects?.length ?? 0} workspaces`}
+          <span className="h-2 w-2 rounded-full bg-teal" />
+          {isLoading ? 'Loading' : `${projects?.length ?? 0} projects`}
         </span>
       }
-      subHeader={
-        <AuthenticatedModeStrip
-          items={[
-            { label: 'Ask', value: 'orient' },
-            { label: 'Plan', value: 'review' },
-            { label: 'Code', value: 'change' },
-            { label: 'Build', value: 'proof', active: true },
-          ]}
-        />
-      }
-      contentClassName="lg:p-0"
+      className="max-w-4xl"
     >
       <CreateProjectDialog
         onCreate={handleCreateProject}
         showTrigger={false}
         listenForCreateEvent
       />
-      <div className="grid gap-px bg-border lg:grid-cols-[minmax(0,0.74fr)_minmax(360px,0.26fr)]">
-        <div className="bg-background p-5 sm:p-7 lg:p-9">
-          <div className="mb-8 max-w-3xl">
-            <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-primary">
-              Workspace registry
-            </p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-              Open the right command surface.
-            </h2>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              Search recent workspaces, resume active runs, or create a new project before entering
-              the full workbench.
-            </p>
-          </div>
 
-          <div className="mb-8 grid gap-2 border border-border bg-card p-4">
-            <label
-              htmlFor="project-search"
-              className="font-mono text-xs uppercase tracking-[0.06em] text-muted-foreground"
-            >
-              Search projects
-            </label>
-            <div className="relative">
-              <Search
-                size={16}
-                className="absolute left-0 top-1/2 -translate-y-1/2 text-muted-foreground"
-              />
-              <Input
-                id="project-search"
-                placeholder="Search projects..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="rounded-none border-0 border-b border-border bg-transparent pl-7 font-mono focus-visible:border-primary focus-visible:ring-0"
-              />
-            </div>
-          </div>
-
-          {isLoading ? (
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-[68px] animate-pulse bg-muted" />
-              ))}
-            </div>
-          ) : sortedProjects && sortedProjects.length > 0 ? (
-            <div className="border border-border bg-card">
-              <AnimatePresence mode="popLayout">
-                {sortedProjects.map((project, index) => (
-                  <ProjectRow
-                    key={project._id}
-                    project={project}
-                    index={index}
-                    onDelete={handleDeleteProject}
-                    onRecordOpen={handleOpenProject}
-                    onNavigate={handleProjectNavigate}
-                  />
-                ))}
-              </AnimatePresence>
-            </div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex flex-col items-center justify-center border border-border bg-card py-16 text-center"
-            >
-              <div className="mb-6 flex h-16 w-16 items-center justify-center border border-border bg-background">
-                <FolderGit2 size={32} className="text-muted-foreground" />
-              </div>
-              <h3 className="mb-2 font-mono text-xl font-medium">
-                {searchQuery ? 'No projects found' : 'Start your first project'}
-              </h3>
-              <p className="mb-8 max-w-sm text-muted-foreground">
-                {searchQuery
-                  ? `No projects matching "${searchQuery}".`
-                  : 'A project gives you a workspace with file editing, AI chat, plan review, and terminal access — all in one browser tab.'}
-              </p>
-              {!searchQuery && (
-                <div className="flex flex-col items-center gap-3">
-                  <CreateProjectDialog onCreate={handleCreateProject} />
-                  <Link
-                    href="/education"
-                    className="font-mono text-xs text-muted-foreground underline hover:text-foreground"
-                  >
-                    Learn how Panda works
-                  </Link>
-                </div>
-              )}
-            </motion.div>
-          )}
-        </div>
-
-        <aside className="bg-card p-5 sm:p-7 lg:p-9">
-          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-            Session signals
-          </p>
-          <div className="mt-5 grid gap-px bg-border">
-            {[
-              ['TOTAL', isLoading ? '...' : String(projects?.length ?? 0)],
-              ['VISIBLE', isLoading ? '...' : String(sortedProjects?.length ?? 0)],
-              ['NEXT', searchQuery ? 'filter results' : 'open workspace'],
-            ].map(([label, value]) => (
-              <div key={label} className="bg-background p-4">
-                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  {label}
-                </p>
-                <p className="mt-2 font-mono text-xs uppercase tracking-[0.12em] text-foreground">
-                  {value}
-                </p>
-              </div>
-            ))}
-          </div>
-        </aside>
+      <div className="relative mb-6">
+        <Search
+          size={16}
+          className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
+        />
+        <Input
+          id="project-search"
+          placeholder="Search projects"
+          aria-label="Search projects"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="h-12 rounded-full border-border bg-card pl-11 text-base focus-visible:border-oxblood focus-visible:ring-1 focus-visible:ring-oxblood"
+        />
       </div>
+
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-[84px] animate-pulse rounded-xl bg-secondary" />
+          ))}
+        </div>
+      ) : sortedProjects && sortedProjects.length > 0 ? (
+        <div className="space-y-3">
+          <AnimatePresence mode="popLayout">
+            {sortedProjects.map((project, index) => (
+              <ProjectRow
+                key={project._id}
+                project={project}
+                index={index}
+                onDelete={handleDeleteProject}
+                onRecordOpen={handleOpenProject}
+                onNavigate={handleProjectNavigate}
+              />
+            ))}
+          </AnimatePresence>
+        </div>
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col items-center justify-center py-20 text-center"
+        >
+          <div className="bg-primary mb-7 flex h-16 w-16 items-center justify-center rounded-xl">
+            <FolderGit2 size={28} className="text-primary-foreground" />
+          </div>
+          <h3 className="font-display mb-3 text-2xl font-semibold tracking-tight">
+            {searchQuery ? 'No projects found' : 'Start your first project'}
+          </h3>
+          <p className="mb-8 max-w-sm leading-relaxed text-muted-foreground">
+            {searchQuery
+              ? `Nothing matches "${searchQuery}". Try a different name.`
+              : 'A project is a full workspace — editor, agent chat, plan review, and a live runtime — in one browser tab.'}
+          </p>
+          {!searchQuery && (
+            <div className="flex flex-col items-center gap-4">
+              <CreateProjectDialog onCreate={handleCreateProject} />
+              <Link
+                href="/education"
+                className="text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              >
+                Learn how Panda works
+              </Link>
+            </div>
+          )}
+        </motion.div>
+      )}
     </AuthenticatedPageShell>
   )
 }

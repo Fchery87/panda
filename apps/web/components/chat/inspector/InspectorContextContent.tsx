@@ -69,7 +69,7 @@ export function InspectorContextContent({
               type="button"
               variant="outline"
               size="sm"
-              className="h-7 rounded-none font-mono text-[10px]"
+              className="h-7 font-mono text-[10px]"
               onClick={() => void rebuildProject({ projectId })}
             >
               Rebuild
@@ -78,7 +78,7 @@ export function InspectorContextContent({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-7 rounded-none font-mono text-[10px]"
+              className="h-7 font-mono text-[10px]"
               onClick={() => void purgeProject({ projectId })}
             >
               Purge

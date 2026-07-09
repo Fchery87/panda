@@ -356,6 +356,12 @@ export const PersistedRunEvent = v.object({
   sequence: v.number(),
   type: v.string(),
   content: v.optional(v.string()),
+  contentPreview: v.optional(v.string()),
+  outputPreview: v.optional(v.string()),
+  errorPreview: v.optional(v.string()),
+  hasBody: v.optional(v.boolean()),
+  hasArgs: v.optional(v.boolean()),
+  hasSnapshot: v.optional(v.boolean()),
   status: v.optional(v.string()),
   progressCategory: v.optional(v.string()),
   progressToolName: v.optional(v.string()),
@@ -538,6 +544,7 @@ export const RuntimeCheckpointState = v.object({
   cost: v.number(),
   consecutiveCompactionFailures: v.optional(v.number()),
   consecutiveNarrationTurns: v.optional(v.number()),
+  activeSpec: v.optional(v.any()),
   tokens: v.object({
     input: v.number(),
     output: v.number(),
@@ -1025,6 +1032,7 @@ export default defineSchema({
     createdAt: v.number(),
     lastOpenedAt: v.optional(v.number()),
     repoUrl: v.optional(v.string()),
+    fileMetadataBackfilledAt: v.optional(v.number()),
     githubRepository: v.optional(
       v.object({
         connectionId: v.id('githubConnections'),
@@ -1074,12 +1082,16 @@ export default defineSchema({
     projectId: v.id('projects'),
     path: v.string(),
     content: v.optional(v.string()),
+    contentRef: v.optional(v.id('fileContents')),
+    contentHash: v.optional(v.string()),
+    contentSize: v.optional(v.number()),
     isBinary: v.optional(v.boolean()),
     updatedAt: v.number(),
   })
     .index('by_project', ['projectId'])
     .index('by_path', ['projectId', 'path'])
-    .index('by_updated', ['projectId', 'updatedAt']),
+    .index('by_updated', ['projectId', 'updatedAt'])
+    .index('by_content_ref', ['contentRef']),
 
   // 3b. File metadata projection - hot file tree/project shell data without content
   fileMetadata: defineTable({
@@ -1096,16 +1108,38 @@ export default defineSchema({
     .index('by_path', ['projectId', 'path'])
     .index('by_updated', ['projectId', 'updatedAt']),
 
+  // 3c. File content store - per-project deduped cold file content refs
+  fileContents: defineTable({
+    projectId: v.id('projects'),
+    contentHash: v.string(),
+    hashAlgorithm: v.literal('sha256'),
+    size: v.number(),
+    kind: v.union(v.literal('inlineText'), v.literal('storage')),
+    content: v.optional(v.string()),
+    storageId: v.optional(v.id('_storage')),
+    isBinary: v.optional(v.boolean()),
+    mimeType: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_project_hash_size', ['projectId', 'contentHash', 'size'])
+    .index('by_project_created', ['projectId', 'createdAt'])
+    .index('by_storage', ['storageId']),
+
   // 4. FileSnapshots table - versioned file content for diff/restore
   fileSnapshots: defineTable({
     fileId: v.id('files'),
     snapshotNumber: v.number(),
-    content: v.string(),
+    content: v.optional(v.string()),
+    contentRef: v.optional(v.id('fileContents')),
+    contentHash: v.optional(v.string()),
+    contentSize: v.optional(v.number()),
     createdAt: v.number(),
   })
     .index('by_file', ['fileId'])
     .index('by_snapshot', ['fileId', 'snapshotNumber'])
-    .index('by_created', ['createdAt']),
+    .index('by_created', ['createdAt'])
+    .index('by_content_ref', ['contentRef']),
 
   // 4b. ResearchSources table - external web/repo/PDF source evidence
   researchSources: defineTable({
@@ -1174,6 +1208,7 @@ export default defineSchema({
     content: v.string(),
     blocks: v.optional(v.array(MessageBlock)),
     annotations: v.optional(v.array(MessageAnnotation)),
+    analyticsTracked: v.optional(v.boolean()),
     createdAt: v.number(),
   })
     .index('by_chat', ['chatId'])
@@ -1384,6 +1419,7 @@ export default defineSchema({
     delegatedTaskSummary: v.optional(v.string()),
     outputMode: v.optional(v.union(v.literal('inline'), v.literal('file-only'))),
     artifactCount: v.optional(v.number()),
+    analyticsPendingMessageId: v.optional(v.id('messages')),
     lastActivityAt: v.optional(v.number()),
     startedAt: v.number(),
     completedAt: v.optional(v.number()),
@@ -1403,6 +1439,12 @@ export default defineSchema({
     sequence: v.number(),
     type: v.string(),
     content: v.optional(v.string()),
+    contentPreview: v.optional(v.string()),
+    outputPreview: v.optional(v.string()),
+    errorPreview: v.optional(v.string()),
+    hasBody: v.optional(v.boolean()),
+    hasArgs: v.optional(v.boolean()),
+    hasSnapshot: v.optional(v.boolean()),
     status: v.optional(v.string()),
     progressCategory: v.optional(v.string()),
     progressToolName: v.optional(v.string()),
@@ -1424,6 +1466,23 @@ export default defineSchema({
     subagentSummary: v.optional(HarnessSubagentSummary),
     createdAt: v.number(),
   })
+    .index('by_run_sequence', ['runId', 'sequence'])
+    .index('by_chat_created', ['chatId', 'createdAt'])
+    .index('by_created', ['createdAt']),
+
+  agentRunEventBodies: defineTable({
+    eventId: v.id('agentRunEvents'),
+    runId: v.id('agentRuns'),
+    chatId: v.id('chats'),
+    sequence: v.number(),
+    content: v.optional(v.string()),
+    output: v.optional(v.string()),
+    error: v.optional(v.string()),
+    args: v.optional(v.record(v.string(), v.any())),
+    snapshot: v.optional(PersistedRunSnapshot),
+    createdAt: v.number(),
+  })
+    .index('by_event', ['eventId'])
     .index('by_run_sequence', ['runId', 'sequence'])
     .index('by_chat_created', ['chatId', 'createdAt'])
     .index('by_created', ['createdAt']),
@@ -1451,7 +1510,14 @@ export default defineSchema({
     agentName: v.string(),
     reason: v.union(v.literal('step'), v.literal('complete'), v.literal('error')),
     savedAt: v.number(),
-    checkpoint: RuntimeCheckpointPayload,
+    checkpoint: v.optional(RuntimeCheckpointPayload),
+    checkpointHash: v.optional(v.string()),
+    messageCount: v.optional(v.number()),
+    step: v.optional(v.number()),
+    inputTokens: v.optional(v.number()),
+    outputTokens: v.optional(v.number()),
+    reasoningTokens: v.optional(v.number()),
+    hasBody: v.optional(v.boolean()),
   })
     .index('by_chat_session_saved', ['chatId', 'sessionID', 'savedAt'])
     .index('by_project_session_saved', ['projectId', 'sessionID', 'savedAt'])
@@ -1459,6 +1525,23 @@ export default defineSchema({
     .index('by_chat_saved', ['chatId', 'savedAt'])
     .index('by_run_saved', ['runId', 'savedAt'])
     .index('by_saved', ['savedAt']),
+
+  harnessRuntimeCheckpointBodies: defineTable({
+    checkpointId: v.id('harnessRuntimeCheckpoints'),
+    projectId: v.id('projects'),
+    chatId: v.id('chats'),
+    runId: v.optional(v.id('agentRuns')),
+    sessionID: v.string(),
+    checkpoint: RuntimeCheckpointPayload,
+    checkpointHash: v.string(),
+    createdAt: v.number(),
+  })
+    .index('by_checkpoint', ['checkpointId'])
+    .index('by_run_session_created', ['runId', 'sessionID', 'createdAt'])
+    .index('by_chat_session_created', ['chatId', 'sessionID', 'createdAt'])
+    .index('by_chat_created', ['chatId', 'createdAt'])
+    .index('by_project_created', ['projectId', 'createdAt'])
+    .index('by_created', ['createdAt']),
 
   // 13. Checkpoints table - versioned snapshots for rollback
   checkpoints: defineTable({
@@ -1683,7 +1766,8 @@ export default defineSchema({
     .index('by_user', ['userId'])
     .index('by_action', ['action'])
     .index('by_created', ['createdAt'])
-    .index('by_resource', ['resource', 'resourceId']),
+    .index('by_resource', ['resource', 'resourceId'])
+    .index('by_resource_created', ['resource', 'createdAt']),
 
   // 20. Eval Suites table - reusable agent eval scenario collections
   evalSuites: defineTable({

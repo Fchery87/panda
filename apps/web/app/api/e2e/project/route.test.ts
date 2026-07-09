@@ -317,6 +317,7 @@ describe('/api/e2e/project route', () => {
             autoApplyFiles: false,
             autoRunCommands: false,
             allowedCommandPrefixes: [],
+            yoloCommandMode: false,
           },
         },
       })

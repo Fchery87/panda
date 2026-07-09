@@ -319,7 +319,7 @@ export function PlanArtifactTab({
             size="sm"
             variant="outline"
             onClick={() => setMode((current) => (current === 'review' ? 'edit' : 'review'))}
-            className="h-7 rounded-none px-3 font-mono text-xs"
+            className="h-7 px-3 font-mono text-xs"
           >
             {mode === 'review' ? (
               <Pencil className="mr-1.5 h-3 w-3" />
@@ -334,7 +334,7 @@ export function PlanArtifactTab({
               variant="outline"
               onClick={handleSaveDraft}
               disabled={!isDirty || isSavingPlanDraft}
-              className="h-7 rounded-none px-3 font-mono text-xs"
+              className="h-7 px-3 font-mono text-xs"
             >
               <Save className="mr-1.5 h-3 w-3" />
               {isSavingPlanDraft ? 'Saving' : 'Save Draft'}
@@ -346,7 +346,7 @@ export function PlanArtifactTab({
               variant="outline"
               onClick={onApprove}
               disabled={approveDisabled}
-              className="h-7 rounded-none px-3 font-mono text-xs"
+              className="h-7 px-3 font-mono text-xs"
             >
               Approve
             </Button>
@@ -356,7 +356,7 @@ export function PlanArtifactTab({
               size="sm"
               onClick={onBuildFromPlan}
               disabled={buildDisabled}
-              className="h-7 rounded-none px-3 font-mono text-xs"
+              className="h-7 px-3 font-mono text-xs"
             >
               Build
             </Button>

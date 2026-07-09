@@ -12,7 +12,7 @@ export default function DashboardNotFound() {
           This dashboard page doesn&apos;t exist or has been moved. Head back to your projects.
         </p>
       </div>
-      <Button asChild className="rounded-none font-mono">
+      <Button asChild className="font-mono">
         <Link href="/projects">
           <ArrowLeft size={16} className="mr-2" />
           Back to Projects

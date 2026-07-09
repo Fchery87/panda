@@ -124,7 +124,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     href={item.href}
                     aria-current={isActiveAdminRoute(pathname, item.href) ? 'page' : undefined}
                     className={cn(
-                      'flex min-h-10 items-center gap-3 rounded-none border px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] transition-colors',
+                      'flex min-h-10 items-center gap-3 border px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] transition-colors',
                       isActiveAdminRoute(pathname, item.href)
                         ? 'border-primary bg-primary text-primary-foreground'
                         : 'text-background/65 hover:border-background/25 hover:bg-background/10 border-transparent hover:text-background'
@@ -142,7 +142,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <div className="px-3">
                 <Link
                   href="/"
-                  className="text-background/65 hover:border-background/25 hover:bg-background/10 flex min-h-10 items-center gap-3 rounded-none border border-transparent px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] transition-colors hover:text-background"
+                  className="text-background/65 hover:border-background/25 hover:bg-background/10 flex min-h-10 items-center gap-3 border border-transparent px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] transition-colors hover:text-background"
                 >
                   <ArrowLeft size={16} />
                   Back to App

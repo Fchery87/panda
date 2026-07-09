@@ -30,45 +30,34 @@ export function AuthenticatedPageShell({
   hideHeader = false,
 }: AuthenticatedPageShellProps) {
   return (
-    <section className={cn('px-3 pb-12 pt-5 sm:px-5 lg:px-8', className)}>
-      <div className="bg-background/92 shadow-sharp-lg mx-auto max-w-[1500px] border border-border">
-        {!hideHeader && (
-          <header className="bg-card/95 flex items-start justify-between gap-4 border-b border-border px-5 py-4">
-            <div className="min-w-0">
-              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-primary">
-                {eyebrow}
-              </p>
-              <h1 className="mt-0.5 truncate text-xl font-bold leading-tight tracking-tight text-foreground">
-                {title}
-              </h1>
-              <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-                {description}
-              </p>
+    <section className={cn('mx-auto max-w-6xl px-5 pb-16 pt-10 sm:px-8 lg:pt-14', className)}>
+      {!hideHeader && (
+        <header className="flex flex-col justify-between gap-6 pb-8 sm:flex-row sm:items-end">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-oxblood">{eyebrow}</p>
+            <h1 className="font-display mt-2 truncate text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+              {title}
+            </h1>
+            <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted-foreground">
+              {description}
+            </p>
+          </div>
+          {status || action ? (
+            <div className="flex shrink-0 items-center gap-4">
+              {status ? <div className="text-sm text-muted-foreground">{status}</div> : null}
+              {action}
             </div>
-            {status || action ? (
-              <div className="flex shrink-0 items-center gap-3 pt-1">
-                {status ? (
-                  <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                    {status}
-                  </div>
-                ) : null}
-                {action}
-              </div>
-            ) : null}
-          </header>
-        )}
+          ) : null}
+        </header>
+      )}
 
-        {subHeader}
+      {subHeader}
 
-        <div
-          className={cn(
-            'bg-foreground/80 grid gap-px',
-            sidebar ? 'lg:grid-cols-[260px_minmax(0,1fr)]' : 'grid-cols-1'
-          )}
-        >
-          {sidebar ? <aside className="bg-card p-3 sm:p-5">{sidebar}</aside> : null}
-          <div className={cn('bg-background p-5 sm:p-7 lg:p-9', contentClassName)}>{children}</div>
-        </div>
+      <div
+        className={cn('grid gap-8', sidebar ? 'lg:grid-cols-[260px_minmax(0,1fr)]' : 'grid-cols-1')}
+      >
+        {sidebar ? <aside>{sidebar}</aside> : null}
+        <div className={cn('min-w-0', contentClassName)}>{children}</div>
       </div>
     </section>
   )
@@ -80,18 +69,19 @@ interface AuthenticatedModeStripProps {
 
 export function AuthenticatedModeStrip({ items }: AuthenticatedModeStripProps) {
   return (
-    <div className="grid border-b border-border bg-card sm:grid-cols-2 lg:grid-cols-4">
-      {items.map((item, index) => (
+    <div className="mb-8 flex flex-wrap gap-2">
+      {items.map((item) => (
         <div
           key={item.label}
           className={cn(
-            'flex min-h-11 items-center justify-between border-b border-border px-4 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground sm:border-r lg:border-b-0',
-            item.active && 'bg-primary/10 text-foreground',
-            index === items.length - 1 && 'sm:border-r-0'
+            'flex items-center gap-2 rounded-full px-4 py-1.5 text-sm',
+            item.active
+              ? 'bg-oxblood/25 font-medium text-foreground'
+              : 'bg-secondary text-muted-foreground'
           )}
         >
           <span>{item.label}</span>
-          <span className={item.active ? 'text-primary' : 'text-muted-foreground'}>
+          <span className={cn('text-xs', item.active ? 'text-oxblood' : 'text-muted-foreground')}>
             {item.value}
           </span>
         </div>

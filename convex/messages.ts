@@ -203,6 +203,7 @@ export const add = mutation({
     content: v.string(),
     blocks: v.optional(v.array(MessageBlock)),
     annotations: v.optional(v.array(MessageAnnotation)),
+    skipAnalytics: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const { project } = await requireChatOwner(ctx, args.chatId)
@@ -215,6 +216,7 @@ export const add = mutation({
       content: args.content,
       blocks: args.blocks,
       annotations: args.annotations,
+      analyticsTracked: args.skipAnalytics ? false : true,
       createdAt: now,
     })
 
@@ -222,9 +224,11 @@ export const add = mutation({
       updatedAt: now,
     })
 
-    await trackUserAnalytics(ctx, project.createdBy, {
-      totalMessages: 1,
-    })
+    if (!args.skipAnalytics) {
+      await trackUserAnalytics(ctx, project.createdBy, {
+        totalMessages: 1,
+      })
+    }
 
     return messageId
   },
@@ -257,7 +261,7 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id('messages') },
   handler: async (ctx, args) => {
-    const { project } = await requireMessageOwner(ctx, args.id)
+    const { message, project } = await requireMessageOwner(ctx, args.id)
 
     const artifacts = await ctx.db
       .query('artifacts')
@@ -280,9 +284,11 @@ export const remove = mutation({
 
     await ctx.db.delete(args.id)
 
-    await trackUserAnalytics(ctx, project.createdBy, {
-      totalMessages: -1,
-    })
+    if (message.analyticsTracked !== false) {
+      await trackUserAnalytics(ctx, project.createdBy, {
+        totalMessages: -1,
+      })
+    }
 
     return args.id
   },

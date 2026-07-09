@@ -1,8 +1,9 @@
 # Panda Workbench
 
-> Status: current guide Last updated: 2026-05-30 Scope: project workspace
-> layout, file opening, generated-file review, inspector rail, mobile workspace
-> destinations
+> Status: **being superseded** — the layout model described here is replaced by
+> [WORKSPACE_REDESIGN_PLAN.md](./WORKSPACE_REDESIGN_PLAN.md) (July 2026). This
+> document is retained for historical context and file-opening rules that remain
+> valid. Last updated: 2026-05-30
 
 Panda uses a workbench-owned file model. The editor/workbench region is the
 canonical place to view, edit, and review files. Chat captures intent and the

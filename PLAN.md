@@ -1,66 +1,27 @@
-# Plan: Panda Workflow Orchestration Completion
+# Plan: "Ink & Paper" redesign
 
-## Milestone 1: True `ask_user` Pause/Resume
+## Milestone 1: Token foundation
+What: Rewrite globals.css (new OKLCH tokens light+dark, `.ink-panel`, restyled utilities), extend tailwind.config.ts (display font, ink/lavender/iris/teal roles), swap fonts in app/layout.tsx (+ its test mock), pill Button, new PandaLogo, strip `rounded-none` overrides globally.
+Acceptance: app compiles; design contract test updated and green.
+Validation: `bun run typecheck` + `bun test apps/web/app/design-system-css.test.ts apps/web/app/layout.test.tsx`
 
-What: Convert `ask_user` from a follow-up-message pattern into a live same-run
-structured decision pause. Acceptance criteria: pending questions are persisted,
-rendered while the run is active, and option clicks resolve the active tool
-call. Validation: Convex contract tests, MessageBubble tests, questionnaire tool
-tests, and TypeScript. Status: [x] complete
+## Milestone 2: Public surface
+What: Landing page rewrite (paper/ink split hero, run-receipt ink card, workflow timeline, feature cards), PublicNav (floating pill nav), PublicFooter (ink panel), login page (centered paper card).
+Acceptance: pages render, copy per sentence-case plain-verb rules.
+Validation: `bun run typecheck && bun run lint`
 
-## Milestone 2: Direct Runtime Advisor Enforcement
+## Milestone 3: Dashboard surface
+What: DashboardHeader (clean product header), AuthenticatedPageShell (soft centered layout, keeps props API), projects page (Codex-style home: greeting, quiet search, card list, hero empty state).
+Acceptance: all existing handlers/dialogs/aria kept; settings page still renders via shell.
+Validation: `bun test apps/web/app` + typecheck
 
-What: Add advisor preflight before risky direct runtime tools. Acceptance
-criteria: risky `write_files`, `run_command`, and `apply_patch` calls create
-advisor requests and do not execute before review. Validation: direct tool
-advisor enforcement tests and TypeScript. Status: [x] complete
+## Milestone 4: Workbench chrome
+What: WorkbenchTopBar → ink panel; workspace shell container polish (rounded, soft shadow).
+Acceptance: design-system test aria-label checks still pass.
+Validation: `bun test apps/web/app/design-system-css.test.ts` + typecheck
 
-## Milestone 3: Autopilot Checkpoints
+## Milestone 5: Docs + full gate
+What: Rewrite docs/DESIGN.md; run full gate; fix fallout.
+Validation: `bun run typecheck && bun run lint && bun test`
 
-What: Gate Agent Autopilot transitions behind advisor review when the
-`autopilot_checkpoint` policy applies. Acceptance criteria: Autopilot creates an
-advisor request, emits checkpoint events, and stops before unattended
-continuation. Validation: workflow checkpoint tests, useAgent integration
-contract test, and TypeScript. Status: [x] complete
-
-## Milestone 4: Workflow Chain Runtime Linkage
-
-What: Link workflow chain steps to actual `agentRuns`. Acceptance criteria:
-steps store `runId` and are marked running/completed/failed from run lifecycle.
-Validation: Convex contract tests, useAgent chain linkage test,
-WorkflowChainsPanel tests, and TypeScript. Status: [x] complete
-
-## Milestone 5: Browser Proof Chain Coverage
-
-What: Add Playwright coverage for file artifact apply → file tree/editor
-visibility and advisor-gated artifact surfacing. Acceptance criteria: e2e spec
-is present and discoverable. Validation: Playwright spec discovery and focused
-unit/regression tests. Status: [x] complete
-
-## Milestone 6: Advisor Reviewer Polish
-
-What: Improve advisor review request UX. Acceptance criteria: request cards
-support prompt view/copy, cancellation, running state, disabled empty manual
-completion, and success/error toasts. Validation: AdvisorReviewRequestsPanel
-tests and TypeScript. Status: [x] complete
-
-## Milestone 7: Workflow Artifact Materialization
-
-What: Add optional `.panda/artifacts/...` markdown materialization helpers and
-copy affordances while keeping Convex canonical. Acceptance criteria:
-deterministic materialized path/content drafts and UI copy buttons. Validation:
-materialization tests, WorkflowArtifactsPanel tests, and TypeScript. Status: [x]
-complete
-
-## Milestone 8: Documentation And Status
-
-What: Update the remaining implementation plan, project plan, and status
-tracker. Acceptance criteria: docs distinguish completed work from hardening
-follow-ups. Validation: direct file review. Status: [x] complete
-
-## Milestone 9: Final Regression And Cleanup
-
-What: Run focused regression, Convex codegen, TypeScript, and inspect
-generated-artifact status. Acceptance criteria: focused tests and typecheck
-pass; no accidental `.next`/test-result files are newly tracked. Validation:
-final commands recorded in `STATUS.md`. Status: [>] in progress
+Merge contract: single stream, no parallel worktrees.

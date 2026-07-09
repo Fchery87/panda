@@ -5,6 +5,7 @@ import type { Id } from './_generated/dataModel'
 import { v } from 'convex/values'
 import { ContextChunkSourceType } from './schema'
 import { requireProjectOwner } from './lib/authz'
+import { resolveContent } from './lib/fileContentStore'
 
 const MAX_CHUNK_CHARS = 2_400
 const OVERLAP_CHARS = 240
@@ -179,15 +180,23 @@ export const indexProjectFiles = mutation({
       .query('files')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .take(Math.min(Math.max(args.limit ?? 500, 1), 2000))
-    const chunks = files.flatMap((file) =>
-      chunkSource({
-        sourceType: 'file',
-        sourceId: String(file._id),
-        path: file.path,
-        title: file.path.split('/').pop() ?? file.path,
-        content: file.isBinary ? '' : file.content,
-      })
-    )
+    const chunks = []
+    for (const file of files) {
+      chunks.push(
+        ...chunkSource({
+          sourceType: 'file',
+          sourceId: String(file._id),
+          path: file.path,
+          title: file.path.split('/').pop() ?? file.path,
+          content: file.isBinary
+            ? ''
+            : await resolveContent(ctx, {
+                legacyContent: file.content,
+                contentRef: file.contentRef,
+              }),
+        })
+      )
+    }
     return await upsertChunkBatch(ctx, { projectId: args.projectId, chunks })
   },
 })
@@ -413,15 +422,23 @@ export const rebuildProject = mutation({
       .query('files')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .take(2000)
-    const fileChunks = files.flatMap((file) =>
-      chunkSource({
-        sourceType: 'file',
-        sourceId: String(file._id),
-        path: file.path,
-        title: file.path.split('/').pop() ?? file.path,
-        content: file.isBinary ? '' : file.content,
-      })
-    )
+    const fileChunks = []
+    for (const file of files) {
+      fileChunks.push(
+        ...chunkSource({
+          sourceType: 'file',
+          sourceId: String(file._id),
+          path: file.path,
+          title: file.path.split('/').pop() ?? file.path,
+          content: file.isBinary
+            ? ''
+            : await resolveContent(ctx, {
+                legacyContent: file.content,
+                contentRef: file.contentRef,
+              }),
+        })
+      )
+    }
     const fileChunksWritten = await upsertChunkBatch(ctx, {
       projectId: args.projectId,
       chunks: fileChunks,

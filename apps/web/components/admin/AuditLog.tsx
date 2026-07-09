@@ -32,7 +32,7 @@ const actionColors: Record<string, string> = {
 export function AuditLog({ logs }: AuditLogProps) {
   if (!logs) {
     return (
-      <Card className="rounded-none">
+      <Card className="">
         <CardHeader>
           <CardTitle>Audit Log</CardTitle>
           <CardDescription>Loading audit log...</CardDescription>
@@ -42,7 +42,7 @@ export function AuditLog({ logs }: AuditLogProps) {
   }
 
   return (
-    <Card className="rounded-none">
+    <Card className="">
       <CardHeader>
         <div className="flex items-center gap-2">
           <Shield className="h-5 w-5" />
@@ -59,13 +59,13 @@ export function AuditLog({ logs }: AuditLogProps) {
               logs.map((log) => (
                 <div
                   key={log._id}
-                  className="hover:bg-muted/50 flex items-start gap-4 rounded-none border border-border p-4 transition-colors"
+                  className="hover:bg-muted/50 flex items-start gap-4 border border-border p-4 transition-colors"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge
                         variant="outline"
-                        className={`rounded-none font-mono text-xs ${actionColors[log.action] || ''}`}
+                        className={`font-mono text-xs ${actionColors[log.action] || ''}`}
                       >
                         {log.action}
                       </Badge>
@@ -85,7 +85,7 @@ export function AuditLog({ logs }: AuditLogProps) {
                     </p>
 
                     {log.details && Object.keys(log.details).length > 0 && (
-                      <div className="mt-2 rounded-none bg-muted p-2 font-mono text-xs text-muted-foreground">
+                      <div className="mt-2 bg-muted p-2 font-mono text-xs text-muted-foreground">
                         {JSON.stringify(log.details, null, 2)}
                       </div>
                     )}

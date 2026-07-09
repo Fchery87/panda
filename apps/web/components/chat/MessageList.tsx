@@ -226,7 +226,7 @@ export function MessageList({
             size="sm"
             variant="outline"
             onClick={handleJumpToLatest}
-            className="shadow-sharp-sm border-primary/40 bg-background/95 pointer-events-auto rounded-none font-mono text-[10px] uppercase tracking-[0.18em]"
+            className="shadow-sharp-sm border-primary/40 bg-background/95 pointer-events-auto font-mono text-[10px] uppercase tracking-[0.18em]"
           >
             Jump To Latest
           </Button>

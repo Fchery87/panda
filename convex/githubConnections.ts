@@ -2,6 +2,11 @@ import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { getCurrentUserId, requireAuth } from './lib/auth'
 import { requireProjectOwner } from './lib/authz'
+import {
+  buildContentFieldsForOptionalContent,
+  deleteUnreferencedFileContents,
+  upsertFileMetadataProjection,
+} from './lib/fileContentStore'
 
 const GITHUB_APP_INSTALL_URL = 'https://github.com/apps'
 
@@ -522,21 +527,49 @@ export const syncFromGitHub = mutation({
         .withIndex('by_path', (q) => q.eq('projectId', args.projectId).eq('path', file.path))
         .unique()
 
-      if (existing) {
-        await ctx.db.patch(existing._id, {
-          content: file.content,
-          isBinary: file.isBinary ?? false,
-          updatedAt: now,
-        })
-      } else {
-        await ctx.db.insert('files', {
-          projectId: args.projectId,
-          path: file.path,
-          content: file.content,
-          isBinary: file.isBinary ?? false,
-          updatedAt: now,
-        })
+      if (!existing && file.content === undefined && !file.isBinary) {
+        throw new Error(`Cannot sync new GitHub file without content: ${file.path}`)
       }
+
+      const contentFields = await buildContentFieldsForOptionalContent(ctx, {
+        projectId: args.projectId,
+        content: file.content,
+        isBinary: file.isBinary ?? false,
+      })
+
+      const fileId = existing
+        ? existing._id
+        : await ctx.db.insert('files', {
+            projectId: args.projectId,
+            path: file.path,
+            content: file.content,
+            ...contentFields,
+            isBinary: file.isBinary ?? false,
+            updatedAt: now,
+          })
+
+      if (existing) {
+        const oldContentRef = existing.contentRef
+        await ctx.db.patch(existing._id, {
+          ...(file.content !== undefined ? { content: file.content, ...contentFields } : {}),
+          isBinary: file.isBinary ?? existing.isBinary ?? false,
+          updatedAt: now,
+        })
+        if (file.content !== undefined) {
+          await deleteUnreferencedFileContents(ctx, [oldContentRef])
+        }
+      }
+
+      await upsertFileMetadataProjection(ctx, {
+        fileId,
+        projectId: args.projectId,
+        path: file.path,
+        content: file.content ?? existing?.content,
+        contentHash: contentFields.contentHash ?? existing?.contentHash,
+        contentSize: contentFields.contentSize ?? existing?.contentSize,
+        isBinary: file.isBinary ?? existing?.isBinary ?? false,
+        updatedAt: now,
+      })
     }
 
     await ctx.db.patch(args.projectId, {

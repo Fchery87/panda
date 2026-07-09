@@ -50,7 +50,7 @@ export function MermaidRenderer({ content, className }: MermaidRendererProps) {
 
   if (error) {
     return (
-      <div className={cn('rounded-none border border-red-500/50 bg-red-500/10 p-3', className)}>
+      <div className={cn('border border-red-500/50 bg-red-500/10 p-3', className)}>
         <div className="font-mono text-xs uppercase tracking-wider text-red-500">Diagram Error</div>
         <pre className="mt-1 font-mono text-xs text-red-400">{error}</pre>
       </div>
@@ -60,7 +60,7 @@ export function MermaidRenderer({ content, className }: MermaidRendererProps) {
   return (
     <div
       ref={containerRef}
-      className={cn('mermaid-diagram bg-muted/30 overflow-auto rounded-none p-4', className)}
+      className={cn('mermaid-diagram bg-muted/30 overflow-auto p-4', className)}
       dangerouslySetInnerHTML={svg ? { __html: svg } : undefined}
     >
       {!svg && (

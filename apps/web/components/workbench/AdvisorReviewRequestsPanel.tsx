@@ -85,7 +85,7 @@ export function AdvisorReviewRequestsList({
                 type="button"
                 size="sm"
                 variant="ghost"
-                className="h-6 flex-1 rounded-none font-mono text-[10px] uppercase tracking-wide"
+                className="h-6 flex-1 font-mono text-[10px] uppercase tracking-wide"
                 onClick={() => setExpandedPromptId(isPromptExpanded ? null : request._id)}
               >
                 {isPromptExpanded ? 'Hide Prompt' : 'View Prompt'}
@@ -94,7 +94,7 @@ export function AdvisorReviewRequestsList({
                 type="button"
                 size="sm"
                 variant="ghost"
-                className="h-6 flex-1 rounded-none font-mono text-[10px] uppercase tracking-wide"
+                className="h-6 flex-1 font-mono text-[10px] uppercase tracking-wide"
                 onClick={async () => {
                   await navigator.clipboard?.writeText(request.prompt)
                   toast.success('Advisor prompt copied')
@@ -107,7 +107,7 @@ export function AdvisorReviewRequestsList({
                   type="button"
                   size="sm"
                   variant="ghost"
-                  className="h-6 flex-1 rounded-none font-mono text-[10px] uppercase tracking-wide"
+                  className="h-6 flex-1 font-mono text-[10px] uppercase tracking-wide"
                   onClick={() => onCancelRequest(request._id)}
                 >
                   Cancel Request
@@ -121,7 +121,7 @@ export function AdvisorReviewRequestsList({
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="h-7 w-full rounded-none font-mono text-[10px] uppercase tracking-wide"
+                    className="h-7 w-full font-mono text-[10px] uppercase tracking-wide"
                     disabled={isRunning}
                     onClick={async () => {
                       setRunningRequestIds((prev) => new Set(prev).add(request._id))
@@ -156,7 +156,7 @@ export function AdvisorReviewRequestsList({
                       <Button
                         type="button"
                         size="sm"
-                        className="h-7 flex-1 rounded-none font-mono text-[10px] uppercase tracking-wide"
+                        className="h-7 flex-1 font-mono text-[10px] uppercase tracking-wide"
                         disabled={!reviewerOutput.trim()}
                         onClick={async () => {
                           await onCompleteRequest({ requestId: request._id, reviewerOutput })
@@ -170,7 +170,7 @@ export function AdvisorReviewRequestsList({
                         type="button"
                         size="sm"
                         variant="outline"
-                        className="h-7 flex-1 rounded-none font-mono text-[10px] uppercase tracking-wide"
+                        className="h-7 flex-1 font-mono text-[10px] uppercase tracking-wide"
                         onClick={() => {
                           setReviewerOutput('')
                           setActiveRequestId(null)
@@ -185,7 +185,7 @@ export function AdvisorReviewRequestsList({
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="h-7 w-full rounded-none font-mono text-[10px] uppercase tracking-wide"
+                    className="h-7 w-full font-mono text-[10px] uppercase tracking-wide"
                     onClick={() => setActiveRequestId(request._id)}
                   >
                     Enter Advisor Output

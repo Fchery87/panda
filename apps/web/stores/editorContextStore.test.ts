@@ -26,6 +26,18 @@ describe('editorContextStore', () => {
     expect(useEditorContextStore.getState().openTabs).toHaveLength(1)
   })
 
+  test('reset increments the reset generation for reset-aware sync hooks', () => {
+    resetStore()
+    const beforeReset = useEditorContextStore.getState().resetGeneration
+
+    useEditorContextStore.getState().openTab({ kind: 'file', path: 'src/a.ts' })
+    useEditorContextStore.getState().reset()
+
+    const afterReset = useEditorContextStore.getState()
+    expect(afterReset.openTabs).toHaveLength(0)
+    expect(afterReset.resetGeneration).toBe(beforeReset + 1)
+  })
+
   test('closing the active tab selects the previous tab', () => {
     resetStore()
     const state = useEditorContextStore.getState()

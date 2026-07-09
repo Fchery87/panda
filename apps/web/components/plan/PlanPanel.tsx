@@ -132,7 +132,7 @@ export function PlanPanel({
                 variant="outline"
                 onClick={onApprove}
                 disabled={approveDisabled}
-                className="h-6 rounded-none px-2 font-mono text-[9px] uppercase tracking-wide"
+                className="h-6 px-2 font-mono text-[9px] uppercase tracking-wide"
               >
                 Approve
               </Button>
@@ -142,7 +142,7 @@ export function PlanPanel({
                 size="sm"
                 onClick={onBuildFromPlan}
                 disabled={buildDisabled}
-                className="h-6 rounded-none px-2 font-mono text-[9px] uppercase tracking-wide"
+                className="h-6 px-2 font-mono text-[9px] uppercase tracking-wide"
               >
                 Build
               </Button>
@@ -151,7 +151,7 @@ export function PlanPanel({
               size="sm"
               onClick={onSave}
               disabled={isSaving}
-              className="h-6 rounded-none px-2 font-mono text-[9px] uppercase tracking-wide"
+              className="h-6 px-2 font-mono text-[9px] uppercase tracking-wide"
             >
               {isSaving ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -171,11 +171,11 @@ export function PlanPanel({
         onValueChange={(v) => setActiveTab(v as PlanPanelTab)}
         className="flex-1 overflow-hidden"
       >
-        <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent px-3">
+        <TabsList className="w-full justify-start border-b border-border bg-transparent px-3">
           {hasStructuredPlan ? (
             <TabsTrigger
               value="review"
-              className="gap-1.5 rounded-none border-b-2 border-transparent px-3 py-2 font-mono text-xs uppercase tracking-wider data-[state=active]:border-primary data-[state=active]:bg-transparent"
+              className="gap-1.5 border-b-2 border-transparent px-3 py-2 font-mono text-xs uppercase tracking-wider data-[state=active]:border-primary data-[state=active]:bg-transparent"
             >
               <Check className="h-3.5 w-3.5" />
               Review
@@ -183,14 +183,14 @@ export function PlanPanel({
           ) : null}
           <TabsTrigger
             value="edit"
-            className="gap-1.5 rounded-none border-b-2 border-transparent px-3 py-2 font-mono text-xs uppercase tracking-wider data-[state=active]:border-primary data-[state=active]:bg-transparent"
+            className="gap-1.5 border-b-2 border-transparent px-3 py-2 font-mono text-xs uppercase tracking-wider data-[state=active]:border-primary data-[state=active]:bg-transparent"
           >
             <FileText className="h-3.5 w-3.5" />
             Edit
           </TabsTrigger>
           <TabsTrigger
             value="preview"
-            className="gap-1.5 rounded-none border-b-2 border-transparent px-3 py-2 font-mono text-xs uppercase tracking-wider data-[state=active]:border-primary data-[state=active]:bg-transparent"
+            className="gap-1.5 border-b-2 border-transparent px-3 py-2 font-mono text-xs uppercase tracking-wider data-[state=active]:border-primary data-[state=active]:bg-transparent"
           >
             <GitGraph className="h-3.5 w-3.5" />
             Markdown
@@ -290,7 +290,7 @@ flowchart TD
     B -->|Yes| C[Action 1]
     B -->|No| D[Action 2]
 \`\`\``}
-            className="h-full min-h-[400px] resize-none rounded-none border-0 bg-transparent font-mono text-sm focus-visible:ring-0"
+            className="h-full min-h-[400px] resize-none border-0 bg-transparent font-mono text-sm focus-visible:ring-0"
           />
         </TabsContent>
 

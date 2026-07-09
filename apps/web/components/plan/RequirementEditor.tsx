@@ -134,7 +134,7 @@ export function RequirementEditor({
             variant="outline"
             size="sm"
             onClick={handleAdd}
-            className="h-7 rounded-none border-border font-mono text-xs"
+            className="h-7 border-border font-mono text-xs"
           >
             <Plus className="mr-1 h-3 w-3" />
             Add Requirement
@@ -168,7 +168,7 @@ export function RequirementEditor({
                       value={req.trigger}
                       onChange={(e) => handleUpdate(req.id, { trigger: e.target.value })}
                       placeholder="e.g., the user submits the form"
-                      className="rounded-none border-border font-mono text-sm"
+                      className="border-border font-mono text-sm"
                     />
                   </div>
 
@@ -180,7 +180,7 @@ export function RequirementEditor({
                       value={req.behavior}
                       onChange={(e) => handleUpdate(req.id, { behavior: e.target.value })}
                       placeholder="e.g., validate all input fields"
-                      className="rounded-none border-border font-mono text-sm"
+                      className="border-border font-mono text-sm"
                     />
                   </div>
 
@@ -194,10 +194,10 @@ export function RequirementEditor({
                         handleUpdate(req.id, { verificationMethod: value })
                       }
                     >
-                      <SelectTrigger className="rounded-none border-border font-mono text-sm">
+                      <SelectTrigger className="border-border font-mono text-sm">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="rounded-none">
+                      <SelectContent className="">
                         <SelectItem value="automated">Automated</SelectItem>
                         <SelectItem value="llm-judge">LLM Judge</SelectItem>
                         <SelectItem value="manual">Manual</SelectItem>
@@ -216,7 +216,7 @@ export function RequirementEditor({
                     <Button
                       size="sm"
                       onClick={() => handleSave(req.id)}
-                      className="h-7 rounded-none font-mono text-xs"
+                      className="h-7 font-mono text-xs"
                     >
                       <Check className="mr-1 h-3 w-3" />
                       Save
@@ -225,7 +225,7 @@ export function RequirementEditor({
                       variant="ghost"
                       size="sm"
                       onClick={() => setEditingId(null)}
-                      className="h-7 rounded-none font-mono text-xs"
+                      className="h-7 font-mono text-xs"
                     >
                       Cancel
                     </Button>
@@ -289,7 +289,7 @@ export function RequirementEditor({
                         e.stopPropagation()
                         handleRemove(req.id)
                       }}
-                      className="h-7 w-7 shrink-0 rounded-none text-muted-foreground hover:text-destructive"
+                      className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
                       aria-label={`Remove requirement ${index + 1}`}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -309,7 +309,7 @@ export function RequirementEditor({
                 variant="ghost"
                 size="sm"
                 onClick={handleAdd}
-                className="mt-2 h-7 rounded-none font-mono text-xs"
+                className="mt-2 h-7 font-mono text-xs"
               >
                 <Plus className="mr-1 h-3 w-3" />
                 Add your first requirement

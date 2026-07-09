@@ -140,7 +140,7 @@ export function UserManagementTable() {
   }
 
   return (
-    <Card className="rounded-none">
+    <Card className="">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
@@ -154,11 +154,11 @@ export function UserManagementTable() {
                 placeholder="Search users..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-[250px] rounded-none pl-10"
+                className="w-[250px] pl-10"
               />
             </div>
             <Select value={filter} onValueChange={(value) => setFilter(value as AdminUserFilter)}>
-              <SelectTrigger className="w-[150px] rounded-none">
+              <SelectTrigger className="w-[150px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -178,7 +178,7 @@ export function UserManagementTable() {
             {loadedUsers.map((user) => (
               <div
                 key={user._id}
-                className="hover:bg-muted/50 flex items-center justify-between rounded-none border border-border p-4 transition-colors"
+                className="hover:bg-muted/50 flex items-center justify-between border border-border p-4 transition-colors"
               >
                 <div className="flex items-center gap-4">
                   <div className="flex h-10 w-10 items-center justify-center bg-muted font-mono text-sm">
@@ -189,19 +189,19 @@ export function UserManagementTable() {
                     <p className="font-mono text-sm text-muted-foreground">{user.email}</p>
                     <div className="mt-1 flex gap-2">
                       {user.isAdmin && (
-                        <Badge variant="default" className="rounded-none text-xs">
+                        <Badge variant="default" className="text-xs">
                           <Shield className="mr-1 h-3 w-3" />
                           Admin
                         </Badge>
                       )}
                       {user.isBanned && (
-                        <Badge variant="destructive" className="rounded-none text-xs">
+                        <Badge variant="destructive" className="text-xs">
                           <Ban className="mr-1 h-3 w-3" />
                           Banned
                         </Badge>
                       )}
                       {user.analytics && (
-                        <Badge variant="outline" className="rounded-none text-xs">
+                        <Badge variant="outline" className="text-xs">
                           {user.analytics.totalProjects || 0} projects
                         </Badge>
                       )}
@@ -212,11 +212,11 @@ export function UserManagementTable() {
                 <div className="flex items-center gap-2">
                   <Dialog>
                     <DialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="rounded-none">
+                      <Button variant="ghost" size="sm" className="">
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-lg rounded-none">
+                    <DialogContent className="max-w-lg">
                       <DialogHeader>
                         <DialogTitle>User Actions</DialogTitle>
                         <DialogDescription>
@@ -229,7 +229,7 @@ export function UserManagementTable() {
                           <p className="text-sm font-medium">Admin Status</p>
                           <Button
                             variant={user.isAdmin ? 'destructive' : 'default'}
-                            className="w-full rounded-none"
+                            className="w-full"
                             onClick={() => handleToggleAdmin(user._id, !user.isAdmin)}
                             disabled={isLoading}
                           >
@@ -255,7 +255,7 @@ export function UserManagementTable() {
                           <p className="text-sm font-medium">Account Status</p>
                           <Button
                             variant={user.isBanned ? 'outline' : 'destructive'}
-                            className="w-full rounded-none"
+                            className="w-full"
                             onClick={() => handleToggleBan(user._id, !user.isBanned)}
                             disabled={isLoading}
                           >
@@ -281,7 +281,7 @@ export function UserManagementTable() {
                           <p className="text-sm font-medium text-destructive">Danger Zone</p>
                           <Button
                             variant="destructive"
-                            className="w-full rounded-none"
+                            className="w-full"
                             onClick={() => handleDeleteUser(user._id)}
                             disabled={isLoading}
                           >
@@ -310,7 +310,7 @@ export function UserManagementTable() {
               <div className="flex justify-center pt-4">
                 <Button
                   variant="outline"
-                  className="rounded-none"
+                  className=""
                   onClick={() => setCursor(users.nextCursor ?? undefined)}
                 >
                   <ChevronDown className="mr-2 h-4 w-4" />

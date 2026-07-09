@@ -127,7 +127,7 @@ export function ConnectProvider({ provider, className }: ConnectProviderProps) {
           onClick={handleDisconnect}
           variant="outline"
           size="sm"
-          className="rounded-none font-mono"
+          className="font-mono"
         >
           Disconnect
         </Button>
@@ -146,7 +146,7 @@ export function ConnectProvider({ provider, className }: ConnectProviderProps) {
           onClick={config.supportsOAuth ? handleOAuthConnect : () => setShowApiKeyInput(true)}
           variant="outline"
           size="sm"
-          className="rounded-none font-mono"
+          className="font-mono"
         >
           Reconnect
         </Button>
@@ -167,13 +167,13 @@ export function ConnectProvider({ provider, className }: ConnectProviderProps) {
             placeholder="Enter API key"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
-            className="flex-1 rounded-none border border-border bg-background px-3 py-2 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            className="flex-1 border border-border bg-background px-3 py-2 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-primary"
           />
           <Button
             onClick={handleApiKeyConnect}
             disabled={!apiKey.trim() || isConnecting}
             size="sm"
-            className="rounded-none font-mono"
+            className="font-mono"
           >
             {isConnecting ? 'Connecting...' : 'Connect'}
           </Button>
@@ -182,7 +182,7 @@ export function ConnectProvider({ provider, className }: ConnectProviderProps) {
               onClick={() => setShowApiKeyInput(false)}
               variant="outline"
               size="sm"
-              className="rounded-none font-mono"
+              className="font-mono"
             >
               Cancel
             </Button>
@@ -199,14 +199,14 @@ export function ConnectProvider({ provider, className }: ConnectProviderProps) {
         <p className="text-xs text-muted-foreground">{config.description}</p>
       </div>
       <div className="flex gap-2">
-        <Button onClick={handleOAuthConnect} size="sm" className="rounded-none font-mono">
+        <Button onClick={handleOAuthConnect} size="sm" className="font-mono">
           Sign in with {config.name}
         </Button>
         <Button
           onClick={() => setShowApiKeyInput(true)}
           variant="outline"
           size="sm"
-          className="rounded-none font-mono"
+          className="font-mono"
         >
           Use API Key
         </Button>

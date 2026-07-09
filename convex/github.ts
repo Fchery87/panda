@@ -2,6 +2,11 @@ import { action, mutation, query } from './_generated/server'
 import { api } from './_generated/api'
 import { v } from 'convex/values'
 import { requireProjectOwner } from './lib/authz'
+import {
+  deleteUnreferencedFileContents,
+  ensureInlineTextContent,
+  upsertFileMetadataProjection,
+} from './lib/fileContentStore'
 
 // Maximum file size in bytes (1MB)
 const MAX_FILE_SIZE = 1024 * 1024
@@ -443,22 +448,44 @@ export const createFile = mutation({
       .withIndex('by_path', (q) => q.eq('projectId', projectId).eq('path', path))
       .unique()
 
+    const contentFields = await ensureInlineTextContent(ctx, {
+      projectId,
+      content,
+      isBinary: false,
+    })
+
+    const fileId = existing
+      ? existing._id
+      : await ctx.db.insert('files', {
+          projectId,
+          path,
+          content,
+          ...contentFields,
+          isBinary: false,
+          updatedAt: now,
+        })
+
     if (existing) {
+      const oldContentRef = existing.contentRef
       // Update existing file
       await ctx.db.patch(existing._id, {
         content,
+        ...contentFields,
         updatedAt: now,
       })
-    } else {
-      // Create new file
-      await ctx.db.insert('files', {
-        projectId,
-        path,
-        content,
-        isBinary: false,
-        updatedAt: now,
-      })
+      await deleteUnreferencedFileContents(ctx, [oldContentRef])
     }
+
+    await upsertFileMetadataProjection(ctx, {
+      fileId,
+      projectId,
+      path,
+      content,
+      contentHash: contentFields.contentHash,
+      contentSize: contentFields.contentSize,
+      isBinary: false,
+      updatedAt: now,
+    })
   },
 })
 

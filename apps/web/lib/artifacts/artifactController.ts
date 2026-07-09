@@ -23,6 +23,7 @@ type ApplyArtifactFn = (args: {
   artifactId: Id<'artifacts'>
   action: ArtifactAction
   projectId: Id<'projects'>
+  advisorPolicy?: AdvisorPolicy
   advisorReview?: AdvisorReviewRecord | null
 }) => Promise<ApplyArtifactResult>
 
@@ -75,10 +76,17 @@ export function createArtifactController({
           gates: preflight?.gates,
         })
 
+      // Don't apply if advisor review is required but not approved
+      if (preflight?.required && (!matchedAdvisorReview || matchedAdvisorReview.status !== 'approved')) {
+        // Stay pending - do not mark as failed
+        return null
+      }
+
       return await applyArtifact({
         artifactId: record._id,
         action,
         projectId,
+        advisorPolicy,
         advisorReview: matchedAdvisorReview,
       })
     },

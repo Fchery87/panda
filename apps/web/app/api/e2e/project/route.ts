@@ -516,6 +516,7 @@ export async function GET(request: Request) {
           autoApplyFiles: autoApplyFiles === null ? false : autoApplyFiles === '1',
           autoRunCommands: autoRunCommands === null ? false : autoRunCommands === '1',
           allowedCommandPrefixes: [],
+          yoloCommandMode: false,
         },
       })
     }

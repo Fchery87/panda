@@ -74,7 +74,7 @@ function StatusIcon({ status }: { status: AgentRunStatus }) {
 }
 
 export function ActivityFeed({ projectId, onOpenHistory, className }: ActivityFeedProps) {
-  const recentRuns = useQuery(api.agentRuns.listRecentByProject, {
+  const recentRuns = useQuery(api.agentRuns.listRecentSummariesByProject, {
     projectId,
     limit: 5,
   }) as AgentRun[] | undefined
@@ -113,7 +113,7 @@ export function ActivityFeed({ projectId, onOpenHistory, className }: ActivityFe
               <div className="flex shrink-0 items-center gap-2">
                 <span
                   className={cn(
-                    'rounded-none px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide',
+                    'px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide',
                     getModeBadgeColor(run.mode)
                   )}
                 >

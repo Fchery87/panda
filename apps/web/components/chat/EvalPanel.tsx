@@ -445,7 +445,7 @@ export function EvalPanel({
               <div className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
                 Create Suite
               </div>
-              <Badge variant="outline" className="rounded-none font-mono text-[10px]">
+              <Badge variant="outline" className="font-mono text-[10px]">
                 JSON Scenarios
               </Badge>
             </div>
@@ -453,13 +453,13 @@ export function EvalPanel({
               value={suiteName}
               onChange={(e) => setSuiteName(e.target.value)}
               placeholder="Smoke: build harness"
-              className="h-8 rounded-none font-mono text-xs"
+              className="h-8 font-mono text-xs"
             />
             <Input
               value={suiteDescription}
               onChange={(e) => setSuiteDescription(e.target.value)}
               placeholder="Optional description"
-              className="h-8 rounded-none font-mono text-xs"
+              className="h-8 font-mono text-xs"
             />
             <div className="grid gap-1 border border-border p-2">
               <div className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -469,14 +469,14 @@ export function EvalPanel({
                 value={scenarioNameDraft}
                 onChange={(e) => setScenarioNameDraft(e.target.value)}
                 placeholder="Optional scenario name override"
-                className="h-8 rounded-none font-mono text-xs"
+                className="h-8 font-mono text-xs"
               />
               <div className="flex flex-wrap gap-2">
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="h-7 rounded-none font-mono text-[10px]"
+                  className="h-7 font-mono text-[10px]"
                   onClick={handleAppendLastUserPrompt}
                 >
                   Use Last User Prompt
@@ -485,7 +485,7 @@ export function EvalPanel({
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="h-7 rounded-none font-mono text-[10px]"
+                  className="h-7 font-mono text-[10px]"
                   onClick={handleAppendLastExchange}
                 >
                   Use Last Exchange
@@ -505,7 +505,7 @@ export function EvalPanel({
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="h-7 rounded-none font-mono text-[10px]"
+                  className="h-7 font-mono text-[10px]"
                   onClick={() => appendTemplate('ask-smoke-exact')}
                 >
                   Ask Exact
@@ -514,7 +514,7 @@ export function EvalPanel({
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="h-7 rounded-none font-mono text-[10px]"
+                  className="h-7 font-mono text-[10px]"
                   onClick={() => appendTemplate('ask-smoke-contains')}
                 >
                   Ask Contains
@@ -523,7 +523,7 @@ export function EvalPanel({
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="h-7 rounded-none font-mono text-[10px]"
+                  className="h-7 font-mono text-[10px]"
                   onClick={() => appendTemplate('architect-plan-regex')}
                 >
                   Architect Plan
@@ -532,7 +532,7 @@ export function EvalPanel({
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="h-7 rounded-none font-mono text-[10px]"
+                  className="h-7 font-mono text-[10px]"
                   onClick={() => appendTemplate('code-readonly-regression')}
                 >
                   Code Read-only
@@ -542,13 +542,13 @@ export function EvalPanel({
             <Textarea
               value={scenariosJson}
               onChange={(e) => setScenariosJson(e.target.value)}
-              className="min-h-28 rounded-none font-mono text-xs"
+              className="min-h-28 font-mono text-xs"
             />
             <Button
               type="button"
               size="sm"
               variant="outline"
-              className="h-8 rounded-none font-mono text-xs"
+              className="h-8 font-mono text-xs"
               onClick={handleCreateSuite}
               disabled={isCreating}
             >
@@ -588,7 +588,7 @@ export function EvalPanel({
                           <span className="truncate">{suite.name}</span>
                           <Badge
                             variant="outline"
-                            className="ml-auto rounded-none px-1.5 font-mono text-[10px]"
+                            className="ml-auto px-1.5 font-mono text-[10px]"
                           >
                             {suite.status}
                           </Badge>
@@ -618,7 +618,7 @@ export function EvalPanel({
                 type="button"
                 size="sm"
                 variant="outline"
-                className="h-8 rounded-none font-mono text-xs"
+                className="h-8 font-mono text-xs"
                 disabled={!selectedSuiteId || startingRunSuiteId === selectedSuiteId}
                 onClick={() => selectedSuiteId && handleStartRun(selectedSuiteId)}
               >
@@ -637,10 +637,10 @@ export function EvalPanel({
                   setScorerKind(value as 'exact' | 'contains' | 'regex' | 'normalized')
                 }
               >
-                <SelectTrigger className="h-8 rounded-none font-mono text-xs">
+                <SelectTrigger className="h-8 font-mono text-xs">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="rounded-none">
+                <SelectContent className="">
                   <SelectItem value="exact" className="font-mono text-xs">
                     Exact
                   </SelectItem>
@@ -665,10 +665,10 @@ export function EvalPanel({
                 value={evalMode}
                 onValueChange={(value) => setEvalMode(value as 'read_only' | 'full')}
               >
-                <SelectTrigger className="h-8 rounded-none font-mono text-xs">
+                <SelectTrigger className="h-8 font-mono text-xs">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="rounded-none">
+                <SelectContent className="">
                   <SelectItem value="read_only" className="font-mono text-xs">
                     Read-only (Recommended)
                   </SelectItem>
@@ -704,9 +704,9 @@ export function EvalPanel({
                       <Badge
                         variant="outline"
                         className={cn(
-                          'rounded-none px-1.5 font-mono text-[10px]',
+                          'px-1.5 font-mono text-[10px]',
                           suiteTrend.trendDirection === 'up' &&
-                            'border-green-600/50 text-green-700',
+                            'border-success/50 text-success',
                           suiteTrend.trendDirection === 'down' &&
                             'border-destructive/60 text-destructive'
                         )}
@@ -789,7 +789,7 @@ export function EvalPanel({
                             <Badge
                               variant="outline"
                               className={cn(
-                                'ml-auto rounded-none px-1.5 font-mono text-[10px]',
+                                'ml-auto px-1.5 font-mono text-[10px]',
                                 result.status !== 'passed' &&
                                   'border-destructive/60 text-destructive'
                               )}

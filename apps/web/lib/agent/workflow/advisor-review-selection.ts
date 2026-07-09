@@ -31,23 +31,28 @@ export function selectAdvisorReviewForTarget(
 
   if (target.artifactId) {
     const match = candidates.find((review) => review.artifactId === target.artifactId)
-    if (match) return match
+    return match ?? null
   }
 
   if (target.workflowArtifactId) {
     const match = candidates.find(
       (review) => review.workflowArtifactId === target.workflowArtifactId
     )
-    if (match) return match
+    return match ?? null
   }
 
   if (target.runId) {
     const match = candidates.find((review) => review.runId === target.runId)
-    if (match) return match
+    return match ?? null
   }
 
   const gateMatch = candidates.find((review) => hasGateOverlap(review, target.gates))
   if (gateMatch) return gateMatch
+
+  // Only use a latest-review fallback for callers that did not provide a concrete
+  // artifact/run/gate target. A targeted advisor gate must not be satisfied by an
+  // unrelated approval from the same chat.
+  if (target.gates?.length) return null
 
   return candidates[0]
 }

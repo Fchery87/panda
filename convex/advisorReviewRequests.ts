@@ -2,6 +2,7 @@ import { query, mutation } from './_generated/server'
 import { v } from 'convex/values'
 import { AdvisorReviewFinding, AdvisorReviewStatus, TokenUsage } from './schema'
 import { requireChatOwner, requireProjectOwner } from './lib/authz'
+import { insertRunEvent } from './lib/runEvents'
 
 export const listByChat = query({
   args: { chatId: v.id('chats') },
@@ -72,7 +73,7 @@ export const startReviewerRun = mutation({
       lastActivityAt: now,
       startedAt: now,
     })
-    await ctx.db.insert('agentRunEvents', {
+    await insertRunEvent(ctx, {
       runId: reviewerRunId,
       chatId: request.chatId,
       sequence: 1,
@@ -119,7 +120,7 @@ export const completeWithReview = mutation({
     if (reviewerRunId) {
       const reviewerRun = await ctx.db.get(reviewerRunId)
       if (reviewerRun?.status === 'running') {
-        await ctx.db.insert('agentRunEvents', {
+        await insertRunEvent(ctx, {
           runId: reviewerRunId,
           chatId: request.chatId,
           sequence: 2,

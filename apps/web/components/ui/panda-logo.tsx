@@ -10,10 +10,10 @@ interface PandaLogoProps {
 }
 
 const sizes = {
-  sm: { icon: 'h-6 w-6 text-[11px]', text: 'text-sm' },
-  md: { icon: 'h-8 w-8 text-sm', text: 'text-base' },
-  lg: { icon: 'h-10 w-10 text-base', text: 'text-lg' },
-  xl: { icon: 'h-14 w-14 text-xl', text: 'text-xl' },
+  sm: { icon: 'h-6 w-6 rounded-md text-[12px]', seal: 'h-1.5 w-1.5', text: 'text-sm' },
+  md: { icon: 'h-8 w-8 rounded-lg text-base', seal: 'h-2 w-2', text: 'text-base' },
+  lg: { icon: 'h-10 w-10 rounded-lg text-lg', seal: 'h-2.5 w-2.5', text: 'text-lg' },
+  xl: { icon: 'h-14 w-14 rounded-xl text-2xl', seal: 'h-3 w-3', text: 'text-xl' },
 }
 
 export function PandaLogo({
@@ -30,21 +30,25 @@ export function PandaLogo({
         aria-label="Panda"
         role="img"
         className={cn(
-          'relative grid shrink-0 place-items-center bg-foreground font-mono font-bold leading-none text-background',
+          'relative grid shrink-0 place-items-center bg-primary font-display font-bold leading-none text-primary-foreground',
           selectedSize.icon,
           monochrome && 'bg-current text-background'
         )}
       >
         P
+        {/* The panda's ink chop — a subtle seal in the corner */}
         <span
           aria-hidden="true"
-          className="absolute right-[-5px] top-1/2 h-2.5 w-2.5 -translate-y-1/2 border border-foreground bg-primary"
+          className={cn(
+            'absolute bottom-1 right-1 rounded-full bg-primary-foreground/40',
+            selectedSize.seal
+          )}
         />
       </span>
 
       {variant === 'full' && (
-        <span className={cn('font-sans font-semibold tracking-tight', selectedSize.text)}>
-          panda<span className="text-primary">.ai</span>
+        <span className={cn('font-display font-semibold tracking-tight', selectedSize.text)}>
+          panda<span className="text-oxblood">.ai</span>
         </span>
       )}
     </div>

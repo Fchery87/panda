@@ -131,7 +131,7 @@ export function SpecBadgeMini({ status, className }: SpecBadgeMiniProps) {
     <span
       className={cn(
         'inline-flex items-center justify-center',
-        'h-4 w-4 rounded-none border',
+        'h-4 w-4 border',
         status === 'verified' && 'border-success/50 bg-success/10 text-success',
         status === 'failed' && 'border-destructive/50 bg-destructive/10 text-destructive',
         status === 'drifted' && 'border-warning/50 bg-warning/10 text-warning',

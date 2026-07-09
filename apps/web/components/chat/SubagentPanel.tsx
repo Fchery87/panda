@@ -128,14 +128,14 @@ function SubagentLane({ entry }: { entry: PanelSubagentEntry }) {
       }
     >
       <span
-        className={cn('mt-0.5 h-2 w-2 shrink-0 rounded-none', statusColor(entry.status))}
+        className={cn('mt-0.5 h-2 w-2 shrink-0', statusColor(entry.status))}
         aria-label={entry.status}
       />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 font-mono text-xs">
           <span className="min-w-0 flex-1 truncate text-foreground">{entry.agent}</span>
           {'source' in entry && entry.source === 'persisted' ? (
-            <span className="shrink-0 rounded-none bg-surface-2 px-1 font-mono text-[10px] text-muted-foreground">
+            <span className="shrink-0 bg-surface-2 px-1 font-mono text-[10px] text-muted-foreground">
               persisted
             </span>
           ) : null}

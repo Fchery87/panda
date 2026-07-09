@@ -153,7 +153,7 @@ export function WorkbenchTopBar({
     <motion.div
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      className="bg-card/95 grid shrink-0 border-b border-border"
+      className="bg-card grid shrink-0 border-b border-border"
     >
       <div className="grid min-h-11 lg:grid-cols-[minmax(210px,0.28fr)_1fr_auto]">
         <div className="flex min-w-0 items-center gap-2 border-b border-border px-3 py-2 lg:border-b-0 lg:border-r lg:px-3">
@@ -218,7 +218,7 @@ export function WorkbenchTopBar({
         </div>
 
         <div className="flex items-center gap-1.5 px-3 py-2 text-[10px] text-muted-foreground lg:border-l lg:border-border lg:px-3">
-          <span className="h-2 w-2 rounded-full bg-primary" />
+          <span className="h-2 w-2 rounded-full bg-oxblood" />
           <TopBarControls
             branch={gitStatus?.branch}
             model={selectedModel}
@@ -251,9 +251,9 @@ export function WorkbenchTopBar({
                 : 'YOLO mode OFF — commands require approval. Click to enable.'
             }
             className={cn(
-              'hidden h-6 items-center gap-1.5 border px-2 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors sm:flex',
+              'hidden h-6 items-center gap-1.5 rounded-full border px-2.5 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors sm:flex',
               yoloCommandMode
-                ? 'border-red-500/50 bg-red-500/10 text-red-400 hover:bg-red-500/20'
+                ? 'border-destructive/50 bg-destructive/10 text-destructive hover:bg-destructive/20'
                 : 'border-border bg-transparent text-muted-foreground hover:text-foreground'
             )}
             aria-pressed={yoloCommandMode}
@@ -262,7 +262,7 @@ export function WorkbenchTopBar({
             <span
               className={cn(
                 'h-1.5 w-1.5 rounded-full',
-                yoloCommandMode ? 'bg-red-400' : 'bg-muted-foreground/40'
+                yoloCommandMode ? 'bg-destructive' : 'bg-muted-foreground/40'
               )}
             />
             YOLO
@@ -306,7 +306,7 @@ export function WorkbenchTopBar({
                 </span>
                 <span
                   className={cn(
-                    'hidden shrink-0 border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] lg:inline-flex',
+                    'hidden shrink-0 rounded-full border px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] lg:inline-flex',
                     focusTone.border,
                     focusTone.background,
                     focusTone.text
@@ -369,7 +369,8 @@ export function WorkbenchTopBar({
               </Button>
               <Button
                 size="sm"
-                className="rounded-md border-0 bg-red-500 text-xs text-white hover:bg-red-600"
+                variant="destructive"
+                className="rounded-md text-xs"
                 onClick={handleYoloConfirm}
               >
                 Enable YOLO

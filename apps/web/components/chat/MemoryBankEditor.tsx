@@ -133,7 +133,7 @@ export function MemoryBankEditor({
                   variant="outline"
                   disabled={!onApproveProposal || approvingProposalId === proposal.id}
                   onClick={() => void handleApproveProposal(proposal)}
-                  className="h-6 rounded-none font-mono text-[10px]"
+                  className="h-6 font-mono text-[10px]"
                 >
                   {approvingProposalId === proposal.id ? 'Saving…' : 'Approve'}
                 </Button>
@@ -167,7 +167,7 @@ export function MemoryBankEditor({
                 onChange={(e) => setDraft(e.target.value)}
                 placeholder={`# About this project\n- Stack: Next.js 15, Convex, Tailwind\n- Convention: all API routes in /convex\n- Prefer functional components…`}
                 className={cn(
-                  'max-h-64 min-h-[120px] resize-none rounded-none border-0 border-t border-border',
+                  'max-h-64 min-h-[120px] resize-none border-0 border-t border-border',
                   'bg-muted/20 font-mono text-[12px] leading-relaxed',
                   'focus-visible:border-primary/50 focus-visible:ring-0 focus-visible:ring-offset-0'
                 )}
@@ -185,7 +185,7 @@ export function MemoryBankEditor({
                     variant="ghost"
                     onClick={handleClose}
                     disabled={isSaving}
-                    className="h-6 gap-1 rounded-none px-2 font-mono text-xs text-muted-foreground hover:text-foreground"
+                    className="h-6 gap-1 px-2 font-mono text-xs text-muted-foreground hover:text-foreground"
                   >
                     <X className="h-2.5 w-2.5" />
                     Discard
@@ -195,7 +195,7 @@ export function MemoryBankEditor({
                     onClick={handleSave}
                     disabled={!isDirty || isSaving}
                     className={cn(
-                      'h-6 gap-1 rounded-none px-2 font-mono text-xs',
+                      'h-6 gap-1 px-2 font-mono text-xs',
                       isDirty
                         ? 'hover:bg-primary/90 bg-primary text-primary-foreground'
                         : 'bg-secondary text-muted-foreground'

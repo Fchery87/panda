@@ -12,12 +12,25 @@ describe('user analytics persistence', () => {
       path.resolve(import.meta.dir, 'lib', 'userAnalytics.ts'),
       'utf8'
     )
+    const runTelemetrySource = fs.readFileSync(
+      path.resolve(import.meta.dir, 'lib', 'runTelemetry.ts'),
+      'utf8'
+    )
 
     expect(projectsSource).toContain('trackUserAnalytics(ctx, userId')
     expect(chatsSource).toContain('trackUserAnalytics(ctx, project.createdBy')
     expect(messagesSource).toContain('trackUserAnalytics(ctx, project.createdBy')
-    expect(agentRunsSource).toContain('trackUserAnalytics(ctx, userId')
-    expect(agentRunsSource).toContain('totalTokensUsed')
+    expect(messagesSource).toContain('skipAnalytics: v.optional(v.boolean())')
+    expect(messagesSource).toContain('analyticsTracked: args.skipAnalytics ? false : true')
+    expect(chatsSource).toContain('trackedMessageCount')
+    expect(chatsSource).toContain('totalMessages: -trackedMessageCount')
+    expect(projectsSource).toContain('trackedMessageCount')
+    expect(projectsSource).toContain('return trackedMessageCount')
+    expect(agentRunsSource).toContain('trackRunStartAnalytics(ctx, userId')
+    expect(agentRunsSource).toContain('trackRunTerminalAnalytics(ctx, userId, run')
+    expect(agentRunsSource).toContain('analyticsPendingMessageId')
+    expect(runTelemetrySource).toContain('pendingMessage?.analyticsTracked === false')
+    expect(runTelemetrySource).toContain('totalTokensUsed')
     expect(analyticsHelperSource).toContain('providerUsage')
   })
 })

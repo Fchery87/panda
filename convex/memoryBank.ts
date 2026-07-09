@@ -1,6 +1,12 @@
 import { query, mutation } from './_generated/server'
 import { v } from 'convex/values'
 import { requireProjectOwner } from './lib/authz'
+import {
+  deleteUnreferencedFileContents,
+  ensureInlineTextContent,
+  resolveContent,
+  upsertFileMetadataProjection,
+} from './lib/fileContentStore'
 
 /** The reserved file path used for the project-level memory bank */
 export const MEMORY_BANK_PATH = 'MEMORY_BANK.md'
@@ -18,7 +24,13 @@ export const get = query({
       .withIndex('by_path', (q) => q.eq('projectId', args.projectId).eq('path', MEMORY_BANK_PATH))
       .unique()
 
-    return file?.content ?? null
+    if (!file) return null
+    return (
+      (await resolveContent(ctx, {
+        legacyContent: file.content,
+        contentRef: file.contentRef,
+      })) ?? null
+    )
   },
 })
 
@@ -40,16 +52,37 @@ export const update = mutation({
       .withIndex('by_path', (q) => q.eq('projectId', args.projectId).eq('path', MEMORY_BANK_PATH))
       .unique()
 
+    const contentFields = await ensureInlineTextContent(ctx, {
+      projectId: args.projectId,
+      content: args.content,
+    })
+
+    const fileId = existing
+      ? existing._id
+      : await ctx.db.insert('files', {
+          projectId: args.projectId,
+          path: MEMORY_BANK_PATH,
+          content: args.content,
+          ...contentFields,
+          updatedAt: now,
+        })
+
     if (existing) {
-      await ctx.db.patch(existing._id, { content: args.content, updatedAt: now })
-      return existing._id
-    } else {
-      return await ctx.db.insert('files', {
-        projectId: args.projectId,
-        path: MEMORY_BANK_PATH,
-        content: args.content,
-        updatedAt: now,
-      })
+      const oldContentRef = existing.contentRef
+      await ctx.db.patch(existing._id, { content: args.content, ...contentFields, updatedAt: now })
+      await deleteUnreferencedFileContents(ctx, [oldContentRef])
     }
+
+    await upsertFileMetadataProjection(ctx, {
+      fileId,
+      projectId: args.projectId,
+      path: MEMORY_BANK_PATH,
+      content: args.content,
+      contentHash: contentFields.contentHash,
+      contentSize: contentFields.contentSize,
+      updatedAt: now,
+    })
+
+    return fileId
   },
 })

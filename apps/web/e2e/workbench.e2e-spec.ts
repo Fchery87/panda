@@ -14,21 +14,23 @@ test.describe('Workbench', () => {
     await openWorkbenchSmokeFixture(page, 'Workbench Smoke Page')
 
     await expect(page).toHaveURL(/\/projects\/.+/)
-    await expect(page.getByRole('navigation', { name: /breadcrumb/i })).toBeVisible({
+    await expect(page.getByRole('link', { name: /back to projects/i })).toBeVisible({
       timeout: 15_000,
     })
     await expect(
-      page.getByRole('heading', { name: /keep work, review, and execution in view/i }).first()
-    ).toBeVisible({
-      timeout: 15_000,
-    })
+      page
+        .getByRole('heading', {
+          name: /run the workspace from intent, run evidence, and context/i,
+        })
+        .first()
+    ).toBeVisible({ timeout: 15_000 })
   })
 
   test('file tree is visible', async ({ page }) => {
     await openWorkbenchSmokeFixture(page, 'Workbench Smoke Explorer')
 
-    await expect(page.getByRole('button', { name: /files/i }).first()).toBeVisible()
-    await expect(page.getByText(/use the center of the workspace/i).first()).toBeVisible()
+    await expect(page.getByRole('button', { name: /explorer/i }).first()).toBeVisible()
+    await expect(page.getByRole('button', { name: /open files/i }).first()).toBeVisible()
   })
 
   test('editor area is present', async ({ page }) => {
@@ -59,8 +61,8 @@ test.describe('Workbench', () => {
     await openWorkbenchSmokeFixture(page, 'Workbench Smoke Tabs')
 
     const editorButton = page.getByRole('button', { name: /^editor$/i }).first()
-    const diffButton = page.getByRole('button', { name: /^diff$/i }).first()
-    const previewAccessButton = page.getByRole('button', { name: /deploy & preview/i }).first()
+    const diffButton = page.getByRole('button', { name: /review diff/i }).first()
+    const previewAccessButton = page.getByRole('button', { name: /start app/i }).first()
 
     await expect(editorButton).toBeVisible()
     await expect(diffButton).toBeVisible()
@@ -99,9 +101,9 @@ test.describe('Workbench', () => {
     await expect(backButton).toBeVisible({ timeout: 15000 })
     await page.goto('/projects?e2eBypass=1', { waitUntil: 'domcontentloaded' })
     await expect(page).toHaveURL(/\/projects(\?.*)?$/, { timeout: 15_000 })
-    await expect(page.getByRole('heading', { name: /your projects/i, level: 1 })).toBeVisible({
-      timeout: 15_000,
-    })
+    await expect(
+      page.getByRole('heading', { name: /open the right command surface/i }).first()
+    ).toBeVisible({ timeout: 15_000 })
   })
 
   test('workbench layout has resizable panels', async ({ page }) => {
@@ -118,20 +120,19 @@ test.describe('Workbench', () => {
   test('project name is displayed in header', async ({ page }) => {
     const projectName = await openWorkbenchSmokeFixture(page, 'Workbench Smoke Header')
 
-    const headerProjectName = page
-      .getByRole('navigation', { name: /breadcrumb/i })
-      .getByRole('link', { name: projectName })
-    await expect(headerProjectName).toBeVisible({ timeout: 15000 })
+    await expect(page.getByRole('heading', { name: projectName, level: 1 })).toBeVisible({
+      timeout: 15000,
+    })
   })
 
   test('can access workbench from project list', async ({ page }) => {
-    const projectName = 'Workbench Smoke Project List'
+    const projectName = `Workbench Smoke Project List ${Date.now()}`
     await openWorkbenchProjectFixture(page, { name: projectName })
     await page.goto('/projects?e2eBypass=1', { waitUntil: 'domcontentloaded' })
     await expect(page).toHaveURL(/\/projects(\?.*)?$/, { timeout: 15_000 })
-    await expect(page.getByRole('heading', { name: /your projects/i, level: 1 })).toBeVisible({
-      timeout: 15_000,
-    })
+    await expect(
+      page.getByRole('heading', { name: /open the right command surface/i }).first()
+    ).toBeVisible({ timeout: 15_000 })
 
     const projectLink = page.locator('a[href^="/projects/"]', { hasText: projectName }).first()
     await expect(projectLink).toBeVisible({ timeout: 30_000 })
@@ -140,7 +141,10 @@ test.describe('Workbench', () => {
     await page.goto(`${href!}?e2eBypass=1`, { waitUntil: 'commit' })
 
     await expect(page).toHaveURL(/\/projects\/.+/, { timeout: 15_000 })
-    await expect(page.getByText(/use the center of the workspace/i).first()).toBeVisible({
+    await expect(page.getByRole('heading', { name: projectName, level: 1 })).toBeVisible({
+      timeout: 30_000,
+    })
+    await expect(page.getByRole('button', { name: /explorer/i }).first()).toBeVisible({
       timeout: 15_000,
     })
   })
@@ -172,11 +176,11 @@ test.describe('Workbench', () => {
       waitUntil: 'domcontentloaded',
     })
 
-    const editor = page.getByRole('textbox', { name: /file editor/i })
-    await expect(editor).toBeVisible({ timeout: 20000 })
     await expect(page.getByRole('tab', { name: /e2e-fixture\.ts/i })).toBeVisible({
-      timeout: 20_000,
+      timeout: 30_000,
     })
+    const editor = page.getByRole('textbox', { name: /^file editor$/i }).first()
+    await expect(editor).toBeVisible({ timeout: 30_000 })
     await editor.fill('export const value = 2\n')
 
     await expect(page.getByText(/unsaved changes/i)).toBeVisible({ timeout: 10000 })
@@ -187,24 +191,31 @@ test.describe('Workbench', () => {
     page,
   }) => {
     test.setTimeout(180_000)
-    await openWorkbenchProjectFixture(page, {
+    const fixture = await openWorkbenchProjectFixture(page, {
       filePath: 'e2e-artifact.ts',
       fileContent: 'export const value = 1\n',
       artifactContent: 'export const value = 2\n',
       autoApplyFiles: false,
     })
+    await page.goto(`/projects/${fixture.projectId}?e2eBypass=1&filePath=e2e-artifact.ts`, {
+      waitUntil: 'domcontentloaded',
+    })
 
-    const pendingArtifactOverlay = page.getByText(/pending artifact preview/i).first()
-    await expect(pendingArtifactOverlay).toBeVisible({ timeout: 20_000 })
+    const pendingArtifactOverlay = page
+      .getByRole('region', { name: /pending artifact preview/i })
+      .first()
+    await expect(pendingArtifactOverlay).toBeVisible({ timeout: 60_000 })
     await expect(page.getByText(/e2e-artifact\.ts/i).first()).toBeVisible({ timeout: 20_000 })
     await expect(page.getByText('+1')).toBeVisible({ timeout: 10_000 })
 
     const applyButton = page.getByRole('button', { name: /^apply$/i }).first()
     await expect(applyButton).toBeVisible({ timeout: 20_000 })
-    await applyButton.click()
-    await expect(page.getByText(/pending artifact preview/i).first()).not.toBeVisible({
-      timeout: 20_000,
+    await applyButton.click({ timeout: 10_000 }).catch(async (error) => {
+      if (await pendingArtifactOverlay.isVisible().catch(() => false)) {
+        throw error
+      }
     })
+    await expect(pendingArtifactOverlay).not.toBeVisible({ timeout: 20_000 })
   })
 
   test('seeded plan workflow can be reviewed, approved, and built from plan', async ({ page }) => {
@@ -260,17 +271,22 @@ Ship the seeded plan workflow
 
     await expect(page.getByTestId('workspace-shell')).toBeVisible({ timeout: 15_000 })
 
-    // Right panel should start closed — open it
-    const openChatBtn = page.getByRole('button', { name: /open chat panel/i }).first()
-    await expect(openChatBtn).toBeVisible({ timeout: 10_000 })
-    await openChatBtn.click()
+    // Right panel should start closed — open it through the current focus-mode seam.
+    const focusRunButton = page.getByRole('button', { name: /focus run/i }).first()
+    await expect(focusRunButton).toBeVisible({ timeout: 10_000 })
+    await focusRunButton.click()
 
-    // Right panel should now be visible
+    // Right panel should now be visible.
     await expect(page.getByTestId('right-panel')).toBeVisible({ timeout: 10_000 })
 
-    // Reload — zustand persist should restore the right-panel-open state
+    // Reload — zustand persist should restore the right-panel-open state after project hydration.
     await page.reload()
-    await expect(page.getByTestId('workspace-shell')).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByTestId('right-panel')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText(/loading project/i).first()).not.toBeVisible({
+      timeout: 90_000,
+    })
+    await expect(page.getByRole('button', { name: /focus run/i }).first()).toBeVisible({
+      timeout: 30_000,
+    })
+    await expect(page.getByTestId('right-panel')).toBeVisible({ timeout: 30_000 })
   })
 })

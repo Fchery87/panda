@@ -2,6 +2,7 @@ import { v } from 'convex/values'
 import { internal } from './_generated/api'
 import { internalMutation } from './_generated/server'
 import type { Id, TableNames } from './_generated/dataModel'
+import { deleteRunEventWithBody } from './lib/runEvents'
 
 const DEFAULT_RETENTION_DAYS = 30
 const DEFAULT_BATCH_LIMIT = 500
@@ -34,7 +35,7 @@ export const cleanupOperationalData = internalMutation({
         .take(remaining)
 
       for (const row of expired) {
-        await ctx.db.delete(row._id as Id<TableNames>)
+        await deleteRunEventWithBody(ctx, row._id)
       }
 
       deleted += expired.length
@@ -57,23 +58,6 @@ export const cleanupOperationalData = internalMutation({
       deleted += expired.length
     }
 
-    const deleteExpiredFileSnapshots = async () => {
-      if (deleted >= limit) return
-
-      const remaining = limit - deleted
-      const expired = await ctx.db
-        .query('fileSnapshots')
-        .withIndex('by_created', (q) => q.lt('createdAt', olderThanMs))
-        .order('asc')
-        .take(remaining)
-
-      for (const row of expired) {
-        await ctx.db.delete(row._id as Id<TableNames>)
-      }
-
-      deleted += expired.length
-    }
-
     const deleteExpiredRuntimeCheckpoints = async () => {
       if (deleted >= limit) return
 
@@ -85,6 +69,13 @@ export const cleanupOperationalData = internalMutation({
         .take(remaining)
 
       for (const row of expired) {
+        const bodies = await ctx.db
+          .query('harnessRuntimeCheckpointBodies')
+          .withIndex('by_checkpoint', (q) => q.eq('checkpointId', row._id))
+          .take(10)
+        for (const body of bodies) {
+          await ctx.db.delete(body._id as Id<TableNames>)
+        }
         await ctx.db.delete(row._id as Id<TableNames>)
       }
 
@@ -94,7 +85,6 @@ export const cleanupOperationalData = internalMutation({
     await deleteExpiredAgentRunEvents()
     await deleteExpiredRuntimeCheckpoints()
     await deleteExpiredEvalRunResults()
-    await deleteExpiredFileSnapshots()
 
     if (deleted === limit) {
       await ctx.scheduler.runAfter(0, internal.retention.cleanupOperationalData, {

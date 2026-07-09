@@ -12,6 +12,7 @@ describe('projects.remove cascade coverage', () => {
     for (const table of [
       'files',
       'fileSnapshots',
+      'fileMetadata',
       'chats',
       'messages',
       'artifacts',
@@ -32,7 +33,9 @@ describe('projects.remove cascade coverage', () => {
       expect(source).toContain(`'${table}'`)
     }
 
-    expect(removeSource).toContain('deleteFileWithSnapshots')
+    expect(removeSource).toContain('deleteProjectFilesWithSnapshots')
+    expect(removeSource).toContain('deleteProjectFileContents')
+    expect(source).toContain('if (deleted + files.length > maxRows)')
     expect(removeSource).toContain('deleteChatChildren')
   })
 })

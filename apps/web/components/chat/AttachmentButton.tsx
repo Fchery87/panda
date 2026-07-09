@@ -97,7 +97,7 @@ export function AttachmentButton({
           align="start"
           side="top"
           sideOffset={8}
-          className="w-auto min-w-[160px] rounded-none border-border p-1"
+          className="w-auto min-w-[160px] border-border p-1"
         >
           <button
             type="button"

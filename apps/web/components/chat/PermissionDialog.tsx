@@ -91,9 +91,9 @@ function PermissionCard({ request, onRespond, timeoutMs, onTimeout }: Permission
   const presentation = describePermissionRequest(request.request)
   const riskTier = presentation.riskTier
   const riskColors = {
-    low: 'border-green-500/50 bg-green-500/5 text-green-600',
-    medium: 'border-yellow-500/50 bg-yellow-500/5 text-yellow-600',
-    high: 'border-red-500/50 bg-red-500/5 text-red-600',
+    low: 'border-success/50 bg-success/5 text-success',
+    medium: 'border-warning/50 bg-warning/5 text-warning',
+    high: 'border-destructive/50 bg-destructive/5 text-destructive',
   }
 
   // Countdown timer
@@ -161,7 +161,7 @@ function PermissionCard({ request, onRespond, timeoutMs, onTimeout }: Permission
               {presentation.riskLabel}
             </span>
             {timeRemaining <= 10000 && (
-              <span className="flex items-center gap-1 font-mono text-[10px] text-red-500">
+              <span className="flex items-center gap-1 font-mono text-[10px] text-destructive">
                 <Clock className="h-3 w-3" />
                 {formatTime(timeRemaining)}
               </span>
@@ -181,7 +181,7 @@ function PermissionCard({ request, onRespond, timeoutMs, onTimeout }: Permission
           {/* Progress bar for timeout */}
           <div className="mb-3 h-1 overflow-hidden bg-border">
             <motion.div
-              className={cn('h-full', timeRemaining <= 10000 ? 'bg-red-500' : 'bg-primary')}
+              className={cn('h-full', timeRemaining <= 10000 ? 'bg-destructive' : 'bg-primary')}
               initial={{ width: '100%' }}
               animate={{ width: `${(timeRemaining / timeoutMs) * 100}%` }}
               transition={{ duration: 0.1, ease: 'linear' }}
@@ -205,7 +205,7 @@ function PermissionCard({ request, onRespond, timeoutMs, onTimeout }: Permission
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="bg-secondary/50 mt-2 overflow-x-auto rounded-none p-2 font-mono text-[10px]"
+                    className="bg-secondary/50 mt-2 overflow-x-auto p-2 font-mono text-[10px]"
                   >
                     {JSON.stringify(detailArgs, null, 2)}
                   </motion.pre>
@@ -221,7 +221,7 @@ function PermissionCard({ request, onRespond, timeoutMs, onTimeout }: Permission
               variant="outline"
               onClick={() => handleDecision('allow')}
               disabled={decisionMade}
-              className="h-7 rounded-none border-green-500/50 px-2 font-mono text-xs hover:bg-green-500/10 hover:text-green-600"
+              className="h-7 border-success/50 px-2 font-mono text-xs hover:bg-success/10 hover:text-success"
             >
               Allow Once
             </Button>
@@ -230,7 +230,7 @@ function PermissionCard({ request, onRespond, timeoutMs, onTimeout }: Permission
               variant="outline"
               onClick={() => handleDecision('allow', 'always')}
               disabled={decisionMade}
-              className="border-primary/50 hover:bg-primary/10 h-7 rounded-none px-2 font-mono text-xs"
+              className="border-primary/50 hover:bg-primary/10 h-7 px-2 font-mono text-xs"
             >
               Always
             </Button>
@@ -239,7 +239,7 @@ function PermissionCard({ request, onRespond, timeoutMs, onTimeout }: Permission
               variant="outline"
               onClick={() => handleDecision('deny')}
               disabled={decisionMade}
-              className="ml-auto h-7 rounded-none border-red-500/50 px-2 font-mono text-xs hover:bg-red-500/10 hover:text-red-600"
+              className="ml-auto h-7 border-destructive/50 px-2 font-mono text-xs hover:bg-destructive/10 hover:text-destructive"
             >
               Deny
             </Button>

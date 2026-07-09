@@ -33,7 +33,7 @@ export function SystemOverview({ data }: SystemOverviewProps) {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i} className="rounded-none">
+          <Card key={i} className="">
             <CardHeader className="pb-2">
               <CardDescription>Loading...</CardDescription>
             </CardHeader>
@@ -80,7 +80,7 @@ export function SystemOverview({ data }: SystemOverviewProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {stats.map((stat) => (
-        <Card key={stat.title} className="shadow-sharp-sm rounded-none">
+        <Card key={stat.title} className="shadow-sharp-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div>
               <CardDescription className="font-mono text-xs uppercase tracking-wider">

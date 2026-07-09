@@ -68,7 +68,7 @@ export function GlobalLLMConfig({ settings, onSave }: GlobalLLMConfigProps) {
 
   return (
     <div className="space-y-6">
-      <Card className="rounded-none">
+      <Card className="">
         <CardHeader>
           <div className="flex items-center gap-2">
             <Bot className="h-5 w-5" />
@@ -80,7 +80,7 @@ export function GlobalLLMConfig({ settings, onSave }: GlobalLLMConfigProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <Alert className="rounded-none border-l-4 border-l-primary">
+          <Alert className="border-l-4 border-l-primary">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
               These settings apply to all users unless they have permission to override them.
@@ -104,7 +104,7 @@ export function GlobalLLMConfig({ settings, onSave }: GlobalLLMConfigProps) {
                     }))
                   }
                 >
-                  <SelectTrigger id="global-provider" className="flex-1 rounded-none">
+                  <SelectTrigger id="global-provider" className="flex-1">
                     <SelectValue placeholder="No default set (users must configure)" />
                   </SelectTrigger>
                   <SelectContent>
@@ -122,7 +122,7 @@ export function GlobalLLMConfig({ settings, onSave }: GlobalLLMConfigProps) {
                   <Button
                     variant="outline"
                     size="icon"
-                    className="rounded-none"
+                    className=""
                     onClick={() => setConfig((prev) => ({ ...prev, provider: '', model: '' }))}
                     title="Clear provider selection"
                   >
@@ -146,7 +146,7 @@ export function GlobalLLMConfig({ settings, onSave }: GlobalLLMConfigProps) {
                     }))
                   }
                 >
-                  <SelectTrigger id="global-model" className="rounded-none">
+                  <SelectTrigger id="global-model" className="">
                     <SelectValue placeholder="Select model..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -180,7 +180,7 @@ export function GlobalLLMConfig({ settings, onSave }: GlobalLLMConfigProps) {
           </div>
 
           {!config.allowOverrides && (
-            <Alert variant="destructive" className="rounded-none">
+            <Alert variant="destructive" className="">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 User overrides are disabled. All users will be forced to use the global settings.
@@ -189,7 +189,7 @@ export function GlobalLLMConfig({ settings, onSave }: GlobalLLMConfigProps) {
           )}
 
           <div className="flex justify-end">
-            <Button onClick={handleSave} className="rounded-none">
+            <Button onClick={handleSave} className="">
               <Save className="mr-2 h-4 w-4" />
               Save Configuration
             </Button>
@@ -197,7 +197,7 @@ export function GlobalLLMConfig({ settings, onSave }: GlobalLLMConfigProps) {
         </CardContent>
       </Card>
 
-      <Card className="rounded-none">
+      <Card className="">
         <CardHeader>
           <CardTitle>Provider Configuration</CardTitle>
           <CardDescription>
@@ -206,7 +206,7 @@ export function GlobalLLMConfig({ settings, onSave }: GlobalLLMConfigProps) {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <Alert className="rounded-none">
+            <Alert className="">
               <AlertDescription className="font-mono text-sm">
                 System-level provider configuration is managed through environment variables.
                 Contact your DevOps team to update provider API keys.
@@ -217,7 +217,7 @@ export function GlobalLLMConfig({ settings, onSave }: GlobalLLMConfigProps) {
               {defaultProviders.map((provider) => (
                 <div
                   key={provider.value}
-                  className="flex items-center justify-between rounded-none border border-border p-4"
+                  className="flex items-center justify-between border border-border p-4"
                 >
                   <span className="font-medium">{provider.label}</span>
                   <span className="font-mono text-xs text-muted-foreground">Via ENV</span>

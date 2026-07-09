@@ -161,7 +161,7 @@ export function InspectorPlanContent({
               type="button"
               variant="outline"
               size="sm"
-              className="h-8 shrink-0 rounded-none font-mono text-[10px] uppercase tracking-[0.16em]"
+              className="h-8 shrink-0 font-mono text-[10px] uppercase tracking-[0.16em]"
               onClick={onReviewDiff}
             >
               Open Review Diff

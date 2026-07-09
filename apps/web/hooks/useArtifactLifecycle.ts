@@ -9,7 +9,21 @@ import {
   type WorkspaceArtifactPreview,
 } from '@/components/workbench/artifact-preview'
 import { getPrimaryArtifactAction } from '@/lib/artifacts/executeArtifact'
+import type { AdvisorPolicy } from '@/lib/agent/workflow'
 import { useArtifactController } from './useArtifactController'
+
+const DEFAULT_ARTIFACT_ADVISOR_POLICY: AdvisorPolicy = {
+  enabled: true,
+  requiredFor: [
+    'large_diff',
+    'destructive_command',
+    'dependency_change',
+    'auth_or_security_change',
+    'database_schema_change',
+    'autopilot_checkpoint',
+  ],
+  reasoningEffort: 'medium',
+}
 
 type ArtifactAction = ReturnType<typeof getPrimaryArtifactAction>
 
@@ -45,6 +59,7 @@ export function useArtifactLifecycle({
     projectId,
     chatId: activeChat?._id,
     writeFileToRuntime,
+    advisorPolicy: DEFAULT_ARTIFACT_ADVISOR_POLICY,
   })
   const artifactRecords = artifactController.records as ArtifactRecord[] | undefined
 

@@ -11,7 +11,7 @@ describe('retention enforcement', () => {
     expect(retentionSource).toContain('agentRunEvents')
     expect(retentionSource).toContain('harnessRuntimeCheckpoints')
     expect(retentionSource).toContain('evalRunResults')
-    expect(retentionSource).toContain('fileSnapshots')
+    expect(retentionSource).not.toContain('fileSnapshots')
     expect(retentionSource).toContain("withIndex('by_created'")
     expect(retentionSource).toContain("withIndex('by_saved'")
     expect(retentionSource).toContain('.lt(')

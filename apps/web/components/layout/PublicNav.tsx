@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { BookOpen, ArrowRight } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/settings/ThemeToggle'
 import { PandaLogo } from '@/components/ui/panda-logo'
@@ -12,43 +12,36 @@ interface PublicNavProps {
 
 export function PublicNav({ showEducationLink = false }: PublicNavProps) {
   return (
-    <nav className="fixed left-0 right-0 top-0 z-50 px-3 pt-3 sm:px-5 lg:px-8">
-      <div className="shadow-sharp-sm bg-card/95 mx-auto grid h-14 max-w-[1500px] grid-cols-[auto_1fr_auto] border border-border text-foreground">
-        <Link
-          href="/"
-          className="hover:bg-background/70 flex items-center border-r border-border px-4 transition-colors sm:px-5"
-        >
+    <nav className="fixed left-0 right-0 top-0 z-50 px-4 pt-4 sm:px-6">
+      <div className="bg-card/85 shadow-sharp-md mx-auto flex h-14 max-w-6xl items-center justify-between rounded-full border border-border pl-5 pr-2 backdrop-blur-md">
+        <Link href="/" className="flex items-center" aria-label="Panda home">
           <PandaLogo size="md" variant="full" />
         </Link>
 
-        <div className="hidden min-w-0 items-center sm:flex">
+        <div className="flex items-center gap-1">
           {showEducationLink ? (
             <Link
               href="/education"
-              className="hover:bg-background/70 flex h-full items-center gap-2 border-r border-border px-4 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:text-foreground"
+              className="hidden rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground sm:block"
             >
-              <BookOpen size={14} />
-              How It Works
+              How it works
             </Link>
           ) : null}
           <a
             href="https://github.com/Fchery87/panda"
             target="_blank"
             rel="noopener noreferrer"
-            className="hover:bg-background/70 flex h-full items-center border-r border-border px-4 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:text-foreground"
+            className="hidden rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground sm:block"
           >
             Source
           </a>
-        </div>
-
-        <div className="flex items-center border-l border-border">
-          <div className="hidden h-full items-center border-r border-border px-2 sm:flex">
+          <div className="hidden px-1 sm:block">
             <ThemeToggle />
           </div>
-          <Link href="/projects" className="h-full">
-            <Button className="h-full rounded-md border-0 px-4 font-mono text-xs uppercase tracking-[0.16em] shadow-none sm:px-5">
-              Launch App
-              <ArrowRight className="ml-2" size={14} />
+          <Link href="/projects">
+            <Button className="gap-1.5">
+              Launch app
+              <ArrowRight size={14} />
             </Button>
           </Link>
         </div>

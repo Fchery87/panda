@@ -9,6 +9,7 @@ import { shouldAutoApplyArtifact, type AgentPolicy } from '@/lib/agent/automatio
 import {
   buildAdvisorPreflight,
   selectAdvisorReviewForTarget,
+  type AdvisorPolicy,
   type AdvisorReviewRecord,
 } from '@/lib/agent/workflow'
 import {
@@ -26,6 +27,19 @@ type ArtifactRecord = {
 type PendingArtifact = {
   id: Id<'artifacts'>
   action: ArtifactAction
+}
+
+const DEFAULT_ARTIFACT_ADVISOR_POLICY: AdvisorPolicy = {
+  enabled: true,
+  requiredFor: [
+    'large_diff',
+    'destructive_command',
+    'dependency_change',
+    'auth_or_security_change',
+    'database_schema_change',
+    'autopilot_checkpoint',
+  ],
+  reasoningEffort: 'medium',
 }
 
 export function useAutoApplyArtifacts(args: {
@@ -101,21 +115,11 @@ export function useAutoApplyArtifacts(args: {
                 ...updates,
               }),
             updateArtifactStatus,
+            advisorPolicy: DEFAULT_ARTIFACT_ADVISOR_POLICY,
             advisorReview: selectAdvisorReviewForTarget(advisorReviews, {
               artifactId: String(artifact.id),
               gates: buildAdvisorPreflight({
-                policy: {
-                  enabled: true,
-                  requiredFor: [
-                    'large_diff',
-                    'destructive_command',
-                    'dependency_change',
-                    'auth_or_security_change',
-                    'database_schema_change',
-                    'autopilot_checkpoint',
-                  ],
-                  reasoningEffort: 'medium',
-                },
+                policy: DEFAULT_ARTIFACT_ADVISOR_POLICY,
                 changedFiles:
                   artifact.action.type === 'file_write' ? [artifact.action.payload.filePath] : [],
                 commands:

@@ -55,13 +55,13 @@ export function GitHubConnectionCard({ className }: GitHubConnectionCardProps) {
             <Button
               variant="outline"
               size="sm"
-              className="rounded-none font-mono"
+              className="font-mono"
               onClick={() => void disconnect()}
             >
               Disconnect
             </Button>
           ) : (
-            <Button asChild size="sm" className="rounded-none font-mono" disabled={isLoading}>
+            <Button asChild size="sm" className="font-mono" disabled={isLoading}>
               <a href={installUrl}>Connect GitHub</a>
             </Button>
           )}

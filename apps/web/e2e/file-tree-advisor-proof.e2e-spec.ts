@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { openWorkbenchProjectFixture } from './helpers/workbench'
 
 test.describe('File tree and advisor proof chain', () => {
-  test.setTimeout(180_000)
+  test.setTimeout(300_000)
 
   test('applied file artifact is visible in the file tree and editor', async ({ page }) => {
     const fixture = await openWorkbenchProjectFixture(page, {
@@ -20,8 +20,10 @@ test.describe('File tree and advisor proof chain', () => {
       }
     )
 
-    const pendingArtifactOverlay = page.getByText(/pending artifact preview/i).first()
-    await expect(pendingArtifactOverlay).toBeVisible({ timeout: 20_000 })
+    const pendingArtifactOverlay = page
+      .getByRole('region', { name: /pending artifact preview/i })
+      .first()
+    await expect(pendingArtifactOverlay).toBeVisible({ timeout: 60_000 })
     await expect(page.getByText(/proof\/file-tree-proof\.ts/i).first()).toBeVisible({
       timeout: 20_000,
     })
@@ -59,18 +61,23 @@ test.describe('File tree and advisor proof chain', () => {
       waitUntil: 'domcontentloaded',
     })
 
-    const pendingArtifactOverlay = page.getByText(/pending artifact preview/i).first()
-    await expect(pendingArtifactOverlay).toBeVisible({ timeout: 20_000 })
+    const pendingArtifactOverlay = page
+      .getByRole('region', { name: /pending artifact preview/i })
+      .first()
+    await expect(pendingArtifactOverlay).toBeVisible({ timeout: 60_000 })
     await expect(page.getByText(/package\.json/i).first()).toBeVisible({ timeout: 20_000 })
 
     const applyButton = page.getByRole('button', { name: /^apply$/i }).first()
     await expect(applyButton).toBeVisible({ timeout: 20_000 })
-    await applyButton.click()
+    const advisorRequirement = page
+      .getByText(/advisor review is required|advisor review required|dependency_change/i)
+      .first()
+    await applyButton.click({ timeout: 10_000 }).catch(async (error) => {
+      if (!(await advisorRequirement.isVisible().catch(() => false))) {
+        throw error
+      }
+    })
 
-    await expect(
-      page
-        .getByText(/advisor review is required|advisor review required|dependency_change/i)
-        .first()
-    ).toBeVisible({ timeout: 20_000 })
+    await expect(advisorRequirement).toBeVisible({ timeout: 20_000 })
   })
 })

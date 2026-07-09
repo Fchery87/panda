@@ -98,7 +98,7 @@ function getModeLabel(mode: string): string {
 function StatusIcon({ status }: { status: AgentRunStatus }) {
   switch (status) {
     case 'completed':
-      return <IconCheck className="h-4 w-4 text-green-500" />
+      return <IconCheck className="h-4 w-4 text-success" />
     case 'failed':
       return <IconError className="h-4 w-4 text-destructive" />
     case 'running':
@@ -122,7 +122,7 @@ export function AgentManagerDrawer({
 }: AgentManagerDrawerProps) {
   const [showProfiles, setShowProfiles] = useState(false)
 
-  const recentRuns = useQuery(api.agentRuns.listRecentByProject, {
+  const recentRuns = useQuery(api.agentRuns.listRecentSummariesByProject, {
     projectId,
     limit: 10,
   }) as AgentRun[] | undefined
@@ -166,7 +166,7 @@ export function AgentManagerDrawer({
                 variant="ghost"
                 size="icon"
                 onClick={onClose}
-                className="h-8 w-8 rounded-none"
+                className="h-8 w-8"
               >
                 <IconX className="h-4 w-4" />
               </Button>
@@ -185,7 +185,7 @@ export function AgentManagerDrawer({
                         variant="outline"
                         size="sm"
                         onClick={onStopRun}
-                        className="h-6 rounded-none border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                        className="h-6 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
                       >
                         <IconStop className="mr-1 h-3 w-3" />
                         Stop
@@ -199,7 +199,7 @@ export function AgentManagerDrawer({
                     </p>
 
                     <div className="flex items-center gap-3 font-mono text-xs text-muted-foreground">
-                      <span className="rounded-none bg-surface-2 px-1.5 py-0.5">
+                      <span className="bg-surface-2 px-1.5 py-0.5">
                         {getModeLabel(activeRun.mode)}
                       </span>
                       {activeRun.model && <span>{activeRun.model}</span>}
@@ -208,7 +208,7 @@ export function AgentManagerDrawer({
                     </div>
 
                     {activeChildRuns.length > 0 && (
-                      <div className="mt-3 rounded-none border border-border bg-background p-2">
+                      <div className="mt-3 border border-border bg-background p-2">
                         <div className="mb-1 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
                           <IconBranch className="h-3 w-3" />
                           <span>Subagent run tree</span>
@@ -261,7 +261,7 @@ export function AgentManagerDrawer({
                     )}
 
                     {liveSteps && liveSteps.length > 0 && (
-                      <div className="mt-3 max-h-32 overflow-y-auto rounded-none border border-border bg-background p-2">
+                      <div className="mt-3 max-h-32 overflow-y-auto border border-border bg-background p-2">
                         {liveSteps.slice(-3).map((step, idx) => (
                           <div
                             key={idx}
@@ -304,7 +304,7 @@ export function AgentManagerDrawer({
                         transition={{ delay: index * 0.05 }}
                         type="button"
                         onClick={() => onNavigateToChat?.(run.chatId)}
-                        className="flex w-full items-start gap-3 rounded-none border border-border bg-background p-3 text-left transition-colors hover:bg-surface-2"
+                        className="flex w-full items-start gap-3 border border-border bg-background p-3 text-left transition-colors hover:bg-surface-2"
                       >
                         <StatusIcon status={run.status} />
 
@@ -312,7 +312,7 @@ export function AgentManagerDrawer({
                           <p className="truncate font-mono text-xs">{truncatedSummary}</p>
 
                           <div className="mt-1 flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
-                            <span className="rounded-none bg-surface-2 px-1">
+                            <span className="bg-surface-2 px-1">
                               {getModeLabel(run.mode)}
                             </span>
                             {run.model && <span>{run.model}</span>}
@@ -368,7 +368,7 @@ export function AgentManagerDrawer({
                           ].map((profile) => (
                             <div
                               key={profile.mode}
-                              className="rounded-none border border-border bg-background p-3"
+                              className="border border-border bg-background p-3"
                             >
                               <div className="flex items-center gap-2">
                                 <IconBot className="h-4 w-4 text-primary" />

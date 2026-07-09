@@ -61,7 +61,7 @@ export function SharedChatContent({ shareId }: { shareId: string }) {
               type="button"
               variant="outline"
               onClick={() => loadMore(50)}
-              className="shadow-sharp-sm rounded-none border-border font-mono text-xs"
+              className="shadow-sharp-sm border-border font-mono text-xs"
             >
               Load more messages
             </Button>
@@ -71,7 +71,7 @@ export function SharedChatContent({ shareId }: { shareId: string }) {
         <footer className="mt-8 border-t border-border pt-4 text-center">
           <p className="mb-3 font-mono text-xs text-muted-foreground">Shared via Panda.ai</p>
           <Link href="/">
-            <Button variant="outline" className="rounded-none font-mono text-xs">
+            <Button variant="outline" className="font-mono text-xs">
               Try Panda.ai
             </Button>
           </Link>

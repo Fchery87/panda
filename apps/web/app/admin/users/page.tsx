@@ -235,7 +235,7 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
-      <Card className="mb-6 rounded-none">
+      <Card className="mb-6">
         <CardContent className="pt-6">
           <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
             <div className="space-y-2">
@@ -253,7 +253,7 @@ export default function AdminUsersPage() {
                       search: e.target.value || null,
                     })
                   }
-                  className="rounded-none pl-10"
+                  className="pl-10"
                 />
               </div>
             </div>
@@ -265,7 +265,7 @@ export default function AdminUsersPage() {
               <Select value={filter} onValueChange={(value) => updateQuery({ filter: value })}>
                 <SelectTrigger
                   id="admin-user-filter"
-                  className="rounded-none"
+                  className=""
                   aria-label="User filter"
                 >
                   <SelectValue />
@@ -284,7 +284,7 @@ export default function AdminUsersPage() {
       </Card>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="rounded-none lg:col-span-2">
+        <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Users ({loadedUsers.length || 0})</CardTitle>
             <CardDescription>
@@ -300,7 +300,7 @@ export default function AdminUsersPage() {
                     type="button"
                     aria-pressed={selectedUserId === user._id}
                     onClick={() => selectUser(user._id)}
-                    className={`flex w-full items-center justify-between rounded-none border p-4 text-left transition-colors ${
+                    className={`flex w-full items-center justify-between border p-4 text-left transition-colors ${
                       selectedUserId === user._id
                         ? 'bg-primary/5 border-primary'
                         : 'hover:bg-muted/50 border-border'
@@ -315,13 +315,13 @@ export default function AdminUsersPage() {
                         <p className="font-mono text-sm text-muted-foreground">{user.email}</p>
                         <div className="mt-1 flex gap-2">
                           {user.isAdmin && (
-                            <Badge variant="default" className="rounded-none text-xs">
+                            <Badge variant="default" className="text-xs">
                               <Shield className="mr-1 h-3 w-3" />
                               Admin
                             </Badge>
                           )}
                           {user.isBanned && (
-                            <Badge variant="destructive" className="rounded-none text-xs">
+                            <Badge variant="destructive" className="text-xs">
                               <Ban className="mr-1 h-3 w-3" />
                               Banned
                             </Badge>
@@ -349,7 +349,7 @@ export default function AdminUsersPage() {
                   <div className="flex justify-center pt-4">
                     <Button
                       variant="outline"
-                      className="rounded-none"
+                      className=""
                       onClick={() => setCursor(users.nextCursor ?? undefined)}
                     >
                       <ChevronDown className="mr-2 h-4 w-4" />
@@ -362,7 +362,7 @@ export default function AdminUsersPage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-none">
+        <Card className="">
           <CardHeader>
             <CardTitle>User Details</CardTitle>
             <CardDescription>
@@ -393,22 +393,22 @@ export default function AdminUsersPage() {
                 <Separator />
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="rounded-none border border-border p-3 text-center">
+                  <div className="border border-border p-3 text-center">
                     <FolderGit className="mx-auto mb-1 h-5 w-5 text-muted-foreground" />
                     <p className="text-2xl font-bold">{selectedUserDetails.projectCount}</p>
                     <p className="text-xs text-muted-foreground">Projects</p>
                   </div>
-                  <div className="rounded-none border border-border p-3 text-center">
+                  <div className="border border-border p-3 text-center">
                     <Bot className="mx-auto mb-1 h-5 w-5 text-muted-foreground" />
                     <p className="text-2xl font-bold">{selectedUserDetails.mcpServerCount}</p>
                     <p className="text-xs text-muted-foreground">MCP Servers</p>
                   </div>
-                  <div className="rounded-none border border-border p-3 text-center">
+                  <div className="border border-border p-3 text-center">
                     <Activity className="mx-auto mb-1 h-5 w-5 text-muted-foreground" />
                     <p className="text-2xl font-bold">{selectedUserDetails.subagentCount}</p>
                     <p className="text-xs text-muted-foreground">Subagents</p>
                   </div>
-                  <div className="rounded-none border border-border p-3 text-center">
+                  <div className="border border-border p-3 text-center">
                     <Mail className="mx-auto mb-1 h-5 w-5 text-muted-foreground" />
                     <p className="text-2xl font-bold">
                       {selectedUserDetails.analytics?.totalChats || 0}
@@ -426,7 +426,7 @@ export default function AdminUsersPage() {
 
                   <Button
                     variant={selectedUserDetails.user.isAdmin ? 'destructive' : 'default'}
-                    className="w-full rounded-none"
+                    className="w-full"
                     onClick={() =>
                       requestToggleAdmin(
                         selectedUserDetails.user._id,
@@ -452,7 +452,7 @@ export default function AdminUsersPage() {
 
                   <Button
                     variant={selectedUserDetails.user.isBanned ? 'outline' : 'destructive'}
-                    className="w-full rounded-none"
+                    className="w-full"
                     onClick={() =>
                       requestToggleBan(
                         selectedUserDetails.user._id,
@@ -480,7 +480,7 @@ export default function AdminUsersPage() {
 
                   <Button
                     variant="destructive"
-                    className="w-full rounded-none"
+                    className="w-full"
                     onClick={() => beginDeleteUser(selectedUserDetails.user._id)}
                     disabled={isLoading}
                   >
@@ -514,7 +514,7 @@ export default function AdminUsersPage() {
           }
         }}
       >
-        <DialogContent className="rounded-none">
+        <DialogContent className="">
           <DialogHeader>
             <DialogTitle>Delete user</DialogTitle>
             <DialogDescription>
@@ -539,7 +539,7 @@ export default function AdminUsersPage() {
             </p>
 
             {pendingDeleteUser ? (
-              <div className="rounded-none border border-border p-3">
+              <div className="border border-border p-3">
                 <p className="font-medium">{pendingDeleteUser.user.name || 'Unnamed User'}</p>
                 <p className="font-mono text-sm text-muted-foreground">
                   {pendingDeleteUser.user.email}
@@ -552,7 +552,7 @@ export default function AdminUsersPage() {
             <Button
               type="button"
               variant="outline"
-              className="rounded-none"
+              className=""
               onClick={() => {
                 setDeleteDialogOpen(false)
                 setPendingDeleteUserId(null)
@@ -563,7 +563,7 @@ export default function AdminUsersPage() {
             <Button
               type="button"
               variant="destructive"
-              className="rounded-none"
+              className=""
               onClick={() => {
                 if (pendingDeleteUserId) {
                   void handleDeleteUser(pendingDeleteUserId)
@@ -585,7 +585,7 @@ export default function AdminUsersPage() {
           }
         }}
       >
-        <DialogContent className="rounded-none font-mono">
+        <DialogContent className="font-mono">
           <DialogHeader>
             <DialogTitle>
               {confirmAction?.type === 'admin' ? 'Confirm Admin Change' : 'Confirm Ban Change'}
@@ -596,7 +596,7 @@ export default function AdminUsersPage() {
             <Button
               type="button"
               variant="outline"
-              className="rounded-none"
+              className=""
               onClick={() => setConfirmAction(null)}
             >
               Cancel
@@ -604,7 +604,7 @@ export default function AdminUsersPage() {
             <Button
               type="button"
               variant="destructive"
-              className="rounded-none"
+              className=""
               onClick={() => void executeConfirmedAction()}
               disabled={isLoading}
             >

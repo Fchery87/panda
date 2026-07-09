@@ -45,7 +45,7 @@ export function VariantSelector({
         onDoubleClick={cycleVariant}
         className={cn(
           'flex h-8 items-center justify-between gap-1.5 border border-border bg-background px-2 py-1',
-          'rounded-none font-mono text-xs text-foreground',
+          'font-mono text-xs text-foreground',
           'hover:bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring',
           'min-w-[120px]',
           '[&>span]:line-clamp-1',
@@ -66,7 +66,7 @@ export function VariantSelector({
           collisionPadding={8}
           className={cn(
             'relative z-50 min-w-[120px] max-w-[calc(100vw-1rem)] overflow-hidden',
-            'rounded-none border border-border bg-popover text-popover-foreground shadow-md',
+            'border border-border bg-popover text-popover-foreground shadow-md',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
             'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
             'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
@@ -80,7 +80,7 @@ export function VariantSelector({
                 key={variant.id}
                 value={variant.id}
                 className={cn(
-                  'relative flex w-full cursor-default select-none items-center rounded-none px-3 py-2',
+                  'relative flex w-full cursor-default select-none items-center px-3 py-2',
                   'font-mono text-xs outline-none focus:bg-accent focus:text-accent-foreground',
                   'truncate',
                   currentVariant === variant.id && 'bg-muted'

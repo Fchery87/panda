@@ -19,7 +19,7 @@ export function ProjectNotFoundGuard() {
         </p>
         <Button
           variant="outline"
-          className="rounded-none font-mono"
+          className="font-mono"
           onClick={() => {
             window.location.href = '/projects'
           }}

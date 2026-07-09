@@ -92,7 +92,7 @@ export function SnapshotTimeline({ events = [] }: SnapshotTimelineProps) {
                 variant="outline"
                 disabled={isBusy}
                 onClick={() => void handleViewDiff(entry.hash)}
-                className="bg-background/80 h-6 rounded-none px-2 font-mono text-[10px] uppercase tracking-[0.16em]"
+                className="bg-background/80 h-6 px-2 font-mono text-[10px] uppercase tracking-[0.16em]"
               >
                 View Diff
               </Button>
@@ -102,7 +102,7 @@ export function SnapshotTimeline({ events = [] }: SnapshotTimelineProps) {
                 variant="outline"
                 disabled={isBusy}
                 onClick={() => void handleRestore(entry.hash)}
-                className="bg-background/80 h-6 rounded-none px-2 font-mono text-[10px] uppercase tracking-[0.16em]"
+                className="bg-background/80 h-6 px-2 font-mono text-[10px] uppercase tracking-[0.16em]"
               >
                 <RotateCcw className="mr-1 h-3 w-3" />
                 Restore

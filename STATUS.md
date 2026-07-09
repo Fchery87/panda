@@ -1,40 +1,31 @@
-# Status: Panda Workflow Orchestration Implementation
+# Status: "Ink & Paper" redesign
 
-## Current milestone: Remaining workflow plan implementation in progress
+## Current milestone: All milestones complete (2026-07-06)
 
-## Last completed: Phases 1-7 from `docs/PANDA_REMAINING_WORK_IMPLEMENTATION_PLAN.md` - 2026-05-25
+## Completed in this run
 
-## Completed in this milestone
+1. **M1 Token foundation** — globals.css fully rewritten (Ink & Paper OKLCH tokens, light + dark designed, `.ink-panel` signature, all legacy utility class names kept and restyled); tailwind.config.ts extended (ink/lavender/iris/teal roles, font-display, radius scale); fonts swapped to Bricolage Grotesque + Schibsted Grotesk (+ layout.test.tsx mock); Button → pill; PandaLogo → ink chop with lavender seal; `rounded-none` stripped from 111 files.
+2. **M2 Public surface** — landing page rewritten (paper/ink split hero with animated run-receipt ink card, "How a run works" sequence, feature trio); PublicNav → floating pill nav; PublicFooter → ink panel; login → centered paper card.
+3. **M3 Dashboard** — DashboardHeader → clean product header (pill nav, search pill, ink CTA); AuthenticatedPageShell → soft centered layout (props API unchanged); projects page → Codex-style home (display greeting, rounded search, card list with ink chops, hero empty state). All handlers/dialogs/aria preserved.
+4. **M4 Workbench chrome** — WorkbenchTopBar wears `.ink-panel` (auto re-themes descendants); status pills rounded; shell frame rounded-xl.
+5. **M5 Docs + gate** — docs/DESIGN.md rewritten; design-system-css.test.ts pins the new contract.
 
-1. True `ask_user` live pause/resume for active runs.
-2. Advisor enforcement in direct runtime tool calls.
-3. Autopilot checkpoint integration.
-4. Workflow chain runtime linkage to `agentRuns`.
-5. Browser E2E coverage for file tree/advisor proof chain added.
-6. Advisor reviewer UX polish.
-7. Optional workflow artifact materialization helpers and UI copy affordances.
+## Validation
 
-## Known hardening follow-ups
+- `bun run typecheck` — pass (exit 0)
+- `bun run lint` — pass (3 pre-existing warnings in useAgent.ts, untouched)
+- `bun test` (full suite) — pass (exit 0); app 78/78, components+hooks 353/353
+- Visual mirror pass via Playwright on dev server: landing light/dark at 1280, light at 390 + 1920, login at 1280 — layout holds, signature in first screenful. Fixed: sign-in button centering.
+- Not visually verified (auth-gated): projects page, workbench in-browser render.
 
-- `ask_user` live pause/resume works in the active browser session, but full
-  browser reload recovery of an in-flight `ask_user` resolver still needs
-  runtime checkpoint rehydration.
-- Direct runtime tool advisor enforcement blocks risky work and creates review
-  requests before execution; automatic replay of the exact blocked tool after
-  approval remains a future hardening step.
-- New Playwright specs are present/discoverable; full browser execution should
-  be run where Convex + Next webServer startup has enough time budget.
+## Decision log
 
-## Validation evidence
+- `.ink-panel` = local CSS-variable re-theme; portaled popovers intentionally stay paper.
+- Dark mode = "all ink"; lavender becomes the action color there.
+- Education/admin/settings pages inherit the new tokens + shell + button styles but did not get bespoke layouts this run.
 
-- `bun run convex:codegen:ci` passed after schema/function changes.
-- `cd apps/web && bunx tsc --noEmit --pretty false` passed.
-- Focused tests passed for:
-  - `ask_user` questionnaire/tool cards/Convex lifecycle,
-  - direct advisor tool enforcement,
-  - Autopilot checkpoint integration,
-  - workflow chain runtime linkage,
-  - workflow artifact materialization,
-  - advisor request panel polish.
-- Playwright discovery passed for `e2e/file-tree-advisor-proof.e2e-spec.ts` with
-  2 tests listed.
+## Future work discovered
+
+- Bespoke ink/paper treatment for education page content and admin tables.
+- Regenerate `icon.svg` favicon to match the new logo mark (lavender seal).
+- Interior workbench panels (Timeline, chat, editor dock) could use ink-panel on terminal/run surfaces.

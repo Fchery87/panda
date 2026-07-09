@@ -166,6 +166,7 @@ export function WorkspaceRuntimeProvider({
     selectedFileLocation,
     openTabs,
     cursorPosition,
+    resetGeneration,
     setSelectedFilePath,
     setSelectedFileLocation,
     setOpenTabs,
@@ -384,6 +385,7 @@ export function WorkspaceRuntimeProvider({
   usePlanArtifactSync({
     activePlanArtifact,
     openTabs,
+    resetGeneration,
     setOpenTabs,
     setSelectedFilePath,
     setSelectedFileLocation,

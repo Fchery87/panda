@@ -84,7 +84,7 @@ export function ProjectSearchPanel({ onSelectFile }: ProjectSearchPanelProps) {
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
             placeholder="Search code..."
-            className="h-8 w-full rounded-none border border-border bg-background px-2 font-mono text-xs text-foreground outline-none placeholder:text-muted-foreground"
+            className="h-8 w-full border border-border bg-background px-2 font-mono text-xs text-foreground outline-none placeholder:text-muted-foreground"
           />
           {query && (
             <button
@@ -154,7 +154,7 @@ export function ProjectSearchPanel({ onSelectFile }: ProjectSearchPanelProps) {
             type="button"
             onClick={() => setIsReplaceMode((v) => !v)}
             className={cn(
-              'flex h-6 w-6 items-center justify-center rounded-none border border-transparent transition-colors',
+              'flex h-6 w-6 items-center justify-center border border-transparent transition-colors',
               isReplaceMode
                 ? 'bg-surface-2 text-foreground'
                 : 'text-muted-foreground hover:text-foreground'
@@ -197,7 +197,7 @@ export function ProjectSearchPanel({ onSelectFile }: ProjectSearchPanelProps) {
               </div>
             )}
             {state.warnings.map((warning) => (
-              <div key={warning} className="font-mono text-xs text-amber-500">
+              <div key={warning} className="font-mono text-xs text-warning">
                 {warning}
               </div>
             ))}

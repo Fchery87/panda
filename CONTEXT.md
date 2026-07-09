@@ -96,22 +96,11 @@ whole work thread.
 
 ### Execution Session Shell
 
-The `Execution Session Shell` is the desktop workspace IA where the active
-Execution Session owns the canvas. It is organized as a persistent session rail,
-central session thread and composer, right-side work tray, and terminal-only
-bottom drawer.
+Deprecated. Use `Workspace` instead.
 
-The central session thread is the primary surface for chat narrative, mode
-selection, model choice, attachments, approvals, stop/recover actions, and next
-steps. The work tray contains implementation detail and inspection surfaces:
-`Work`, `Proof`, `Changes`, `Context`, and `Preview`. Persisted workspace UI
-state should use these product terms at the seam; legacy `run` and `workspace`
-panel names are migration-only compatibility terms. The bottom drawer is only
-for terminal command execution; agent events belong in `Proof`.
-
-Use `Execution Session Shell` for the implemented workspace structure. Use
-`Chat-First Workbench` only for the broader product principle that chat/session
-timeline is dominant over editor-first chrome.
+The prior definition described a fixed layout (session-rail-left,
+session-thread-center, work-tray-right) that no longer matches the implemented
+editor-centric layout. The canonical term for the desktop IA is now `Workspace`.
 
 ### Plan
 
@@ -375,17 +364,77 @@ Use `reasoning content` for internal data and policy language. Avoid
 `chain of thought` in product copy because the feature exposes bounded thinking
 visibility, not a promise to reveal raw model chain-of-thought.
 
+### Workspace
+
+The `Workspace` is the entire project surface the user interacts with: top bar,
+left sidebar, editor panel, right sidebar, bottom dock, and status bar. It is
+the container — not any single panel within it.
+
+`Workspace` replaces `Execution Session Shell` as the canonical name for the
+desktop IA. The prior term implied a fixed layout (session-rail-left,
+chat-center, tray-right) that no longer matches the implemented editor-centric
+layout.
+
+### Workbench
+
+The `Workbench` is the center editing surface within a Workspace: file tabs,
+code editor, diff viewer, and plan artifact surface. It is one panel among
+several in the Workspace, not the whole surface.
+
+Do not use `Workbench` to refer to the entire project surface — that is the
+`Workspace`.
+
 ### Chat-First Workbench
 
-A `Chat-First Workbench` is a product model where the active chat or session
-timeline is the primary work surface. Files, editor tabs, terminal output,
-diffs, preview, and proof surfaces support the active session rather than owning
-the workspace hierarchy.
+A `Chat-First Workbench` is a **deprecated** product principle that stated the
+active chat or session timeline should be the primary work surface.
 
-The implemented desktop expression is the `Execution Session Shell`: session
-rail on the left, session thread and composer in the center, contextual work
-tray on the right, and terminal-only bottom drawer.
+As of ADR-0004, Panda has formally adopted an **editor-first** layout model
+inspired by Windsurf 2: the editor is the primary center surface, and the chat
+lives in a persistent right sidebar that never disappears. This principle is
+retained only as historical context for understanding why early layout code was
+structured around a conditional chat dock.
 
-Use `IDE-first workspace` for a legacy or anti-pattern shape where file
-navigation, editor tabs, center workbench panels, and terminal-style supporting
-surfaces are visually and structurally dominant over the active chat timeline.
+### Left Sidebar
+
+The `Left Sidebar` is the file-system navigation surface of the Workspace. It
+contains three sections: Files (file tree and explorer outline), Search
+(project-wide search), and Git (source control).
+
+Do not place session-oriented content (chat history, agent status) in the Left
+Sidebar — that belongs in the `Right Sidebar`. The Left Sidebar is exclusively
+for navigating the `Project File Corpus`.
+
+### Right Sidebar
+
+The `Right Sidebar` is the persistent session-oriented surface of the
+Workspace. It contains four tabs: Chat (conversation timeline, mode selector,
+composer, and session switcher), Run (execution evidence and live steps),
+Changes (artifacts and diffs), and Context (plan, memory, evals, advisor).
+
+The Right Sidebar is always visible — it collapses to a vertical icon rail but
+never disappears. It replaces the former conditional chat dock and separate
+inspector panel. All session-scoped inspection content lives here.
+
+### Session Switcher
+
+A `Session Switcher` is the UI mechanism within the Right Sidebar's Chat tab
+for switching between `Execution Session`s. It replaces the former left-sidebar
+Tasks section and Agents section.
+
+### Agent Execution Card
+
+An `Agent Execution Card` is an interactive UI component that renders a single
+tool call or agent step with a `Lifecycle State`. Each card type (file edit,
+command run, search, MCP call, subagent) has a compact collapsed view and an
+expandable detail view.
+
+Do not render tool calls as plain text in the chat transcript — use Agent
+Execution Cards. Batch operations render as summary cards (e.g. "Edited 3
+files") that expand to individual cards.
+
+### Lifecycle State
+
+A `Lifecycle State` is the visual state of an Agent Execution Card: `pending`,
+`running`, `success`, or `error`. The state determines the card's icon, colour,
+and available actions (e.g. retry on error, expand on success).

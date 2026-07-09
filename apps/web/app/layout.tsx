@@ -1,13 +1,19 @@
 import type { Metadata } from 'next'
 import { GeistMono } from 'geist/font/mono'
-import { Inter } from 'next/font/google'
+import { Bricolage_Grotesque, Schibsted_Grotesk } from 'next/font/google'
 import { ConvexAuthNextjsServerProvider } from '@convex-dev/auth/nextjs/server'
 import './globals.css'
 import { Providers } from './providers'
 
-const inter = Inter({
+const schibstedGrotesk = Schibsted_Grotesk({
   subsets: ['latin'],
   variable: '--font-sans',
+  display: 'swap',
+})
+
+const bricolageGrotesque = Bricolage_Grotesque({
+  subsets: ['latin'],
+  variable: '--font-display',
   display: 'swap',
 })
 
@@ -32,7 +38,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} ${GeistMono.variable} antialiased`}>
+      <body
+        className={`${schibstedGrotesk.variable} ${bricolageGrotesque.variable} ${GeistMono.variable} antialiased`}
+      >
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:border focus:border-border focus:bg-background focus:px-3 focus:py-2 focus:font-mono focus:text-sm"

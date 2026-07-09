@@ -53,7 +53,7 @@ export function SuggestedActions({
             onClick={() => onAction(action.prompt, action.targetMode)}
             className={cn(
               'group flex items-center gap-1.5',
-              'rounded-none border border-border bg-background',
+              'border border-border bg-background',
               'px-2 py-1 font-mono text-[11px] text-muted-foreground xl:px-2.5 xl:text-xs',
               'transition-all duration-150',
               'hover:border-primary/50 hover:bg-primary/5 hover:text-foreground',

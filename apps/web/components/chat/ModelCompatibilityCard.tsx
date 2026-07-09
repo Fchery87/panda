@@ -25,16 +25,16 @@ export function ModelCompatibilityCard({ error, onSwitchModel, onReport }: Props
   const message = MESSAGES[error.kind]?.(error) ?? 'An unknown model compatibility error occurred.'
 
   return (
-    <div className="rounded-none border border-orange-200 bg-orange-50 p-4 text-sm dark:border-orange-900 dark:bg-orange-950">
-      <p className="font-mono font-medium text-orange-900 dark:text-orange-100">
+    <div className="border border-warning/30 bg-warning/10 p-4 text-sm">
+      <p className="font-mono font-medium text-foreground">
         Model Compatibility Issue
       </p>
-      <p className="mt-1 text-orange-800 dark:text-orange-200">{message}</p>
+      <p className="mt-1 text-muted-foreground">{message}</p>
       <div className="mt-3 flex gap-2">
         {onSwitchModel && (
           <button
             onClick={onSwitchModel}
-            className="rounded-none bg-orange-100 px-3 py-1 font-mono text-xs font-medium text-orange-900 hover:bg-orange-200 dark:bg-orange-900 dark:text-orange-100 dark:hover:bg-orange-800"
+            className="bg-warning/15 px-3 py-1 font-mono text-xs font-medium text-foreground hover:bg-warning/25"
           >
             Switch Model
           </button>
@@ -42,7 +42,7 @@ export function ModelCompatibilityCard({ error, onSwitchModel, onReport }: Props
         {onReport && (
           <button
             onClick={() => onReport(error)}
-            className="rounded-none bg-transparent px-3 py-1 font-mono text-xs font-medium text-orange-700 hover:bg-orange-100 dark:text-orange-300 dark:hover:bg-orange-900"
+            className="bg-transparent px-3 py-1 font-mono text-xs font-medium text-foreground hover:bg-warning/15"
           >
             Report Issue
           </button>

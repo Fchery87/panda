@@ -11,22 +11,55 @@ const workspaceLayout = readFileSync(
 )
 const compactGlobalsCss = globalsCss.replace(/\s+/g, ' ')
 
-describe('Panda design system CSS contract', () => {
-  test('uses OKLCH channel tokens from docs/DESIGN.md as the theme source', () => {
-    expect(globalsCss).toContain('--background: 99.07% 0.003 270;')
-    expect(globalsCss).toContain('--foreground: 14.5% 0.005 270;')
-    expect(globalsCss).toContain('--primary: 63.5% 0.17 40;')
-    expect(globalsCss).toContain('--primary: 72% 0.165 55;')
-    expect(globalsCss).toContain('--surface-1: 97.5% 0.003 270;')
-    expect(globalsCss).toContain('--surface-0: 13% 0.005 270;')
+describe('Panda "Ink & Paper" (Red Ink) design system CSS contract', () => {
+  test('uses the Red Ink OKLCH channel tokens as the theme source', () => {
+    // Paper: near-pure white canvas (whisper of cool, hue ≈ 255), raised near-white card
+    expect(globalsCss).toContain('--background: 98.5% 0.002 255;')
+    expect(globalsCss).toContain('--card: 99.7% 0.001 255;')
+    // Oxblood is the signature red-ink action color in light mode (AA in both directions)
+    expect(globalsCss).toContain('--primary: 40% 0.155 25;')
+    // Oxblood lifts to a brighter garnet as the action color in dark mode
+    expect(globalsCss).toContain('--primary: 62% 0.16 26;')
+    // Accent + run-evidence roles exist
+    expect(globalsCss).toContain('--oxblood:')
+    expect(globalsCss).toContain('--teal:')
+    // Soft product radius, not broadsheet zero
+    expect(globalsCss).toContain('--radius: 12px;')
     expect(tailwindConfig).toContain("background: 'oklch(var(--background))'")
     expect(tailwindConfig).toContain('primary: {')
     expect(tailwindConfig).toContain("DEFAULT: 'oklch(var(--primary))'")
+    expect(tailwindConfig).toContain("oxblood: 'oklch(var(--oxblood))'")
   })
 
-  test('implements the reference hard-grid texture and avoids decorative glows', () => {
+  test('never uses the vibe-coded AI palette (no violet/indigo/lavender tokens)', () => {
+    // The old warm-paper + violet-ink + lavender tokens must be fully gone.
+    expect(globalsCss).not.toContain('--lavender')
+    expect(globalsCss).not.toContain('--iris')
+    expect(tailwindConfig).not.toContain("lavender:")
+    expect(tailwindConfig).not.toContain("iris:")
+    // No color-tinted glow shadows: shadows must be neutral (oklch near-black / pure black),
+    // never the old hardcoded violet `oklch(21% 0.07 285 …)`.
+    expect(globalsCss).not.toContain('oklch(21% 0.07 285')
+    expect(compactGlobalsCss).not.toContain('oklch(79.5% 0.095 295')
+  })
+
+  test('defines the ink-panel signature surface', () => {
+    expect(globalsCss).toContain('.ink-panel {')
+    // The panel re-themes descendants by re-declaring core variables locally
+    expect(compactGlobalsCss).toMatch(/\.ink-panel \{[^}]*--background:/)
+    expect(compactGlobalsCss).toMatch(/\.ink-panel \{[^}]*--primary:/)
+  })
+
+  test('loads the display and body typefaces of the system', () => {
+    const rootLayout = readFileSync(resolve(repoRoot, 'apps/web/app/layout.tsx'), 'utf8')
+    expect(rootLayout).toContain('Bricolage_Grotesque')
+    expect(rootLayout).toContain('Schibsted_Grotesk')
+    expect(tailwindConfig).toContain("display: ['var(--font-display)'")
+  })
+
+  test('keeps the quiet paper-grain texture and avoids decorative glows', () => {
     expect(globalsCss).toContain('radial-gradient(')
-    expect(compactGlobalsCss).toContain('background-size: 24px 24px, auto')
+    expect(compactGlobalsCss).toContain('background-size: 28px 28px, auto')
     expect(globalsCss).not.toContain('.accent-glow')
   })
 

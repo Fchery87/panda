@@ -61,14 +61,14 @@ export function EnhancementLLMConfig({
   }
 
   return (
-    <Card className="rounded-none border-l-4 border-l-amber-500">
+    <Card className="border-l-4 border-l-warning">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-amber-500" />
+            <Sparkles className="h-5 w-5 text-warning" />
             <CardTitle className="text-base">Prompt Enhancement LLM</CardTitle>
           </div>
-          <Badge variant="outline" className="rounded-none font-mono text-xs">
+          <Badge variant="outline" className="font-mono text-xs">
             Admin Only
           </Badge>
         </div>
@@ -84,7 +84,7 @@ export function EnhancementLLMConfig({
             Provider
           </Label>
           <Select value={currentProvider} onValueChange={handleProviderChange}>
-            <SelectTrigger id="enhancement-provider" className="rounded-none">
+            <SelectTrigger id="enhancement-provider" className="">
               <SelectValue placeholder="Select a provider..." />
             </SelectTrigger>
             <SelectContent>
@@ -112,7 +112,7 @@ export function EnhancementLLMConfig({
             onValueChange={handleModelChange}
             disabled={availableModels.length === 0}
           >
-            <SelectTrigger id="enhancement-model" className="rounded-none">
+            <SelectTrigger id="enhancement-model" className="">
               <SelectValue
                 placeholder={
                   availableModels.length === 0 ? 'Select a provider first' : 'Select a model...'
@@ -133,14 +133,14 @@ export function EnhancementLLMConfig({
               gpt-4o-mini, Claude Haiku, or Llama 3.1 8B. These provide good prompt rewriting at low
               cost and latency.
             </p>
-            <p className="text-amber-500">
+            <p className="text-warning">
               Note: Avoid expensive reasoning models (Opus, o1, etc.) for prompt enhancement.
             </p>
           </div>
         </div>
 
         {/* Current Configuration Summary */}
-        <div className="bg-muted/30 rounded-none border border-border p-4">
+        <div className="bg-muted/30 border border-border p-4">
           <p className="mb-3 font-mono text-xs uppercase tracking-wider text-muted-foreground">
             Current Configuration
           </p>

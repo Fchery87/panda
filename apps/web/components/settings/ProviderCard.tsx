@@ -78,9 +78,9 @@ export function ProviderCard({
       case 'testing':
         return <Loader2 className="h-4 w-4 animate-spin" />
       case 'success':
-        return <Check className="h-4 w-4 text-green-500" />
+        return <Check className="h-4 w-4 text-success" />
       case 'error':
-        return <X className="h-4 w-4 text-red-500" />
+        return <X className="h-4 w-4 text-destructive" />
       default:
         return <TestTube className="h-4 w-4" />
     }
@@ -91,9 +91,9 @@ export function ProviderCard({
       case 'testing':
         return <Loader2 className="h-4 w-4 animate-spin" />
       case 'success':
-        return <Check className="h-4 w-4 text-green-500" />
+        return <Check className="h-4 w-4 text-success" />
       case 'error':
-        return <X className="h-4 w-4 text-red-500" />
+        return <X className="h-4 w-4 text-destructive" />
       default:
         return <TestTube className="h-4 w-4" />
     }
@@ -111,14 +111,14 @@ export function ProviderCard({
         >
           <span className="flex min-w-0 flex-wrap items-center gap-3">
             <CardTitle className="text-base">{provider.name}</CardTitle>
-            <Badge variant={provider.enabled ? 'default' : 'secondary'} className="rounded-none">
+            <Badge variant={provider.enabled ? 'default' : 'secondary'} className="">
               {provider.enabled ? 'On' : 'Off'}
             </Badge>
             {provider.apiKey && provider.testStatus === 'success' && (
-              <Check className="h-3.5 w-3.5 text-green-500" />
+              <Check className="h-3.5 w-3.5 text-success" />
             )}
             {provider.apiKey && provider.testStatus === 'error' && (
-              <X className="h-3.5 w-3.5 text-red-500" />
+              <X className="h-3.5 w-3.5 text-destructive" />
             )}
           </span>
         </button>
@@ -351,25 +351,25 @@ export function ProviderCard({
 
           {/* Status Message */}
           {provider.testStatus === 'success' && (
-            <p className="flex items-center gap-1 text-sm text-green-600">
+            <p className="flex items-center gap-1 text-sm text-success">
               <Check className="h-3 w-3" /> Connection successful
             </p>
           )}
           {provider.testStatus === 'error' && (
             <div className="space-y-1">
-              <p className="flex items-center gap-1 text-sm text-red-600">
+              <p className="flex items-center gap-1 text-sm text-destructive">
                 <X className="h-3 w-3" /> Connection failed. Check your API key.
               </p>
               {provider.testStatusMessage && (
                 <div className="flex items-start gap-2">
-                  <p className="line-clamp-3 flex-1 font-mono text-xs text-red-700">
+                  <p className="line-clamp-3 flex-1 font-mono text-xs text-destructive">
                     {provider.testStatusMessage}
                   </p>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="h-6 rounded-none px-2 font-mono text-xs"
+                    className="h-6 px-2 font-mono text-xs"
                     onClick={() => copyToClipboard(provider.testStatusMessage!)}
                   >
                     Copy
@@ -379,25 +379,25 @@ export function ProviderCard({
             </div>
           )}
           {provider.testCompletionStatus === 'success' && (
-            <p className="flex items-center gap-1 text-sm text-green-600">
+            <p className="flex items-center gap-1 text-sm text-success">
               <Check className="h-3 w-3" /> Completion test succeeded
             </p>
           )}
           {provider.testCompletionStatus === 'error' && (
             <div className="space-y-1">
-              <p className="flex items-center gap-1 text-sm text-red-600">
+              <p className="flex items-center gap-1 text-sm text-destructive">
                 <X className="h-3 w-3" /> Completion test failed. Verify model and endpoint.
               </p>
               {provider.testCompletionStatusMessage && (
                 <div className="flex items-start gap-2">
-                  <p className="line-clamp-4 flex-1 font-mono text-xs text-red-700">
+                  <p className="line-clamp-4 flex-1 font-mono text-xs text-destructive">
                     {provider.testCompletionStatusMessage}
                   </p>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="h-6 rounded-none px-2 font-mono text-xs"
+                    className="h-6 px-2 font-mono text-xs"
                     onClick={() => copyToClipboard(provider.testCompletionStatusMessage!)}
                   >
                     Copy

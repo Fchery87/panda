@@ -79,7 +79,7 @@ export function ProjectWorkspaceShell({
         chatId={activeChatId}
         chatTitle={activeChatTitle}
       />
-      <div className="bg-background/92 shadow-sharp-lg mx-auto flex h-full min-h-0 max-w-[1680px] flex-col overflow-hidden rounded-lg border border-border">
+      <div className="shadow-sharp-lg mx-auto flex h-full min-h-0 max-w-[1680px] flex-col overflow-hidden rounded-xl border border-border bg-background">
         <WorkbenchTopBar
           projectName={projectName}
           projectId={projectId}

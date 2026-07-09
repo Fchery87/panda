@@ -146,7 +146,7 @@ const JobCard: React.FC<{
       layout
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="surface-2 shadow-sharp-sm border-border/60 overflow-hidden rounded-none border"
+      className="surface-2 shadow-sharp-sm border-border/60 overflow-hidden border"
     >
       {/* Job Header */}
       <div
@@ -482,7 +482,7 @@ export function Terminal({ projectId }: TerminalProps) {
           onChange={(e) => setCommand(e.target.value)}
           placeholder="Type a command (e.g., npm install, git status)..."
           disabled={isExecuting}
-          className="border-border/50 placeholder:text-muted-foreground/50 flex-1 rounded-none border bg-surface-0 px-3 py-1.5 font-mono text-sm text-foreground outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-50"
+          className="border-border/50 placeholder:text-muted-foreground/50 flex-1 border bg-surface-0 px-3 py-1.5 font-mono text-sm text-foreground outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-50"
         />
 
         <Button

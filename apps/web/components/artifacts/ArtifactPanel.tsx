@@ -236,7 +236,7 @@ export function ArtifactPanel({
             {pendingCount > 0 && (
               <Badge
                 variant="outline"
-                className="rounded-none border-primary px-1.5 text-[10px] text-primary"
+                className="border-primary px-1.5 text-[10px] text-primary"
               >
                 {pendingCount}
               </Badge>
@@ -248,7 +248,7 @@ export function ArtifactPanel({
               variant="ghost"
               size="icon"
               onClick={onClose}
-              className="h-7 w-7 rounded-none"
+              className="h-7 w-7"
               aria-label="Close panel"
               title="Close panel (Esc)"
             >
@@ -279,7 +279,7 @@ export function ArtifactPanel({
                 type="button"
                 onClick={onReviewDiff}
                 variant="outline"
-                className="mt-3 h-8 w-full rounded-none font-mono text-[10px] uppercase tracking-[0.16em]"
+                className="mt-3 h-8 w-full font-mono text-[10px] uppercase tracking-[0.16em]"
                 size="sm"
               >
                 Open Review Diff
@@ -290,7 +290,7 @@ export function ArtifactPanel({
             <Button
               onClick={handleApplyAll}
               disabled={isApplying}
-              className="h-9 flex-1 rounded-none text-xs"
+              className="h-9 flex-1 text-xs"
               size="sm"
             >
               <Check className="mr-1.5 h-3.5 w-3.5" />
@@ -300,7 +300,7 @@ export function ArtifactPanel({
               onClick={handleRejectAll}
               disabled={isApplying}
               variant="outline"
-              className="h-9 flex-1 rounded-none text-xs"
+              className="h-9 flex-1 text-xs"
               size="sm"
             >
               <X className="mr-1.5 h-3.5 w-3.5" />

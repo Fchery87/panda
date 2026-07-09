@@ -73,10 +73,10 @@ export function SharedTranscript({ messages, publicReviewSummary }: SharedTransc
           }}
           className={cn('flex gap-3', message.role === 'user' ? 'flex-row-reverse' : 'flex-row')}
         >
-          <Avatar className="h-8 w-8 rounded-none">
+          <Avatar className="h-8 w-8">
             <AvatarFallback
               className={cn(
-                'rounded-none',
+                '',
                 message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'
               )}
             >

@@ -66,7 +66,7 @@ export function SystemControls({ settings, onSave }: SystemControlsProps) {
   }
 
   return (
-    <Card className="rounded-none">
+    <Card className="">
       <CardHeader>
         <div className="flex items-center gap-2">
           <Settings className="h-5 w-5" />
@@ -76,7 +76,7 @@ export function SystemControls({ settings, onSave }: SystemControlsProps) {
       </CardHeader>
       <CardContent className="space-y-6">
         {controls.systemMaintenance && (
-          <Alert variant="destructive" className="rounded-none">
+          <Alert variant="destructive" className="">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
               System is in maintenance mode. Only admins can access the application.
@@ -158,7 +158,7 @@ export function SystemControls({ settings, onSave }: SystemControlsProps) {
                       maxProjectsPerUser: parseInt(e.target.value) || 100,
                     }))
                   }
-                  className="rounded-none"
+                  className=""
                 />
               </div>
 
@@ -178,7 +178,7 @@ export function SystemControls({ settings, onSave }: SystemControlsProps) {
                       maxChatsPerProject: parseInt(e.target.value) || 50,
                     }))
                   }
-                  className="rounded-none"
+                  className=""
                 />
               </div>
             </div>
@@ -208,7 +208,7 @@ export function SystemControls({ settings, onSave }: SystemControlsProps) {
         </div>
 
         <div className="flex justify-end">
-          <Button onClick={handleSave} className="rounded-none">
+          <Button onClick={handleSave} className="">
             <Save className="mr-2 h-4 w-4" />
             Save System Controls
           </Button>

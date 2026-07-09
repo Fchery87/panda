@@ -242,7 +242,7 @@ export function SpecPanel({
         <div className="flex items-start gap-3">
           <span
             className={cn(
-              'flex h-8 w-8 items-center justify-center rounded-none border',
+              'flex h-8 w-8 items-center justify-center border',
               status.borderClass,
               status.bgClass,
               status.colorClass
@@ -286,14 +286,14 @@ export function SpecPanel({
               size="sm"
               variant="outline"
               onClick={handleSaveEdits}
-              className="border-primary/50 h-7 rounded-none font-mono text-xs"
+              className="border-primary/50 h-7 font-mono text-xs"
             >
               <Edit3 className="mr-1 h-3 w-3" />
               Save Changes
             </Button>
           )}
           {onClose && (
-            <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7 rounded-none">
+            <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7">
               <X className="h-4 w-4" />
             </Button>
           )}
@@ -312,7 +312,7 @@ export function SpecPanel({
                 variant="outline"
                 size="sm"
                 onClick={onCancel}
-                className="h-7 rounded-none border-border font-mono text-xs"
+                className="h-7 border-border font-mono text-xs"
               >
                 <X className="mr-1 h-3 w-3" />
                 Cancel
@@ -322,7 +322,7 @@ export function SpecPanel({
               <Button
                 size="sm"
                 onClick={handleExecute}
-                className="h-7 rounded-none font-mono text-xs"
+                className="h-7 font-mono text-xs"
               >
                 <Play className="mr-1 h-3 w-3" />
                 Execute
@@ -338,24 +338,24 @@ export function SpecPanel({
         onValueChange={(v) => setActiveTab(v as typeof activeTab)}
         className="flex-1 overflow-hidden"
       >
-        <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent px-4">
+        <TabsList className="w-full justify-start border-b border-border bg-transparent px-4">
           <TabsTrigger
             value="requirements"
-            className="gap-1.5 rounded-none border-b-2 border-transparent px-3 py-2 font-mono text-xs uppercase tracking-wider data-[state=active]:border-primary data-[state=active]:bg-transparent"
+            className="gap-1.5 border-b-2 border-transparent px-3 py-2 font-mono text-xs uppercase tracking-wider data-[state=active]:border-primary data-[state=active]:bg-transparent"
           >
             <Target className="h-3.5 w-3.5" />
             Requirements ({editedSpec.intent.acceptanceCriteria.length})
           </TabsTrigger>
           <TabsTrigger
             value="constraints"
-            className="gap-1.5 rounded-none border-b-2 border-transparent px-3 py-2 font-mono text-xs uppercase tracking-wider data-[state=active]:border-primary data-[state=active]:bg-transparent"
+            className="gap-1.5 border-b-2 border-transparent px-3 py-2 font-mono text-xs uppercase tracking-wider data-[state=active]:border-primary data-[state=active]:bg-transparent"
           >
             <Shield className="h-3.5 w-3.5" />
             Constraints ({editedSpec.intent.constraints.length})
           </TabsTrigger>
           <TabsTrigger
             value="plan"
-            className="gap-1.5 rounded-none border-b-2 border-transparent px-3 py-2 font-mono text-xs uppercase tracking-wider data-[state=active]:border-primary data-[state=active]:bg-transparent"
+            className="gap-1.5 border-b-2 border-transparent px-3 py-2 font-mono text-xs uppercase tracking-wider data-[state=active]:border-primary data-[state=active]:bg-transparent"
           >
             <GitBranch className="h-3.5 w-3.5" />
             Plan ({editedSpec.plan.steps.length})
@@ -363,7 +363,7 @@ export function SpecPanel({
           {showVerifyTab && (
             <TabsTrigger
               value="verify"
-              className="gap-1.5 rounded-none border-b-2 border-transparent px-3 py-2 font-mono text-xs uppercase tracking-wider data-[state=active]:border-primary data-[state=active]:bg-transparent"
+              className="gap-1.5 border-b-2 border-transparent px-3 py-2 font-mono text-xs uppercase tracking-wider data-[state=active]:border-primary data-[state=active]:bg-transparent"
             >
               <CheckCircle2 className="h-3.5 w-3.5" />
               Verify

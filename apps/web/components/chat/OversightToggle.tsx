@@ -13,7 +13,7 @@ export function OversightToggle({ level, onChange, disabled, className }: Oversi
   return (
     <div
       className={cn(
-        'relative flex h-6 items-center gap-1 rounded-none border border-border bg-background p-0.5',
+        'relative flex h-6 items-center gap-1 border border-border bg-background p-0.5',
         className
       )}
     >

@@ -76,7 +76,7 @@ export function GitHubRepositoryPicker({
                 key={repository.repositoryId}
                 type="button"
                 variant={selected ? 'secondary' : 'ghost'}
-                className="h-auto w-full justify-start rounded-none px-2 py-2 text-left font-mono"
+                className="h-auto w-full justify-start px-2 py-2 text-left font-mono"
                 onClick={() => onChange(repository)}
                 disabled={disabled}
               >

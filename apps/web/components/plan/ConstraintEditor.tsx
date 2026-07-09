@@ -223,7 +223,7 @@ export function ConstraintEditor({
                 value={constraint.rule}
                 onChange={(e) => handleUpdate(index, { rule: e.target.value })}
                 placeholder="e.g., No new runtime dependencies"
-                className="rounded-none border-border font-mono text-sm"
+                className="border-border font-mono text-sm"
               />
             </div>
             <div className="space-y-2">
@@ -232,7 +232,7 @@ export function ConstraintEditor({
                 value={constraint.target}
                 onChange={(e) => handleUpdate(index, { target: e.target.value })}
                 placeholder="e.g., package.json"
-                className="rounded-none border-border font-mono text-sm"
+                className="border-border font-mono text-sm"
               />
             </div>
           </div>
@@ -246,7 +246,7 @@ export function ConstraintEditor({
                 value={constraint.rule}
                 onChange={(e) => handleUpdate(index, { rule: e.target.value })}
                 placeholder="e.g., Input must be validated"
-                className="rounded-none border-border font-mono text-sm"
+                className="border-border font-mono text-sm"
               />
             </div>
             <div className="space-y-2">
@@ -255,7 +255,7 @@ export function ConstraintEditor({
                 value={constraint.assertion}
                 onChange={(e) => handleUpdate(index, { assertion: e.target.value })}
                 placeholder="e.g., regex match or function call"
-                className="rounded-none border-border font-mono text-sm"
+                className="border-border font-mono text-sm"
               />
             </div>
           </div>
@@ -269,7 +269,7 @@ export function ConstraintEditor({
                 value={constraint.metric}
                 onChange={(e) => handleUpdate(index, { metric: e.target.value })}
                 placeholder="e.g., Response time"
-                className="rounded-none border-border font-mono text-sm"
+                className="border-border font-mono text-sm"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -282,7 +282,7 @@ export function ConstraintEditor({
                     handleUpdate(index, { threshold: parseFloat(e.target.value) || 0 })
                   }
                   placeholder="e.g., 500"
-                  className="rounded-none border-border font-mono text-sm"
+                  className="border-border font-mono text-sm"
                 />
               </div>
               <div className="space-y-2">
@@ -291,7 +291,7 @@ export function ConstraintEditor({
                   value={constraint.unit}
                   onChange={(e) => handleUpdate(index, { unit: e.target.value })}
                   placeholder="e.g., ms"
-                  className="rounded-none border-border font-mono text-sm"
+                  className="border-border font-mono text-sm"
                 />
               </div>
             </div>
@@ -306,7 +306,7 @@ export function ConstraintEditor({
                 value={constraint.requirement}
                 onChange={(e) => handleUpdate(index, { requirement: e.target.value })}
                 placeholder="e.g., Backward compatible with v1 API"
-                className="rounded-none border-border font-mono text-sm"
+                className="border-border font-mono text-sm"
               />
             </div>
             <div className="space-y-2">
@@ -315,7 +315,7 @@ export function ConstraintEditor({
                 value={constraint.scope}
                 onChange={(e) => handleUpdate(index, { scope: e.target.value })}
                 placeholder="e.g., All public endpoints"
-                className="rounded-none border-border font-mono text-sm"
+                className="border-border font-mono text-sm"
               />
             </div>
           </div>
@@ -329,7 +329,7 @@ export function ConstraintEditor({
                 value={constraint.requirement}
                 onChange={(e) => handleUpdate(index, { requirement: e.target.value })}
                 placeholder="e.g., All inputs must be sanitized"
-                className="rounded-none border-border font-mono text-sm"
+                className="border-border font-mono text-sm"
               />
             </div>
             <div className="space-y-2">
@@ -340,7 +340,7 @@ export function ConstraintEditor({
                 value={constraint.standard || ''}
                 onChange={(e) => handleUpdate(index, { standard: e.target.value })}
                 placeholder="e.g., OWASP Top 10"
-                className="rounded-none border-border font-mono text-sm"
+                className="border-border font-mono text-sm"
               />
             </div>
           </div>
@@ -371,11 +371,11 @@ export function ConstraintEditor({
         </h3>
         {!readOnly && (
           <Select onValueChange={(value: ConstraintType) => handleAdd(value)}>
-            <SelectTrigger className="h-7 w-auto rounded-none border-border font-mono text-xs">
+            <SelectTrigger className="h-7 w-auto border-border font-mono text-xs">
               <Plus className="mr-1 h-3 w-3" />
               <SelectValue placeholder="Add constraint" />
             </SelectTrigger>
-            <SelectContent className="rounded-none">
+            <SelectContent className="">
               {(Object.keys(constraintTypeConfig) as ConstraintType[]).map((type) => (
                 <SelectItem key={type} value={type} className="font-mono text-xs">
                   <div className="flex items-center gap-2">
@@ -436,7 +436,7 @@ export function ConstraintEditor({
                       <Button
                         size="sm"
                         onClick={() => handleSave(index)}
-                        className="h-7 rounded-none font-mono text-xs"
+                        className="h-7 font-mono text-xs"
                       >
                         <Check className="mr-1 h-3 w-3" />
                         Save
@@ -445,7 +445,7 @@ export function ConstraintEditor({
                         variant="ghost"
                         size="sm"
                         onClick={() => setEditingIndex(null)}
-                        className="h-7 rounded-none font-mono text-xs"
+                        className="h-7 font-mono text-xs"
                       >
                         Cancel
                       </Button>
@@ -479,7 +479,7 @@ export function ConstraintEditor({
                           e.stopPropagation()
                           handleRemove(index)
                         }}
-                        className="h-7 w-7 shrink-0 rounded-none text-muted-foreground hover:text-destructive"
+                        className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -496,11 +496,11 @@ export function ConstraintEditor({
             <p className="font-mono text-xs text-muted-foreground">No constraints defined</p>
             {!readOnly && (
               <Select onValueChange={(value: ConstraintType) => handleAdd(value)}>
-                <SelectTrigger className="mt-2 h-7 w-auto rounded-none border-border font-mono text-xs">
+                <SelectTrigger className="mt-2 h-7 w-auto border-border font-mono text-xs">
                   <Plus className="mr-1 h-3 w-3" />
                   <SelectValue placeholder="Add your first constraint" />
                 </SelectTrigger>
-                <SelectContent className="rounded-none">
+                <SelectContent className="">
                   {(Object.keys(constraintTypeConfig) as ConstraintType[]).map((type) => (
                     <SelectItem key={type} value={type} className="font-mono text-xs">
                       {constraintTypeConfig[type].label}

@@ -1,6 +1,7 @@
 import { query, mutation } from './_generated/server'
 import { v } from 'convex/values'
 import { requireChatOwner, requireProjectOwner } from './lib/authz'
+import { insertRunEvent } from './lib/runEvents'
 
 const QuestionAnswer = v.object({
   questionId: v.string(),
@@ -74,7 +75,7 @@ export const createPending = mutation({
       createdAt: now,
       updatedAt: now,
     })
-    await ctx.db.insert('agentRunEvents', {
+    await insertRunEvent(ctx, {
       runId: args.runId,
       chatId: args.chatId,
       sequence: 10_000 + now,
@@ -107,7 +108,7 @@ export const answer = mutation({
       answeredAt: now,
       updatedAt: now,
     })
-    await ctx.db.insert('agentRunEvents', {
+    await insertRunEvent(ctx, {
       runId: question.runId,
       chatId: question.chatId,
       sequence: 10_000 + now,

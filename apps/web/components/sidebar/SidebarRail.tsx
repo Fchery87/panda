@@ -126,12 +126,18 @@ export function SidebarRail({
                     className={cn(
                       'relative grid h-11 place-items-center transition-colors duration-100',
                       isActive
-                        ? 'bg-sidebar-primary/10 text-sidebar-primary'
-                        : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                        ? 'bg-sidebar-accent text-sidebar-primary'
+                        : 'text-sidebar-foreground/60 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground'
                     )}
                     aria-label={item.label}
                     aria-pressed={isActive}
                   >
+                    {isActive && (
+                      <span
+                        aria-hidden="true"
+                        className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-sidebar-primary"
+                      />
+                    )}
                     <Icon className="h-[18px] w-[18px]" />
                     {showSessionSignal ? (
                       <span

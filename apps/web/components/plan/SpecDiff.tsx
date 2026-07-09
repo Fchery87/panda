@@ -126,17 +126,17 @@ export function SpecDiff({
         onValueChange={(v) => setActiveTab(v as typeof activeTab)}
         className="flex-1 overflow-hidden"
       >
-        <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent px-4">
+        <TabsList className="w-full justify-start border-b border-border bg-transparent px-4">
           <TabsTrigger
             value="overview"
-            className="gap-1.5 rounded-none border-b-2 border-transparent px-3 py-2 font-mono text-xs uppercase tracking-wider data-[state=active]:border-primary data-[state=active]:bg-transparent"
+            className="gap-1.5 border-b-2 border-transparent px-3 py-2 font-mono text-xs uppercase tracking-wider data-[state=active]:border-primary data-[state=active]:bg-transparent"
           >
             <GitCommit className="h-3.5 w-3.5" />
             Overview
           </TabsTrigger>
           <TabsTrigger
             value="requirements"
-            className="gap-1.5 rounded-none border-b-2 border-transparent px-3 py-2 font-mono text-xs uppercase tracking-wider data-[state=active]:border-primary data-[state=active]:bg-transparent"
+            className="gap-1.5 border-b-2 border-transparent px-3 py-2 font-mono text-xs uppercase tracking-wider data-[state=active]:border-primary data-[state=active]:bg-transparent"
           >
             <Target className="h-3.5 w-3.5" />
             Requirements
@@ -148,7 +148,7 @@ export function SpecDiff({
           </TabsTrigger>
           <TabsTrigger
             value="constraints"
-            className="gap-1.5 rounded-none border-b-2 border-transparent px-3 py-2 font-mono text-xs uppercase tracking-wider data-[state=active]:border-primary data-[state=active]:bg-transparent"
+            className="gap-1.5 border-b-2 border-transparent px-3 py-2 font-mono text-xs uppercase tracking-wider data-[state=active]:border-primary data-[state=active]:bg-transparent"
           >
             <Shield className="h-3.5 w-3.5" />
             Constraints
@@ -160,7 +160,7 @@ export function SpecDiff({
           </TabsTrigger>
           <TabsTrigger
             value="plan"
-            className="gap-1.5 rounded-none border-b-2 border-transparent px-3 py-2 font-mono text-xs uppercase tracking-wider data-[state=active]:border-primary data-[state=active]:bg-transparent"
+            className="gap-1.5 border-b-2 border-transparent px-3 py-2 font-mono text-xs uppercase tracking-wider data-[state=active]:border-primary data-[state=active]:bg-transparent"
           >
             <GitBranch className="h-3.5 w-3.5" />
             Plan

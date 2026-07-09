@@ -41,6 +41,7 @@ interface StartRunOrchestrationArgs {
     role: 'user'
     content: string
     annotations: MessageAnnotationInfo[]
+    skipAnalytics?: boolean
   }) => Promise<Id<'messages'>>
   createChatAttachments: (args: {
     chatId: Id<'chats'>
@@ -62,6 +63,7 @@ interface StartRunOrchestrationArgs {
     provider?: string
     model: string
     userMessage: string
+    analyticsPendingMessageId?: Id<'messages'>
   }) => Promise<Id<'agentRuns'>>
   beginRun: (runId: Id<'agentRuns'>) => void
   onRunCreated?: (args: {
@@ -82,6 +84,7 @@ export async function startRunOrchestration(args: StartRunOrchestrationArgs): Pr
     chatId: args.chatId,
     role: 'user',
     content: args.userContent,
+    skipAnalytics: true,
     annotations: [
       {
         mode: args.mode,
@@ -125,6 +128,7 @@ export async function startRunOrchestration(args: StartRunOrchestrationArgs): Pr
     provider: args.provider,
     model: args.model,
     userMessage: args.userContent,
+    analyticsPendingMessageId: userMessageId,
   })
 
   args.beginRun(runId)

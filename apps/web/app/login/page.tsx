@@ -47,51 +47,49 @@ export default function LoginPage() {
       <Unauthenticated>
         <main
           id="main-content"
-          className="dot-grid flex min-h-screen flex-col items-center justify-center gap-8 p-4"
+          className="dot-grid flex min-h-screen flex-col items-center justify-center gap-10 p-4"
         >
-          <div className="flex w-full max-w-sm flex-col items-center gap-8">
-            <PandaLogo size="lg" />
-
-            <div className="flex flex-col items-center gap-3 text-center">
-              <h1 className="text-display text-3xl">Sign in to Panda</h1>
-              <p className="text-muted-foreground">{accessState.message}</p>
+          <div className="flex w-full max-w-sm flex-col items-center gap-10">
+            <div className="flex flex-col items-center gap-6 text-center">
+              <PandaLogo size="xl" variant="icon" />
+              <div>
+                <h1 className="font-display text-3xl font-semibold tracking-tight">
+                  Sign in to Panda
+                </h1>
+                <p className="mt-3 text-muted-foreground">{accessState.message}</p>
+              </div>
             </div>
 
-            <div className="shadow-sharp-md w-full rounded-none border border-border bg-background p-8">
-              <div className="space-y-6">
-                <div className="border-b border-border pb-4">
-                  <span className="text-label text-muted-foreground">Continue with</span>
-                </div>
+            <div className="shadow-sharp-md w-full rounded-xl border border-border bg-card p-8">
+              <div className="flex justify-center [&>*]:w-full">
                 <SignInButton disabled={accessState.signInDisabled} />
               </div>
 
               {authError && (
-                <div className="border-destructive/50 bg-destructive/10 mt-6 rounded-none border p-4 text-center">
-                  <p className="font-mono text-sm text-destructive">
-                    Sign-in failed. Please try again.
-                  </p>
+                <div className="bg-destructive/10 mt-6 rounded-lg p-4 text-center">
+                  <p className="text-sm text-destructive">Sign-in failed. Try again.</p>
                 </div>
               )}
             </div>
 
             <p className="max-w-xs text-center text-xs leading-relaxed text-muted-foreground">
-              Panda is a browser-based AI coding workbench. Sign in to create projects, review
-              plans, and build with the agent.
+              Panda is a browser IDE where agents plan in the open and every run leaves receipts
+              you can review.
             </p>
 
             <div className="flex items-center gap-6">
               <Link
                 href="/"
-                className="inline-flex items-center gap-1.5 font-mono text-xs text-muted-foreground underline hover:text-foreground"
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
               >
-                Back to Home
+                Back to home
                 <ArrowRight size={12} />
               </Link>
               <Link
                 href="/education"
-                className="inline-flex items-center gap-1.5 font-mono text-xs text-muted-foreground underline hover:text-foreground"
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
               >
-                Learn How It Works
+                How Panda works
                 <ArrowRight size={12} />
               </Link>
             </div>

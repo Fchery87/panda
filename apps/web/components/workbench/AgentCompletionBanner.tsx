@@ -92,7 +92,7 @@ export function AgentCompletionBanner({
                 <Button
                   data-testid="agent-completion-review-diff-button"
                   size="sm"
-                  className="hover:bg-primary/90 h-7 gap-1.5 rounded-none bg-primary px-3 font-mono text-[10px] uppercase tracking-widest text-primary-foreground"
+                  className="hover:bg-primary/90 h-7 gap-1.5 bg-primary px-3 font-mono text-[10px] uppercase tracking-widest text-primary-foreground"
                   onClick={onReviewDiff}
                 >
                   <IconDiff className="h-3 w-3" />
@@ -103,7 +103,7 @@ export function AgentCompletionBanner({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 gap-1 rounded-none font-mono text-[10px] uppercase tracking-widest"
+                  className="h-7 gap-1 font-mono text-[10px] uppercase tracking-widest"
                   onClick={onOpenPreview}
                 >
                   <IconBrowser className="h-3 w-3" />
@@ -114,7 +114,7 @@ export function AgentCompletionBanner({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 gap-1 rounded-none font-mono text-[10px] uppercase tracking-widest"
+                  className="h-7 gap-1 font-mono text-[10px] uppercase tracking-widest"
                   onClick={onReRunTests}
                 >
                   <IconRefresh className="h-3 w-3" />
@@ -125,7 +125,7 @@ export function AgentCompletionBanner({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 gap-1 rounded-none font-mono text-[10px] uppercase tracking-widest"
+                  className="h-7 gap-1 font-mono text-[10px] uppercase tracking-widest"
                   onClick={onContinueTask}
                 >
                   <IconQuickAction className="h-3 w-3" />

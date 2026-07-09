@@ -142,7 +142,7 @@ export function DiffTab({
           <Button
             variant="outline"
             size="sm"
-            className="h-6 rounded-none font-mono text-[10px] uppercase tracking-widest"
+            className="h-6 font-mono text-[10px] uppercase tracking-widest"
             onClick={() => setViewMode((current) => (current === 'diff' ? 'canvas' : 'diff'))}
           >
             {viewMode === 'diff' ? 'Canvas' : 'Diff'}
@@ -151,7 +151,7 @@ export function DiffTab({
             <Button
               variant="outline"
               size="sm"
-              className="h-6 gap-1 rounded-none font-mono text-[10px] uppercase tracking-widest"
+              className="h-6 gap-1 font-mono text-[10px] uppercase tracking-widest"
               onClick={onOpenProof}
             >
               <IconRevert className="h-3 w-3" />
@@ -161,7 +161,7 @@ export function DiffTab({
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 gap-1 rounded-none font-mono text-[10px] uppercase tracking-widest text-destructive hover:text-destructive"
+            className="h-6 gap-1 font-mono text-[10px] uppercase tracking-widest text-destructive hover:text-destructive"
             onClick={onRejectAll}
           >
             <IconX className="h-3 w-3" />
@@ -169,7 +169,7 @@ export function DiffTab({
           </Button>
           <Button
             size="sm"
-            className="hover:bg-primary/90 h-6 gap-1 rounded-none bg-primary px-3 font-mono text-[10px] uppercase tracking-widest text-primary-foreground"
+            className="hover:bg-primary/90 h-6 gap-1 bg-primary px-3 font-mono text-[10px] uppercase tracking-widest text-primary-foreground"
             onClick={onAcceptAll}
           >
             <IconCheck className="h-3 w-3" />
@@ -278,7 +278,7 @@ export function DiffTab({
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-6 rounded-none font-mono text-[10px]"
+                                className="h-6 font-mono text-[10px]"
                                 onClick={() => onOpenFile(item.file.path)}
                               >
                                 Open
@@ -287,7 +287,7 @@ export function DiffTab({
                             {item.file.reviewStatus === 'pending' && onAcceptFile && (
                               <Button
                                 size="sm"
-                                className="h-6 rounded-none font-mono text-[10px]"
+                                className="h-6 font-mono text-[10px]"
                                 onClick={() => onAcceptFile(item.fileIndex)}
                               >
                                 Accept
@@ -325,7 +325,7 @@ export function DiffTab({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 gap-1 rounded-none font-mono text-[10px] uppercase tracking-widest"
+                      className="h-6 gap-1 font-mono text-[10px] uppercase tracking-widest"
                       onClick={() => onOpenFile(selectedFile.path)}
                     >
                       <IconExternalLink className="h-3 w-3" />
@@ -336,7 +336,7 @@ export function DiffTab({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 gap-1 rounded-none font-mono text-[10px] uppercase tracking-widest"
+                      className="h-6 gap-1 font-mono text-[10px] uppercase tracking-widest"
                       onClick={() => onRevertFile(selectedFileIndex)}
                     >
                       <IconRevert className="h-3 w-3" />
@@ -347,7 +347,7 @@ export function DiffTab({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 gap-1 rounded-none font-mono text-[10px] uppercase tracking-widest text-destructive hover:text-destructive"
+                      className="h-6 gap-1 font-mono text-[10px] uppercase tracking-widest text-destructive hover:text-destructive"
                       onClick={() => onRejectFile(selectedFileIndex)}
                     >
                       <IconX className="h-3 w-3" />
@@ -357,7 +357,7 @@ export function DiffTab({
                   {onAcceptFile && (
                     <Button
                       size="sm"
-                      className="hover:bg-primary/90 h-6 gap-1 rounded-none bg-primary px-3 font-mono text-[10px] uppercase tracking-widest text-primary-foreground"
+                      className="hover:bg-primary/90 h-6 gap-1 bg-primary px-3 font-mono text-[10px] uppercase tracking-widest text-primary-foreground"
                       onClick={() => onAcceptFile(selectedFileIndex)}
                     >
                       <IconCheck className="h-3 w-3" />
@@ -406,7 +406,7 @@ export function DiffTab({
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-5 gap-1 rounded-none px-1 font-mono text-[9px] uppercase tracking-widest"
+                                  className="h-5 gap-1 px-1 font-mono text-[9px] uppercase tracking-widest"
                                   onClick={() =>
                                     onOpenFile(selectedFile.path, {
                                       line: hunk.startLine,
@@ -424,7 +424,7 @@ export function DiffTab({
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-5 w-5 rounded-none p-0 text-destructive hover:text-destructive"
+                                    className="h-5 w-5 p-0 text-destructive hover:text-destructive"
                                     onClick={() => onRejectHunk?.(selectedFileIndex, hunk.id)}
                                     title="Reject hunk"
                                   >
@@ -433,7 +433,7 @@ export function DiffTab({
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-5 w-5 rounded-none p-0 text-[oklch(var(--status-success))] hover:text-[oklch(var(--status-success))]"
+                                    className="h-5 w-5 p-0 text-[oklch(var(--status-success))] hover:text-[oklch(var(--status-success))]"
                                     onClick={() => onAcceptHunk?.(selectedFileIndex, hunk.id)}
                                     title="Accept hunk"
                                   >

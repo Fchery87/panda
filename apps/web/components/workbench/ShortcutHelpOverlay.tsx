@@ -39,7 +39,7 @@ export function ShortcutHelpOverlay({ open, onOpenChange }: ShortcutHelpOverlayP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg rounded-none font-mono">
+      <DialogContent className="max-w-lg font-mono">
         <DialogHeader>
           <DialogTitle className="font-mono">Keyboard Shortcuts</DialogTitle>
         </DialogHeader>

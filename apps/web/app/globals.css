@@ -4,233 +4,221 @@
 
 /*
  * ═══════════════════════════════════════════════════════════════════
- *  PANDA — "Neutral Precision" Design System
- *  Inspired by Cursor 2.0 · Antigravity 2.0 · 2026 IDE standards
+ *  PANDA — "Ink & Paper" Design System · RED INK edition
  *
- *  Philosophy:
- *  - Clean chromatic-neutral backgrounds (not warm cream, not cold blue)
- *  - Orange accent reserved ONLY for active states & primary CTAs
- *  - Ultra-subtle borders — visible where needed, invisible where not
- *  - Three crisp surface elevations with clear hierarchy
- *  - Both light and dark modes designed, not auto-inverted
+ *  Source of truth: docs/DESIGN.md. Visual mirror: docs/design.html.
+ *
+ *  An editorial, anti-vibe-coded palette:
+ *  - Paper is a near-pure white canvas with a whisper of cool (hue ≈ 255).
+ *    No beige, no warm yellow — crisp and modern.
+ *  - Ink is RED ink (oxblood #880B16): historically the color of edits,
+ *    corrections, and marginalia — exactly what an agent does to code.
+ *    Any agent-execution surface becomes a near-black "ink island" via
+ *    `.ink-panel`, where the red ink pops as the action color.
+ *  - Teal is the single secondary, reserved for verified run evidence.
+ *  - Shadows are NEUTRAL, never color-tinted (violet glow is the loudest
+ *    "vibe-coded" tell and is banned). Depth comes from tone + hairlines.
+ *
+ *  Deliberately outside the indigo→violet→pink AI palette. See the
+ *  "Do's and Don'ts" in docs/DESIGN.md for the full forbidden list.
  * ═══════════════════════════════════════════════════════════════════
  */
 
 @layer base {
   :root {
-    /* ── Core Palette ──────────────────────────────────────────
-     *  Light: Clean neutral with the faintest warm undertone
-     *  This is NOT cream — it's a carefully tuned off-white
-     *  that feels warm without looking parchment-y.        */
+    /* ── Paper ────────────────────────────────────────────────
+     *  Near-pure white with a whisper of cool. Raised cards are
+     *  brighter than the canvas. Depth = tone + hairline, not grids. */
 
-    --background: 99.07% 0.003 270;
-    --foreground: 14.5% 0.005 270;
+    --background: 98.5% 0.002 255;
+    --foreground: 25% 0.005 255;
 
-    /* Cards: barely-there elevation, not a different color */
-    --card: 97.5% 0.003 270;
-    --card-foreground: 14.5% 0.005 270;
+    --card: 99.7% 0.001 255;
+    --card-foreground: 25% 0.005 255;
 
-    /* Popover: matches card for consistency */
-    --popover: 97.5% 0.003 270;
-    --popover-foreground: 14.5% 0.005 270;
+    --popover: 99.7% 0.001 255;
+    --popover-foreground: 25% 0.005 255;
 
-    /* ── Brand Accent ──────────────────────────────────────────
-     *  Panda orange — used SPARINGLY. Active states, primary
-     *  CTAs, selected items, proof markers only.              */
+    /* ── Oxblood — the signature red ink ─────────────────────
+     *  Anchored at L 0.40 so it clears WCAG AA in BOTH directions:
+     *  ~5.2:1 white-on-fill AND ~5.1:1 oxblood-text-on-paper.
+     *  It is the brand color, the primary action, the focus ring. */
 
-    --primary: 63.5% 0.17 40;
-    --primary-foreground: 99.07% 0.003 270;
+    --primary: 40% 0.155 25;
+    --primary-foreground: 99% 0.002 255;
 
-    /* Secondary: subtle container tint */
-    --secondary: 95.5% 0.004 270;
-    --secondary-foreground: 14.5% 0.005 270;
+    --oxblood: 40% 0.155 25;
+    --oxblood-deep: 34% 0.14 24;
 
-    /* Muted: quiet backgrounds for metadata areas */
-    --muted: 95.5% 0.004 270;
-    --muted-foreground: 50% 0.008 270;
+    /* ── Ink ──────────────────────────────────────────────────
+     *  --ink is the red ink (= oxblood); --ink-deep is the black
+     *  ink, the near-black used for the logo and ink-panel base.   */
 
-    /* Accent hover: slightly warmer neutral for hover states */
-    --accent: 93.5% 0.005 270;
-    --accent-foreground: 14.5% 0.005 270;
+    --ink: 40% 0.155 25;
+    --ink-deep: 18% 0.006 255;
 
-    /* Destructive */
-    --destructive: 55% 0.2 25;
-    --destructive-foreground: 99.07% 0.003 270;
+    /* ── Teal — verified run evidence ─────────────────────────
+     *  The ONLY secondary color. Reserved for passing checks,
+     *  saved receipts, healthy runtimes. Warm primary + cool
+     *  secondary = intentional complementary balance.            */
 
-    /* ── Borders ─────────────────────────────────────────────
-     *  Subtle. Visible enough to group, quiet enough to ignore. */
+    --teal: 45% 0.08 190;
+    --teal-deep: 32% 0.055 195;
 
-    --border: 91.5% 0.004 270;
-    --input: 91.5% 0.004 270;
-    --ring: 63.5% 0.17 40;
+    --secondary: 96.5% 0.003 255;
+    --secondary-foreground: 25% 0.005 255;
 
-    --radius: 6px;
+    --muted: 96.5% 0.003 255;
+    --muted-foreground: 52% 0.006 255;
 
-    /* ── Surface Elevations ────────────────────────────────────
-     *  0 = canvas (app bg)
-     *  1 = panels, cards (barely lifted)
-     *  2 = raised surfaces (hover, active flyout)
-     *  3 = popovers, overlays (most lifted)                    */
+    --accent: 95.5% 0.014 25;
+    --accent-foreground: 40% 0.155 25;
 
-    --surface-0: 99.07% 0.003 270;
-    --surface-1: 97.5% 0.003 270;
-    --surface-2: 95.5% 0.004 270;
-    --surface-3: 93.5% 0.005 270;
+    --destructive: 58% 0.21 27;
+    --destructive-foreground: 99% 0.002 255;
 
-    /* ── Charts ──────────────────────────────────────────────── */
+    /* ── Lines ──────────────────────────────────────────────── */
 
-    --chart-1: 63.5% 0.17 40;
-    --chart-2: 62% 0.1 220;
-    --chart-3: 65% 0.13 160;
-    --chart-4: 50% 0.008 270;
-    --chart-5: 55% 0.2 25;
+    --border: 91% 0.004 255;
+    --input: 88.5% 0.005 255;
+    --ring: 40% 0.155 25;
 
-    /* ── Sidebar ───────────────────────────────────────────────
-     *  Sidebar is slightly recessed — darker than the canvas
-     *  to create a natural visual hierarchy.                    */
+    --radius: 12px;
 
-    --sidebar-background: 96.5% 0.003 270;
-    --sidebar-foreground: 14.5% 0.005 270;
-    --sidebar-primary: 63.5% 0.17 40;
-    --sidebar-primary-foreground: 99.07% 0.003 270;
-    --sidebar-accent: 93.5% 0.005 270;
-    --sidebar-accent-foreground: 14.5% 0.005 270;
-    --sidebar-border: 91.5% 0.004 270;
-    --sidebar-ring: 63.5% 0.17 40;
+    /* ── Surface elevations ──────────────────────────────────
+     *  0 = canvas · 1 = card · 2 = raised · 3 = overlay        */
 
-    /* ── Status Colors ─────────────────────────────────────────
-     *  Refined, lower saturation than before — clear but
-     *  not garish. They signal without shouting.                */
+    --surface-0: 98.5% 0.002 255;
+    --surface-1: 99.7% 0.001 255;
+    --surface-2: 96.5% 0.003 255;
+    --surface-3: 94% 0.004 255;
 
-    --status-success: 55% 0.12 155;
-    --status-error: 52% 0.16 25;
-    --status-warning: 68% 0.13 75;
-    --status-info: 58% 0.1 230;
-    --status-online: 55% 0.12 155;
+    /* ── Charts ─────────────────────────────────────────────── */
 
-    /* ── Terminal Semantic Colors ─────────────────────────────── */
+    --chart-1: 40% 0.155 25;
+    --chart-2: 45% 0.08 190;
+    --chart-3: 62% 0.16 26;
+    --chart-4: 52% 0.006 255;
+    --chart-5: 58% 0.21 27;
 
-    --terminal-success: 45% 0.08 155;
-    --terminal-error: 50% 0.12 25;
+    /* ── Sidebar ────────────────────────────────────────────── */
+
+    --sidebar-background: 97% 0.002 255;
+    --sidebar-foreground: 25% 0.005 255;
+    --sidebar-primary: 40% 0.155 25;
+    --sidebar-primary-foreground: 99% 0.002 255;
+    --sidebar-accent: 95.5% 0.014 25;
+    --sidebar-accent-foreground: 40% 0.155 25;
+    --sidebar-border: 91% 0.004 255;
+    --sidebar-ring: 40% 0.155 25;
+
+    /* ── Status ─────────────────────────────────────────────── */
+
+    --status-success: 45% 0.08 190;
+    --status-error: 58% 0.21 27;
+    --status-warning: 72% 0.14 75;
+    --status-info: 45% 0.08 190;
+    --status-online: 45% 0.08 190;
+
+    /* ── Terminal semantics ─────────────────────────────────── */
+
+    --terminal-success: 45% 0.08 190;
+    --terminal-error: 50% 0.14 27;
     --terminal-warning: 55% 0.1 75;
 
-    /* ── Diff Semantic Colors ─────────────────────────────────── */
+    /* ── Diff semantics ─────────────────────────────────────── */
 
-    --diff-added-fg: 35% 0.09 155;
-    --diff-added-bg: 96% 0.02 155 / 0.6;
-    --diff-removed-fg: 35% 0.08 25;
-    --diff-removed-bg: 96% 0.02 25 / 0.6;
+    --diff-added-fg: 36% 0.07 190;
+    --diff-added-bg: 95% 0.025 190 / 0.6;
+    --diff-removed-fg: 40% 0.12 27;
+    --diff-removed-bg: 95.5% 0.02 27 / 0.6;
 
-    /* ── Interactive States ───────────────────────────────────── */
+    /* ── Interactive states ─────────────────────────────────── */
 
-    --interactive-hover: 63.5% 0.17 40;
-    --interactive-selected: 63.5% 0.17 40;
+    --interactive-hover: 40% 0.155 25;
+    --interactive-selected: 40% 0.155 25;
   }
 
+  /*  Dark mode is "all ink": the whole app becomes the agent's
+   *  near-black medium. Oxblood lifts to a brighter garnet so red
+   *  ink stays vivid — and AA-readable — against the black.        */
   .dark {
-    /* ── Core Palette ──────────────────────────────────────────
-     *  Dark: Deep charcoal with enough warmth to not feel
-     *  cold/blue but enough neutrality to not feel brown.
-     *  This is NOT pure black — it has dimension.               */
+    --background: 13.5% 0.005 255;
+    --foreground: 93% 0.003 255;
 
-    --background: 13% 0.005 270;
-    --foreground: 93% 0.004 270;
+    --card: 16.5% 0.006 255;
+    --card-foreground: 93% 0.003 255;
 
-    /* Cards: barely lighter — creates depth without rings */
-    --card: 16.5% 0.005 270;
-    --card-foreground: 93% 0.004 270;
+    --popover: 16.5% 0.006 255;
+    --popover-foreground: 93% 0.003 255;
 
-    /* Popover */
-    --popover: 16.5% 0.005 270;
-    --popover-foreground: 93% 0.004 270;
+    --primary: 62% 0.16 26;
+    --primary-foreground: 14% 0.005 255;
 
-    /* ── Brand Accent ──────────────────────────────────────────
-     *  Orange is slightly brighter/lighter in dark mode
-     *  to maintain the same perceived vibrancy.                 */
+    --oxblood: 62% 0.16 26;
+    --oxblood-deep: 44% 0.155 25;
 
-    --primary: 72% 0.165 55;
-    --primary-foreground: 13% 0.005 270;
+    --ink: 62% 0.16 26;
+    --ink-deep: 13.5% 0.005 255;
 
-    /* Secondary: subtle surface for quiet areas */
-    --secondary: 18% 0.005 270;
-    --secondary-foreground: 93% 0.004 270;
+    --teal: 70% 0.09 185;
+    --teal-deep: 45% 0.08 190;
 
-    /* Muted */
-    --muted: 18% 0.005 270;
-    --muted-foreground: 60% 0.01 270;
+    --secondary: 20% 0.006 255;
+    --secondary-foreground: 93% 0.003 255;
 
-    /* Accent hover */
-    --accent: 22% 0.006 270;
-    --accent-foreground: 93% 0.004 270;
+    --muted: 20% 0.006 255;
+    --muted-foreground: 68% 0.006 255;
 
-    /* Destructive */
-    --destructive: 58% 0.18 25;
-    --destructive-foreground: 99.07% 0.003 270;
+    --accent: 26.5% 0.05 25;
+    --accent-foreground: 62% 0.16 26;
 
-    /* ── Borders ─────────────────────────────────────────────
-     *  Dark borders are slightly more visible than light
-     *  mode borders to maintain edge definition.                */
+    --destructive: 64% 0.19 27;
+    --destructive-foreground: 14% 0.005 255;
 
-    --border: 24% 0.006 270;
-    --input: 24% 0.006 270;
-    --ring: 72% 0.165 55;
+    --border: 27% 0.006 255;
+    --input: 30% 0.006 255;
+    --ring: 62% 0.16 26;
 
-    --radius: 6px;
+    --radius: 12px;
 
-    /* ── Surface Elevations ──────────────────────────────────── */
+    --surface-0: 13.5% 0.005 255;
+    --surface-1: 16.5% 0.006 255;
+    --surface-2: 20% 0.006 255;
+    --surface-3: 24% 0.007 255;
 
-    --surface-0: 13% 0.005 270;
-    --surface-1: 16.5% 0.005 270;
-    --surface-2: 18% 0.005 270;
-    --surface-3: 22% 0.006 270;
+    --chart-1: 62% 0.16 26;
+    --chart-2: 70% 0.09 185;
+    --chart-3: 44% 0.155 25;
+    --chart-4: 68% 0.006 255;
+    --chart-5: 64% 0.19 27;
 
-    /* ── Charts ──────────────────────────────────────────────── */
+    --sidebar-background: 12% 0.005 255;
+    --sidebar-foreground: 93% 0.003 255;
+    --sidebar-primary: 62% 0.16 26;
+    --sidebar-primary-foreground: 14% 0.005 255;
+    --sidebar-accent: 26.5% 0.05 25;
+    --sidebar-accent-foreground: 62% 0.16 26;
+    --sidebar-border: 27% 0.006 255;
+    --sidebar-ring: 62% 0.16 26;
 
-    --chart-1: 72% 0.165 55;
-    --chart-2: 62% 0.1 220;
-    --chart-3: 65% 0.13 160;
-    --chart-4: 60% 0.01 270;
-    --chart-5: 58% 0.18 25;
+    --status-success: 70% 0.09 185;
+    --status-error: 64% 0.19 27;
+    --status-warning: 76% 0.13 78;
+    --status-info: 70% 0.09 185;
+    --status-online: 70% 0.09 185;
 
-    /* ── Sidebar ───────────────────────────────────────────────
-     *  Dark sidebar: slightly darker than canvas for depth.     */
+    --terminal-success: 72% 0.08 185;
+    --terminal-error: 70% 0.12 27;
+    --terminal-warning: 76% 0.1 78;
 
-    --sidebar-background: 11% 0.005 270;
-    --sidebar-foreground: 93% 0.004 270;
-    --sidebar-primary: 72% 0.165 55;
-    --sidebar-primary-foreground: 13% 0.005 270;
-    --sidebar-accent: 18% 0.005 270;
-    --sidebar-accent-foreground: 93% 0.004 270;
-    --sidebar-border: 24% 0.006 270;
-    --sidebar-ring: 72% 0.165 55;
+    --diff-added-fg: 72% 0.08 185;
+    --diff-added-bg: 32% 0.05 190 / 0.3;
+    --diff-removed-fg: 70% 0.1 27;
+    --diff-removed-bg: 30% 0.06 27 / 0.3;
 
-    /* ── Status Colors ─────────────────────────────────────────
-     *  Slightly brighter in dark mode for same perceived
-     *  intensity as light mode counterparts.                    */
-
-    --status-success: 62% 0.14 155;
-    --status-error: 58% 0.18 25;
-    --status-warning: 72% 0.14 75;
-    --status-info: 64% 0.11 230;
-    --status-online: 62% 0.14 155;
-
-    /* ── Terminal Semantic Colors ─────────────────────────────── */
-
-    --terminal-success: 72% 0.06 155;
-    --terminal-error: 72% 0.12 25;
-    --terminal-warning: 75% 0.1 75;
-
-    /* ── Diff Semantic Colors ─────────────────────────────────── */
-
-    --diff-added-fg: 72% 0.06 155;
-    --diff-added-bg: 30% 0.06 155 / 0.3;
-    --diff-removed-fg: 72% 0.08 25;
-    --diff-removed-bg: 30% 0.06 25 / 0.3;
-
-    /* ── Interactive States ───────────────────────────────────── */
-
-    --interactive-hover: 72% 0.165 55;
-    --interactive-selected: 72% 0.165 55;
+    --interactive-hover: 62% 0.16 26;
+    --interactive-selected: 62% 0.16 26;
   }
 }
 
@@ -241,12 +229,7 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-sans), 'Inter', system-ui, sans-serif;
-    font-feature-settings:
-      'ss01' 1,
-      'ss02' 1,
-      'cv02' 1,
-      'cv03' 1;
+    font-family: var(--font-sans), system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -258,28 +241,73 @@
     font-feature-settings:
       'liga' 1,
       'calt' 1,
-      'ss01' 1,
-      'ss02' 1,
       'zero' 1;
   }
 
-  /* Sharp focus states — clean ring, no glow */
+  /* Lucide icons ship with a default 2px stroke, which reads as heavy at
+     small sizes. 1.5px is the modern, refined standard (Linear / Vercel /
+     Raycast) and crisps up every icon app-wide without per-call overrides. */
+  svg.lucide {
+    stroke-width: 1.5;
+  }
+
   :focus-visible {
-    outline: 2px solid oklch(var(--primary));
+    outline: 2px solid oklch(var(--ring));
     outline-offset: 2px;
   }
 
-  /* Selection — accent highlight */
   ::selection {
-    background: oklch(var(--primary) / 0.2);
+    background: oklch(var(--oxblood) / 0.35);
     color: inherit;
   }
 }
 
 @layer components {
   /* ═══════════════════════════════════════════════════════════
-      SURFACE ELEVATION SYSTEM
-      ═══════════════════════════════════════════════════════════ */
+     INK PANEL — the signature
+     A near-black "ink island" representing the agent acting. It
+     re-declares the core variables locally so any subtree restyles
+     itself automatically — no per-component dark overrides. Red ink
+     (oxblood) is the action color on it; teal marks verified runs.
+     ═══════════════════════════════════════════════════════════ */
+  .ink-panel {
+    --background: 14% 0.006 255;
+    --foreground: 90% 0.004 255;
+    --card: 17% 0.007 255;
+    --card-foreground: 90% 0.004 255;
+    --popover: 17% 0.007 255;
+    --popover-foreground: 90% 0.004 255;
+    --primary: 62% 0.16 26;
+    --primary-foreground: 14% 0.006 255;
+    --secondary: 20% 0.007 255;
+    --secondary-foreground: 90% 0.004 255;
+    --muted: 20% 0.007 255;
+    --muted-foreground: 65% 0.008 255;
+    --accent: 24% 0.05 26;
+    --accent-foreground: 62% 0.16 26;
+    --border: 26% 0.007 255;
+    --input: 29% 0.007 255;
+    --ring: 62% 0.16 26;
+    --ink: 62% 0.16 26;
+    --ink-deep: 14% 0.006 255;
+    --oxblood: 62% 0.16 26;
+    --surface-0: 14% 0.006 255;
+    --surface-1: 17% 0.007 255;
+    --surface-2: 20% 0.007 255;
+    --surface-3: 24% 0.008 255;
+    --teal: 70% 0.09 185;
+    --status-success: 70% 0.09 185;
+    --status-online: 70% 0.09 185;
+    --status-info: 62% 0.16 26;
+
+    background-color: oklch(var(--background));
+    color: oklch(var(--foreground));
+    box-shadow: inset 0 1px 0 oklch(100% 0 0 / 0.05);
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+     SURFACE ELEVATION SYSTEM
+     ═══════════════════════════════════════════════════════════ */
   .surface-0 {
     background-color: oklch(var(--surface-0));
   }
@@ -294,66 +322,72 @@
   }
 
   /* ═══════════════════════════════════════════════════════════
-     REFINED SHADOWS — Soft, modern elevation
+     SHADOWS — neutral, one light source (NO color glow).
+     Violet/colored card glows are a banned "vibe-coded" tell;
+     color comes from the surface, never the shadow.
      ═══════════════════════════════════════════════════════════ */
   .shadow-sharp-sm {
     box-shadow:
-      0 1px 2px oklch(var(--foreground) / 0.04),
-      0 1px 3px oklch(var(--foreground) / 0.02);
+      0 1px 2px oklch(20% 0.005 255 / 0.06),
+      0 2px 6px oklch(20% 0.005 255 / 0.05);
   }
   .shadow-sharp-md {
     box-shadow:
-      0 2px 4px oklch(var(--foreground) / 0.04),
-      0 4px 8px oklch(var(--foreground) / 0.03);
+      0 2px 4px oklch(20% 0.005 255 / 0.06),
+      0 8px 20px oklch(20% 0.005 255 / 0.07);
   }
   .shadow-sharp-lg {
     box-shadow:
-      0 4px 6px oklch(var(--foreground) / 0.03),
-      0 10px 20px oklch(var(--foreground) / 0.04);
+      0 4px 10px oklch(20% 0.005 255 / 0.07),
+      0 18px 44px oklch(20% 0.005 255 / 0.1);
   }
 
-  .dark .shadow-sharp-sm {
+  .dark .shadow-sharp-sm,
+  .ink-panel .shadow-sharp-sm {
     box-shadow:
-      0 1px 2px oklch(0% 0 0 / 0.16),
-      0 1px 3px oklch(0% 0 0 / 0.1);
+      0 1px 2px oklch(0% 0 0 / 0.3),
+      0 2px 6px oklch(0% 0 0 / 0.2);
   }
-  .dark .shadow-sharp-md {
+  .dark .shadow-sharp-md,
+  .ink-panel .shadow-sharp-md {
     box-shadow:
-      0 2px 4px oklch(0% 0 0 / 0.2),
-      0 4px 8px oklch(0% 0 0 / 0.12);
+      0 2px 4px oklch(0% 0 0 / 0.35),
+      0 8px 20px oklch(0% 0 0 / 0.25);
   }
-  .dark .shadow-sharp-lg {
+  .dark .shadow-sharp-lg,
+  .ink-panel .shadow-sharp-lg {
     box-shadow:
-      0 4px 6px oklch(0% 0 0 / 0.2),
-      0 10px 20px oklch(0% 0 0 / 0.14);
+      0 4px 10px oklch(0% 0 0 / 0.4),
+      0 18px 44px oklch(0% 0 0 / 0.3);
   }
 
   /* ═══════════════════════════════════════════════════════════
-     DOT GRID PATTERN — Subtle texture (landing page)
+     PAPER GRAIN — quiet red-ink dotted texture for the canvas.
+     A subtle brand reinforcement (red ink on paper), not a glow.
      ═══════════════════════════════════════════════════════════ */
   .dot-grid {
     background:
       radial-gradient(
-        circle at 16px 16px,
-        oklch(var(--foreground) / 0.06) 0.7px,
-        transparent 0.8px
+        circle at 14px 14px,
+        oklch(var(--ink) / 0.055) 0.75px,
+        transparent 0.85px
       ),
       oklch(var(--background));
     background-size:
-      24px 24px,
+      28px 28px,
       auto;
   }
 
   .dark .dot-grid {
     background:
       radial-gradient(
-        circle at 16px 16px,
-        oklch(var(--foreground) / 0.04) 0.7px,
-        transparent 0.8px
+        circle at 14px 14px,
+        oklch(var(--oxblood) / 0.05) 0.75px,
+        transparent 0.85px
       ),
       oklch(var(--background));
     background-size:
-      24px 24px,
+      28px 28px,
       auto;
   }
 
@@ -361,18 +395,18 @@
      ACCENT UTILITIES
      ═══════════════════════════════════════════════════════════ */
   .accent-border {
-    border-color: oklch(var(--primary));
+    border-color: oklch(var(--oxblood));
   }
 
   .accent-underline {
     text-decoration: underline;
-    text-decoration-color: oklch(var(--primary));
+    text-decoration-color: oklch(var(--oxblood));
     text-underline-offset: 3px;
-    text-decoration-thickness: 1.5px;
+    text-decoration-thickness: 2px;
   }
 
   /* ═══════════════════════════════════════════════════════════
-     PANEL HEADER STYLE
+     PANEL HEADERS
      ═══════════════════════════════════════════════════════════ */
   .panel-header {
     @apply border-b border-border px-3 py-2 text-xs font-medium text-muted-foreground;
@@ -384,7 +418,8 @@
 
   .panel-header-numbered::before {
     content: attr(data-number);
-    @apply mr-2 font-semibold text-primary;
+    @apply mr-2 font-semibold;
+    color: oklch(var(--oxblood));
   }
 
   .panel-inset {
@@ -392,14 +427,14 @@
   }
 
   /* ═══════════════════════════════════════════════════════════
-     BUTTON OVERRIDES — Clean, modern
+     BUTTON HELPERS
      ═══════════════════════════════════════════════════════════ */
   .btn-sharp {
-    @apply rounded-md font-medium tracking-wide;
+    @apply rounded-full font-medium;
   }
 
   /* ═══════════════════════════════════════════════════════════
-     SCROLLBAR — Minimal, thin
+     SCROLLBAR — minimal, thin
      ═══════════════════════════════════════════════════════════ */
   .scrollbar-thin {
     scrollbar-width: thin;
@@ -482,7 +517,7 @@
      TABS AND BADGES
      ═══════════════════════════════════════════════════════════ */
   .dock-tab {
-    @apply relative flex items-center gap-1.5 border-r border-border px-3 py-1.5 text-[11px] text-muted-foreground transition-colors duration-100;
+    @apply relative flex items-center gap-1.5 rounded-t-md px-3 py-1.5 text-[11px] text-muted-foreground transition-colors duration-150;
   }
   .dock-tab:hover {
     @apply text-foreground;
@@ -490,65 +525,62 @@
   }
   .dock-tab[data-active='true'] {
     @apply text-foreground;
-    background-color: oklch(var(--surface-0));
-    box-shadow: inset 0 -2px 0 oklch(var(--primary));
+    background-color: oklch(var(--surface-1));
+    box-shadow: inset 0 -2px 0 oklch(var(--oxblood));
   }
   .badge-sm {
-    @apply inline-flex min-w-[16px] items-center justify-center rounded-sm border border-border px-1 py-px text-[9px] tabular-nums leading-none;
+    @apply inline-flex min-w-[16px] items-center justify-center rounded-full px-1.5 py-px text-[9px] tabular-nums leading-none;
+    background-color: oklch(var(--surface-2));
+    color: oklch(var(--muted-foreground));
   }
   .badge-sm[data-severity='error'] {
-    border-color: oklch(var(--destructive) / 0.4);
-    background-color: oklch(var(--destructive) / 0.08);
+    background-color: oklch(var(--destructive) / 0.12);
     color: oklch(var(--destructive));
   }
   .badge-sm[data-severity='warning'] {
-    border-color: oklch(var(--status-warning) / 0.4);
-    background-color: oklch(var(--status-warning) / 0.08);
+    background-color: oklch(var(--status-warning) / 0.14);
     color: oklch(var(--status-warning));
   }
   .badge-sm[data-severity='info'] {
-    @apply border-border bg-muted text-muted-foreground;
+    @apply bg-muted text-muted-foreground;
   }
 
   .badge-md {
-    @apply inline-flex items-center gap-1 rounded-sm border border-border px-1.5 py-0.5 text-[10px] leading-none;
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium leading-none;
+    background-color: oklch(var(--surface-2));
+    color: oklch(var(--muted-foreground));
   }
   .badge-md[data-status='running'] {
-    border-color: oklch(var(--primary) / 0.4);
-    background-color: oklch(var(--primary) / 0.08);
-    color: oklch(var(--primary));
+    background-color: oklch(var(--oxblood) / 0.22);
+    color: oklch(var(--oxblood));
   }
   .badge-md[data-status='waiting'] {
-    border-color: oklch(var(--status-info) / 0.4);
-    background-color: oklch(var(--status-info) / 0.08);
+    background-color: oklch(var(--status-info) / 0.12);
     color: oklch(var(--status-info));
   }
   .badge-md[data-status='review'] {
-    border-color: oklch(var(--status-warning) / 0.4);
-    background-color: oklch(var(--status-warning) / 0.08);
+    background-color: oklch(var(--status-warning) / 0.14);
     color: oklch(var(--status-warning));
   }
   .badge-md[data-status='failed'] {
-    border-color: oklch(var(--destructive) / 0.4);
-    background-color: oklch(var(--destructive) / 0.08);
+    background-color: oklch(var(--destructive) / 0.12);
     color: oklch(var(--destructive));
   }
   .badge-md[data-status='complete'] {
-    border-color: oklch(var(--status-success) / 0.4);
-    background-color: oklch(var(--status-success) / 0.08);
-    color: oklch(var(--status-success));
+    background-color: oklch(var(--teal) / 0.14);
+    color: oklch(var(--teal));
   }
   .badge-md[data-status='draft'] {
-    @apply border-border bg-muted text-muted-foreground;
+    @apply bg-muted text-muted-foreground;
   }
 
   .state-band {
-    @apply border border-border;
+    @apply rounded-lg border border-border;
   }
   .state-band[data-state='running'],
   .state-band[data-state='success'] {
-    border-color: oklch(var(--primary) / 0.4);
-    background-color: oklch(var(--primary) / 0.06);
+    border-color: oklch(var(--oxblood) / 0.5);
+    background-color: oklch(var(--oxblood) / 0.1);
   }
   .state-band[data-state='blocked'],
   .state-band[data-state='approval'] {
@@ -564,7 +596,7 @@
      REVIEW BANNER
      ═══════════════════════════════════════════════════════════ */
   .review-banner {
-    @apply flex items-center justify-between gap-3 border-b px-4 py-2 font-mono text-xs;
+    @apply flex items-center justify-between gap-3 border-b px-4 py-2 text-xs;
     border-color: oklch(var(--status-warning) / 0.35);
     background-color: oklch(var(--status-warning) / 0.05);
   }
@@ -573,26 +605,27 @@
 @layer utilities {
   /* Typography utilities */
   .text-display {
-    font-weight: 700;
-    letter-spacing: -0.025em;
-    line-height: 1.1;
+    font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.08;
   }
 
   .text-label {
-    font-family: var(--font-mono), 'JetBrains Mono', monospace;
     font-size: 0.6875rem;
-    font-weight: 500;
-    letter-spacing: 0.04em;
+    font-weight: 550;
+    letter-spacing: 0.07em;
     text-transform: uppercase;
+    color: oklch(var(--muted-foreground));
   }
 
-  /* Transition utility */
+  /* Transition utilities */
   .transition-sharp {
-    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.15s cubic-bezier(0.2, 0, 0, 1);
   }
 
   .transition-refined {
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
   }
 
   /* Hover accent border */
@@ -600,7 +633,7 @@
     @apply transition-refined;
   }
   .hover-accent-border:hover {
-    border-color: oklch(var(--primary) / 0.5);
+    border-color: oklch(var(--oxblood) / 0.7);
   }
 
   /* Layout transition utilities */

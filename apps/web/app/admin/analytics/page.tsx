@@ -79,7 +79,7 @@ export default function AdminAnalyticsPage() {
         description="Platform usage and performance metrics"
       />
 
-      <Card className="mb-6 rounded-none">
+      <Card className="mb-6">
         <CardContent className="pt-6">
           <div className="grid gap-4 lg:grid-cols-[1fr_1fr_1fr_auto]">
             <div className="space-y-2">
@@ -92,7 +92,7 @@ export default function AdminAnalyticsPage() {
                 value={fromDate}
                 max={toDate || undefined}
                 onChange={(e) => updateQuery({ from: e.target.value || null })}
-                className="rounded-none"
+                className=""
               />
             </div>
 
@@ -106,13 +106,13 @@ export default function AdminAnalyticsPage() {
                 value={toDate}
                 min={fromDate || undefined}
                 onChange={(e) => updateQuery({ to: e.target.value || null })}
-                className="rounded-none"
+                className=""
               />
             </div>
 
             <div className="space-y-2">
               <Label className="font-mono text-sm">Range</Label>
-              <div className="flex h-10 items-center gap-2 rounded-none border border-border px-3">
+              <div className="flex h-10 items-center gap-2 border border-border px-3">
                 <CalendarRange className="h-4 w-4 text-muted-foreground" />
                 <span className="truncate text-sm text-muted-foreground">{dateRangeLabel}</span>
               </div>
@@ -122,7 +122,7 @@ export default function AdminAnalyticsPage() {
               <Button
                 type="button"
                 variant="outline"
-                className="rounded-none"
+                className=""
                 onClick={() => updateQuery({ from: null, to: null })}
                 disabled={!hasDateRange}
               >
@@ -144,7 +144,7 @@ export default function AdminAnalyticsPage() {
           {activeTab === 'overview' && (
             <>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card className="rounded-none">
+                <Card className="">
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
                     <CardDescription className="font-mono text-xs uppercase">
                       Total Users
@@ -161,7 +161,7 @@ export default function AdminAnalyticsPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="rounded-none">
+                <Card className="">
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
                     <CardDescription className="font-mono text-xs uppercase">
                       Total Projects
@@ -176,7 +176,7 @@ export default function AdminAnalyticsPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="rounded-none">
+                <Card className="">
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
                     <CardDescription className="font-mono text-xs uppercase">
                       Total Chats
@@ -193,7 +193,7 @@ export default function AdminAnalyticsPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="rounded-none">
+                <Card className="">
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
                     <CardDescription className="font-mono text-xs uppercase">
                       Active Today
@@ -212,7 +212,7 @@ export default function AdminAnalyticsPage() {
               </div>
 
               <div className="grid gap-6 md:grid-cols-2">
-                <Card className="rounded-none">
+                <Card className="">
                   <CardHeader>
                     <CardTitle>User Activity</CardTitle>
                     <CardDescription>Recent user engagement metrics</CardDescription>
@@ -221,19 +221,19 @@ export default function AdminAnalyticsPage() {
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <span className="text-sm">Admin Users</span>
-                        <Badge variant="outline" className="rounded-none">
+                        <Badge variant="outline" className="">
                           {systemOverview?.users.admins || 0}
                         </Badge>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm">Banned Users</span>
-                        <Badge variant="destructive" className="rounded-none">
+                        <Badge variant="destructive" className="">
                           {systemOverview?.users.banned || 0}
                         </Badge>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-sm">Recent Registrations (24h)</span>
-                        <Badge variant="default" className="rounded-none">
+                        <Badge variant="default" className="">
                           {systemOverview?.users.recentRegistrations || 0}
                         </Badge>
                       </div>
@@ -241,7 +241,7 @@ export default function AdminAnalyticsPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="rounded-none">
+                <Card className="">
                   <CardHeader>
                     <CardTitle>Content Overview</CardTitle>
                     <CardDescription>Platform content statistics</CardDescription>
@@ -286,7 +286,7 @@ export default function AdminAnalyticsPage() {
           )}
 
           {activeTab === 'providers' && (
-            <Card className="rounded-none">
+            <Card className="">
               <CardHeader>
                 <div className="flex items-center justify-between gap-4">
                   <div>
@@ -296,10 +296,10 @@ export default function AdminAnalyticsPage() {
                     </CardDescription>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="outline" className="rounded-none font-mono">
+                    <Badge variant="outline" className="font-mono">
                       {providerAnalytics?.totalRuns.toLocaleString() || 0} total runs
                     </Badge>
-                    <Badge variant="outline" className="rounded-none font-mono">
+                    <Badge variant="outline" className="font-mono">
                       {dateRangeLabel}
                     </Badge>
                   </div>
@@ -329,14 +329,14 @@ export default function AdminAnalyticsPage() {
                               <span className="text-sm text-muted-foreground">
                                 {provider.count.toLocaleString()} runs
                               </span>
-                              <Badge variant="outline" className="rounded-none font-mono">
+                              <Badge variant="outline" className="font-mono">
                                 {percentage}%
                               </Badge>
                             </div>
                           </div>
                           <Progress
                             value={(provider.count / maxCount) * 100}
-                            className="h-2 rounded-none"
+                            className="h-2"
                           />
                         </div>
                       )
@@ -348,7 +348,7 @@ export default function AdminAnalyticsPage() {
           )}
 
           {activeTab === 'models' && (
-            <Card className="rounded-none">
+            <Card className="">
               <CardHeader>
                 <CardTitle>Top Models</CardTitle>
                 <CardDescription>Most frequently used models across the platform</CardDescription>
@@ -370,7 +370,7 @@ export default function AdminAnalyticsPage() {
                         return (
                           <div
                             key={model.name}
-                            className="flex items-center justify-between rounded-none border border-border p-4"
+                            className="flex items-center justify-between border border-border p-4"
                           >
                             <div className="flex items-center gap-4">
                               <span className="w-8 font-mono text-sm text-muted-foreground">

@@ -37,7 +37,7 @@ function toneClassName(tone: Extract<TranscriptBlock, { kind: 'spec_status' }>['
     case 'danger':
       return 'border-destructive/40 bg-destructive/5 text-destructive'
     case 'success':
-      return 'border-emerald-500/40 bg-emerald-500/5 text-emerald-500'
+      return 'border-success/40 bg-success/5 text-success'
     case 'default':
     default:
       return 'border-border bg-muted/30 text-muted-foreground'
@@ -55,7 +55,7 @@ function executionToneClassName(
     case 'danger':
       return 'border-destructive/50 bg-destructive/5 text-foreground'
     case 'success':
-      return 'border-emerald-500/50 bg-emerald-500/[0.035] text-foreground'
+      return 'border-success/50 bg-success/[0.035] text-foreground'
     case 'default':
     default:
       return 'border-border bg-background/70 text-foreground'
@@ -73,7 +73,7 @@ function executionIconClassName(
     case 'danger':
       return 'text-destructive'
     case 'success':
-      return 'text-emerald-500'
+      return 'text-success'
     case 'default':
     default:
       return 'text-muted-foreground'
@@ -85,7 +85,7 @@ function chipGroupToneClass(tone: ToolChipGroup['tone']): string {
     case 'primary':
       return 'border-primary/35 bg-primary/[0.04] text-primary'
     case 'success':
-      return 'border-emerald-500/35 bg-emerald-500/[0.04] text-emerald-600'
+      return 'border-success/35 bg-success/[0.04] text-success'
     case 'danger':
       return 'border-destructive/35 bg-destructive/[0.04] text-destructive'
     case 'default':
@@ -155,14 +155,14 @@ function PlanChecklistRow({
         <ListChecks
           className={cn(
             'h-3.5 w-3.5 shrink-0',
-            isComplete ? 'text-emerald-500' : hasActive ? 'text-primary' : 'text-muted-foreground'
+            isComplete ? 'text-success' : hasActive ? 'text-primary' : 'text-muted-foreground'
           )}
         />
         <div
           className={cn(
             'shadow-sharp-sm inline-flex items-center gap-2 border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.15em]',
             isComplete
-              ? 'border-emerald-500/40 bg-emerald-500/[0.04] text-emerald-600'
+              ? 'border-success/40 bg-success/[0.04] text-success'
               : hasActive
                 ? 'border-primary/40 bg-primary/[0.04] text-primary'
                 : 'bg-muted/25 border-border text-muted-foreground'
@@ -206,7 +206,7 @@ function PlanChecklistItem({ step }: { step: PlanChecklistStep }) {
       )}
     >
       {step.status === 'completed' ? (
-        <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-emerald-500" />
+        <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-success" />
       ) : step.status === 'active' ? (
         <Loader2 className="mt-0.5 h-3 w-3 shrink-0 animate-spin text-primary" />
       ) : (
@@ -371,7 +371,7 @@ export function TranscriptEventRow({ block }: TranscriptEventRowProps) {
                 variant="outline"
                 size="sm"
                 onClick={openActionTarget}
-                className="hover:border-primary/60 hover:bg-primary/5 mt-1 h-8 rounded-none border-border bg-background px-2.5 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors active:scale-[0.96]"
+                className="hover:border-primary/60 hover:bg-primary/5 mt-1 h-8 border-border bg-background px-2.5 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors active:scale-[0.96]"
               >
                 {block.action.label}
               </Button>

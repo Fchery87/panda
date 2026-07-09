@@ -200,7 +200,7 @@ export function PlanningIntakeSurface({
                   value={seedText}
                   onChange={(event) => setSeedText(event.target.value)}
                   placeholder="Paste a GitHub issue URL or describe a task"
-                  className="min-h-16 rounded-none font-mono text-xs"
+                  className="min-h-16 font-mono text-xs"
                 />
                 <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                   GitHub issue or manual task feeds the canonical planning intake.
@@ -214,7 +214,7 @@ export function PlanningIntakeSurface({
               onClick={() => {
                 void handleStart()
               }}
-              className="rounded-none border-border px-3 font-mono text-[11px] uppercase tracking-[0.2em]"
+              className="border-border px-3 font-mono text-[11px] uppercase tracking-[0.2em]"
             >
               {seedText.trim() ? 'Seed intake' : 'Start intake'}
             </Button>
@@ -272,7 +272,7 @@ export function PlanningIntakePopup({
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="h-8 w-8 rounded-none"
+            className="h-8 w-8"
             aria-label="Close planning intake"
           >
             <X className="h-4 w-4" />
@@ -296,7 +296,7 @@ export function PlanningIntakePopup({
                 type="button"
                 variant="ghost"
                 onClick={onClose}
-                className="rounded-none font-mono text-xs uppercase tracking-[0.2em]"
+                className="font-mono text-xs uppercase tracking-[0.2em]"
               >
                 Close
               </Button>
@@ -322,7 +322,7 @@ export function PlanningIntakePopup({
                   void onClearIntake()
                 }}
                 disabled
-                className="rounded-none font-mono text-xs uppercase tracking-[0.2em]"
+                className="font-mono text-xs uppercase tracking-[0.2em]"
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
                 Reset intake
@@ -331,7 +331,7 @@ export function PlanningIntakePopup({
                 type="button"
                 variant="ghost"
                 onClick={onClose}
-                className="rounded-none font-mono text-xs uppercase tracking-[0.2em]"
+                className="font-mono text-xs uppercase tracking-[0.2em]"
               >
                 Cancel
               </Button>
@@ -401,7 +401,7 @@ export function PlanningIntakePopup({
                   value={freeformValue}
                   onChange={(event) => setFreeformValue(event.target.value)}
                   placeholder="Type your own answer"
-                  className="min-h-24 rounded-none border-border bg-background font-mono text-sm"
+                  className="min-h-24 border-border bg-background font-mono text-sm"
                 />
                 <div className="flex items-center justify-between gap-2">
                   <Button
@@ -411,7 +411,7 @@ export function PlanningIntakePopup({
                       void onClearIntake()
                     }}
                     disabled={currentQuestionIndex === 0}
-                    className="rounded-none font-mono text-xs uppercase tracking-[0.2em]"
+                    className="font-mono text-xs uppercase tracking-[0.2em]"
                   >
                     <ArrowLeft className="h-3.5 w-3.5" />
                     Reset intake
@@ -421,14 +421,14 @@ export function PlanningIntakePopup({
                       type="button"
                       variant="ghost"
                       onClick={onClose}
-                      className="rounded-none font-mono text-xs uppercase tracking-[0.2em]"
+                      className="font-mono text-xs uppercase tracking-[0.2em]"
                     >
                       Cancel
                     </Button>
                     <Button
                       type="submit"
                       disabled={!freeformValue.trim()}
-                      className="rounded-none font-mono text-xs uppercase tracking-[0.2em]"
+                      className="font-mono text-xs uppercase tracking-[0.2em]"
                     >
                       Submit answer
                     </Button>

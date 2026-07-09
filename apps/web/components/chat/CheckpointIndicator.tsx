@@ -125,7 +125,7 @@ export function CheckpointIndicator({
                     variant="outline"
                     onClick={() => handleRestore(checkpoint._id)}
                     disabled={isRestoring}
-                    className="h-6 rounded-none px-2 font-mono text-xs"
+                    className="h-6 px-2 font-mono text-xs"
                   >
                     <RotateCcw className="mr-1 h-3 w-3" />
                     Restore

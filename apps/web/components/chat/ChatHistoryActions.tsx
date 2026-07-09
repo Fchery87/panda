@@ -53,18 +53,18 @@ export function ChatHistoryActions({
           variant="ghost"
           size="sm"
           aria-label="Open chat history actions"
-          className={cn('h-7 rounded-none px-2 font-mono text-xs', className)}
+          className={cn('h-7 px-2 font-mono text-xs', className)}
         >
           <MoreHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="rounded-none border-border font-mono">
+      <DropdownMenuContent align="end" className="border-border font-mono">
         <DropdownMenuItem
           onSelect={() => {
             void handleFork()
           }}
           disabled={isLoading}
-          className="rounded-none text-xs uppercase tracking-wide"
+          className="text-xs uppercase tracking-wide"
         >
           <GitFork className="mr-2 h-3.5 w-3.5" aria-hidden="true" />
           Fork This Chat

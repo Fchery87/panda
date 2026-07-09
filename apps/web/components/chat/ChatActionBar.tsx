@@ -84,7 +84,7 @@ export function ChatActionBar({
           className={cn(
             'border-y px-3 py-2.5',
             planStatus === 'partial' && 'border-warning/30 bg-warning/5',
-            planStatus === 'completed' && 'border-emerald-500/30 bg-emerald-500/5',
+            planStatus === 'completed' && 'border-success/30 bg-success/5',
             planStatus === 'failed' && 'border-destructive/30 bg-destructive/5',
             planStatus !== 'partial' &&
               planStatus !== 'completed' &&
@@ -104,7 +104,7 @@ export function ChatActionBar({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex min-w-0 flex-1 items-center gap-2">
               {planStatus === 'completed' ? (
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
               ) : planStatus === 'partial' ? (
                 <Target className="h-4 w-4 shrink-0 text-warning" />
               ) : planStatus === 'failed' ? (
@@ -138,7 +138,7 @@ export function ChatActionBar({
                     variant="outline"
                     size="sm"
                     onClick={onPlanReview}
-                    className="h-7 rounded-none border-border px-2 font-mono text-[11px] uppercase tracking-wide"
+                    className="h-7 border-border px-2 font-mono text-[11px] uppercase tracking-wide"
                   >
                     Review
                   </Button>
@@ -149,7 +149,7 @@ export function ChatActionBar({
                   size="sm"
                   onClick={onPlanApprove}
                   disabled={planApproveDisabled}
-                  className="border-primary/50 h-7 rounded-none px-2 font-mono text-[11px] uppercase tracking-wide"
+                  className="border-primary/50 h-7 px-2 font-mono text-[11px] uppercase tracking-wide"
                 >
                   Approve
                 </Button>
@@ -163,7 +163,7 @@ export function ChatActionBar({
                     size="sm"
                     onClick={onBuildFromPlan}
                     disabled={planBuildDisabled}
-                    className="h-7 rounded-none px-2 font-mono text-[11px] uppercase tracking-wide"
+                    className="h-7 px-2 font-mono text-[11px] uppercase tracking-wide"
                   >
                     Build
                   </Button>
@@ -210,7 +210,7 @@ export function ChatActionBar({
                 variant="outline"
                 size="sm"
                 onClick={onSpecCancel}
-                className="h-7 rounded-none border-border px-2 font-mono text-[11px] uppercase tracking-wide"
+                className="h-7 border-border px-2 font-mono text-[11px] uppercase tracking-wide"
               >
                 Cancel
               </Button>
@@ -219,7 +219,7 @@ export function ChatActionBar({
                   variant="outline"
                   size="sm"
                   onClick={() => onSpecEdit(pendingSpec)}
-                  className="border-primary/50 h-7 rounded-none px-2 font-mono text-[11px] uppercase tracking-wide"
+                  className="border-primary/50 h-7 px-2 font-mono text-[11px] uppercase tracking-wide"
                 >
                   Edit
                 </Button>
@@ -228,7 +228,7 @@ export function ChatActionBar({
                 <Button
                   size="sm"
                   onClick={() => onSpecApprove(pendingSpec)}
-                  className="h-7 rounded-none px-2 font-mono text-[11px] uppercase tracking-wide"
+                  className="h-7 px-2 font-mono text-[11px] uppercase tracking-wide"
                 >
                   Execute
                 </Button>

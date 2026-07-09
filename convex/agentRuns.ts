@@ -1,4 +1,11 @@
-import { mutation, query } from './_generated/server'
+import {
+  internalMutation,
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from './_generated/server'
+import { paginationOptsValidator } from 'convex/server'
 import { v } from 'convex/values'
 import {
   AgentRunKind,
@@ -13,7 +20,8 @@ import {
 } from './schema'
 import type { Doc, Id } from './_generated/dataModel'
 import { requireAgentRunOwner, requireChatOwner, requireProjectOwner } from './lib/authz'
-import { trackUserAnalytics } from './lib/userAnalytics'
+import { deleteRunEventWithBody, insertRunEvent } from './lib/runEvents'
+import { trackRunStartAnalytics, trackRunTerminalAnalytics } from './lib/runTelemetry'
 
 type RuntimeCheckpointEnvelope = {
   version: number
@@ -84,10 +92,83 @@ function stableHash(value: unknown): string {
   return (hash >>> 0).toString(16).padStart(8, '0')
 }
 
+type RuntimeCheckpointSummaryFields = {
+  checkpointHash: string
+  messageCount?: number
+  step?: number
+  inputTokens?: number
+  outputTokens?: number
+  reasoningTokens?: number
+}
+
+function summarizeRuntimeCheckpoint(checkpoint: unknown): RuntimeCheckpointSummaryFields {
+  const state = (checkpoint as { state?: unknown }).state as Record<string, unknown>
+  const messages = Array.isArray(state.messages) ? state.messages : undefined
+  const tokens = state.tokens as Record<string, unknown> | undefined
+  const inputTokens = typeof tokens?.input === 'number' ? tokens.input : undefined
+  const outputTokens = typeof tokens?.output === 'number' ? tokens.output : undefined
+  const reasoningTokens = typeof tokens?.reasoning === 'number' ? tokens.reasoning : undefined
+
+  return {
+    checkpointHash: stableHash(checkpoint),
+    ...(messages ? { messageCount: messages.length } : {}),
+    ...(typeof state.step === 'number' ? { step: state.step } : {}),
+    ...(inputTokens !== undefined ? { inputTokens } : {}),
+    ...(outputTokens !== undefined ? { outputTokens } : {}),
+    ...(reasoningTokens !== undefined ? { reasoningTokens } : {}),
+  }
+}
+
+async function loadRuntimeCheckpointBody(
+  ctx: QueryCtx | MutationCtx,
+  checkpoint: Doc<'harnessRuntimeCheckpoints'>
+): Promise<unknown | undefined> {
+  const body = await ctx.db
+    .query('harnessRuntimeCheckpointBodies')
+    .withIndex('by_checkpoint', (q) => q.eq('checkpointId', checkpoint._id))
+    .first()
+
+  return body?.checkpoint ?? checkpoint.checkpoint
+}
+
+async function deleteRuntimeCheckpointWithBody(
+  ctx: MutationCtx,
+  checkpointId: Id<'harnessRuntimeCheckpoints'>
+): Promise<void> {
+  const bodies = await ctx.db
+    .query('harnessRuntimeCheckpointBodies')
+    .withIndex('by_checkpoint', (q) => q.eq('checkpointId', checkpointId))
+    .take(10)
+  for (const body of bodies) {
+    await ctx.db.delete(body._id)
+  }
+  await ctx.db.delete(checkpointId)
+}
+
 function assertAgentRunTransition(from: AgentRunStatus, to: AgentRunStatus): void {
   if (from === to) return
   if (from !== 'running') {
     throw new Error(`Cannot transition agent run from ${from} to ${to}`)
+  }
+}
+
+async function hydrateRunEventBody(ctx: QueryCtx, event: Doc<'agentRunEvents'>) {
+  if (!event.hasBody) return event
+
+  const body = await ctx.db
+    .query('agentRunEventBodies')
+    .withIndex('by_event', (q) => q.eq('eventId', event._id))
+    .first()
+
+  if (!body) return event
+
+  return {
+    ...event,
+    content: body.content ?? event.content,
+    output: body.output ?? event.output,
+    error: body.error ?? event.error,
+    args: body.args ?? event.args,
+    snapshot: body.snapshot ?? event.snapshot,
   }
 }
 
@@ -116,9 +197,9 @@ function toRunEventSummary(event: Doc<'agentRunEvents'>) {
     appliedSkills: event.appliedSkills,
     subagentSummary: event.subagentSummary,
     createdAt: event.createdAt,
-    contentPreview: previewText(event.content),
-    outputPreview: previewText(event.output),
-    errorPreview: previewText(event.error),
+    contentPreview: event.contentPreview ?? previewText(event.content),
+    outputPreview: event.outputPreview ?? previewText(event.output),
+    errorPreview: event.errorPreview ?? previewText(event.error),
   }
 }
 
@@ -132,6 +213,13 @@ function toRuntimeCheckpointSummary(checkpoint: Doc<'harnessRuntimeCheckpoints'>
     savedAt: checkpoint.savedAt,
     agentName: checkpoint.agentName,
     version: checkpoint.version,
+    checkpointHash: checkpoint.checkpointHash,
+    messageCount: checkpoint.messageCount,
+    step: checkpoint.step,
+    inputTokens: checkpoint.inputTokens,
+    outputTokens: checkpoint.outputTokens,
+    reasoningTokens: checkpoint.reasoningTokens,
+    hasBody: checkpoint.hasBody,
   }
 }
 
@@ -151,6 +239,8 @@ function toProjectRunSummary(run: Doc<'agentRuns'>) {
     _id: run._id,
     chatId: run.chatId,
     mode: run.mode,
+    provider: run.provider,
+    model: run.model,
     runKind: run.runKind ?? 'primary',
     parentRunId: run.parentRunId,
     rootRunId: run.rootRunId,
@@ -183,12 +273,24 @@ export const create = mutation({
     provider: v.optional(v.string()),
     model: v.optional(v.string()),
     userMessage: v.optional(v.string()),
+    analyticsPendingMessageId: v.optional(v.id('messages')),
   },
   handler: async (ctx, args) => {
     const { userId } = await requireProjectOwner(ctx, args.projectId)
     const { chat } = await requireChatOwner(ctx, args.chatId)
     if (chat.projectId !== args.projectId) {
       throw new Error('Chat does not belong to the specified project')
+    }
+
+    if (args.analyticsPendingMessageId) {
+      const pendingMessage = await ctx.db.get(args.analyticsPendingMessageId)
+      if (
+        !pendingMessage ||
+        pendingMessage.chatId !== args.chatId ||
+        pendingMessage.role !== 'user'
+      ) {
+        throw new Error('Invalid pending analytics message for run')
+      }
     }
 
     const startedAt = Date.now()
@@ -202,11 +304,13 @@ export const create = mutation({
       model: args.model,
       userMessage: args.userMessage,
       status: 'running',
+      analyticsPendingMessageId: args.analyticsPendingMessageId,
       startedAt,
     })
 
-    await trackUserAnalytics(ctx, userId, {
+    await trackRunStartAnalytics(ctx, userId, {
       provider: args.provider,
+      analyticsPendingMessageId: args.analyticsPendingMessageId,
     })
 
     return runId
@@ -283,7 +387,7 @@ export const appendEvents = mutation({
     const normalizedEvents = [...args.events].sort((a, b) => a.sequence - b.sequence)
     const createdAt = Date.now()
     for (const [index, event] of normalizedEvents.entries()) {
-      await ctx.db.insert('agentRunEvents', {
+      await insertRunEvent(ctx, {
         runId: args.runId,
         chatId: run.chatId,
         sequence: event.sequence,
@@ -316,6 +420,90 @@ export const appendEvents = mutation({
   },
 })
 
+export const backfillRunEventBodies = internalMutation({
+  args: {
+    runId: v.id('agentRuns'),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    const page = await ctx.db
+      .query('agentRunEvents')
+      .withIndex('by_run_sequence', (q) => q.eq('runId', args.runId))
+      .order('asc')
+      .paginate({
+        ...args.paginationOpts,
+        numItems: Math.max(1, Math.min(args.paginationOpts.numItems, 500)),
+        maximumRowsRead: 500,
+      })
+    const events = page.page
+
+    let written = 0
+    let skipped = 0
+    let patched = 0
+
+    for (const event of events) {
+      const hasInlineBody =
+        event.content !== undefined ||
+        event.output !== undefined ||
+        event.error !== undefined ||
+        event.args !== undefined ||
+        event.snapshot !== undefined
+      const existingBody = await ctx.db
+        .query('agentRunEventBodies')
+        .withIndex('by_event', (q) => q.eq('eventId', event._id))
+        .first()
+
+      if (hasInlineBody && !existingBody) {
+        await ctx.db.insert('agentRunEventBodies', {
+          eventId: event._id,
+          runId: event.runId,
+          chatId: event.chatId,
+          sequence: event.sequence,
+          content: event.content,
+          output: event.output,
+          error: event.error,
+          args: event.args,
+          snapshot: event.snapshot,
+          createdAt: event.createdAt,
+        })
+        written += 1
+      } else {
+        skipped += 1
+      }
+
+      const patch: Partial<Omit<Doc<'agentRunEvents'>, '_id' | '_creationTime'>> = {}
+      const hasBody = hasInlineBody || Boolean(existingBody)
+      const hasArgs = event.args !== undefined || existingBody?.args !== undefined
+      const hasSnapshot = event.snapshot !== undefined || existingBody?.snapshot !== undefined
+      const contentPreview =
+        event.contentPreview ?? previewText(event.content ?? existingBody?.content)
+      const outputPreview = event.outputPreview ?? previewText(event.output ?? existingBody?.output)
+      const errorPreview = event.errorPreview ?? previewText(event.error ?? existingBody?.error)
+
+      if (event.hasBody !== hasBody) patch.hasBody = hasBody
+      if (event.hasArgs !== hasArgs) patch.hasArgs = hasArgs
+      if (event.hasSnapshot !== hasSnapshot) patch.hasSnapshot = hasSnapshot
+      if (event.contentPreview !== contentPreview) patch.contentPreview = contentPreview
+      if (event.outputPreview !== outputPreview) patch.outputPreview = outputPreview
+      if (event.errorPreview !== errorPreview) patch.errorPreview = errorPreview
+
+      if (Object.keys(patch).length > 0) {
+        await ctx.db.patch(event._id, patch)
+        patched += 1
+      }
+    }
+
+    return {
+      processed: events.length,
+      written,
+      skipped,
+      patched,
+      isDone: page.isDone,
+      continueCursor: page.continueCursor,
+    }
+  },
+})
+
 export const pruneRunRetention = mutation({
   args: {
     runId: v.id('agentRuns'),
@@ -345,7 +533,7 @@ export const pruneRunRetention = mutation({
       .take(keepEvents + deleteBatchSize)
     const eventIdsToDelete = events.slice(keepEvents).map((event) => event._id)
     for (const eventId of eventIdsToDelete) {
-      await ctx.db.delete(eventId)
+      await deleteRunEventWithBody(ctx, eventId)
     }
 
     const checkpoints = await ctx.db
@@ -357,7 +545,7 @@ export const pruneRunRetention = mutation({
       .slice(keepCheckpoints)
       .map((checkpoint) => checkpoint._id)
     for (const checkpointId of checkpointIdsToDelete) {
-      await ctx.db.delete(checkpointId)
+      await deleteRuntimeCheckpointWithBody(ctx, checkpointId)
     }
 
     return {
@@ -391,7 +579,7 @@ export const complete = mutation({
       completedAt,
     })
 
-    await trackUserAnalytics(ctx, userId, {
+    await trackRunTerminalAnalytics(ctx, userId, run, {
       totalTokensUsed: args.usage?.totalTokens ?? 0,
     })
 
@@ -407,7 +595,7 @@ export const fail = mutation({
     terminationReason: v.optional(TerminationReason),
   },
   handler: async (ctx, args) => {
-    const { run } = await requireAgentRunOwner(ctx, args.runId)
+    const { run, userId } = await requireAgentRunOwner(ctx, args.runId)
     assertAgentRunTransition(run.status, 'failed')
 
     const completedAt = Date.now()
@@ -420,6 +608,8 @@ export const fail = mutation({
       completedAt,
     })
 
+    await trackRunTerminalAnalytics(ctx, userId, run)
+
     return args.runId
   },
 })
@@ -431,7 +621,7 @@ export const stop = mutation({
     terminationReason: v.optional(TerminationReason),
   },
   handler: async (ctx, args) => {
-    const { run } = await requireAgentRunOwner(ctx, args.runId)
+    const { run, userId } = await requireAgentRunOwner(ctx, args.runId)
     assertAgentRunTransition(run.status, 'stopped')
 
     const completedAt = Date.now()
@@ -442,6 +632,8 @@ export const stop = mutation({
       lastActivityAt: completedAt,
       completedAt,
     })
+
+    await trackRunTerminalAnalytics(ctx, userId, run)
 
     return args.runId
   },
@@ -601,7 +793,7 @@ export const listEventsByChat = query({
       .order('desc')
       .take(limit)
 
-    return events.reverse()
+    return await Promise.all(events.reverse().map((event) => hydrateRunEventBody(ctx, event)))
   },
 })
 
@@ -649,7 +841,7 @@ export const saveRuntimeCheckpoint = mutation({
     }
 
     const envelope = parseRuntimeCheckpointEnvelope(args.checkpoint)
-    const checkpointHash = stableHash(args.checkpoint)
+    const summary = summarizeRuntimeCheckpoint(args.checkpoint)
 
     const latestRows = args.runId
       ? await ctx.db
@@ -668,12 +860,12 @@ export const saveRuntimeCheckpoint = mutation({
           .take(1)
 
     const latest = latestRows[0]
-    if (
-      latest &&
-      latest.reason === envelope.reason &&
-      stableHash(latest.checkpoint) === checkpointHash
-    ) {
-      return latest._id
+    if (latest && latest.reason === envelope.reason) {
+      const latestHash =
+        latest.checkpointHash ?? stableHash((await loadRuntimeCheckpointBody(ctx, latest)) ?? null)
+      if (latestHash === summary.checkpointHash) {
+        return latest._id
+      }
     }
 
     const checkpointId = await ctx.db.insert('harnessRuntimeCheckpoints', {
@@ -685,7 +877,24 @@ export const saveRuntimeCheckpoint = mutation({
       agentName: envelope.agentName,
       reason: envelope.reason,
       savedAt: envelope.savedAt,
+      checkpointHash: summary.checkpointHash,
+      messageCount: summary.messageCount,
+      step: summary.step,
+      inputTokens: summary.inputTokens,
+      outputTokens: summary.outputTokens,
+      reasoningTokens: summary.reasoningTokens,
+      hasBody: true,
+    })
+
+    await ctx.db.insert('harnessRuntimeCheckpointBodies', {
+      checkpointId,
+      projectId,
+      chatId,
+      runId: args.runId,
+      sessionID: envelope.sessionID,
       checkpoint: args.checkpoint,
+      checkpointHash: summary.checkpointHash,
+      createdAt: envelope.savedAt,
     })
 
     const retainedRows = args.runId
@@ -704,10 +913,115 @@ export const saveRuntimeCheckpoint = mutation({
           .order('desc')
           .take(DEFAULT_HOT_CHECKPOINT_RETENTION + 25)
     for (const stale of retainedRows.slice(DEFAULT_HOT_CHECKPOINT_RETENTION)) {
-      await ctx.db.delete(stale._id)
+      await deleteRuntimeCheckpointWithBody(ctx, stale._id)
     }
 
     return checkpointId
+  },
+})
+
+export const backfillRuntimeCheckpointBodies = internalMutation({
+  args: {
+    runId: v.optional(v.id('agentRuns')),
+    chatId: v.optional(v.id('chats')),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    if (args.runId && args.chatId) {
+      throw new Error('Provide runId or chatId, not both')
+    }
+    if (!args.runId && !args.chatId) {
+      throw new Error('runId or chatId is required to backfill runtime checkpoint bodies')
+    }
+
+    const page = args.runId
+      ? await (async () => {
+          const runId = args.runId as Id<'agentRuns'>
+          return await ctx.db
+            .query('harnessRuntimeCheckpoints')
+            .withIndex('by_run_saved', (q) => q.eq('runId', runId))
+            .order('asc')
+            .paginate({
+              ...args.paginationOpts,
+              numItems: Math.max(1, Math.min(args.paginationOpts.numItems, 200)),
+              maximumRowsRead: 200,
+            })
+        })()
+      : await (async () => {
+          const chatId = args.chatId as Id<'chats'>
+          return await ctx.db
+            .query('harnessRuntimeCheckpoints')
+            .withIndex('by_chat_saved', (q) => q.eq('chatId', chatId))
+            .order('asc')
+            .paginate({
+              ...args.paginationOpts,
+              numItems: Math.max(1, Math.min(args.paginationOpts.numItems, 200)),
+              maximumRowsRead: 200,
+            })
+        })()
+
+    let written = 0
+    let skipped = 0
+    let patched = 0
+
+    for (const checkpoint of page.page) {
+      const existingBody = await ctx.db
+        .query('harnessRuntimeCheckpointBodies')
+        .withIndex('by_checkpoint', (q) => q.eq('checkpointId', checkpoint._id))
+        .first()
+      const inlinePayload = checkpoint.checkpoint
+      const payload = inlinePayload ?? existingBody?.checkpoint
+
+      if (inlinePayload && !existingBody) {
+        const summary = summarizeRuntimeCheckpoint(inlinePayload)
+        await ctx.db.insert('harnessRuntimeCheckpointBodies', {
+          checkpointId: checkpoint._id,
+          projectId: checkpoint.projectId,
+          chatId: checkpoint.chatId,
+          runId: checkpoint.runId,
+          sessionID: checkpoint.sessionID,
+          checkpoint: inlinePayload,
+          checkpointHash: summary.checkpointHash,
+          createdAt: checkpoint.savedAt,
+        })
+        written += 1
+      } else {
+        skipped += 1
+      }
+
+      const patch: Partial<Omit<Doc<'harnessRuntimeCheckpoints'>, '_id' | '_creationTime'>> = {}
+      if (payload) {
+        const summary = summarizeRuntimeCheckpoint(payload)
+        if (checkpoint.checkpointHash !== summary.checkpointHash) {
+          patch.checkpointHash = summary.checkpointHash
+        }
+        if (checkpoint.messageCount !== summary.messageCount)
+          patch.messageCount = summary.messageCount
+        if (checkpoint.step !== summary.step) patch.step = summary.step
+        if (checkpoint.inputTokens !== summary.inputTokens) patch.inputTokens = summary.inputTokens
+        if (checkpoint.outputTokens !== summary.outputTokens)
+          patch.outputTokens = summary.outputTokens
+        if (checkpoint.reasoningTokens !== summary.reasoningTokens) {
+          patch.reasoningTokens = summary.reasoningTokens
+        }
+      }
+      const hasBody = Boolean(existingBody || inlinePayload)
+      if (checkpoint.hasBody !== hasBody) patch.hasBody = hasBody
+
+      if (Object.keys(patch).length > 0) {
+        await ctx.db.patch(checkpoint._id, patch)
+        patched += 1
+      }
+    }
+
+    return {
+      processed: page.page.length,
+      written,
+      skipped,
+      patched,
+      isDone: page.isDone,
+      continueCursor: page.continueCursor,
+    }
   },
 })
 
@@ -729,7 +1043,7 @@ export const getLatestRuntimeCheckpoint = query({
         .order('desc')
         .take(1)
 
-      return (rows[0]?.checkpoint as unknown) ?? null
+      return rows[0] ? (((await loadRuntimeCheckpointBody(ctx, rows[0])) as unknown) ?? null) : null
     }
 
     if (args.chatId) {
@@ -743,7 +1057,7 @@ export const getLatestRuntimeCheckpoint = query({
         .order('desc')
         .take(1)
 
-      return (rows[0]?.checkpoint as unknown) ?? null
+      return rows[0] ? (((await loadRuntimeCheckpointBody(ctx, rows[0])) as unknown) ?? null) : null
     }
 
     if (args.projectId) {
@@ -757,7 +1071,7 @@ export const getLatestRuntimeCheckpoint = query({
         .order('desc')
         .take(1)
 
-      return (rows[0]?.checkpoint as unknown) ?? null
+      return rows[0] ? (((await loadRuntimeCheckpointBody(ctx, rows[0])) as unknown) ?? null) : null
     }
 
     throw new Error('runId, chatId, or projectId is required to load a runtime checkpoint')
@@ -781,21 +1095,35 @@ export const listRuntimeCheckpoints = query({
 
     if (args.runId) {
       await requireAgentRunOwner(ctx, args.runId)
-      return await ctx.db
+      const checkpoints = await ctx.db
         .query('harnessRuntimeCheckpoints')
         .withIndex('by_run_saved', (q) => q.eq('runId', args.runId))
         .order('desc')
         .take(limit)
+
+      return await Promise.all(
+        checkpoints.map(async (checkpoint) => ({
+          ...checkpoint,
+          checkpoint: await loadRuntimeCheckpointBody(ctx, checkpoint),
+        }))
+      )
     }
 
     if (args.chatId) {
       const chatId = args.chatId
       await requireChatOwner(ctx, args.chatId)
-      return await ctx.db
+      const checkpoints = await ctx.db
         .query('harnessRuntimeCheckpoints')
         .withIndex('by_chat_saved', (q) => q.eq('chatId', chatId))
         .order('desc')
         .take(limit)
+
+      return await Promise.all(
+        checkpoints.map(async (checkpoint) => ({
+          ...checkpoint,
+          checkpoint: await loadRuntimeCheckpointBody(ctx, checkpoint),
+        }))
+      )
     }
 
     throw new Error('runId or chatId is required to list runtime checkpoints')

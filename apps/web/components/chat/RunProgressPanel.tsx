@@ -272,7 +272,7 @@ export function RunProgressPanel({
             variant="outline"
             disabled={isStreaming}
             onClick={() => onResumeRuntimeSession(latestRuntimeCheckpoint.sessionID!)}
-            className="border-primary/40 bg-background/80 h-7 rounded-none px-2.5 font-mono text-[10px] uppercase tracking-[0.2em]"
+            className="border-primary/40 bg-background/80 h-7 px-2.5 font-mono text-[10px] uppercase tracking-[0.2em]"
           >
             Resume Run
           </Button>
@@ -312,7 +312,7 @@ export function RunProgressPanel({
               planStatus === 'executing' && 'border-primary/50 bg-primary/5 text-primary',
               planStatus === 'partial' && 'border-warning/50 bg-warning/5 text-warning',
               planStatus === 'completed' &&
-                'border-emerald-500/50 bg-emerald-500/5 text-emerald-500',
+                'border-success/50 bg-success/5 text-success',
               planStatus === 'failed' && 'border-destructive/50 bg-destructive/5 text-destructive',
               planStatus === 'awaiting_review' && 'bg-muted/50 border-border text-muted-foreground',
               planStatus === 'stale' && 'border-warning/50 bg-warning/5 text-warning',

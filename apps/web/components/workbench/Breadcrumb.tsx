@@ -37,7 +37,7 @@ export function Breadcrumb({
     <nav aria-label="Breadcrumb" className={cn('flex items-center gap-1 text-sm', className)}>
       <Link
         href="/projects"
-        className="flex items-center gap-1.5 rounded-none px-1.5 py-0.5 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
+        className="flex items-center gap-1.5 px-1.5 py-0.5 font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground"
         title="Back to Projects"
       >
         <IconArrowLeft className="h-3 w-3" />

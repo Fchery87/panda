@@ -222,7 +222,7 @@ export function WorkspaceHome({
                       <Button
                         key={action.label}
                         variant="outline"
-                        className="h-8 justify-center gap-1.5 rounded-none font-mono text-[10px] leading-none"
+                        className="h-8 justify-center gap-1.5 font-mono text-[10px] leading-none"
                         onClick={action.onClick}
                       >
                         <Icon className="h-3.5 w-3.5" />
@@ -285,7 +285,7 @@ export function WorkspaceHome({
                 {focusState.secondaryAction && onFocusSecondaryAction ? (
                   <Button
                     variant="outline"
-                    className="h-7 rounded-none px-2.5 font-mono text-[10px] uppercase tracking-[0.2em]"
+                    className="h-7 px-2.5 font-mono text-[10px] uppercase tracking-[0.2em]"
                     onClick={onFocusSecondaryAction}
                   >
                     {focusState.secondaryAction.label}
@@ -293,7 +293,7 @@ export function WorkspaceHome({
                 ) : null}
                 {focusState.primaryAction && onFocusPrimaryAction ? (
                   <Button
-                    className="h-7 rounded-none px-2.5 font-mono text-[10px] uppercase tracking-[0.2em]"
+                    className="h-7 px-2.5 font-mono text-[10px] uppercase tracking-[0.2em]"
                     onClick={onFocusPrimaryAction}
                   >
                     {focusState.primaryAction.label}
@@ -371,7 +371,7 @@ export function WorkspaceHome({
             {onStartAgent ? (
               <div className="border-t border-border bg-background p-3">
                 <Button
-                  className="h-8 rounded-none px-3 font-mono text-[10px] uppercase tracking-[0.2em]"
+                  className="h-8 px-3 font-mono text-[10px] uppercase tracking-[0.2em]"
                   onClick={onStartAgent}
                 >
                   Start first session
@@ -499,7 +499,7 @@ export function WorkspaceHome({
             </div>
             {onStartAgent ? (
               <Button
-                className="h-8 shrink-0 rounded-none px-3 font-mono text-[10px] uppercase tracking-[0.2em]"
+                className="h-8 shrink-0 px-3 font-mono text-[10px] uppercase tracking-[0.2em]"
                 onClick={onStartAgent}
               >
                 Continue Session
@@ -519,7 +519,7 @@ export function WorkspaceHome({
               {pendingDiffs > 0 && (
                 <Button
                   variant="outline"
-                  className="h-8 justify-start gap-1.5 rounded-none font-mono text-[10px]"
+                  className="h-8 justify-start gap-1.5 font-mono text-[10px]"
                   onClick={onOpenDiffView}
                 >
                   <IconDiff className="h-3.5 w-3.5 shrink-0 text-primary" />
@@ -531,7 +531,7 @@ export function WorkspaceHome({
               {onStartAgent && (
                 <Button
                   variant="outline"
-                  className="h-8 justify-start gap-1.5 rounded-none font-mono text-[10px]"
+                  className="h-8 justify-start gap-1.5 font-mono text-[10px]"
                   onClick={onStartAgent}
                 >
                   <IconQuickAction className="h-3.5 w-3.5 shrink-0 text-primary" />
@@ -542,7 +542,7 @@ export function WorkspaceHome({
                 <Button
                   key={idx}
                   variant="outline"
-                  className="h-8 justify-start gap-1.5 rounded-none font-mono text-[10px]"
+                  className="h-8 justify-start gap-1.5 font-mono text-[10px]"
                   onClick={action.action}
                 >
                   <span className="truncate">{action.label}</span>

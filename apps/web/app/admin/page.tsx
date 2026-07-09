@@ -82,7 +82,7 @@ export default function AdminDashboardPage() {
             {adminRouteCards.map((card) => (
               <Card
                 key={card.title}
-                className="hover:bg-muted/20 group rounded-none transition-colors"
+                className="hover:bg-muted/20 group transition-colors"
               >
                 <CardHeader>
                   <div className="space-y-3">
@@ -94,7 +94,7 @@ export default function AdminDashboardPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <Button asChild variant="outline" className="w-full rounded-none font-mono">
+                  <Button asChild variant="outline" className="w-full font-mono">
                     <Link href={card.href}>
                       Open {card.title}
                       <ArrowRight size={16} />

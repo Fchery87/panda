@@ -74,6 +74,15 @@ const config: Config = {
           info: 'oklch(var(--status-info))',
           online: 'oklch(var(--status-online))',
         },
+        ink: {
+          DEFAULT: 'oklch(var(--ink))',
+          deep: 'oklch(var(--ink-deep))',
+        },
+        oxblood: 'oklch(var(--oxblood))',
+        teal: {
+          DEFAULT: 'oklch(var(--teal))',
+          deep: 'oklch(var(--teal-deep))',
+        },
       },
       fontSize: {
         'code-xs': ['11px', { lineHeight: '16px' }],
@@ -82,12 +91,14 @@ const config: Config = {
         'code-lg': ['14px', { lineHeight: '22px' }],
       },
       borderRadius: {
+        xl: 'calc(var(--radius) + 6px)',
         lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
+        md: 'calc(var(--radius) - 4px)',
+        sm: 'calc(var(--radius) - 6px)',
       },
       fontFamily: {
-        sans: ['var(--font-sans)', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-display)', 'var(--font-sans)', 'system-ui', 'sans-serif'],
         mono: ['var(--font-mono)', 'Geist Mono', 'SF Mono', 'Consolas', 'monospace'],
       },
       letterSpacing: {

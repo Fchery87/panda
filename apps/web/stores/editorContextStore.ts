@@ -26,6 +26,7 @@ export interface EditorContextState {
   openTabs: WorkspaceOpenTab[]
   cursorPosition: EditorCursor | null
   selection: EditorSelection | null
+  resetGeneration: number
 
   setSelectedFilePath: (path: string | null) => void
   setSelectedFileLocation: (location: EditorFileLocation | null) => void
@@ -47,6 +48,7 @@ const DEFAULTS = {
   openTabs: [] as WorkspaceOpenTab[],
   cursorPosition: null,
   selection: null,
+  resetGeneration: 0,
 }
 
 export const useEditorContextStore = create<EditorContextState>((set) => ({
@@ -96,5 +98,9 @@ export const useEditorContextStore = create<EditorContextState>((set) => ({
       return { openTabs, selectedFilePath }
     }),
 
-  reset: () => set(DEFAULTS),
+  reset: () =>
+    set((state) => ({
+      ...DEFAULTS,
+      resetGeneration: state.resetGeneration + 1,
+    })),
 }))

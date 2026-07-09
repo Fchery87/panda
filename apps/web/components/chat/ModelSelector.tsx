@@ -134,7 +134,7 @@ export function ModelSelector({ value, onChange, disabled, availableModels }: Mo
       <SelectPrimitive.Trigger
         className={cn(
           'flex h-8 w-[160px] items-center justify-between gap-1.5',
-          'rounded-none border border-border bg-background px-2 py-1',
+          'border border-border bg-background px-2 py-1',
           'font-mono text-xs text-foreground',
           'hover:bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring',
           'disabled:cursor-not-allowed disabled:opacity-50',
@@ -156,7 +156,7 @@ export function ModelSelector({ value, onChange, disabled, availableModels }: Mo
           collisionPadding={8}
           className={cn(
             'relative z-50 min-w-[220px] max-w-[calc(100vw-1rem)] overflow-hidden',
-            'rounded-none border border-border bg-popover text-popover-foreground shadow-md',
+            'border border-border bg-popover text-popover-foreground shadow-md',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
             'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
             'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
@@ -179,7 +179,7 @@ export function ModelSelector({ value, onChange, disabled, availableModels }: Mo
                   value={model.id}
                   className={cn(
                     'relative flex w-full min-w-0 cursor-default select-none items-center gap-2',
-                    'rounded-none py-2 pl-7 pr-3 text-sm outline-none',
+                    'py-2 pl-7 pr-3 text-sm outline-none',
                     'focus:bg-accent focus:text-accent-foreground',
                     'data-[disabled]:pointer-events-none data-[disabled]:opacity-50'
                   )}

@@ -791,7 +791,7 @@ export function ChatInput({
                         enhanceState === 'enhanced' ? 'Revert enhancement' : 'Enhance prompt'
                       }
                       className={cn(
-                        'transition-sharp h-7 w-7 rounded-none',
+                        'transition-sharp h-7 w-7',
                         enhanceState === 'enhanced'
                           ? 'bg-primary/10 hover:bg-primary/20 border-primary text-primary'
                           : 'hover:border-foreground/30 border-border text-muted-foreground hover:text-foreground',

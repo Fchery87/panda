@@ -187,7 +187,7 @@ export function ArtifactCard({
                   type="button"
                   onClick={() => onOpenFile(payload.filePath)}
                   variant="outline"
-                  className="flex-1 rounded-none"
+                  className="flex-1"
                   size="sm"
                 >
                   Open File
@@ -198,7 +198,7 @@ export function ArtifactCard({
                   type="button"
                   onClick={onReviewDiff}
                   variant="outline"
-                  className="flex-1 rounded-none"
+                  className="flex-1"
                   size="sm"
                 >
                   Review Diff
@@ -213,7 +213,7 @@ export function ArtifactCard({
                 <Button
                   onClick={() => onRequestAdvisorReview(artifact.id)}
                   variant="outline"
-                  className="w-full rounded-none font-mono text-[10px] uppercase tracking-wide"
+                  className="w-full font-mono text-[10px] uppercase tracking-wide"
                   size="sm"
                 >
                   Request Advisor Review
@@ -222,7 +222,7 @@ export function ArtifactCard({
               <div className="flex gap-2">
                 <Button
                   onClick={() => onApply(artifact.id)}
-                  className="flex-1 rounded-none"
+                  className="flex-1"
                   size="sm"
                 >
                   <Check className="mr-1.5 h-4 w-4" />
@@ -231,7 +231,7 @@ export function ArtifactCard({
                 <Button
                   onClick={() => onReject(artifact.id)}
                   variant="outline"
-                  className="flex-1 rounded-none"
+                  className="flex-1"
                   size="sm"
                 >
                   <X className="mr-1.5 h-4 w-4" />

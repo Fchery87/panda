@@ -41,7 +41,7 @@ export function useArtifactController({
       createArtifactController({
         records,
         projectId,
-        applyArtifact: ({ artifactId, action, advisorReview }) =>
+        applyArtifact: ({ artifactId, action, advisorPolicy, advisorReview }) =>
           applyArtifact({
             artifactId,
             action,
@@ -57,6 +57,7 @@ export function useArtifactController({
               }),
             updateArtifactStatus,
             writeFileToRuntime,
+            advisorPolicy,
             advisorReview,
           }),
         updateArtifactStatus,

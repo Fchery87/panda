@@ -125,7 +125,7 @@ export function AgentSelector({ mode, onModeChange, disabled, className }: Agent
 
       <DropdownMenuContent
         align="start"
-        className="bg-background/95 rounded-none border-border backdrop-blur-sm"
+        className="bg-background/95 border-border backdrop-blur-sm"
       >
         <DropdownMenuLabel className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
           Primary modes
@@ -150,7 +150,7 @@ export function AgentSelector({ mode, onModeChange, disabled, className }: Agent
               <DropdownMenuRadioItem
                 key={option.id}
                 value={option.id}
-                className="rounded-none font-mono text-xs"
+                className="font-mono text-xs"
               >
                 <span className="flex items-center gap-2">
                   {icon}
@@ -179,7 +179,7 @@ export function AgentSelector({ mode, onModeChange, disabled, className }: Agent
               <DropdownMenuRadioItem
                 key={option.id}
                 value={option.runtimeMode}
-                className="rounded-none font-mono text-xs"
+                className="font-mono text-xs"
               >
                 <span className="flex items-center gap-2">
                   {icon}
@@ -203,7 +203,7 @@ export function AgentSelector({ mode, onModeChange, disabled, className }: Agent
             <DropdownMenuRadioItem
               key={option.id}
               value={option.id}
-              className="rounded-none font-mono text-xs"
+              className="font-mono text-xs"
             >
               <span className="uppercase">{option.label}</span>
               <span className="ml-2 text-muted-foreground">{option.description}</span>

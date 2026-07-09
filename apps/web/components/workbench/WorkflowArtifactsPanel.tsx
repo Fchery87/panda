@@ -88,7 +88,7 @@ export function WorkflowArtifactList({
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="h-7 rounded-none font-mono text-[10px] uppercase tracking-wide"
+                    className="h-7 font-mono text-[10px] uppercase tracking-wide"
                     onClick={() => navigator.clipboard?.writeText(materialized.content)}
                   >
                     Copy Markdown
@@ -97,7 +97,7 @@ export function WorkflowArtifactList({
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="h-7 rounded-none font-mono text-[10px] uppercase tracking-wide"
+                    className="h-7 font-mono text-[10px] uppercase tracking-wide"
                     onClick={() => navigator.clipboard?.writeText(materialized.path)}
                   >
                     Copy Path

@@ -1,26 +1,27 @@
-# Spec: Harness File Materialization Review
+# Spec: "Ink & Paper" design system — full UI/UX redesign
 
 ## Deliverables
 
-- [x] Trace why a simple request to create `/docs` can produce a completion
-      receipt that does not appear in the project file tree.
-- [x] Review the affected harness, Chat Panel send/run path, and project
-      file-system materialization boundaries.
-- [x] Fix the root cause without widening mode permissions or changing the
-      canonical `ask`, `plan`, `code`, `build` workflow.
-- [x] Add or repair regression coverage proving created files/directories are
-      reflected through the file tree path used by the UI.
-- [x] Record validation evidence and remaining risks.
+- [ ] New token layer (globals.css + tailwind.config.ts): warm paper canvas, violet-ink primary, lavender accent, teal run signals, 12px radius, violet-tinted shadows, light + dark modes designed
+- [ ] `.ink-panel` signature mechanism: local CSS-variable re-theme that turns any agent-execution surface into a dark violet-ink island
+- [ ] New type system: Bricolage Grotesque (display) + Schibsted Grotesk (body) + Geist Mono (code only)
+- [ ] Restyled shared chrome: Button (pill), PandaLogo, PublicNav, PublicFooter, DashboardHeader, AuthenticatedPageShell
+- [ ] Redesigned pages: landing, login, projects home (Codex-style centered layout)
+- [ ] Workbench chrome: WorkbenchTopBar becomes an ink panel; shell polish
+- [ ] Global removal of hardcoded `rounded-none` overrides so radius is uniform
+- [ ] Updated design contract test (`design-system-css.test.ts`) + rewritten `docs/DESIGN.md`
+- [ ] Validation gate green: `bun run typecheck && bun run lint && bun test`
 
 ## Constraints
 
-- Preserve existing uncommitted work.
-- Do not loosen permission policy, YOLO/session approval boundaries, or mode
-  routing.
-- Keep Convex hot queries bounded and metadata-oriented where possible.
-- Avoid long-lived dev servers and destructive commands.
+- Preserve all component APIs, handlers, aria-labels, and test-asserted behavior (mobile view aria-labels in ProjectWorkspaceLayout, skip link, icon metadata)
+- Keep every existing CSS utility class name (`surface-*`, `shadow-sharp-*`, `dock-tab`, `badge-*`, `state-band`, etc.) — restyle values only, so unvisited components inherit the new look
+- Honor approved palette memory: warm white canvas + deep violet + lavender; no blue-slate, no beige/orange
+- Copy follows sentence case, plain verbs; no uppercase-mono labels in product chrome
+- Quality floor: responsive to mobile, visible keyboard focus, reduced motion respected
 
 ## Out of scope (log here during the run, do not act on)
 
-- Redesigning the full Chat Panel UI.
-- Reworking the entire harness architecture.
+- Deep interior workbench panels (editor tabs, timeline internals, chat bubbles) beyond what tokens re-skin automatically
+- Admin pages beyond token inheritance
+- Icon set replacement (lucide stays)

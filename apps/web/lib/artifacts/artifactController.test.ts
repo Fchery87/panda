@@ -53,7 +53,7 @@ describe('artifact controller', () => {
     expect(request?.prompt).toContain('rm -rf tmp')
   })
 
-  it('passes the matching advisor review into artifact execution', async () => {
+  it('passes the advisor policy and matching advisor review into artifact execution', async () => {
     const record: ArtifactControllerRecord = {
       _id: 'artifact_1' as never,
       actions: [{ type: 'command_run', payload: { command: 'rm -rf tmp' } }],
@@ -61,6 +61,7 @@ describe('artifact controller', () => {
       createdAt: 1,
     }
     const reviews: unknown[] = []
+    const policies: unknown[] = []
 
     const controller = createArtifactController({
       records: [record],
@@ -81,7 +82,13 @@ describe('artifact controller', () => {
           createdAt: 1,
         },
       ],
+      advisorPolicy: {
+        enabled: true,
+        requiredFor: ['destructive_command'],
+        reasoningEffort: 'high',
+      },
       applyArtifact: async (args) => {
+        policies.push(args.advisorPolicy)
         reviews.push(args.advisorReview)
         return {
           kind: 'command',
@@ -93,6 +100,13 @@ describe('artifact controller', () => {
 
     await controller.applyOne('artifact_1')
 
+    expect(policies).toEqual([
+      {
+        enabled: true,
+        requiredFor: ['destructive_command'],
+        reasoningEffort: 'high',
+      },
+    ])
     expect(reviews).toEqual([
       {
         status: 'approved',
@@ -102,5 +116,74 @@ describe('artifact controller', () => {
         createdAt: 1,
       },
     ])
+  })
+
+  it('defers gated artifacts without approved review instead of marking them failed', async () => {
+    const record: ArtifactControllerRecord = {
+      _id: 'artifact_1' as never,
+      actions: [{ type: 'command_run', payload: { command: 'rm -rf tmp' } }],
+      status: 'pending',
+      createdAt: 1,
+    }
+    const applyCalls: string[] = []
+
+    const controller = createArtifactController({
+      records: [record],
+      projectId: 'project_1' as never,
+      advisorPolicy: {
+        enabled: true,
+        requiredFor: ['destructive_command'],
+        reasoningEffort: 'high',
+      },
+      applyArtifact: async (args) => {
+        applyCalls.push(args.artifactId)
+        return { kind: 'command', description: 'rm -rf tmp' }
+      },
+      updateArtifactStatus: async () => undefined,
+    })
+
+    const result = await controller.applyOne('artifact_1')
+
+    expect(result).toBe(null)
+    expect(applyCalls).toEqual([])
+  })
+
+  it('defers gated artifacts with non-approved review instead of marking them failed', async () => {
+    const record: ArtifactControllerRecord = {
+      _id: 'artifact_1' as never,
+      actions: [{ type: 'command_run', payload: { command: 'rm -rf tmp' } }],
+      status: 'pending',
+      createdAt: 1,
+    }
+    const applyCalls: string[] = []
+
+    const controller = createArtifactController({
+      records: [record],
+      projectId: 'project_1' as never,
+      advisorReviews: [
+        {
+          status: 'needs_changes',
+          summary: 'Needs work.',
+          risks: [],
+          artifactId: 'artifact_1',
+          createdAt: 1,
+        },
+      ],
+      advisorPolicy: {
+        enabled: true,
+        requiredFor: ['destructive_command'],
+        reasoningEffort: 'high',
+      },
+      applyArtifact: async (args) => {
+        applyCalls.push(args.artifactId)
+        return { kind: 'command', description: 'rm -rf tmp' }
+      },
+      updateArtifactStatus: async () => undefined,
+    })
+
+    const result = await controller.applyOne('artifact_1')
+
+    expect(result).toBe(null)
+    expect(applyCalls).toEqual([])
   })
 })

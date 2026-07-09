@@ -136,7 +136,7 @@ export function MCPServerEditor({
           variant="outline"
           size="sm"
           onClick={() => setShowAddForm(!showAddForm)}
-          className="rounded-none font-mono text-xs"
+          className="font-mono text-xs"
           disabled={!hasAllowedTransports}
         >
           <Plus className="mr-1 h-3 w-3" />
@@ -145,7 +145,7 @@ export function MCPServerEditor({
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">
-        <div className="rounded-none border border-border bg-surface-2 p-3">
+        <div className="border border-border bg-surface-2 p-3">
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-foreground">
             Transport Risk
           </p>
@@ -154,7 +154,7 @@ export function MCPServerEditor({
             remote HTTP endpoint and depends on that server's authentication boundary.
           </p>
         </div>
-        <div className="rounded-none border border-border bg-surface-2 p-3">
+        <div className="border border-border bg-surface-2 p-3">
           <p className="font-mono text-xs uppercase tracking-[0.18em] text-foreground">
             Permission Boundary
           </p>
@@ -176,7 +176,7 @@ export function MCPServerEditor({
                 value={newServer.name}
                 onChange={(e) => setNewServer((prev) => ({ ...prev, name: e.target.value }))}
                 placeholder="my-server"
-                className="rounded-none font-mono text-xs"
+                className="font-mono text-xs"
               />
             </div>
 
@@ -190,7 +190,7 @@ export function MCPServerEditor({
                     transport: e.target.value as UserMCPTransport,
                   }))
                 }
-                className="w-full rounded-none border border-border bg-background px-3 py-2 font-mono text-xs"
+                className="w-full border border-border bg-background px-3 py-2 font-mono text-xs"
               >
                 {allowedTransports.includes('stdio') ? (
                   <option value="stdio">stdio (local process)</option>
@@ -215,7 +215,7 @@ export function MCPServerEditor({
                     value={newServer.command || ''}
                     onChange={(e) => setNewServer((prev) => ({ ...prev, command: e.target.value }))}
                     placeholder="npx -y @modelcontextprotocol/server-filesystem"
-                    className="rounded-none font-mono text-xs"
+                    className="font-mono text-xs"
                   />
                 </div>
                 <div>
@@ -229,7 +229,7 @@ export function MCPServerEditor({
                       }))
                     }
                     placeholder="/path/to/project"
-                    className="min-h-[60px] w-full rounded-none border border-border bg-background px-3 py-2 font-mono text-xs"
+                    className="min-h-[60px] w-full border border-border bg-background px-3 py-2 font-mono text-xs"
                   />
                 </div>
               </>
@@ -240,7 +240,7 @@ export function MCPServerEditor({
                   value={newServer.url || ''}
                   onChange={(e) => setNewServer((prev) => ({ ...prev, url: e.target.value }))}
                   placeholder="http://localhost:3000/sse"
-                  className="rounded-none font-mono text-xs"
+                  className="font-mono text-xs"
                 />
               </div>
             )}
@@ -261,7 +261,7 @@ export function MCPServerEditor({
                   enabled: true,
                 })
               }}
-              className="rounded-none font-mono text-xs"
+              className="font-mono text-xs"
             >
               Cancel
             </Button>
@@ -269,7 +269,7 @@ export function MCPServerEditor({
               size="sm"
               onClick={handleAdd}
               disabled={!newServer.name.trim() || !hasAllowedTransports}
-              className="rounded-none font-mono text-xs"
+              className="font-mono text-xs"
             >
               Add Server
             </Button>
@@ -302,7 +302,7 @@ export function MCPServerEditor({
                     className={cn(
                       'mt-1 truncate font-mono text-[10px]',
                       testStatusByServer[String(server._id)]!.ok
-                        ? 'text-green-700'
+                        ? 'text-success'
                         : 'text-destructive'
                     )}
                   >
@@ -315,7 +315,7 @@ export function MCPServerEditor({
                   variant="outline"
                   size="sm"
                   onClick={() => handleTest(server)}
-                  className="h-7 rounded-none font-mono text-xs"
+                  className="h-7 font-mono text-xs"
                   disabled={testingServerId === server._id}
                 >
                   {testingServerId === server._id ? 'Testing…' : 'Test'}
@@ -323,9 +323,9 @@ export function MCPServerEditor({
                 <button
                   onClick={() => handleToggle(server._id, server.enabled)}
                   className={cn(
-                    'rounded-none border px-2 py-1 font-mono text-xs uppercase',
+                    'border px-2 py-1 font-mono text-xs uppercase',
                     server.enabled
-                      ? 'border-green-500/50 bg-green-500/10 text-green-600'
+                      ? 'border-success/50 bg-success/10 text-success'
                       : 'border-border text-muted-foreground'
                   )}
                 >
@@ -335,7 +335,7 @@ export function MCPServerEditor({
                   variant="ghost"
                   size="sm"
                   onClick={() => handleRemove(server._id)}
-                  className="h-7 rounded-none text-muted-foreground hover:text-destructive"
+                  className="h-7 text-muted-foreground hover:text-destructive"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
@@ -350,7 +350,7 @@ export function MCPServerEditor({
         </div>
       )}
 
-      <div className="rounded-none border border-border bg-surface-2 p-3">
+      <div className="border border-border bg-surface-2 p-3">
         <p className="font-mono text-xs text-muted-foreground">
           MCP servers provide additional tools for the agent. Common servers include:
         </p>

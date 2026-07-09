@@ -7,9 +7,14 @@
  * - Restore files to checkpoint state
  */
 
-import { query, mutation } from './_generated/server'
+import { query, mutation, type MutationCtx } from './_generated/server'
 import { v } from 'convex/values'
 import type { Id } from './_generated/dataModel'
+import {
+  deleteUnreferencedFileContents,
+  ensureInlineTextContent,
+  resolveContent,
+} from './lib/fileContentStore'
 import {
   requireCheckpointOwner,
   requireChatOwner,
@@ -18,6 +23,39 @@ import {
 } from './lib/authz'
 
 const MAX_CHECKPOINTS_PER_PROJECT = 50
+
+async function upsertFileMetadataForRestore(
+  ctx: MutationCtx,
+  args: {
+    fileId: Id<'files'>
+    projectId: Id<'projects'>
+    path: string
+    content: string
+    contentHash: string
+    contentSize: number
+    isBinary?: boolean
+    updatedAt: number
+  }
+) {
+  const existing = await ctx.db
+    .query('fileMetadata')
+    .withIndex('by_file', (q) => q.eq('fileId', args.fileId))
+    .unique()
+  const payload = {
+    fileId: args.fileId,
+    projectId: args.projectId,
+    path: args.path,
+    isBinary: args.isBinary,
+    size: args.contentSize,
+    contentHash: args.contentHash,
+    updatedAt: args.updatedAt,
+  }
+  if (existing) {
+    await ctx.db.patch(existing._id, payload)
+  } else {
+    await ctx.db.insert('fileMetadata', payload)
+  }
+}
 
 export const list = query({
   args: {
@@ -135,9 +173,35 @@ export const restore = mutation({
       }
 
       try {
+        const content =
+          (await resolveContent(ctx, {
+            legacyContent: snapshot.content,
+            contentRef: snapshot.contentRef,
+          })) ?? ''
+        const contentFields = await ensureInlineTextContent(ctx, {
+          projectId: targetFile.projectId,
+          content,
+          isBinary: targetFile.isBinary,
+        })
+        const updatedAt = Date.now()
+        const oldContentRef = targetFile.contentRef
         await ctx.db.patch(targetFile._id, {
-          content: snapshot.content,
-          updatedAt: Date.now(),
+          content,
+          contentRef: contentFields.contentRef,
+          contentHash: contentFields.contentHash,
+          contentSize: contentFields.contentSize,
+          updatedAt,
+        })
+        await deleteUnreferencedFileContents(ctx, [oldContentRef])
+        await upsertFileMetadataForRestore(ctx, {
+          fileId: targetFile._id,
+          projectId: targetFile.projectId,
+          path: targetFile.path,
+          content,
+          contentHash: contentFields.contentHash,
+          contentSize: contentFields.contentSize,
+          isBinary: targetFile.isBinary,
+          updatedAt,
         })
         results.push({
           filePath: targetFile.path,
@@ -204,7 +268,14 @@ export const createForFileChanges = mutation({
         .withIndex('by_path', (q) => q.eq('projectId', args.projectId).eq('path', filePath))
         .first()
 
-      if (!file || !file.content) {
+      const content = file
+        ? await resolveContent(ctx, {
+            legacyContent: file.content,
+            contentRef: file.contentRef,
+          })
+        : undefined
+
+      if (!file || content === undefined) {
         continue
       }
 
@@ -216,10 +287,19 @@ export const createForFileChanges = mutation({
 
       const snapshotNumber = (latestSnapshot?.snapshotNumber ?? 0) + 1
 
+      const contentFields = await ensureInlineTextContent(ctx, {
+        projectId: args.projectId,
+        content,
+        isBinary: file.isBinary,
+      })
+
       const snapshotId = await ctx.db.insert('fileSnapshots', {
         fileId: file._id,
         snapshotNumber,
-        content: file.content,
+        content,
+        contentRef: contentFields.contentRef,
+        contentHash: contentFields.contentHash,
+        contentSize: contentFields.contentSize,
         createdAt: Date.now(),
       })
 

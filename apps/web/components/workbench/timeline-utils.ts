@@ -13,12 +13,15 @@ export interface TimelineEventRecord {
   _id: string
   type: string
   content?: string
+  contentPreview?: string | null
+  outputPreview?: string | null
   status?: string
   progressCategory?: string
   progressToolName?: string
   targetFilePaths?: string[]
   toolName?: string
   error?: string
+  errorPreview?: string | null
   createdAt: number
 }
 
@@ -82,7 +85,7 @@ function getTimelineLabel(event: TimelineEventRecord): string {
     case 'tool_call':
       return `Tool Call: ${event.toolName ?? 'unknown'}`
     case 'tool_result':
-      return `${event.error || event.status === 'error' ? 'Tool Failed' : 'Tool Result'}: ${
+      return `${event.error || event.errorPreview || event.status === 'error' ? 'Tool Failed' : 'Tool Result'}: ${
         event.toolName ?? 'unknown'
       }`
     case 'error':
@@ -115,7 +118,8 @@ export function selectTimelineEvents(events: TimelineEventRecord[]): TimelineSel
         isError:
           event.type === 'error' ||
           event.status === 'error' ||
-          Boolean(event.error && event.error.length > 0),
+          Boolean(event.error && event.error.length > 0) ||
+          Boolean(event.errorPreview && event.errorPreview.length > 0),
         isSpec,
         specStatus,
       }

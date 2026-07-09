@@ -93,7 +93,7 @@ function SpecSyncToastContent({ driftReport, onUpdate, onIgnore, className }: Sp
           variant="default"
           size="sm"
           onClick={() => onUpdate(driftReport)}
-          className="h-8 flex-1 rounded-none font-mono text-xs"
+          className="h-8 flex-1 font-mono text-xs"
         >
           Update Spec
         </Button>
@@ -101,7 +101,7 @@ function SpecSyncToastContent({ driftReport, onUpdate, onIgnore, className }: Sp
           variant="outline"
           size="sm"
           onClick={() => onIgnore(driftReport)}
-          className="h-8 flex-1 rounded-none font-mono text-xs"
+          className="h-8 flex-1 font-mono text-xs"
         >
           Ignore
         </Button>
@@ -116,7 +116,7 @@ function SpecSyncToastContent({ driftReport, onUpdate, onIgnore, className }: Sp
 function SeverityBadge({ severity }: { severity: 'low' | 'medium' | 'high' }) {
   const styles = {
     low: 'bg-muted text-muted-foreground',
-    medium: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400',
+    medium: 'bg-warning/20 text-warning',
     high: 'bg-destructive/20 text-destructive',
   }
 
@@ -160,7 +160,7 @@ export function showSpecSyncToast(
       <div
         className={cn(
           'shadow-sharp-md border border-border bg-background',
-          'rounded-none',
+          '',
           'transition-all duration-200',
           t.visible ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
         )}

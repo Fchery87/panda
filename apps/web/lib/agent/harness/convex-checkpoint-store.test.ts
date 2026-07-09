@@ -112,14 +112,15 @@ describe('ConvexCheckpointStore', () => {
 
   test('saves runtime checkpoints with the provided run or chat scope', async () => {
     const mutationCalls: Array<{
+      func: unknown
       checkpoint: RuntimeCheckpoint
       runId?: string
       chatId?: string
     }> = []
     const store = new ConvexCheckpointStore(
       {
-        async mutation(_func, args) {
-          mutationCalls.push(args)
+        async mutation(func, args) {
+          mutationCalls.push({ func, ...args })
           return null
         },
         async query() {
@@ -133,10 +134,94 @@ describe('ConvexCheckpointStore', () => {
 
     expect(mutationCalls).toEqual([
       expect.objectContaining({
+        func: expect.anything(),
         runId: 'run-1',
         chatId: 'chat-1',
         checkpoint: expect.objectContaining({ version: 1, sessionID: 'session-1' }),
       }),
     ])
+  })
+
+  test('loads full checkpoint payloads only through the checkpoint-store seam', async () => {
+    const queryCalls: Array<{ func: unknown; sessionID: string; projectId?: string }> = []
+    const checkpoint = createCheckpoint('session-resume')
+    const store = new ConvexCheckpointStore(
+      {
+        async mutation() {
+          return null
+        },
+        async query(func, args) {
+          queryCalls.push({ func, ...args })
+          return checkpoint
+        },
+      },
+      { chatId: 'chat-1' as never, projectId: 'project-1' as never }
+    )
+
+    await expect(store.load('session-resume')).resolves.toEqual(checkpoint)
+
+    expect(queryCalls).toEqual([
+      expect.objectContaining({
+        func: expect.anything(),
+        sessionID: 'session-resume',
+        projectId: 'project-1',
+      }),
+    ])
+  })
+
+  test('passes spec-enabled checkpoints through the existing seam', async () => {
+    const checkpoint = createCheckpoint('session-spec')
+    checkpoint.state.activeSpec = {
+      id: 'spec-1',
+      version: 1,
+      status: 'executing',
+      tier: 'explicit',
+      intent: {
+        goal: 'Keep runtime resumable',
+        rawMessage: 'test',
+        constraints: [],
+        acceptanceCriteria: [],
+      },
+      plan: { steps: [], risks: [], dependencies: [], estimatedTools: [] },
+      validation: { preConditions: [], postConditions: [], invariants: [] },
+      provenance: { timestamp: 123, model: 'test', promptHash: 'hash' },
+    } as never
+    const mutationCalls: Array<{ checkpoint: RuntimeCheckpoint }> = []
+    const store = new ConvexCheckpointStore(
+      {
+        async mutation(_func, args) {
+          mutationCalls.push(args)
+          return null
+        },
+        async query() {
+          return checkpoint
+        },
+      },
+      { runId: 'run-1' as never, chatId: 'chat-1' as never }
+    )
+
+    await store.save(checkpoint)
+    await expect(store.load('session-spec')).resolves.toEqual(checkpoint)
+    expect(mutationCalls[0]?.checkpoint.state.activeSpec).toEqual(
+      expect.objectContaining({ id: 'spec-1', status: 'executing' })
+    )
+  })
+
+  test('refuses to save checkpoints without a run or chat locality', async () => {
+    const store = new ConvexCheckpointStore(
+      {
+        async mutation() {
+          throw new Error('mutation should not be called')
+        },
+        async query() {
+          return null
+        },
+      },
+      {}
+    )
+
+    await expect(store.save(createCheckpoint())).rejects.toThrow(
+      'ConvexCheckpointStore.save requires scope.runId or scope.chatId'
+    )
   })
 })

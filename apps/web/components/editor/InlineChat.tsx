@@ -67,7 +67,7 @@ export function InlineChat({ selectedText, position, onClose, onSubmit }: Inline
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: -10, scale: 0.95 }}
         transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
-        className="fixed z-50 w-[420px] rounded-none border border-border bg-background shadow-lg"
+        className="fixed z-50 w-[420px] border border-border bg-background shadow-lg"
         style={{
           top: Math.min(position.top + 24, window.innerHeight - 300),
           left: Math.min(position.left, window.innerWidth - 440),
@@ -81,7 +81,7 @@ export function InlineChat({ selectedText, position, onClose, onSubmit }: Inline
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 rounded-none"
+            className="h-6 w-6"
             onClick={onClose}
             aria-label="Close inline chat"
           >
@@ -96,12 +96,12 @@ export function InlineChat({ selectedText, position, onClose, onSubmit }: Inline
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Describe the change you want..."
-            className="min-h-[80px] resize-none rounded-none border-border bg-background font-mono text-sm focus-visible:ring-primary"
+            className="min-h-[80px] resize-none border-border bg-background font-mono text-sm focus-visible:ring-primary"
             disabled={isLoading}
           />
 
           {selectedText && (
-            <div className="mt-2 max-h-[100px] overflow-auto rounded-none border border-border bg-muted p-2">
+            <div className="mt-2 max-h-[100px] overflow-auto border border-border bg-muted p-2">
               <div className="mb-1 font-mono text-xs uppercase tracking-wider text-muted-foreground">
                 Selected Code
               </div>
@@ -114,15 +114,15 @@ export function InlineChat({ selectedText, position, onClose, onSubmit }: Inline
 
         <div className="flex items-center justify-between border-t border-border px-3 py-2">
           <span className="font-mono text-xs text-muted-foreground">
-            <kbd className="mx-0.5 rounded-none bg-muted px-1.5 py-0.5">Enter</kbd> to submit
+            <kbd className="mx-0.5 bg-muted px-1.5 py-0.5">Enter</kbd> to submit
             <span className="mx-1">·</span>
-            <kbd className="mx-0.5 rounded-none bg-muted px-1.5 py-0.5">Esc</kbd> to cancel
+            <kbd className="mx-0.5 bg-muted px-1.5 py-0.5">Esc</kbd> to cancel
           </span>
           <Button
             size="sm"
             disabled={!prompt.trim() || isLoading}
             onClick={handleSubmit}
-            className="h-7 rounded-none px-3 font-mono text-xs"
+            className="h-7 px-3 font-mono text-xs"
           >
             {isLoading ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />

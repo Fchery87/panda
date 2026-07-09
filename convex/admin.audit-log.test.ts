@@ -27,13 +27,16 @@ describe('admin settings audit logging', () => {
     expect(ordered.map((log) => log.createdAt)).toEqual([3000, 2000, 1000])
   })
 
-  test('applies newest-first sorting inside getAuditLog before slicing', () => {
+  test('uses createdAt-ordered resource index and newest-first sorting in getAuditLog', () => {
     const source = fs.readFileSync(path.resolve(import.meta.dir, 'admin.ts'), 'utf8')
+    const schema = fs.readFileSync(path.resolve(import.meta.dir, 'schema.ts'), 'utf8')
 
     const getAuditLogStart = source.indexOf('export const getAuditLog = query({')
     const checkIsAdminStart = source.indexOf('export const checkIsAdmin = query({')
     const auditLogBlock = source.slice(getAuditLogStart, checkIsAdminStart)
 
+    expect(schema).toContain(".index('by_resource_created', ['resource', 'createdAt'])")
+    expect(auditLogBlock).toContain("withIndex('by_resource_created'")
     expect(auditLogBlock).toContain('sortAuditLogsNewestFirst(actorFilteredLogs).slice(0, limit)')
   })
 })

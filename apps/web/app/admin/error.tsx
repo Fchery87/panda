@@ -28,12 +28,12 @@ export default function AdminError({
         )}
       </div>
       <div className="flex gap-3">
-        <Button onClick={reset} className="rounded-none font-mono">
+        <Button onClick={reset} className="font-mono">
           Try Again
         </Button>
         <Button
           variant="outline"
-          className="rounded-none font-mono"
+          className="font-mono"
           onClick={() => {
             window.location.href = '/admin'
           }}

@@ -271,7 +271,7 @@ function TreeItem({
             transition={{ duration: 0.15, delay: depth * 0.02 }}
             className={cn(
               'group relative flex cursor-pointer select-none items-center gap-1.5 px-2 py-1.5',
-              'mx-1 rounded-none transition-all duration-150',
+              'mx-1 transition-all duration-150',
               isSelected
                 ? 'bg-primary/10 text-foreground'
                 : 'hover:bg-secondary/60 text-muted-foreground hover:text-foreground'

@@ -19,7 +19,7 @@ interface ProviderAnalyticsProps {
 export function ProviderAnalytics({ data }: ProviderAnalyticsProps) {
   if (!data) {
     return (
-      <Card className="rounded-none">
+      <Card className="">
         <CardHeader>
           <CardTitle>Provider Analytics</CardTitle>
           <CardDescription>Loading analytics data...</CardDescription>
@@ -32,14 +32,14 @@ export function ProviderAnalytics({ data }: ProviderAnalyticsProps) {
 
   return (
     <div className="space-y-6">
-      <Card className="rounded-none">
+      <Card className="">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5" />
               <CardTitle>Usage Overview</CardTitle>
             </div>
-            <Badge variant="outline" className="rounded-none font-mono">
+            <Badge variant="outline" className="font-mono">
               {data.totalRuns.toLocaleString()} total runs
             </Badge>
           </div>
@@ -64,7 +64,7 @@ export function ProviderAnalytics({ data }: ProviderAnalyticsProps) {
                       </div>
                       <Progress
                         value={(provider.count / maxProviderCount) * 100}
-                        className="h-2 rounded-none"
+                        className="h-2"
                       />
                     </div>
                   ))
@@ -82,7 +82,7 @@ export function ProviderAnalytics({ data }: ProviderAnalyticsProps) {
                   data.models.slice(0, 10).map((model, index) => (
                     <div
                       key={model.name}
-                      className="flex items-center justify-between rounded-none border border-border p-2"
+                      className="flex items-center justify-between border border-border p-2"
                     >
                       <div className="flex items-center gap-3">
                         <span className="w-6 font-mono text-xs text-muted-foreground">
@@ -92,7 +92,7 @@ export function ProviderAnalytics({ data }: ProviderAnalyticsProps) {
                           {model.name}
                         </span>
                       </div>
-                      <Badge variant="outline" className="rounded-none font-mono text-xs">
+                      <Badge variant="outline" className="font-mono text-xs">
                         {model.count}
                       </Badge>
                     </div>
@@ -104,7 +104,7 @@ export function ProviderAnalytics({ data }: ProviderAnalyticsProps) {
         </CardContent>
       </Card>
 
-      <Card className="rounded-none">
+      <Card className="">
         <CardHeader>
           <div className="flex items-center gap-2">
             <Bot className="h-5 w-5" />
@@ -119,7 +119,7 @@ export function ProviderAnalytics({ data }: ProviderAnalyticsProps) {
                 data.totalRuns > 0 ? ((model.count / data.totalRuns) * 100).toFixed(1) : '0'
 
               return (
-                <div key={model.name} className="rounded-none border border-border p-4 text-center">
+                <div key={model.name} className="border border-border p-4 text-center">
                   <p className="mb-2 truncate font-mono text-sm" title={model.name}>
                     {model.name}
                   </p>
